@@ -1,0 +1,56 @@
+// 파이프라인 처리 단계 열거형
+enum PipelineStep {
+  idle,              // 대기 중
+  uploading,         // 업로드 중
+  transcribing,      // 음성 인식 중 (STT)
+  diarizing,         // 화자 분리 중
+  generatingMinutes, // 회의록 생성 중
+  summarizing,       // AI 요약 중
+  completed,         // 완료
+  failed,            // 실패
+}
+
+// 파이프라인 처리 상태 모델
+class PipelineState {
+  // 현재 처리 단계
+  final PipelineStep currentStep;
+
+  // 전체 진행률 (0.0 ~ 1.0)
+  final double progress;
+
+  // 오류 메시지 (실패 시)
+  final String? errorMessage;
+
+  // 현재 처리 중인 태스크 ID
+  final String? currentTaskId;
+
+  const PipelineState({
+    required this.currentStep,
+    required this.progress,
+    this.errorMessage,
+    this.currentTaskId,
+  });
+
+  // 특정 필드만 변경한 복사본 반환
+  PipelineState copyWith({
+    PipelineStep? currentStep,
+    double? progress,
+    String? errorMessage,
+    String? currentTaskId,
+  }) {
+    return PipelineState(
+      currentStep: currentStep ?? this.currentStep,
+      progress: progress ?? this.progress,
+      errorMessage: errorMessage ?? this.errorMessage,
+      currentTaskId: currentTaskId ?? this.currentTaskId,
+    );
+  }
+
+  // 초기 상태 팩토리
+  factory PipelineState.initial() {
+    return const PipelineState(
+      currentStep: PipelineStep.idle,
+      progress: 0.0,
+    );
+  }
+}
