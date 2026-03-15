@@ -414,4 +414,4 @@ POST /api/v1/diarizations {stt_task_id}
 
 *Plan ID: SPEC-DIA-001*
 *생성일: 2026-03-15*
-*상태: draft*
+*상태: completed*

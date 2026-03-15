@@ -1,7 +1,7 @@
 ---
 id: SPEC-DIA-001
 version: "1.0.0"
-status: draft
+status: completed
 created: 2026-03-15
 updated: 2026-03-15
 author: kisoo
@@ -198,4 +198,38 @@ issue_number: 0
 
 *SPEC ID: SPEC-DIA-001*
 *생성일: 2026-03-15*
-*상태: draft*
+*상태: completed*
+
+---
+
+## 9. 구현 노트 (Implementation Notes)
+
+### 구현 완료 요약
+
+- **구현 일자**: 2026-03-15
+- **개발 방법론**: TDD (RED-GREEN-REFACTOR)
+- **테스트 결과**: 238 tests passed, 96.27% coverage
+- **커밋**: 3f119db (main)
+
+### 구현된 모듈
+
+| 모듈 | 파일 | 상태 |
+|------|------|------|
+| DiarizationEngine | `backend/ml/diarization_engine.py` | 완료 (싱글턴, mock Pipeline) |
+| SpeakerMatcher | `backend/pipeline/speaker_matcher.py` | 완료 (100% 커버리지) |
+| Diarization Schema | `backend/schemas/diarization.py` | 완료 (Pydantic v2) |
+| Diarization Task | `backend/workers/tasks/diarization_task.py` | 완료 (동시 2개 제한, 재시도) |
+| Diarization API | `backend/app/api/v1/diarization.py` | 완료 (CRUD + Health) |
+
+### 수정된 기존 파일
+
+- `backend/app/config.py`: HUGGINGFACE_TOKEN, 동시 제한 설정 추가
+- `backend/app/main.py`: DiarizationEngine warm-up, router 등록
+- `backend/app/api/v1/health.py`: /health/diarization 엔드포인트 추가
+- `pyproject.toml`: pyannote.audio, torch, torchaudio 의존성 추가
+
+### 계획 대비 변경 사항
+
+- 계획된 5개 신규 파일 모두 구현 완료
+- 계획된 4개 수정 파일 모두 수정 완료
+- 추가로 12개 기존 파일 수정 (테스트 인프라, conftest, 기존 STT 코드 호환성 등)

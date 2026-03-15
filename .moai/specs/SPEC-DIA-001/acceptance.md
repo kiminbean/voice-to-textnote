@@ -297,4 +297,4 @@ Then 시스템은 60초 간격으로 지수 백오프 재시도를 수행한다
 
 *Acceptance ID: SPEC-DIA-001*
 *생성일: 2026-03-15*
-*상태: draft*
+*상태: completed*

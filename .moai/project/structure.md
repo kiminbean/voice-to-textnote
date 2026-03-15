@@ -21,13 +21,14 @@ voice-to-textnote/
 
 ### `/backend/` - FastAPI 서버 및 음성 처리 파이프라인
 
-**목적** (현재 완료: STT 백엔드):
-- RESTful API 엔드포인트 제공 (오디오 업로드, 상태 조회, 결과 반환)
+**목적** (현재 완료: STT 백엔드 + 화자 분리):
+- RESTful API 엔드포인트 제공 (오디오 업로드, 상태 조회, 결과 반환, 화자 분리)
 - 음성 파일 수신, 저장, 전처리
 - Celery 비동기 작업 큐 관리
 - mlx-whisper STT 처리
+- pyannote.audio 3.1 화자 분리 (Speaker Diarization)
 
-**현재 구현 구조** (SPEC-STT-001 완료):
+**현재 구현 구조** (SPEC-STT-001 + SPEC-DIA-001 완료):
 
 ```
 backend/
@@ -41,11 +42,13 @@ backend/
 │   │   └── v1/
 │   │       ├── __init__.py
 │   │       ├── transcription.py # STT 업로드, 상태, 결과 엔드포인트
-│   │       └── health.py        # 헬스체크, 모델 상태 엔드포인트
+│   │       ├── diarization.py   # 화자 분리 작업 생성, 상태, 결과, 삭제 엔드포인트
+│   │       └── health.py        # 헬스체크, 모델 상태 (STT + DIA)
 │
 ├── schemas/
 │   ├── __init__.py
-│   ├── transcription.py        # Pydantic 요청/응답 스키마
+│   ├── transcription.py        # STT Pydantic 요청/응답 스키마
+│   ├── diarization.py          # 화자 분리 스키마 (DiarizedSegmentResult, SpeakerInfo 등)
 │   └── health.py               # 헬스 상태 스키마
 │
 ├── utils/
@@ -59,28 +62,36 @@ backend/
 │   ├── celery_app.py           # Celery 앱 초기화, Redis 연결
 │   └── tasks/
 │       ├── __init__.py
-│       └── transcription_task.py # mlx-whisper STT 처리
+│       ├── transcription_task.py # mlx-whisper STT 처리
+│       └── diarization_task.py   # pyannote 화자 분리 처리 (동시 2개 제한)
 │
 ├── ml/
 │   ├── __init__.py
-│   └── stt_engine.py           # mlx-whisper 래퍼 (싱글톤 패턴)
+│   ├── stt_engine.py           # mlx-whisper 래퍼 (싱글톤 패턴)
+│   └── diarization_engine.py   # pyannote.audio 3.1 화자 분리 엔진 (싱글턴)
 │
 ├── pipeline/
 │   ├── __init__.py
 │   ├── audio_processor.py      # 오디오 전처리 (16kHz 모노 WAV)
-│   └── chunk_manager.py        # 청크 분할 및 병합 (30분 단위)
+│   ├── chunk_manager.py        # 청크 분할 및 병합 (30분 단위)
+│   └── speaker_matcher.py      # STT-DIA 타임스탬프 overlap 매칭 알고리즘
 │
 ├── tests/
 │   ├── __init__.py
 │   ├── unit/
 │   │   ├── __init__.py
-│   │   ├── test_stt_engine.py         # mlx-whisper 엔진 테스트
-│   │   ├── test_transcription_task.py # STT 작업 테스트
-│   │   ├── test_audio_processor.py    # 오디오 전처리 테스트
-│   │   └── test_schemas.py            # Pydantic 스키마 테스트
+│   │   ├── test_stt_engine.py             # mlx-whisper 엔진 테스트
+│   │   ├── test_transcription_task.py     # STT 작업 테스트
+│   │   ├── test_audio_processor.py        # 오디오 전처리 테스트
+│   │   ├── test_schemas.py                # STT Pydantic 스키마 테스트
+│   │   ├── test_diarization_engine.py     # DiarizationEngine 싱글턴 테스트
+│   │   ├── test_diarization_schemas.py    # 화자 분리 스키마 테스트
+│   │   ├── test_diarization_task.py       # 화자 분리 Celery 태스크 테스트
+│   │   └── test_speaker_matcher.py        # 타임스탬프 매칭 테스트 (100% 커버리지)
 │   └── integration/
 │       ├── __init__.py
-│       └── test_api.py                # API 엔드포인트 통합 테스트
+│       ├── test_api.py                    # STT API 통합 테스트
+│       └── test_diarization_api.py        # 화자 분리 API 통합 테스트
 │
 ├── conftest.py                 # pytest 픽스처 및 설정
 ├── pyproject.toml              # Python 의존성 관리
@@ -90,16 +101,20 @@ backend/
 
 **현재 구현 상황**:
 
-- ✅ **app/main.py**: FastAPI 앱, 모델 워밍업 (REQ-STT-021)
-- ✅ **app/config.py**: Redis, Whisper 모델 설정
-- ✅ **app/api/v1/transcription.py**: 오디오 업로드, 상태, 결과 엔드포인트
-- ✅ **app/api/v1/health.py**: 헬스체크, 모델 상태
-- ✅ **schemas/**: Pydantic 요청/응답 스키마
+- ✅ **app/main.py**: FastAPI 앱, STT + DIA 모델 워밍업
+- ✅ **app/config.py**: Redis, Whisper, HUGGINGFACE_TOKEN, 동시 제한 설정
+- ✅ **app/api/v1/transcription.py**: STT 업로드, 상태, 결과 엔드포인트
+- ✅ **app/api/v1/diarization.py**: 화자 분리 작업 생성, 상태, 결과, 삭제 엔드포인트
+- ✅ **app/api/v1/health.py**: 헬스체크 (STT + DIA 모델 상태)
+- ✅ **schemas/**: STT + DIA Pydantic 요청/응답 스키마
 - ✅ **workers/tasks/transcription_task.py**: mlx-whisper 호출
+- ✅ **workers/tasks/diarization_task.py**: pyannote 화자 분리 (동시 2개, 재시도 3회)
 - ✅ **ml/stt_engine.py**: Whisper 싱글톤 엔진
+- ✅ **ml/diarization_engine.py**: pyannote.audio 3.1 싱글턴 엔진
 - ✅ **pipeline/audio_processor.py**: 오디오 전처리 (16kHz 모노)
 - ✅ **pipeline/chunk_manager.py**: 청크 분할 (30분 단위)
-- ✅ **tests/**: 150개 테스트, 95.50% 커버리지
+- ✅ **pipeline/speaker_matcher.py**: STT-DIA 타임스탬프 overlap 매칭
+- ✅ **tests/**: 238개 테스트, 96.27% 커버리지
 
 ## 클라이언트 디렉토리 구조
 
