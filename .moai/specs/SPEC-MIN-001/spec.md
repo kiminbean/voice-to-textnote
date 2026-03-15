@@ -1,7 +1,7 @@
 ---
 id: SPEC-MIN-001
 version: "1.0.0"
-status: draft
+status: completed
 created: 2026-03-15
 updated: 2026-03-15
 author: kisoo
@@ -158,4 +158,15 @@ issue_number: 0
 
 *SPEC ID: SPEC-MIN-001*
 *생성일: 2026-03-15*
-*상태: draft*
+*상태: completed*
+
+---
+
+## 9. 구현 노트 (Implementation Notes)
+
+- **구현 일자**: 2026-03-15
+- **개발 방법론**: TDD (RED-GREEN-REFACTOR)
+- **테스트 결과**: 309 tests passed (신규 71), 96.77% coverage
+- **커밋**: 606e4d6 (main)
+- 신규 파일 8개 생성, 기존 파일 2개 수정
+- minutes_formatter.py 100% 커버리지 달성
