@@ -53,6 +53,13 @@ class Settings(BaseSettings):
     max_concurrent_minutes: int = 3  # 최대 동시 회의록 생성 작업 수
     minutes_result_ttl: int = 86400  # 결과 캐시 TTL: 24시간 (초)
 
+    # AI 요약 생성 설정 (REQ-SUM-008, REQ-SUM-011, REQ-SUM-014)
+    anthropic_api_key: str = ""  # ANTHROPIC_API_KEY 환경 변수
+    max_concurrent_summaries: int = 2  # 최대 동시 요약 작업 수
+    summary_result_ttl: int = 86400  # 요약 결과 캐시 TTL: 24시간 (초)
+    summary_max_tokens: int = 2000  # Claude API 최대 응답 토큰
+    summary_model: str = "claude-sonnet-4-20250514"  # Claude 모델명
+
     # 로깅
     log_level: str = "INFO"
 

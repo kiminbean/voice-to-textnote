@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.app.api.v1 import diarization, health, minutes, transcription
+from backend.app.api.v1 import diarization, health, minutes, summary, transcription
 from backend.app.config import settings
 from backend.ml.diarization_engine import DiarizationEngine
 from backend.ml.stt_engine import WhisperEngine
@@ -80,6 +80,7 @@ def create_app() -> FastAPI:
     app.include_router(transcription.router, prefix=api_prefix)
     app.include_router(diarization.router, prefix=api_prefix)
     app.include_router(minutes.router, prefix=api_prefix)
+    app.include_router(summary.router, prefix=api_prefix)
     app.include_router(health.router, prefix=api_prefix)
 
     return app
