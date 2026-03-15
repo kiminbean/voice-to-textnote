@@ -1,7 +1,7 @@
 ---
 id: SPEC-APP-001
 version: "1.0.0"
-status: draft
+status: completed
 created: 2026-03-15
 updated: 2026-03-15
 author: kisoo
@@ -149,4 +149,16 @@ issue_number: 0
 
 *SPEC ID: SPEC-APP-001*
 *생성일: 2026-03-15*
-*상태: draft*
+*상태: completed*
+
+---
+
+## 9. 구현 노트 (Implementation Notes)
+
+- **구현 일자**: 2026-03-15
+- **개발 방법론**: TDD
+- **테스트 결과**: 37 Flutter tests passed, flutter analyze 0 issues
+- **커밋**: 8e56e16 (main)
+- 신규 파일 30+ 생성 (lib/ + test/ + config)
+- freezed/json_serializable 대신 수동 직렬화 적용 (Dart SDK 호환성)
+- macOS 마이크 entitlement 설정 완료
