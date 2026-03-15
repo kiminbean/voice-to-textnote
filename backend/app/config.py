@@ -1,0 +1,74 @@
+"""
+앱 설정 모듈 - pydantic-settings 기반 환경 변수 관리
+"""
+from pathlib import Path
+
+from pydantic import field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+    )
+
+    # Redis 설정
+    redis_url: str = "redis://localhost:6379/0"
+    celery_broker_url: str = "redis://localhost:6379/0"
+    celery_result_backend: str = "redis://localhost:6379/1"
+
+    # 파일 저장소
+    temp_dir: Path = Path("./storage/temp")
+    results_dir: Path = Path("./storage/results")
+
+    # STT 모델
+    whisper_model: str = "mlx-community/whisper-large-v3-turbo"
+    whisper_language: str = "ko"
+
+    # 처리 제한
+    max_concurrent_jobs: int = 3
+    max_file_size_mb: int = 500
+    max_duration_hours: int = 4
+    chunk_duration_minutes: int = 30
+    chunk_overlap_seconds: int = 5
+
+    # Redis 캐시 TTL (초)
+    cache_ttl_seconds: int = 86400  # 24시간
+
+    # 메모리 경고 임계값 (MB) - 24GB의 80%
+    memory_warning_threshold_mb: int = 19660
+
+    # 로깅
+    log_level: str = "INFO"
+
+    # 서버
+    host: str = "0.0.0.0"
+    port: int = 8000
+
+    @field_validator("temp_dir", "results_dir", mode="before")
+    @classmethod
+    def create_dirs(cls, v: str | Path) -> Path:
+        path = Path(v)
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+
+    @property
+    def max_file_size_bytes(self) -> int:
+        return self.max_file_size_mb * 1024 * 1024
+
+    @property
+    def max_duration_seconds(self) -> int:
+        return self.max_duration_hours * 3600
+
+    @property
+    def chunk_duration_ms(self) -> int:
+        return self.chunk_duration_minutes * 60 * 1000
+
+    @property
+    def chunk_overlap_ms(self) -> int:
+        return self.chunk_overlap_seconds * 1000
+
+
+settings = Settings()
