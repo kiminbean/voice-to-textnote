@@ -136,4 +136,4 @@ Then 각 ActionItem에 task(str)가 존재한다
 
 *Acceptance ID: SPEC-SUM-001*
 *생성일: 2026-03-15*
-*상태: draft*
+*상태: completed*

@@ -21,15 +21,16 @@ voice-to-textnote/
 
 ### `/backend/` - FastAPI 서버 및 음성 처리 파이프라인
 
-**목적** (현재 완료: STT + 화자 분리 + 회의록 생성):
+**목적** (현재 완료: STT + 화자 분리 + 회의록 + AI 요약):
 - RESTful API 엔드포인트 제공 (오디오 업로드, 상태 조회, 결과 반환, 화자 분리, 회의록 생성)
 - 음성 파일 수신, 저장, 전처리
 - Celery 비동기 작업 큐 관리
 - mlx-whisper STT 처리
 - pyannote.audio 3.1 화자 분리 (Speaker Diarization)
 - 화자별 회의록 자동 생성 (Meeting Minutes)
+- Claude API 기반 회의 요약 및 액션 아이템 추출
 
-**현재 구현 구조** (SPEC-STT-001 + SPEC-DIA-001 + SPEC-MIN-001 완료):
+**현재 구현 구조** (SPEC-STT-001 + SPEC-DIA-001 + SPEC-MIN-001 + SPEC-SUM-001 완료):
 
 ```
 backend/
@@ -52,6 +53,7 @@ backend/
 │   ├── transcription.py        # STT Pydantic 요청/응답 스키마
 │   ├── diarization.py          # 화자 분리 스키마 (DiarizedSegmentResult, SpeakerInfo 등)
 │   ├── minutes.py              # 회의록 스키마 (MinutesSegment, SpeakerStats, MinutesResponse 등)
+│   ├── summary.py              # 요약 스키마 (ActionItem, SummaryResult, SummaryResponse 등)
 │   └── health.py               # 헬스 상태 스키마
 │
 ├── utils/
@@ -67,7 +69,8 @@ backend/
 │       ├── __init__.py
 │       ├── transcription_task.py # mlx-whisper STT 처리
 │       ├── diarization_task.py   # pyannote 화자 분리 처리 (동시 2개 제한)
-│       └── minutes_task.py       # 회의록 생성 처리 (동시 3개 제한)
+│       ├── minutes_task.py       # 회의록 생성 처리 (동시 3개 제한)
+│       └── summary_task.py      # AI 요약 생성 처리 (동시 2개 제한)
 │
 ├── ml/
 │   ├── __init__.py
@@ -79,7 +82,8 @@ backend/
 │   ├── audio_processor.py      # 오디오 전처리 (16kHz 모노 WAV)
 │   ├── chunk_manager.py        # 청크 분할 및 병합 (30분 단위)
 │   ├── speaker_matcher.py      # STT-DIA 타임스탬프 overlap 매칭 알고리즘
-│   └── minutes_formatter.py   # 회의록 포맷터 (세그먼트 병합, 통계, Markdown)
+│   ├── minutes_formatter.py   # 회의록 포맷터 (세그먼트 병합, 통계, Markdown)
+│   └── summary_generator.py   # Claude API 요약 생성기 (프롬프트 구성, 응답 파싱)
 │
 ├── tests/
 │   ├── __init__.py
@@ -95,12 +99,16 @@ backend/
 │   │   ├── test_speaker_matcher.py        # 타임스탬프 매칭 테스트 (100% 커버리지)
 │   │   ├── test_minutes_formatter.py      # 회의록 포맷터 테스트 (100% 커버리지)
 │   │   ├── test_minutes_schemas.py        # 회의록 스키마 테스트
-│   │   └── test_minutes_task.py           # 회의록 Celery 태스크 테스트
+│   │   ├── test_minutes_task.py           # 회의록 Celery 태스크 테스트
+│   │   ├── test_summary_generator.py     # 요약 생성기 테스트 (100% 커버리지)
+│   │   ├── test_summary_schemas.py       # 요약 스키마 테스트
+│   │   └── test_summary_task.py          # 요약 Celery 태스크 테스트
 │   └── integration/
 │       ├── __init__.py
 │       ├── test_api.py                    # STT API 통합 테스트
 │       ├── test_diarization_api.py        # 화자 분리 API 통합 테스트
-│       └── test_minutes_api.py            # 회의록 API 통합 테스트
+│       ├── test_minutes_api.py            # 회의록 API 통합 테스트
+│       └── test_summary_api.py           # 요약 API 통합 테스트
 │
 ├── conftest.py                 # pytest 픽스처 및 설정
 ├── pyproject.toml              # Python 의존성 관리
@@ -127,7 +135,11 @@ backend/
 - ✅ **workers/tasks/minutes_task.py**: 회의록 생성 Celery 태스크 (동시 3개 제한)
 - ✅ **app/api/v1/minutes.py**: 회의록 CRUD API 엔드포인트
 - ✅ **schemas/minutes.py**: 회의록 Pydantic 스키마
-- ✅ **tests/**: 309개 테스트, 96.77% 커버리지
+- ✅ **pipeline/summary_generator.py**: Claude API 요약 생성기 (프롬프트/파싱/graceful fallback)
+- ✅ **workers/tasks/summary_task.py**: AI 요약 Celery 태스크 (동시 2개 제한)
+- ✅ **app/api/v1/summary.py**: 요약 CRUD API 엔드포인트
+- ✅ **schemas/summary.py**: 요약 Pydantic 스키마 (ActionItem 포함)
+- ✅ **tests/**: 377개 테스트, 97.06% 커버리지
 
 ## 클라이언트 디렉토리 구조
 
