@@ -9,8 +9,9 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.app.api.v1 import health, transcription
+from backend.app.api.v1 import diarization, health, transcription
 from backend.app.config import settings
+from backend.ml.diarization_engine import DiarizationEngine
 from backend.ml.stt_engine import WhisperEngine
 from backend.utils.logger import get_logger, setup_logging
 
@@ -26,13 +27,28 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     종료: 클린업
     """
     logger.info("서버 시작: 모델 사전 로드 중...")
+
+    # STT 모델 사전 로드 (REQ-STT-021)
     try:
-        engine = WhisperEngine.get_instance()
-        engine.load(settings.whisper_model)
-        logger.info("모델 사전 로드 완료", model=settings.whisper_model)
+        stt_engine = WhisperEngine.get_instance()
+        stt_engine.load(settings.whisper_model)
+        logger.info("STT 모델 사전 로드 완료", model=settings.whisper_model)
     except Exception as e:
-        # 모델 로드 실패 시 서버는 계속 실행 (health endpoint에서 미로드 상태 보고)
-        logger.error("모델 사전 로드 실패 (서버는 계속 실행)", error=str(e))
+        logger.error("STT 모델 사전 로드 실패 (서버는 계속 실행)", error=str(e))
+
+    # 화자 분리 모델 사전 로드 (REQ-DIA-011)
+    if settings.huggingface_token:
+        try:
+            dia_engine = DiarizationEngine.get_instance()
+            dia_engine.load(
+                hf_token=settings.huggingface_token,
+                model_name=settings.diarization_model,
+            )
+            logger.info("화자 분리 모델 사전 로드 완료", model=settings.diarization_model)
+        except Exception as e:
+            logger.error("화자 분리 모델 사전 로드 실패 (서버는 계속 실행)", error=str(e))
+    else:
+        logger.warning("HUGGINGFACE_TOKEN 미설정 - 화자 분리 모델 로드 건너뜀")
 
     yield
 
@@ -62,6 +78,7 @@ def create_app() -> FastAPI:
     # 라우터 등록
     api_prefix = "/api/v1"
     app.include_router(transcription.router, prefix=api_prefix)
+    app.include_router(diarization.router, prefix=api_prefix)
     app.include_router(health.router, prefix=api_prefix)
 
     return app

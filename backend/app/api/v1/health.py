@@ -10,10 +10,12 @@ from datetime import UTC, datetime
 import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends
 
-from backend.app.dependencies import get_redis_client, get_whisper_engine
+from backend.app.dependencies import get_diarization_engine, get_redis_client, get_whisper_engine
+from backend.ml.diarization_engine import DiarizationEngine
 from backend.ml.stt_engine import WhisperEngine
 from backend.schemas.health import (
     CeleryWorkersStatus,
+    DiarizationModelStatusResponse,
     HealthComponents,
     HealthResponse,
     ModelStatusResponse,
@@ -90,6 +92,21 @@ async def model_health(
         available_memory_mb=round(memory_info["available_mb"], 1),
         load_time_seconds=engine.load_time_seconds,
         version="0.4.3+",
+    )
+
+
+@router.get("/diarization", response_model=DiarizationModelStatusResponse)
+async def diarization_model_health(
+    engine: DiarizationEngine = Depends(get_diarization_engine),
+) -> DiarizationModelStatusResponse:
+    """
+    화자 분리 모델 상태 조회
+    GET /api/v1/health/diarization
+    """
+    return DiarizationModelStatusResponse(
+        model_name=engine.model_name,
+        model_loaded=engine.is_loaded,
+        load_time_seconds=engine.load_time_seconds,
     )
 
 

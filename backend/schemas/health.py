@@ -41,3 +41,13 @@ class ModelStatusResponse(BaseModel):
     available_memory_mb: float | None = None
     load_time_seconds: float | None = None
     version: str | None = None
+
+
+class DiarizationModelStatusResponse(BaseModel):
+    """GET /api/v1/health/diarization 응답"""
+
+    model_config = {"protected_namespaces": ()}
+
+    model_name: str
+    model_loaded: bool
+    load_time_seconds: float | None = None

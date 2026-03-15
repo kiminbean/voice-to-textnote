@@ -41,6 +41,14 @@ class Settings(BaseSettings):
     # 메모리 경고 임계값 (MB) - 24GB의 80%
     memory_warning_threshold_mb: int = 19660
 
+    # HuggingFace 설정 (화자 분리용)
+    huggingface_token: str = ""
+
+    # 화자 분리 설정
+    max_concurrent_diarizations: int = 2
+    diarization_model: str = "pyannote/speaker-diarization-3.1"
+    diarization_result_ttl: int = 86400  # 24시간 (초)
+
     # 로깅
     log_level: str = "INFO"
 

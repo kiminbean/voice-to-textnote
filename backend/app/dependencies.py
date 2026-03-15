@@ -1,5 +1,5 @@
 """
-FastAPI 의존성 주입 - Redis 클라이언트, STT 엔진
+FastAPI 의존성 주입 - Redis 클라이언트, STT 엔진, 화자 분리 엔진
 """
 
 from functools import lru_cache
@@ -7,6 +7,7 @@ from functools import lru_cache
 import redis.asyncio as aioredis
 
 from backend.app.config import settings
+from backend.ml.diarization_engine import DiarizationEngine
 from backend.ml.stt_engine import WhisperEngine
 from backend.utils.logger import get_logger
 
@@ -27,3 +28,9 @@ def get_redis_client() -> aioredis.Redis:
 def get_whisper_engine() -> WhisperEngine:
     """WhisperEngine 싱글톤 반환"""
     return WhisperEngine.get_instance()
+
+
+@lru_cache
+def get_diarization_engine() -> DiarizationEngine:
+    """DiarizationEngine 싱글톤 반환"""
+    return DiarizationEngine.get_instance()
