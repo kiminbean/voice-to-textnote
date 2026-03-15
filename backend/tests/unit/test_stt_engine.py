@@ -348,7 +348,6 @@ class TestWhisperEngineMemory:
         """메모리 임계값 초과 시 경고 로그 기록 (REQ-STT-022)"""
         from backend.ml.stt_engine import WhisperEngine, MEMORY_WARNING_THRESHOLD_BYTES
 
-        import psutil
         mock_vm = MagicMock()
         mock_vm.used = MEMORY_WARNING_THRESHOLD_BYTES + 1
         mock_vm.percent = 85.0

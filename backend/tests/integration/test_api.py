@@ -359,7 +359,7 @@ class TestScenario6ChunkProcessing:
 
     def test_long_audio_triggers_chunk_split(self):
         """35분 오디오가 30분 단위로 2개 청크로 분할 (REQ-STT-018)"""
-        from backend.pipeline.chunk_manager import AudioChunk, split_audio
+        from backend.pipeline.chunk_manager import split_audio
 
         with patch("backend.pipeline.chunk_manager.AudioSegment") as mock_audio:
             mock_seg = MagicMock()

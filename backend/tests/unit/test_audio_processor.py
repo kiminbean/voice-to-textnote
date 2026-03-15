@@ -242,7 +242,6 @@ class TestSplitAudio:
 
     def test_long_audio_splits_into_chunks(self, tmp_path: Path):
         """35분 오디오는 2개 청크로 분할 (시나리오 6)"""
-        from backend.pipeline.chunk_manager import split_audio
 
         # 35분짜리 오디오 mock
         long_wav = tmp_path / "long.wav"

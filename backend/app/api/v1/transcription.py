@@ -4,7 +4,6 @@ REQ-STT-001~004: 오디오 업로드 및 검증
 REQ-STT-010~014: 상태 조회 및 결과 반환
 """
 import json
-import tempfile
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
