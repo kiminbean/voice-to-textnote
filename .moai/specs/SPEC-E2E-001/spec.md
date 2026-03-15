@@ -1,7 +1,7 @@
 ---
 id: SPEC-E2E-001
 version: "1.0.0"
-status: draft
+status: completed
 created: 2026-03-15
 updated: 2026-03-15
 author: kisoo
@@ -103,4 +103,14 @@ issue_number: 0
 
 *SPEC ID: SPEC-E2E-001*
 *생성일: 2026-03-15*
-*상태: draft*
+*상태: completed*
+
+---
+
+## 9. 구현 노트
+
+- **구현 일자**: 2026-03-15
+- **테스트**: 16 E2E tests, 전체 393 passed, 96.94% coverage
+- **커밋**: f454be8 (main)
+- InMemoryRedis 패턴으로 실제 저장/조회 동작 시뮬레이션
+- inject_result 헬퍼로 파이프라인 단계 간 데이터 주입

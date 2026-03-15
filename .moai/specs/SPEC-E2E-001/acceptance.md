@@ -66,4 +66,4 @@ Then 429 응답을 받는다
 
 *Acceptance ID: SPEC-E2E-001*
 *생성일: 2026-03-15*
-*상태: draft*
+*상태: completed*
