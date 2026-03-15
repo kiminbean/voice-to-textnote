@@ -49,6 +49,10 @@ class Settings(BaseSettings):
     diarization_model: str = "pyannote/speaker-diarization-3.1"
     diarization_result_ttl: int = 86400  # 24시간 (초)
 
+    # 회의록 생성 설정 (REQ-MIN-008, REQ-MIN-013)
+    max_concurrent_minutes: int = 3  # 최대 동시 회의록 생성 작업 수
+    minutes_result_ttl: int = 86400  # 결과 캐시 TTL: 24시간 (초)
+
     # 로깅
     log_level: str = "INFO"
 
