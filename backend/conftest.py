@@ -2,19 +2,21 @@
 pytest 공유 픽스처 및 설정
 SPEC-STT-001 테스트 스위트 기반 픽스처
 """
+
 import io
 import math
 import struct
 import wave
+from datetime import UTC
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # 테스트 오디오 파일 픽스처
 # ---------------------------------------------------------------------------
+
 
 def _make_wav_bytes(duration_seconds: float = 1.0, sample_rate: int = 16000) -> bytes:
     """테스트용 최소 WAV 파일 바이트 생성 (440Hz 사인파)"""
@@ -90,6 +92,7 @@ MOCK_TRANSCRIPTION_RESULT = {
 # WhisperEngine mock 픽스처
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def mock_whisper_engine():
     """
@@ -107,6 +110,7 @@ def mock_whisper_engine():
         with patch("backend.ml.stt_engine.WhisperEngine._detect_device", return_value="mps"):
             # 싱글톤 리셋 후 로드
             from backend.ml.stt_engine import WhisperEngine
+
             WhisperEngine._instance = None
             WhisperEngine._model_loaded = False
             WhisperEngine._load_time_seconds = None
@@ -126,6 +130,7 @@ def mock_whisper_engine():
 # Redis mock 픽스처
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def mock_redis_client():
     """Redis 비동기 클라이언트 mock"""
@@ -142,15 +147,14 @@ def mock_redis_client():
 # Celery 작업 mock 픽스처
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def mock_celery_delay():
     """transcription_task.delay() mock - 즉시 task_id 반환"""
     mock_result = MagicMock()
     mock_result.id = "test-celery-task-id"
 
-    with patch(
-        "backend.workers.tasks.transcription_task.transcription_task.delay"
-    ) as mock_delay:
+    with patch("backend.workers.tasks.transcription_task.transcription_task.delay") as mock_delay:
         mock_delay.return_value = mock_result
         yield mock_delay
 
@@ -158,6 +162,7 @@ def mock_celery_delay():
 # ---------------------------------------------------------------------------
 # FastAPI TestClient 픽스처
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def client(mock_redis_client, tmp_path):
@@ -169,9 +174,9 @@ def client(mock_redis_client, tmp_path):
     """
     from fastapi.testclient import TestClient
 
+    from backend.app.config import Settings
     from backend.app.dependencies import get_redis_client
     from backend.app.main import app
-    from backend.app.config import Settings
 
     # 임시 디렉토리를 스토리지로 사용
     test_settings = MagicMock(spec=Settings)
@@ -205,8 +210,9 @@ def client(mock_redis_client, tmp_path):
         mock_engine_cls.get_instance.return_value = mock_engine_inst
 
         with patch("backend.app.api.v1.transcription.settings", test_settings):
-            with patch("backend.pipeline.audio_processor.get_audio_duration_seconds",
-                       return_value=60.0):
+            with patch(
+                "backend.pipeline.audio_processor.get_audio_duration_seconds", return_value=60.0
+            ):
                 with patch(
                     "backend.workers.tasks.transcription_task.transcription_task.delay"
                 ) as mock_delay:
@@ -223,10 +229,10 @@ def client(mock_redis_client, tmp_path):
 def completed_task_data():
     """완료된 전사 작업 데이터 (Redis/파일 응답 시뮬레이션용)"""
     import uuid
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     task_id = str(uuid.uuid4())
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
 
     return {
         "task_id": task_id,

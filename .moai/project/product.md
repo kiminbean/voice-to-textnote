@@ -29,6 +29,14 @@
 
 ## 핵심 기능
 
+### 0. STT 백엔드 (완료 ✅)
+
+- **음성 인식 API**: FastAPI 기반 RESTful API로 오디오 업로드 및 STT 처리
+- **mlx-whisper 통합**: Apple Silicon MPS 가속을 활용한 고정확도 음성 인식
+- **비동기 처리**: Celery 작업 큐로 백그라운드 STT 처리
+- **Redis 캐싱**: 24시간 TTL로 처리 결과 빠른 재조회
+- **헬스체크 API**: 서비스, Redis, Celery 상태 모니터링
+
 ### 1. 오디오 녹음 및 수집
 
 - **크로스 플랫폼 녹음**: 웹, iOS, Android, macOS에서 일관된 오디오 녹음 경험 제공

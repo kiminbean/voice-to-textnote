@@ -1,6 +1,7 @@
 """
 FastAPI 의존성 주입 - Redis 클라이언트, STT 엔진
 """
+
 from functools import lru_cache
 
 import redis.asyncio as aioredis

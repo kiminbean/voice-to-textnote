@@ -2,6 +2,7 @@
 오디오 파일 검증 유틸리티
 REQ-STT-001, REQ-STT-003, REQ-STT-004 구현
 """
+
 import shutil
 from pathlib import Path
 
@@ -50,8 +51,7 @@ def validate_file_size(file_size_bytes: int, max_size_bytes: int) -> tuple[bool,
         max_mb = max_size_bytes / (1024 * 1024)
         actual_mb = file_size_bytes / (1024 * 1024)
         return False, (
-            f"파일 크기가 제한({max_mb:.0f}MB)을 초과합니다. "
-            f"실제 크기: {actual_mb:.1f}MB"
+            f"파일 크기가 제한({max_mb:.0f}MB)을 초과합니다. 실제 크기: {actual_mb:.1f}MB"
         )
     return True, ""
 

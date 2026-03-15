@@ -3,9 +3,10 @@
 REQ-STT-001~004: 오디오 업로드 및 검증
 REQ-STT-010~014: 상태 조회 및 결과 반환
 """
+
 import json
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import redis.asyncio as aioredis
@@ -55,11 +56,13 @@ async def upload_transcription(
     filename = file.filename or "unknown"
     is_valid_format, format_error = validate_audio_format(filename, file.content_type)
     if not is_valid_format:
-        errors.append(ValidationErrorDetail(
-            field="file",
-            message=format_error,
-            type="unsupported_format",
-        ))
+        errors.append(
+            ValidationErrorDetail(
+                field="file",
+                message=format_error,
+                type="unsupported_format",
+            )
+        )
 
     # --- 파일 크기 검증 (REQ-STT-003) ---
     # content_length가 없으면 실제 파일 읽어서 확인
@@ -67,11 +70,13 @@ async def upload_transcription(
     file_size = len(raw_content)
     is_valid_size, size_error = validate_file_size(file_size, settings.max_file_size_bytes)
     if not is_valid_size:
-        errors.append(ValidationErrorDetail(
-            field="file",
-            message=size_error,
-            type="file_too_large",
-        ))
+        errors.append(
+            ValidationErrorDetail(
+                field="file",
+                message=size_error,
+                type="file_too_large",
+            )
+        )
 
     if errors:
         # REQ-STT-004: 검증 실패 시 파일 저장 안 함
@@ -104,14 +109,16 @@ async def upload_transcription(
             temp_path.unlink(missing_ok=True)  # REQ-STT-004
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=[{
-                    "field": "file",
-                    "message": (
-                        f"재생 시간이 제한({settings.max_duration_hours}시간)을 초과합니다. "
-                        f"실제 재생 시간: {duration_seconds / 3600:.1f}시간"
-                    ),
-                    "type": "duration_exceeded",
-                }],
+                detail=[
+                    {
+                        "field": "file",
+                        "message": (
+                            f"재생 시간이 제한({settings.max_duration_hours}시간)을 초과합니다. "
+                            f"실제 재생 시간: {duration_seconds / 3600:.1f}시간"
+                        ),
+                        "type": "duration_exceeded",
+                    }
+                ],
             )
     except HTTPException:
         raise
@@ -119,15 +126,17 @@ async def upload_transcription(
         temp_path.unlink(missing_ok=True)
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=[{
-                "field": "file",
-                "message": f"오디오 파일을 읽을 수 없습니다: {e}",
-                "type": "invalid_audio",
-            }],
+            detail=[
+                {
+                    "field": "file",
+                    "message": f"오디오 파일을 읽을 수 없습니다: {e}",
+                    "type": "invalid_audio",
+                }
+            ],
         )
 
     # --- 초기 상태 Redis 저장 ---
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     initial_status = {
         "task_id": task_id_str,
         "status": TaskStatus.pending.value,
@@ -140,6 +149,7 @@ async def upload_transcription(
 
     # --- Celery 작업 등록 ---
     from backend.workers.tasks.transcription_task import transcription_task
+
     transcription_task.delay(
         task_id=task_id_str,
         audio_file_path=str(temp_path),

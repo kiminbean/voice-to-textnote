@@ -1,6 +1,7 @@
 """
 앱 설정 모듈 - pydantic-settings 기반 환경 변수 관리
 """
+
 from pathlib import Path
 
 from pydantic import field_validator

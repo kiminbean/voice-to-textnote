@@ -6,6 +6,7 @@ REQ-STT-007: 지연 로딩 (lazy load) + 재사용
 REQ-STT-021: 서버 시작 시 사전 로드 (warm-up)
 REQ-STT-022: 메모리 사용량 모니터링
 """
+
 import time
 from pathlib import Path
 from threading import Lock
@@ -27,6 +28,7 @@ class WhisperEngine:
     - 프로세스당 1개 인스턴스
     - 스레드 안전 초기화
     """
+
     _instance: "WhisperEngine | None" = None
     _lock: Lock = Lock()
 
@@ -73,7 +75,8 @@ class WhisperEngine:
                 # mlx-whisper는 추론 시점에 모델을 로드하므로
                 # warm-up을 위해 더미 오디오로 한 번 실행하거나
                 # 모델 파일을 사전 다운로드/캐시하는 방식으로 처리
-                import mlx_whisper
+                import mlx_whisper  # noqa: F401 -- warm-up 시 모듈 로드 확인 용도
+
                 # 모델 로드 검증: 모델 파일 경로 확인
                 # mlx_whisper.transcribe는 내부적으로 모델을 캐시함
                 logger.info("mlx_whisper 모듈 로드 완료", device=self._device)
@@ -186,6 +189,7 @@ class WhisperEngine:
         """Apple Silicon MPS 가용성 확인 (REQ-STT-006)"""
         try:
             import mlx.core as mx
+
             # MLX는 Apple Silicon에서 자동으로 GPU 사용
             # CPU 폴백 조건: MLX import 실패 시
             _ = mx.array([1.0])  # 간단한 테스트 연산

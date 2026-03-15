@@ -4,6 +4,7 @@ REQ-STT-015: 16kHz 모노 WAV 변환
 REQ-STT-016: 오디오 레벨 정규화
 REQ-STT-017: 손상 파일 감지
 """
+
 import os
 import tempfile
 from pathlib import Path

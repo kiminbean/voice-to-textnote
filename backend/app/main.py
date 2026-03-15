@@ -2,8 +2,9 @@
 FastAPI 메인 앱
 REQ-STT-021: lifespan에서 모델 사전 로드 (warm-up)
 """
+
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware

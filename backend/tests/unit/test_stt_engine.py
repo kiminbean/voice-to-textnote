@@ -2,6 +2,7 @@
 mlx-whisper STT 엔진 래퍼 단위 테스트
 REQ-STT-005, REQ-STT-006, REQ-STT-007, REQ-STT-008, REQ-STT-009
 """
+
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -21,12 +22,14 @@ def _make_mock_mlx(transcribe_result=None):
 # WhisperEngine 싱글톤 테스트
 # ---------------------------------------------------------------------------
 
+
 class TestWhisperEngineSingleton:
     """싱글톤 패턴 테스트 (REQ-STT-007)"""
 
     def setup_method(self):
         """각 테스트 전 싱글톤 리셋"""
         from backend.ml.stt_engine import WhisperEngine
+
         WhisperEngine._instance = None
         WhisperEngine._model_loaded = False
         WhisperEngine._load_time_seconds = None
@@ -67,11 +70,13 @@ class TestWhisperEngineSingleton:
 # load() 메서드 테스트
 # ---------------------------------------------------------------------------
 
+
 class TestWhisperEngineLoad:
     """모델 로딩 테스트 (REQ-STT-007: lazy load + 재사용)"""
 
     def setup_method(self):
         from backend.ml.stt_engine import WhisperEngine
+
         WhisperEngine._instance = None
         WhisperEngine._model_loaded = False
         WhisperEngine._load_time_seconds = None
@@ -115,7 +120,9 @@ class TestWhisperEngineLoad:
         from backend.ml.stt_engine import WhisperEngine
 
         with patch.object(WhisperEngine, "_detect_device", return_value="cpu"):
-            with patch("builtins.__import__", side_effect=ImportError("No module named 'mlx_whisper'")):
+            with patch(
+                "builtins.__import__", side_effect=ImportError("No module named 'mlx_whisper'")
+            ):
                 engine = WhisperEngine.get_instance()
                 with pytest.raises((RuntimeError, ImportError)):
                     engine.load()
@@ -125,11 +132,13 @@ class TestWhisperEngineLoad:
 # transcribe() 메서드 테스트
 # ---------------------------------------------------------------------------
 
+
 class TestWhisperEngineTranscribe:
     """전사 기능 테스트 (REQ-STT-005, REQ-STT-008)"""
 
     def setup_method(self):
         from backend.ml.stt_engine import WhisperEngine
+
         WhisperEngine._instance = None
         WhisperEngine._model_loaded = False
         WhisperEngine._load_time_seconds = None
@@ -264,6 +273,7 @@ class TestWhisperEngineTranscribe:
 # 디바이스 선택 테스트
 # ---------------------------------------------------------------------------
 
+
 class TestDeviceSelection:
     """MLX/MPS 디바이스 선택 테스트 (REQ-STT-006)"""
 
@@ -284,6 +294,7 @@ class TestDeviceSelection:
 
         with patch.dict("sys.modules", {"mlx.core": None}):
             import sys
+
             old = sys.modules.pop("mlx.core", None)
             try:
                 # ImportError 시뮬레이션
@@ -308,11 +319,13 @@ class TestDeviceSelection:
 # 메모리 모니터링 테스트
 # ---------------------------------------------------------------------------
 
+
 class TestWhisperEngineMemory:
     """메모리 사용량 모니터링 테스트 (REQ-STT-022)"""
 
     def setup_method(self):
         from backend.ml.stt_engine import WhisperEngine
+
         WhisperEngine._instance = None
         WhisperEngine._model_loaded = False
 
@@ -346,7 +359,7 @@ class TestWhisperEngineMemory:
 
     def test_memory_warning_logged_when_threshold_exceeded(self):
         """메모리 임계값 초과 시 경고 로그 기록 (REQ-STT-022)"""
-        from backend.ml.stt_engine import WhisperEngine, MEMORY_WARNING_THRESHOLD_BYTES
+        from backend.ml.stt_engine import MEMORY_WARNING_THRESHOLD_BYTES, WhisperEngine
 
         mock_vm = MagicMock()
         mock_vm.used = MEMORY_WARNING_THRESHOLD_BYTES + 1
@@ -361,7 +374,7 @@ class TestWhisperEngineMemory:
 
     def test_no_warning_below_threshold(self):
         """임계값 이하에서는 경고 없음"""
-        from backend.ml.stt_engine import WhisperEngine, MEMORY_WARNING_THRESHOLD_BYTES
+        from backend.ml.stt_engine import MEMORY_WARNING_THRESHOLD_BYTES, WhisperEngine
 
         mock_vm = MagicMock()
         mock_vm.used = MEMORY_WARNING_THRESHOLD_BYTES - 1
@@ -379,11 +392,13 @@ class TestWhisperEngineMemory:
 # 모델 정보 프로퍼티 테스트
 # ---------------------------------------------------------------------------
 
+
 class TestWhisperEngineProperties:
     """모델 정보 프로퍼티 테스트 (REQ-STT-020)"""
 
     def setup_method(self):
         from backend.ml.stt_engine import WhisperEngine
+
         WhisperEngine._instance = None
         WhisperEngine._model_loaded = False
         WhisperEngine._load_time_seconds = None

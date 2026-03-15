@@ -2,6 +2,41 @@
 
 ## 기술 스택 개요
 
+### STT 백엔드 계층 (완료 ✅)
+
+**Web Framework**: FastAPI 0.135+
+- 비동기 웹 프레임워크로 높은 동시성 지원
+- Pydantic v2로 강력한 입력 검증
+- 자동 OpenAPI/Swagger 문서 생성
+
+**STT 처리**: mlx-whisper 0.4+
+- Whisper Large-v3-Turbo 모델 (WER < 5%)
+- Apple Silicon MPS 가속
+- 로컬 처리로 프라이버시 보장
+
+**비동기 작업**: Celery 5.6+ + Redis 7.0+
+- Celery: 백그라운드 STT 처리
+- Redis: 메시지 브로커 + 결과 캐시 (24시간 TTL)
+
+**오디오 처리**: pydub 0.25.1+
+- ffmpeg 래핑으로 다양한 형식 지원
+- 16kHz 모노 WAV 변환
+- 음량 정규화
+
+**데이터 검증**: Pydantic 2.9+
+- 요청/응답 자동 검증
+- 파일 형식, 크기, 재생 시간 검증
+
+**로깅**: structlog 24.0+
+- 구조화된 JSON 로그 생성
+- 운영 환경에서 로그 분석 용이
+
+**테스트**: pytest 8.0+
+- 150개 단위/통합 테스트
+- 95.50% 코드 커버리지
+
+---
+
 ### 클라이언트 계층
 
 **Framework**: Flutter 3.24+

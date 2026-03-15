@@ -3,6 +3,7 @@
 REQ-STT-018: 30분 초과 오디오 청크 분할 처리
 5초 오버랩으로 발화 경계 문제 완화
 """
+
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -19,11 +20,12 @@ logger = get_logger(__name__)
 @dataclass
 class AudioChunk:
     """분할된 오디오 청크 정보"""
+
     index: int
     file_path: Path
-    start_ms: int   # 원본 오디오 기준 시작 시간 (ms)
-    end_ms: int     # 원본 오디오 기준 종료 시간 (ms)
-    overlap_ms: int # 오버랩 길이 (ms)
+    start_ms: int  # 원본 오디오 기준 시작 시간 (ms)
+    end_ms: int  # 원본 오디오 기준 종료 시간 (ms)
+    overlap_ms: int  # 오버랩 길이 (ms)
 
 
 def split_audio(
@@ -64,13 +66,15 @@ def split_audio(
         chunk_path = output_dir / f"chunk_{chunk_index:04d}.wav"
         chunk_audio.export(str(chunk_path), format="wav")
 
-        chunks.append(AudioChunk(
-            index=chunk_index,
-            file_path=chunk_path,
-            start_ms=pos_ms,
-            end_ms=chunk_end_ms,
-            overlap_ms=overlap_ms if pos_ms > 0 else 0,
-        ))
+        chunks.append(
+            AudioChunk(
+                index=chunk_index,
+                file_path=chunk_path,
+                start_ms=pos_ms,
+                end_ms=chunk_end_ms,
+                overlap_ms=overlap_ms if pos_ms > 0 else 0,
+            )
+        )
 
         logger.info(
             "청크 생성",
@@ -123,13 +127,15 @@ def merge_segments(
             avg_logprob = seg.get("avg_logprob", None)
             confidence = _logprob_to_confidence(avg_logprob) if avg_logprob is not None else 0.0
 
-            merged.append(SegmentResult(
-                id=global_id,
-                start=round(adjusted_start, 3),
-                end=round(adjusted_end, 3),
-                text=text,
-                confidence=round(confidence, 4),
-            ))
+            merged.append(
+                SegmentResult(
+                    id=global_id,
+                    start=round(adjusted_start, 3),
+                    end=round(adjusted_end, 3),
+                    text=text,
+                    confidence=round(confidence, 4),
+                )
+            )
             global_id += 1
 
     return merged
@@ -141,5 +147,6 @@ def _logprob_to_confidence(avg_logprob: float) -> float:
     whisper 기준: -0.5 이상 = 우수, -1.0 이하 = 불량
     """
     import math
+
     # exp(avg_logprob)을 클리핑하여 [0, 1] 범위로 변환
     return min(1.0, max(0.0, math.exp(avg_logprob)))

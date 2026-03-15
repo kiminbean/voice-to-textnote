@@ -2,6 +2,7 @@
 오디오 전처리 파이프라인 단위 테스트
 REQ-STT-015, REQ-STT-016, REQ-STT-017, REQ-STT-018
 """
+
 import math
 import struct
 import wave
@@ -11,10 +12,10 @@ from unittest.mock import MagicMock, patch
 import pytest
 from pydub import AudioSegment
 
-
 # ---------------------------------------------------------------------------
 # 테스트 헬퍼
 # ---------------------------------------------------------------------------
+
 
 def _make_audio_segment(duration_ms: int = 1000, sample_rate: int = 16000) -> AudioSegment:
     """테스트용 AudioSegment 생성"""
@@ -34,6 +35,7 @@ def _make_audio_segment(duration_ms: int = 1000, sample_rate: int = 16000) -> Au
 # ---------------------------------------------------------------------------
 # convert_to_wav_16k 테스트
 # ---------------------------------------------------------------------------
+
 
 class TestConvertToWav16k:
     """WAV 16kHz 모노 변환 테스트 (REQ-STT-015)"""
@@ -106,6 +108,7 @@ class TestConvertToWav16k:
 # normalize_audio 테스트
 # ---------------------------------------------------------------------------
 
+
 class TestNormalizeAudio:
     """오디오 레벨 정규화 테스트 (REQ-STT-016)"""
 
@@ -119,7 +122,7 @@ class TestNormalizeAudio:
 
     def test_normalize_adjusts_dbfs_toward_target(self):
         """정규화 후 dBFS가 목표값(-20dBFS)에 근접"""
-        from backend.pipeline.audio_processor import normalize_audio, TARGET_DBFS
+        from backend.pipeline.audio_processor import TARGET_DBFS, normalize_audio
 
         audio = _make_audio_segment()
         result = normalize_audio(audio, target_dbfs=TARGET_DBFS)
@@ -149,6 +152,7 @@ class TestNormalizeAudio:
 # convert_and_normalize 테스트
 # ---------------------------------------------------------------------------
 
+
 class TestConvertAndNormalize:
     """변환 + 정규화 통합 함수 테스트"""
 
@@ -177,6 +181,7 @@ class TestConvertAndNormalize:
 # get_audio_duration_seconds 테스트
 # ---------------------------------------------------------------------------
 
+
 class TestGetAudioDurationSeconds:
     """오디오 재생 시간 측정 테스트"""
 
@@ -198,6 +203,7 @@ class TestGetAudioDurationSeconds:
 # ---------------------------------------------------------------------------
 # cleanup_temp_file 테스트
 # ---------------------------------------------------------------------------
+
 
 class TestCleanupTempFile:
     """임시 파일 삭제 테스트 (REQ-STT-004, REQ-STT-014)"""
@@ -226,6 +232,7 @@ class TestCleanupTempFile:
 # split_audio 테스트 (chunk_manager)
 # ---------------------------------------------------------------------------
 
+
 class TestSplitAudio:
     """오디오 청크 분할 테스트 (REQ-STT-018)"""
 
@@ -244,7 +251,6 @@ class TestSplitAudio:
         """35분 오디오는 2개 청크로 분할 (시나리오 6)"""
 
         # 35분짜리 오디오 mock
-        long_wav = tmp_path / "long.wav"
         with patch("backend.pipeline.chunk_manager.AudioSegment") as mock_audio:
             mock_seg = MagicMock()
             mock_seg.__len__ = lambda self: 35 * 60 * 1000
@@ -254,6 +260,7 @@ class TestSplitAudio:
             # AudioChunk의 export mock
             def mock_export(path, format):
                 Path(path).write_bytes(b"\x00")
+
             MagicMock().__getitem__ = lambda s, k: _make_audio_segment()
 
             # 실제 split 로직 검증은 통합 테스트에서 진행
@@ -275,19 +282,25 @@ class TestSplitAudio:
 
     def test_second_chunk_start_ms_offset(self):
         """두 번째 청크의 start_ms가 chunk_duration_ms (오프셋 보정)"""
-        from backend.pipeline.chunk_manager import AudioChunk
         from pathlib import Path
 
+        from backend.pipeline.chunk_manager import AudioChunk
+
         chunk_duration_ms = 30 * 60 * 1000
-        chunk1 = AudioChunk(index=1, file_path=Path("/tmp/chunk_0001.wav"),
-                            start_ms=chunk_duration_ms, end_ms=chunk_duration_ms + 5 * 60 * 1000,
-                            overlap_ms=5000)
+        chunk1 = AudioChunk(
+            index=1,
+            file_path=Path("/tmp/chunk_0001.wav"),
+            start_ms=chunk_duration_ms,
+            end_ms=chunk_duration_ms + 5 * 60 * 1000,
+            overlap_ms=5000,
+        )
         assert chunk1.start_ms == chunk_duration_ms
 
 
 # ---------------------------------------------------------------------------
 # merge_segments 테스트 (chunk_manager)
 # ---------------------------------------------------------------------------
+
 
 class TestMergeSegments:
     """청크 결과 병합 및 타임스탬프 보정 테스트 (REQ-STT-018, 시나리오 6)"""
@@ -296,11 +309,10 @@ class TestMergeSegments:
         """단일 청크의 세그먼트는 오프셋 없이 그대로"""
         from backend.pipeline.chunk_manager import AudioChunk, merge_segments
 
-        chunk = AudioChunk(index=0, file_path=Path("/tmp/c0.wav"),
-                           start_ms=0, end_ms=60000, overlap_ms=0)
-        raw_segments = [
-            {"id": 0, "start": 1.0, "end": 3.0, "text": "안녕", "avg_logprob": -0.3}
-        ]
+        chunk = AudioChunk(
+            index=0, file_path=Path("/tmp/c0.wav"), start_ms=0, end_ms=60000, overlap_ms=0
+        )
+        raw_segments = [{"id": 0, "start": 1.0, "end": 3.0, "text": "안녕", "avg_logprob": -0.3}]
         results = merge_segments([(chunk, raw_segments)])
 
         assert len(results) == 1
@@ -312,11 +324,20 @@ class TestMergeSegments:
         from backend.pipeline.chunk_manager import AudioChunk, merge_segments
 
         chunk_duration_ms = 30 * 60 * 1000  # 30분
-        chunk0 = AudioChunk(index=0, file_path=Path("/tmp/c0.wav"),
-                            start_ms=0, end_ms=chunk_duration_ms, overlap_ms=0)
-        chunk1 = AudioChunk(index=1, file_path=Path("/tmp/c1.wav"),
-                            start_ms=chunk_duration_ms, end_ms=2 * chunk_duration_ms,
-                            overlap_ms=5000)
+        chunk0 = AudioChunk(
+            index=0,
+            file_path=Path("/tmp/c0.wav"),
+            start_ms=0,
+            end_ms=chunk_duration_ms,
+            overlap_ms=0,
+        )
+        chunk1 = AudioChunk(
+            index=1,
+            file_path=Path("/tmp/c1.wav"),
+            start_ms=chunk_duration_ms,
+            end_ms=2 * chunk_duration_ms,
+            overlap_ms=5000,
+        )
 
         chunk0_segs = [{"start": 0.0, "end": 2.0, "text": "첫 청크", "avg_logprob": -0.2}]
         chunk1_segs = [{"start": 6.0, "end": 8.0, "text": "두 번째 청크", "avg_logprob": -0.2}]
@@ -331,10 +352,16 @@ class TestMergeSegments:
         """오버랩 영역의 중복 세그먼트 제거 (시나리오 6: 5초 오버랩)"""
         from backend.pipeline.chunk_manager import AudioChunk, merge_segments
 
-        chunk0 = AudioChunk(index=0, file_path=Path("/tmp/c0.wav"),
-                            start_ms=0, end_ms=1800000, overlap_ms=0)
-        chunk1 = AudioChunk(index=1, file_path=Path("/tmp/c1.wav"),
-                            start_ms=1800000, end_ms=3600000, overlap_ms=5000)
+        chunk0 = AudioChunk(
+            index=0, file_path=Path("/tmp/c0.wav"), start_ms=0, end_ms=1800000, overlap_ms=0
+        )
+        chunk1 = AudioChunk(
+            index=1,
+            file_path=Path("/tmp/c1.wav"),
+            start_ms=1800000,
+            end_ms=3600000,
+            overlap_ms=5000,
+        )
 
         chunk0_segs = [{"start": 0.0, "end": 2.0, "text": "A", "avg_logprob": -0.2}]
         # 오버랩 구간(start < 5.0)에 있는 세그먼트는 제거되어야 함
@@ -353,8 +380,9 @@ class TestMergeSegments:
         """빈 텍스트 세그먼트는 결과에서 제외"""
         from backend.pipeline.chunk_manager import AudioChunk, merge_segments
 
-        chunk = AudioChunk(index=0, file_path=Path("/tmp/c0.wav"),
-                           start_ms=0, end_ms=60000, overlap_ms=0)
+        chunk = AudioChunk(
+            index=0, file_path=Path("/tmp/c0.wav"), start_ms=0, end_ms=60000, overlap_ms=0
+        )
         segments = [
             {"start": 0.0, "end": 1.0, "text": "", "avg_logprob": -0.5},
             {"start": 1.0, "end": 2.0, "text": "텍스트", "avg_logprob": -0.3},
@@ -368,8 +396,9 @@ class TestMergeSegments:
         """avg_logprob이 [0, 1] 범위의 confidence로 변환됨"""
         from backend.pipeline.chunk_manager import AudioChunk, merge_segments
 
-        chunk = AudioChunk(index=0, file_path=Path("/tmp/c0.wav"),
-                           start_ms=0, end_ms=60000, overlap_ms=0)
+        chunk = AudioChunk(
+            index=0, file_path=Path("/tmp/c0.wav"), start_ms=0, end_ms=60000, overlap_ms=0
+        )
         segments = [{"start": 0.0, "end": 1.0, "text": "테스트", "avg_logprob": -0.3}]
         results = merge_segments([(chunk, segments)])
 
@@ -379,8 +408,9 @@ class TestMergeSegments:
         """avg_logprob 없으면 confidence=0.0"""
         from backend.pipeline.chunk_manager import AudioChunk, merge_segments
 
-        chunk = AudioChunk(index=0, file_path=Path("/tmp/c0.wav"),
-                           start_ms=0, end_ms=60000, overlap_ms=0)
+        chunk = AudioChunk(
+            index=0, file_path=Path("/tmp/c0.wav"), start_ms=0, end_ms=60000, overlap_ms=0
+        )
         segments = [{"start": 0.0, "end": 1.0, "text": "테스트"}]  # avg_logprob 없음
         results = merge_segments([(chunk, segments)])
 
@@ -391,12 +421,19 @@ class TestMergeSegments:
 # 파일 형식 검증 테스트 (validators)
 # ---------------------------------------------------------------------------
 
+
 class TestValidateAudioFormat:
     """파일 형식 검증 테스트 (REQ-STT-001, REQ-STT-003)"""
 
-    @pytest.mark.parametrize("filename", [
-        "audio.wav", "meeting.mp3", "recording.m4a", "voice.ogg",
-    ])
+    @pytest.mark.parametrize(
+        "filename",
+        [
+            "audio.wav",
+            "meeting.mp3",
+            "recording.m4a",
+            "voice.ogg",
+        ],
+    )
     def test_valid_formats_accepted(self, filename: str):
         """허용 포맷(WAV, MP3, M4A, OGG)은 검증 통과"""
         from backend.utils.validators import validate_audio_format
@@ -405,9 +442,16 @@ class TestValidateAudioFormat:
         assert is_valid is True
         assert msg == ""
 
-    @pytest.mark.parametrize("filename", [
-        "virus.exe", "document.pdf", "data.txt", "image.jpg", "video.avi",
-    ])
+    @pytest.mark.parametrize(
+        "filename",
+        [
+            "virus.exe",
+            "document.pdf",
+            "data.txt",
+            "image.jpg",
+            "video.avi",
+        ],
+    )
     def test_invalid_formats_rejected(self, filename: str):
         """지원하지 않는 형식 거부 (REQ-STT-003, 시나리오 2)"""
         from backend.utils.validators import validate_audio_format

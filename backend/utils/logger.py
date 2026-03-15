@@ -1,6 +1,7 @@
 """
 구조화된 JSON 로깅 - structlog 기반
 """
+
 import logging
 import sys
 

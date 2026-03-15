@@ -2,6 +2,7 @@
 헬스체크 응답 Pydantic v2 스키마
 REQ-STT-019, REQ-STT-020 관련
 """
+
 from datetime import datetime
 
 from pydantic import BaseModel
@@ -22,6 +23,7 @@ class HealthComponents(BaseModel):
 
 class HealthResponse(BaseModel):
     """GET /api/v1/health 응답"""
+
     status: str
     version: str
     components: HealthComponents
@@ -30,6 +32,7 @@ class HealthResponse(BaseModel):
 
 class ModelStatusResponse(BaseModel):
     """GET /api/v1/health/model 응답"""
+
     model_name: str
     model_loaded: bool
     device: str | None = None

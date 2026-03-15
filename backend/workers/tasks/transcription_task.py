@@ -4,10 +4,11 @@ REQ-STT-005~009: STT 처리 비동기 워커
 REQ-STT-013: Redis 결과 캐싱 (24h TTL)
 REQ-STT-018: 30분 초과 청크 분할 처리
 """
+
 import json
 import shutil
 import tempfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import redis
@@ -50,7 +51,7 @@ def _update_task_status(
         "task_id": task_id,
         "status": status.value,
         "progress": progress,
-        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(UTC).isoformat(),
     }
     if message:
         data["message"] = message
@@ -117,7 +118,7 @@ def transcription_task(
         original_filename: 원본 파일명
         file_size_bytes: 파일 크기 (bytes)
     """
-    processing_start = datetime.now(timezone.utc)
+    processing_start = datetime.now(UTC)
     temp_files: list[Path] = []  # 정리할 임시 파일 목록
     temp_dir: Path | None = None
 
@@ -168,7 +169,7 @@ def transcription_task(
             _update_task_status(task_id, TaskStatus.processing, 0.90, "결과 정리 중...")
 
         # --- 4단계: 결과 저장 ---
-        processing_end = datetime.now(timezone.utc)
+        processing_end = datetime.now(UTC)
         processing_time = (processing_end - processing_start).total_seconds()
 
         final_result = {
@@ -217,16 +218,19 @@ def transcription_task(
         )
 
         # Redis에 실패 상태 저장
-        _cache_result(task_id, {
-            "task_id": task_id,
-            "status": TaskStatus.failed.value,
-            "error_message": error_msg,
-            "created_at": processing_start.isoformat(),
-        })
+        _cache_result(
+            task_id,
+            {
+                "task_id": task_id,
+                "status": TaskStatus.failed.value,
+                "error_message": error_msg,
+                "created_at": processing_start.isoformat(),
+            },
+        )
 
         # Celery 재시도 (최대 3회, 지수 백오프)
         try:
-            raise self.retry(exc=exc, countdown=2 ** self.request.retries * 30)
+            raise self.retry(exc=exc, countdown=2**self.request.retries * 30)
         except self.MaxRetriesExceededError:
             logger.error("최대 재시도 초과", task_id=task_id)
             return {"task_id": task_id, "status": "failed", "error": error_msg}
@@ -278,17 +282,15 @@ def _extract_segments(raw_segments: list[dict]) -> list[SegmentResult]:
             continue
 
         avg_logprob = seg.get("avg_logprob", None)
-        confidence = (
-            min(1.0, max(0.0, math.exp(avg_logprob)))
-            if avg_logprob is not None
-            else 0.0
-        )
+        confidence = min(1.0, max(0.0, math.exp(avg_logprob))) if avg_logprob is not None else 0.0
 
-        results.append(SegmentResult(
-            id=i,
-            start=round(seg.get("start", 0.0), 3),
-            end=round(seg.get("end", 0.0), 3),
-            text=text,
-            confidence=round(confidence, 4),
-        ))
+        results.append(
+            SegmentResult(
+                id=i,
+                start=round(seg.get("start", 0.0), 3),
+                end=round(seg.get("end", 0.0), 3),
+                text=text,
+                confidence=round(confidence, 4),
+            )
+        )
     return results

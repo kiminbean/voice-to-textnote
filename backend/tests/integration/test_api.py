@@ -2,23 +2,24 @@
 FastAPI 통합 테스트 - acceptance.md 13개 시나리오 검증
 SPEC-STT-001 모든 인수 기준 커버
 """
+
 import io
 import json
 import math
 import struct
 import uuid
 import wave
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
 
-
 # ---------------------------------------------------------------------------
 # 테스트 헬퍼
 # ---------------------------------------------------------------------------
+
 
 def _make_wav_bytes(duration_seconds: float = 1.0, sample_rate: int = 16000) -> bytes:
     """테스트용 WAV 바이트 생성"""
@@ -50,6 +51,7 @@ def _make_upload_tuple(
 # ---------------------------------------------------------------------------
 # 시나리오 1: 한국어 오디오 업로드 후 전사 결과 수신 (Happy Path)
 # ---------------------------------------------------------------------------
+
 
 class TestScenario1HappyPath:
     """
@@ -117,20 +119,22 @@ class TestScenario1HappyPath:
 # 시나리오 2: 잘못된 파일 형식 업로드 거부
 # ---------------------------------------------------------------------------
 
+
 class TestScenario2InvalidFormat:
     """
     시나리오 2: 지원하지 않는 형식(.exe, .pdf) → 422
     관련 요구사항: REQ-STT-001, REQ-STT-003, REQ-STT-004
     """
 
-    @pytest.mark.parametrize("filename,content_type", [
-        ("virus.exe", "application/octet-stream"),
-        ("document.pdf", "application/pdf"),
-        ("data.txt", "text/plain"),
-    ])
-    def test_invalid_format_returns_422(
-        self, client: TestClient, filename: str, content_type: str
-    ):
+    @pytest.mark.parametrize(
+        "filename,content_type",
+        [
+            ("virus.exe", "application/octet-stream"),
+            ("document.pdf", "application/pdf"),
+            ("data.txt", "text/plain"),
+        ],
+    )
+    def test_invalid_format_returns_422(self, client: TestClient, filename: str, content_type: str):
         """지원하지 않는 형식 → 422 응답 (REQ-STT-003)"""
         response = client.post(
             "/api/v1/transcriptions",
@@ -163,6 +167,7 @@ class TestScenario2InvalidFormat:
 # 시나리오 3: 작업 상태 폴링을 통한 진행 추적
 # ---------------------------------------------------------------------------
 
+
 class TestScenario3StatusPolling:
     """
     시나리오 3: GET /transcriptions/{task_id}/status 폴링
@@ -174,14 +179,16 @@ class TestScenario3StatusPolling:
     ):
         """초기 상태가 'pending' (시나리오 3)"""
         task_id = str(uuid.uuid4())
-        now = datetime.now(timezone.utc).isoformat()
-        mock_redis_client.get.return_value = json.dumps({
-            "task_id": task_id,
-            "status": "pending",
-            "progress": 0.0,
-            "created_at": now,
-            "updated_at": now,
-        })
+        now = datetime.now(UTC).isoformat()
+        mock_redis_client.get.return_value = json.dumps(
+            {
+                "task_id": task_id,
+                "status": "pending",
+                "progress": 0.0,
+                "created_at": now,
+                "updated_at": now,
+            }
+        )
 
         response = client.get(f"/api/v1/transcriptions/{task_id}/status")
         assert response.status_code == 200
@@ -193,14 +200,16 @@ class TestScenario3StatusPolling:
     ):
         """상태 응답에 task_id, status, created_at, updated_at 포함 (시나리오 3)"""
         task_id = str(uuid.uuid4())
-        now = datetime.now(timezone.utc).isoformat()
-        mock_redis_client.get.return_value = json.dumps({
-            "task_id": task_id,
-            "status": "processing",
-            "progress": 0.5,
-            "created_at": now,
-            "updated_at": now,
-        })
+        now = datetime.now(UTC).isoformat()
+        mock_redis_client.get.return_value = json.dumps(
+            {
+                "task_id": task_id,
+                "status": "processing",
+                "progress": 0.5,
+                "created_at": now,
+                "updated_at": now,
+            }
+        )
 
         response = client.get(f"/api/v1/transcriptions/{task_id}/status")
         assert response.status_code == 200
@@ -213,14 +222,16 @@ class TestScenario3StatusPolling:
     ):
         """처리 완료 후 status == 'completed' (시나리오 3)"""
         task_id = str(uuid.uuid4())
-        now = datetime.now(timezone.utc).isoformat()
-        mock_redis_client.get.return_value = json.dumps({
-            "task_id": task_id,
-            "status": "completed",
-            "progress": 1.0,
-            "created_at": now,
-            "updated_at": now,
-        })
+        now = datetime.now(UTC).isoformat()
+        mock_redis_client.get.return_value = json.dumps(
+            {
+                "task_id": task_id,
+                "status": "completed",
+                "progress": 1.0,
+                "created_at": now,
+                "updated_at": now,
+            }
+        )
 
         response = client.get(f"/api/v1/transcriptions/{task_id}/status")
         assert response.status_code == 200
@@ -231,15 +242,17 @@ class TestScenario3StatusPolling:
     ):
         """실패 시 status='failed' + error_message 포함 (시나리오 3)"""
         task_id = str(uuid.uuid4())
-        now = datetime.now(timezone.utc).isoformat()
-        mock_redis_client.get.return_value = json.dumps({
-            "task_id": task_id,
-            "status": "failed",
-            "progress": 0.0,
-            "error_message": "파일 손상: 디코딩 실패",
-            "created_at": now,
-            "updated_at": now,
-        })
+        now = datetime.now(UTC).isoformat()
+        mock_redis_client.get.return_value = json.dumps(
+            {
+                "task_id": task_id,
+                "status": "failed",
+                "progress": 0.0,
+                "error_message": "파일 손상: 디코딩 실패",
+                "created_at": now,
+                "updated_at": now,
+            }
+        )
 
         response = client.get(f"/api/v1/transcriptions/{task_id}/status")
         assert response.status_code == 200
@@ -247,9 +260,7 @@ class TestScenario3StatusPolling:
         assert data["status"] == "failed"
         assert data["error_message"] is not None
 
-    def test_unknown_task_returns_404(
-        self, client: TestClient, mock_redis_client: AsyncMock
-    ):
+    def test_unknown_task_returns_404(self, client: TestClient, mock_redis_client: AsyncMock):
         """존재하지 않는 task_id → 404"""
         mock_redis_client.get.return_value = None
         response = client.get(f"/api/v1/transcriptions/{uuid.uuid4()}/status")
@@ -259,6 +270,7 @@ class TestScenario3StatusPolling:
 # ---------------------------------------------------------------------------
 # 시나리오 4: Apple Silicon MLX 가속 사용 확인
 # ---------------------------------------------------------------------------
+
 
 class TestScenario4MLXAcceleration:
     """
@@ -307,8 +319,10 @@ class TestScenario4MLXAcceleration:
         mock_engine.device = "mps"
         mock_engine.load_time_seconds = 5.0
         mock_engine.get_memory_info.return_value = {
-            "total_mb": 24576.0, "available_mb": 15000.0,
-            "used_mb": 9576.0, "percent": 39.0,
+            "total_mb": 24576.0,
+            "available_mb": 15000.0,
+            "used_mb": 9576.0,
+            "percent": 39.0,
         }
 
         app.dependency_overrides[get_whisper_engine] = lambda: mock_engine
@@ -324,6 +338,7 @@ class TestScenario4MLXAcceleration:
 # ---------------------------------------------------------------------------
 # 시나리오 5: 대용량 파일 크기 제한
 # ---------------------------------------------------------------------------
+
 
 class TestScenario5FileSizeLimit:
     """
@@ -351,6 +366,7 @@ class TestScenario5FileSizeLimit:
 # 시나리오 6: 장시간 오디오 청크 분할 처리
 # ---------------------------------------------------------------------------
 
+
 class TestScenario6ChunkProcessing:
     """
     시나리오 6: 2시간 오디오 → 4개 청크 분할 처리
@@ -370,10 +386,12 @@ class TestScenario6ChunkProcessing:
             def make_chunk_mock(key):
                 mock_chunk = MagicMock()
                 mock_chunk.__len__ = MagicMock(return_value=1_800_000)
-                mock_chunk.export = MagicMock(side_effect=lambda path, format: (
-                    Path(path).parent.mkdir(parents=True, exist_ok=True),
-                    Path(path).write_bytes(b"\x00"),
-                ))
+                mock_chunk.export = MagicMock(
+                    side_effect=lambda path, format: (
+                        Path(path).parent.mkdir(parents=True, exist_ok=True),
+                        Path(path).write_bytes(b"\x00"),
+                    )
+                )
                 chunk_slices.append(key)
                 return mock_chunk
 
@@ -392,6 +410,7 @@ class TestScenario6ChunkProcessing:
                 mock_seg.export = mock_export
                 # chunk.__getitem__ return value의 export도 mock
                 import tempfile
+
                 tmp_dir = tempfile.mkdtemp()
 
                 chunks = split_audio(
@@ -423,11 +442,20 @@ class TestScenario6ChunkProcessing:
         from backend.pipeline.chunk_manager import AudioChunk, merge_segments
 
         chunk_duration_ms = 30 * 60 * 1000
-        chunk0 = AudioChunk(index=0, file_path=Path("/tmp/c0.wav"),
-                            start_ms=0, end_ms=chunk_duration_ms, overlap_ms=0)
-        chunk1 = AudioChunk(index=1, file_path=Path("/tmp/c1.wav"),
-                            start_ms=chunk_duration_ms, end_ms=2 * chunk_duration_ms,
-                            overlap_ms=5000)
+        chunk0 = AudioChunk(
+            index=0,
+            file_path=Path("/tmp/c0.wav"),
+            start_ms=0,
+            end_ms=chunk_duration_ms,
+            overlap_ms=0,
+        )
+        chunk1 = AudioChunk(
+            index=1,
+            file_path=Path("/tmp/c1.wav"),
+            start_ms=chunk_duration_ms,
+            end_ms=2 * chunk_duration_ms,
+            overlap_ms=5000,
+        )
 
         segs0 = [{"start": 0.0, "end": 2.0, "text": "첫 청크", "avg_logprob": -0.3}]
         # 오버랩 구간(5초) 이후의 세그먼트
@@ -445,6 +473,7 @@ class TestScenario6ChunkProcessing:
 # ---------------------------------------------------------------------------
 # 시나리오 7: 손상된 오디오 파일 처리
 # ---------------------------------------------------------------------------
+
 
 class TestScenario7CorruptedFile:
     """
@@ -469,14 +498,16 @@ class TestScenario7CorruptedFile:
     ):
         """failed 상태 조회 시 부분 결과 없음 (REQ-STT-009)"""
         task_id = str(uuid.uuid4())
-        now = datetime.now(timezone.utc).isoformat()
-        mock_redis_client.get.return_value = json.dumps({
-            "task_id": task_id,
-            "status": "failed",
-            "error_message": "파일 손상",
-            "created_at": now,
-            "updated_at": now,
-        })
+        now = datetime.now(UTC).isoformat()
+        mock_redis_client.get.return_value = json.dumps(
+            {
+                "task_id": task_id,
+                "status": "failed",
+                "error_message": "파일 손상",
+                "created_at": now,
+                "updated_at": now,
+            }
+        )
 
         # 결과 조회 시 segments가 없어야 함
         result_response = client.get(f"/api/v1/transcriptions/{task_id}")
@@ -490,15 +521,17 @@ class TestScenario7CorruptedFile:
     ):
         """failed 상태 응답에 구체적인 오류 메시지 포함 (시나리오 7)"""
         task_id = str(uuid.uuid4())
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         error_msg = "파일 손상 또는 지원되지 않는 오디오 코덱"
-        mock_redis_client.get.return_value = json.dumps({
-            "task_id": task_id,
-            "status": "failed",
-            "error_message": error_msg,
-            "created_at": now,
-            "updated_at": now,
-        })
+        mock_redis_client.get.return_value = json.dumps(
+            {
+                "task_id": task_id,
+                "status": "failed",
+                "error_message": error_msg,
+                "created_at": now,
+                "updated_at": now,
+            }
+        )
 
         status_response = client.get(f"/api/v1/transcriptions/{task_id}/status")
         assert status_response.json()["error_message"] == error_msg
@@ -507,6 +540,7 @@ class TestScenario7CorruptedFile:
 # ---------------------------------------------------------------------------
 # 시나리오 8: 동시 처리 제한 초과 시 대기열 진입
 # ---------------------------------------------------------------------------
+
 
 class TestScenario8ConcurrencyLimit:
     """
@@ -534,6 +568,7 @@ class TestScenario8ConcurrencyLimit:
         self, client: TestClient, mock_redis_client: AsyncMock
     ):
         """동시 처리 한도(3개) 초과 시 429 반환 (시나리오 8)"""
+
         # active_job_count = 3 (한도 초과)
         def mock_get(key):
             if key == "active_job_count":
@@ -554,6 +589,7 @@ class TestScenario8ConcurrencyLimit:
 # 시나리오 9: 서버 시작 후 모델 웜업 상태 확인
 # ---------------------------------------------------------------------------
 
+
 class TestScenario9ModelWarmup:
     """
     시나리오 9: 서버 시작 후 GET /health/model → model_loaded=True
@@ -571,8 +607,10 @@ class TestScenario9ModelWarmup:
         mock_engine.device = "mps"
         mock_engine.load_time_seconds = 15.0
         mock_engine.get_memory_info.return_value = {
-            "total_mb": 24576.0, "available_mb": 15000.0,
-            "used_mb": 9576.0, "percent": 39.0,
+            "total_mb": 24576.0,
+            "available_mb": 15000.0,
+            "used_mb": 9576.0,
+            "percent": 39.0,
         }
 
         app.dependency_overrides[get_whisper_engine] = lambda: mock_engine
@@ -598,8 +636,10 @@ class TestScenario9ModelWarmup:
         mock_engine.device = "mps"
         mock_engine.load_time_seconds = 20.0
         mock_engine.get_memory_info.return_value = {
-            "total_mb": 24576.0, "available_mb": 15000.0,
-            "used_mb": 9576.0, "percent": 39.0,
+            "total_mb": 24576.0,
+            "available_mb": 15000.0,
+            "used_mb": 9576.0,
+            "percent": 39.0,
         }
 
         app.dependency_overrides[get_whisper_engine] = lambda: mock_engine
@@ -614,6 +654,7 @@ class TestScenario9ModelWarmup:
 # ---------------------------------------------------------------------------
 # 시나리오 10: Redis 캐시를 통한 빠른 결과 조회
 # ---------------------------------------------------------------------------
+
 
 class TestScenario10CacheRetrieval:
     """
@@ -659,15 +700,14 @@ class TestScenario10CacheRetrieval:
 # 시나리오 11: 작업 삭제 시 관련 리소스 정리
 # ---------------------------------------------------------------------------
 
+
 class TestScenario11Deletion:
     """
     시나리오 11: DELETE → 캐시, 결과, 임시 파일 삭제
     관련 요구사항: REQ-STT-014
     """
 
-    def test_delete_returns_204(
-        self, client: TestClient, mock_redis_client: AsyncMock
-    ):
+    def test_delete_returns_204(self, client: TestClient, mock_redis_client: AsyncMock):
         """DELETE /transcriptions/{task_id} → 204 No Content"""
         task_id = str(uuid.uuid4())
         mock_redis_client.delete.return_value = 2
@@ -675,9 +715,7 @@ class TestScenario11Deletion:
         response = client.delete(f"/api/v1/transcriptions/{task_id}")
         assert response.status_code == 204
 
-    def test_delete_removes_redis_cache(
-        self, client: TestClient, mock_redis_client: AsyncMock
-    ):
+    def test_delete_removes_redis_cache(self, client: TestClient, mock_redis_client: AsyncMock):
         """DELETE 후 Redis 캐시 삭제됨 (시나리오 11: REQ-STT-014)"""
         task_id = str(uuid.uuid4())
         mock_redis_client.delete.return_value = 2
@@ -689,9 +727,7 @@ class TestScenario11Deletion:
         delete_call_args = str(mock_redis_client.delete.call_args)
         assert task_id in delete_call_args
 
-    def test_get_after_delete_returns_404(
-        self, client: TestClient, mock_redis_client: AsyncMock
-    ):
+    def test_get_after_delete_returns_404(self, client: TestClient, mock_redis_client: AsyncMock):
         """삭제 후 동일 task_id 조회 시 404 (시나리오 11)"""
         task_id = str(uuid.uuid4())
         mock_redis_client.delete.return_value = 2
@@ -707,15 +743,14 @@ class TestScenario11Deletion:
 # 시나리오 12: 헬스체크 엔드포인트 정상 동작
 # ---------------------------------------------------------------------------
 
+
 class TestScenario12HealthCheck:
     """
     시나리오 12: GET /health → status='healthy'
     관련 요구사항: REQ-STT-019
     """
 
-    def test_health_returns_healthy_status(
-        self, client: TestClient, mock_redis_client: AsyncMock
-    ):
+    def test_health_returns_healthy_status(self, client: TestClient, mock_redis_client: AsyncMock):
         """모든 구성 요소 정상 시 status='healthy' (시나리오 12)"""
         mock_redis_client.ping.return_value = True
 
@@ -739,9 +774,7 @@ class TestScenario12HealthCheck:
         data = response.json()
         assert data["components"]["redis"] == "healthy"
 
-    def test_health_ffmpeg_available(
-        self, client: TestClient, mock_redis_client: AsyncMock
-    ):
+    def test_health_ffmpeg_available(self, client: TestClient, mock_redis_client: AsyncMock):
         """ffmpeg 설치 확인 시 'available' (시나리오 12)"""
         mock_redis_client.ping.return_value = True
 
@@ -770,6 +803,7 @@ class TestScenario12HealthCheck:
 # ---------------------------------------------------------------------------
 # 시나리오 13: 메모리 사용량 경고
 # ---------------------------------------------------------------------------
+
 
 class TestScenario13MemoryWarning:
     """
@@ -806,8 +840,8 @@ class TestScenario13MemoryWarning:
         mock_engine.load_time_seconds = 10.0
         mock_engine.get_memory_info.return_value = {
             "total_mb": 24576.0,
-            "available_mb": 5000.0,   # 여유 공간 적음
-            "used_mb": 19576.0,       # 임계값(19GB) 근접
+            "available_mb": 5000.0,  # 여유 공간 적음
+            "used_mb": 19576.0,  # 임계값(19GB) 근접
             "percent": 79.6,
         }
 

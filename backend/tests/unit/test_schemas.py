@@ -2,16 +2,17 @@
 Pydantic 스키마 검증 단위 테스트
 REQ-STT-001, REQ-STT-008, REQ-STT-010, REQ-STT-011
 """
+
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from pydantic import ValidationError
 
-
 # ---------------------------------------------------------------------------
 # SegmentResult 스키마 테스트
 # ---------------------------------------------------------------------------
+
 
 class TestSegmentResult:
     """전사 세그먼트 결과 스키마 검증 (REQ-STT-008)"""
@@ -83,6 +84,7 @@ class TestSegmentResult:
 # TaskStatus 열거형 테스트
 # ---------------------------------------------------------------------------
 
+
 class TestTaskStatus:
     """작업 상태 열거형 테스트 (REQ-STT-010)"""
 
@@ -123,6 +125,7 @@ class TestTaskStatus:
 # TranscriptionCreate (POST 201 응답 스키마) 테스트
 # ---------------------------------------------------------------------------
 
+
 class TestTranscriptionCreate:
     """POST /api/v1/transcriptions 201 응답 스키마"""
 
@@ -131,7 +134,7 @@ class TestTranscriptionCreate:
         from backend.schemas.transcription import TaskStatus, TranscriptionCreate
 
         task_id = uuid.uuid4()
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         response = TranscriptionCreate(
             task_id=task_id,
             status=TaskStatus.pending,
@@ -154,7 +157,7 @@ class TestTranscriptionCreate:
             status=TaskStatus.pending,
             status_url="/api/v1/transcriptions/abc/status",
             result_url="/api/v1/transcriptions/abc",
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
         data = response.model_dump()
         assert "task_id" in data
@@ -168,6 +171,7 @@ class TestTranscriptionCreate:
 # TaskStatusResponse 스키마 테스트
 # ---------------------------------------------------------------------------
 
+
 class TestTaskStatusResponse:
     """작업 상태 조회 응답 스키마 (REQ-STT-010, 시나리오 3)"""
 
@@ -175,7 +179,7 @@ class TestTaskStatusResponse:
         """task_id, status, created_at, updated_at 필드 포함 (시나리오 3)"""
         from backend.schemas.transcription import TaskStatus, TaskStatusResponse
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         response = TaskStatusResponse(
             task_id=uuid.uuid4(),  # type: ignore[arg-type]
             status=TaskStatus.processing,
@@ -190,7 +194,7 @@ class TestTaskStatusResponse:
         """실패 상태 응답에 error_message 포함 (시나리오 3, 7)"""
         from backend.schemas.transcription import TaskStatus, TaskStatusResponse
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         response = TaskStatusResponse(
             task_id=uuid.uuid4(),  # type: ignore[arg-type]
             status=TaskStatus.failed,
@@ -205,7 +209,7 @@ class TestTaskStatusResponse:
         """progress 미지정 시 기본값 0.0"""
         from backend.schemas.transcription import TaskStatus, TaskStatusResponse
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         response = TaskStatusResponse(
             task_id=uuid.uuid4(),  # type: ignore[arg-type]
             status=TaskStatus.pending,
@@ -218,7 +222,7 @@ class TestTaskStatusResponse:
         """progress는 0.0~1.0 범위"""
         from backend.schemas.transcription import TaskStatus, TaskStatusResponse
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         response = TaskStatusResponse(
             task_id=uuid.uuid4(),  # type: ignore[arg-type]
             status=TaskStatus.processing,
@@ -233,23 +237,24 @@ class TestTaskStatusResponse:
 # TranscriptionResponse 스키마 테스트
 # ---------------------------------------------------------------------------
 
+
 class TestTranscriptionResponse:
     """전사 결과 응답 스키마 직렬화 테스트 (REQ-STT-011)"""
 
     def test_response_serialization(self):
         """응답 JSON 직렬화 성공 (시나리오 1)"""
         from backend.schemas.transcription import (
-            SegmentResult, TaskStatus, TranscriptionResponse,
+            SegmentResult,
+            TaskStatus,
+            TranscriptionResponse,
         )
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         response = TranscriptionResponse(
             task_id=uuid.uuid4(),  # type: ignore[arg-type]
             status=TaskStatus.completed,
             language="ko",
-            segments=[
-                SegmentResult(id=0, start=0.0, end=4.2, text="안녕", confidence=0.95)
-            ],
+            segments=[SegmentResult(id=0, start=0.0, end=4.2, text="안녕", confidence=0.95)],
             duration=4.2,
             created_at=now,
         )
@@ -261,17 +266,17 @@ class TestTranscriptionResponse:
     def test_response_required_fields(self):
         """응답에 task_id, status, language, segments 필드 포함 (시나리오 1)"""
         from backend.schemas.transcription import (
-            SegmentResult, TaskStatus, TranscriptionResponse,
+            SegmentResult,
+            TaskStatus,
+            TranscriptionResponse,
         )
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         response = TranscriptionResponse(
             task_id=uuid.uuid4(),  # type: ignore[arg-type]
             status=TaskStatus.completed,
             language="ko",
-            segments=[
-                SegmentResult(id=0, start=0.0, end=1.0, text="테스트", confidence=0.9)
-            ],
+            segments=[SegmentResult(id=0, start=0.0, end=1.0, text="테스트", confidence=0.9)],
             created_at=now,
         )
         data = response.model_dump()
@@ -285,7 +290,7 @@ class TestTranscriptionResponse:
         response = TranscriptionResponse(
             task_id=uuid.uuid4(),  # type: ignore[arg-type]
             status=TaskStatus.pending,
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
         assert response.segments == []
 
@@ -298,7 +303,7 @@ class TestTranscriptionResponse:
             status=TaskStatus.completed,
             language="ko",
             duration=1234.5,
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
         assert response.duration == 1234.5
         data = response.model_dump()
@@ -313,7 +318,7 @@ class TestTranscriptionResponse:
             task_id=uuid.uuid4(),  # type: ignore[arg-type]
             status=TaskStatus.failed,
             error_message="손상된 파일",
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
         assert response.segments == []
         assert response.error_message == "손상된 파일"
@@ -322,6 +327,7 @@ class TestTranscriptionResponse:
 # ---------------------------------------------------------------------------
 # ValidationErrorDetail/ValidationErrorResponse 스키마 테스트
 # ---------------------------------------------------------------------------
+
 
 class TestValidationErrorResponse:
     """422 응답 스키마 테스트 (시나리오 2, 5)"""
@@ -342,15 +348,18 @@ class TestValidationErrorResponse:
     def test_validation_error_response_contains_detail_list(self):
         """ValidationErrorResponse.detail가 리스트"""
         from backend.schemas.transcription import (
-            ValidationErrorDetail, ValidationErrorResponse,
+            ValidationErrorDetail,
+            ValidationErrorResponse,
         )
 
-        response = ValidationErrorResponse(detail=[
-            ValidationErrorDetail(
-                field="file",
-                message="파일 크기 초과",
-                type="file_too_large",
-            )
-        ])
+        response = ValidationErrorResponse(
+            detail=[
+                ValidationErrorDetail(
+                    field="file",
+                    message="파일 크기 초과",
+                    type="file_too_large",
+                )
+            ]
+        )
         assert isinstance(response.detail, list)
         assert len(response.detail) == 1

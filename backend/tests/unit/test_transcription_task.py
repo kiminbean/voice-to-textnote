@@ -3,6 +3,7 @@ transcription_task 단위 테스트
 REQ-STT-005, 008, 009, 013, 018: STT 워커 내부 함수 검증
 TDD RED → GREEN cycle
 """
+
 import json
 import math
 from pathlib import Path
@@ -10,10 +11,10 @@ from unittest.mock import MagicMock, patch
 
 from backend.schemas.transcription import SegmentResult, TaskStatus
 
-
 # ---------------------------------------------------------------------------
 # _extract_segments 테스트 (순수 함수)
 # ---------------------------------------------------------------------------
+
 
 class TestExtractSegments:
     """REQ-STT-008: 세그먼트별 텍스트, 시작/종료 시간, 신뢰도 추출"""
@@ -105,6 +106,7 @@ class TestExtractSegments:
 # _update_task_status 테스트
 # ---------------------------------------------------------------------------
 
+
 class TestUpdateTaskStatus:
     """Redis에 작업 상태 저장 검증"""
 
@@ -136,7 +138,9 @@ class TestUpdateTaskStatus:
         mock_get_redis.return_value = mock_redis
 
         _update_task_status(
-            "test-id", TaskStatus.failed, 0.0,
+            "test-id",
+            TaskStatus.failed,
+            0.0,
             error_message="파일 손상",
         )
 
@@ -162,6 +166,7 @@ class TestUpdateTaskStatus:
 # _cache_result 테스트
 # ---------------------------------------------------------------------------
 
+
 class TestCacheResult:
     """REQ-STT-013: 24h TTL Redis 캐싱 검증"""
 
@@ -184,6 +189,7 @@ class TestCacheResult:
 # ---------------------------------------------------------------------------
 # _get_active_job_count / _increment / _decrement 테스트
 # ---------------------------------------------------------------------------
+
 
 class TestActiveJobTracking:
     """동시 처리 수 추적 검증"""
@@ -243,6 +249,7 @@ class TestActiveJobTracking:
 # _process_chunks 테스트
 # ---------------------------------------------------------------------------
 
+
 class TestProcessChunks:
     """REQ-STT-018: 청크별 처리 및 병합"""
 
@@ -297,6 +304,7 @@ class TestProcessChunks:
 # transcription_task 메인 함수 통합 테스트 (mock 기반)
 # ---------------------------------------------------------------------------
 
+
 class TestTranscriptionTaskMain:
     """transcription_task Celery 작업 메인 흐름 검증"""
 
@@ -311,9 +319,18 @@ class TestTranscriptionTaskMain:
     @patch("backend.workers.tasks.transcription_task.WhisperEngine")
     @patch("backend.workers.tasks.transcription_task.settings")
     def test_successful_short_audio(
-        self, mock_settings, mock_engine_cls, mock_convert,
-        mock_duration, mock_split, mock_status, mock_cache,
-        mock_incr, mock_decr, mock_cleanup, tmp_path,
+        self,
+        mock_settings,
+        mock_engine_cls,
+        mock_convert,
+        mock_duration,
+        mock_split,
+        mock_status,
+        mock_cache,
+        mock_incr,
+        mock_decr,
+        mock_cleanup,
+        tmp_path,
     ):
         """30분 이하 오디오 정상 처리 흐름"""
         mock_settings.results_dir = tmp_path
@@ -333,9 +350,7 @@ class TestTranscriptionTaskMain:
         mock_engine = MagicMock()
         mock_engine.is_loaded = True
         mock_engine.transcribe.return_value = {
-            "segments": [
-                {"start": 0.0, "end": 4.2, "text": "안녕하세요.", "avg_logprob": -0.25}
-            ]
+            "segments": [{"start": 0.0, "end": 4.2, "text": "안녕하세요.", "avg_logprob": -0.25}]
         }
         mock_engine_cls.get_instance.return_value = mock_engine
 
@@ -372,8 +387,15 @@ class TestTranscriptionTaskMain:
     @patch("backend.workers.tasks.transcription_task.convert_and_normalize")
     @patch("backend.workers.tasks.transcription_task.settings")
     def test_file_not_found_marks_failed(
-        self, mock_settings, mock_convert, mock_status,
-        mock_cache, mock_incr, mock_decr, mock_cleanup, tmp_path,
+        self,
+        mock_settings,
+        mock_convert,
+        mock_status,
+        mock_cache,
+        mock_incr,
+        mock_decr,
+        mock_cleanup,
+        tmp_path,
     ):
         """REQ-STT-009: 파일 없을 때 failed 상태 + 캐시 저장"""
         mock_settings.results_dir = tmp_path
@@ -418,9 +440,18 @@ class TestTranscriptionTaskMain:
     @patch("backend.workers.tasks.transcription_task.WhisperEngine")
     @patch("backend.workers.tasks.transcription_task.settings")
     def test_result_saved_to_filesystem(
-        self, mock_settings, mock_engine_cls, mock_convert,
-        mock_duration, mock_split, mock_status, mock_cache,
-        mock_incr, mock_decr, mock_cleanup, tmp_path,
+        self,
+        mock_settings,
+        mock_engine_cls,
+        mock_convert,
+        mock_duration,
+        mock_split,
+        mock_status,
+        mock_cache,
+        mock_incr,
+        mock_decr,
+        mock_cleanup,
+        tmp_path,
     ):
         """결과가 파일 시스템에도 저장되는지 확인"""
         mock_settings.results_dir = tmp_path

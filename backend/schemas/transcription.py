@@ -2,6 +2,7 @@
 전사 요청/응답 Pydantic v2 스키마
 REQ-STT-002, REQ-STT-008, REQ-STT-010, REQ-STT-011 관련
 """
+
 from datetime import datetime
 from enum import Enum
 from uuid import UUID
@@ -18,6 +19,7 @@ class TaskStatus(str, Enum):
 
 class SegmentResult(BaseModel):
     """단일 전사 세그먼트 (REQ-STT-008: 세그먼트별 타임스탬프 + 신뢰도)"""
+
     model_config = ConfigDict(frozen=True)
 
     id: int
@@ -29,6 +31,7 @@ class SegmentResult(BaseModel):
 
 class TranscriptionMetadata(BaseModel):
     """파일 메타데이터"""
+
     file_name: str
     file_size_bytes: int
     sample_rate: int = 16000
@@ -37,6 +40,7 @@ class TranscriptionMetadata(BaseModel):
 
 class TranscriptionCreate(BaseModel):
     """POST /api/v1/transcriptions 응답 (201 Created)"""
+
     task_id: UUID
     status: TaskStatus = TaskStatus.pending
     status_url: str
@@ -46,6 +50,7 @@ class TranscriptionCreate(BaseModel):
 
 class TaskStatusResponse(BaseModel):
     """GET /api/v1/transcriptions/{task_id}/status 응답"""
+
     task_id: UUID
     status: TaskStatus
     progress: float = Field(default=0.0, ge=0.0, le=1.0)
@@ -57,6 +62,7 @@ class TaskStatusResponse(BaseModel):
 
 class TranscriptionResponse(BaseModel):
     """GET /api/v1/transcriptions/{task_id} 응답 (completed 상태)"""
+
     task_id: UUID
     status: TaskStatus
     language: str | None = None
@@ -71,6 +77,7 @@ class TranscriptionResponse(BaseModel):
 
 class ValidationErrorDetail(BaseModel):
     """422 응답 내 개별 오류 상세"""
+
     field: str
     message: str
     type: str
@@ -78,4 +85,5 @@ class ValidationErrorDetail(BaseModel):
 
 class ValidationErrorResponse(BaseModel):
     """422 Unprocessable Entity 응답"""
+
     detail: list[ValidationErrorDetail]

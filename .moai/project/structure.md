@@ -21,106 +21,85 @@ voice-to-textnote/
 
 ### `/backend/` - FastAPI 서버 및 음성 처리 파이프라인
 
-**목적**:
-- RESTful API 엔드포인트 제공
-- 음성 파일 수신 및 저장
+**목적** (현재 완료: STT 백엔드):
+- RESTful API 엔드포인트 제공 (오디오 업로드, 상태 조회, 결과 반환)
+- 음성 파일 수신, 저장, 전처리
 - Celery 비동기 작업 큐 관리
-- STT, 스피커 식별, AI 요약 작업 조율
+- mlx-whisper STT 처리
 
-**구조**:
+**현재 구현 구조** (SPEC-STT-001 완료):
 
 ```
 backend/
 ├── app/
 │   ├── __init__.py
-│   ├── main.py                 # FastAPI 앱 초기화 및 라우팅 설정
-│   ├── config.py               # 환경 설정 (DB, Redis, API 키)
-│   ├── dependencies.py         # 의존성 주입 (DB 세션, 인증)
+│   ├── main.py                 # FastAPI 앱 초기화, 모델 워밍업
+│   ├── config.py               # 환경 설정 (Redis, Whisper 모델)
+│   ├── dependencies.py         # 의존성 주입 (Redis, Whisper)
 │   │
 │   ├── api/
-│   │   ├── v1/
-│   │   │   ├── __init__.py
-│   │   │   ├── router.py       # 모든 엔드포인트 통합 라우터
-│   │   │   ├── audio.py        # 오디오 녹음 업로드, 조회 엔드포인트
-│   │   │   ├── transcription.py # STT 결과 조회, 상태 확인 엔드포인트
-│   │   │   ├── meeting.py      # 회의 생성, 조회, 삭제 엔드포인트
-│   │   │   ├── users.py        # 사용자 관리, 팀 멤버 엔드포인트
-│   │   │   └── exports.py      # 회의록 내보내기 (PDF, Markdown)
-│   │
-│   ├── models/
-│   │   ├── __init__.py
-│   │   ├── database.py         # SQLAlchemy 데이터베이스 모델
-│   │   ├── meeting.py          # 회의(Meeting) 모델
-│   │   ├── audio.py            # 오디오 파일(Audio) 모델
-│   │   ├── transcription.py    # 전사(Transcription) 모델
-│   │   ├── speaker.py          # 스피커 정보(Speaker) 모델
-│   │   └── user.py             # 사용자(User) 모델
-│   │
-│   ├── schemas/
-│   │   ├── __init__.py
-│   │   ├── audio.py            # Pydantic 요청/응답 스키마 (AudioUpload, AudioResponse)
-│   │   ├── transcription.py    # 전사 스키마 (TranscriptionRequest, TranscriptionResponse)
-│   │   ├── meeting.py          # 회의 스키마 (MeetingCreate, MeetingResponse)
-│   │   ├── speaker.py          # 스피커 스키마
-│   │   └── user.py             # 사용자 스키마
-│   │
-│   ├── services/
-│   │   ├── __init__.py
-│   │   ├── storage_service.py  # 로컬 파일시스템 또는 S3 저장소 관리
-│   │   ├── auth_service.py     # JWT 토큰 발급, 검증
-│   │   └── notification_service.py # 이메일/Slack 알림 발송
-│   │
-│   └── utils/
-│       ├── __init__.py
-│       ├── logger.py           # 중앙화된 로깅 설정
-│       └── validators.py       # 입력값 검증 함수
+│   │   └── v1/
+│   │       ├── __init__.py
+│   │       ├── transcription.py # STT 업로드, 상태, 결과 엔드포인트
+│   │       └── health.py        # 헬스체크, 모델 상태 엔드포인트
+│
+├── schemas/
+│   ├── __init__.py
+│   ├── transcription.py        # Pydantic 요청/응답 스키마
+│   └── health.py               # 헬스 상태 스키마
+│
+├── utils/
+│   ├── __init__.py
+│   ├── logger.py               # 구조화된 JSON 로깅
+│   └── validators.py           # 입력 검증 (파일 형식, 크기)
+│
 │
 ├── workers/
 │   ├── __init__.py
-│   ├── celery_app.py           # Celery 앱 초기화 및 설정
-│   │
-│   ├── tasks/
-│   │   ├── __init__.py
-│   │   ├── transcription_task.py # STT 처리 Celery 작업
-│   │   ├── diarization_task.py   # 스피커 식별 Celery 작업
-│   │   ├── summary_task.py       # AI 요약 Celery 작업
-│   │   └── export_task.py        # 회의록 내보내기 Celery 작업
-│   │
-│   └── pipeline/
+│   ├── celery_app.py           # Celery 앱 초기화, Redis 연결
+│   └── tasks/
 │       ├── __init__.py
-│       ├── audio_processor.py   # 오디오 전처리 (샘플링, 노이즈 제거)
-│       └── orchestrator.py      # 작업 흐름 관리 (STT → Diarization → Summary)
+│       └── transcription_task.py # mlx-whisper STT 처리
 │
 ├── ml/
 │   ├── __init__.py
-│   ├── stt_engine.py           # mlx-whisper 래퍼 (음성 인식)
-│   ├── diarization_engine.py   # pyannote.audio 래퍼 (스피커 식별)
-│   ├── claude_summarizer.py    # Claude API 통합 (요약 생성)
-│   └── models/
-│       ├── whisper_config.py   # Whisper 모델 설정
-│       └── pyannote_config.py  # Pyannote 모델 설정
+│   └── stt_engine.py           # mlx-whisper 래퍼 (싱글톤 패턴)
+│
+├── pipeline/
+│   ├── __init__.py
+│   ├── audio_processor.py      # 오디오 전처리 (16kHz 모노 WAV)
+│   └── chunk_manager.py        # 청크 분할 및 병합 (30분 단위)
 │
 ├── tests/
 │   ├── __init__.py
-│   ├── test_api.py             # API 엔드포인트 단위 테스트
-│   ├── test_services.py        # 서비스 로직 테스트
-│   ├── test_ml_models.py       # ML 모델 통합 테스트
-│   └── fixtures/
-│       ├── sample_audio.wav    # 테스트용 샘플 오디오 파일
-│       └── mock_data.py        # 모의 데이터
+│   ├── unit/
+│   │   ├── __init__.py
+│   │   ├── test_stt_engine.py         # mlx-whisper 엔진 테스트
+│   │   ├── test_transcription_task.py # STT 작업 테스트
+│   │   ├── test_audio_processor.py    # 오디오 전처리 테스트
+│   │   └── test_schemas.py            # Pydantic 스키마 테스트
+│   └── integration/
+│       ├── __init__.py
+│       └── test_api.py                # API 엔드포인트 통합 테스트
 │
-├── requirements.txt            # Python 의존성
-├── pyproject.toml              # 프로젝트 메타데이터
-└── Dockerfile                  # 백엔드 컨테이너 이미지
+├── conftest.py                 # pytest 픽스처 및 설정
+├── pyproject.toml              # Python 의존성 관리
+├── Dockerfile                  # 백엔드 컨테이너 이미지
+└── docker-compose.yml          # FastAPI, Redis, Celery 스택
 ```
 
-**주요 파일 설명**:
+**현재 구현 상황**:
 
-- `main.py`: FastAPI 앱 생성, 라우터 등록, 미들웨어 설정
-- `celery_app.py`: Celery 워커 설정, 브로커(Redis) 연결
-- `transcription_task.py`: mlx-whisper 호출하여 음성을 텍스트로 변환
-- `diarization_task.py`: pyannote.audio로 누가 언제 발화했는지 식별
-- `summary_task.py`: Claude API로 회의 요약 생성
+- ✅ **app/main.py**: FastAPI 앱, 모델 워밍업 (REQ-STT-021)
+- ✅ **app/config.py**: Redis, Whisper 모델 설정
+- ✅ **app/api/v1/transcription.py**: 오디오 업로드, 상태, 결과 엔드포인트
+- ✅ **app/api/v1/health.py**: 헬스체크, 모델 상태
+- ✅ **schemas/**: Pydantic 요청/응답 스키마
+- ✅ **workers/tasks/transcription_task.py**: mlx-whisper 호출
+- ✅ **ml/stt_engine.py**: Whisper 싱글톤 엔진
+- ✅ **pipeline/audio_processor.py**: 오디오 전처리 (16kHz 모노)
+- ✅ **pipeline/chunk_manager.py**: 청크 분할 (30분 단위)
+- ✅ **tests/**: 150개 테스트, 95.50% 커버리지
 
 ## 클라이언트 디렉토리 구조
 

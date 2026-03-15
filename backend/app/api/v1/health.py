@@ -3,8 +3,9 @@
 REQ-STT-019: /api/v1/health - 서비스 상태, Redis, Celery 워커
 REQ-STT-020: /api/v1/health/model - 모델 로드 상태, 메모리
 """
+
 import shutil
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends
@@ -66,7 +67,7 @@ async def health_check(
             celery_workers=celery_status,
             ffmpeg=ffmpeg_status,
         ),
-        timestamp=datetime.now(timezone.utc),
+        timestamp=datetime.now(UTC),
     )
 
 
