@@ -2,6 +2,8 @@
 헬스체크 엔드포인트
 REQ-STT-019: /api/v1/health - 서비스 상태, Redis, Celery 워커
 REQ-STT-020: /api/v1/health/model - 모델 로드 상태, 메모리
+REQ-OPS-008: /api/v1/health/ready - Kubernetes readiness probe
+REQ-OPS-009: readiness 체크에서 Redis 연결 및 Celery 워커 가용성 확인
 """
 
 import shutil
@@ -9,6 +11,7 @@ from datetime import UTC, datetime
 
 import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends
+from fastapi.responses import JSONResponse
 
 from backend.app.dependencies import get_diarization_engine, get_redis_client, get_whisper_engine
 from backend.ml.diarization_engine import DiarizationEngine
@@ -21,6 +24,7 @@ from backend.schemas.health import (
     ModelStatusResponse,
 )
 from backend.utils.logger import get_logger
+from backend.workers.celery_app import celery_app
 
 logger = get_logger(__name__)
 
@@ -107,6 +111,58 @@ async def diarization_model_health(
         model_name=engine.model_name,
         model_loaded=engine.is_loaded,
         load_time_seconds=engine.load_time_seconds,
+    )
+
+
+@router.get("/ready")
+async def readiness_check(
+    redis_client: aioredis.Redis = Depends(get_redis_client),
+) -> JSONResponse:
+    """
+    Kubernetes readiness probe 엔드포인트
+    GET /api/v1/health/ready
+
+    REQ-OPS-008: 서비스가 트래픽을 받을 준비가 됐는지 확인
+    REQ-OPS-009: Redis 연결 및 Celery 워커 가용성 확인
+    - Redis 실패 시 503 반환
+    - Celery 워커 없으면 workers=false로 반환하되 200 (개발 환경 허용)
+    """
+    # Redis 연결 확인 (필수 의존성)
+    redis_ok = False
+    try:
+        await redis_client.ping()
+        redis_ok = True
+    except Exception as e:
+        logger.warning("Readiness 체크: Redis 연결 실패", error=str(e))
+
+    # Celery 워커 가용성 확인 (선택적 의존성 - 개발 환경 허용)
+    workers_ok = False
+    try:
+        # 짧은 타임아웃으로 워커 ping (0.5초)
+        inspect = celery_app.control.inspect(timeout=0.5)
+        active_workers = inspect.ping()
+        workers_ok = bool(active_workers)
+    except Exception as e:
+        logger.debug("Readiness 체크: Celery 워커 확인 실패 (개발 환경에서 정상)", error=str(e))
+
+    # Redis 실패 시 503, Celery 없어도 Redis 정상이면 200
+    if not redis_ok:
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "not_ready",
+                "redis": False,
+                "workers": workers_ok,
+            },
+        )
+
+    return JSONResponse(
+        status_code=200,
+        content={
+            "status": "ready",
+            "redis": True,
+            "workers": workers_ok,
+        },
     )
 
 

@@ -23,6 +23,8 @@ dependencies = [
     "aiofiles>=24.0",
     "anthropic>=0.28.0",
     "slowapi>=0.1.9",
+    "prometheus-fastapi-instrumentator>=7.0",
+    "prometheus-client>=0.20",
 ]
 
 [project.optional-dependencies]

@@ -11,7 +11,9 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.api.v1 import diarization, health, minutes, summary, transcription
 from backend.app.config import settings
+from backend.app.metrics import setup_metrics
 from backend.app.middleware.rate_limit import setup_rate_limiting
+from backend.app.middleware.request_id import RequestIDMiddleware
 from backend.app.middleware.security_headers import SecurityHeadersMiddleware
 from backend.ml.diarization_engine import DiarizationEngine
 from backend.ml.stt_engine import WhisperEngine
@@ -67,6 +69,12 @@ def create_app() -> FastAPI:
         docs_url="/docs",
         redoc_url="/redoc",
     )
+
+    # REQ-OPS-001/002: Prometheus 메트릭스 계측 (라우터 등록 전에 설정)
+    setup_metrics(app)
+
+    # REQ-OPS-005/006/007: Request ID 미들웨어
+    app.add_middleware(RequestIDMiddleware)
 
     # REQ-SEC-011: 보안 헤더 미들웨어 (가장 먼저 추가 - 모든 응답에 적용)
     app.add_middleware(SecurityHeadersMiddleware)
