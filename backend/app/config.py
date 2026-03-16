@@ -67,12 +67,43 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8000
 
+    # -------------------------------------------------------------------------
+    # SPEC-SEC-001: 보안 설정 (REQ-SEC-012)
+    # -------------------------------------------------------------------------
+
+    # REQ-SEC-001/REQ-SEC-004: API Key 인증
+    # 쉼표로 구분된 유효한 API Key 목록 (비어있으면 개발 모드 - 인증 비활성화)
+    api_keys: list[str] = []
+
+    # REQ-SEC-007: IP 기반 Rate Limiting (분당 요청 횟수)
+    rate_limit_per_minute: int = 60
+
+    # REQ-SEC-009/REQ-SEC-010: CORS 설정
+    # 허용할 HTTP 메서드 목록 (와일드카드 금지)
+    cors_allow_methods: list[str] = ["GET", "POST", "DELETE"]
+    # 허용할 Origins 목록 (기본: 로컬 개발 환경)
+    cors_allow_origins: list[str] = ["http://localhost:3000", "http://localhost:8080", "http://localhost:5173"]
+
     @field_validator("temp_dir", "results_dir", mode="before")
     @classmethod
     def create_dirs(cls, v: str | Path) -> Path:
         path = Path(v)
         path.mkdir(parents=True, exist_ok=True)
         return path
+
+    @field_validator("api_keys", "cors_allow_methods", "cors_allow_origins", mode="before")
+    @classmethod
+    def parse_list_from_string(cls, v: str | list) -> list[str]:
+        """
+        환경 변수에서 쉼표 구분 문자열을 리스트로 파싱
+        예: "key1,key2,key3" → ["key1", "key2", "key3"]
+        """
+        if isinstance(v, str):
+            # 빈 문자열이면 빈 리스트 반환
+            if not v.strip():
+                return []
+            return [item.strip() for item in v.split(",") if item.strip()]
+        return v
 
     @property
     def max_file_size_bytes(self) -> int:

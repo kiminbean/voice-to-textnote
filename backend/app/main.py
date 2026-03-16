@@ -11,6 +11,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.api.v1 import diarization, health, minutes, summary, transcription
 from backend.app.config import settings
+from backend.app.middleware.rate_limit import setup_rate_limiting
+from backend.app.middleware.security_headers import SecurityHeadersMiddleware
 from backend.ml.diarization_engine import DiarizationEngine
 from backend.ml.stt_engine import WhisperEngine
 from backend.utils.logger import get_logger, setup_logging
@@ -66,14 +68,20 @@ def create_app() -> FastAPI:
         redoc_url="/redoc",
     )
 
-    # CORS (로컬 전용 서비스)
+    # REQ-SEC-011: 보안 헤더 미들웨어 (가장 먼저 추가 - 모든 응답에 적용)
+    app.add_middleware(SecurityHeadersMiddleware)
+
+    # REQ-SEC-009/REQ-SEC-010: CORS (설정 기반 메서드/Origins 제한)
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:*", "http://127.0.0.1:*"],
+        allow_origins=settings.cors_allow_origins,
         allow_credentials=True,
-        allow_methods=["*"],
+        allow_methods=settings.cors_allow_methods,
         allow_headers=["*"],
     )
+
+    # REQ-SEC-006/REQ-SEC-007/REQ-SEC-008: Rate Limiting 미들웨어
+    setup_rate_limiting(app)
 
     # 라우터 등록
     api_prefix = "/api/v1"

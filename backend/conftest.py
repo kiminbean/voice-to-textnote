@@ -171,12 +171,14 @@ def client(mock_redis_client, tmp_path):
     - WhisperEngine.load()를 mock하여 모델 미로드
     - Redis를 mock하여 실제 Redis 서버 불필요
     - Celery를 mock하여 즉시 task_id 반환
+    - API Key 인증 비활성화 (기존 테스트 호환성 유지)
     """
     from fastapi.testclient import TestClient
 
     from backend.app.config import Settings
     from backend.app.dependencies import get_redis_client
     from backend.app.main import app
+    from backend.app.middleware.auth import verify_api_key
 
     # 임시 디렉토리를 스토리지로 사용
     test_settings = MagicMock(spec=Settings)
@@ -193,6 +195,8 @@ def client(mock_redis_client, tmp_path):
     test_settings.chunk_duration_ms = 30 * 60 * 1000
     test_settings.chunk_overlap_ms = 5000
     test_settings.memory_warning_threshold_mb = 19660
+    # REQ-SEC-004: 테스트 환경에서 API Key 인증 비활성화 (api_keys 빈 목록)
+    test_settings.api_keys = []
     test_settings.temp_dir.mkdir(parents=True, exist_ok=True)
     test_settings.results_dir.mkdir(parents=True, exist_ok=True)
 
@@ -200,7 +204,12 @@ def client(mock_redis_client, tmp_path):
     async def override_redis():
         return mock_redis_client
 
+    # REQ-SEC-004: 테스트에서 API Key 검증 건너뜀 (개발 모드 동작 재현)
+    async def override_verify_api_key():
+        return "test-bypass"
+
     app.dependency_overrides[get_redis_client] = override_redis
+    app.dependency_overrides[verify_api_key] = override_verify_api_key
 
     # lifespan 중 모델 로드 방지
     with patch("backend.app.main.WhisperEngine") as mock_engine_cls:
