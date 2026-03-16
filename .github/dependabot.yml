@@ -1,0 +1,20 @@
+# Dependabot: pip 패키지 보안 취약점 주간 자동 스캔
+# REQ-INFRA-007
+
+version: 2
+
+updates:
+  # pip 패키지 의존성 보안 스캔
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Seoul"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "security"
+    commit-message:
+      prefix: "chore(deps)"
