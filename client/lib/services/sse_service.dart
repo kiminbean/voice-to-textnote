@@ -24,7 +24,7 @@ class SseService {
     _client = clientFactory();
     final request = http.Request(
       'GET',
-      Uri.parse('$baseUrl/api/v1/tasks/$taskId/stream'),
+      Uri.parse('$baseUrl/tasks/$taskId/stream'),
     );
     request.headers['Accept'] = 'text/event-stream';
     request.headers['Cache-Control'] = 'no-cache';

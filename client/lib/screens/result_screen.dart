@@ -1,6 +1,7 @@
 // 결과 화면 - 실제 API 데이터 바인딩 + 에러/빈 상태
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:voice_to_textnote/providers/meeting_list_provider.dart';
 import 'package:voice_to_textnote/providers/result_provider.dart';
 import 'package:voice_to_textnote/widgets/error_retry_widget.dart';
 import 'package:voice_to_textnote/widgets/empty_state_widget.dart';
@@ -14,6 +15,12 @@ class ResultScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Meeting에서 파이프라인 task ID 조회
+    final meetings = ref.watch(meetingListProvider);
+    final meeting = meetings.where((m) => m.id == meetingId).firstOrNull;
+    final minutesTaskId = meeting?.minutesTaskId;
+    final summaryTaskId = meeting?.summaryTaskId;
+
     return DefaultTabController(
       length: 3,
       child: Scaffold(
@@ -29,12 +36,12 @@ class ResultScreen extends ConsumerWidget {
         ),
         body: TabBarView(
           children: [
-            // 회의록 탭
-            _TranscriptTab(meetingId: meetingId),
-            // AI 요약 탭
-            _SummaryTab(meetingId: meetingId),
-            // 액션 아이템 탭
-            _ActionItemsTab(meetingId: meetingId),
+            // 회의록 탭 (minutesTaskId 사용)
+            _TranscriptTab(taskId: minutesTaskId),
+            // AI 요약 탭 (summaryTaskId 사용)
+            _SummaryTab(taskId: summaryTaskId),
+            // 액션 아이템 탭 (summaryTaskId 사용)
+            _ActionItemsTab(taskId: summaryTaskId),
           ],
         ),
       ),
@@ -44,22 +51,31 @@ class ResultScreen extends ConsumerWidget {
 
 // 회의록 탭
 class _TranscriptTab extends ConsumerWidget {
-  final String meetingId;
+  final String? taskId;
 
-  const _TranscriptTab({required this.meetingId});
+  const _TranscriptTab({required this.taskId});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final resultAsync = ref.watch(resultProvider(meetingId));
+    // task ID가 없으면 빈 상태 표시
+    if (taskId == null) {
+      return const EmptyStateWidget(
+        icon: Icons.article_outlined,
+        title: '회의록 준비 중',
+        subtitle: '처리가 완료되지 않았습니다',
+      );
+    }
 
-    return resultAsync.when(
+    final minutesAsync = ref.watch(minutesResultProvider(taskId!));
+
+    return minutesAsync.when(
       loading: () => _buildShimmerLoading(),
       error: (error, _) => ErrorRetryWidget(
         message: '회의록을 불러올 수 없습니다',
-        onRetry: () => ref.invalidate(resultProvider(meetingId)),
+        onRetry: () => ref.invalidate(minutesResultProvider(taskId!)),
       ),
-      data: (result) {
-        if (result.minutes.isEmpty) {
+      data: (minutes) {
+        if (minutes.isEmpty) {
           return const EmptyStateWidget(
             icon: Icons.article_outlined,
             title: '회의록이 없습니다',
@@ -73,7 +89,7 @@ class _TranscriptTab extends ConsumerWidget {
           children: [
             SpeakerSegment(
               speakerName: '회의록',
-              text: result.minutes,
+              text: minutes,
               startTime: Duration.zero,
               speakerIndex: 0,
             ),
@@ -102,22 +118,32 @@ class _TranscriptTab extends ConsumerWidget {
 
 // AI 요약 탭
 class _SummaryTab extends ConsumerWidget {
-  final String meetingId;
+  final String? taskId;
 
-  const _SummaryTab({required this.meetingId});
+  const _SummaryTab({required this.taskId});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final resultAsync = ref.watch(resultProvider(meetingId));
+    // task ID가 없으면 빈 상태 표시
+    if (taskId == null) {
+      return const EmptyStateWidget(
+        icon: Icons.summarize_outlined,
+        title: 'AI 요약 준비 중',
+        subtitle: '처리가 완료되지 않았습니다',
+      );
+    }
 
-    return resultAsync.when(
+    final summaryAsync = ref.watch(summaryResultProvider(taskId!));
+
+    return summaryAsync.when(
       loading: () => _buildShimmerLoading(),
       error: (error, _) => ErrorRetryWidget(
         message: 'AI 요약을 불러올 수 없습니다',
-        onRetry: () => ref.invalidate(resultProvider(meetingId)),
+        onRetry: () => ref.invalidate(summaryResultProvider(taskId!)),
       ),
-      data: (result) {
-        if (result.summary.isEmpty) {
+      data: (data) {
+        final summary = data['summary'] as String? ?? '';
+        if (summary.isEmpty) {
           return const EmptyStateWidget(
             icon: Icons.summarize_outlined,
             title: 'AI 요약이 없습니다',
@@ -138,7 +164,7 @@ class _SummaryTab extends ConsumerWidget {
                   ),
                   const Divider(),
                   Text(
-                    result.summary,
+                    summary,
                     style: const TextStyle(height: 1.6),
                   ),
                 ],
@@ -174,29 +200,40 @@ class _SummaryTab extends ConsumerWidget {
 
 // 액션 아이템 탭
 class _ActionItemsTab extends ConsumerWidget {
-  final String meetingId;
+  final String? taskId;
 
-  const _ActionItemsTab({required this.meetingId});
+  const _ActionItemsTab({required this.taskId});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final resultAsync = ref.watch(resultProvider(meetingId));
+    // task ID가 없으면 빈 상태 표시
+    if (taskId == null) {
+      return const EmptyStateWidget(
+        icon: Icons.checklist_outlined,
+        title: '액션 아이템 준비 중',
+        subtitle: '처리가 완료되지 않았습니다',
+      );
+    }
 
-    return resultAsync.when(
+    final summaryAsync = ref.watch(summaryResultProvider(taskId!));
+
+    return summaryAsync.when(
       loading: () => _buildShimmerLoading(),
       error: (error, _) => ErrorRetryWidget(
         message: '액션 아이템을 불러올 수 없습니다',
-        onRetry: () => ref.invalidate(resultProvider(meetingId)),
+        onRetry: () => ref.invalidate(summaryResultProvider(taskId!)),
       ),
-      data: (result) {
-        if (result.actionItems.isEmpty) {
+      data: (data) {
+        final actionItems = (data['action_items'] as List<dynamic>? ?? [])
+            .cast<String>();
+        if (actionItems.isEmpty) {
           return const EmptyStateWidget(
             icon: Icons.checklist_outlined,
             title: '액션 아이템이 없습니다',
           );
         }
 
-        return _ActionItemsList(items: result.actionItems);
+        return _ActionItemsList(items: actionItems);
       },
     );
   }

@@ -2,6 +2,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:voice_to_textnote/models/meeting.dart';
+import 'package:voice_to_textnote/providers/meeting_list_provider.dart';
 import 'package:voice_to_textnote/providers/recording_provider.dart';
 
 class RecordingScreen extends ConsumerStatefulWidget {
@@ -34,16 +37,66 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
     _timer = null;
   }
 
-  // 녹음 토글
-  void _toggleRecording() {
+  // 녹음 토글 - 실제 마이크 녹음 시작/중지 처리
+  Future<void> _toggleRecording() async {
     final status = ref.read(recordingProvider).status;
 
     if (status == RecordingStatus.idle || status == RecordingStatus.stopped) {
-      ref.read(recordingProvider.notifier).startRecording();
-      _startTimer();
+      // 실제 녹음 시작 (마이크 권한 요청 포함)
+      await ref.read(recordingProvider.notifier).startRecording();
+
+      // 권한이 거부되어 상태가 idle인 경우 타이머 시작 안함
+      if (ref.read(recordingProvider).status == RecordingStatus.recording) {
+        _startTimer();
+      }
     } else if (status == RecordingStatus.recording) {
-      ref.read(recordingProvider.notifier).stopRecording();
       _stopTimer();
+
+      // 실제 녹음 중지 및 파일 저장
+      await ref.read(recordingProvider.notifier).stopRecording();
+
+      // 녹음 완료 후 Meeting 생성 및 목록에 추가
+      await _createMeetingAndNavigate();
+    }
+  }
+
+  // Meeting 객체 생성 후 목록에 추가, 처리 화면으로 이동
+  Future<void> _createMeetingAndNavigate() async {
+    final recordingState = ref.read(recordingProvider);
+    final elapsedSeconds = recordingState.elapsedSeconds;
+    final filePath = recordingState.filePath;
+
+    // 오디오 파일이 없으면 처리 불가
+    if (filePath == null) return;
+
+    // 고유 ID 생성 (타임스탬프 기반)
+    final meetingId = 'meeting_${DateTime.now().millisecondsSinceEpoch}';
+
+    // 녹음 일시 기반 제목 생성 (예: "미팅 2025-01-15 14:30")
+    final now = DateTime.now();
+    final title =
+        '미팅 ${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')} '
+        '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+
+    // processing 상태로 Meeting 생성 (파이프라인이 완료되면 completed로 변경됨)
+    final newMeeting = Meeting(
+      id: meetingId,
+      title: title,
+      createdAt: now,
+      status: MeetingStatus.processing,
+      duration: Duration(seconds: elapsedSeconds),
+      audioFilePath: filePath,
+    );
+
+    // meetingListProvider에 추가
+    ref.read(meetingListProvider.notifier).addMeeting(newMeeting);
+
+    // recordingProvider 초기화
+    ref.read(recordingProvider.notifier).reset();
+
+    // 처리 화면으로 이동 (파이프라인 진행 상태 표시)
+    if (mounted) {
+      context.go('/processing/$meetingId');
     }
   }
 

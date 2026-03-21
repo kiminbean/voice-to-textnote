@@ -21,7 +21,7 @@ class ConnectivityService {
 
   ConnectivityService({
     required Dio dio,
-    String healthPath = '/api/v1/health',
+    String healthPath = '/health',
   })  : _dio = dio,
         _healthPath = healthPath;
 

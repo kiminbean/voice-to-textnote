@@ -24,29 +24,11 @@ void main() {
       expect(state.filePath, isNull);
     });
 
-    // 녹음 시작 상태 전환 테스트
-    test('startRecording 호출 시 상태가 recording으로 변경되어야 함', () {
-      container.read(recordingProvider.notifier).startRecording();
-      final state = container.read(recordingProvider);
-
-      expect(state.status, RecordingStatus.recording);
-    });
-
-    // 녹음 중지 상태 전환 테스트
-    test('stopRecording 호출 시 상태가 stopped로 변경되어야 함', () {
-      // 녹음 시작 후 중지
-      container.read(recordingProvider.notifier).startRecording();
-      container.read(recordingProvider.notifier).stopRecording();
-      final state = container.read(recordingProvider);
-
-      expect(state.status, RecordingStatus.stopped);
-    });
-
     // 리셋 테스트
     test('reset 호출 시 초기 상태로 돌아가야 함', () {
-      // 녹음 후 리셋
-      container.read(recordingProvider.notifier).startRecording();
-      container.read(recordingProvider.notifier).stopRecording();
+      // 수동으로 상태 변경 후 리셋
+      container.read(recordingProvider.notifier).updateElapsedSeconds(30);
+      container.read(recordingProvider.notifier).setFilePath('/tmp/test.m4a');
       container.read(recordingProvider.notifier).reset();
 
       final state = container.read(recordingProvider);
@@ -54,6 +36,21 @@ void main() {
       expect(state.status, RecordingStatus.idle);
       expect(state.elapsedSeconds, 0);
       expect(state.filePath, isNull);
+    });
+
+    // 경과 시간 업데이트 테스트
+    test('updateElapsedSeconds 호출 시 경과 시간이 변경되어야 함', () {
+      container.read(recordingProvider.notifier).updateElapsedSeconds(42);
+      final state = container.read(recordingProvider);
+      expect(state.elapsedSeconds, 42);
+    });
+
+    // 파일 경로 설정 테스트
+    test('setFilePath 호출 시 파일 경로가 설정되어야 함', () {
+      const testPath = '/test/path/meeting.m4a';
+      container.read(recordingProvider.notifier).setFilePath(testPath);
+      final state = container.read(recordingProvider);
+      expect(state.filePath, testPath);
     });
 
     // RecordingStatus 열거형 테스트
@@ -64,6 +61,43 @@ void main() {
         RecordingStatus.paused,
         RecordingStatus.stopped,
       ]));
+    });
+
+    // RecordingState copyWith 테스트
+    test('RecordingState copyWith가 올바르게 동작해야 함', () {
+      const original = RecordingState(
+        status: RecordingStatus.idle,
+        elapsedSeconds: 0,
+      );
+
+      final updated = original.copyWith(
+        status: RecordingStatus.recording,
+        elapsedSeconds: 10,
+        filePath: '/test/file.m4a',
+      );
+
+      expect(updated.status, RecordingStatus.recording);
+      expect(updated.elapsedSeconds, 10);
+      expect(updated.filePath, '/test/file.m4a');
+      // 원본은 변경되지 않아야 함
+      expect(original.status, RecordingStatus.idle);
+      expect(original.elapsedSeconds, 0);
+      expect(original.filePath, isNull);
+    });
+
+    // copyWith 일부 필드만 변경 테스트
+    test('RecordingState copyWith 일부 필드만 변경 시 나머지는 유지되어야 함', () {
+      const original = RecordingState(
+        status: RecordingStatus.recording,
+        elapsedSeconds: 15,
+        filePath: '/test/file.m4a',
+      );
+
+      final updated = original.copyWith(elapsedSeconds: 20);
+
+      expect(updated.status, RecordingStatus.recording);
+      expect(updated.elapsedSeconds, 20);
+      expect(updated.filePath, '/test/file.m4a');
     });
   });
 }

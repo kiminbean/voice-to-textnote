@@ -1,0 +1,22 @@
+PODS:
+  - Flutter (1.0.0)
+  - record_ios (1.0.0):
+    - Flutter
+
+DEPENDENCIES:
+  - Flutter (from `Flutter`)
+  - record_ios (from `.symlinks/plugins/record_ios/ios`)
+
+EXTERNAL SOURCES:
+  Flutter:
+    :path: Flutter
+  record_ios:
+    :path: ".symlinks/plugins/record_ios/ios"
+
+SPEC CHECKSUMS:
+  Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
+  record_ios: 1bbc430ab8406174d70332f23e06a3dc751239b4
+
+PODFILE CHECKSUM: 4f1c12611da7338d21589c0b2ecd6bd20b109694
+
+COCOAPODS: 1.16.2

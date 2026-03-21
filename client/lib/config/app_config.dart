@@ -1,7 +1,7 @@
 // 앱 전역 설정 상수
 class AppConfig {
   // API 기본 URL (백엔드 서버)
-  static const String apiBaseUrl = 'http://localhost:8000/api/v1';
+  static const String apiBaseUrl = 'http://10.20.50.122:8000/api/v1';
 
   // API 요청 타임아웃 시간
   static const Duration apiTimeout = Duration(seconds: 30);

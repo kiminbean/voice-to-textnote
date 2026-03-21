@@ -24,25 +24,38 @@ class PipelineState {
   // 현재 처리 중인 태스크 ID
   final String? currentTaskId;
 
+  // ResultScreen에서 결과 조회에 사용할 task ID들
+  final String? minutesTaskId;
+  final String? summaryTaskId;
+
   const PipelineState({
     required this.currentStep,
     required this.progress,
     this.errorMessage,
     this.currentTaskId,
+    this.minutesTaskId,
+    this.summaryTaskId,
   });
 
   // 특정 필드만 변경한 복사본 반환
+  // nullable 필드를 null로 명시적 초기화하려면 clear* 플래그를 true로 설정
   PipelineState copyWith({
     PipelineStep? currentStep,
     double? progress,
     String? errorMessage,
+    bool clearErrorMessage = false,
     String? currentTaskId,
+    bool clearCurrentTaskId = false,
+    String? minutesTaskId,
+    String? summaryTaskId,
   }) {
     return PipelineState(
       currentStep: currentStep ?? this.currentStep,
       progress: progress ?? this.progress,
-      errorMessage: errorMessage ?? this.errorMessage,
-      currentTaskId: currentTaskId ?? this.currentTaskId,
+      errorMessage: clearErrorMessage ? null : (errorMessage ?? this.errorMessage),
+      currentTaskId: clearCurrentTaskId ? null : (currentTaskId ?? this.currentTaskId),
+      minutesTaskId: minutesTaskId ?? this.minutesTaskId,
+      summaryTaskId: summaryTaskId ?? this.summaryTaskId,
     );
   }
 

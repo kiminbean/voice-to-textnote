@@ -13,6 +13,8 @@ class Meeting {
   final DateTime createdAt;
   final MeetingStatus status;
   final Duration? duration;
+  // 녹음된 오디오 파일 경로 (파이프라인 시작에 필요)
+  final String? audioFilePath;
   final String? transcriptionTaskId;
   final String? diarizationTaskId;
   final String? minutesTaskId;
@@ -24,6 +26,7 @@ class Meeting {
     required this.createdAt,
     required this.status,
     this.duration,
+    this.audioFilePath,
     this.transcriptionTaskId,
     this.diarizationTaskId,
     this.minutesTaskId,
@@ -37,6 +40,7 @@ class Meeting {
     DateTime? createdAt,
     MeetingStatus? status,
     Duration? duration,
+    String? audioFilePath,
     String? transcriptionTaskId,
     String? diarizationTaskId,
     String? minutesTaskId,
@@ -48,6 +52,7 @@ class Meeting {
       createdAt: createdAt ?? this.createdAt,
       status: status ?? this.status,
       duration: duration ?? this.duration,
+      audioFilePath: audioFilePath ?? this.audioFilePath,
       transcriptionTaskId: transcriptionTaskId ?? this.transcriptionTaskId,
       diarizationTaskId: diarizationTaskId ?? this.diarizationTaskId,
       minutesTaskId: minutesTaskId ?? this.minutesTaskId,
@@ -65,6 +70,7 @@ class Meeting {
       duration: json['duration'] != null
           ? Duration(milliseconds: json['duration'] as int)
           : null,
+      audioFilePath: json['audioFilePath'] as String?,
       transcriptionTaskId: json['transcriptionTaskId'] as String?,
       diarizationTaskId: json['diarizationTaskId'] as String?,
       minutesTaskId: json['minutesTaskId'] as String?,
@@ -80,6 +86,7 @@ class Meeting {
       'createdAt': createdAt.toIso8601String(),
       'status': status.name,
       'duration': duration?.inMilliseconds,
+      'audioFilePath': audioFilePath,
       'transcriptionTaskId': transcriptionTaskId,
       'diarizationTaskId': diarizationTaskId,
       'minutesTaskId': minutesTaskId,

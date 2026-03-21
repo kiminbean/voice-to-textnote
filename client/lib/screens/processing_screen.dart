@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:voice_to_textnote/models/pipeline_state.dart';
+import 'package:voice_to_textnote/providers/meeting_list_provider.dart';
 import 'package:voice_to_textnote/providers/pipeline_provider.dart';
+import 'package:voice_to_textnote/models/meeting.dart';
 import 'package:voice_to_textnote/services/sse_service.dart';
 import 'package:voice_to_textnote/config/app_config.dart';
 import 'package:voice_to_textnote/widgets/pipeline_progress.dart';
@@ -49,8 +51,50 @@ class _ProcessingScreenState extends ConsumerState<ProcessingScreen>
     // SSE 서비스 초기화
     _sseService = SseService(baseUrl: AppConfig.apiBaseUrl);
 
-    // 실시간 이벤트 구독 시작
-    _connectSse();
+    // 파이프라인 시작 (Meeting의 audioFilePath 사용)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _startPipelineForMeeting();
+    });
+  }
+
+  // Meeting의 audioFilePath를 가져와 파이프라인 시작
+  void _startPipelineForMeeting() {
+    final meetings = ref.read(meetingListProvider);
+    final meeting = meetings.where((m) => m.id == widget.meetingId).firstOrNull;
+
+    if (meeting == null || meeting.audioFilePath == null) {
+      // 미팅이 없거나 파일 경로가 없으면 홈으로 이동
+      if (mounted) context.go('/');
+      return;
+    }
+
+    // 이전 completed 상태가 즉시 결과 화면으로 이동하는 버그 방지
+    // 새 녹음 시작 전 반드시 상태를 초기화
+    ref.read(pipelineProvider.notifier).reset();
+
+    // 파이프라인 시작 (업로드 → STT → DIA → MIN → SUM)
+    // 완료/실패 처리는 build()의 ref.listen()에서 단일 처리
+    ref.read(pipelineProvider.notifier).startPipeline(meeting.audioFilePath!);
+  }
+
+  // 파이프라인 완료 시 Meeting 업데이트 및 결과 화면 이동
+  void _onPipelineCompleted(PipelineState pipelineState) {
+    // Meeting에 task ID들 저장 후 completed 상태로 변경
+    ref.read(meetingListProvider.notifier).updateMeeting(
+          widget.meetingId,
+          ref
+              .read(meetingListProvider)
+              .firstWhere((m) => m.id == widget.meetingId)
+              .copyWith(
+                status: MeetingStatus.completed,
+                minutesTaskId: pipelineState.minutesTaskId,
+                summaryTaskId: pipelineState.summaryTaskId,
+              ),
+        );
+
+    if (mounted) {
+      context.go('/result/${widget.meetingId}');
+    }
   }
 
   // SSE 연결 시도 - 실패 시 폴링 폴백
@@ -112,13 +156,23 @@ class _ProcessingScreenState extends ConsumerState<ProcessingScreen>
   Widget build(BuildContext context) {
     final pipelineState = ref.watch(pipelineProvider);
 
-    // 완료 상태 시 자동 이동
+    // 완료/실패 상태 시 자동 처리
     ref.listen<PipelineState>(pipelineProvider, (previous, next) {
       if (next.currentStep == PipelineStep.completed && mounted) {
-        context.go('/result/${widget.meetingId}');
+        _onPipelineCompleted(next);
       } else if (next.currentStep == PipelineStep.failed &&
           next.errorMessage != null &&
           mounted) {
+        // Meeting 상태를 failed로 업데이트
+        final meetings = ref.read(meetingListProvider);
+        final meeting =
+            meetings.where((m) => m.id == widget.meetingId).firstOrNull;
+        if (meeting != null) {
+          ref.read(meetingListProvider.notifier).updateMeeting(
+                widget.meetingId,
+                meeting.copyWith(status: MeetingStatus.failed),
+              );
+        }
         _showErrorDialog(next.errorMessage!);
       }
     });

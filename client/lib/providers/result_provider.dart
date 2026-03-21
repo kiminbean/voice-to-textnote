@@ -21,9 +21,27 @@ class MeetingResult {
   });
 }
 
+// 회의록 결과 로딩 프로바이더 (minutesTaskId 기반)
+// @MX:ANCHOR: ResultScreen _TranscriptTab에서 minutesTaskId로 회의록 로드
+// @MX:REASON: 파이프라인의 minTaskId를 통해 회의록 결과 조회
+final minutesResultProvider =
+    FutureProvider.family<String, String>((ref, minutesTaskId) async {
+  final minApi = ref.watch(minutesApiProvider);
+  final data = await minApi.getResult(minutesTaskId);
+  return data['minutes'] as String? ?? '';
+});
+
+// 요약 결과 로딩 프로바이더 (summaryTaskId 기반)
+// @MX:ANCHOR: ResultScreen _SummaryTab, _ActionItemsTab에서 summaryTaskId로 요약 로드
+// @MX:REASON: 파이프라인의 sumTaskId를 통해 요약 결과 조회
+final summaryResultProvider =
+    FutureProvider.family<Map<String, dynamic>, String>((ref, summaryTaskId) async {
+  final sumApi = ref.watch(summaryApiProvider);
+  return sumApi.getResult(summaryTaskId);
+});
+
+// 기존 통합 프로바이더 (하위 호환성 유지 - 두 ID가 동일한 경우)
 // task_id 기반 결과 로딩 프로바이더 (family로 파라미터화)
-// @MX:ANCHOR: ResultScreen에서 meetingId로 결과 데이터 로드
-// @MX:REASON: ProcessingScreen → ResultScreen 라우팅 시 동일 taskId 사용
 final resultProvider =
     FutureProvider.family<MeetingResult, String>((ref, taskId) async {
   final minApi = ref.watch(minutesApiProvider);
