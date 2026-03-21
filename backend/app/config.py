@@ -4,7 +4,7 @@
 
 from pathlib import Path
 
-from pydantic import field_validator
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -29,8 +29,10 @@ class Settings(BaseSettings):
     whisper_language: str = "ko"
 
     # 처리 제한
-    max_concurrent_jobs: int = 3
-    max_file_size_mb: int = 500
+    # REQ-ERR-007: 범위 유효성 검사 (1-10)
+    max_concurrent_jobs: int = Field(default=3, ge=1, le=10)
+    # REQ-ERR-007: 범위 유효성 검사 (1-2000 MB)
+    max_file_size_mb: int = Field(default=500, ge=1, le=2000)
     max_duration_hours: int = 4
     chunk_duration_minutes: int = 30
     chunk_overlap_seconds: int = 5
@@ -76,7 +78,8 @@ class Settings(BaseSettings):
     api_keys: list[str] = []
 
     # REQ-SEC-007: IP 기반 Rate Limiting (분당 요청 횟수)
-    rate_limit_per_minute: int = 60
+    # REQ-ERR-007: 범위 유효성 검사 (1-1000)
+    rate_limit_per_minute: int = Field(default=60, ge=1, le=1000)
 
     # REQ-SEC-009/REQ-SEC-010: CORS 설정
     # 허용할 HTTP 메서드 목록 (와일드카드 금지)
