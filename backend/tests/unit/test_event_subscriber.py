@@ -17,6 +17,8 @@ def make_redis_mock_with_pubsub(pubsub_mock: AsyncMock) -> MagicMock:
     """
     redis_mock = MagicMock()
     redis_mock.pubsub.return_value = pubsub_mock
+    # Redis 직접 조회용 mock (상태 조회 폴백)
+    redis_mock.get = AsyncMock(return_value=None)
     return redis_mock
 
 
@@ -25,7 +27,7 @@ class TestSubscribeTaskEvents:
 
     @pytest.mark.asyncio
     async def test_subscribe_yields_messages(self):
-        """Redis 메시지를 이벤트 딕셔너리로 변환하여 yield 하는지 확인"""
+        """Redis Pub/Sub 메시지를 이벤트 딕셔너리로 변환하여 yield 하는지 확인"""
         from backend.events.subscriber import subscribe_task_events
 
         # Arrange - pubsub mock 설정
@@ -34,36 +36,44 @@ class TestSubscribeTaskEvents:
         pubsub_mock.unsubscribe = AsyncMock()
         pubsub_mock.close = AsyncMock()
 
-        # 테스트 메시지
-        test_message = {
-            "type": "message",
-            "data": json.dumps({"event": "status_update", "data": {"status": "processing"}}),
-        }
+        # get_message가 순차적으로 메시지 반환 후 None(타임아웃) 반환
+        test_event = {"event": "status_update", "data": {"status": "processing"}}
+        completed_event = {"event": "completed", "data": {"status": "completed"}}
 
-        # listen()이 async generator 반환하도록 설정
-        async def mock_listen():
-            yield {"type": "subscribe", "data": 1}  # 구독 확인 메시지
-            yield test_message  # 실제 메시지
+        call_count = 0
 
-        pubsub_mock.listen = mock_listen
+        async def mock_get_message(ignore_subscribe_messages=True, timeout=None):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return {
+                    "type": "message",
+                    "data": json.dumps(test_event),
+                }
+            if call_count == 2:
+                return {
+                    "type": "message",
+                    "data": json.dumps(completed_event),
+                }
+            return None
 
-        # pubsub()은 동기 메서드이므로 MagicMock 사용
+        pubsub_mock.get_message = mock_get_message
         redis_mock = make_redis_mock_with_pubsub(pubsub_mock)
 
         # Act - 메시지 수집
         received = []
         async for msg in subscribe_task_events(redis_mock, "test-task"):
             received.append(msg)
-            break  # 첫 번째 메시지만 받고 종료
 
         # Assert
-        assert len(received) == 1
+        assert len(received) == 2
         assert received[0]["event"] == "status_update"
         assert received[0]["data"]["status"] == "processing"
+        assert received[1]["event"] == "completed"
 
     @pytest.mark.asyncio
-    async def test_subscribe_skips_non_message_types(self):
-        """type != 'message'인 메시지는 yield 하지 않는지 확인"""
+    async def test_subscribe_terminates_on_completed(self):
+        """completed 이벤트 수신 시 제너레이터가 종료되는지 확인"""
         from backend.events.subscriber import subscribe_task_events
 
         # Arrange
@@ -72,26 +82,88 @@ class TestSubscribeTaskEvents:
         pubsub_mock.unsubscribe = AsyncMock()
         pubsub_mock.close = AsyncMock()
 
-        real_message = {
-            "type": "message",
-            "data": json.dumps({"event": "completed", "data": {"status": "completed"}}),
-        }
+        completed_event = {"event": "completed", "data": {"status": "completed"}}
+        extra_event = {"event": "status_update", "data": {"status": "processing"}}
 
-        async def mock_listen():
-            yield {"type": "subscribe", "data": 1}  # 건너뛰어야 함
-            yield {"type": "psubscribe", "data": 1}  # 건너뛰어야 함
-            yield real_message  # 이것만 yield 되어야 함
+        call_count = 0
 
-        pubsub_mock.listen = mock_listen
+        async def mock_get_message(ignore_subscribe_messages=True, timeout=None):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return {"type": "message", "data": json.dumps(completed_event)}
+            # 이 메시지는 도달하면 안 됨
+            return {"type": "message", "data": json.dumps(extra_event)}
+
+        pubsub_mock.get_message = mock_get_message
         redis_mock = make_redis_mock_with_pubsub(pubsub_mock)
 
         # Act
         received = []
         async for msg in subscribe_task_events(redis_mock, "test-task"):
             received.append(msg)
-            break
 
-        # Assert - subscribe 메시지는 건너뛰고 실제 메시지만 수신
+        # Assert - completed 이벤트만 받고 종료
+        assert len(received) == 1
+        assert received[0]["event"] == "completed"
+
+    @pytest.mark.asyncio
+    async def test_subscribe_terminates_on_failed(self):
+        """failed 이벤트 수신 시 제너레이터가 종료되는지 확인"""
+        from backend.events.subscriber import subscribe_task_events
+
+        # Arrange
+        pubsub_mock = AsyncMock()
+        pubsub_mock.subscribe = AsyncMock()
+        pubsub_mock.unsubscribe = AsyncMock()
+        pubsub_mock.close = AsyncMock()
+
+        failed_event = {"event": "failed", "data": {"status": "failed", "error": "test"}}
+
+        async def mock_get_message(ignore_subscribe_messages=True, timeout=None):
+            return {"type": "message", "data": json.dumps(failed_event)}
+
+        pubsub_mock.get_message = mock_get_message
+        redis_mock = make_redis_mock_with_pubsub(pubsub_mock)
+
+        # Act
+        received = []
+        async for msg in subscribe_task_events(redis_mock, "test-task"):
+            received.append(msg)
+
+        # Assert - failed 이벤트 후 종료
+        assert len(received) == 1
+        assert received[0]["event"] == "failed"
+
+    @pytest.mark.asyncio
+    async def test_subscribe_falls_back_to_direct_check(self):
+        """Pub/Sub 타임아웃 시 Redis 직접 조회로 폴백하는지 확인"""
+        from backend.events.subscriber import subscribe_task_events
+
+        # Arrange
+        pubsub_mock = AsyncMock()
+        pubsub_mock.subscribe = AsyncMock()
+        pubsub_mock.unsubscribe = AsyncMock()
+        pubsub_mock.close = AsyncMock()
+
+        # get_message가 항상 None 반환 (타임아웃)
+        pubsub_mock.get_message = AsyncMock(return_value=None)
+        redis_mock = make_redis_mock_with_pubsub(pubsub_mock)
+
+        # Redis 직접 조회에서 completed 상태 반환
+        completed_data = json.dumps({
+            "task_id": "test-task",
+            "status": "completed",
+            "progress": 1.0,
+        })
+        redis_mock.get = AsyncMock(return_value=completed_data)
+
+        # Act
+        received = []
+        async for msg in subscribe_task_events(redis_mock, "test-task"):
+            received.append(msg)
+
+        # Assert - 폴백으로 완료 이벤트 수신
         assert len(received) == 1
         assert received[0]["event"] == "completed"
 
@@ -106,12 +178,11 @@ class TestSubscribeTaskEvents:
         pubsub_mock.unsubscribe = AsyncMock()
         pubsub_mock.close = AsyncMock()
 
-        async def mock_listen():
-            # 즉시 종료 (채널 구독 확인만)
-            return
-            yield  # 제너레이터 표시
-
-        pubsub_mock.listen = mock_listen
+        # 즉시 completed 반환하여 종료
+        completed_event = {"event": "completed", "data": {"status": "completed"}}
+        pubsub_mock.get_message = AsyncMock(
+            return_value={"type": "message", "data": json.dumps(completed_event)}
+        )
         redis_mock = make_redis_mock_with_pubsub(pubsub_mock)
 
         # Act
@@ -133,11 +204,10 @@ class TestSubscribeTaskEvents:
         pubsub_mock.unsubscribe = AsyncMock()
         pubsub_mock.close = AsyncMock()
 
-        async def mock_listen():
-            return
-            yield
-
-        pubsub_mock.listen = mock_listen
+        completed_event = {"event": "completed", "data": {"status": "completed"}}
+        pubsub_mock.get_message = AsyncMock(
+            return_value={"type": "message", "data": json.dumps(completed_event)}
+        )
         redis_mock = make_redis_mock_with_pubsub(pubsub_mock)
 
         # Act - 제너레이터 완전히 소비
@@ -145,32 +215,5 @@ class TestSubscribeTaskEvents:
             pass
 
         # Assert - 리소스 정리 확인
-        pubsub_mock.unsubscribe.assert_called_once()
-        pubsub_mock.close.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_subscribe_cleanup_on_exception(self):
-        """예외 발생 시에도 cleanup이 호출되는지 확인"""
-        from backend.events.subscriber import subscribe_task_events
-
-        # Arrange
-        pubsub_mock = AsyncMock()
-        pubsub_mock.subscribe = AsyncMock()
-        pubsub_mock.unsubscribe = AsyncMock()
-        pubsub_mock.close = AsyncMock()
-
-        async def mock_listen():
-            raise RuntimeError("연결 끊김")
-            yield
-
-        pubsub_mock.listen = mock_listen
-        redis_mock = make_redis_mock_with_pubsub(pubsub_mock)
-
-        # Act - 예외 발생해도 cleanup 실행
-        with pytest.raises(RuntimeError):
-            async for _ in subscribe_task_events(redis_mock, "error-task"):
-                pass
-
-        # Assert
         pubsub_mock.unsubscribe.assert_called_once()
         pubsub_mock.close.assert_called_once()

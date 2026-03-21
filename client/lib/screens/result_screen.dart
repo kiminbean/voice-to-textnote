@@ -1,6 +1,7 @@
 // 결과 화면 - 실제 API 데이터 바인딩 + 에러/빈 상태
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:voice_to_textnote/providers/meeting_list_provider.dart';
 import 'package:voice_to_textnote/providers/result_provider.dart';
 import 'package:voice_to_textnote/widgets/error_retry_widget.dart';
@@ -25,6 +26,12 @@ class ResultScreen extends ConsumerWidget {
       length: 3,
       child: Scaffold(
         appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => Navigator.of(context).canPop()
+                ? Navigator.of(context).pop()
+                : context.go('/'),
+          ),
           title: const Text('회의 결과'),
           bottom: const TabBar(
             tabs: [
@@ -142,7 +149,7 @@ class _SummaryTab extends ConsumerWidget {
         onRetry: () => ref.invalidate(summaryResultProvider(taskId!)),
       ),
       data: (data) {
-        final summary = data['summary'] as String? ?? '';
+        final summary = (data['summary_text'] ?? data['summary']) as String? ?? '';
         if (summary.isEmpty) {
           return const EmptyStateWidget(
             icon: Icons.summarize_outlined,

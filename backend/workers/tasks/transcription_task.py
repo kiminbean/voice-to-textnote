@@ -22,6 +22,7 @@ from backend.pipeline.audio_processor import (
 )
 from backend.pipeline.chunk_manager import merge_segments, split_audio
 from backend.schemas.transcription import SegmentResult, TaskStatus
+from backend.events.publisher import publish_task_event_sync
 from backend.utils.logger import get_logger
 from backend.workers.celery_app import celery_app
 
@@ -45,21 +46,37 @@ def _update_task_status(
     message: str | None = None,
     error_message: str | None = None,
 ) -> None:
-    """Redis에 작업 상태 업데이트"""
+    """Redis에 작업 상태 업데이트 + Pub/Sub 이벤트 발행"""
     r = _get_redis()
+    status_key = f"task:status:{task_id}"
+
+    # 기존 created_at 보존
+    existing_created_at = None
+    existing_raw = r.get(status_key)
+    if existing_raw:
+        existing_data = json.loads(existing_raw)
+        existing_created_at = existing_data.get("created_at")
+
     data = {
         "task_id": task_id,
         "status": status.value,
         "progress": progress,
         "updated_at": datetime.now(UTC).isoformat(),
     }
+    if existing_created_at:
+        data["created_at"] = existing_created_at
     if message:
         data["message"] = message
     if error_message:
         data["error_message"] = error_message
 
-    status_key = f"task:status:{task_id}"
     r.setex(status_key, settings.cache_ttl_seconds, json.dumps(data))
+
+    # SSE 스트림 구독자에게 이벤트 발행
+    event_type = "completed" if status == TaskStatus.completed else (
+        "failed" if status == TaskStatus.failed else "status_update"
+    )
+    publish_task_event_sync(r, task_id, event_type, data)
 
 
 def _cache_result(task_id: str, result: dict) -> None:
@@ -103,7 +120,7 @@ def transcription_task(
     task_id: str,
     audio_file_path: str,
     language: str = "ko",
-    model_name: str = "mlx-community/whisper-large-v3-turbo",
+    model_name: str = "mlx-community/whisper-small-mlx",
     original_filename: str = "",
     file_size_bytes: int = 0,
 ) -> dict:
@@ -137,6 +154,11 @@ def transcription_task(
 
         # 16kHz 모노 WAV 변환 + 정규화 (REQ-STT-015, REQ-STT-016)
         processed_path = convert_and_normalize(audio_path)
+
+        # 화자 분리(diarization)가 사용할 수 있도록 WAV를 temp_dir에 복사 보존
+        wav_for_dia = settings.temp_dir / f"{task_id}.wav"
+        shutil.copy2(str(processed_path), str(wav_for_dia))
+
         temp_files.append(processed_path)
 
         duration_seconds = get_audio_duration_seconds(processed_path)
@@ -165,6 +187,7 @@ def transcription_task(
             # 30분 이하 → 단일 파일 처리
             _update_task_status(task_id, TaskStatus.processing, 0.30, "STT 처리 중...")
             raw_result = engine.transcribe(str(processed_path), language=language)
+            logger.info("STT 원시 결과 키", keys=list(raw_result.keys()), text_preview=raw_result.get("text", "")[:200])
             all_segments = _extract_segments(raw_result.get("segments", []))
             _update_task_status(task_id, TaskStatus.processing, 0.90, "결과 정리 중...")
 
@@ -298,6 +321,10 @@ def _process_chunks(
 def _extract_segments(raw_segments: list[dict]) -> list[SegmentResult]:
     """단일 파일 처리 결과에서 SegmentResult 목록 추출"""
     import math
+
+    logger.info("원시 세그먼트 수", raw_count=len(raw_segments))
+    for i, seg in enumerate(raw_segments):
+        logger.info("원시 세그먼트", index=i, text=repr(seg.get("text", "")), keys=list(seg.keys()))
 
     results = []
     for i, seg in enumerate(raw_segments):

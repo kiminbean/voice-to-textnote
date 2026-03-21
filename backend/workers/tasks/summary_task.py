@@ -5,7 +5,7 @@ REQ-SUM-007: Redis에서 회의록 결과 조회 (task:min:result:{minutes_task_
 REQ-SUM-008: 최대 2개 동시 작업 제한
 REQ-SUM-009: 최대 2회 재시도, default_retry_delay=30s
 REQ-SUM-010: 회의록 결과 없음 → 즉시 실패 (재시도 없음)
-REQ-SUM-011: ANTHROPIC_API_KEY 빈 값 → 즉시 실패 (재시도 없음)
+REQ-SUM-011: OPENAI_API_KEY 빈 값 → 즉시 실패 (재시도 없음)
 REQ-SUM-014: Redis 결과 캐싱 24h TTL (task:sum:result:{task_id})
 """
 
@@ -17,6 +17,7 @@ import redis
 from backend.app.config import settings
 from backend.pipeline.summary_generator import SummaryGenerator
 from backend.schemas.transcription import TaskStatus
+from backend.events.publisher import publish_task_event_sync
 from backend.utils.logger import get_logger
 from backend.workers.celery_app import celery_app
 
@@ -41,21 +42,37 @@ def _update_task_status(
     message: str | None = None,
     error_message: str | None = None,
 ) -> None:
-    """Redis에 요약 작업 상태 업데이트"""
+    """Redis에 요약 작업 상태 업데이트 + Pub/Sub 이벤트 발행"""
     r = _get_redis()
+    status_key = f"task:sum:status:{task_id}"
+
+    # 기존 created_at 보존
+    existing_created_at = None
+    existing_raw = r.get(status_key)
+    if existing_raw:
+        existing_data = json.loads(existing_raw)
+        existing_created_at = existing_data.get("created_at")
+
     data: dict = {
         "task_id": task_id,
         "status": status.value,
         "progress": progress,
         "updated_at": datetime.now(UTC).isoformat(),
     }
+    if existing_created_at:
+        data["created_at"] = existing_created_at
     if message:
         data["message"] = message
     if error_message:
         data["error_message"] = error_message
 
-    status_key = f"task:sum:status:{task_id}"
     r.setex(status_key, settings.summary_result_ttl, json.dumps(data))
+
+    # SSE 스트림 구독자에게 이벤트 발행
+    event_type = "completed" if status == TaskStatus.completed else (
+        "failed" if status == TaskStatus.failed else "status_update"
+    )
+    publish_task_event_sync(r, task_id, event_type, data)
 
 
 def _cache_result(task_id: str, result: dict) -> None:
@@ -103,8 +120,8 @@ def summary_task(
     logger.info("요약 생성 작업 시작", task_id=task_id, minutes_task_id=minutes_task_id)
 
     # --- API 키 확인 (REQ-SUM-011: 빈 값이면 즉시 실패, 재시도 없음) ---
-    if not settings.anthropic_api_key:
-        error_msg = "ANTHROPIC_API_KEY is not configured"
+    if not settings.openai_api_key:
+        error_msg = "OPENAI_API_KEY is not configured"
         logger.error("API 키 미설정으로 요약 작업 실패", task_id=task_id)
         _update_task_status(task_id, TaskStatus.failed, 0.0, error_message=error_msg)
         failed_result = {
@@ -164,7 +181,7 @@ def summary_task(
         summary_result = generator.generate_summary(
             segments=segments,
             speaker_stats=speaker_stats,
-            api_key=settings.anthropic_api_key,
+            api_key=settings.openai_api_key,
             model=settings.summary_model,
             max_tokens=max_tokens,
         )

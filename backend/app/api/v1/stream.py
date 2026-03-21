@@ -81,7 +81,13 @@ async def stream_task_status(
     REQ-SSE-007: 15초마다 heartbeat ping 전송
     """
     # 태스크 존재 여부 확인 (Redis에 태스크 데이터가 있는지)
-    task_exists = await redis_client.exists(f"task:{task_id}")
+    # 각 태스크 타입별 status key 패턴을 모두 확인
+    task_exists = False
+    for prefix in ("task:status:", "task:dia:status:", "task:min:status:", "task:sum:status:"):
+        if await redis_client.exists(f"{prefix}{task_id}"):
+            task_exists = True
+            break
+
     if not task_exists:
         raise HTTPException(status_code=404, detail=f"태스크를 찾을 수 없습니다: {task_id}")
 

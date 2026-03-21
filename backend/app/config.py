@@ -10,7 +10,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=Path(__file__).resolve().parent.parent.parent / ".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
     )
@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     results_dir: Path = Path("./storage/results")
 
     # STT 모델
-    whisper_model: str = "mlx-community/whisper-large-v3-turbo"
+    whisper_model: str = "mlx-community/whisper-small-mlx"
     whisper_language: str = "ko"
 
     # 처리 제한
@@ -56,11 +56,12 @@ class Settings(BaseSettings):
     minutes_result_ttl: int = 86400  # 결과 캐시 TTL: 24시간 (초)
 
     # AI 요약 생성 설정 (REQ-SUM-008, REQ-SUM-011, REQ-SUM-014)
-    anthropic_api_key: str = ""  # ANTHROPIC_API_KEY 환경 변수
+    anthropic_api_key: str = ""  # ANTHROPIC_API_KEY 환경 변수 (미사용 - 호환성 유지)
+    openai_api_key: str = ""  # OPENAI_API_KEY 환경 변수
     max_concurrent_summaries: int = 2  # 최대 동시 요약 작업 수
     summary_result_ttl: int = 86400  # 요약 결과 캐시 TTL: 24시간 (초)
-    summary_max_tokens: int = 2000  # Claude API 최대 응답 토큰
-    summary_model: str = "claude-sonnet-4-20250514"  # Claude 모델명
+    summary_max_tokens: int = 2000  # OpenAI API 최대 응답 토큰
+    summary_model: str = "gpt-4o-mini"  # OpenAI 모델명
 
     # -------------------------------------------------------------------------
     # SPEC-DB-001: 데이터베이스 설정 (REQ-DB-001, REQ-DB-002, REQ-DB-003)
@@ -117,6 +118,10 @@ class Settings(BaseSettings):
     @classmethod
     def create_dirs(cls, v: str | Path) -> Path:
         path = Path(v)
+        # 상대 경로는 프로젝트 루트 기준 절대 경로로 변환 (CWD 의존성 제거)
+        if not path.is_absolute():
+            project_root = Path(__file__).resolve().parent.parent.parent
+            path = project_root / path
         path.mkdir(parents=True, exist_ok=True)
         return path
 

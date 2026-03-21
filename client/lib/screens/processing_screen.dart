@@ -72,9 +72,24 @@ class _ProcessingScreenState extends ConsumerState<ProcessingScreen>
     // 새 녹음 시작 전 반드시 상태를 초기화
     ref.read(pipelineProvider.notifier).reset();
 
+    // SSE 연결 감시 시작 (currentTaskId 변경 시 자동 연결)
+    _watchTaskIdAndConnectSse();
+
     // 파이프라인 시작 (업로드 → STT → DIA → MIN → SUM)
     // 완료/실패 처리는 build()의 ref.listen()에서 단일 처리
     ref.read(pipelineProvider.notifier).startPipeline(meeting.audioFilePath!);
+  }
+
+  // currentTaskId 변경 감지 시 SSE 재연결
+  void _watchTaskIdAndConnectSse() {
+    ref.listen<PipelineState>(pipelineProvider, (previous, next) {
+      final prevTaskId = previous?.currentTaskId;
+      final nextTaskId = next.currentTaskId;
+      if (nextTaskId != null && nextTaskId != prevTaskId) {
+        _sseSubscription?.cancel();
+        _connectSse();
+      }
+    });
   }
 
   // 파이프라인 완료 시 Meeting 업데이트 및 결과 화면 이동

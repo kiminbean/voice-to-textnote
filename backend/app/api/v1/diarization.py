@@ -118,6 +118,10 @@ async def get_diarization_status(
 
     data = json.loads(raw)
 
+    now = datetime.now(UTC)
+    created_at_str = data.get("created_at")
+    updated_at_str = data.get("updated_at")
+
     return DiarizationStatusResponse(
         task_id=task_id,  # type: ignore[arg-type]
         stt_task_id=data.get("stt_task_id", task_id),  # type: ignore[arg-type]
@@ -125,8 +129,8 @@ async def get_diarization_status(
         progress=data.get("progress", 0.0),
         message=data.get("message"),
         error_message=data.get("error_message"),
-        created_at=datetime.fromisoformat(data["created_at"]),
-        updated_at=datetime.fromisoformat(data["updated_at"]),
+        created_at=datetime.fromisoformat(created_at_str) if created_at_str else now,
+        updated_at=datetime.fromisoformat(updated_at_str) if updated_at_str else now,
     )
 
 
@@ -155,7 +159,8 @@ async def get_diarization_result(
 
         status_data = json.loads(status_raw)
         task_status = TaskStatus(status_data["status"])
-        created_at = datetime.fromisoformat(status_data["created_at"])
+        ca_str = status_data.get("created_at")
+        created_at = datetime.fromisoformat(ca_str) if ca_str else datetime.now(UTC)
         stt_task_id = status_data.get("stt_task_id", task_id)
 
         return DiarizationResponse(
@@ -182,7 +187,7 @@ async def get_diarization_result(
         segments=segments,
         speakers=speakers,
         num_speakers=data.get("num_speakers"),
-        created_at=datetime.fromisoformat(data["created_at"]),
+        created_at=datetime.fromisoformat(data["created_at"]) if data.get("created_at") else datetime.now(UTC),
         completed_at=(
             datetime.fromisoformat(data["completed_at"]) if data.get("completed_at") else None
         ),

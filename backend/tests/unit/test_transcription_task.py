@@ -115,6 +115,7 @@ class TestUpdateTaskStatus:
         from backend.workers.tasks.transcription_task import _update_task_status
 
         mock_redis = MagicMock()
+        mock_redis.get.return_value = None  # 기존 상태 없음
         mock_get_redis.return_value = mock_redis
 
         _update_task_status("test-task-id", TaskStatus.processing, 0.5, "처리 중...")
@@ -135,6 +136,7 @@ class TestUpdateTaskStatus:
         from backend.workers.tasks.transcription_task import _update_task_status
 
         mock_redis = MagicMock()
+        mock_redis.get.return_value = None  # 기존 상태 없음
         mock_get_redis.return_value = mock_redis
 
         _update_task_status(
@@ -153,6 +155,7 @@ class TestUpdateTaskStatus:
         from backend.workers.tasks.transcription_task import _update_task_status
 
         mock_redis = MagicMock()
+        mock_redis.get.return_value = None  # 기존 상태 없음
         mock_get_redis.return_value = mock_redis
 
         _update_task_status("test-id", TaskStatus.pending)

@@ -90,7 +90,7 @@ class DiarizationEngine:
 
                 pipeline = Pipeline.from_pretrained(
                     self._model_name,
-                    use_auth_token=hf_token,
+                    token=hf_token,
                 )
 
                 self._pipeline = pipeline
@@ -133,8 +133,15 @@ class DiarizationEngine:
         start_time = time.time()
 
         try:
-            # Pipeline 실행 (CPU only, REQ-DIA-009)
-            diarization = self._pipeline(str(audio_path))
+            # torchaudio로 오디오 로드 (torchcodec 의존성 우회)
+            import torchaudio
+            waveform, sample_rate = torchaudio.load(str(audio_path))
+
+            # Pipeline 실행 (메모리 기반 입력, REQ-DIA-009)
+            result = self._pipeline({"waveform": waveform, "sample_rate": sample_rate})
+
+            # pyannote 4.x: DiarizeOutput → .speaker_diarization으로 Annotation 추출
+            diarization = getattr(result, "speaker_diarization", result)
 
             # itertracks() 결과를 SpeakerSegment 리스트로 변환
             segments: list[SpeakerSegment] = []

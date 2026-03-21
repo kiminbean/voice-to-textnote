@@ -43,7 +43,7 @@ router = APIRouter(prefix="/transcriptions", tags=["transcriptions"])
 async def upload_transcription(
     file: UploadFile = File(..., description="오디오 파일 (WAV, MP3, M4A, OGG)"),
     language: str = Form(default="ko", description="전사 언어 코드"),
-    model: str = Form(default="mlx-community/whisper-large-v3-turbo"),
+    model: str = Form(default="mlx-community/whisper-small-mlx"),
     redis_client: aioredis.Redis = Depends(get_redis_client),
 ) -> TranscriptionCreate:
     """
@@ -200,14 +200,18 @@ async def get_task_status(
 
     data = json.loads(raw)
 
+    now = datetime.now(UTC)
+    created_at_str = data.get("created_at")
+    updated_at_str = data.get("updated_at")
+
     return TaskStatusResponse(
         task_id=task_id,  # type: ignore[arg-type]
         status=TaskStatus(data["status"]),
         progress=data.get("progress", 0.0),
         message=data.get("message"),
         error_message=data.get("error_message"),
-        created_at=datetime.fromisoformat(data["created_at"]),
-        updated_at=datetime.fromisoformat(data["updated_at"]),
+        created_at=datetime.fromisoformat(created_at_str) if created_at_str else now,
+        updated_at=datetime.fromisoformat(updated_at_str) if updated_at_str else now,
     )
 
 

@@ -17,6 +17,7 @@ from backend.app.config import settings
 from backend.ml.diarization_engine import DiarizationEngine
 from backend.pipeline.speaker_matcher import SpeakerMatcher
 from backend.schemas.transcription import TaskStatus
+from backend.events.publisher import publish_task_event_sync
 from backend.utils.logger import get_logger
 from backend.workers.celery_app import celery_app
 
@@ -41,21 +42,37 @@ def _update_task_status(
     message: str | None = None,
     error_message: str | None = None,
 ) -> None:
-    """Redis에 화자 분리 작업 상태 업데이트"""
+    """Redis에 화자 분리 작업 상태 업데이트 + Pub/Sub 이벤트 발행"""
     r = _get_redis()
+    status_key = f"task:dia:status:{task_id}"
+
+    # 기존 created_at 보존
+    existing_created_at = None
+    existing_raw = r.get(status_key)
+    if existing_raw:
+        existing_data = json.loads(existing_raw)
+        existing_created_at = existing_data.get("created_at")
+
     data: dict = {
         "task_id": task_id,
         "status": status.value,
         "progress": progress,
         "updated_at": datetime.now(UTC).isoformat(),
     }
+    if existing_created_at:
+        data["created_at"] = existing_created_at
     if message:
         data["message"] = message
     if error_message:
         data["error_message"] = error_message
 
-    status_key = f"task:dia:status:{task_id}"
     r.setex(status_key, settings.diarization_result_ttl, json.dumps(data))
+
+    # SSE 스트림 구독자에게 이벤트 발행
+    event_type = "completed" if status == TaskStatus.completed else (
+        "failed" if status == TaskStatus.failed else "status_update"
+    )
+    publish_task_event_sync(r, task_id, event_type, data)
 
 
 def _cache_result(task_id: str, result: dict) -> None:

@@ -1,12 +1,17 @@
 """
-mlx-whisper STT 엔진 래퍼 - 싱글톤 패턴
-REQ-STT-005: whisper-large-v3-turbo + language="ko"
-REQ-STT-006: MLX Apple Silicon 가속 (MPS), CPU 폴백
+mlx-whisper / openai-whisper STT 엔진 래퍼 - 싱글톤 패턴
+REQ-STT-005: whisper 모델 + language="ko"
+REQ-STT-006: MLX Apple Silicon 가속 (MPS), CPU/CUDA 폴백
 REQ-STT-007: 지연 로딩 (lazy load) + 재사용
 REQ-STT-021: 서버 시작 시 사전 로드 (warm-up)
 REQ-STT-022: 메모리 사용량 모니터링
+
+플랫폼별 백엔드:
+  - macOS (Apple Silicon): mlx_whisper 사용
+  - Linux/기타: openai-whisper 사용 (CPU/CUDA)
 """
 
+import platform
 import time
 from pathlib import Path
 from threading import Lock
@@ -21,10 +26,31 @@ logger = get_logger(__name__)
 # 메모리 경고 임계값: 24GB * 80% = 19.2GB (bytes)
 MEMORY_WARNING_THRESHOLD_BYTES = 19 * 1024 * 1024 * 1024
 
+# 플랫폼별 기본 모델명
+MLX_DEFAULT_MODEL = "mlx-community/whisper-small-mlx"
+WHISPER_DEFAULT_MODEL = "small"
+
+# mlx-community 모델명 → openai-whisper 모델명 매핑
+_MLX_TO_WHISPER_MODEL_MAP = {
+    "mlx-community/whisper-tiny-mlx": "tiny",
+    "mlx-community/whisper-base-mlx": "base",
+    "mlx-community/whisper-small-mlx": "small",
+    "mlx-community/whisper-medium-mlx": "medium",
+    "mlx-community/whisper-large-v3-turbo": "turbo",
+    "mlx-community/whisper-large-v3-mlx": "large-v3",
+}
+
+
+def _resolve_whisper_model(model_name: str) -> str:
+    """mlx-community 모델명을 openai-whisper 모델명으로 변환"""
+    return _MLX_TO_WHISPER_MODEL_MAP.get(model_name, model_name)
+
 
 class WhisperEngine:
     """
-    mlx-whisper 싱글톤 엔진
+    플랫폼 적응형 Whisper 싱글톤 엔진
+    - macOS: mlx_whisper 사용 (Apple Silicon 가속)
+    - Linux: openai-whisper 사용 (CPU/CUDA)
     - 프로세스당 1개 인스턴스
     - 스레드 안전 초기화
     """
@@ -34,8 +60,10 @@ class WhisperEngine:
 
     _model_loaded: bool = False
     _load_time_seconds: float | None = None
-    _model_name: str = "mlx-community/whisper-large-v3-turbo"
+    _model_name: str = MLX_DEFAULT_MODEL
     _device: str = "cpu"
+    _backend: str = "unknown"  # "mlx" 또는 "whisper"
+    _whisper_model: Any = None  # openai-whisper 모델 객체
 
     def __init__(self) -> None:
         pass
@@ -53,6 +81,7 @@ class WhisperEngine:
         """
         모델 로드 (REQ-STT-007: lazy load + 재사용)
         이미 로드된 경우 즉시 반환
+        플랫폼에 따라 mlx_whisper 또는 openai-whisper 사용
         """
         if self._model_loaded:
             logger.info("모델 이미 로드됨, 재사용", model=self._model_name)
@@ -68,38 +97,75 @@ class WhisperEngine:
             logger.info("모델 로드 시작", model=self._model_name)
             start_time = time.time()
 
-            try:
-                # MLX 가속 가용성 확인 (REQ-STT-006)
-                self._device = self._detect_device()
-
-                # mlx-whisper는 추론 시점에 모델을 로드하므로
-                # warm-up을 위해 더미 오디오로 한 번 실행하거나
-                # 모델 파일을 사전 다운로드/캐시하는 방식으로 처리
-                import mlx_whisper  # noqa: F401 -- warm-up 시 모듈 로드 확인 용도
-
-                # 모델 로드 검증: 모델 파일 경로 확인
-                # mlx_whisper.transcribe는 내부적으로 모델을 캐시함
-                logger.info("mlx_whisper 모듈 로드 완료", device=self._device)
-
-                self._load_time_seconds = time.time() - start_time
-                self._model_loaded = True
-
-                logger.info(
-                    "모델 로드 완료",
-                    model=self._model_name,
-                    device=self._device,
-                    load_time_seconds=round(self._load_time_seconds, 2),
+            # 플랫폼별 백엔드 선택
+            if self._try_load_mlx():
+                pass  # MLX 로드 성공
+            elif self._try_load_whisper():
+                pass  # openai-whisper 로드 성공
+            else:
+                raise RuntimeError(
+                    "STT 백엔드를 찾을 수 없습니다. "
+                    "macOS: 'pip install mlx-whisper>=0.4.3', "
+                    "Linux: 'pip install openai-whisper'로 설치하세요."
                 )
 
-            except ImportError as e:
-                logger.error("mlx-whisper 미설치", error=str(e))
-                raise RuntimeError(
-                    "mlx-whisper 패키지가 설치되지 않았습니다. "
-                    "'pip install mlx-whisper>=0.4.3'로 설치하세요."
-                ) from e
-            except Exception as e:
-                logger.error("모델 로드 실패", error=str(e))
-                raise
+            self._load_time_seconds = time.time() - start_time
+            self._model_loaded = True
+
+            logger.info(
+                "모델 로드 완료",
+                model=self._model_name,
+                backend=self._backend,
+                device=self._device,
+                load_time_seconds=round(self._load_time_seconds, 2),
+            )
+
+    def _try_load_mlx(self) -> bool:
+        """MLX 백엔드 로드 시도 (macOS Apple Silicon)"""
+        if platform.system() != "Darwin":
+            return False
+
+        try:
+            import mlx_whisper  # noqa: F401
+
+            self._device = self._detect_device()
+            self._backend = "mlx"
+            logger.info("MLX 백엔드 선택", device=self._device)
+            return True
+        except ImportError:
+            logger.info("mlx_whisper 미설치, 다른 백엔드 시도")
+            return False
+
+    def _try_load_whisper(self) -> bool:
+        """openai-whisper 백엔드 로드 시도 (CPU/CUDA)"""
+        try:
+            import whisper
+
+            # mlx 모델명을 openai-whisper 모델명으로 변환
+            whisper_model_name = _resolve_whisper_model(self._model_name)
+
+            # CUDA 가용성 확인
+            import torch
+            if torch.cuda.is_available():
+                self._device = "cuda"
+            else:
+                self._device = "cpu"
+
+            logger.info(
+                "openai-whisper 모델 로드 중",
+                model=whisper_model_name,
+                device=self._device,
+            )
+            self._whisper_model = whisper.load_model(whisper_model_name, device=self._device)
+            self._backend = "whisper"
+            logger.info("openai-whisper 백엔드 선택", device=self._device)
+            return True
+        except ImportError:
+            logger.info("openai-whisper 미설치")
+            return False
+        except Exception as e:
+            logger.error("openai-whisper 로드 실패", error=str(e))
+            return False
 
     def transcribe(
         self,
@@ -118,18 +184,14 @@ class WhisperEngine:
 
         self._check_memory_usage()
 
-        logger.info("STT 추론 시작", path=str(audio_path), language=language)
+        logger.info("STT 추론 시작", path=str(audio_path), language=language, backend=self._backend)
         start_time = time.time()
 
         try:
-            import mlx_whisper
-
-            result = mlx_whisper.transcribe(
-                str(audio_path),
-                path_or_hf_repo=self._model_name,
-                language=language,
-                word_timestamps=True,
-            )
+            if self._backend == "mlx":
+                result = self._transcribe_mlx(audio_path, language)
+            else:
+                result = self._transcribe_whisper(audio_path, language)
 
             elapsed = time.time() - start_time
             segment_count = len(result.get("segments", []))
@@ -139,6 +201,7 @@ class WhisperEngine:
                 elapsed_seconds=round(elapsed, 2),
                 segments=segment_count,
                 language=result.get("language", language),
+                backend=self._backend,
             )
 
             return result
@@ -146,6 +209,26 @@ class WhisperEngine:
         except Exception as e:
             logger.error("STT 추론 실패", error=str(e), path=str(audio_path))
             raise
+
+    def _transcribe_mlx(self, audio_path: str | Path, language: str) -> dict[str, Any]:
+        """MLX 백엔드 추론"""
+        import mlx_whisper
+
+        return mlx_whisper.transcribe(
+            str(audio_path),
+            path_or_hf_repo=self._model_name,
+            language=language,
+            word_timestamps=True,
+        )
+
+    def _transcribe_whisper(self, audio_path: str | Path, language: str) -> dict[str, Any]:
+        """openai-whisper 백엔드 추론"""
+        result = self._whisper_model.transcribe(
+            str(audio_path),
+            language=language,
+            word_timestamps=True,
+        )
+        return result
 
     @property
     def is_loaded(self) -> bool:
@@ -163,6 +246,10 @@ class WhisperEngine:
     def load_time_seconds(self) -> float | None:
         return self._load_time_seconds
 
+    @property
+    def backend(self) -> str:
+        return self._backend
+
     def get_memory_info(self) -> dict[str, float]:
         """현재 메모리 사용량 반환 (REQ-STT-022)"""
         vm = psutil.virtual_memory()
@@ -178,7 +265,7 @@ class WhisperEngine:
         vm = psutil.virtual_memory()
         if vm.used > MEMORY_WARNING_THRESHOLD_BYTES:
             logger.warning(
-                "메모리 사용량 경고: 24GB의 80% 초과",
+                "메모리 사용량 경고: 임계값 초과",
                 used_gb=round(vm.used / (1024**3), 2),
                 threshold_gb=round(MEMORY_WARNING_THRESHOLD_BYTES / (1024**3), 2),
                 percent=vm.percent,
@@ -190,9 +277,7 @@ class WhisperEngine:
         try:
             import mlx.core as mx
 
-            # MLX는 Apple Silicon에서 자동으로 GPU 사용
-            # CPU 폴백 조건: MLX import 실패 시
-            _ = mx.array([1.0])  # 간단한 테스트 연산
+            _ = mx.array([1.0])
             logger.info("MLX Apple Silicon 가속 사용 가능")
             return "mps"
         except ImportError:

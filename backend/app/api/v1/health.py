@@ -177,13 +177,20 @@ async def readiness_check(
 
 
 async def _check_celery_status(redis_client: aioredis.Redis) -> CeleryWorkersStatus:
-    """Redis에서 활성 작업 수 조회로 Celery 상태 간접 확인"""
+    """Celery 워커 실제 상태 확인 (inspect ping + Redis 활성 작업 수)"""
     try:
+        # 실제 워커 ping으로 가용성 확인
+        inspect = celery_app.control.inspect(timeout=0.5)
+        ping_result = inspect.ping()
+        worker_count = len(ping_result) if ping_result else 0
+
         active_count_str = await redis_client.get("active_job_count")
         active_count = int(active_count_str) if active_count_str else 0
+
+        status = "healthy" if worker_count > 0 else "no_workers"
         return CeleryWorkersStatus(
-            status="healthy",
-            active_workers=1,  # 단순화: 워커 프로세스 1개 가정
+            status=status,
+            active_workers=worker_count,
             active_tasks=active_count,
         )
     except Exception as e:

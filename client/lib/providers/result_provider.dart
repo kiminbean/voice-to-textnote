@@ -28,7 +28,22 @@ final minutesResultProvider =
     FutureProvider.family<String, String>((ref, minutesTaskId) async {
   final minApi = ref.watch(minutesApiProvider);
   final data = await minApi.getResult(minutesTaskId);
-  return data['minutes'] as String? ?? '';
+
+  // markdown이 있으면 우선 사용
+  final markdown = data['markdown'] as String?;
+  if (markdown != null && markdown.isNotEmpty) return markdown;
+
+  // segments에서 회의록 텍스트 조합
+  final segments = data['segments'] as List<dynamic>? ?? [];
+  if (segments.isEmpty) return '';
+
+  final buffer = StringBuffer();
+  for (final seg in segments) {
+    final speaker = seg['speaker_name'] ?? '알 수 없음';
+    final text = seg['text'] ?? '';
+    buffer.writeln('[$speaker] $text');
+  }
+  return buffer.toString().trim();
 });
 
 // 요약 결과 로딩 프로바이더 (summaryTaskId 기반)

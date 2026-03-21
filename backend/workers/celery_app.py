@@ -14,6 +14,9 @@ celery_app = Celery(
     backend=settings.celery_result_backend,
     include=[
         "backend.workers.tasks.transcription_task",
+        "backend.workers.tasks.diarization_task",
+        "backend.workers.tasks.minutes_task",
+        "backend.workers.tasks.summary_task",
         "backend.workers.tasks.cleanup_task",
     ],
 )
