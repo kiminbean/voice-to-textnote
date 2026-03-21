@@ -40,13 +40,32 @@ backend/
 │   ├── config.py               # 환경 설정 (Redis, Whisper 모델)
 │   ├── dependencies.py         # 의존성 주입 (Redis, Whisper)
 │   │
+│   ├── middleware/
+│   │   ├── __init__.py
+│   │   ├── auth.py             # API Key 인증 미들웨어
+│   │   ├── rate_limit.py       # slowapi 레이트 리미팅
+│   │   ├── security_headers.py  # HSTS, X-Content-Type-Options 등
+│   │   ├── request_id.py        # 요청 ID 추적
+│   │   └── audit_log.py         # 요청/응답 감사 로깅
+│   │
 │   ├── api/
 │   │   └── v1/
 │   │       ├── __init__.py
 │   │       ├── transcription.py # STT 업로드, 상태, 결과 엔드포인트
 │   │       ├── diarization.py   # 화자 분리 작업 생성, 상태, 결과, 삭제 엔드포인트
 │   │       ├── minutes.py       # 회의록 생성, 상태, 결과, 삭제 엔드포인트
-│   │       └── health.py        # 헬스체크, 모델 상태 (STT + DIA)
+│   │       ├── summary.py       # 요약 CRUD API 엔드포인트
+│   │       ├── stream.py        # SSE 실시간 스트리밍 엔드포인트
+│   │       ├── history.py       # 회의 이력 API (페이지네이션, 필터링)
+│   │       ├── admin.py         # 관리자 엔드포인트
+│   │       ├── health.py        # 헬스체크, 모델 상태 (STT + DIA), readiness 프로브
+│   │       └── metrics.py       # Prometheus 메트릭 엔드포인트
+│   │
+│   ├── metrics.py              # Prometheus 메트릭 정의 및 수집
+│   ├── error_handlers.py        # 전역 예외 처리 (에러 응답 표준화)
+│   ├── exceptions.py            # 커스텀 예외 정의
+│   ├── lifecycle.py             # 앱 시작/종료 이벤트 핸들러
+│   └── result_fallback.py       # 네트워크 실패 시 폴백 메커니즘
 │
 ├── schemas/
 │   ├── __init__.py
@@ -77,13 +96,30 @@ backend/
 │   ├── stt_engine.py           # mlx-whisper 래퍼 (싱글톤 패턴)
 │   └── diarization_engine.py   # pyannote.audio 3.1 화자 분리 엔진 (싱글턴)
 │
+├── db/
+│   ├── __init__.py
+│   ├── engine.py               # SQLAlchemy 비동기 엔진 (PostgreSQL)
+│   ├── models.py               # SQLAlchemy ORM 모델 (meetings, summaries, history)
+│   ├── service.py              # 비동기 데이터베이스 서비스
+│   ├── sync_engine.py          # 동기 엔진 (테스트용 SQLite)
+│   └── sync_service.py         # 동기 데이터베이스 서비스
+│
+├── events/
+│   ├── __init__.py
+│   ├── publisher.py            # SSE 이벤트 퍼블리셔
+│   └── subscriber.py           # SSE 구독자 관리
+│
+├── services/
+│   ├── __init__.py
+│   └── retention.py            # 데이터 보유 정책 (30일 DB, 24h 임시파일)
+│
 ├── pipeline/
 │   ├── __init__.py
 │   ├── audio_processor.py      # 오디오 전처리 (16kHz 모노 WAV)
 │   ├── chunk_manager.py        # 청크 분할 및 병합 (30분 단위)
 │   ├── speaker_matcher.py      # STT-DIA 타임스탬프 overlap 매칭 알고리즘
-│   ├── minutes_formatter.py   # 회의록 포맷터 (세그먼트 병합, 통계, Markdown)
-│   └── summary_generator.py   # Claude API 요약 생성기 (프롬프트 구성, 응답 파싱)
+│   ├── minutes_formatter.py    # 회의록 포맷터 (세그먼트 병합, 통계, Markdown)
+│   └── summary_generator.py    # Claude API 요약 생성기 (프롬프트 구성, 응답 파싱)
 │
 ├── tests/
 │   ├── __init__.py
@@ -113,7 +149,22 @@ backend/
 ├── conftest.py                 # pytest 픽스처 및 설정
 ├── pyproject.toml              # Python 의존성 관리
 ├── Dockerfile                  # 백엔드 컨테이너 이미지
-└── docker-compose.yml          # FastAPI, Redis, Celery 스택
+├── docker-compose.yml          # FastAPI, Redis, Celery 스택
+├── docker-compose.prod.yml     # 프로덕션 스택 (Nginx, PostgreSQL)
+├── alembic/                    # 데이터베이스 마이그레이션
+│   ├── versions/               # 마이그레이션 스크립트
+│   ├── env.py                  # Alembic 환경 설정
+│   ├── script.py.mako          # 마이그레이션 템플릿
+│   └── alembic.ini             # Alembic 설정
+├── nginx/                      # Nginx 설정 (리버스 프록시)
+│   ├── nginx.conf              # Nginx 설정 파일
+│   └── ssl/                    # SSL 인증서
+└── .github/
+    ├── workflows/              # GitHub Actions 워크플로우
+    │   ├── test.yml            # PR 테스트 자동화
+    │   ├── build.yml           # 빌드 및 배포
+    │   └── dependabot.yml      # 의존성 자동 업데이트
+    └── ISSUE_TEMPLATE/         # 이슈 템플릿
 ```
 
 **현재 구현 상황**:
@@ -180,13 +231,19 @@ client/
 │   │   ├── recording_button.dart    # 녹음 시작/중지 버튼
 │   │   ├── meeting_card.dart        # 회의 카드 위젯
 │   │   ├── transcription_view.dart  # 전사 결과 표시 위젯
-│   │   └── speaker_label.dart       # 스피커 라벨 위젯
+│   │   ├── speaker_label.dart       # 스피커 라벨 위젯
+│   │   ├── error_dialog.dart        # 오류 메시지 다이얼로그
+│   │   ├── offline_banner.dart      # 오프라인 상태 배너
+│   │   ├── shimmer_card.dart        # Shimmer 로딩 카드
+│   │   └── shimmer_text.dart        # Shimmer 로딩 텍스트
 │   │
 │   ├── services/
 │   │   ├── api_service.dart    # HTTP 클라이언트 (Dio)
-│   │   ├── audio_service.dart  # 오디오 녹음 관리 (microphone 패키지)
+│   │   ├── audio_service.dart  # 오디오 녹음 관리 (record 패키지)
 │   │   ├── storage_service.dart # 로컬 저장소 (Hive/SQLite)
-│   │   └── auth_service.dart   # 인증 토큰 관리
+│   │   ├── auth_service.dart   # 인증 토큰 관리
+│   │   ├── sse_service.dart    # SSE 실시간 스트리밍
+│   │   └── connectivity_service.dart # 네트워크 상태 감지
 │   │
 │   ├── providers/
 │   │   ├── meeting_provider.dart     # 상태 관리 (Riverpod)

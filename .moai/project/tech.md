@@ -76,6 +76,11 @@
 - **이유**: 선언적 라우팅, Deep linking 지원
 - **기능**: 인자 전달, 중첩 네비게이션
 
+**실시간 업데이트 & UI**:
+- **shimmer** (로딩 인디케이터): 데이터 로딩 중 시각적 피드백
+- **connectivity_plus** (네트워크 감지): 온/오프라인 상태 감지
+- **SSE 클라이언트**: 서버 실시간 이벤트 수신
+
 ---
 
 ### 백엔드 계층
@@ -107,6 +112,7 @@
 **인증**: python-jose + passlib
 - **JWT**: Bearer 토큰 기반 인증
 - **암호화**: bcrypt로 비밀번호 해싱 (cost=12)
+- **API Key**: 조직별 고유 API 키 관리
 
 **데이터 검증**: Pydantic v2
 - **이유**: 요청/응답 자동 검증, IDE 자동완성
@@ -117,8 +123,24 @@
 - **레벨**: DEBUG, INFO, WARNING, ERROR, CRITICAL
 - **저장소**: 파일시스템 또는 ELK 스택
 
+**보안 & 모니터링**:
+- **slowapi** (레이트 리미팅): IP당 분당 요청 제한
+- **prometheus-fastapi-instrumentator** (메트릭): FastAPI 메트릭 자동 수집
+- **prometheus-client** (Prometheus 클라이언트): 커스텀 메트릭 정의
+- **sse-starlette** (실시간 스트리밍): Server-Sent Events 구현
+
+**데이터 영속성**:
+- **SQLAlchemy 2.0** (비동기 ORM): asyncpg + aiosqlite 지원
+- **asyncpg** (비동기 PostgreSQL): 고성능 비동기 데이터베이스
+- **aiosqlite** (비동기 SQLite): 개발 환경용
+- **Alembic** (마이그레이션): 스키마 버전 관리
+
+**시스템 모니터링**:
+- **psutil** (리소스 모니터링): CPU, 메모리, 디스크 사용량 추적
+
 **테스팅**: pytest 7.4+
-- **커버리지**: 최소 85% 이상
+- **커버리지**: 96.94% (타겟: 최소 85%)
+- **테스트 수**: 767개 (백엔드 700개 + Flutter 67개)
 - **유형**:
   - **단위 테스트**: 개별 함수 테스트
   - **통합 테스트**: API 엔드포인트 테스트
@@ -214,17 +236,24 @@ NUM_SPEAKERS = None  # 스피커 수 자동 추정
   - `/api/*` → FastAPI (8000)
   - `/` → Flutter 웹 앱 (정적 파일)
 - **GZIP 압축**: 응답 크기 50% 감소
+- **Security Headers**: HSTS, X-Content-Type-Options, X-Frame-Options
+
+**프로덕션 환경**:
+- **docker-compose.prod.yml**: Nginx + FastAPI + PostgreSQL + Redis 일체형
+- **환경 분리**: 개발(SQLite) / 테스트 / 프로덕션(PostgreSQL) 설정 분리
+- **자동 마이그레이션**: 컨테이너 시작 시 Alembic 자동 실행
 
 **CI/CD**: GitHub Actions
 - **Trigger**:
   - Pull Request 생성/업데이트
   - main 브랜치로 merge
 - **파이프라인**:
-  1. 백엔드 단위 테스트 및 커버리지 검사 (85% 이상 필수)
+  1. 백엔드 단위 테스트 및 커버리지 검사 (96.94% 달성)
   2. 프론트엔드 빌드 및 정적 분석
   3. Docker 이미지 빌드 및 Registry 푸시
   4. 통합 테스트 (전체 스택)
   5. 스테이징 배포
+  6. Dependabot 의존성 관리
 
 **배포**: 로컬 또는 클라우드
 - **로컬 배포**: 조직 내부 M4 Mac Mini (24GB RAM)

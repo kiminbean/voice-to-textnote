@@ -27,37 +27,73 @@
 ✅ **프라이버시 최우선**: 모든 처리가 로컬에서만 수행되며, 클라우드 업로드 불가
 ✅ **Apple Silicon 최적화**: M1/M2/M3/M4 Mac에서 MPS 가속
 ✅ **높은 정확도**: Whisper Large-v3-Turbo 모델 (WER < 5%)
-✅ **비동기 처리**: Celery 작업 큐로 장시간 STT 백그라운드 처리
-✅ **Redis 캐시**: 24시간 TTL로 처리 결과 빠른 재조회
-✅ **완전한 테스트**: 150개 테스트, 95.50% 커버리지
+✅ **완전한 STT 파이프라인**: STT → Diarization → Minutes → AI Summary 자동 처리
+✅ **비동기 처리**: Celery 작업 큐로 장시간 처리 백그라운드 실행
+✅ **PostgreSQL 영속성**: 회의록 및 이력 데이터 영구 저장
+✅ **실시간 스트리밍**: SSE로 진행률 실시간 업데이트
+✅ **API 보안**: API Key 인증, 레이트 리미팅, CORS, Security Headers
+✅ **모니터링**: Prometheus 메트릭, 요청 ID 추적, 구조화된 로깅
+✅ **프로덕션 배포**: Docker, Nginx, docker-compose.prod.yml
+✅ **완전한 테스트**: 767개 테스트 (백엔드 700 + Flutter 67), 96.94% 커버리지
 
 ## 주요 기능
 
-### 1. 오디오 업로드 API
+### 음성 처리 파이프라인
+
+#### 1. 오디오 업로드
 - **엔드포인트**: `POST /api/v1/transcriptions`
 - **지원 형식**: WAV, MP3, M4A, OGG
 - **최대 크기**: 500MB
 - **응답**: 고유 task_id 및 상태 조회 URL
 
-### 2. STT 처리 (mlx-whisper)
-- **모델**: whisper-large-v3-turbo
-- **언어**: 한국어 고정 (`language="ko"`)
-- **처리**: Apple Silicon MPS 가속 또는 CPU 폴백
+#### 2. STT 처리 (mlx-whisper)
+- **모델**: whisper-large-v3-turbo (WER < 5%)
+- **언어**: 한국어 고정 또는 자동 감지
+- **처리**: Apple Silicon MPS 가속
 - **속도**: 약 0.3~0.5배 실시간
 
-### 3. 작업 상태 조회
-- **엔드포인트**: `GET /api/v1/transcriptions/{task_id}/status`
-- **상태**: pending, processing, completed, failed
+#### 3. 화자 분리 (Speaker Diarization)
+- **모델**: pyannote.audio 3.1
+- **처리**: CPU 기반 (GPU 미사용, 안정성 우선)
+- **출력**: 타임스탬프와 화자 ID 매칭
+- **DER**: < 15% (5명 이하 회의)
 
-### 4. 결과 조회 API
-- **엔드포인트**: `GET /api/v1/transcriptions/{task_id}`
-- **응답**: 전사 결과 (세그먼트, 타임스탬프, 신뢰도 점수)
-- **캐싱**: Redis 24시간 TTL
+#### 4. 회의록 생성
+- **입력**: STT + Diarization 결과
+- **처리**: 화자별 발화 병합, 통계 계산
+- **출력**: JSON 및 Markdown 형식
+- **메타데이터**: 화자별 발화 시간, 횟수, 비율
 
-### 5. 헬스체크
-- **엔드포인트**: `GET /api/v1/health`
-- **확인 항목**: FastAPI, Redis, Celery 워커 상태
-- **모델 상태**: `GET /api/v1/health/model` (로드 상태, 메모리)
+#### 5. AI 요약 생성
+- **모델**: Claude 3.5 Sonnet
+- **추출**: 핵심 결정사항, 액션 아이템
+- **포맷**: 구조화된 JSON
+- **폴백**: API 실패 시 원문 텍스트로 자동 대체
+
+### API 엔드포인트
+
+#### 상태 조회
+- **STT 상태**: `GET /api/v1/transcriptions/{task_id}/status`
+- **DIA 상태**: `GET /api/v1/diarization/{task_id}/status`
+- **요약 상태**: `GET /api/v1/summary/{task_id}/status`
+
+#### 결과 조회
+- **STT 결과**: `GET /api/v1/transcriptions/{task_id}`
+- **회의록**: `GET /api/v1/minutes/{meeting_id}`
+- **요약**: `GET /api/v1/summary/{summary_id}`
+
+#### 회의 관리
+- **목록 조회**: `GET /api/v1/history?page=1&limit=20&filter=status`
+- **상세 조회**: `GET /api/v1/meetings/{meeting_id}`
+- **삭제**: `DELETE /api/v1/meetings/{meeting_id}`
+
+#### 실시간 스트리밍
+- **SSE**: `GET /api/v1/stream/{task_id}` (진행률 실시간 푸시)
+
+#### 모니터링
+- **헬스체크**: `GET /api/v1/health` (API, Redis, Celery 상태)
+- **준비 상태**: `GET /api/v1/ready` (모델 로드 확인)
+- **메트릭**: `GET /metrics` (Prometheus 형식)
 
 ## 기술 스택
 
@@ -82,26 +118,34 @@
 
 ## 빠른 시작
 
-### 로컬 개발 환경
+### 사전 요구사항
 
-#### 1. 사전 요구사항
 ```bash
 # Python 3.11+ 설치
 brew install python@3.11
 
-# Redis 설치 (macOS)
-brew install redis
+# 필수 도구 설치
+brew install redis postgresql git
 
-# ffmpeg 설치 (오디오 처리 필수)
+# ffmpeg 설치 (오디오 처리)
 brew install ffmpeg
 ```
 
-#### 2. 프로젝트 클론 및 환경 설정
+### 환경 설정
+
+#### 1. 프로젝트 클론
 ```bash
 git clone <repository-url>
 cd voice-to-textnote
 
-# Python 가상환경 생성
+# 환경 변수 설정
+cp .env.example .env.local
+# .env.local 파일 편집 (CLAUDE_API_KEY 등 설정)
+```
+
+#### 2. Python 환경 설정
+```bash
+# 가상환경 생성
 python3.11 -m venv venv
 source venv/bin/activate
 
@@ -109,35 +153,60 @@ source venv/bin/activate
 pip install -e ".[dev]"
 ```
 
-#### 3. Redis 시작
+#### 3. 데이터베이스 초기화 (개발 환경)
 ```bash
-# 터미널 1: Redis 서버
-redis-server
+# SQLite 자동 초기화 (개발 환경)
+cd backend
+python -c "from app.db.sync_engine import init_db; init_db()"
+```
 
-# 터미널 2: Celery 워커
+### 로컬 개발 환경 실행
+
+#### 터미널 1: Redis 서버
+```bash
+redis-server
+```
+
+#### 터미널 2: Celery 워커
+```bash
+source venv/bin/activate
 celery -A backend.workers.celery_app worker --loglevel=info --concurrency=1
 ```
 
-#### 4. FastAPI 서버 시작
+#### 터미널 3: FastAPI 개발 서버
 ```bash
-# 터미널 3: FastAPI 개발 서버
 cd backend
 uvicorn app.main:app --reload --host localhost --port 8000
 ```
 
-**API 문서**: http://localhost:8000/docs (Swagger UI)
-
-### Docker를 사용한 실행
-
+#### 터미널 4: Flutter 앱 (웹)
 ```bash
-# Docker Compose로 전체 스택 실행 (FastAPI, Redis, Celery)
+cd client
+flutter pub get
+flutter run -d chrome
+```
+
+**API 문서**: http://localhost:8000/docs (Swagger UI)
+**Flutter 앱**: http://localhost:50505
+
+### Docker 프로덕션 배포
+
+#### 개발 환경
+```bash
+# SQLite + Redis + Celery 스택
 docker-compose up -d
+```
+
+#### 프로덕션 환경
+```bash
+# PostgreSQL + Nginx + FastAPI 풀 스택
+docker-compose -f docker-compose.prod.yml up -d
 
 # 로그 확인
-docker-compose logs -f
+docker-compose -f docker-compose.prod.yml logs -f
 
 # 중지
-docker-compose down
+docker-compose -f docker-compose.prod.yml down
 ```
 
 ## API 엔드포인트
@@ -250,18 +319,25 @@ GET /api/v1/health/model
 ## 개발 설정
 
 ### 테스트 실행
+
 ```bash
-# 전체 테스트
-pytest
+# 백엔드 전체 테스트 (700개)
+pytest backend/
 
-# 커버리지 리포트 생성
-pytest --cov=backend --cov-report=term-missing
+# 커버리지 리포트 생성 (목표: 96.94%)
+pytest backend/ --cov=backend --cov-report=html --cov-report=term-missing
 
-# 특정 테스트만 실행
+# 특정 테스트 실행
 pytest backend/tests/unit/test_stt_engine.py -v
+pytest backend/tests/integration/test_api.py -v
+
+# Flutter 테스트 (67개)
+cd client
+flutter test
 ```
 
 ### 코드 품질 검사
+
 ```bash
 # 린터 (ruff)
 ruff check backend/
@@ -273,16 +349,41 @@ ruff format backend/
 mypy backend/ --ignore-missing-imports
 ```
 
-### 개발 환경 변수
-```bash
-# .env.local 파일 생성
-cp .env.example .env.local
+### 환경 변수 설정
 
-# 필요한 변수 설정
+`.env.local` 파일 예시:
+
+```bash
+# Backend
+FASTAPI_HOST=localhost
+FASTAPI_PORT=8000
+DATABASE_URL=sqlite:///./voice_textnote.db  # 개발
+LOG_LEVEL=INFO
+
+# Redis & Celery
 REDIS_URL=redis://localhost:6379/0
 CELERY_BROKER_URL=redis://localhost:6379/0
-WHISPER_MODEL=whisper-large-v3-turbo
-LOG_LEVEL=INFO
+CELERY_RESULT_BACKEND=redis://localhost:6379/1
+
+# Claude API
+CLAUDE_API_KEY=sk-...
+
+# API Security
+API_KEY_SECRET=your-secret-key
+
+# Model Paths (선택사항)
+WHISPER_MODEL_PATH=/models/whisper/whisper-large-v3-turbo
+PYANNOTE_MODEL_PATH=/models/pyannote
+```
+
+### API 보안
+
+```bash
+# API Key 생성
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+
+# Bearer Token 사용 (curl 예시)
+curl -H "Authorization: Bearer YOUR_API_KEY" http://localhost:8000/api/v1/health
 ```
 
 ## 디렉토리 구조
@@ -331,10 +432,11 @@ backend/
 
 ## 설정 옵션
 
-### `backend/app/config.py`
+### 주요 설정 변수
 
 | 변수 | 기본값 | 설명 |
 |------|--------|------|
+| `DATABASE_URL` | `sqlite:///voice_textnote.db` | 데이터베이스 연결 (개발: SQLite, 프로덕션: PostgreSQL) |
 | `REDIS_URL` | `redis://localhost:6379/0` | Redis 연결 URL |
 | `CELERY_BROKER_URL` | `redis://localhost:6379/0` | Celery 메시지 브로커 |
 | `WHISPER_MODEL` | `whisper-large-v3-turbo` | Whisper 모델 이름 |
@@ -342,18 +444,53 @@ backend/
 | `MAX_FILE_SIZE` | `500` | 최대 파일 크기 (MB) |
 | `MAX_DURATION` | `14400` | 최대 재생 시간 (초) = 4시간 |
 | `CHUNK_DURATION` | `1800` | 청크 크기 (초) = 30분 |
-| `LOG_LEVEL` | `INFO` | 로그 레벨 |
-| `CONCURRENCY` | `1` | Celery 동시 작업 수 |
+| `LOG_LEVEL` | `INFO` | 로그 레벨 (DEBUG, INFO, WARNING, ERROR) |
+| `API_KEY_SECRET` | (필수) | API Key 암호화 시크릿 |
+| `CLAUDE_API_KEY` | (필수) | Anthropic Claude API 키 |
+| `RATE_LIMIT` | `60/minute` | IP당 분당 요청 제한 |
+| `DATA_RETENTION_DAYS` | `30` | DB 데이터 보유 기간 |
+| `TEMP_FILE_RETENTION_HOURS` | `24` | 임시 파일 보유 기간 |
+
+### STT 동시 처리 제한
+
+| 작업 | 동시 수 | 이유 |
+|------|--------|------|
+| STT (mlx-whisper) | 1~3개 | 메모리 사용 (6GB/개) |
+| Diarization | 2개 | CPU 기반 처리 |
+| Minutes 생성 | 3개 | 빠른 처리 |
+| 요약 생성 | 2개 | Claude API 비용 관리 |
 
 ## 성능 특성
 
-| 항목 | 성능 | 비고 |
+### 처리 시간
+
+| 단계 | 시간 | 참고 |
 |------|------|------|
-| 업로드 응답 시간 | < 500ms | 파일 저장 + task_id 발급 |
-| STT 처리 속도 | 0.3~0.5배 실시간 | 30분 회의 = 15~25분 처리 |
-| 상태 조회 응답 시간 | < 100ms | Redis 캐시 활용 |
-| 메모리 사용 | ~6GB | mlx-whisper 모델 + 추가 처리 |
-| 동시 처리 능력 | 1~3개 | Celery 워커 수 + 메모리 제약 |
+| 오디오 업로드 | < 500ms | 파일 저장 + task_id 발급 |
+| STT 처리 (1시간) | 20~30분 | 0.3~0.5배 실시간 (mlx-whisper) |
+| Diarization (1시간) | 15~25분 | CPU 기반 (pyannote.audio) |
+| Minutes 생성 | 1~5초 | 세그먼트 병합 및 통계 |
+| AI 요약 생성 | 2~5초 | Claude API 응답 시간 |
+| 상태 조회 | < 100ms | Redis 캐시 활용 |
+
+### 리소스 사용량
+
+| 항목 | 사용량 | 비고 |
+|------|--------|------|
+| STT 메모리 | ~6GB | mlx-whisper 모델 로드 |
+| Diarization 메모리 | ~4GB | pyannote.audio 모델 로드 |
+| FastAPI + Redis | ~2GB | 기본 운영 |
+| 총합 | ~12GB | M4 Mac Mini 24GB 충분 |
+| 동시 처리 | 1~3개 | 메모리 제약 기반 |
+
+### 테스트 커버리지
+
+| 항목 | 개수 | 커버리지 |
+|------|------|---------|
+| 백엔드 테스트 | 700개 | 96.94% |
+| Flutter 테스트 | 67개 | - |
+| E2E 테스트 | 16개 | 전체 파이프라인 |
+| 총합 | 767개 | - |
 
 ## 모니터링 및 로깅
 
@@ -381,31 +518,154 @@ celery -A backend.workers.celery_app worker --loglevel=info
 
 ## 보안
 
-### 로컬 전용 서비스
-- 모든 HTTP 통신이 `localhost`에서만 가능
-- CORS는 로컬 포트(8000, 3000 등)만 허용
+### 인증 & 권한
+
+- **API Key 인증**: Bearer token 기반 API 키 검증
+- **JWT 토큰**: 사용자 세션 관리
+- **RBAC**: 역할 기반 접근 제어
+
+### API 보안
+
+- **레이트 리미팅**: slowapi로 IP당 분당 요청 제한 (기본 60/minute)
+- **CORS 정책**: 등록된 도메인만 허용
+- **Security Headers**: HSTS, X-Content-Type-Options, X-Frame-Options 등
+- **CSRF 보호**: Starlette 미들웨어
+
+### 데이터 보안
+
+- **전송 암호화**: 모든 HTTPS 통신 (자체 서명 인증서 포함)
+- **저장 암호화**: 선택적 AES-256 암호화 (민감한 조직용)
+- **클라우드 제약**: 로컬 전용 처리, 외부 업로드 불가
 
 ### 입력 검증
-- 오디오 파일 형식 검증 (WAV, MP3, M4A, OGG만 허용)
-- 파일 크기 검증 (최대 500MB)
-- 재생 시간 검증 (최대 4시간)
+
+- **파일 형식**: WAV, MP3, M4A, OGG만 허용
+- **파일 크기**: 최대 500MB
+- **재생 시간**: 최대 4시간
+- **Pydantic 검증**: 모든 API 요청 자동 검증
+
+### 감사 로깅
+
+- **요청 로깅**: 모든 API 호출 상세 기록
+- **사용자 추적**: API 키로 사용자 행동 추적
+- **에러 로깅**: 모든 예외 상황 기록
+- **JSON 포맷**: 로그 분석 및 검색 용이
 
 ### 임시 파일 관리
-- 처리 완료 후 임시 오디오 파일 자동 삭제
-- 삭제 요청 시 모든 캐시, 결과, 파일 제거
+
+- **자동 정리**: 24시간 후 /tmp의 오디오 파일 자동 삭제
+- **캐시 정리**: Redis 캐시 24시간 TTL 자동 만료
+- **DB 정리**: PostgreSQL 데이터 30일 후 자동 삭제
+- **수동 삭제**: API로 언제든 수동 삭제 가능
 
 ## 제약 조건
 
 ### 시스템 요구사항
-- **OS**: macOS 12+ (Apple Silicon M1/M2/M3/M4)
-- **RAM**: 최소 16GB, 권장 24GB
-- **Python**: 3.11 이상
-- **ffmpeg**: 시스템 PATH에 설치
+
+| 항목 | 요구사항 |
+|------|---------|
+| **OS** | macOS 12+ (Apple Silicon M1/M2/M3/M4) 또는 Linux |
+| **RAM** | 최소 16GB, 권장 24GB+ |
+| **Python** | 3.11 이상 |
+| **Node.js** | 20+ (Flutter 웹 빌드용) |
+| **의존성** | ffmpeg, PostgreSQL, Redis |
+
+### 지원 플랫폼
+
+| 플랫폼 | 상태 | 참고 |
+|--------|------|------|
+| **Web** | ✅ 완료 | Chrome, Firefox, Safari 지원 |
+| **macOS** | ✅ 완료 | ARM64 (Apple Silicon) |
+| **iOS** | 🔜 계획 | Flutter iOS 네이티브 구현 필요 |
+| **Android** | 🔜 계획 | Flutter Android 네이티브 구현 필요 |
 
 ### 기술 제약
-- **단일 프로세스 모델**: Whisper 모델은 프로세스당 싱글톤으로 관리
-- **MLX 지원**: Apple Silicon 필수 (Intel Mac은 CPU 폴백만 가능)
-- **Redis 필수**: Celery 메시지 브로커 및 캐시로 반드시 필요
+
+| 제약 | 설명 |
+|------|------|
+| **모델 로드** | Whisper 모델은 프로세스당 싱글톤으로 관리 |
+| **MLX 지원** | Apple Silicon 최적화 (Intel Mac은 CPU 폴백) |
+| **Redis 필수** | Celery 메시지 브로커 및 캐시로 필수 |
+| **데이터베이스** | 개발: SQLite, 프로덕션: PostgreSQL 권장 |
+| **파일 저장** | 최소 50GB 여유공간 필요 (모델 + 오디오) |
+
+### 데이터 보유 정책
+
+| 항목 | 기간 | 설명 |
+|------|------|------|
+| **DB 데이터** | 30일 | PostgreSQL에서 자동 삭제 |
+| **임시 파일** | 24시간 | /tmp의 오디오 파일 자동 정리 |
+| **Redis 캐시** | 24시간 | STT 결과 캐시 |
+| **감사 로그** | 무제한 | 삭제 이력 영구 보관 |
+
+## 아키텍처 개요
+
+### 3계층 구조
+
+```
+┌─────────────────────────────────────┐
+│   클라이언트 계층                     │
+│   Flutter Web/macOS (Riverpod)      │
+└────────────────┬────────────────────┘
+                 │ HTTP/REST
+┌────────────────▼────────────────────┐
+│   API 계층                           │
+│   FastAPI (Uvicorn)                 │
+│   ├─ 보안: API Key, Rate Limit      │
+│   ├─ 모니터링: Prometheus, Logging  │
+│   └─ 실시간: SSE 스트리밍            │
+└────────────────┬────────────────────┘
+        ┌────────┼────────┐
+        │        │        │
+    ┌───▼──┐ ┌──▼────┐ ┌─▼──────┐
+    │데이터│ │작업큐 │ │캐싱    │
+    ├──────┤ ├───────┤ ├────────┤
+    │PostgreSQL│Celery │ Redis  │
+    │(영속)  │(비동기)│(임시)  │
+    └───┬──┘ └──┬────┘ └────────┘
+        │       │
+        │   ┌───┴──────┬─────┬───────┐
+        │   │          │     │       │
+    ┌───▼──▼──┐  ┌──┬──┐ ┌──▼──┐ ┌─▼──────┐
+    │모델 로드 │  │STT│DIA│MIN │ │요약   │
+    │(싱글톤) │  └──┴──┘ └─────┘ │(Claude)│
+    └────────┘                    └────────┘
+```
+
+## 배포 옵션
+
+### 로컬 개발 환경
+
+```bash
+docker-compose up -d  # SQLite + Redis + Celery
+```
+
+### 프로덕션 배포
+
+```bash
+# Nginx + PostgreSQL + FastAPI 풀 스택
+docker-compose -f docker-compose.prod.yml up -d
+```
+
+### 클라우드 이전
+
+현재 로컬 환경에서 AWS로 이전 시:
+
+- **RDS**: PostgreSQL 16+
+- **ElastiCache**: Redis 7.0+
+- **EC2**: c7i 인스턴스 (CPU 기반 STT/DIA)
+- **S3**: 오디오 파일 저장소
+- **Auto Scaling**: 높은 부하 시 자동 확장
+
+## 다음 단계
+
+### Phase 5 (계획)
+
+- **모바일 앱**: iOS/Android 네이티브 구현
+- **검색 기능**: 회의록 전문 검색 (Elasticsearch)
+- **팀 협업**: 팀 관리, 권한 제어, 공유 & 댓글
+- **고급 분석**: 발화 톤 분석, 감정 분석
+- **통합**: Slack, Teams, Google Calendar 연동
 
 ## 라이선스
 
@@ -413,14 +673,39 @@ MIT License - 자유로운 상업적 사용 가능
 
 ---
 
-## 문의 및 기여
+## 기술 지원
 
-- 문제 보고: GitHub Issues
-- 기여: Pull Requests 환영합니다
-- 기술 문서: `docs/` 디렉토리 참조
+| 항목 | 정보 |
+|------|------|
+| **문제 보고** | GitHub Issues 또는 이메일 |
+| **기여** | Pull Requests 환영합니다 |
+| **기술 문서** | `docs/` 디렉토리 참조 |
+| **API 문서** | http://localhost:8000/docs (Swagger) |
 
 ---
 
-**마지막 업데이트**: 2026-03-15
-**버전**: 0.1.0
-**상태**: Production Ready ✅
+**마지막 업데이트**: 2026-03-21
+**버전**: 1.0.0
+**상태**: Production Ready ✅ (19/19 SPECs 완료)
+
+### 완료된 SPEC 목록
+
+✅ SPEC-STT-001: Speech-to-Text (mlx-whisper)
+✅ SPEC-DIA-001: Speaker Diarization (pyannote.audio)
+✅ SPEC-MIN-001: Minutes Generation
+✅ SPEC-SUM-001: AI Summary & Action Items
+✅ SPEC-APP-001: Flutter Client (Web + macOS)
+✅ SPEC-SEC-001: API Security
+✅ SPEC-INFRA-001: Monitoring & Metrics
+✅ SPEC-ERR-001: Error Handling
+✅ SPEC-LOG-001: Audit Logging
+✅ SPEC-DOCKER-001: Docker Production
+✅ SPEC-DB-001: PostgreSQL & Alembic
+✅ SPEC-SSE-001: Real-time Streaming
+✅ SPEC-PERSIST-001: Data Persistence
+✅ SPEC-LIFECYCLE-001: App Lifecycle
+✅ SPEC-HISTORY-001: Meeting History API
+✅ SPEC-RETENTION-001: Data Retention Policy
+✅ SPEC-E2E-001: E2E Integration Tests
+✅ SPEC-APP-002: Flutter Enhancement
+✅ CI/CD: GitHub Actions Pipeline
