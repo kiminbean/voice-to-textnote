@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(redis-cli ping:*)",
+      "Bash(sudo systemctl:*)",
+      "Bash(redis-server --daemonize yes)",
+      "Bash(dpkg -l)",
+      "Bash(snap list:*)",
+      "Bash(python3 -m venv venv)",
+      "Bash(source venv/bin/activate)",
+      "Bash(pip install:*)",
+      "Bash(source /home/kiminbean/voice-to-textnote/venv/bin/activate)",
+      "Bash(pip list:*)",
+      "Bash(/home/kiminbean/voice-to-textnote/venv/bin/pip list:*)",
+      "Bash(curl -s http://localhost:8000/api/v1/health)",
+      "Bash(python3 -m json.tool)",
+      "Bash(git init:*)",
+      "Bash(git add:*)",
+      "Bash(git rebase:*)",
+      "Bash(GIT_EDITOR=true git rebase --continue)"
+    ]
+  }
+}

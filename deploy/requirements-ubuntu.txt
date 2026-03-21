@@ -5,6 +5,7 @@
 fastapi>=0.115.0
 uvicorn[standard]>=0.30.0
 sse-starlette>=2.0.0
+python-multipart>=0.0.9
 
 # === 데이터 검증 ===
 pydantic>=2.7.0
@@ -20,6 +21,7 @@ celery>=5.4.0
 
 # === 미들웨어 ===
 slowapi>=0.1.9
+prometheus-fastapi-instrumentator>=7.0
 
 # === 오디오 처리 ===
 pydub>=0.25.1

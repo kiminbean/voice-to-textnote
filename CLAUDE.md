@@ -472,6 +472,49 @@ User can explicitly request context search at any time during conversation.
 
 ---
 
+## Quick Start (Ubuntu 서버)
+
+### 필수 시스템 패키지
+
+```bash
+sudo apt install -y redis-server ffmpeg python3-venv
+```
+
+### 서버 실행
+
+```bash
+# 1. Redis 시작
+sudo systemctl start redis-server
+
+# 2. 가상환경 생성 및 의존성 설치
+cd ~/voice-to-textnote
+python3 -m venv venv
+source venv/bin/activate
+pip install --upgrade pip
+pip install -r deploy/requirements-ubuntu.txt
+
+# 3. storage 디렉토리 생성
+mkdir -p storage/temp storage/results
+
+# 4. API 서버 실행 (포트 8000)
+uvicorn backend.app.main:app --host 0.0.0.0 --port 8000
+
+# 5. Celery 워커 실행 (별도 터미널)
+celery -A backend.workers.celery_app:celery_app worker --loglevel=info --concurrency=2
+```
+
+### Health Check
+
+```bash
+curl http://localhost:8000/api/v1/health
+```
+
+### Tailscale 접속
+
+아이폰에서: `http://100.110.255.105:8000`
+
+---
+
 ## Troubleshooting
 
 ### Debugging MoAI Sessions
@@ -513,8 +556,8 @@ Large PDFs (>10 pages) return a lightweight reference when @-mentioned. Always s
 
 ---
 
-Version: 13.1.0 (Agent Teams Integration)
-Last Updated: 2026-02-10
+Version: 13.2.0 (Agent Teams Integration + Quick Start)
+Last Updated: 2026-03-22
 Language: English
 Core Rule: MoAI is an orchestrator; direct implementation is prohibited
 
