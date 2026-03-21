@@ -25,6 +25,11 @@ dependencies = [
     "slowapi>=0.1.9",
     "prometheus-fastapi-instrumentator>=7.0",
     "prometheus-client>=0.20",
+    "sse-starlette>=2.0",
+    # SPEC-DB-001: 데이터베이스 의존성
+    "sqlalchemy[asyncio]>=2.0",
+    "aiosqlite>=0.20",
+    "alembic>=1.13",
 ]
 
 [project.optional-dependencies]

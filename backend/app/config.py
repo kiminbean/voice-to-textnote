@@ -62,6 +62,19 @@ class Settings(BaseSettings):
     summary_max_tokens: int = 2000  # Claude API 최대 응답 토큰
     summary_model: str = "claude-sonnet-4-20250514"  # Claude 모델명
 
+    # -------------------------------------------------------------------------
+    # SPEC-DB-001: 데이터베이스 설정 (REQ-DB-001, REQ-DB-002, REQ-DB-003)
+    # -------------------------------------------------------------------------
+
+    # DB 연결 URL (빈 문자열이면 SQLite 폴백 - REQ-DB-002)
+    database_url: str = ""
+
+    # 커넥션 풀 최소 크기 (REQ-DB-003)
+    db_pool_size: int = 5
+
+    # 커넥션 풀 최대 초과 (pool_size + max_overflow = 최대 연결 수, REQ-DB-003)
+    db_max_overflow: int = 15
+
     # 로깅
     log_level: str = "INFO"
 
