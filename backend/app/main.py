@@ -11,7 +11,9 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.api.v1 import diarization, health, minutes, summary, transcription
 from backend.app.config import settings
+from backend.app.error_handlers import register_exception_handlers
 from backend.app.metrics import setup_metrics
+from backend.app.middleware.audit_log import AuditLogMiddleware
 from backend.app.middleware.rate_limit import setup_rate_limiting
 from backend.app.middleware.request_id import RequestIDMiddleware
 from backend.app.middleware.security_headers import SecurityHeadersMiddleware
@@ -70,11 +72,17 @@ def create_app() -> FastAPI:
         redoc_url="/redoc",
     )
 
+    # REQ-ERR-003 ~ REQ-ERR-006: 전역 예외 핸들러 등록 (가장 먼저 등록)
+    register_exception_handlers(app)
+
     # REQ-OPS-001/002: Prometheus 메트릭스 계측 (라우터 등록 전에 설정)
     setup_metrics(app)
 
     # REQ-OPS-005/006/007: Request ID 미들웨어
     app.add_middleware(RequestIDMiddleware)
+
+    # SPEC-LOG-001: 감사 로깅 미들웨어 (RequestID 이후, SecurityHeaders 이전)
+    app.add_middleware(AuditLogMiddleware)
 
     # REQ-SEC-011: 보안 헤더 미들웨어 (가장 먼저 추가 - 모든 응답에 적용)
     app.add_middleware(SecurityHeadersMiddleware)
