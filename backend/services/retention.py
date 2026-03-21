@@ -6,7 +6,7 @@ REQ-RET-004: 보존 기간 초과 임시 파일 삭제
 REQ-RET-005: 삭제 수 및 해제 공간 로깅
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from sqlalchemy import delete
@@ -32,7 +32,7 @@ def cleanup_expired_results(session: Session, retention_days: int) -> int:
         삭제된 레코드 수
     """
     # 보존 기간 기준 시각 계산 (타임존 없는 datetime - SQLite 호환)
-    cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=retention_days)
+    cutoff = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=retention_days)
 
     stmt = delete(TaskResult).where(TaskResult.created_at < cutoff)
     result = session.execute(stmt)
@@ -57,7 +57,7 @@ def cleanup_temp_files(temp_dir: Path, retention_hours: int) -> tuple[int, int]:
     Returns:
         (삭제된 파일 수, 해제된 바이트 크기) 튜플
     """
-    cutoff = datetime.now(timezone.utc).timestamp() - (retention_hours * 3600)
+    cutoff = datetime.now(UTC).timestamp() - (retention_hours * 3600)
     deleted_count = 0
     freed_bytes = 0
 

@@ -3,12 +3,11 @@ SPEC-LIFECYCLE-001 단위 테스트 - 헬스체크 버전 정보
 REQ-LIFE-006: /api/v1/health 응답에 version, started_at, uptime_seconds 포함
 """
 
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
-
 
 # ---------------------------------------------------------------------------
 # 테스트 픽스처
@@ -26,12 +25,12 @@ def mock_redis_healthy():
 @pytest.fixture
 def client_with_started_at(mock_redis_healthy):
     """started_at이 설정된 상태의 테스트 클라이언트"""
+    import backend.app.lifecycle as lc
     from backend.app.dependencies import get_redis_client
     from backend.app.main import app
-    import backend.app.lifecycle as lc
 
     # 시작 시각 설정 (10초 전)
-    lc._app_started_at = datetime.now(timezone.utc) - timedelta(seconds=10)
+    lc._app_started_at = datetime.now(UTC) - timedelta(seconds=10)
 
     async def override_redis():
         return mock_redis_healthy
@@ -54,9 +53,9 @@ def client_with_started_at(mock_redis_healthy):
 @pytest.fixture
 def client_with_no_started_at(mock_redis_healthy):
     """started_at이 설정되지 않은 상태의 테스트 클라이언트"""
+    import backend.app.lifecycle as lc
     from backend.app.dependencies import get_redis_client
     from backend.app.main import app
-    import backend.app.lifecycle as lc
 
     # 시작 시각 없음
     lc._app_started_at = None
@@ -173,7 +172,7 @@ class TestHealthUptimeField:
         """REQ-LIFE-006: uptime_seconds가 숫자형"""
         response = client_with_started_at.get("/api/v1/health")
         data = response.json()
-        assert isinstance(data["uptime_seconds"], (int, float))
+        assert isinstance(data["uptime_seconds"], int | float)
 
     def test_health_uptime_seconds_approximately_correct(self, client_with_started_at):
         """REQ-LIFE-006: 10초 전 시작한 경우 uptime이 약 10초 이상"""

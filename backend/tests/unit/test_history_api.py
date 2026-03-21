@@ -15,7 +15,6 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from backend.db.models import Base, TaskResult
 
-
 # ---------------------------------------------------------------------------
 # 테스트용 DB 픽스처 (인메모리 SQLite)
 # ---------------------------------------------------------------------------
@@ -47,7 +46,7 @@ async def populated_db(db_session: AsyncSession):
     다양한 task_type, status 조합으로 10건 삽입하여
     필터링/페이지네이션 테스트를 지원합니다.
     """
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     records = [
         TaskResult(
@@ -133,8 +132,6 @@ def test_app(db_engine):
 
     get_db_session 의존성을 인메모리 SQLite로 오버라이드합니다.
     """
-    from fastapi import FastAPI
-    from fastapi.testclient import TestClient
 
     from backend.app.api.v1.history import router
     from backend.app.dependencies import get_db_session
@@ -157,7 +154,6 @@ def test_app(db_engine):
 @pytest.fixture
 def client(test_app, populated_db):
     """사전 데이터가 삽입된 TestClient"""
-    from fastapi.testclient import TestClient
 
     return TestClient(test_app)
 
@@ -165,7 +161,6 @@ def client(test_app, populated_db):
 @pytest.fixture
 def empty_client(test_app):
     """빈 DB를 사용하는 TestClient"""
-    from fastapi.testclient import TestClient
 
     return TestClient(test_app)
 

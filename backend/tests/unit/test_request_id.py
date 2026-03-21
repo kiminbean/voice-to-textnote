@@ -12,7 +12,6 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-
 # ---------------------------------------------------------------------------
 # 테스트 픽스처
 # ---------------------------------------------------------------------------
@@ -132,8 +131,7 @@ class TestRequestIDInLogs:
 
     def test_middleware_sets_request_id_in_context(self):
         """REQ-OPS-006: 미들웨어가 structlog context에 request_id 설정"""
-        import structlog
-        from structlog.contextvars import clear_contextvars, get_contextvars
+        from structlog.contextvars import get_contextvars
 
         from backend.app.middleware.request_id import RequestIDMiddleware
 

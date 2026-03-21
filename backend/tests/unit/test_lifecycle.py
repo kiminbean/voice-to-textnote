@@ -7,11 +7,10 @@ REQ-LIFE-004: 종료 시 DB 커넥션 풀 dispose
 REQ-LIFE-005: 종료 완료 로그 출력
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 
 # ---------------------------------------------------------------------------
 # REQ-LIFE-001: Redis 연결 검증
@@ -375,4 +374,4 @@ class TestAppStartedAt:
             started_at = get_app_started_at()
 
         assert started_at.tzinfo is not None
-        assert started_at.tzinfo == timezone.utc
+        assert started_at.tzinfo == UTC

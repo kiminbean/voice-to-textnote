@@ -7,8 +7,8 @@ Celery 워커는 동기 환경이므로 aiosqlite/asyncpg 대신
 동기 SQLAlchemy 드라이버를 사용합니다.
 """
 
+from collections.abc import Generator
 from contextlib import contextmanager
-from typing import Generator
 
 from sqlalchemy import Engine, create_engine
 from sqlalchemy.orm import Session, sessionmaker
@@ -59,8 +59,8 @@ def get_sync_session() -> Generator[Session, None, None]:
             session.add(record)
             session.commit()
     """
-    _, SessionLocal = _get_sync_engine()
-    session = SessionLocal()
+    _, session_local = _get_sync_engine()
+    session = session_local()
     try:
         yield session
     finally:

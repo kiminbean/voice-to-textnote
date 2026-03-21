@@ -7,14 +7,11 @@ REQ-SSE-004: 클라이언트 연결 해제 시 리소스 해제
 REQ-SSE-007: 15초마다 heartbeat ping 전송
 """
 
-import asyncio
-import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
-from fastapi.testclient import TestClient
 from fastapi import FastAPI
-
+from fastapi.testclient import TestClient
 
 # ---------------------------------------------------------------------------
 # 테스트 헬퍼
@@ -63,8 +60,6 @@ class TestSSEEventGenerator:
         from backend.app.api.v1.stream import create_sse_event_generator
 
         # Arrange
-        received_events = []
-
         async def mock_subscriber(redis_client, task_id):
             yield {"event": "status_update", "data": {"status": "processing"}}
             yield {"event": "completed", "data": {"status": "completed"}}
@@ -78,7 +73,6 @@ class TestSSEEventGenerator:
             events.append(event)
 
         # Assert - completed 이후 이벤트는 전송되지 않음
-        event_types = [e.get("event") for e in events if isinstance(e, dict)]
         assert "should_not_be_sent" not in str(events)
 
     @pytest.mark.asyncio

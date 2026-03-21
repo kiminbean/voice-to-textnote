@@ -6,7 +6,7 @@ REQ-DB-010: Redis 캐시 미스 시 DB 폴백 조회
 REQ-DB-011: save_result(), get_result(), list_results() 메서드
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import delete, func, select
@@ -76,7 +76,7 @@ class ResultService:
 
             # 완료 상태이면 completed_at 설정
             if status == "completed" and record.completed_at is None:
-                record.completed_at = datetime.now(timezone.utc).replace(tzinfo=None)
+                record.completed_at = datetime.now(UTC).replace(tzinfo=None)
 
         await session.commit()
         await session.refresh(record)

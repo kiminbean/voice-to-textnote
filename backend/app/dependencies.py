@@ -2,8 +2,8 @@
 FastAPI 의존성 주입 - Redis 클라이언트, STT 엔진, 화자 분리 엔진, DB 세션
 """
 
+from collections.abc import AsyncGenerator
 from functools import lru_cache
-from typing import AsyncGenerator
 
 import redis.asyncio as aioredis
 from sqlalchemy.ext.asyncio import AsyncSession

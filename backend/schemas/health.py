@@ -5,7 +5,6 @@ REQ-LIFE-006: 버전 정보, 시작 시각, 업타임 필드 추가
 """
 
 from datetime import datetime
-from typing import Optional
 
 from pydantic import BaseModel
 
@@ -31,7 +30,7 @@ class HealthResponse(BaseModel):
     components: HealthComponents
     timestamp: datetime
     # REQ-LIFE-006: 앱 시작 시각 (UTC ISO 8601 형식, 미시작 시 None)
-    started_at: Optional[str] = None
+    started_at: str | None = None
     # REQ-LIFE-006: 서버 업타임 (초, 미시작 시 0)
     uptime_seconds: float = 0
 

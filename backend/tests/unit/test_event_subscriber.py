@@ -4,9 +4,8 @@ REQ-SSE-003: completed/failed 이벤트 수신 시 스트림 자동 종료
 REQ-SSE-004: 클라이언트 연결 해제 시 리소스 해제
 """
 
-import asyncio
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 

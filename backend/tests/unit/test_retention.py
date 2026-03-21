@@ -7,9 +7,7 @@
 """
 
 import uuid
-from datetime import datetime, timedelta, timezone
-from pathlib import Path
-from unittest.mock import MagicMock, patch
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy import create_engine, select
@@ -23,8 +21,8 @@ def sync_db_session():
 
     engine = create_engine("sqlite://", echo=False)
     Base.metadata.create_all(engine)
-    SessionLocal = sessionmaker(engine)
-    session = SessionLocal()
+    session_local = sessionmaker(engine)
+    session = session_local()
     yield session
     session.close()
     Base.metadata.drop_all(engine)
@@ -54,7 +52,7 @@ class TestCleanupExpiredResults:
         from backend.services.retention import cleanup_expired_results
 
         # 30일보다 오래된 레코드
-        old_time = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=31)
+        old_time = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=31)
         old_record = make_task_result("task-old-001", old_time)
         sync_db_session.add(old_record)
         sync_db_session.commit()
@@ -65,11 +63,11 @@ class TestCleanupExpiredResults:
 
     def test_keeps_records_within_retention_days(self, sync_db_session):
         """보존 기간 내 레코드는 삭제하지 않는다"""
-        from backend.services.retention import cleanup_expired_results
         from backend.db.models import TaskResult
+        from backend.services.retention import cleanup_expired_results
 
         # 10일 전 레코드 (30일 보존 기간 내)
-        recent_time = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=10)
+        recent_time = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=10)
         recent_record = make_task_result("task-recent-001", recent_time)
         sync_db_session.add(recent_record)
         sync_db_session.commit()
@@ -85,16 +83,16 @@ class TestCleanupExpiredResults:
 
     def test_deletes_only_expired_records(self, sync_db_session):
         """만료된 레코드만 삭제하고 최신 레코드는 유지한다"""
-        from backend.services.retention import cleanup_expired_results
         from backend.db.models import TaskResult
+        from backend.services.retention import cleanup_expired_results
 
         # 오래된 레코드 2개
-        old_time = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=40)
+        old_time = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=40)
         sync_db_session.add(make_task_result("task-old-001", old_time))
         sync_db_session.add(make_task_result("task-old-002", old_time))
 
         # 최신 레코드 1개
-        recent_time = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=5)
+        recent_time = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=5)
         sync_db_session.add(make_task_result("task-recent-001", recent_time))
         sync_db_session.commit()
 
@@ -119,7 +117,7 @@ class TestCleanupExpiredResults:
         from backend.services.retention import cleanup_expired_results
 
         # 8일 전 레코드 (7일 기준으로는 만료)
-        old_time = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=8)
+        old_time = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=8)
         sync_db_session.add(make_task_result("task-old-001", old_time))
         sync_db_session.commit()
 
@@ -139,7 +137,7 @@ class TestCleanupTempFiles:
         old_file.write_bytes(b"x" * 1024)
 
         # 파일 수정 시각을 25시간 전으로 설정 (24시간 기준 만료)
-        old_mtime = (datetime.now(timezone.utc).timestamp()) - (25 * 3600)
+        old_mtime = (datetime.now(UTC).timestamp()) - (25 * 3600)
         import os
         os.utime(old_file, (old_mtime, old_mtime))
 
@@ -157,7 +155,7 @@ class TestCleanupTempFiles:
         recent_file.write_bytes(b"x" * 512)
 
         # 파일 수정 시각을 1시간 전으로 설정 (24시간 기준 유효)
-        recent_mtime = datetime.now(timezone.utc).timestamp() - 3600
+        recent_mtime = datetime.now(UTC).timestamp() - 3600
         import os
         os.utime(recent_file, (recent_mtime, recent_mtime))
 
@@ -171,7 +169,7 @@ class TestCleanupTempFiles:
         """삭제한 파일들의 총 바이트 크기를 반환한다"""
         from backend.services.retention import cleanup_temp_files
 
-        old_mtime = datetime.now(timezone.utc).timestamp() - (25 * 3600)
+        old_mtime = datetime.now(UTC).timestamp() - (25 * 3600)
         import os
 
         file1 = tmp_path / "file1.wav"
@@ -206,7 +204,7 @@ class TestCleanupTempFiles:
         subdir.mkdir()
 
         # 하위 디렉토리의 수정 시각을 오래 전으로 설정
-        old_mtime = datetime.now(timezone.utc).timestamp() - (25 * 3600)
+        old_mtime = datetime.now(UTC).timestamp() - (25 * 3600)
         import os
         os.utime(subdir, (old_mtime, old_mtime))
 

@@ -9,8 +9,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi import FastAPI
-from fastapi.testclient import TestClient
-
 
 # ---------------------------------------------------------------------------
 # 테스트 픽스처

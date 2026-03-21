@@ -8,15 +8,11 @@ REQ-LOG-005: 요청 처리 시간이 5초 초과 시 WARNING 레벨로 로깅 (s
 REQ-LOG-006: 엔드포인트별 접근 횟수 Prometheus 카운터로 추적
 """
 
-import json
-from collections.abc import AsyncGenerator
-from contextlib import asynccontextmanager
 from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-
 
 # ---------------------------------------------------------------------------
 # 테스트 픽스처
@@ -129,7 +125,7 @@ class TestAuditLogFields:
         async def test_fields_route():
             return {"message": "ok"}
 
-        client = TestClient(app)
+        _client = TestClient(app)
 
         # 로거 mock으로 실제 로그 인자 캡처
         with patch("backend.app.middleware.audit_log.logger") as mock_logger:
@@ -148,9 +144,7 @@ class TestAuditLogFields:
             # info가 호출됐는지 확인
             if mock_logger.info.called:
                 call_kwargs = mock_logger.info.call_args
-                # 키워드 인자 확인
-                kwargs = call_kwargs[1] if call_kwargs[1] else {}
-                # 또는 positional 인자에서 추출
+                # positional 인자에서 추출
                 # 필수 필드가 전달됐는지 확인
                 all_args = str(call_kwargs)
                 required_fields = ["method", "path", "status_code", "duration_ms"]
@@ -587,9 +581,10 @@ class TestSlowRequestWarning:
 
     def test_slow_request_logs_as_warning(self):
         """REQ-LOG-005: 5초 초과 요청은 WARNING 레벨로 로깅"""
-        import time
 
-        from backend.app.middleware.audit_log import AuditLogMiddleware, SLOW_REQUEST_THRESHOLD_SECONDS
+        from backend.app.middleware.audit_log import (
+            AuditLogMiddleware,
+        )
 
         with patch("backend.app.middleware.audit_log.logger") as mock_logger:
             mock_logger.info = MagicMock()
@@ -694,7 +689,6 @@ class TestPrometheusAccessCounter:
 
     def test_access_counter_is_prometheus_counter(self):
         """REQ-LOG-006: API_ACCESS_COUNTER가 prometheus_client.Counter 타입"""
-        from prometheus_client import Counter
 
         from backend.app.middleware.audit_log import API_ACCESS_COUNTER
 
@@ -717,7 +711,7 @@ class TestPrometheusAccessCounter:
         async def counter_test_route():
             return {"message": "ok"}
 
-        client = TestClient(app)
+        _client = TestClient(app)
 
         # 카운터 mock
         with patch("backend.app.middleware.audit_log.API_ACCESS_COUNTER") as mock_counter:

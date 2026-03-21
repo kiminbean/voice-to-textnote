@@ -9,7 +9,16 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.app.api.v1 import admin, diarization, health, history, minutes, stream, summary, transcription
+from backend.app.api.v1 import (
+    admin,
+    diarization,
+    health,
+    history,
+    minutes,
+    stream,
+    summary,
+    transcription,
+)
 from backend.app.config import settings
 from backend.app.error_handlers import register_exception_handlers
 from backend.app.lifecycle import cleanup_shutdown, validate_startup

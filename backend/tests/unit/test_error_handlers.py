@@ -6,13 +6,13 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from backend.app.error_handlers import register_exception_handlers
 from backend.app.exceptions import (
     AudioProcessingError,
     PipelineError,
     StorageError,
     VoiceNoteError,
 )
-from backend.app.error_handlers import register_exception_handlers
 
 
 def create_test_app() -> FastAPI:

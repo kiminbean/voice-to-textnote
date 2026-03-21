@@ -5,8 +5,7 @@ Admin API 테스트 - SPEC-RETENTION-001
 - POST /api/v1/admin/cleanup: 즉시 정리 실행 및 결과 반환
 """
 
-from unittest.mock import patch, MagicMock
-from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient

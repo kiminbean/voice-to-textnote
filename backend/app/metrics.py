@@ -8,7 +8,8 @@ REQ-OPS-004: 시스템 메트릭스 (RSS 메모리, CPU 사용률)
 
 import psutil
 from fastapi import FastAPI
-from prometheus_client import Counter, Gauge, Histogram, registry as prom_registry
+from prometheus_client import Counter, Gauge, Histogram
+from prometheus_client import registry as prom_registry
 from prometheus_fastapi_instrumentator import Instrumentator
 
 

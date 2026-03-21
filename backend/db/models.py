@@ -7,13 +7,12 @@ REQ-DB-006: UUID 기본 키, created/updated 타임스탬프
 """
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import DateTime, Float, Index, Integer, String, Text
+from sqlalchemy import DateTime, Float, Integer, String, Text
 from sqlalchemy.dialects.sqlite import JSON
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
-from sqlalchemy.sql import func
 
 
 class Base(DeclarativeBase):
@@ -24,7 +23,7 @@ class Base(DeclarativeBase):
 
 def _utcnow() -> datetime:
     """현재 UTC 시각 반환 (타임존 없는 datetime - SQLite 호환)"""
-    return datetime.now(timezone.utc).replace(tzinfo=None)
+    return datetime.now(UTC).replace(tzinfo=None)
 
 
 class TaskResult(Base):

@@ -8,7 +8,6 @@ DB 엔진 모듈 테스트 - REQ-DB-001, REQ-DB-002, REQ-DB-003
 """
 
 import pytest
-import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 

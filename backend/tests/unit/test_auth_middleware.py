@@ -13,7 +13,6 @@ import pytest
 from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
 
-
 # ---------------------------------------------------------------------------
 # 테스트 픽스처
 # ---------------------------------------------------------------------------
@@ -26,7 +25,6 @@ def test_app_with_auth():
     API_KEYS 환경 변수에 테스트 키 주입
     """
     from fastapi import Depends
-    from fastapi.responses import JSONResponse
 
     from backend.app.middleware.auth import verify_api_key
 
@@ -167,7 +165,6 @@ class TestApiKeyLogging:
 
     def test_api_key_not_logged_in_plaintext(self):
         """REQ-SEC-005: verify_api_key 호출 시 API Key 평문 로그 없음"""
-        import logging
 
         from backend.app.middleware.auth import verify_api_key
 

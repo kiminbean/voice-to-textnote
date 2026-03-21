@@ -7,7 +7,6 @@ REQ-SEC-004: API_KEYS 미설정 시 인증 비활성화 (개발 모드)
 REQ-SEC-005: API Key 평문 로그 금지
 """
 
-from typing import Optional
 
 from fastapi import HTTPException, Security, status
 from fastapi.security import APIKeyHeader, APIKeyQuery
@@ -24,8 +23,8 @@ _api_key_query_scheme = APIKeyQuery(name="api_key", auto_error=False)
 
 
 async def verify_api_key(
-    api_key_header: Optional[str] = Security(_api_key_header_scheme),
-    api_key_query: Optional[str] = Security(_api_key_query_scheme),
+    api_key_header: str | None = Security(_api_key_header_scheme),
+    api_key_query: str | None = Security(_api_key_query_scheme),
 ) -> str:
     """
     API Key 인증 의존성 함수

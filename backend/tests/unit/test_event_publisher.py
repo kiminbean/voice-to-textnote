@@ -5,7 +5,7 @@ REQ-SSE-006: publish_task_event(task_id, event_type, data) 인터페이스
 """
 
 import json
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
 import pytest
 

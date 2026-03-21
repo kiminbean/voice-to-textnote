@@ -9,7 +9,7 @@ REQ-LIFE-004: 종료 시 DB 커넥션 풀 dispose
 REQ-LIFE-005: 종료 완료 로그 출력
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from backend.db.engine import create_engine
 from backend.utils.logger import get_logger
@@ -39,7 +39,7 @@ async def validate_startup() -> dict:
     """
     global _app_started_at
     # 시작 시각 기록 (UTC)
-    _app_started_at = datetime.now(timezone.utc)
+    _app_started_at = datetime.now(UTC)
 
     status: dict[str, str] = {}
 

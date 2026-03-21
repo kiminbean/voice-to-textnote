@@ -10,7 +10,6 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-
 # ---------------------------------------------------------------------------
 # 테스트 픽스처
 # ---------------------------------------------------------------------------
@@ -40,7 +39,6 @@ def reset_prometheus_registry():
 @pytest.fixture
 def app_with_metrics():
     """Prometheus 메트릭스가 적용된 테스트 앱"""
-    from prometheus_client import REGISTRY, CollectorRegistry
 
     from backend.app.metrics import setup_metrics
 

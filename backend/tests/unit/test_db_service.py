@@ -8,11 +8,10 @@ DB 서비스 테스트 - REQ-DB-009, REQ-DB-010, REQ-DB-011
 """
 
 import uuid
-from datetime import datetime, timezone
 
 import pytest
 import pytest_asyncio
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 
 @pytest_asyncio.fixture
@@ -24,8 +23,8 @@ async def db_session():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
-    SessionLocal = async_sessionmaker(engine, expire_on_commit=False)
-    async with SessionLocal() as session:
+    session_local = async_sessionmaker(engine, expire_on_commit=False)
+    async with session_local() as session:
         yield session
 
     await engine.dispose()

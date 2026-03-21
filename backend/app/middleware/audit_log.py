@@ -14,7 +14,8 @@ import time
 from datetime import UTC, datetime
 from typing import Any
 
-from prometheus_client import Counter, registry as prom_registry
+from prometheus_client import Counter
+from prometheus_client import registry as prom_registry
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response

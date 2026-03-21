@@ -7,8 +7,9 @@
 - REQ-PERSIST-003: DB 저장 실패 시 예외 전파 금지
 """
 
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 
 class TestGetSyncSession:
@@ -78,19 +79,20 @@ class TestPersistTaskResult:
     @pytest.fixture(autouse=True)
     def setup_in_memory_db(self):
         """각 테스트마다 인메모리 SQLite DB 세팅"""
-        import backend.db.sync_engine as sync_engine_module
         from sqlalchemy import create_engine as sa_create_engine
         from sqlalchemy.orm import sessionmaker
+
+        import backend.db.sync_engine as sync_engine_module
         from backend.db.models import Base
 
         # 인메모리 SQLite 엔진
         engine = sa_create_engine("sqlite:///:memory:", echo=False)
         Base.metadata.create_all(engine)
-        SessionLocal = sessionmaker(engine)
+        session_local = sessionmaker(engine)
 
         # 모듈 수준 변수를 테스트용으로 교체
         sync_engine_module._sync_engine = engine
-        sync_engine_module._SessionLocal = SessionLocal
+        sync_engine_module._SessionLocal = session_local
 
         yield engine
 
@@ -101,10 +103,11 @@ class TestPersistTaskResult:
 
     def test_persist_task_result_saves_completed(self):
         """completed 상태의 결과가 DB에 저장되어야 함"""
-        from backend.db.sync_service import persist_task_result
-        from backend.db.sync_engine import get_sync_session
-        from backend.db.models import TaskResult
         from sqlalchemy import select
+
+        from backend.db.models import TaskResult
+        from backend.db.sync_engine import get_sync_session
+        from backend.db.sync_service import persist_task_result
 
         task_id = "persist-test-001"
         result_data = {"segments": [{"text": "안녕하세요", "start": 0.0, "end": 2.0}]}
@@ -129,10 +132,11 @@ class TestPersistTaskResult:
 
     def test_persist_task_result_saves_failed(self):
         """failed 상태와 에러 메시지가 DB에 저장되어야 함"""
-        from backend.db.sync_service import persist_task_result
-        from backend.db.sync_engine import get_sync_session
-        from backend.db.models import TaskResult
         from sqlalchemy import select
+
+        from backend.db.models import TaskResult
+        from backend.db.sync_engine import get_sync_session
+        from backend.db.sync_service import persist_task_result
 
         task_id = "persist-test-002"
         error_msg = "오디오 파일 없음"
@@ -155,10 +159,11 @@ class TestPersistTaskResult:
 
     def test_persist_task_result_upserts_existing(self):
         """동일 task_id로 두 번 호출 시 업데이트(upsert)가 되어야 함"""
-        from backend.db.sync_service import persist_task_result
-        from backend.db.sync_engine import get_sync_session
-        from backend.db.models import TaskResult
         from sqlalchemy import select
+
+        from backend.db.models import TaskResult
+        from backend.db.sync_engine import get_sync_session
+        from backend.db.sync_service import persist_task_result
 
         task_id = "persist-test-003"
 
@@ -188,10 +193,11 @@ class TestPersistTaskResult:
 
     def test_persist_task_result_all_task_types(self):
         """모든 작업 유형(transcription, diarization, minutes, summary)이 저장 가능해야 함"""
-        from backend.db.sync_service import persist_task_result
-        from backend.db.sync_engine import get_sync_session
-        from backend.db.models import TaskResult
         from sqlalchemy import select
+
+        from backend.db.models import TaskResult
+        from backend.db.sync_engine import get_sync_session
+        from backend.db.sync_service import persist_task_result
 
         task_types = ["transcription", "diarization", "minutes", "summary"]
 
@@ -253,18 +259,19 @@ class TestPersistTaskResultErrorHandling:
 
     def test_return_value_is_none_on_success(self):
         """persist_task_result()는 반환값이 없어야 함 (None)"""
-        import backend.db.sync_engine as sync_engine_module
         from sqlalchemy import create_engine as sa_create_engine
         from sqlalchemy.orm import sessionmaker
+
+        import backend.db.sync_engine as sync_engine_module
         from backend.db.models import Base
         from backend.db.sync_service import persist_task_result
 
         engine = sa_create_engine("sqlite:///:memory:", echo=False)
         Base.metadata.create_all(engine)
-        SessionLocal = sessionmaker(engine)
+        session_local = sessionmaker(engine)
 
         sync_engine_module._sync_engine = engine
-        sync_engine_module._SessionLocal = SessionLocal
+        sync_engine_module._SessionLocal = session_local
 
         try:
             result = persist_task_result(
