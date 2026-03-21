@@ -1,9 +1,11 @@
 """
 헬스체크 응답 Pydantic v2 스키마
 REQ-STT-019, REQ-STT-020 관련
+REQ-LIFE-006: 버전 정보, 시작 시각, 업타임 필드 추가
 """
 
 from datetime import datetime
+from typing import Optional
 
 from pydantic import BaseModel
 
@@ -28,6 +30,12 @@ class HealthResponse(BaseModel):
     version: str
     components: HealthComponents
     timestamp: datetime
+    # REQ-LIFE-006: 앱 시작 시각 (UTC ISO 8601 형식, 미시작 시 None)
+    started_at: Optional[str] = None
+    # REQ-LIFE-006: 서버 업타임 (초, 미시작 시 0)
+    uptime_seconds: float = 0
+
+    model_config = {"populate_by_name": True}
 
 
 class ModelStatusResponse(BaseModel):

@@ -14,6 +14,7 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
 from backend.app.dependencies import get_diarization_engine, get_redis_client, get_whisper_engine
+from backend.app.lifecycle import get_app_started_at
 from backend.ml.diarization_engine import DiarizationEngine
 from backend.ml.stt_engine import WhisperEngine
 from backend.schemas.health import (
@@ -64,6 +65,13 @@ async def health_check(
     if ffmpeg_status == "unavailable":
         overall = "degraded"
 
+    # REQ-LIFE-006: 시작 시각 및 업타임 계산
+    app_started_at = get_app_started_at()
+    started_at_iso: str | None = app_started_at.isoformat() if app_started_at else None
+    uptime_seconds: float = (
+        (datetime.now(UTC) - app_started_at).total_seconds() if app_started_at else 0
+    )
+
     return HealthResponse(
         status=overall,
         version=APP_VERSION,
@@ -74,6 +82,8 @@ async def health_check(
             ffmpeg=ffmpeg_status,
         ),
         timestamp=datetime.now(UTC),
+        started_at=started_at_iso,
+        uptime_seconds=uptime_seconds,
     )
 
 

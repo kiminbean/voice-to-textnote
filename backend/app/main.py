@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.app.api.v1 import diarization, health, minutes, stream, summary, transcription
 from backend.app.config import settings
 from backend.app.error_handlers import register_exception_handlers
+from backend.app.lifecycle import cleanup_shutdown, validate_startup
 from backend.app.metrics import setup_metrics
 from backend.app.middleware.audit_log import AuditLogMiddleware
 from backend.app.middleware.rate_limit import setup_rate_limiting
@@ -33,6 +34,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     종료: 클린업
     """
     logger.info("서버 시작: 모델 사전 로드 중...")
+
+    # SPEC-LIFECYCLE-001: 시작 시 의존성 검증 (Redis, DB)
+    await validate_startup()
 
     # STT 모델 사전 로드 (REQ-STT-021)
     try:
@@ -60,6 +64,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # 종료 시 클린업
     logger.info("서버 종료")
+    # SPEC-LIFECYCLE-001: 종료 시 리소스 정리 (DB 커넥션 풀 dispose)
+    await cleanup_shutdown()
 
 
 def create_app() -> FastAPI:
