@@ -198,6 +198,19 @@ def diarization_task(
         }
 
         _cache_result(task_id, final_result)
+
+        # DB 영속 저장 (best-effort, REQ-PERSIST-006)
+        try:
+            from backend.db.sync_service import persist_task_result
+            persist_task_result(
+                task_id=task_id,
+                task_type="diarization",
+                status="completed",
+                result_data=final_result,
+            )
+        except Exception:
+            pass  # DB 저장 실패는 무시 (Redis에 이미 저장됨)
+
         _update_task_status(task_id, TaskStatus.completed, 1.0, "화자 분리 완료")
 
         logger.info(
@@ -221,6 +234,19 @@ def diarization_task(
             "created_at": processing_start.isoformat(),
         }
         _cache_result(task_id, failed_result)
+
+        # DB 영속 저장 - 실패 상태 (best-effort, REQ-PERSIST-007)
+        try:
+            from backend.db.sync_service import persist_task_result
+            persist_task_result(
+                task_id=task_id,
+                task_type="diarization",
+                status="failed",
+                error_message=error_msg,
+            )
+        except Exception:
+            pass  # DB 저장 실패는 무시
+
         return failed_result
 
     except Exception as exc:
@@ -235,6 +261,19 @@ def diarization_task(
             "created_at": processing_start.isoformat(),
         }
         _cache_result(task_id, failed_result)
+
+        # DB 영속 저장 - 실패 상태 (best-effort, REQ-PERSIST-007)
+        try:
+            from backend.db.sync_service import persist_task_result
+            persist_task_result(
+                task_id=task_id,
+                task_type="diarization",
+                status="failed",
+                error_message=error_msg,
+            )
+        except Exception:
+            pass  # DB 저장 실패는 무시
+
         return failed_result
 
     finally:

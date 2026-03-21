@@ -196,6 +196,18 @@ def transcription_task(
         result_file = settings.results_dir / f"{task_id}.json"
         result_file.write_text(json.dumps(final_result, ensure_ascii=False), encoding="utf-8")
 
+        # DB 영속 저장 (best-effort, REQ-PERSIST-004)
+        try:
+            from backend.db.sync_service import persist_task_result
+            persist_task_result(
+                task_id=task_id,
+                task_type="transcription",
+                status="completed",
+                result_data=final_result,
+            )
+        except Exception:
+            pass  # DB 저장 실패는 무시 (Redis에 이미 저장됨)
+
         _update_task_status(task_id, TaskStatus.completed, 1.0, "전사 완료")
         logger.info(
             "전사 작업 완료",
@@ -227,6 +239,18 @@ def transcription_task(
                 "created_at": processing_start.isoformat(),
             },
         )
+
+        # DB 영속 저장 - 실패 상태 (best-effort, REQ-PERSIST-005)
+        try:
+            from backend.db.sync_service import persist_task_result
+            persist_task_result(
+                task_id=task_id,
+                task_type="transcription",
+                status="failed",
+                error_message=error_msg,
+            )
+        except Exception:
+            pass  # DB 저장 실패는 무시
 
         # Celery 재시도 (최대 3회, 지수 백오프)
         try:
