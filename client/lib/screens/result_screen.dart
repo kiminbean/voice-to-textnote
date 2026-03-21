@@ -1,6 +1,10 @@
-// 결과 화면 - 회의록, AI 요약, 액션 아이템 표시
+// 결과 화면 - 실제 API 데이터 바인딩 + 에러/빈 상태
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:voice_to_textnote/providers/result_provider.dart';
+import 'package:voice_to_textnote/widgets/error_retry_widget.dart';
+import 'package:voice_to_textnote/widgets/empty_state_widget.dart';
+import 'package:voice_to_textnote/widgets/shimmer_text.dart';
 import 'package:voice_to_textnote/widgets/speaker_segment.dart';
 
 class ResultScreen extends ConsumerWidget {
@@ -39,44 +43,115 @@ class ResultScreen extends ConsumerWidget {
 }
 
 // 회의록 탭
-class _TranscriptTab extends StatelessWidget {
+class _TranscriptTab extends ConsumerWidget {
   final String meetingId;
 
   const _TranscriptTab({required this.meetingId});
 
   @override
-  Widget build(BuildContext context) {
-    // MVP: 샘플 데이터로 표시 (실제 구현 시 API 연동)
-    final segments = [
-      ('스피커 1', '안녕하세요. 오늘 회의를 시작하겠습니다.', const Duration(seconds: 0), 0),
-      ('스피커 2', '네, 먼저 지난 주 진행 상황을 공유해 주세요.', const Duration(seconds: 10), 1),
-      ('스피커 1', '지난 주에는 사용자 인터페이스 개발을 완료했습니다.', const Duration(seconds: 20), 0),
-    ];
+  Widget build(BuildContext context, WidgetRef ref) {
+    final resultAsync = ref.watch(resultProvider(meetingId));
 
-    return ListView.builder(
-      itemCount: segments.length,
-      itemBuilder: (context, index) {
-        final (name, text, time, speakerIdx) = segments[index];
-        return SpeakerSegment(
-          speakerName: name,
-          text: text,
-          startTime: time,
-          speakerIndex: speakerIdx,
+    return resultAsync.when(
+      loading: () => _buildShimmerLoading(),
+      error: (error, _) => ErrorRetryWidget(
+        message: '회의록을 불러올 수 없습니다',
+        onRetry: () => ref.invalidate(resultProvider(meetingId)),
+      ),
+      data: (result) {
+        if (result.minutes.isEmpty) {
+          return const EmptyStateWidget(
+            icon: Icons.article_outlined,
+            title: '회의록이 없습니다',
+            subtitle: '처리가 완료되지 않았을 수 있습니다',
+          );
+        }
+
+        // 회의록 텍스트를 세그먼트로 파싱하여 표시
+        // MVP: 단일 텍스트 블록으로 표시
+        return ListView(
+          children: [
+            SpeakerSegment(
+              speakerName: '회의록',
+              text: result.minutes,
+              startTime: Duration.zero,
+              speakerIndex: 0,
+            ),
+          ],
         );
       },
+    );
+  }
+
+  // shimmer 로딩 스켈레톤
+  Widget _buildShimmerLoading() {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: List.generate(
+          4,
+          (_) => const Padding(
+            padding: EdgeInsets.only(bottom: 16),
+            child: ShimmerText(lines: 4),
+          ),
+        ),
+      ),
     );
   }
 }
 
 // AI 요약 탭
-class _SummaryTab extends StatelessWidget {
+class _SummaryTab extends ConsumerWidget {
   final String meetingId;
 
   const _SummaryTab({required this.meetingId});
 
   @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
+  Widget build(BuildContext context, WidgetRef ref) {
+    final resultAsync = ref.watch(resultProvider(meetingId));
+
+    return resultAsync.when(
+      loading: () => _buildShimmerLoading(),
+      error: (error, _) => ErrorRetryWidget(
+        message: 'AI 요약을 불러올 수 없습니다',
+        onRetry: () => ref.invalidate(resultProvider(meetingId)),
+      ),
+      data: (result) {
+        if (result.summary.isEmpty) {
+          return const EmptyStateWidget(
+            icon: Icons.summarize_outlined,
+            title: 'AI 요약이 없습니다',
+          );
+        }
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'AI 요약',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const Divider(),
+                  Text(
+                    result.summary,
+                    style: const TextStyle(height: 1.6),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildShimmerLoading() {
+    return Padding(
       padding: const EdgeInsets.all(16),
       child: Card(
         child: Padding(
@@ -84,15 +159,11 @@ class _SummaryTab extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'AI 요약',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
+              const ShimmerText(lines: 1),
+              const SizedBox(height: 16),
               const Divider(),
-              const Text(
-                '회의에서 UI 개발 완료 및 다음 단계 논의가 이루어졌습니다.',
-                style: TextStyle(height: 1.6),
-              ),
+              const SizedBox(height: 8),
+              const ShimmerText(lines: 5),
             ],
           ),
         ),
@@ -102,30 +173,77 @@ class _SummaryTab extends StatelessWidget {
 }
 
 // 액션 아이템 탭
-class _ActionItemsTab extends StatefulWidget {
+class _ActionItemsTab extends ConsumerWidget {
   final String meetingId;
 
   const _ActionItemsTab({required this.meetingId});
 
   @override
-  State<_ActionItemsTab> createState() => _ActionItemsTabState();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final resultAsync = ref.watch(resultProvider(meetingId));
+
+    return resultAsync.when(
+      loading: () => _buildShimmerLoading(),
+      error: (error, _) => ErrorRetryWidget(
+        message: '액션 아이템을 불러올 수 없습니다',
+        onRetry: () => ref.invalidate(resultProvider(meetingId)),
+      ),
+      data: (result) {
+        if (result.actionItems.isEmpty) {
+          return const EmptyStateWidget(
+            icon: Icons.checklist_outlined,
+            title: '액션 아이템이 없습니다',
+          );
+        }
+
+        return _ActionItemsList(items: result.actionItems);
+      },
+    );
+  }
+
+  Widget _buildShimmerLoading() {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: List.generate(
+          3,
+          (_) => const Padding(
+            padding: EdgeInsets.only(bottom: 12),
+            child: ShimmerText(lines: 1),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
-class _ActionItemsTabState extends State<_ActionItemsTab> {
-  // MVP: 샘플 액션 아이템
-  final List<(String, bool)> _items = [
-    ('UI 컴포넌트 리뷰 진행', false),
-    ('API 연동 테스트', false),
-    ('다음 주 배포 계획 수립', false),
-  ];
+// 액션 아이템 목록 (체크박스)
+class _ActionItemsList extends StatefulWidget {
+  final List<String> items;
+
+  const _ActionItemsList({required this.items});
+
+  @override
+  State<_ActionItemsList> createState() => _ActionItemsListState();
+}
+
+class _ActionItemsListState extends State<_ActionItemsList> {
+  late final List<bool> _checked;
+
+  @override
+  void initState() {
+    super.initState();
+    _checked = List.filled(widget.items.length, false);
+  }
 
   @override
   Widget build(BuildContext context) {
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: _items.length,
+      itemCount: widget.items.length,
       itemBuilder: (context, index) {
-        final (text, done) = _items[index];
+        final text = widget.items[index];
+        final done = _checked[index];
         return CheckboxListTile(
           value: done,
           title: Text(
@@ -137,7 +255,7 @@ class _ActionItemsTabState extends State<_ActionItemsTab> {
           ),
           onChanged: (value) {
             setState(() {
-              _items[index] = (text, value ?? false);
+              _checked[index] = value ?? false;
             });
           },
         );

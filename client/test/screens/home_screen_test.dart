@@ -1,18 +1,53 @@
 // HomeScreen 위젯 테스트
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:voice_to_textnote/models/meeting.dart';
+import 'package:voice_to_textnote/providers/connectivity_provider.dart';
 import 'package:voice_to_textnote/providers/meeting_list_provider.dart';
 import 'package:voice_to_textnote/screens/home_screen.dart';
+import 'package:voice_to_textnote/services/connectivity_service.dart';
+
+class MockConnectivityService extends Mock implements ConnectivityService {}
+
+// 테스트용 온라인 상태 오버라이드
+List<Override> _onlineOverrides(MockConnectivityService mockService) {
+  final streamController = StreamController<bool>.broadcast();
+  when(() => mockService.isOnline).thenReturn(true);
+  when(() => mockService.onStatusChange)
+      .thenAnswer((_) => streamController.stream);
+  when(() => mockService.startMonitoring(
+        interval: any(named: 'interval'),
+      )).thenReturn(null);
+  when(() => mockService.dispose()).thenReturn(null);
+
+  return [
+    connectivityServiceProvider.overrideWithValue(mockService),
+  ];
+}
 
 void main() {
+  setUpAll(() {
+    registerFallbackValue(const Duration(seconds: 30));
+  });
+
   group('HomeScreen', () {
+    late MockConnectivityService mockService;
+
+    setUp(() {
+      mockService = MockConnectivityService();
+    });
+
     // 빈 상태 표시 테스트
-    testWidgets('미팅이 없을 때 빈 상태 메시지가 표시되어야 함', (WidgetTester tester) async {
+    testWidgets('미팅이 없을 때 빈 상태 메시지가 표시되어야 함',
+        (WidgetTester tester) async {
       await tester.pumpWidget(
-        const ProviderScope(
-          child: MaterialApp(
+        ProviderScope(
+          overrides: _onlineOverrides(mockService),
+          child: const MaterialApp(
             home: HomeScreen(),
           ),
         ),
@@ -29,7 +64,8 @@ void main() {
     });
 
     // 미팅 목록 표시 테스트
-    testWidgets('미팅이 있을 때 MeetingCard가 표시되어야 함', (WidgetTester tester) async {
+    testWidgets('미팅이 있을 때 MeetingCard가 표시되어야 함',
+        (WidgetTester tester) async {
       final testMeeting = Meeting(
         id: 'test-001',
         title: '테스트 미팅',
@@ -41,6 +77,7 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
+            ..._onlineOverrides(mockService),
             meetingListProvider.overrideWith(
               () => _MockMeetingListNotifier([testMeeting]),
             ),
