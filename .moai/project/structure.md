@@ -10,7 +10,7 @@ voice-to-textnote/
 ├── scripts/                    # 개발 설정, 모델 다운로드 자동화
 ├── tests/                      # 통합 및 E2E 테스트
 ├── docs/                       # 프로젝트 문서 및 아키텍처 다이어그램
-├── docker-compose.yml          # 로컬 개발 환경 설정 (FastAPI, Redis, Celery)
+├── deploy/                     # 서버 배포 스크립트 및 의존성 (Ubuntu systemd)
 ├── .env.example                # 환경 변수 템플릿
 ├── pyproject.toml              # Python 의존성 관리
 ├── pubspec.yaml                # Flutter 의존성 관리
@@ -148,9 +148,9 @@ backend/
 │
 ├── conftest.py                 # pytest 픽스처 및 설정
 ├── pyproject.toml              # Python 의존성 관리
-├── Dockerfile                  # 백엔드 컨테이너 이미지
-├── docker-compose.yml          # FastAPI, Redis, Celery 스택
-├── docker-compose.prod.yml     # 프로덕션 스택 (Nginx, PostgreSQL)
+├── deploy/
+│   ├── setup-ubuntu.sh         # Ubuntu 원클릭 배포 스크립트 (systemd 서비스 등록)
+│   └── requirements-ubuntu.txt # Ubuntu 서버 Python 의존성
 ├── alembic/                    # 데이터베이스 마이그레이션
 │   ├── versions/               # 마이그레이션 스크립트
 │   ├── env.py                  # Alembic 환경 설정
@@ -390,8 +390,8 @@ scripts/
 ├── migrate_db.py              # 데이터베이스 마이그레이션
 │   └── Alembic으로 DB 스키마 업데이트
 │
-└── docker_compose_up.sh       # 전체 스택 Docker 시작
-    └── FastAPI, Redis, PostgreSQL, Celery 모두 실행
+└── deploy/setup-ubuntu.sh     # Ubuntu 서버 배포 (Redis, Python, systemd)
+    └── voicenote-api, voicenote-worker systemd 서비스 등록
 ```
 
 ## 문서 디렉토리 구조
@@ -424,8 +424,8 @@ docs/
 │
 ├── deployment/
 │   ├── local_deployment.md    # 로컬 배포
-│   ├── docker_setup.md        # Docker 구성
-│   └── production.md          # 프로덕션 배포
+│   ├── ubuntu_setup.md        # Ubuntu systemd 배포
+│   └── tailscale_access.md    # Tailscale 외부 접속 설정
 │
 └── diagrams/
     ├── architecture_diagram.mmd # Mermaid 아키텍처 다이어그램

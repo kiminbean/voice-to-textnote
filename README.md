@@ -33,7 +33,7 @@
 ✅ **실시간 스트리밍**: SSE로 진행률 실시간 업데이트
 ✅ **API 보안**: API Key 인증, 레이트 리미팅, CORS, Security Headers
 ✅ **모니터링**: Prometheus 메트릭, 요청 ID 추적, 구조화된 로깅
-✅ **프로덕션 배포**: Docker, Nginx, docker-compose.prod.yml
+✅ **프로덕션 배포**: Ubuntu systemd + Redis + Tailscale 원격 접속
 ✅ **완전한 테스트**: 767개 테스트 (백엔드 700 + Flutter 67), 96.94% 커버리지
 
 ## 주요 기능
@@ -189,25 +189,33 @@ flutter run -d chrome
 **API 문서**: http://localhost:8000/docs (Swagger UI)
 **Flutter 앱**: http://localhost:50505
 
-### Docker 프로덕션 배포
+### 서버 배포 (Ubuntu + systemd)
 
-#### 개발 환경
+#### 우분투 서버 설치
 ```bash
-# SQLite + Redis + Celery 스택
-docker-compose up -d
+git clone https://github.com/kiminbean/voice-to-textnote.git
+cd voice-to-textnote
+bash deploy/setup-ubuntu.sh
 ```
 
-#### 프로덕션 환경
+#### 서비스 시작/중지
 ```bash
-# PostgreSQL + Nginx + FastAPI 풀 스택
-docker-compose -f docker-compose.prod.yml up -d
+# .env 설정 후 서비스 시작
+sudo systemctl start voicenote-api voicenote-worker
+
+# 상태 확인
+sudo systemctl status voicenote-api
 
 # 로그 확인
-docker-compose -f docker-compose.prod.yml logs -f
+journalctl -u voicenote-api -f
 
 # 중지
-docker-compose -f docker-compose.prod.yml down
+sudo systemctl stop voicenote-api voicenote-worker
 ```
+
+#### 외부 접속 (Tailscale)
+- 서버와 클라이언트 모두 Tailscale 설치
+- Flutter 앱에서 Tailscale IP로 접속 (예: `http://100.x.x.x:8000`)
 
 ## API 엔드포인트
 
@@ -634,28 +642,35 @@ celery -A backend.workers.celery_app worker --loglevel=info
 
 ## 배포 옵션
 
-### 로컬 개발 환경
+### 로컬 개발 환경 (macOS)
 
 ```bash
-docker-compose up -d  # SQLite + Redis + Celery
+# Redis 시작
+brew services start redis
+
+# 백엔드 서버 시작
+uvicorn backend.app.main:app --host 0.0.0.0 --port 8000
+
+# Celery 워커 시작 (별도 터미널)
+celery -A backend.workers.celery_app:celery_app worker --loglevel=info
 ```
 
-### 프로덕션 배포
+### 프로덕션 배포 (Ubuntu + systemd)
 
 ```bash
-# Nginx + PostgreSQL + FastAPI 풀 스택
-docker-compose -f docker-compose.prod.yml up -d
+# 원클릭 설치
+git clone https://github.com/kiminbean/voice-to-textnote.git
+cd voice-to-textnote
+bash deploy/setup-ubuntu.sh
+
+# 서비스 시작
+sudo systemctl start voicenote-api voicenote-worker
 ```
 
-### 클라우드 이전
+### 외부 접속 (Tailscale)
 
-현재 로컬 환경에서 AWS로 이전 시:
-
-- **RDS**: PostgreSQL 16+
-- **ElastiCache**: Redis 7.0+
-- **EC2**: c7i 인스턴스 (CPU 기반 STT/DIA)
-- **S3**: 오디오 파일 저장소
-- **Auto Scaling**: 높은 부하 시 자동 확장
+- 서버/클라이언트에 Tailscale 설치 후 고정 IP로 접속
+- 포트 개방 불필요, VPN 메시 네트워크로 보안 접속
 
 ## 다음 단계
 
@@ -699,7 +714,7 @@ MIT License - 자유로운 상업적 사용 가능
 ✅ SPEC-INFRA-001: Monitoring & Metrics
 ✅ SPEC-ERR-001: Error Handling
 ✅ SPEC-LOG-001: Audit Logging
-✅ SPEC-DOCKER-001: Docker Production
+✅ SPEC-DEPLOY-001: Ubuntu systemd 배포
 ✅ SPEC-DB-001: PostgreSQL & Alembic
 ✅ SPEC-SSE-001: Real-time Streaming
 ✅ SPEC-PERSIST-001: Data Persistence

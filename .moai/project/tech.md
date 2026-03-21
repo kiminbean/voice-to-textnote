@@ -218,30 +218,23 @@ NUM_SPEAKERS = None  # 스피커 수 자동 추정
 
 ### 인프라 및 배포
 
-**컨테이너**: Docker + Docker Compose
-- **개발 환경**: docker-compose.yml
-  ```yaml
-  services:
-    api: FastAPI 서버
-    postgres: 데이터베이스
-    redis: 캐시 및 메시지 브로커
-    celery_worker: 음성 처리 워커
-    celery_beat: 정기 작업 스케줄러
-  ```
-- **이미지 크기**: 약 800MB (mlx-whisper, pyannote 포함)
+**서버 구성**: Ubuntu 24.04 + systemd 서비스
+- **프로세스 관리**: systemd (voicenote-api, voicenote-worker)
+- **메시지 브로커**: Redis (시스템 패키지, systemd 관리)
+- **데이터베이스**: SQLite (개발) / PostgreSQL (프로덕션)
+- **STT 엔진**: 플랫폼 자동 감지
+  - macOS: mlx_whisper (Apple Silicon 가속)
+  - Linux: openai-whisper (CPU/CUDA)
 
-**웹 서버**: Nginx (리버스 프록시)
-- **포트**: 443 (HTTPS)
-- **설정**:
-  - `/api/*` → FastAPI (8000)
-  - `/` → Flutter 웹 앱 (정적 파일)
-- **GZIP 압축**: 응답 크기 50% 감소
-- **Security Headers**: HSTS, X-Content-Type-Options, X-Frame-Options
+**원격 접속**: Tailscale VPN 메시
+- 서버/클라이언트에 Tailscale 설치
+- 고정 IP 부여, 포트 개방 불필요
+- 아이폰에서 Tailscale IP로 접속
 
-**프로덕션 환경**:
-- **docker-compose.prod.yml**: Nginx + FastAPI + PostgreSQL + Redis 일체형
-- **환경 분리**: 개발(SQLite) / 테스트 / 프로덕션(PostgreSQL) 설정 분리
-- **자동 마이그레이션**: 컨테이너 시작 시 Alembic 자동 실행
+**배포 스크립트**: `deploy/setup-ubuntu.sh`
+- Redis, FFmpeg, Python venv 자동 설치
+- systemd 서비스 자동 등록
+- .env 템플릿 자동 생성
 
 **CI/CD**: GitHub Actions
 - **Trigger**:
@@ -250,17 +243,13 @@ NUM_SPEAKERS = None  # 스피커 수 자동 추정
 - **파이프라인**:
   1. 백엔드 단위 테스트 및 커버리지 검사 (96.94% 달성)
   2. 프론트엔드 빌드 및 정적 분석
-  3. Docker 이미지 빌드 및 Registry 푸시
-  4. 통합 테스트 (전체 스택)
-  5. 스테이징 배포
-  6. Dependabot 의존성 관리
+  3. 통합 테스트 (전체 스택)
+  4. Dependabot 의존성 관리
 
-**배포**: 로컬 또는 클라우드
-- **로컬 배포**: 조직 내부 M4 Mac Mini (24GB RAM)
-- **클라우드 옵션** (선택):
-  - AWS EC2 (T3 인스턴스, CPU 기반 STT/Diarization)
-  - 디지털 오션 (저비용 대안)
-  - 온프레미스 Linux 서버
+**배포 환경**:
+- **개발**: macOS (M1 MacBook Pro, mlx-whisper)
+- **프로덕션**: Ubuntu 24.04 PC (systemd + Redis + openai-whisper)
+- **클라이언트**: Flutter iOS 앱 (Tailscale로 서버 접속)
 
 ---
 
@@ -444,76 +433,66 @@ flutter doctor  # 환경 검사
 xcode-select --install
 ```
 
-**Docker**:
-- Docker Desktop 4.20+
-- Docker Compose 2.0+
-
 ---
 
 ## 빌드 및 배포 절차
 
-### 개발 환경 설정
+### 개발 환경 설정 (macOS)
 
 ```bash
 # 1. 저장소 클론
-git clone https://github.com/your-org/voice-to-textnote.git
+git clone https://github.com/kiminbean/voice-to-textnote.git
 cd voice-to-textnote
 
 # 2. 백엔드 환경 설정
-cd backend
 python -m venv venv
 source venv/bin/activate
-pip install -r requirements.txt
+pip install -r deploy/requirements-ubuntu.txt  # 또는 mlx-whisper (macOS)
 
-# 3. 모델 다운로드 (첫 실행 시만, ~10GB)
-cd ../scripts
-python download_models.py
+# 3. Redis 시작
+brew install redis
+brew services start redis
 
-# 4. Docker 환경 시작
-cd ..
-docker-compose up -d  # PostgreSQL, Redis 시작
+# 4. .env 설정
+cp .env.example .env
+nano .env
 
-# 5. 데이터베이스 마이그레이션
-cd backend
-alembic upgrade head
+# 5. 백엔드 서버 시작
+uvicorn backend.app.main:app --host 0.0.0.0 --port 8000
 
-# 6. 백엔드 서버 시작
-./scripts/start_backend.sh
+# 6. Celery 워커 시작 (별도 터미널)
+celery -A backend.workers.celery_app:celery_app worker --loglevel=info
 
-# 7. 클라이언트 개발 서버 시작 (새 터미널)
+# 7. 클라이언트 시작 (별도 터미널)
 cd client
 flutter pub get
-flutter run -d chrome  # 웹 앱 실행
+flutter run -d chrome
 ```
 
-### 프로덕션 배포
+### 프로덕션 배포 (Ubuntu 24.04)
 
-**Docker 이미지 빌드**:
 ```bash
-docker build -t voice-to-textnote:latest .
-docker push your-registry/voice-to-textnote:latest
+# 원클릭 설치 (Redis, Python, systemd 서비스 자동 설정)
+git clone https://github.com/kiminbean/voice-to-textnote.git
+cd voice-to-textnote
+bash deploy/setup-ubuntu.sh
+
+# .env 설정
+nano .env
+
+# 서비스 시작
+sudo systemctl start voicenote-api voicenote-worker
+
+# 상태 확인
+sudo systemctl status voicenote-api
+curl http://localhost:8000/api/v1/health
 ```
 
-**Kubernetes 배포** (클라우드 환경):
+### 외부 접속 (Tailscale)
+
 ```bash
-kubectl apply -f k8s/deployment.yaml
-kubectl apply -f k8s/service.yaml
-kubectl apply -f k8s/configmap.yaml
-```
-
-**로컬 배포** (조직 내부 서버):
-```bash
-# SSH로 배포 서버 접속
-ssh admin@internal-server
-
-# 최신 이미지 풀
-docker pull your-registry/voice-to-textnote:latest
-
-# 기존 컨테이너 중지
-docker-compose down
-
-# 새 버전 실행
-docker-compose up -d
+# 서버에 Tailscale 설치 후 고정 IP로 접속
+# 아이폰에서: http://100.x.x.x:8000/api/v1
 ```
 
 ---

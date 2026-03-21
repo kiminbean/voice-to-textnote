@@ -104,13 +104,13 @@
 - **JSON 포맷**: 로그 분석 및 검색 용이
 - **보안 정보 제외**: 민감한 정보는 마스킹
 
-### 10. Docker 프로덕션 배포 (SPEC-DOCKER-001 ✅)
+### 10. 서버 배포 (SPEC-DEPLOY-001 ✅)
 
-- **Nginx 리버스 프록시**: 정적 파일 서빙 및 API 라우팅
-- **Multi-stage 빌드**: 최소 이미지 크기로 최적화
-- **PostgreSQL 통합**: Alembic 기반 자동 마이그레이션
-- **환경 분리**: 개발/테스트/프로덕션 설정 분리
-- **docker-compose.prod.yml**: 프로덕션 스택 일체형 구성
+- **Ubuntu systemd 서비스**: voicenote-api, voicenote-worker 자동 관리
+- **원클릭 배포 스크립트**: deploy/setup-ubuntu.sh (Redis, Python, systemd 자동 설정)
+- **듀얼 STT 백엔드**: macOS(mlx_whisper) + Linux(openai-whisper) 자동 감지
+- **환경 분리**: 개발(SQLite) / 프로덕션(PostgreSQL) 설정 분리
+- **Tailscale 원격 접속**: VPN 메시로 포트 개방 없이 외부 접속
 
 ### 11. PostgreSQL 데이터베이스 (SPEC-DB-001 ✅)
 
@@ -177,7 +177,7 @@
 
 - **GitHub Actions**: Pull Request 및 main 브랜치 자동 테스트
 - **테스트 자동화**: 커버리지 검사 및 린트 검사
-- **Docker 빌드**: 자동 이미지 빌드 및 레지스트리 푸시
+- **배포 스크립트**: Ubuntu systemd 서비스 자동 배포
 - **의존성 관리**: Dependabot으로 보안 업데이트 자동화
 
 ### 1. 오디오 녹음 및 수집
@@ -307,7 +307,7 @@
 - **SPEC-INFRA-001**: 모니터링 (Prometheus, 메트릭)
 - **SPEC-ERR-001**: 글로벌 에러 처리
 - **SPEC-LOG-001**: 감사 로깅
-- **SPEC-DOCKER-001**: Docker 프로덕션 배포
+- **SPEC-DEPLOY-001**: Ubuntu systemd 배포 + Tailscale
 
 ### Phase 3 ✅ (완료): 데이터 & 실시간 기능
 
