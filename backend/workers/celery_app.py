@@ -4,6 +4,7 @@ Celery 앱 설정
 """
 
 from celery import Celery
+from celery.schedules import crontab
 
 from backend.app.config import settings
 
@@ -11,7 +12,10 @@ celery_app = Celery(
     "voice_to_textnote",
     broker=settings.celery_broker_url,
     backend=settings.celery_result_backend,
-    include=["backend.workers.tasks.transcription_task"],
+    include=[
+        "backend.workers.tasks.transcription_task",
+        "backend.workers.tasks.cleanup_task",
+    ],
 )
 
 celery_app.conf.update(
@@ -35,3 +39,12 @@ celery_app.conf.update(
     task_send_sent_event=True,
     task_track_started=True,
 )
+
+
+# REQ-RET-006: 매일 03:00 데이터 정리 스케줄
+celery_app.conf.beat_schedule = {
+    "cleanup-expired-data": {
+        "task": "cleanup_expired_data",
+        "schedule": crontab(hour=3, minute=0),
+    },
+}

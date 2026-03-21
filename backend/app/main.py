@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.app.api.v1 import diarization, health, minutes, stream, summary, transcription
+from backend.app.api.v1 import admin, diarization, health, history, minutes, stream, summary, transcription
 from backend.app.config import settings
 from backend.app.error_handlers import register_exception_handlers
 from backend.app.lifecycle import cleanup_shutdown, validate_startup
@@ -114,6 +114,10 @@ def create_app() -> FastAPI:
     app.include_router(health.router, prefix=api_prefix)
     # REQ-SSE-001: 태스크 상태 실시간 스트리밍 엔드포인트
     app.include_router(stream.router, prefix=api_prefix)
+    # SPEC-HISTORY-001: 작업 이력 조회/삭제 엔드포인트
+    app.include_router(history.router, prefix=api_prefix)
+    # SPEC-RETENTION-001: 데이터 보존 정책 즉시 실행 엔드포인트
+    app.include_router(admin.router, prefix=api_prefix)
 
     return app
 
