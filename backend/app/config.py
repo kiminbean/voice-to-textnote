@@ -75,6 +75,9 @@ class Settings(BaseSettings):
     # 커넥션 풀 최대 초과 (pool_size + max_overflow = 최대 연결 수, REQ-DB-003)
     db_max_overflow: int = 15
 
+    # 실행 환경 (development, staging, production)
+    environment: str = "development"
+
     # 로깅
     log_level: str = "INFO"
 

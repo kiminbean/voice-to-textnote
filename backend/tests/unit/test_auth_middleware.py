@@ -1,6 +1,6 @@
 """
 SPEC-SEC-001 API Key 인증 미들웨어 단위 테스트
-REQ-SEC-001: 보호된 엔드포인트는 X-API-Key 헤더 또는 api_key 쿼리 파라미터 필요
+REQ-SEC-001: 보호된 엔드포인트는 X-API-Key 헤더 전용 인증
 REQ-SEC-002: 누락/잘못된 API Key → 401 반환
 REQ-SEC-003: 유효한 API Key → 정상 처리
 REQ-SEC-004: API_KEYS 미설정 시 인증 비활성화 (개발 모드)
@@ -103,29 +103,22 @@ class TestApiKeyHeaderAuth:
 
 
 # ---------------------------------------------------------------------------
-# REQ-SEC-001: api_key 쿼리 파라미터 인증
+# REQ-SEC-001: 쿼리 파라미터 인증 제거 확인 + 추가 헤더 테스트
 # ---------------------------------------------------------------------------
 
 
-class TestApiKeyQueryParamAuth:
-    """api_key 쿼리 파라미터를 통한 API Key 인증 테스트"""
+class TestApiKeyQueryParamRemoved:
+    """api_key 쿼리 파라미터 인증이 제거되었는지 확인하는 테스트"""
 
-    def test_valid_api_key_via_query_param_returns_200(self, test_app_with_auth):
-        """REQ-SEC-003: 유효한 api_key 쿼리 파라미터 → 200 정상 처리"""
+    def test_query_param_api_key_no_longer_accepted(self, test_app_with_auth):
+        """FIX-SEC-001: 쿼리 파라미터로 API Key를 전달해도 인증 실패"""
         response = test_app_with_auth.get(
             "/protected?api_key=test-valid-key-123",
         )
-        assert response.status_code == 200
-
-    def test_invalid_api_key_via_query_param_returns_401(self, test_app_with_auth):
-        """REQ-SEC-002: 잘못된 api_key 쿼리 파라미터 → 401 반환"""
-        response = test_app_with_auth.get(
-            "/protected?api_key=wrong-key",
-        )
         assert response.status_code == 401
 
-    def test_second_valid_key_works(self, test_app_with_auth):
-        """REQ-SEC-003: 두 번째 유효한 키도 동작해야 함"""
+    def test_second_valid_key_works_via_header(self, test_app_with_auth):
+        """REQ-SEC-003: 두 번째 유효한 키도 헤더를 통해 동작해야 함"""
         response = test_app_with_auth.get(
             "/protected",
             headers={"X-API-Key": "another-valid-key"},
@@ -184,7 +177,6 @@ class TestApiKeyLogging:
                 async def run_verify():
                     return await verify_api_key(
                         api_key_header="secret-key-12345",
-                        api_key_query=None,
                     )
 
                 asyncio.run(run_verify())

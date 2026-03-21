@@ -31,4 +31,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # REQ-SEC-011: XSS 필터 활성화
         response.headers["X-XSS-Protection"] = "1; mode=block"
 
+        # FIX-SEC-005: Content-Security-Policy (API 전용 - 모든 리소스 차단)
+        response.headers["Content-Security-Policy"] = "default-src 'none'"
+
         return response

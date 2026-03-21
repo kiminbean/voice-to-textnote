@@ -28,6 +28,7 @@ from backend.app.middleware.auth import verify_api_key
 from backend.app.middleware.rate_limit import setup_rate_limiting
 from backend.app.middleware.request_id import RequestIDMiddleware
 from backend.app.middleware.security_headers import SecurityHeadersMiddleware
+from backend.app.middleware.validators import PathValidationMiddleware
 from backend.ml.diarization_engine import DiarizationEngine
 from backend.ml.stt_engine import WhisperEngine
 from backend.utils.logger import get_logger, setup_logging
@@ -79,13 +80,17 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 
 def create_app() -> FastAPI:
+    # FIX-SEC-003: 프로덕션 환경에서 Swagger/ReDoc UI 비활성화
+    docs_url = "/docs" if settings.environment != "production" else None
+    redoc_url = "/redoc" if settings.environment != "production" else None
+
     app = FastAPI(
         title="Voice to TextNote - STT API",
         description="Privacy-first automated meeting minutes using local mlx-whisper",
         version="0.1.0",
         lifespan=lifespan,
-        docs_url="/docs",
-        redoc_url="/redoc",
+        docs_url=docs_url,
+        redoc_url=redoc_url,
     )
 
     # REQ-ERR-003 ~ REQ-ERR-006: 전역 예외 핸들러 등록 (가장 먼저 등록)
@@ -103,13 +108,16 @@ def create_app() -> FastAPI:
     # REQ-SEC-011: 보안 헤더 미들웨어 (가장 먼저 추가 - 모든 응답에 적용)
     app.add_middleware(SecurityHeadersMiddleware)
 
+    # FIX-SEC-004: 경로 파라미터 유효성 검증 (경로 탐색 공격 방지)
+    app.add_middleware(PathValidationMiddleware)
+
     # REQ-SEC-009/REQ-SEC-010: CORS (설정 기반 메서드/Origins 제한)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_allow_origins,
         allow_credentials=True,
         allow_methods=settings.cors_allow_methods,
-        allow_headers=["*"],
+        allow_headers=["X-API-Key", "Content-Type", "Accept", "X-Request-ID"],
     )
 
     # REQ-SEC-006/REQ-SEC-007/REQ-SEC-008: Rate Limiting 미들웨어
