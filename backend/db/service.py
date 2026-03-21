@@ -9,7 +9,7 @@ REQ-DB-011: save_result(), get_result(), list_results() 메서드
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.db.models import TaskResult
@@ -105,6 +105,7 @@ class ResultService:
         self,
         session: AsyncSession,
         task_type: str | None = None,
+        status: str | None = None,
         limit: int = 50,
         offset: int = 0,
     ) -> list[TaskResult]:
@@ -114,6 +115,7 @@ class ResultService:
         Args:
             session: 비동기 DB 세션
             task_type: 작업 유형 필터 (None이면 전체)
+            status: 작업 상태 필터 (None이면 전체)
             limit: 최대 조회 개수 (기본 50)
             offset: 건너뛸 개수 (기본 0)
 
@@ -125,6 +127,60 @@ class ResultService:
         if task_type is not None:
             stmt = stmt.where(TaskResult.task_type == task_type)
 
+        if status is not None:
+            stmt = stmt.where(TaskResult.status == status)
+
         stmt = stmt.limit(limit).offset(offset)
         result = await session.execute(stmt)
         return list(result.scalars().all())
+
+    async def count_results(
+        self,
+        session: AsyncSession,
+        task_type: str | None = None,
+        status: str | None = None,
+    ) -> int:
+        """
+        SPEC-HISTORY-001: 조건에 맞는 레코드 총 수 조회
+
+        페이지네이션의 total 값 계산에 사용됩니다.
+
+        Args:
+            session: 비동기 DB 세션
+            task_type: 작업 유형 필터 (None이면 전체)
+            status: 작업 상태 필터 (None이면 전체)
+
+        Returns:
+            조건에 맞는 레코드 수
+        """
+        stmt = select(func.count(TaskResult.id))
+
+        if task_type is not None:
+            stmt = stmt.where(TaskResult.task_type == task_type)
+
+        if status is not None:
+            stmt = stmt.where(TaskResult.status == status)
+
+        result = await session.execute(stmt)
+        return result.scalar_one()
+
+    async def delete_result(
+        self,
+        session: AsyncSession,
+        task_id: str,
+    ) -> bool:
+        """
+        SPEC-HISTORY-001: task_id로 레코드 삭제 (REQ-HIST-007)
+
+        Args:
+            session: 비동기 DB 세션
+            task_id: 삭제할 작업 ID
+
+        Returns:
+            삭제 성공 여부 (True: 삭제됨, False: 존재하지 않음)
+        """
+        # 단일 DELETE 쿼리로 삭제 - rowcount로 성공 여부 판단
+        stmt = delete(TaskResult).where(TaskResult.task_id == task_id)
+        result = await session.execute(stmt)
+        await session.commit()
+        return result.rowcount > 0
