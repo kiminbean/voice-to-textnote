@@ -25,7 +25,7 @@ class TranscriptionApi {
     });
 
     final response = await _dio.post(
-      '/stt/upload',
+      '/transcriptions',
       data: formData,
       options: Options(
         contentType: 'multipart/form-data',
@@ -37,18 +37,18 @@ class TranscriptionApi {
 
   // 태스크 상태 조회
   Future<Map<String, dynamic>> getStatus(String taskId) async {
-    final response = await _dio.get('/stt/$taskId/status');
+    final response = await _dio.get('/transcriptions/$taskId/status');
     return response.data as Map<String, dynamic>;
   }
 
   // 태스크 결과 조회
   Future<Map<String, dynamic>> getResult(String taskId) async {
-    final response = await _dio.get('/stt/$taskId/result');
+    final response = await _dio.get('/transcriptions/$taskId/result');
     return response.data as Map<String, dynamic>;
   }
 
   // 태스크 삭제
   Future<void> delete(String taskId) async {
-    await _dio.delete('/stt/$taskId');
+    await _dio.delete('/transcriptions/$taskId');
   }
 }

@@ -16,24 +16,24 @@ class MinutesApi {
 
   // 화자 분리 태스크 ID로 회의록 생성
   Future<Map<String, dynamic>> create(String diaTaskId) async {
-    final response = await _dio.post('/min/create', data: {'dia_task_id': diaTaskId});
+    final response = await _dio.post('/minutes', data: {'dia_task_id': diaTaskId});
     return response.data as Map<String, dynamic>;
   }
 
   // 태스크 상태 조회
   Future<Map<String, dynamic>> getStatus(String taskId) async {
-    final response = await _dio.get('/min/$taskId/status');
+    final response = await _dio.get('/minutes/$taskId/status');
     return response.data as Map<String, dynamic>;
   }
 
   // 태스크 결과 조회
   Future<Map<String, dynamic>> getResult(String taskId) async {
-    final response = await _dio.get('/min/$taskId/result');
+    final response = await _dio.get('/minutes/$taskId/result');
     return response.data as Map<String, dynamic>;
   }
 
   // 태스크 삭제
   Future<void> delete(String taskId) async {
-    await _dio.delete('/min/$taskId');
+    await _dio.delete('/minutes/$taskId');
   }
 }

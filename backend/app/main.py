@@ -6,7 +6,7 @@ REQ-STT-021: lifespan에서 모델 사전 로드 (warm-up)
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.api.v1 import (
@@ -24,6 +24,7 @@ from backend.app.error_handlers import register_exception_handlers
 from backend.app.lifecycle import cleanup_shutdown, validate_startup
 from backend.app.metrics import setup_metrics
 from backend.app.middleware.audit_log import AuditLogMiddleware
+from backend.app.middleware.auth import verify_api_key
 from backend.app.middleware.rate_limit import setup_rate_limiting
 from backend.app.middleware.request_id import RequestIDMiddleware
 from backend.app.middleware.security_headers import SecurityHeadersMiddleware
@@ -115,18 +116,21 @@ def create_app() -> FastAPI:
     setup_rate_limiting(app)
 
     # 라우터 등록
+    # REQ-SEC-001~003: verify_api_key 의존성을 보호 대상 라우터에 적용
+    # health 라우터는 인증 불필요 (헬스체크, /metrics, /docs, /redoc 포함)
     api_prefix = "/api/v1"
-    app.include_router(transcription.router, prefix=api_prefix)
-    app.include_router(diarization.router, prefix=api_prefix)
-    app.include_router(minutes.router, prefix=api_prefix)
-    app.include_router(summary.router, prefix=api_prefix)
+    _auth = [Depends(verify_api_key)]
+    app.include_router(transcription.router, prefix=api_prefix, dependencies=_auth)
+    app.include_router(diarization.router, prefix=api_prefix, dependencies=_auth)
+    app.include_router(minutes.router, prefix=api_prefix, dependencies=_auth)
+    app.include_router(summary.router, prefix=api_prefix, dependencies=_auth)
     app.include_router(health.router, prefix=api_prefix)
     # REQ-SSE-001: 태스크 상태 실시간 스트리밍 엔드포인트
-    app.include_router(stream.router, prefix=api_prefix)
+    app.include_router(stream.router, prefix=api_prefix, dependencies=_auth)
     # SPEC-HISTORY-001: 작업 이력 조회/삭제 엔드포인트
-    app.include_router(history.router, prefix=api_prefix)
+    app.include_router(history.router, prefix=api_prefix, dependencies=_auth)
     # SPEC-RETENTION-001: 데이터 보존 정책 즉시 실행 엔드포인트
-    app.include_router(admin.router, prefix=api_prefix)
+    app.include_router(admin.router, prefix=api_prefix, dependencies=_auth)
 
     return app
 
