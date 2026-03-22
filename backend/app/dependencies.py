@@ -89,7 +89,13 @@ async def get_current_user(
     if not user_id:
         raise HTTPException(status_code=401, detail="유효하지 않은 토큰입니다")
 
-    result = await db.execute(select(User).where(User.id == user_id))
+    import uuid as _uuid
+    try:
+        user_uuid = _uuid.UUID(user_id)
+    except ValueError:
+        raise HTTPException(status_code=401, detail="유효하지 않은 토큰입니다")
+
+    result = await db.execute(select(User).where(User.id == user_uuid))
     user = result.scalar_one_or_none()
 
     if user is None or not user.is_active:
