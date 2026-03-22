@@ -62,12 +62,14 @@ async def validate_startup() -> dict:
         from backend.app.config import settings
         from backend.db.models import Base
 
+        # SPEC-TEAM-001: auth 모델 import하여 Base.metadata에 등록
+        import backend.db.auth_models  # noqa: F401
+
         engine = create_engine(settings.database_url or None)
 
-        # 개발 모드(SQLite 폴백): 테이블 자동 생성
-        if not settings.database_url:
-            async with engine.begin() as conn:
-                await conn.run_sync(Base.metadata.create_all)
+        # 테이블 자동 생성 (SQLite 폴백 또는 DATABASE_URL 설정 시 모두)
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
 
         status["database"] = "ok"
     except Exception as e:
