@@ -79,6 +79,7 @@ async def create_summary(
         task_id=task_id,
         minutes_task_id=request.minutes_task_id,
         max_tokens=request.max_tokens,
+        template_id=request.template_id,
     )
 
     logger.info(

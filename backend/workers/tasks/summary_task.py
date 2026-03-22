@@ -104,6 +104,7 @@ def summary_task(
     task_id: str,
     minutes_task_id: str,
     max_tokens: int = 2000,
+    template_id: str | None = None,
 ) -> dict:
     """
     메인 AI 요약 생성 처리 함수 (Celery 워커에서 호출)
@@ -111,7 +112,8 @@ def summary_task(
     Args:
         task_id: 요약 작업 UUID
         minutes_task_id: 회의록 작업 UUID (결과 조회용)
-        max_tokens: Claude API 최대 응답 토큰 수
+        max_tokens: OpenAI API 최대 응답 토큰 수
+        template_id: 양식 ID (REQ-TMPL-004: None이면 기본 4개 항목으로 요약)
 
     Returns:
         완료 또는 실패 결과 딕셔너리
@@ -176,7 +178,35 @@ def summary_task(
 
         _update_task_status(task_id, TaskStatus.processing, 0.3, "AI 요약 생성 중...")
 
-        # --- 2단계: SummaryGenerator로 요약 생성 ---
+        # --- 2단계: 양식 구조 로드 (REQ-TMPL-004: template_id 있으면 Redis에서 로드) ---
+        template_structure: dict | None = None
+        if template_id:
+            tmpl_key = f"template:{template_id}"
+            tmpl_raw = r.get(tmpl_key)
+            if tmpl_raw:
+                try:
+                    tmpl_meta = json.loads(tmpl_raw)
+                    template_structure = tmpl_meta.get("structure")
+                    logger.info(
+                        "양식 구조 로드 완료",
+                        task_id=task_id,
+                        template_id=template_id,
+                    )
+                except (json.JSONDecodeError, KeyError) as exc:
+                    logger.warning(
+                        "양식 메타데이터 파싱 실패 - 기본 요약으로 진행",
+                        task_id=task_id,
+                        template_id=template_id,
+                        error=str(exc),
+                    )
+            else:
+                logger.warning(
+                    "양식을 찾을 수 없음 - 기본 요약으로 진행",
+                    task_id=task_id,
+                    template_id=template_id,
+                )
+
+        # --- 3단계: SummaryGenerator로 요약 생성 ---
         generator = SummaryGenerator()
         summary_result = generator.generate_summary(
             segments=segments,
@@ -184,6 +214,7 @@ def summary_task(
             api_key=settings.openai_api_key,
             model=settings.summary_model,
             max_tokens=max_tokens,
+            template_structure=template_structure,
         )
 
         _update_task_status(task_id, TaskStatus.processing, 0.9, "결과 저장 중...")
@@ -298,6 +329,7 @@ def summary_celery_task(
     task_id: str,
     minutes_task_id: str,
     max_tokens: int = 2000,
+    template_id: str | None = None,
 ) -> dict:
     """
     Celery 래퍼: summary_task 호출 + 재시도 처리 (REQ-SUM-009)
@@ -305,13 +337,15 @@ def summary_celery_task(
     Args:
         task_id: 요약 작업 UUID
         minutes_task_id: 회의록 작업 UUID
-        max_tokens: Claude API 최대 응답 토큰
+        max_tokens: OpenAI API 최대 응답 토큰
+        template_id: 양식 ID (REQ-TMPL-004: None이면 기본 요약)
     """
     try:
         return summary_task(
             task_id=task_id,
             minutes_task_id=minutes_task_id,
             max_tokens=max_tokens,
+            template_id=template_id,
         )
     except FileNotFoundError as exc:
         # 회의록 결과 없음 → 재시도 안 함 (REQ-SUM-010)

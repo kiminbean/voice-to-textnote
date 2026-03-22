@@ -72,11 +72,18 @@ INVALID_JSON_RESPONSE = "안녕하세요. 이것은 회의 요약입니다. {잘
 
 
 def _make_mock_claude_response(text: str) -> MagicMock:
-    """Claude API 응답 mock 생성"""
+    """OpenAI API 응답 mock 생성 (chat.completions.create 반환값 형식)"""
     mock_response = MagicMock()
-    mock_response.content = [MagicMock(text=text)]
-    mock_response.usage = MagicMock(input_tokens=100, output_tokens=50)
+    mock_choice = MagicMock()
+    mock_choice.message.content = text
+    mock_response.choices = [mock_choice]
+    mock_response.usage = MagicMock(prompt_tokens=100, completion_tokens=50)
     return mock_response
+
+
+def _patch_openai():
+    """OpenAI 클라이언트 패처 반환"""
+    return patch("backend.pipeline.summary_generator.OpenAI")
 
 
 # ---------------------------------------------------------------------------
@@ -247,9 +254,9 @@ class TestGenerateSummary:
 
         mock_response = _make_mock_claude_response(VALID_CLAUDE_RESPONSE_JSON)
 
-        with patch("backend.pipeline.summary_generator.anthropic.Anthropic") as mock_cls:
+        with patch("backend.pipeline.summary_generator.OpenAI") as mock_cls:
             mock_client = MagicMock()
-            mock_client.messages.create.return_value = mock_response
+            mock_client.chat.completions.create.return_value = mock_response
             mock_cls.return_value = mock_client
 
             generator = SummaryGenerator()
@@ -257,21 +264,21 @@ class TestGenerateSummary:
                 segments=MOCK_MINUTES_SEGMENTS,
                 speaker_stats=MOCK_SPEAKER_STATS,
                 api_key="test-api-key",
-                model="claude-sonnet-4-20250514",
+                model="gpt-4o-mini",
                 max_tokens=2000,
             )
 
         assert isinstance(result, SummaryResult)
 
     def test_generate_summary_calls_claude_api(self):
-        """generate_summary() → Claude API 호출 확인"""
+        """generate_summary() → OpenAI API 호출 확인"""
         from backend.pipeline.summary_generator import SummaryGenerator
 
         mock_response = _make_mock_claude_response(VALID_CLAUDE_RESPONSE_JSON)
 
-        with patch("backend.pipeline.summary_generator.anthropic.Anthropic") as mock_cls:
+        with patch("backend.pipeline.summary_generator.OpenAI") as mock_cls:
             mock_client = MagicMock()
-            mock_client.messages.create.return_value = mock_response
+            mock_client.chat.completions.create.return_value = mock_response
             mock_cls.return_value = mock_client
 
             generator = SummaryGenerator()
@@ -279,21 +286,21 @@ class TestGenerateSummary:
                 segments=MOCK_MINUTES_SEGMENTS,
                 speaker_stats=MOCK_SPEAKER_STATS,
                 api_key="test-api-key",
-                model="claude-sonnet-4-20250514",
+                model="gpt-4o-mini",
                 max_tokens=2000,
             )
 
-        mock_client.messages.create.assert_called_once()
+        mock_client.chat.completions.create.assert_called_once()
 
     def test_generate_summary_passes_api_key_to_client(self):
-        """api_key를 Anthropic 클라이언트에 직접 전달"""
+        """api_key를 OpenAI 클라이언트에 직접 전달"""
         from backend.pipeline.summary_generator import SummaryGenerator
 
         mock_response = _make_mock_claude_response(VALID_CLAUDE_RESPONSE_JSON)
 
-        with patch("backend.pipeline.summary_generator.anthropic.Anthropic") as mock_cls:
+        with patch("backend.pipeline.summary_generator.OpenAI") as mock_cls:
             mock_client = MagicMock()
-            mock_client.messages.create.return_value = mock_response
+            mock_client.chat.completions.create.return_value = mock_response
             mock_cls.return_value = mock_client
 
             generator = SummaryGenerator()
@@ -301,20 +308,20 @@ class TestGenerateSummary:
                 segments=MOCK_MINUTES_SEGMENTS,
                 speaker_stats=MOCK_SPEAKER_STATS,
                 api_key="my-secret-key",
-                model="claude-sonnet-4-20250514",
+                model="gpt-4o-mini",
                 max_tokens=2000,
             )
 
-        # api_key가 Anthropic() 생성자에 전달되어야 함
+        # api_key가 OpenAI() 생성자에 전달되어야 함
         mock_cls.assert_called_once_with(api_key="my-secret-key")
 
     def test_generate_summary_api_error_raises_exception(self):
         """API 오류(네트워크/타임아웃) → 예외 발생 (REQ-SUM-003)"""
         from backend.pipeline.summary_generator import SummaryGenerator
 
-        with patch("backend.pipeline.summary_generator.anthropic.Anthropic") as mock_cls:
+        with patch("backend.pipeline.summary_generator.OpenAI") as mock_cls:
             mock_client = MagicMock()
-            mock_client.messages.create.side_effect = Exception("API 연결 실패")
+            mock_client.chat.completions.create.side_effect = Exception("API 연결 실패")
             mock_cls.return_value = mock_client
 
             generator = SummaryGenerator()
@@ -323,20 +330,20 @@ class TestGenerateSummary:
                     segments=MOCK_MINUTES_SEGMENTS,
                     speaker_stats=MOCK_SPEAKER_STATS,
                     api_key="test-key",
-                    model="claude-sonnet-4-20250514",
+                    model="gpt-4o-mini",
                     max_tokens=2000,
                 )
 
     def test_generate_summary_invalid_json_response_no_error(self):
-        """Claude가 유효하지 않은 JSON 반환 → 예외 없음 (REQ-SUM-004)"""
+        """API가 유효하지 않은 JSON 반환 → 예외 없음 (REQ-SUM-004)"""
         from backend.pipeline.summary_generator import SummaryGenerator
         from backend.schemas.summary import SummaryResult
 
         mock_response = _make_mock_claude_response(INVALID_JSON_RESPONSE)
 
-        with patch("backend.pipeline.summary_generator.anthropic.Anthropic") as mock_cls:
+        with patch("backend.pipeline.summary_generator.OpenAI") as mock_cls:
             mock_client = MagicMock()
-            mock_client.messages.create.return_value = mock_response
+            mock_client.chat.completions.create.return_value = mock_response
             mock_cls.return_value = mock_client
 
             generator = SummaryGenerator()
@@ -344,7 +351,7 @@ class TestGenerateSummary:
                 segments=MOCK_MINUTES_SEGMENTS,
                 speaker_stats=MOCK_SPEAKER_STATS,
                 api_key="test-key",
-                model="claude-sonnet-4-20250514",
+                model="gpt-4o-mini",
                 max_tokens=2000,
             )
 
@@ -362,9 +369,9 @@ class TestGenerateSummary:
         )
         mock_response = _make_mock_claude_response(empty_response)
 
-        with patch("backend.pipeline.summary_generator.anthropic.Anthropic") as mock_cls:
+        with patch("backend.pipeline.summary_generator.OpenAI") as mock_cls:
             mock_client = MagicMock()
-            mock_client.messages.create.return_value = mock_response
+            mock_client.chat.completions.create.return_value = mock_response
             mock_cls.return_value = mock_client
 
             generator = SummaryGenerator()
@@ -372,8 +379,172 @@ class TestGenerateSummary:
                 segments=[],
                 speaker_stats=[],
                 api_key="test-key",
-                model="claude-sonnet-4-20250514",
+                model="gpt-4o-mini",
                 max_tokens=2000,
             )
 
         assert result.summary_text == "빈 회의"
+
+
+# ---------------------------------------------------------------------------
+# REQ-TMPL-004: template_structure 기반 프롬프트 생성 테스트
+# ---------------------------------------------------------------------------
+
+# 샘플 양식 구조
+SAMPLE_TEMPLATE_STRUCTURE = {
+    "sections": [
+        {"title": "회의 개요", "level": 1},
+        {"title": "주요 안건", "level": 2},
+        {"title": "결정 사항", "level": 2},
+        {"title": "다음 단계", "level": 2},
+    ],
+    "fields": {},
+    "has_table": False,
+    "raw_text_preview": "회의록 양식 미리보기",
+}
+
+
+class TestBuildPromptWithTemplateStructure:
+    """template_structure 파라미터가 있는 build_prompt() 테스트 (REQ-TMPL-004)"""
+
+    def test_build_prompt_accepts_template_structure_param(self):
+        """build_prompt()가 template_structure 파라미터를 수락해야 함"""
+        from backend.pipeline.summary_generator import SummaryGenerator
+
+        generator = SummaryGenerator()
+        # template_structure=None이면 기존 동작 유지
+        prompt = generator.build_prompt(
+            MOCK_MINUTES_SEGMENTS,
+            MOCK_SPEAKER_STATS,
+            template_structure=None,
+        )
+        assert isinstance(prompt, str)
+
+    def test_build_prompt_with_template_structure_returns_string(self):
+        """template_structure 있을 때도 문자열 반환"""
+        from backend.pipeline.summary_generator import SummaryGenerator
+
+        generator = SummaryGenerator()
+        prompt = generator.build_prompt(
+            MOCK_MINUTES_SEGMENTS,
+            MOCK_SPEAKER_STATS,
+            template_structure=SAMPLE_TEMPLATE_STRUCTURE,
+        )
+        assert isinstance(prompt, str)
+
+    def test_build_prompt_with_template_includes_section_titles(self):
+        """template_structure 있을 때 섹션 제목이 프롬프트에 포함되어야 함"""
+        from backend.pipeline.summary_generator import SummaryGenerator
+
+        generator = SummaryGenerator()
+        prompt = generator.build_prompt(
+            MOCK_MINUTES_SEGMENTS,
+            MOCK_SPEAKER_STATS,
+            template_structure=SAMPLE_TEMPLATE_STRUCTURE,
+        )
+        # 양식 섹션 제목이 포함되어야 함
+        assert "회의 개요" in prompt or "주요 안건" in prompt or "결정 사항" in prompt
+
+    def test_build_prompt_without_template_has_default_items(self):
+        """template_structure 없을 때 기본 4개 항목 포함 (하위 호환성)"""
+        from backend.pipeline.summary_generator import SummaryGenerator
+
+        generator = SummaryGenerator()
+        prompt = generator.build_prompt(MOCK_MINUTES_SEGMENTS, MOCK_SPEAKER_STATS)
+        assert "summary_text" in prompt
+        assert "action_items" in prompt
+        assert "key_decisions" in prompt
+        assert "next_steps" in prompt
+
+    def test_build_prompt_with_template_has_json_instruction(self):
+        """template_structure 있을 때도 JSON 응답 지시 포함"""
+        from backend.pipeline.summary_generator import SummaryGenerator
+
+        generator = SummaryGenerator()
+        prompt = generator.build_prompt(
+            MOCK_MINUTES_SEGMENTS,
+            MOCK_SPEAKER_STATS,
+            template_structure=SAMPLE_TEMPLATE_STRUCTURE,
+        )
+        # JSON 응답을 요청해야 함
+        assert "json" in prompt.lower() or "JSON" in prompt
+
+    def test_build_prompt_default_template_structure_is_none(self):
+        """template_structure 기본값은 None (하위 호환성)"""
+        from backend.pipeline.summary_generator import SummaryGenerator
+        import inspect
+
+        sig = inspect.signature(SummaryGenerator.build_prompt)
+        params = sig.parameters
+        assert "template_structure" in params
+        assert params["template_structure"].default is None
+
+
+class TestGenerateSummaryWithTemplateStructure:
+    """template_structure 파라미터가 있는 generate_summary() 테스트 (REQ-TMPL-004)"""
+
+    def test_generate_summary_accepts_template_structure(self):
+        """generate_summary()가 template_structure 파라미터를 수락해야 함"""
+        from backend.pipeline.summary_generator import SummaryGenerator
+        from backend.schemas.summary import SummaryResult
+
+        mock_response = _make_mock_claude_response(VALID_CLAUDE_RESPONSE_JSON)
+
+        with patch("backend.pipeline.summary_generator.OpenAI") as mock_cls:
+            mock_client = MagicMock()
+            mock_choice = MagicMock()
+            mock_choice.message.content = VALID_CLAUDE_RESPONSE_JSON
+            mock_client.chat.completions.create.return_value = MagicMock(
+                choices=[mock_choice],
+                usage=MagicMock(prompt_tokens=100, completion_tokens=50),
+            )
+            mock_cls.return_value = mock_client
+
+            generator = SummaryGenerator()
+            result = generator.generate_summary(
+                segments=MOCK_MINUTES_SEGMENTS,
+                speaker_stats=MOCK_SPEAKER_STATS,
+                api_key="test-key",
+                model="gpt-4o-mini",
+                max_tokens=2000,
+                template_structure=SAMPLE_TEMPLATE_STRUCTURE,
+            )
+
+        assert isinstance(result, SummaryResult)
+
+    def test_generate_summary_default_template_structure_is_none(self):
+        """generate_summary()의 template_structure 기본값은 None"""
+        from backend.pipeline.summary_generator import SummaryGenerator
+        import inspect
+
+        sig = inspect.signature(SummaryGenerator.generate_summary)
+        params = sig.parameters
+        assert "template_structure" in params
+        assert params["template_structure"].default is None
+
+    def test_generate_summary_without_template_backward_compatible(self):
+        """template_structure 없이 호출해도 기존 동작 (하위 호환성)"""
+        from backend.pipeline.summary_generator import SummaryGenerator
+        from backend.schemas.summary import SummaryResult
+
+        with patch("backend.pipeline.summary_generator.OpenAI") as mock_cls:
+            mock_client = MagicMock()
+            mock_choice = MagicMock()
+            mock_choice.message.content = VALID_CLAUDE_RESPONSE_JSON
+            mock_client.chat.completions.create.return_value = MagicMock(
+                choices=[mock_choice],
+                usage=MagicMock(prompt_tokens=100, completion_tokens=50),
+            )
+            mock_cls.return_value = mock_client
+
+            generator = SummaryGenerator()
+            # template_structure 없이 호출
+            result = generator.generate_summary(
+                segments=MOCK_MINUTES_SEGMENTS,
+                speaker_stats=MOCK_SPEAKER_STATS,
+                api_key="test-key",
+                model="gpt-4o-mini",
+                max_tokens=2000,
+            )
+
+        assert isinstance(result, SummaryResult)

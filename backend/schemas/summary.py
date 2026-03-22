@@ -31,6 +31,8 @@ class SummaryCreateRequest(BaseModel):
     minutes_task_id: str = Field(..., description="회의록 작업 ID")
     # 최대 토큰 수 (기본값: 2000)
     max_tokens: int = Field(default=2000, description="Claude API 최대 응답 토큰 수")
+    # REQ-TMPL-004: 양식 ID (None이면 기본 4개 항목으로 요약)
+    template_id: str | None = Field(default=None, description="양식 ID (양식 기반 요약 시 사용)")
 
 
 class SummaryResult(BaseModel):

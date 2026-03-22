@@ -17,6 +17,7 @@ from backend.app.api.v1 import (
     minutes,
     stream,
     summary,
+    templates,
     transcription,
 )
 from backend.app.config import settings
@@ -139,6 +140,8 @@ def create_app() -> FastAPI:
     app.include_router(history.router, prefix=api_prefix, dependencies=_auth)
     # SPEC-RETENTION-001: 데이터 보존 정책 즉시 실행 엔드포인트
     app.include_router(admin.router, prefix=api_prefix, dependencies=_auth)
+    # REQ-TMPL-001/003: 회의록 양식 관리 엔드포인트
+    app.include_router(templates.router, prefix=api_prefix, dependencies=_auth)
 
     return app
 

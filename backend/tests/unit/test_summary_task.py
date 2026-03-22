@@ -116,7 +116,7 @@ class TestSummaryTaskHappyPath:
             with patch("backend.workers.tasks.summary_task.settings") as mock_settings:
                 mock_settings.summary_result_ttl = 86400
                 mock_settings.max_concurrent_summaries = 2
-                mock_settings.anthropic_api_key = "sk-test-key"
+                mock_settings.openai_api_key = "sk-test-key"
                 mock_settings.summary_model = "claude-sonnet-4-20250514"
                 mock_settings.summary_max_tokens = 2000
                 with patch("backend.workers.tasks.summary_task.SummaryGenerator", mock_gen_cls):
@@ -147,7 +147,7 @@ class TestSummaryTaskHappyPath:
             with patch("backend.workers.tasks.summary_task.settings") as mock_settings:
                 mock_settings.summary_result_ttl = 86400
                 mock_settings.max_concurrent_summaries = 2
-                mock_settings.anthropic_api_key = "sk-test-key"
+                mock_settings.openai_api_key = "sk-test-key"
                 mock_settings.summary_model = "claude-sonnet-4-20250514"
                 mock_settings.summary_max_tokens = 2000
                 with patch("backend.workers.tasks.summary_task.SummaryGenerator", mock_gen_cls):
@@ -177,7 +177,7 @@ class TestSummaryTaskHappyPath:
             with patch("backend.workers.tasks.summary_task.settings") as mock_settings:
                 mock_settings.summary_result_ttl = 86400
                 mock_settings.max_concurrent_summaries = 2
-                mock_settings.anthropic_api_key = "sk-test-key"
+                mock_settings.openai_api_key = "sk-test-key"
                 mock_settings.summary_model = "claude-sonnet-4-20250514"
                 mock_settings.summary_max_tokens = 2000
                 with patch("backend.workers.tasks.summary_task.SummaryGenerator", mock_gen_cls):
@@ -204,7 +204,7 @@ class TestSummaryTaskHappyPath:
             with patch("backend.workers.tasks.summary_task.settings") as mock_settings:
                 mock_settings.summary_result_ttl = 86400
                 mock_settings.max_concurrent_summaries = 2
-                mock_settings.anthropic_api_key = "sk-test-key"
+                mock_settings.openai_api_key = "sk-test-key"
                 mock_settings.summary_model = "claude-sonnet-4-20250514"
                 mock_settings.summary_max_tokens = 2000
                 with patch("backend.workers.tasks.summary_task.SummaryGenerator", mock_gen_cls):
@@ -237,7 +237,7 @@ class TestSummaryTaskErrors:
             with patch("backend.workers.tasks.summary_task.settings") as mock_settings:
                 mock_settings.summary_result_ttl = 86400
                 mock_settings.max_concurrent_summaries = 2
-                mock_settings.anthropic_api_key = "sk-test-key"
+                mock_settings.openai_api_key = "sk-test-key"
                 mock_settings.summary_model = "claude-sonnet-4-20250514"
                 mock_settings.summary_max_tokens = 2000
 
@@ -263,7 +263,7 @@ class TestSummaryTaskErrors:
             with patch("backend.workers.tasks.summary_task.settings") as mock_settings:
                 mock_settings.summary_result_ttl = 86400
                 mock_settings.max_concurrent_summaries = 2
-                mock_settings.anthropic_api_key = "sk-test-key"
+                mock_settings.openai_api_key = "sk-test-key"
                 mock_settings.summary_model = "claude-sonnet-4-20250514"
                 mock_settings.summary_max_tokens = 2000
 
@@ -288,14 +288,14 @@ class TestSummaryTaskErrors:
             with patch("backend.workers.tasks.summary_task.settings") as mock_settings:
                 mock_settings.summary_result_ttl = 86400
                 mock_settings.max_concurrent_summaries = 2
-                mock_settings.anthropic_api_key = ""  # 빈 API 키
+                mock_settings.openai_api_key = ""  # 빈 API 키
                 mock_settings.summary_model = "claude-sonnet-4-20250514"
                 mock_settings.summary_max_tokens = 2000
 
                 result = summary_task(task_id=task_id, minutes_task_id=min_task_id)
 
         assert result["status"] == "failed"
-        assert "ANTHROPIC_API_KEY" in result["error"]
+        assert "OPENAI_API_KEY" in result["error"]
 
     def test_max_concurrent_limit_exceeded_returns_rejected(self):
         """동시 실행 2개 한도 초과 → rejected 반환 (REQ-SUM-008)"""
@@ -314,7 +314,7 @@ class TestSummaryTaskErrors:
             with patch("backend.workers.tasks.summary_task.settings") as mock_settings:
                 mock_settings.summary_result_ttl = 86400
                 mock_settings.max_concurrent_summaries = 2
-                mock_settings.anthropic_api_key = "sk-test-key"
+                mock_settings.openai_api_key = "sk-test-key"
                 mock_settings.summary_model = "claude-sonnet-4-20250514"
                 mock_settings.summary_max_tokens = 2000
 
@@ -341,7 +341,7 @@ class TestSummaryTaskErrors:
             with patch("backend.workers.tasks.summary_task.settings") as mock_settings:
                 mock_settings.summary_result_ttl = 86400
                 mock_settings.max_concurrent_summaries = 2
-                mock_settings.anthropic_api_key = "sk-test-key"
+                mock_settings.openai_api_key = "sk-test-key"
                 mock_settings.summary_model = "claude-sonnet-4-20250514"
                 mock_settings.summary_max_tokens = 2000
                 with patch("backend.workers.tasks.summary_task.SummaryGenerator", mock_gen_cls):
@@ -420,7 +420,7 @@ class TestSummaryTaskStatusTransitions:
             with patch("backend.workers.tasks.summary_task.settings") as mock_settings:
                 mock_settings.summary_result_ttl = 86400
                 mock_settings.max_concurrent_summaries = 2
-                mock_settings.anthropic_api_key = "sk-test-key"
+                mock_settings.openai_api_key = "sk-test-key"
                 mock_settings.summary_model = "claude-sonnet-4-20250514"
                 mock_settings.summary_max_tokens = 2000
                 with patch("backend.workers.tasks.summary_task.SummaryGenerator", mock_gen_cls):
@@ -458,7 +458,7 @@ class TestSummaryTaskStatusTransitions:
             with patch("backend.workers.tasks.summary_task.settings") as mock_settings:
                 mock_settings.summary_result_ttl = 86400
                 mock_settings.max_concurrent_summaries = 2
-                mock_settings.anthropic_api_key = "sk-test-key"
+                mock_settings.openai_api_key = "sk-test-key"
                 mock_settings.summary_model = "claude-sonnet-4-20250514"
                 mock_settings.summary_max_tokens = 2000
                 with patch("backend.workers.tasks.summary_task.SummaryGenerator", mock_gen_cls):

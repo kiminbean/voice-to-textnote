@@ -31,9 +31,18 @@ class SummaryGenerator:
         self,
         segments: list[dict],
         speaker_stats: list[dict],
+        template_structure: dict | None = None,
     ) -> str:
         """
         회의록 세그먼트와 화자 통계를 기반으로 프롬프트 생성 (REQ-SUM-001)
+
+        Args:
+            segments: MinutesSegment dict 목록
+            speaker_stats: SpeakerStats dict 목록
+            template_structure: 양식 구조 dict (REQ-TMPL-004: None이면 기본 4개 항목)
+
+        Returns:
+            OpenAI API 프롬프트 문자열
         """
         # 화자 통계 섹션 구성
         stats_lines = []
@@ -56,6 +65,18 @@ class SummaryGenerator:
             dialogue_lines.append(f"[{time_str}] {speaker}: {text}")
         dialogue_section = "\n".join(dialogue_lines) if dialogue_lines else "대화 내용 없음"
 
+        # REQ-TMPL-004: 양식 구조가 있으면 섹션 기반 프롬프트, 없으면 기본 4개 항목
+        if template_structure and template_structure.get("sections"):
+            items_section = _build_template_items_section(template_structure)
+        else:
+            items_section = (
+                "1. summary_text: 회의 전체 핵심 요약 (3-5문장)\n"
+                "2. action_items: 각 담당자가 수행해야 할 구체적인 액션 아이템 목록\n"
+                "   - 각 항목: assignee(담당자), task(작업 내용), deadline(마감일, 없으면 null), priority(low/medium/high)\n"
+                "3. key_decisions: 회의에서 내린 주요 결정 사항 목록\n"
+                "4. next_steps: 향후 진행해야 할 다음 단계 목록"
+            )
+
         prompt = f"""다음은 회의 녹취록입니다. 회의 내용을 분석하여 핵심 요약을 작성해 주세요.
 
 ## 화자 정보
@@ -66,11 +87,7 @@ class SummaryGenerator:
 
 ## 요청 사항
 위 회의 내용을 분석하여 아래 항목을 작성해 주세요:
-1. summary_text: 회의 전체 핵심 요약 (3-5문장)
-2. action_items: 각 담당자가 수행해야 할 구체적인 액션 아이템 목록
-   - 각 항목: assignee(담당자), task(작업 내용), deadline(마감일, 없으면 null), priority(low/medium/high)
-3. key_decisions: 회의에서 내린 주요 결정 사항 목록
-4. next_steps: 향후 진행해야 할 다음 단계 목록
+{items_section}
 
 {self.JSON_FORMAT_INSTRUCTION}"""
 
@@ -122,6 +139,7 @@ class SummaryGenerator:
         api_key: str,
         model: str,
         max_tokens: int,
+        template_structure: dict | None = None,
     ) -> SummaryResult:
         """
         OpenAI API를 호출하여 회의 요약 생성
@@ -132,6 +150,7 @@ class SummaryGenerator:
             api_key: OpenAI API 키
             model: OpenAI 모델명 (gpt-4o-mini 등)
             max_tokens: 최대 응답 토큰 수
+            template_structure: 양식 구조 dict (REQ-TMPL-004: None이면 기본 동작)
 
         Returns:
             SummaryResult 객체
@@ -139,7 +158,7 @@ class SummaryGenerator:
         Raises:
             Exception: API 호출 실패 시 (REQ-SUM-003)
         """
-        prompt = self.build_prompt(segments, speaker_stats)
+        prompt = self.build_prompt(segments, speaker_stats, template_structure=template_structure)
 
         logger.info(
             "OpenAI API 요약 생성 시작",
@@ -173,3 +192,28 @@ def _seconds_to_hhmmss(seconds: float) -> str:
     minutes = (total_seconds % 3600) // 60
     secs = total_seconds % 60
     return f"{hours:02d}:{minutes:02d}:{secs:02d}"
+
+
+def _build_template_items_section(template_structure: dict) -> str:
+    """
+    양식 구조의 섹션 목록을 프롬프트의 요청 항목으로 변환 (REQ-TMPL-004).
+
+    섹션 제목을 번호 목록으로 만들고, 기본 4개 항목(summary_text 등)도
+    JSON 출력에 포함되도록 지시한다.
+    """
+    sections = template_structure.get("sections", [])
+    lines: list[str] = []
+
+    # 양식 섹션을 출력 항목으로 나열
+    for i, section in enumerate(sections, start=1):
+        title = section.get("title", f"섹션 {i}")
+        lines.append(f"{i}. {title}: 해당 섹션 내용 작성")
+
+    # JSON 출력에는 반드시 기본 필드 포함 (파싱 호환성)
+    lines.append(
+        "\n위 내용을 다음 JSON 필드에 맞게 정리해 주세요: "
+        "summary_text(전체 요약), action_items(액션 아이템), "
+        "key_decisions(결정 사항), next_steps(다음 단계)"
+    )
+
+    return "\n".join(lines)

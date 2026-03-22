@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     # 파일 저장소
     temp_dir: Path = Path("./storage/temp")
     results_dir: Path = Path("./storage/results")
+    # REQ-TMPL-001: 양식 파일 저장소
+    templates_dir: Path = Path("./storage/templates")
 
     # STT 모델
     whisper_model: str = "mlx-community/whisper-small-mlx"
@@ -114,7 +116,7 @@ class Settings(BaseSettings):
     # 허용할 Origins 목록 (기본: 로컬 개발 환경)
     cors_allow_origins: list[str] = ["http://localhost:3000", "http://localhost:8080", "http://localhost:5173"]
 
-    @field_validator("temp_dir", "results_dir", mode="before")
+    @field_validator("temp_dir", "results_dir", "templates_dir", mode="before")
     @classmethod
     def create_dirs(cls, v: str | Path) -> Path:
         path = Path(v)
