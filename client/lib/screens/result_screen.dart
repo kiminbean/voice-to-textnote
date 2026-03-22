@@ -1,12 +1,14 @@
 // 결과 화면 - 실제 API 데이터 바인딩 + 에러/빈 상태
+// SPEC-APP-003: 액션 아이템 표시, SPEC-APP-004: 주요 결정 사항/다음 단계 표시
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:voice_to_textnote/models/action_item.dart';
+import 'package:voice_to_textnote/models/summary_result.dart';
 import 'package:voice_to_textnote/providers/meeting_list_provider.dart';
 import 'package:voice_to_textnote/providers/result_provider.dart';
-import 'package:voice_to_textnote/widgets/error_retry_widget.dart';
 import 'package:voice_to_textnote/widgets/empty_state_widget.dart';
+import 'package:voice_to_textnote/widgets/error_retry_widget.dart';
 import 'package:voice_to_textnote/widgets/shimmer_text.dart';
 import 'package:voice_to_textnote/widgets/speaker_segment.dart';
 
@@ -149,9 +151,8 @@ class _SummaryTab extends ConsumerWidget {
         message: 'AI 요약을 불러올 수 없습니다',
         onRetry: () => ref.invalidate(summaryResultProvider(taskId!)),
       ),
-      data: (data) {
-        final summary = (data['summary_text'] ?? data['summary']) as String? ?? '';
-        if (summary.isEmpty) {
+      data: (SummaryResult result) {
+        if (result.summaryText.isEmpty) {
           return const EmptyStateWidget(
             icon: Icons.summarize_outlined,
             title: 'AI 요약이 없습니다',
@@ -172,9 +173,45 @@ class _SummaryTab extends ConsumerWidget {
                   ),
                   const Divider(),
                   Text(
-                    summary,
+                    result.summaryText,
                     style: const TextStyle(height: 1.6),
                   ),
+                  // 주요 결정 사항 섹션 (SPEC-APP-004 REQ-APP-042)
+                  if (result.keyDecisions.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    Text(
+                      '주요 결정 사항',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const Divider(),
+                    ...result.keyDecisions.asMap().entries.map((e) =>
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Text(
+                          '${e.key + 1}. ${e.value}',
+                          style: const TextStyle(height: 1.6),
+                        ),
+                      ),
+                    ),
+                  ],
+                  // 다음 단계 섹션 (SPEC-APP-004 REQ-APP-043)
+                  if (result.nextSteps.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    Text(
+                      '다음 단계',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const Divider(),
+                    ...result.nextSteps.asMap().entries.map((e) =>
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Text(
+                          '${e.key + 1}. ${e.value}',
+                          style: const TextStyle(height: 1.6),
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -248,12 +285,9 @@ class _ActionItemsTabState extends ConsumerState<_ActionItemsTab> {
         message: '액션 아이템을 불러올 수 없습니다',
         onRetry: () => ref.invalidate(summaryResultProvider(widget.taskId!)),
       ),
-      data: (data) {
-        // Map 형식만 파싱, 잘못된 형식은 무시 (SPEC-APP-003 REQ-APP-031)
-        final allItems = (data['action_items'] as List<dynamic>? ?? [])
-            .whereType<Map<String, dynamic>>()
-            .map((e) => ActionItem.fromJson(e))
-            .toList();
+      data: (SummaryResult result) {
+        // SummaryResult에서 타입 안전하게 액션 아이템 조회 (SPEC-APP-004 REQ-APP-041)
+        final allItems = result.actionItems;
 
         if (allItems.isEmpty) {
           return const EmptyStateWidget(

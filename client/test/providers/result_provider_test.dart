@@ -1,9 +1,10 @@
-// ResultProvider 테스트 - SPEC-APP-003 REQ-APP-031
+// ResultProvider 테스트 - SPEC-APP-003 REQ-APP-031, SPEC-APP-004 REQ-APP-041
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:voice_to_textnote/models/action_item.dart';
+import 'package:voice_to_textnote/models/summary_result.dart';
 import 'package:voice_to_textnote/providers/result_provider.dart';
 import 'package:voice_to_textnote/services/minutes_api.dart';
 import 'package:voice_to_textnote/services/summary_api.dart';
@@ -161,6 +162,78 @@ void main() {
       expect(state, isA<AsyncData>());
       expect(state.value!.actionItems, hasLength(1));
       expect(state.value!.actionItems[0].task, '올바른 형식');
+    });
+
+    // summaryResultProvider가 SummaryResult 타입을 반환하는지 테스트 (REQ-APP-041)
+    test('summaryResultProvider가 SummaryResult 타입을 반환해야 함', () async {
+      // Arrange
+      when(() => mockSumApi.getResult(any())).thenAnswer((_) async => {
+            'summary_text': 'AI 요약 내용',
+            'action_items': [
+              {'task': '예산 검토', 'priority': 'high'},
+            ],
+            'key_decisions': ['예산 증액 결정'],
+            'next_steps': ['예산안 작성'],
+          });
+
+      // Act
+      await container.read(summaryResultProvider('sum-001').future);
+      final state = container.read(summaryResultProvider('sum-001'));
+
+      // Assert: SummaryResult 타입이어야 함
+      expect(state, isA<AsyncData<SummaryResult>>());
+      final result = state.value!;
+      expect(result, isA<SummaryResult>());
+      expect(result.summaryText, 'AI 요약 내용');
+    });
+
+    // SummaryResult에 keyDecisions와 nextSteps가 포함되는지 테스트
+    test('summaryResultProvider가 keyDecisions와 nextSteps를 포함한 SummaryResult를 반환해야 함', () async {
+      // Arrange
+      when(() => mockSumApi.getResult(any())).thenAnswer((_) async => {
+            'summary_text': '요약',
+            'action_items': <dynamic>[],
+            'key_decisions': ['결정 1', '결정 2'],
+            'next_steps': ['다음 단계 1'],
+          });
+
+      // Act
+      await container.read(summaryResultProvider('sum-002').future);
+      final state = container.read(summaryResultProvider('sum-002'));
+
+      // Assert
+      expect(state, isA<AsyncData<SummaryResult>>());
+      final result = state.value!;
+      expect(result.keyDecisions, hasLength(2));
+      expect(result.keyDecisions[0], '결정 1');
+      expect(result.nextSteps, hasLength(1));
+      expect(result.nextSteps[0], '다음 단계 1');
+    });
+
+    // MeetingResult에 keyDecisions와 nextSteps가 포함되는지 테스트
+    test('resultProvider MeetingResult에 keyDecisions와 nextSteps가 포함되어야 함', () async {
+      // Arrange
+      when(() => mockMinApi.getResult(any())).thenAnswer((_) async => {
+            'minutes': '회의록 내용',
+          });
+      when(() => mockSumApi.getResult(any())).thenAnswer((_) async => {
+            'summary': '요약 내용',
+            'action_items': <dynamic>[],
+            'key_decisions': ['예산 승인'],
+            'next_steps': ['보고서 작성', '회의 예약'],
+          });
+
+      // Act
+      await container.read(resultProvider('task-010').future);
+      final state = container.read(resultProvider('task-010'));
+
+      // Assert
+      expect(state, isA<AsyncData>());
+      final result = state.value!;
+      expect(result.keyDecisions, hasLength(1));
+      expect(result.keyDecisions[0], '예산 승인');
+      expect(result.nextSteps, hasLength(2));
+      expect(result.nextSteps[0], '보고서 작성');
     });
 
     // 실패 상태 테스트

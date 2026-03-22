@@ -1,10 +1,11 @@
 // 결과 데이터 로딩 상태 프로바이더
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:voice_to_textnote/models/action_item.dart';
+import 'package:voice_to_textnote/models/summary_result.dart';
 import 'package:voice_to_textnote/services/minutes_api.dart';
 import 'package:voice_to_textnote/services/summary_api.dart';
 
-// 결과 데이터 모델
+// 결과 데이터 모델 (keyDecisions, nextSteps 포함 - SPEC-APP-004 REQ-APP-041)
 class MeetingResult {
   // 회의록 텍스트
   final String minutes;
@@ -15,10 +16,18 @@ class MeetingResult {
   // 구조화된 액션 아이템 목록 (SPEC-APP-003 REQ-APP-031)
   final List<ActionItem> actionItems;
 
+  // 주요 결정 사항 목록 (SPEC-APP-004 REQ-APP-042)
+  final List<String> keyDecisions;
+
+  // 다음 단계 목록 (SPEC-APP-004 REQ-APP-043)
+  final List<String> nextSteps;
+
   const MeetingResult({
     required this.minutes,
     required this.summary,
     required this.actionItems,
+    this.keyDecisions = const [],
+    this.nextSteps = const [],
   });
 }
 
@@ -47,13 +56,14 @@ final minutesResultProvider =
   return buffer.toString().trim();
 });
 
-// 요약 결과 로딩 프로바이더 (summaryTaskId 기반)
+// 요약 결과 로딩 프로바이더 (summaryTaskId 기반) - SPEC-APP-004 REQ-APP-041
 // @MX:ANCHOR: ResultScreen _SummaryTab, _ActionItemsTab에서 summaryTaskId로 요약 로드
-// @MX:REASON: 파이프라인의 sumTaskId를 통해 요약 결과 조회
+// @MX:REASON: SummaryResult 타입 안전성 보장, key_decisions/next_steps 포함
 final summaryResultProvider =
-    FutureProvider.family<Map<String, dynamic>, String>((ref, summaryTaskId) async {
+    FutureProvider.family<SummaryResult, String>((ref, summaryTaskId) async {
   final sumApi = ref.watch(summaryApiProvider);
-  return sumApi.getResult(summaryTaskId);
+  final data = await sumApi.getResult(summaryTaskId);
+  return SummaryResult.fromJson(data);
 });
 
 // 기존 통합 프로바이더 (하위 호환성 유지 - 두 ID가 동일한 경우)
@@ -72,13 +82,14 @@ final resultProvider =
   final minutesData = results[0];
   final summaryData = results[1];
 
+  // SummaryResult를 통해 타입 안전하게 파싱
+  final summaryResult = SummaryResult.fromJson(summaryData);
+
   return MeetingResult(
     minutes: minutesData['minutes'] as String? ?? '',
-    summary: summaryData['summary'] as String? ?? '',
-    // Map 형식인 항목만 파싱, 잘못된 형식은 무시 (graceful handling)
-    actionItems: (summaryData['action_items'] as List<dynamic>? ?? [])
-        .whereType<Map<String, dynamic>>()
-        .map((e) => ActionItem.fromJson(e))
-        .toList(),
+    summary: summaryResult.summaryText,
+    actionItems: summaryResult.actionItems,
+    keyDecisions: summaryResult.keyDecisions,
+    nextSteps: summaryResult.nextSteps,
   );
 });

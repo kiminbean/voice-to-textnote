@@ -1,4 +1,5 @@
 // ResultScreen 위젯 테스트 - SPEC-APP-003 REQ-APP-032, REQ-APP-033, REQ-APP-034
+// SPEC-APP-004 REQ-APP-042, REQ-APP-043 (주요 결정 사항, 다음 단계 UI)
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -68,6 +69,120 @@ void main() {
       ),
     );
   }
+
+  group('_SummaryTab - 주요 결정 사항 및 다음 단계 표시 (REQ-APP-042, REQ-APP-043)', () {
+    // 주요 결정 사항 섹션이 표시되는지 테스트
+    testWidgets('keyDecisions가 있을 때 "주요 결정 사항" 섹션이 표시되어야 함',
+        (WidgetTester tester) async {
+      // Arrange
+      when(() => mockSumApi.getResult(any())).thenAnswer((_) async => {
+            'summary_text': '회의 요약입니다.',
+            'action_items': <dynamic>[],
+            'key_decisions': ['예산 30% 증액 결정', '신규 인력 채용 승인'],
+            'next_steps': <dynamic>[],
+          });
+
+      // Act
+      await tester.pumpWidget(buildTestWidget([]));
+      await tester.pumpAndSettle();
+      // AI 요약 탭으로 이동
+      await tester.tap(find.text('AI 요약'));
+      await tester.pumpAndSettle();
+
+      // Assert
+      expect(find.text('주요 결정 사항'), findsOneWidget);
+      expect(find.text('1. 예산 30% 증액 결정'), findsOneWidget);
+      expect(find.text('2. 신규 인력 채용 승인'), findsOneWidget);
+    });
+
+    // 다음 단계 섹션이 표시되는지 테스트
+    testWidgets('nextSteps가 있을 때 "다음 단계" 섹션이 표시되어야 함',
+        (WidgetTester tester) async {
+      // Arrange
+      when(() => mockSumApi.getResult(any())).thenAnswer((_) async => {
+            'summary_text': '회의 요약입니다.',
+            'action_items': <dynamic>[],
+            'key_decisions': <dynamic>[],
+            'next_steps': ['예산안 초안 작성', '인사팀 협의'],
+          });
+
+      // Act
+      await tester.pumpWidget(buildTestWidget([]));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('AI 요약'));
+      await tester.pumpAndSettle();
+
+      // Assert
+      expect(find.text('다음 단계'), findsOneWidget);
+      expect(find.text('1. 예산안 초안 작성'), findsOneWidget);
+      expect(find.text('2. 인사팀 협의'), findsOneWidget);
+    });
+
+    // keyDecisions가 비어있을 때 섹션 숨김 테스트
+    testWidgets('keyDecisions가 비어있으면 "주요 결정 사항" 섹션이 표시되지 않아야 함',
+        (WidgetTester tester) async {
+      // Arrange
+      when(() => mockSumApi.getResult(any())).thenAnswer((_) async => {
+            'summary_text': '회의 요약입니다.',
+            'action_items': <dynamic>[],
+            'key_decisions': <dynamic>[],
+            'next_steps': <dynamic>[],
+          });
+
+      // Act
+      await tester.pumpWidget(buildTestWidget([]));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('AI 요약'));
+      await tester.pumpAndSettle();
+
+      // Assert: 섹션 헤더가 없어야 함
+      expect(find.text('주요 결정 사항'), findsNothing);
+    });
+
+    // nextSteps가 비어있을 때 섹션 숨김 테스트
+    testWidgets('nextSteps가 비어있으면 "다음 단계" 섹션이 표시되지 않아야 함',
+        (WidgetTester tester) async {
+      // Arrange
+      when(() => mockSumApi.getResult(any())).thenAnswer((_) async => {
+            'summary_text': '회의 요약입니다.',
+            'action_items': <dynamic>[],
+            'key_decisions': <dynamic>[],
+            'next_steps': <dynamic>[],
+          });
+
+      // Act
+      await tester.pumpWidget(buildTestWidget([]));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('AI 요약'));
+      await tester.pumpAndSettle();
+
+      // Assert: 섹션 헤더가 없어야 함
+      expect(find.text('다음 단계'), findsNothing);
+    });
+
+    // 번호 매기기 목록 표시 테스트
+    testWidgets('키 결정 사항이 번호 매기기 목록으로 표시되어야 함',
+        (WidgetTester tester) async {
+      // Arrange
+      when(() => mockSumApi.getResult(any())).thenAnswer((_) async => {
+            'summary_text': '요약',
+            'action_items': <dynamic>[],
+            'key_decisions': ['첫 번째 결정', '두 번째 결정', '세 번째 결정'],
+            'next_steps': <dynamic>[],
+          });
+
+      // Act
+      await tester.pumpWidget(buildTestWidget([]));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('AI 요약'));
+      await tester.pumpAndSettle();
+
+      // Assert: 번호 형식 확인
+      expect(find.text('1. 첫 번째 결정'), findsOneWidget);
+      expect(find.text('2. 두 번째 결정'), findsOneWidget);
+      expect(find.text('3. 세 번째 결정'), findsOneWidget);
+    });
+  });
 
   group('_ActionItemsTab - 액션 아이템 카드 표시', () {
     // 담당자, 작업, 마감일, 우선순위 배지 표시 테스트
