@@ -1,27 +1,83 @@
 // 결과 화면 - 실제 API 데이터 바인딩 + 에러/빈 상태
 // SPEC-APP-003: 액션 아이템 표시, SPEC-APP-004: 주요 결정 사항/다음 단계 표시
+// SPEC-EXPORT-001: PDF 내보내기 기능 추가
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:voice_to_textnote/models/action_item.dart';
 import 'package:voice_to_textnote/models/summary_result.dart';
 import 'package:voice_to_textnote/providers/meeting_list_provider.dart';
 import 'package:voice_to_textnote/providers/result_provider.dart';
+import 'package:voice_to_textnote/services/export_api.dart';
 import 'package:voice_to_textnote/widgets/empty_state_widget.dart';
 import 'package:voice_to_textnote/widgets/error_retry_widget.dart';
 import 'package:voice_to_textnote/widgets/shimmer_text.dart';
 import 'package:voice_to_textnote/widgets/speaker_segment.dart';
 
-class ResultScreen extends ConsumerWidget {
+// ConsumerStatefulWidget으로 변경: _isExporting 상태 관리 필요
+class ResultScreen extends ConsumerStatefulWidget {
   final String meetingId;
 
   const ResultScreen({super.key, required this.meetingId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ResultScreen> createState() => _ResultScreenState();
+}
+
+class _ResultScreenState extends ConsumerState<ResultScreen> {
+  // PDF 내보내기 진행 중 여부 (중복 탭 방지)
+  bool _isExporting = false;
+
+  /// PDF 내보내기 및 공유 처리
+  Future<void> _exportPdf(
+    BuildContext context,
+    String? minutesTaskId,
+    String? summaryTaskId,
+  ) async {
+    // minutesTaskId 없으면 내보내기 불가
+    if (minutesTaskId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('회의록 처리가 완료되지 않아 PDF를 내보낼 수 없습니다.')),
+      );
+      return;
+    }
+
+    // 중복 탭 방지
+    if (_isExporting) return;
+    setState(() => _isExporting = true);
+
+    try {
+      final exportApi = ref.read(exportApiProvider);
+      final file = await exportApi.downloadPdf(
+        minutesTaskId,
+        summaryTaskId: summaryTaskId,
+      );
+
+      // share_plus로 파일 공유 (AirDrop, 이메일, 저장 등)
+      await Share.shareXFiles(
+        [XFile(file.path, mimeType: 'application/pdf')],
+        subject: '회의록 PDF',
+      );
+    } catch (e) {
+      // 위젯이 마운트된 경우에만 SnackBar 표시
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('PDF 내보내기 실패: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isExporting = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     // Meeting에서 파이프라인 task ID 조회
     final meetings = ref.watch(meetingListProvider);
-    final meeting = meetings.where((m) => m.id == meetingId).firstOrNull;
+    final meeting = meetings.where((m) => m.id == widget.meetingId).firstOrNull;
     final minutesTaskId = meeting?.minutesTaskId;
     final summaryTaskId = meeting?.summaryTaskId;
 
@@ -36,6 +92,24 @@ class ResultScreen extends ConsumerWidget {
                 : context.go('/'),
           ),
           title: const Text('회의 결과'),
+          // PDF 내보내기 버튼 추가
+          actions: [
+            _isExporting
+                ? const Padding(
+                    padding: EdgeInsets.all(14),
+                    child: SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  )
+                : IconButton(
+                    icon: const Icon(Icons.picture_as_pdf_outlined),
+                    tooltip: 'PDF 내보내기',
+                    onPressed: () =>
+                        _exportPdf(context, minutesTaskId, summaryTaskId),
+                  ),
+          ],
           bottom: const TabBar(
             tabs: [
               Tab(text: '회의록'),

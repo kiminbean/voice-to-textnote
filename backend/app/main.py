@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.app.api.v1 import (
     admin,
     diarization,
+    export,
     health,
     history,
     minutes,
@@ -145,6 +146,8 @@ def create_app() -> FastAPI:
     app.include_router(templates.router, prefix=api_prefix, dependencies=_auth)
     # SPEC-SEARCH-001: 회의록 전문 검색 엔드포인트
     app.include_router(search.router, prefix=api_prefix, dependencies=_auth)
+    # SPEC-EXPORT-001: 회의록 PDF 내보내기 엔드포인트
+    app.include_router(export.router, prefix=api_prefix, dependencies=_auth)
 
     return app
 
