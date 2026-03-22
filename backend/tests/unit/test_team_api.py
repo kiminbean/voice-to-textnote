@@ -279,3 +279,269 @@ def test_delete_team_non_admin_403(admin_user):
 
     app.dependency_overrides.clear()
     assert response.status_code == 403
+
+
+# ---------------------------------------------------------------------------
+# REQ-TEAM-003: 팀 멤버 관리 API 테스트
+# ---------------------------------------------------------------------------
+
+
+def _make_member_dict(user_id=None, email="member@example.com",
+                      display_name="멤버", role="member"):
+    """TeamMemberResponse 딕셔너리 생성 헬퍼"""
+    return {
+        "user_id": str(user_id or uuid.uuid4()),
+        "email": email,
+        "display_name": display_name,
+        "role": role,
+        "joined_at": datetime.now(UTC).replace(tzinfo=None),
+    }
+
+
+def test_list_team_members_200(team_client, admin_user):
+    """팀 멤버 목록 조회 성공 (200)"""
+    team_id = str(uuid.uuid4())
+    member_dict = _make_member_dict(
+        user_id=admin_user.id,
+        email=admin_user.email,
+        display_name=admin_user.display_name,
+        role="admin",
+    )
+
+    with patch("backend.app.api.v1.teams._team_service") as mock_svc:
+        mock_svc.get_user_role = AsyncMock(return_value="admin")
+        mock_svc.list_members = AsyncMock(return_value=[member_dict])
+        response = team_client.get(f"/api/v1/teams/{team_id}/members")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 1
+    assert len(data["items"]) == 1
+    assert data["items"][0]["role"] == "admin"
+
+
+def test_list_team_members_403_non_member(team_client):
+    """비멤버의 팀 멤버 목록 조회 시 403"""
+    team_id = str(uuid.uuid4())
+
+    with patch("backend.app.api.v1.teams._team_service") as mock_svc:
+        mock_svc.get_user_role = AsyncMock(return_value=None)
+        response = team_client.get(f"/api/v1/teams/{team_id}/members")
+
+    assert response.status_code == 403
+
+
+def test_add_team_member_201(team_client, admin_user):
+    """admin이 멤버 초대 성공 (201)"""
+    team_id = str(uuid.uuid4())
+    new_user_id = uuid.uuid4()
+    new_member_dict = _make_member_dict(
+        user_id=new_user_id,
+        email="new@example.com",
+        display_name="새 멤버",
+        role="member",
+    )
+
+    with patch("backend.app.api.v1.teams._team_service") as mock_svc:
+        mock_svc.get_user_role = AsyncMock(return_value="admin")
+
+        # add_member가 반환하는 TeamMember mock
+        added_member = MagicMock()
+        added_member.user_id = new_user_id
+        added_member.role = "member"
+        added_member.team_id = uuid.UUID(team_id)
+        added_member.joined_at = datetime.now(UTC).replace(tzinfo=None)
+        mock_svc.add_member = AsyncMock(return_value=added_member)
+
+        # 이후 list_members에서 상세 정보 반환
+        mock_svc.list_members = AsyncMock(return_value=[new_member_dict])
+
+        response = team_client.post(
+            f"/api/v1/teams/{team_id}/members",
+            json={"email": "new@example.com", "role": "member"},
+        )
+
+    assert response.status_code == 201
+    data = response.json()
+    assert data["email"] == "new@example.com"
+    assert data["role"] == "member"
+
+
+def test_add_team_member_404_user_not_found(team_client):
+    """존재하지 않는 이메일 초대 시 404"""
+    team_id = str(uuid.uuid4())
+
+    with patch("backend.app.api.v1.teams._team_service") as mock_svc:
+        mock_svc.get_user_role = AsyncMock(return_value="admin")
+        mock_svc.add_member = AsyncMock(
+            side_effect=LookupError("이메일 'ghost@example.com'에 해당하는 사용자를 찾을 수 없습니다")
+        )
+        response = team_client.post(
+            f"/api/v1/teams/{team_id}/members",
+            json={"email": "ghost@example.com", "role": "member"},
+        )
+
+    assert response.status_code == 404
+
+
+def test_add_team_member_409_already_member(team_client):
+    """이미 멤버인 사용자 초대 시 409"""
+    team_id = str(uuid.uuid4())
+
+    with patch("backend.app.api.v1.teams._team_service") as mock_svc:
+        mock_svc.get_user_role = AsyncMock(return_value="admin")
+        mock_svc.add_member = AsyncMock(
+            side_effect=ValueError("이미 팀 멤버입니다")
+        )
+        response = team_client.post(
+            f"/api/v1/teams/{team_id}/members",
+            json={"email": "existing@example.com", "role": "member"},
+        )
+
+    assert response.status_code == 409
+
+
+def test_add_team_member_403_non_admin(team_client):
+    """non-admin이 멤버 초대 시도 시 403"""
+    team_id = str(uuid.uuid4())
+
+    with patch("backend.app.api.v1.teams._team_service") as mock_svc:
+        mock_svc.get_user_role = AsyncMock(return_value="member")
+        response = team_client.post(
+            f"/api/v1/teams/{team_id}/members",
+            json={"email": "someone@example.com", "role": "viewer"},
+        )
+
+    assert response.status_code == 403
+
+
+def test_update_member_role_200(team_client, admin_user):
+    """admin이 멤버 역할 변경 성공 (200)"""
+    team_id = str(uuid.uuid4())
+    target_user_id = uuid.uuid4()
+    updated_member_dict = _make_member_dict(
+        user_id=target_user_id,
+        email="target@example.com",
+        display_name="대상 멤버",
+        role="admin",
+    )
+
+    with patch("backend.app.api.v1.teams._team_service") as mock_svc:
+        mock_svc.get_user_role = AsyncMock(return_value="admin")
+
+        updated_member = MagicMock()
+        updated_member.user_id = target_user_id
+        updated_member.role = "admin"
+        updated_member.joined_at = datetime.now(UTC).replace(tzinfo=None)
+        mock_svc.update_member_role = AsyncMock(return_value=updated_member)
+        mock_svc.list_members = AsyncMock(return_value=[updated_member_dict])
+
+        response = team_client.put(
+            f"/api/v1/teams/{team_id}/members/{target_user_id}",
+            json={"role": "admin"},
+        )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["role"] == "admin"
+
+
+def test_update_member_role_400_cannot_change_own(team_client, admin_user):
+    """자신의 역할 변경 시도 시 400"""
+    team_id = str(uuid.uuid4())
+
+    with patch("backend.app.api.v1.teams._team_service") as mock_svc:
+        mock_svc.get_user_role = AsyncMock(return_value="admin")
+        mock_svc.update_member_role = AsyncMock(
+            side_effect=ValueError("자신의 역할은 변경할 수 없습니다")
+        )
+        response = team_client.put(
+            f"/api/v1/teams/{team_id}/members/{admin_user.id}",
+            json={"role": "member"},
+        )
+
+    assert response.status_code == 400
+
+
+def test_update_member_role_400_last_admin(team_client):
+    """마지막 admin 역할 변경 시도 시 400"""
+    team_id = str(uuid.uuid4())
+    target_user_id = uuid.uuid4()
+
+    with patch("backend.app.api.v1.teams._team_service") as mock_svc:
+        mock_svc.get_user_role = AsyncMock(return_value="admin")
+        mock_svc.update_member_role = AsyncMock(
+            side_effect=ValueError("마지막 admin의 역할은 변경할 수 없습니다")
+        )
+        response = team_client.put(
+            f"/api/v1/teams/{team_id}/members/{target_user_id}",
+            json={"role": "member"},
+        )
+
+    assert response.status_code == 400
+
+
+def test_remove_team_member_204(team_client, admin_user):
+    """admin이 멤버 제거 성공 (204)"""
+    team_id = str(uuid.uuid4())
+    target_user_id = uuid.uuid4()
+
+    with patch("backend.app.api.v1.teams._team_service") as mock_svc:
+        mock_svc.get_user_role = AsyncMock(return_value="admin")
+        mock_svc.remove_member = AsyncMock(return_value=True)
+        response = team_client.delete(
+            f"/api/v1/teams/{team_id}/members/{target_user_id}"
+        )
+
+    assert response.status_code == 204
+
+
+def test_remove_team_member_400_last_admin(team_client, admin_user):
+    """마지막 admin 제거 시도 시 400"""
+    team_id = str(uuid.uuid4())
+
+    with patch("backend.app.api.v1.teams._team_service") as mock_svc:
+        mock_svc.get_user_role = AsyncMock(return_value="admin")
+        mock_svc.remove_member = AsyncMock(
+            side_effect=ValueError("마지막 admin은 팀에서 나갈 수 없습니다. 다른 admin을 먼저 지정해주세요")
+        )
+        response = team_client.delete(
+            f"/api/v1/teams/{team_id}/members/{admin_user.id}"
+        )
+
+    assert response.status_code == 400
+
+
+def test_remove_team_member_403_non_admin(team_client, admin_user):
+    """non-admin이 다른 멤버 제거 시도 시 403"""
+    from fastapi.testclient import TestClient
+    from backend.app.main import app
+    from backend.app.dependencies import get_db_session, get_current_user
+
+    non_admin = _make_user("member")
+
+    async def mock_db_session():
+        yield AsyncMock()
+
+    async def mock_member_user():
+        return non_admin
+
+    app.dependency_overrides[get_db_session] = mock_db_session
+    app.dependency_overrides[get_current_user] = mock_member_user
+
+    team_id = str(uuid.uuid4())
+    other_user_id = str(uuid.uuid4())
+
+    with patch("backend.app.main.WhisperEngine"):
+        with patch("backend.app.main.DiarizationEngine"):
+            with patch("backend.app.lifecycle.validate_startup", new_callable=AsyncMock):
+                with patch("backend.app.lifecycle.cleanup_shutdown", new_callable=AsyncMock):
+                    client = TestClient(app, raise_server_exceptions=False)
+                    with patch("backend.app.api.v1.teams._team_service") as mock_svc:
+                        mock_svc.get_user_role = AsyncMock(return_value="member")
+                        response = client.delete(
+                            f"/api/v1/teams/{team_id}/members/{other_user_id}"
+                        )
+
+    app.dependency_overrides.clear()
+    assert response.status_code == 403

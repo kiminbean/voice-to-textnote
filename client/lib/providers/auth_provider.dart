@@ -1,0 +1,168 @@
+// 인증 상태 관리 프로바이더
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:voice_to_textnote/models/auth_user.dart';
+import 'package:voice_to_textnote/services/auth_api.dart';
+import 'package:voice_to_textnote/services/auth_service.dart';
+
+// 인증 상태 sealed class 대신 enum + 데이터 클래스 사용 (freezed 미사용 프로젝트)
+enum AuthStatus { initial, loading, authenticated, unauthenticated }
+
+class AuthState {
+  final AuthStatus status;
+  final AuthUser? user;
+  final String? errorMessage;
+
+  const AuthState({
+    required this.status,
+    this.user,
+    this.errorMessage,
+  });
+
+  const AuthState.initial() : status = AuthStatus.initial, user = null, errorMessage = null;
+  const AuthState.loading() : status = AuthStatus.loading, user = null, errorMessage = null;
+  const AuthState.authenticated(AuthUser u)
+      : status = AuthStatus.authenticated, user = u, errorMessage = null;
+  const AuthState.unauthenticated([String? msg])
+      : status = AuthStatus.unauthenticated, user = null, errorMessage = msg;
+
+  bool get isAuthenticated => status == AuthStatus.authenticated;
+  bool get isLoading => status == AuthStatus.loading;
+}
+
+// @MX:ANCHOR: 앱 전역 인증 상태를 관리하는 핵심 Notifier
+// @MX:REASON: goRouter redirect, dioProvider interceptor 양쪽에서 참조
+class AuthNotifier extends StateNotifier<AuthState> {
+  final AuthApi _authApi;
+  final AuthService _authService;
+
+  AuthNotifier(this._authApi, this._authService) : super(const AuthState.initial());
+
+  // 앱 시작 시 저장된 토큰으로 인증 상태 복원
+  Future<void> checkAuth() async {
+    state = const AuthState.loading();
+    try {
+      final hasTokens = await _authService.hasTokens();
+      if (!hasTokens) {
+        state = const AuthState.unauthenticated();
+        return;
+      }
+
+      // 만료 여부 확인 후 갱신 시도
+      final isExpired = await _authService.isAccessTokenExpired();
+      if (isExpired) {
+        final refreshed = await _tryRefresh();
+        if (!refreshed) {
+          state = const AuthState.unauthenticated();
+          return;
+        }
+      }
+
+      // 사용자 정보 조회
+      final accessToken = await _authService.getAccessToken();
+      if (accessToken == null) {
+        state = const AuthState.unauthenticated();
+        return;
+      }
+
+      final user = await _authApi.getMe(accessToken);
+      state = AuthState.authenticated(user);
+    } catch (_) {
+      await _authService.clearTokens();
+      state = const AuthState.unauthenticated();
+    }
+  }
+
+  // 로그인
+  Future<void> login(String email, String password) async {
+    state = const AuthState.loading();
+    try {
+      final response = await _authApi.login(email: email, password: password);
+      await _authService.saveTokens(response.accessToken, response.refreshToken);
+      state = AuthState.authenticated(response.user);
+    } on Exception catch (e) {
+      state = AuthState.unauthenticated(_parseError(e));
+    }
+  }
+
+  // 회원가입 (성공 시 자동 로그인)
+  Future<void> register(String email, String password, String displayName) async {
+    state = const AuthState.loading();
+    try {
+      final response = await _authApi.register(
+        email: email,
+        password: password,
+        displayName: displayName,
+      );
+      await _authService.saveTokens(response.accessToken, response.refreshToken);
+      state = AuthState.authenticated(response.user);
+    } on Exception catch (e) {
+      state = AuthState.unauthenticated(_parseError(e));
+    }
+  }
+
+  // 로그아웃
+  Future<void> logout() async {
+    try {
+      final accessToken = await _authService.getAccessToken();
+      final refreshToken = await _authService.getRefreshToken();
+      if (accessToken != null && refreshToken != null) {
+        await _authApi.logout(
+          accessToken: accessToken,
+          refreshToken: refreshToken,
+        );
+      }
+    } catch (_) {
+      // 서버 오류 무시하고 로컬 토큰 삭제
+    } finally {
+      await _authService.clearTokens();
+      state = const AuthState.unauthenticated();
+    }
+  }
+
+  // 토큰 갱신 시도 (내부용)
+  Future<bool> _tryRefresh() async {
+    try {
+      final refreshToken = await _authService.getRefreshToken();
+      if (refreshToken == null) return false;
+      final response = await _authApi.refresh(refreshToken);
+      await _authService.saveTokens(response.accessToken, response.refreshToken);
+      return true;
+    } catch (_) {
+      await _authService.clearTokens();
+      return false;
+    }
+  }
+
+  // 에러 메시지 파싱
+  String _parseError(Exception e) {
+    final msg = e.toString();
+    if (msg.contains('401') || msg.contains('Unauthorized')) {
+      return '이메일 또는 비밀번호가 올바르지 않습니다.';
+    }
+    if (msg.contains('409') || msg.contains('Conflict')) {
+      return '이미 사용 중인 이메일입니다.';
+    }
+    if (msg.contains('SocketException') || msg.contains('connection')) {
+      return '서버에 연결할 수 없습니다. 네트워크를 확인해주세요.';
+    }
+    return '오류가 발생했습니다. 다시 시도해주세요.';
+  }
+}
+
+// 인증 상태 프로바이더
+final authStateProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
+  return AuthNotifier(
+    ref.watch(authApiProvider),
+    ref.watch(authServiceProvider),
+  );
+});
+
+// 인증 여부 파생 프로바이더
+final isAuthenticatedProvider = Provider<bool>((ref) {
+  return ref.watch(authStateProvider).isAuthenticated;
+});
+
+// 현재 사용자 파생 프로바이더
+final currentUserProvider = Provider<AuthUser?>((ref) {
+  return ref.watch(authStateProvider).user;
+});

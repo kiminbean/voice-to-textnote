@@ -11,12 +11,17 @@ SPEC-TEAM-001: 팀 관리 API 엔드포인트
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.dependencies import get_current_user, get_db_session
+from backend.db.meeting_share_service import MeetingShareService
 from backend.db.team_service import TeamService
+from backend.schemas.meeting_share import MeetingListResponse, MeetingOwnershipResponse
 from backend.schemas.team import (
+    MemberInviteRequest,
+    MemberListResponse,
+    MemberRoleUpdateRequest,
     TeamCreateRequest,
     TeamDetailResponse,
     TeamListResponse,
@@ -29,6 +34,9 @@ router = APIRouter(prefix="/teams", tags=["teams"])
 
 # TeamService 인스턴스 (재사용)
 _team_service = TeamService()
+
+# MeetingShareService 인스턴스 (재사용)
+_meeting_service = MeetingShareService()
 
 
 @router.post(
@@ -204,3 +212,256 @@ async def delete_team(
     deleted = await _team_service.delete_team(session=db, team_id=team_uuid)
     if not deleted:
         raise HTTPException(status_code=404, detail="팀을 찾을 수 없습니다")
+
+
+# ---------------------------------------------------------------------------
+# REQ-TEAM-003: 팀 멤버 관리 엔드포인트
+# ---------------------------------------------------------------------------
+
+
+@router.get(
+    "/{team_id}/members",
+    response_model=MemberListResponse,
+    summary="팀 멤버 목록 조회",
+)
+async def list_team_members(
+    team_id: str,
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+) -> MemberListResponse:
+    """
+    팀 멤버 목록을 반환합니다.
+    팀 멤버라면 누구나 조회 가능합니다.
+    """
+    try:
+        team_uuid = uuid.UUID(team_id)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="유효하지 않은 팀 ID 형식입니다")
+
+    # 멤버십 확인
+    role = await _team_service.get_user_role(
+        session=db, team_id=team_uuid, user_id=current_user.id
+    )
+    if role is None:
+        raise HTTPException(status_code=403, detail="팀에 접근할 권한이 없습니다")
+
+    members = await _team_service.list_members(session=db, team_id=team_uuid)
+    items = [TeamMemberResponse(**m) for m in members]
+    return MemberListResponse(items=items, total=len(items))
+
+
+@router.post(
+    "/{team_id}/members",
+    response_model=TeamMemberResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="팀 멤버 초대",
+)
+async def add_team_member(
+    team_id: str,
+    req: MemberInviteRequest,
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+) -> TeamMemberResponse:
+    """
+    이메일로 사용자를 팀에 초대합니다.
+    admin 역할만 가능합니다.
+    """
+    try:
+        team_uuid = uuid.UUID(team_id)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="유효하지 않은 팀 ID 형식입니다")
+
+    # admin 권한 확인
+    role = await _team_service.get_user_role(
+        session=db, team_id=team_uuid, user_id=current_user.id
+    )
+    if role != "admin":
+        raise HTTPException(status_code=403, detail="멤버 초대는 admin만 가능합니다")
+
+    try:
+        member = await _team_service.add_member(
+            session=db,
+            team_id=team_uuid,
+            email=req.email,
+            role=req.role,
+            invited_by=current_user.id,
+        )
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValueError as e:
+        # 이미 멤버이거나 유효하지 않은 역할
+        error_msg = str(e)
+        if "이미 팀 멤버" in error_msg:
+            raise HTTPException(status_code=409, detail=error_msg)
+        raise HTTPException(status_code=400, detail=error_msg)
+
+    # 멤버 상세 조회 (email, display_name 포함 반환)
+    members = await _team_service.list_members(session=db, team_id=team_uuid)
+    for m in members:
+        if m["user_id"] == str(member.user_id):
+            return TeamMemberResponse(**m)
+
+    # 폴백: 최소 정보로 반환
+    return TeamMemberResponse(
+        user_id=str(member.user_id),
+        email=req.email,
+        display_name="",
+        role=member.role,
+        joined_at=member.joined_at,
+    )
+
+
+@router.put(
+    "/{team_id}/members/{user_id}",
+    response_model=TeamMemberResponse,
+    summary="팀 멤버 역할 변경",
+)
+async def update_member_role(
+    team_id: str,
+    user_id: str,
+    req: MemberRoleUpdateRequest,
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+) -> TeamMemberResponse:
+    """
+    팀 멤버의 역할을 변경합니다.
+    admin만 가능하며, 자신의 역할은 변경할 수 없습니다.
+    마지막 admin의 역할은 변경할 수 없습니다.
+    """
+    try:
+        team_uuid = uuid.UUID(team_id)
+        user_uuid = uuid.UUID(user_id)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="유효하지 않은 ID 형식입니다")
+
+    # admin 권한 확인
+    role = await _team_service.get_user_role(
+        session=db, team_id=team_uuid, user_id=current_user.id
+    )
+    if role != "admin":
+        raise HTTPException(status_code=403, detail="역할 변경은 admin만 가능합니다")
+
+    try:
+        member = await _team_service.update_member_role(
+            session=db,
+            team_id=team_uuid,
+            user_id=user_uuid,
+            new_role=req.role,
+            requester_id=current_user.id,
+        )
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    # 업데이트된 멤버 상세 조회
+    members = await _team_service.list_members(session=db, team_id=team_uuid)
+    for m in members:
+        if m["user_id"] == str(member.user_id):
+            return TeamMemberResponse(**m)
+
+    return TeamMemberResponse(
+        user_id=str(member.user_id),
+        email="",
+        display_name="",
+        role=member.role,
+        joined_at=member.joined_at,
+    )
+
+
+@router.delete(
+    "/{team_id}/members/{user_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="팀 멤버 제거 / 팀 탈퇴",
+)
+async def remove_team_member(
+    team_id: str,
+    user_id: str,
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+) -> None:
+    """
+    팀 멤버를 제거하거나 팀에서 탈퇴합니다.
+    - admin: 다른 멤버 제거 가능
+    - 자기 자신 탈퇴: 역할 무관 허용
+    - 마지막 admin은 제거 불가
+    """
+    try:
+        team_uuid = uuid.UUID(team_id)
+        user_uuid = uuid.UUID(user_id)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="유효하지 않은 ID 형식입니다")
+
+    # 요청자의 역할 확인
+    requester_role = await _team_service.get_user_role(
+        session=db, team_id=team_uuid, user_id=current_user.id
+    )
+
+    # 자기 자신 탈퇴는 허용 (역할 무관)
+    is_self_removal = current_user.id == user_uuid
+
+    if not is_self_removal and requester_role != "admin":
+        raise HTTPException(status_code=403, detail="멤버 제거는 admin만 가능합니다")
+
+    if requester_role is None and not is_self_removal:
+        raise HTTPException(status_code=403, detail="팀에 접근할 권한이 없습니다")
+
+    try:
+        await _team_service.remove_member(
+            session=db,
+            team_id=team_uuid,
+            user_id=user_uuid,
+            requester_id=current_user.id,
+        )
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+# ---------------------------------------------------------------------------
+# REQ-TEAM-005: 팀 회의록 목록 엔드포인트
+# ---------------------------------------------------------------------------
+
+
+@router.get(
+    "/{team_id}/meetings",
+    response_model=MeetingListResponse,
+    summary="팀 공유 회의록 목록 조회",
+)
+async def list_team_meetings(
+    team_id: str,
+    page: int = Query(default=1, ge=1, description="페이지 번호"),
+    page_size: int = Query(default=20, ge=1, le=100, description="페이지당 항목 수"),
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+) -> MeetingListResponse:
+    """
+    팀에 공유된 회의록 목록을 반환합니다.
+    팀 멤버라면 누구나 조회 가능합니다.
+    """
+    try:
+        team_uuid = uuid.UUID(team_id)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="유효하지 않은 팀 ID 형식입니다")
+
+    # 멤버십 확인 (모든 역할 허용)
+    role = await _team_service.get_user_role(
+        session=db, team_id=team_uuid, user_id=current_user.id
+    )
+    if role is None:
+        raise HTTPException(status_code=403, detail="팀에 접근할 권한이 없습니다")
+
+    result = await _meeting_service.list_team_meetings(
+        session=db,
+        team_id=team_uuid,
+        page=page,
+        page_size=page_size,
+    )
+    items = [MeetingOwnershipResponse(**item) for item in result["items"]]
+    return MeetingListResponse(
+        items=items,
+        total=result["total"],
+        page=result["page"],
+        page_size=result["page_size"],
+    )

@@ -58,3 +58,26 @@ class TeamDetailResponse(TeamResponse):
     """팀 상세 응답 스키마 (멤버 목록 포함)"""
 
     members: list[TeamMemberResponse]
+
+
+# REQ-TEAM-003: 팀 멤버 관리 스키마
+
+
+class MemberInviteRequest(BaseModel):
+    """팀 멤버 초대 요청 스키마"""
+
+    email: str = Field(description="초대할 사용자 이메일")
+    role: str = Field(default="member", description="역할 (admin/member/viewer)")
+
+
+class MemberRoleUpdateRequest(BaseModel):
+    """팀 멤버 역할 변경 요청 스키마"""
+
+    role: str = Field(description="변경할 역할 (admin/member/viewer)")
+
+
+class MemberListResponse(BaseModel):
+    """팀 멤버 목록 응답 스키마"""
+
+    items: list[TeamMemberResponse]
+    total: int

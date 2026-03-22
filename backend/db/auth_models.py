@@ -4,11 +4,12 @@ SPEC-TEAM-001: 인증 및 팀 관련 ORM 모델
 REQ-AUTH-001: User 모델 (회원 가입/인증)
 REQ-AUTH-003: RefreshToken 모델 (JWT refresh token rotation)
 REQ-TEAM-001: Team 모델
+REQ-TEAM-005: MeetingOwnership 모델 (회의록 소유권 및 팀 공유)
 REQ-TEAM-006: TeamMember 모델 (admin/member/viewer 역할)
 """
 
 import uuid
-from datetime import UTC, datetime
+from datetime import datetime
 
 from sqlalchemy import (
     Boolean,
@@ -229,3 +230,64 @@ class RefreshToken(Base):
 
     def __repr__(self) -> str:
         return f"<RefreshToken(id={self.id}, user_id={self.user_id}, is_revoked={self.is_revoked})>"
+
+
+class MeetingOwnership(Base):
+    """
+    SPEC-TEAM-001 REQ-TEAM-005: 회의록 소유권 및 팀 공유 모델
+
+    task_results의 task_id를 기준으로 소유자와 팀 공유 정보를 관리합니다.
+    팀 삭제 시 team_id는 NULL로 설정됩니다 (ON DELETE SET NULL).
+    """
+
+    __tablename__ = "meeting_ownership"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+
+    # 작업 ID (task_results.task_id 외래 키)
+    task_id: Mapped[str] = mapped_column(
+        String(255),
+        ForeignKey("task_results.task_id"),
+        nullable=False,
+        index=True,
+    )
+
+    # 소유자 ID (users.id 외래 키)
+    owner_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    # 팀 ID (공유된 팀, 팀 삭제 시 NULL로 설정)
+    team_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("teams.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
+    # 팀 공유 시각 (공유 전 NULL)
+    shared_at: Mapped[datetime | None] = mapped_column(
+        DateTime,
+        nullable=True,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        default=_utcnow,
+    )
+
+    # (task_id, team_id) 조합은 유니크 (동일 팀에 중복 공유 방지)
+    __table_args__ = (
+        UniqueConstraint("task_id", "team_id", name="uq_meeting_team"),
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"<MeetingOwnership(id={self.id}, task_id={self.task_id!r}, "
+            f"owner_id={self.owner_id}, team_id={self.team_id})>"
+        )

@@ -16,6 +16,7 @@ from backend.app.api.v1 import (
     export,
     health,
     history,
+    meetings,
     minutes,
     search,
     stream,
@@ -156,6 +157,9 @@ def create_app() -> FastAPI:
 
     # SPEC-TEAM-001: 팀 관리 API (JWT 인증은 각 엔드포인트에서 처리)
     app.include_router(teams.router, prefix=api_prefix)
+
+    # SPEC-TEAM-001 REQ-TEAM-005: 회의록 공유 API (JWT 인증은 각 엔드포인트에서 처리)
+    app.include_router(meetings.router, prefix=api_prefix)
 
     return app
 

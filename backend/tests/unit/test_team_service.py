@@ -268,3 +268,239 @@ async def test_get_user_role_not_member(team_service, mock_session, sample_team)
     )
 
     assert role is None
+
+
+# ---------------------------------------------------------------------------
+# REQ-TEAM-003: 팀 멤버 관리 서비스 테스트
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def second_user() -> User:
+    """초대할 두 번째 사용자"""
+    user = User()
+    user.id = uuid.uuid4()
+    user.email = "invitee@example.com"
+    user.display_name = "초대된 사용자"
+    user.is_active = True
+    return user
+
+
+@pytest.fixture
+def second_member(second_user, sample_team) -> TeamMember:
+    """일반 멤버"""
+    member = TeamMember()
+    member.id = uuid.uuid4()
+    member.team_id = sample_team.id
+    member.user_id = second_user.id
+    member.role = "member"
+    member.joined_at = datetime.now(UTC).replace(tzinfo=None)
+    return member
+
+
+@pytest.mark.asyncio
+async def test_add_member_success(
+    team_service, mock_session, sample_user, sample_team, second_user
+):
+    """이메일로 사용자를 팀에 추가 성공"""
+    # 첫 번째 execute: 이메일로 사용자 조회
+    mock_user_result = MagicMock()
+    mock_user_result.scalar_one_or_none.return_value = second_user
+
+    # 두 번째 execute: 기존 멤버 여부 조회 (없음)
+    mock_existing_result = MagicMock()
+    mock_existing_result.scalar_one_or_none.return_value = None
+
+    mock_session.execute.side_effect = [mock_user_result, mock_existing_result]
+
+    member = await team_service.add_member(
+        session=mock_session,
+        team_id=sample_team.id,
+        email=second_user.email,
+        role="member",
+        invited_by=sample_user.id,
+    )
+
+    assert isinstance(member, TeamMember)
+    assert member.user_id == second_user.id
+    assert member.role == "member"
+    assert member.team_id == sample_team.id
+    mock_session.add.assert_called_once()
+    mock_session.commit.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_add_member_user_not_found(
+    team_service, mock_session, sample_user, sample_team
+):
+    """존재하지 않는 이메일로 초대 시 LookupError"""
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none.return_value = None
+    mock_session.execute.return_value = mock_result
+
+    with pytest.raises(LookupError, match="사용자를 찾을 수 없습니다"):
+        await team_service.add_member(
+            session=mock_session,
+            team_id=sample_team.id,
+            email="notexist@example.com",
+            role="member",
+            invited_by=sample_user.id,
+        )
+
+
+@pytest.mark.asyncio
+async def test_add_member_already_exists(
+    team_service, mock_session, sample_user, sample_team, second_user, second_member
+):
+    """이미 팀 멤버인 사용자 초대 시 ValueError"""
+    mock_user_result = MagicMock()
+    mock_user_result.scalar_one_or_none.return_value = second_user
+
+    mock_existing_result = MagicMock()
+    mock_existing_result.scalar_one_or_none.return_value = second_member
+
+    mock_session.execute.side_effect = [mock_user_result, mock_existing_result]
+
+    with pytest.raises(ValueError, match="이미 팀 멤버"):
+        await team_service.add_member(
+            session=mock_session,
+            team_id=sample_team.id,
+            email=second_user.email,
+            role="member",
+            invited_by=sample_user.id,
+        )
+
+
+@pytest.mark.asyncio
+async def test_update_member_role_success(
+    team_service, mock_session, sample_user, sample_team, second_user, second_member
+):
+    """admin이 다른 멤버의 역할 변경 성공"""
+    # count_admins용 execute
+    mock_count_result = MagicMock()
+    mock_count_result.scalar_one.return_value = 2  # admin 2명 (변경 후에도 1명 남음)
+
+    # 대상 멤버 조회
+    mock_member_result = MagicMock()
+    mock_member_result.scalar_one_or_none.return_value = second_member
+
+    # second_member는 role="member"이므로 count_admins 호출 없음
+    mock_session.execute.side_effect = [mock_member_result]
+
+    updated = await team_service.update_member_role(
+        session=mock_session,
+        team_id=sample_team.id,
+        user_id=second_user.id,
+        new_role="admin",
+        requester_id=sample_user.id,
+    )
+
+    assert updated.role == "admin"
+    mock_session.commit.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_update_member_role_cannot_change_own(
+    team_service, mock_session, sample_user, sample_team
+):
+    """자신의 역할 변경 시도 시 ValueError"""
+    with pytest.raises(ValueError, match="자신의 역할"):
+        await team_service.update_member_role(
+            session=mock_session,
+            team_id=sample_team.id,
+            user_id=sample_user.id,  # 요청자 == 대상자
+            new_role="member",
+            requester_id=sample_user.id,
+        )
+
+
+@pytest.mark.asyncio
+async def test_update_member_role_last_admin_protection(
+    team_service, mock_session, sample_user, sample_team, sample_member
+):
+    """마지막 admin의 역할 변경 시 ValueError"""
+    # 대상 멤버 조회 (admin)
+    mock_member_result = MagicMock()
+    mock_member_result.scalar_one_or_none.return_value = sample_member  # role="admin"
+
+    # count_admins: admin 1명
+    mock_count_result = MagicMock()
+    mock_count_result.scalar_one.return_value = 1
+
+    mock_session.execute.side_effect = [mock_member_result, mock_count_result]
+
+    other_user_id = uuid.uuid4()
+    with pytest.raises(ValueError, match="마지막 admin"):
+        await team_service.update_member_role(
+            session=mock_session,
+            team_id=sample_team.id,
+            user_id=sample_user.id,  # 대상 (admin)
+            new_role="member",
+            requester_id=other_user_id,  # 요청자 != 대상자
+        )
+
+
+@pytest.mark.asyncio
+async def test_remove_member_success(
+    team_service, mock_session, sample_user, sample_team, second_user, second_member
+):
+    """admin이 일반 멤버 제거 성공"""
+    mock_member_result = MagicMock()
+    mock_member_result.scalar_one_or_none.return_value = second_member  # role="member"
+    mock_session.execute.return_value = mock_member_result
+
+    result = await team_service.remove_member(
+        session=mock_session,
+        team_id=sample_team.id,
+        user_id=second_user.id,
+        requester_id=sample_user.id,
+    )
+
+    assert result is True
+    mock_session.delete.assert_called_once_with(second_member)
+    mock_session.commit.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_remove_member_last_admin_cannot_leave(
+    team_service, mock_session, sample_user, sample_team, sample_member
+):
+    """마지막 admin이 팀 탈퇴 시도 시 ValueError"""
+    # 대상 멤버 조회 (admin)
+    mock_member_result = MagicMock()
+    mock_member_result.scalar_one_or_none.return_value = sample_member  # role="admin"
+
+    # count_admins: admin 1명
+    mock_count_result = MagicMock()
+    mock_count_result.scalar_one.return_value = 1
+
+    mock_session.execute.side_effect = [mock_member_result, mock_count_result]
+
+    with pytest.raises(ValueError, match="마지막 admin"):
+        await team_service.remove_member(
+            session=mock_session,
+            team_id=sample_team.id,
+            user_id=sample_user.id,
+            requester_id=sample_user.id,
+        )
+
+
+@pytest.mark.asyncio
+async def test_list_members(
+    team_service, mock_session, sample_user, sample_team, sample_member
+):
+    """팀 멤버 목록 조회"""
+    mock_result = MagicMock()
+    mock_result.all.return_value = [(sample_user, sample_member)]
+    mock_session.execute.return_value = mock_result
+
+    members = await team_service.list_members(
+        session=mock_session,
+        team_id=sample_team.id,
+    )
+
+    assert len(members) == 1
+    assert members[0]["email"] == sample_user.email
+    assert members[0]["display_name"] == sample_user.display_name
+    assert members[0]["role"] == "admin"
+    assert "joined_at" in members[0]

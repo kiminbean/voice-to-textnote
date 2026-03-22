@@ -219,3 +219,211 @@ class TeamService:
         )
         member = result.scalar_one_or_none()
         return member.role if member is not None else None
+
+    # -------------------------------------------------------------------------
+    # REQ-TEAM-003: 팀 멤버 관리
+    # -------------------------------------------------------------------------
+
+    async def count_admins(
+        self,
+        session: AsyncSession,
+        team_id: uuid.UUID,
+    ) -> int:
+        """
+        팀의 admin 멤버 수 반환.
+
+        Returns:
+            admin 역할 멤버 수
+        """
+        result = await session.execute(
+            select(func.count(TeamMember.id)).where(
+                TeamMember.team_id == team_id,
+                TeamMember.role == "admin",
+            )
+        )
+        return result.scalar_one()
+
+    async def add_member(
+        self,
+        session: AsyncSession,
+        team_id: uuid.UUID,
+        email: str,
+        role: str,
+        invited_by: uuid.UUID,  # noqa: ARG002 - SPEC에서 정의, 향후 audit 로깅용
+    ) -> TeamMember:
+        """
+        이메일로 사용자를 찾아 팀에 추가.
+
+        Args:
+            session: DB 세션
+            team_id: 대상 팀 ID
+            email: 초대할 사용자 이메일
+            role: 부여할 역할 (admin/member/viewer)
+            invited_by: 초대한 사용자 ID
+
+        Returns:
+            생성된 TeamMember 인스턴스
+
+        Raises:
+            ValueError: 사용자 미존재(404) 또는 이미 멤버(409)
+        """
+        # 유효 역할 검증
+        if role not in ("admin", "member", "viewer"):
+            raise ValueError(f"유효하지 않은 역할입니다: {role}")
+
+        # 이메일로 사용자 조회
+        user_result = await session.execute(
+            select(User).where(User.email == email)
+        )
+        user = user_result.scalar_one_or_none()
+        if user is None:
+            raise LookupError(f"이메일 '{email}'에 해당하는 사용자를 찾을 수 없습니다")
+
+        # 이미 멤버인지 확인
+        existing_result = await session.execute(
+            select(TeamMember).where(
+                TeamMember.team_id == team_id,
+                TeamMember.user_id == user.id,
+            )
+        )
+        if existing_result.scalar_one_or_none() is not None:
+            raise ValueError("이미 팀 멤버입니다")
+
+        # 팀 멤버 추가
+        member = TeamMember()
+        member.id = uuid.uuid4()
+        member.team_id = team_id
+        member.user_id = user.id
+        member.role = role
+        member.joined_at = datetime.now(UTC).replace(tzinfo=None)
+        session.add(member)
+        await session.commit()
+        return member
+
+    async def update_member_role(
+        self,
+        session: AsyncSession,
+        team_id: uuid.UUID,
+        user_id: uuid.UUID,
+        new_role: str,
+        requester_id: uuid.UUID,
+    ) -> TeamMember:
+        """
+        팀 멤버의 역할 변경.
+
+        Args:
+            session: DB 세션
+            team_id: 대상 팀 ID
+            user_id: 역할을 변경할 멤버 ID
+            new_role: 새 역할 (admin/member/viewer)
+            requester_id: 요청자 ID
+
+        Returns:
+            업데이트된 TeamMember 인스턴스
+
+        Raises:
+            ValueError: 자신의 역할 변경 시도, 마지막 admin 보호, 유효하지 않은 역할
+            LookupError: 대상 멤버 미존재
+        """
+        # 유효 역할 검증
+        if new_role not in ("admin", "member", "viewer"):
+            raise ValueError(f"유효하지 않은 역할입니다: {new_role}")
+
+        # 자신의 역할 변경 금지
+        if requester_id == user_id:
+            raise ValueError("자신의 역할은 변경할 수 없습니다")
+
+        # 대상 멤버 조회
+        member_result = await session.execute(
+            select(TeamMember).where(
+                TeamMember.team_id == team_id,
+                TeamMember.user_id == user_id,
+            )
+        )
+        member = member_result.scalar_one_or_none()
+        if member is None:
+            raise LookupError("팀 멤버를 찾을 수 없습니다")
+
+        # admin → 다른 역할로 변경 시 마지막 admin 보호
+        if member.role == "admin" and new_role != "admin":
+            admin_count = await self.count_admins(session, team_id)
+            if admin_count <= 1:
+                raise ValueError("마지막 admin의 역할은 변경할 수 없습니다")
+
+        member.role = new_role
+        await session.commit()
+        return member
+
+    async def remove_member(
+        self,
+        session: AsyncSession,
+        team_id: uuid.UUID,
+        user_id: uuid.UUID,
+        requester_id: uuid.UUID,  # noqa: ARG002 - API 레이어에서 권한 검증, 향후 audit 로깅용
+    ) -> bool:
+        """
+        팀 멤버 제거 (자기 자신 탈퇴 허용).
+
+        Args:
+            session: DB 세션
+            team_id: 대상 팀 ID
+            user_id: 제거할 멤버 ID
+            requester_id: 요청자 ID
+
+        Returns:
+            성공 시 True
+
+        Raises:
+            ValueError: 마지막 admin 제거 시도
+            LookupError: 대상 멤버 미존재
+        """
+        # 대상 멤버 조회
+        member_result = await session.execute(
+            select(TeamMember).where(
+                TeamMember.team_id == team_id,
+                TeamMember.user_id == user_id,
+            )
+        )
+        member = member_result.scalar_one_or_none()
+        if member is None:
+            raise LookupError("팀 멤버를 찾을 수 없습니다")
+
+        # 마지막 admin은 제거 불가
+        if member.role == "admin":
+            admin_count = await self.count_admins(session, team_id)
+            if admin_count <= 1:
+                raise ValueError("마지막 admin은 팀에서 나갈 수 없습니다. 다른 admin을 먼저 지정해주세요")
+
+        await session.delete(member)
+        await session.commit()
+        return True
+
+    async def list_members(
+        self,
+        session: AsyncSession,
+        team_id: uuid.UUID,
+    ) -> list[dict]:
+        """
+        팀 멤버 목록 조회 (사용자 정보 포함).
+
+        Returns:
+            멤버 정보 딕셔너리 리스트
+        """
+        stmt = (
+            select(User, TeamMember)
+            .join(TeamMember, TeamMember.user_id == User.id)
+            .where(TeamMember.team_id == team_id)
+        )
+        result = await session.execute(stmt)
+        rows = result.all()
+
+        return [
+            {
+                "user_id": str(row[0].id),
+                "email": row[0].email,
+                "display_name": row[0].display_name,
+                "role": row[1].role,
+                "joined_at": row[1].joined_at,
+            }
+            for row in rows
+        ]
