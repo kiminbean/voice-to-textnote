@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:voice_to_textnote/models/action_item.dart';
 import 'package:voice_to_textnote/providers/meeting_list_provider.dart';
 import 'package:voice_to_textnote/providers/result_provider.dart';
 import 'package:voice_to_textnote/widgets/error_retry_widget.dart';
@@ -184,19 +185,19 @@ class _SummaryTab extends ConsumerWidget {
   }
 
   Widget _buildShimmerLoading() {
-    return Padding(
-      padding: const EdgeInsets.all(16),
+    return const Padding(
+      padding: EdgeInsets.all(16),
       child: Card(
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const ShimmerText(lines: 1),
-              const SizedBox(height: 16),
-              const Divider(),
-              const SizedBox(height: 8),
-              const ShimmerText(lines: 5),
+              ShimmerText(lines: 1),
+              SizedBox(height: 16),
+              Divider(),
+              SizedBox(height: 8),
+              ShimmerText(lines: 5),
             ],
           ),
         ),
@@ -205,16 +206,33 @@ class _SummaryTab extends ConsumerWidget {
   }
 }
 
-// 액션 아이템 탭
-class _ActionItemsTab extends ConsumerWidget {
+// 우선순위 배지 색상 상수 (SPEC-APP-003 REQ-APP-033)
+const _priorityColors = {
+  'high': Colors.red,
+  'medium': Colors.orange,
+  'low': Colors.green,
+};
+
+// 액션 아이템 탭 - ConsumerStatefulWidget으로 필터 상태 관리
+// @MX:ANCHOR: _ActionItemsTab은 summaryResultProvider를 통해 액션 아이템을 렌더링
+// @MX:REASON: result_screen의 핵심 UI 진입점, 필터 상태와 API 데이터 결합
+class _ActionItemsTab extends ConsumerStatefulWidget {
   final String? taskId;
 
   const _ActionItemsTab({required this.taskId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_ActionItemsTab> createState() => _ActionItemsTabState();
+}
+
+class _ActionItemsTabState extends ConsumerState<_ActionItemsTab> {
+  // 현재 선택된 우선순위 필터 (null = 전체)
+  String? _selectedPriority;
+
+  @override
+  Widget build(BuildContext context) {
     // task ID가 없으면 빈 상태 표시
-    if (taskId == null) {
+    if (widget.taskId == null) {
       return const EmptyStateWidget(
         icon: Icons.checklist_outlined,
         title: '액션 아이템 준비 중',
@@ -222,26 +240,91 @@ class _ActionItemsTab extends ConsumerWidget {
       );
     }
 
-    final summaryAsync = ref.watch(summaryResultProvider(taskId!));
+    final summaryAsync = ref.watch(summaryResultProvider(widget.taskId!));
 
     return summaryAsync.when(
       loading: () => _buildShimmerLoading(),
       error: (error, _) => ErrorRetryWidget(
         message: '액션 아이템을 불러올 수 없습니다',
-        onRetry: () => ref.invalidate(summaryResultProvider(taskId!)),
+        onRetry: () => ref.invalidate(summaryResultProvider(widget.taskId!)),
       ),
       data: (data) {
-        final actionItems = (data['action_items'] as List<dynamic>? ?? [])
-            .cast<String>();
-        if (actionItems.isEmpty) {
+        // Map 형식만 파싱, 잘못된 형식은 무시 (SPEC-APP-003 REQ-APP-031)
+        final allItems = (data['action_items'] as List<dynamic>? ?? [])
+            .whereType<Map<String, dynamic>>()
+            .map((e) => ActionItem.fromJson(e))
+            .toList();
+
+        if (allItems.isEmpty) {
           return const EmptyStateWidget(
             icon: Icons.checklist_outlined,
             title: '액션 아이템이 없습니다',
           );
         }
 
-        return _ActionItemsList(items: actionItems);
+        // 필터 적용 (SPEC-APP-003 REQ-APP-034)
+        final filteredItems = _selectedPriority == null
+            ? allItems
+            : allItems
+                .where((item) => item.priority == _selectedPriority)
+                .toList();
+
+        return Column(
+          children: [
+            // 우선순위 필터 칩 행
+            _buildFilterRow(),
+            // 액션 아이템 카드 목록
+            Expanded(
+              child: _ActionItemCardList(items: filteredItems),
+            ),
+          ],
+        );
       },
+    );
+  }
+
+  // 우선순위 필터 칩 행 (SPEC-APP-003 REQ-APP-034)
+  Widget _buildFilterRow() {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        children: [
+          // 전체 필터
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: FilterChip(
+              label: const Text('전체'),
+              selected: _selectedPriority == null,
+              onSelected: (_) => setState(() => _selectedPriority = null),
+            ),
+          ),
+          // High 필터
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: FilterChip(
+              label: const Text('High'),
+              selected: _selectedPriority == 'high',
+              onSelected: (_) => setState(() => _selectedPriority = 'high'),
+            ),
+          ),
+          // Medium 필터
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: FilterChip(
+              label: const Text('Medium'),
+              selected: _selectedPriority == 'medium',
+              onSelected: (_) => setState(() => _selectedPriority = 'medium'),
+            ),
+          ),
+          // Low 필터
+          FilterChip(
+            label: const Text('Low'),
+            selected: _selectedPriority == 'low',
+            onSelected: (_) => setState(() => _selectedPriority = 'low'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -261,18 +344,19 @@ class _ActionItemsTab extends ConsumerWidget {
   }
 }
 
-// 액션 아이템 목록 (체크박스)
-class _ActionItemsList extends StatefulWidget {
-  final List<String> items;
+// 액션 아이템 리치 카드 목록 (SPEC-APP-003 REQ-APP-032)
+class _ActionItemCardList extends StatefulWidget {
+  final List<ActionItem> items;
 
-  const _ActionItemsList({required this.items});
+  const _ActionItemCardList({required this.items});
 
   @override
-  State<_ActionItemsList> createState() => _ActionItemsListState();
+  State<_ActionItemCardList> createState() => _ActionItemCardListState();
 }
 
-class _ActionItemsListState extends State<_ActionItemsList> {
-  late final List<bool> _checked;
+class _ActionItemCardListState extends State<_ActionItemCardList> {
+  // 각 아이템의 체크 상태
+  late List<bool> _checked;
 
   @override
   void initState() {
@@ -281,27 +365,68 @@ class _ActionItemsListState extends State<_ActionItemsList> {
   }
 
   @override
+  void didUpdateWidget(_ActionItemCardList oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // 아이템 목록이 바뀌면 체크 상태 초기화
+    if (oldWidget.items.length != widget.items.length) {
+      _checked = List.filled(widget.items.length, false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return ListView.builder(
       padding: const EdgeInsets.all(16),
       itemCount: widget.items.length,
       itemBuilder: (context, index) {
-        final text = widget.items[index];
+        final item = widget.items[index];
         final done = _checked[index];
-        return CheckboxListTile(
-          value: done,
-          title: Text(
-            text,
-            style: TextStyle(
-              decoration: done ? TextDecoration.lineThrough : null,
-              color: done ? Colors.grey : null,
+        final priorityColor =
+            _priorityColors[item.priority] ?? Colors.orange;
+
+        return Card(
+          margin: const EdgeInsets.only(bottom: 8),
+          child: CheckboxListTile(
+            value: done,
+            // 작업 내용 (완료 시 취소선)
+            title: Text(
+              item.task,
+              style: TextStyle(
+                decoration: done ? TextDecoration.lineThrough : null,
+                color: done ? Colors.grey : null,
+              ),
             ),
+            // 담당자 + 마감일 표시
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('담당자: ${item.assignee ?? '미지정'}'),
+                if (item.deadline != null)
+                  Text('마감: ${item.deadline}'),
+              ],
+            ),
+            // 우선순위 배지
+            secondary: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: priorityColor,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                item.priority.toUpperCase(),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            onChanged: (value) {
+              setState(() {
+                _checked[index] = value ?? false;
+              });
+            },
           ),
-          onChanged: (value) {
-            setState(() {
-              _checked[index] = value ?? false;
-            });
-          },
         );
       },
     );

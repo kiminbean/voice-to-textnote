@@ -1,5 +1,6 @@
 // 결과 데이터 로딩 상태 프로바이더
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:voice_to_textnote/models/action_item.dart';
 import 'package:voice_to_textnote/services/minutes_api.dart';
 import 'package:voice_to_textnote/services/summary_api.dart';
 
@@ -11,8 +12,8 @@ class MeetingResult {
   // AI 요약 텍스트
   final String summary;
 
-  // 액션 아이템 목록
-  final List<String> actionItems;
+  // 구조화된 액션 아이템 목록 (SPEC-APP-003 REQ-APP-031)
+  final List<ActionItem> actionItems;
 
   const MeetingResult({
     required this.minutes,
@@ -74,7 +75,10 @@ final resultProvider =
   return MeetingResult(
     minutes: minutesData['minutes'] as String? ?? '',
     summary: summaryData['summary'] as String? ?? '',
+    // Map 형식인 항목만 파싱, 잘못된 형식은 무시 (graceful handling)
     actionItems: (summaryData['action_items'] as List<dynamic>? ?? [])
-        .cast<String>(),
+        .whereType<Map<String, dynamic>>()
+        .map((e) => ActionItem.fromJson(e))
+        .toList(),
   );
 });
