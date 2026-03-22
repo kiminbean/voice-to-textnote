@@ -57,17 +57,16 @@ class AuthUser {
 }
 
 // 인증 응답 모델 (로그인/회원가입 공통)
+// 서버는 {access_token, refresh_token, token_type}만 반환 (user 필드 없음)
 class AuthResponse {
   final String accessToken;
   final String refreshToken;
   final String tokenType;
-  final AuthUser user;
 
   const AuthResponse({
     required this.accessToken,
     required this.refreshToken,
     required this.tokenType,
-    required this.user,
   });
 
   factory AuthResponse.fromJson(Map<String, dynamic> json) {
@@ -75,7 +74,6 @@ class AuthResponse {
       accessToken: json['access_token'] as String,
       refreshToken: json['refresh_token'] as String,
       tokenType: json['token_type'] as String,
-      user: AuthUser.fromJson(json['user'] as Map<String, dynamic>),
     );
   }
 }

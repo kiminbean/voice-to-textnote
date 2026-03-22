@@ -78,7 +78,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
     try {
       final response = await _authApi.login(email: email, password: password);
       await _authService.saveTokens(response.accessToken, response.refreshToken);
-      state = AuthState.authenticated(response.user);
+      // 토큰으로 사용자 정보 조회
+      final user = await _authApi.getMe(response.accessToken);
+      state = AuthState.authenticated(user);
     } on Exception catch (e) {
       state = AuthState.unauthenticated(_parseError(e));
     }
@@ -94,7 +96,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
         displayName: displayName,
       );
       await _authService.saveTokens(response.accessToken, response.refreshToken);
-      state = AuthState.authenticated(response.user);
+      // 토큰으로 사용자 정보 조회
+      final user = await _authApi.getMe(response.accessToken);
+      state = AuthState.authenticated(user);
     } on Exception catch (e) {
       state = AuthState.unauthenticated(_parseError(e));
     }
