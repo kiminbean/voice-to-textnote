@@ -528,9 +528,9 @@ celery -A backend.workers.celery_app worker --loglevel=info
 
 ### 인증 & 권한
 
-- **API Key 인증**: Bearer token 기반 API 키 검증
-- **JWT 토큰**: 사용자 세션 관리
-- **RBAC**: 역할 기반 접근 제어
+- **JWT 인증**: 이메일/비밀번호 로그인, Access Token(15분) + Refresh Token(7일) Rotation
+- **API Key 인증**: Bearer token 기반 API 키 검증 (기존 엔드포인트 호환)
+- **RBAC**: 팀 내 역할 기반 접근 제어 (admin / member / viewer)
 
 ### API 보안
 
@@ -676,11 +676,10 @@ sudo systemctl start voicenote-api voicenote-worker
 
 ### Phase 5 (계획)
 
-- **모바일 앱**: iOS/Android 네이티브 구현
-- **검색 기능**: 회의록 전문 검색 (Elasticsearch)
-- **팀 협업**: 팀 관리, 권한 제어, 공유 & 댓글
 - **고급 분석**: 발화 톤 분석, 감정 분석
 - **통합**: Slack, Teams, Google Calendar 연동
+- **OAuth**: Google/Apple 소셜 로그인
+- **실시간 협업**: 공동 편집, 댓글 기능
 
 ## 라이선스
 
@@ -699,9 +698,9 @@ MIT License - 자유로운 상업적 사용 가능
 
 ---
 
-**마지막 업데이트**: 2026-03-21
-**버전**: 1.0.0
-**상태**: Production Ready ✅ (19/19 SPECs 완료)
+**마지막 업데이트**: 2026-03-22
+**버전**: 1.1.0
+**상태**: Production Ready ✅ (25/25 SPECs 완료)
 
 ### 완료된 SPEC 목록
 
@@ -724,3 +723,8 @@ MIT License - 자유로운 상업적 사용 가능
 ✅ SPEC-E2E-001: E2E Integration Tests
 ✅ SPEC-APP-002: Flutter Enhancement
 ✅ CI/CD: GitHub Actions Pipeline
+✅ SPEC-TMPL-001: Meeting Templates
+✅ SPEC-SEARCH-001: Full-text Search
+✅ SPEC-EXPORT-001: PDF Export
+✅ SPEC-TEAM-001: JWT Auth + Team CRUD + Member Management + Meeting Share + Flutter Auth/Team UI
+✅ SPEC-MOBILE-001: Mobile Optimization

@@ -509,6 +509,21 @@ celery -A backend.workers.celery_app:celery_app worker --loglevel=info --concurr
 curl http://localhost:8000/api/v1/health
 ```
 
+### 서버 재시작 (코드 업데이트 시)
+
+```bash
+cd ~/voice-to-textnote
+git pull origin main
+pkill -f uvicorn; sleep 2
+nohup /home/kiminbean/voice-to-textnote/venv/bin/uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 >> ~/voicenote.log 2>&1 &
+```
+
+### bcrypt 호환성 (Python 3.12)
+
+```bash
+pip install bcrypt==4.0.1
+```
+
 ### Tailscale 접속
 
 아이폰에서: `http://100.110.255.105:8000`
@@ -542,6 +557,10 @@ Or use the `/debug` command inside a session to inspect current session state, h
 | Agent Teams messages not delivered | Session was resumed after interrupt | Spawn new teammates; old teammates are orphaned |
 | `moai hook subagent-stop` fails | Binary not in PATH | Run `which moai` to verify installation |
 | settings.json not updated after `moai update` | Conflict with user modifications | Run `moai update -t` for template-only sync |
+| 회원가입/로그인 500 에러 | auth_models 테이블 미생성 | lifecycle.py에 `import backend.db.auth_models` 확인 |
+| `/auth/me` 500 에러 (hex attribute) | JWT user_id가 str인데 UUID 컬럼 비교 | `uuid.UUID(user_id)` 변환 후 조회 |
+| bcrypt hash 실패 (Python 3.12) | passlib+bcrypt 버전 충돌 | `pip install bcrypt==4.0.1` |
+| Flutter 회원가입 무한 로딩 | AuthResponse에 없는 user 필드 파싱 | Backend 응답 스키마와 Flutter 모델 1:1 대조 |
 
 ### Reading Large PDFs
 
@@ -556,7 +575,7 @@ Large PDFs (>10 pages) return a lightweight reference when @-mentioned. Always s
 
 ---
 
-Version: 13.2.0 (Agent Teams Integration + Quick Start)
+Version: 13.3.0 (Auth Troubleshooting + Server Restart Guide)
 Last Updated: 2026-03-22
 Language: English
 Core Rule: MoAI is an orchestrator; direct implementation is prohibited
