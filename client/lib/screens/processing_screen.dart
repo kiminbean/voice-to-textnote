@@ -1,13 +1,16 @@
 // 처리 중 화면 - SSE 실시간 상태 + 에러 UI + 펄스 애니메이션
+// @MX:NOTE: SPEC-TMPL-001에서 수정 - 요약 시작 전 양식 선택 UI 추가 (REQ-TMPL-006)
 import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:voice_to_textnote/models/meeting.dart';
 import 'package:voice_to_textnote/models/pipeline_state.dart';
+import 'package:voice_to_textnote/models/template.dart';
 import 'package:voice_to_textnote/providers/meeting_list_provider.dart';
 import 'package:voice_to_textnote/providers/pipeline_provider.dart';
-import 'package:voice_to_textnote/models/meeting.dart';
+import 'package:voice_to_textnote/providers/template_provider.dart';
 import 'package:voice_to_textnote/services/sse_service.dart';
 import 'package:voice_to_textnote/config/app_config.dart';
 import 'package:voice_to_textnote/widgets/pipeline_progress.dart';
@@ -75,9 +78,43 @@ class _ProcessingScreenState extends ConsumerState<ProcessingScreen>
     // SSE 연결 감시 시작 (currentTaskId 변경 시 자동 연결)
     _watchTaskIdAndConnectSse();
 
+    // 양식 선택 다이얼로그 표시 후 파이프라인 시작
+    // 선택된 templateId는 요약 생성 시 사용
+    _showTemplateSelectorAndStart(meeting.audioFilePath!);
+  }
+
+  // 양식 선택 바텀시트 표시 후 파이프라인 시작 (SPEC-TMPL-001 REQ-TMPL-006)
+  Future<void> _showTemplateSelectorAndStart(String audioFilePath) async {
+    if (!mounted) return;
+
+    String? selectedTemplateId = ref.read(selectedTemplateIdProvider);
+
+    // 바텀시트로 양식 선택 UI 표시
+    final chosen = await showModalBottomSheet<String?>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => _TemplateSelectorSheet(
+        initialTemplateId: selectedTemplateId,
+      ),
+    );
+
+    // 바텀시트가 닫히지 않고 취소된 경우 (null 반환 = 취소)
+    // 선택한 경우엔 String 또는 '' (기본 양식)
+    if (chosen == null) {
+      // 취소 - 홈으로 이동
+      if (mounted) context.go('/');
+      return;
+    }
+
+    // 선택된 양식 ID 저장 (빈 문자열 = 기본 양식, null과 동일하게 처리)
+    final templateId = chosen.isEmpty ? null : chosen;
+    ref.read(selectedTemplateIdProvider.notifier).state = templateId;
+
     // 파이프라인 시작 (업로드 → STT → DIA → MIN → SUM)
-    // 완료/실패 처리는 build()의 ref.listen()에서 단일 처리
-    ref.read(pipelineProvider.notifier).startPipeline(meeting.audioFilePath!);
+    // templateId는 SUM 단계에서 summaryApi.create() 호출 시 사용
+    ref
+        .read(pipelineProvider.notifier)
+        .startPipeline(audioFilePath, templateId: templateId);
   }
 
   // currentTaskId 변경 감지 시 SSE 재연결
@@ -260,5 +297,136 @@ class _ProcessingScreenState extends ConsumerState<ProcessingScreen>
       PipelineStep.completed => '처리 완료!',
       PipelineStep.failed => '처리 실패',
     };
+  }
+}
+
+// 양식 선택 바텀시트 위젯 - SPEC-TMPL-001 REQ-TMPL-006
+class _TemplateSelectorSheet extends ConsumerWidget {
+  // 현재 선택된 양식 ID (null = 기본 양식)
+  final String? initialTemplateId;
+
+  const _TemplateSelectorSheet({this.initialTemplateId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final templatesAsync = ref.watch(templateListProvider);
+
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // 헤더
+            Row(
+              children: [
+                const Icon(Icons.folder_special_outlined),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    '요약 양식 선택',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.of(context).pop(null),
+                ),
+              ],
+            ),
+            const Divider(),
+
+            // 기본 양식 옵션 (항상 첫 번째)
+            ListTile(
+              leading: const Icon(Icons.article_outlined),
+              title: const Text('기본 양식'),
+              subtitle: const Text('AI가 자동으로 구성한 양식'),
+              trailing: initialTemplateId == null
+                  ? const Icon(Icons.check_circle, color: Colors.blue)
+                  : null,
+              onTap: () => Navigator.of(context).pop(''),
+            ),
+
+            // 업로드된 양식 목록
+            templatesAsync.when(
+              loading: () => const Padding(
+                padding: EdgeInsets.all(16),
+                child: Center(child: CircularProgressIndicator()),
+              ),
+              error: (_, __) => const Padding(
+                padding: EdgeInsets.all(8),
+                child: Text(
+                  '양식 목록을 불러올 수 없습니다',
+                  style: TextStyle(color: Colors.grey),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              data: (templates) => templates.isEmpty
+                  ? const Padding(
+                      padding: EdgeInsets.all(8),
+                      child: Text(
+                        '등록된 양식이 없습니다',
+                        style: TextStyle(color: Colors.grey),
+                        textAlign: TextAlign.center,
+                      ),
+                    )
+                  : Column(
+                      children: templates
+                          .map(
+                            (template) => _TemplateOption(
+                              template: template,
+                              isSelected:
+                                  initialTemplateId == template.templateId,
+                              onTap: () => Navigator.of(context)
+                                  .pop(template.templateId),
+                            ),
+                          )
+                          .toList(),
+                    ),
+            ),
+
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// 양식 선택 옵션 위젯
+class _TemplateOption extends StatelessWidget {
+  final Template template;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _TemplateOption({
+    required this.template,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isPdf = template.format.toLowerCase() == 'pdf';
+    final formatIcon = isPdf ? Icons.picture_as_pdf : Icons.description;
+    final formatColor = isPdf ? Colors.red : Colors.blue;
+
+    return ListTile(
+      leading: Icon(formatIcon, color: formatColor),
+      title: Text(
+        template.name,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+      subtitle: Text(
+        template.format.toUpperCase(),
+        style: const TextStyle(fontSize: 12),
+      ),
+      trailing: isSelected
+          ? const Icon(Icons.check_circle, color: Colors.blue)
+          : null,
+      onTap: onTap,
+    );
   }
 }

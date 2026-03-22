@@ -15,8 +15,13 @@ class SummaryApi {
   SummaryApi(this._dio);
 
   // 회의록 태스크 ID로 요약 생성
-  Future<Map<String, dynamic>> create(String minTaskId) async {
-    final response = await _dio.post('/summaries', data: {'minutes_task_id': minTaskId});
+  // templateId: 양식 기반 요약 시 사용 (null = 기본 양식, SPEC-TMPL-001 REQ-TMPL-006)
+  Future<Map<String, dynamic>> create(String minTaskId, {String? templateId}) async {
+    final Map<String, dynamic> data = {'minutes_task_id': minTaskId};
+    if (templateId != null) {
+      data['template_id'] = templateId;
+    }
+    final response = await _dio.post('/summaries', data: data);
     return response.data as Map<String, dynamic>;
   }
 

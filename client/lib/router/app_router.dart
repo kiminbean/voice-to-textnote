@@ -4,6 +4,8 @@ import 'package:voice_to_textnote/screens/home_screen.dart';
 import 'package:voice_to_textnote/screens/processing_screen.dart';
 import 'package:voice_to_textnote/screens/recording_screen.dart';
 import 'package:voice_to_textnote/screens/result_screen.dart';
+// SPEC-TMPL-001: 양식 관리 화면 추가
+import 'package:voice_to_textnote/screens/template_screen.dart';
 
 // 앱 전체 라우터 정의
 final goRouter = GoRouter(
@@ -32,6 +34,11 @@ final goRouter = GoRouter(
       builder: (_, state) => ResultScreen(
         meetingId: state.pathParameters['id']!,
       ),
+    ),
+    // 양식 관리 화면 (SPEC-TMPL-001 REQ-TMPL-007)
+    GoRoute(
+      path: '/templates',
+      builder: (_, __) => const TemplateScreen(),
     ),
   ],
 );

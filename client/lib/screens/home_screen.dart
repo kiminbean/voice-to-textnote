@@ -6,6 +6,7 @@ import 'package:voice_to_textnote/providers/meeting_list_provider.dart';
 import 'package:voice_to_textnote/widgets/meeting_card.dart';
 import 'package:voice_to_textnote/widgets/offline_banner.dart';
 import 'package:voice_to_textnote/widgets/shimmer_card.dart';
+// @MX:NOTE: SPEC-TMPL-001에서 추가 - 양식 관리 화면 접근 버튼 포함
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -19,6 +20,14 @@ class HomeScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Voice to TextNote'),
         centerTitle: true,
+        // 양식 관리 화면 이동 버튼 (SPEC-TMPL-001 REQ-TMPL-007)
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.folder_special_outlined),
+            tooltip: '양식 관리',
+            onPressed: () => context.push('/templates'),
+          ),
+        ],
       ),
       body: Column(
         children: [

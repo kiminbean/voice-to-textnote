@@ -32,7 +32,8 @@ class PipelineNotifier extends Notifier<PipelineState> {
 
   // 파이프라인 전체 처리 시작
   // 업로드 -> STT 폴링 -> 화자 분리 -> 화자 분리 폴링 -> 회의록 생성 -> 회의록 폴링 -> 요약 -> 요약 폴링 -> 완료
-  Future<void> startPipeline(String audioFilePath) async {
+  // templateId: 요약 생성 시 사용할 양식 ID (null = 기본 양식)
+  Future<void> startPipeline(String audioFilePath, {String? templateId}) async {
     // 새 파이프라인 시작 시 취소 플래그 초기화
     _cancelled = false;
     final sttApi = ref.read(transcriptionApiProvider);
@@ -81,12 +82,12 @@ class PipelineNotifier extends Notifier<PipelineState> {
       // 6단계: 회의록 폴링
       await _pollUntilCompleted(() => minApi.getStatus(minTaskId));
 
-      // 7단계: 요약 생성
+      // 7단계: 요약 생성 (templateId가 있으면 양식 기반 요약)
       state = state.copyWith(
         currentStep: PipelineStep.summarizing,
         progress: 0.8,
       );
-      final sumResult = await sumApi.create(minTaskId);
+      final sumResult = await sumApi.create(minTaskId, templateId: templateId);
       final sumTaskId = sumResult['task_id'] as String;
       // ResultScreen 조회용으로 summaryTaskId 저장
       state = state.copyWith(summaryTaskId: sumTaskId);
@@ -170,7 +171,7 @@ class PipelineNotifier extends Notifier<PipelineState> {
           if (serverProgress != null && serverProgress > 0) {
             final currentBase = state.progress;
             // 현재 단계 내에서 서버 진행률을 보간
-            final stepRange = 0.2; // 각 단계가 차지하는 전체 진행률 비율
+            const stepRange = 0.2; // 각 단계가 차지하는 전체 진행률 비율
             final adjustedProgress =
                 currentBase + (serverProgress.toDouble() * stepRange);
             if (adjustedProgress > state.progress) {
