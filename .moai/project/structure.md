@@ -55,6 +55,7 @@ backend/
 │   │       ├── diarization.py   # 화자 분리 작업 생성, 상태, 결과, 삭제 엔드포인트
 │   │       ├── minutes.py       # 회의록 생성, 상태, 결과, 삭제 엔드포인트
 │   │       ├── summary.py       # 요약 CRUD API 엔드포인트
+│   │       ├── templates.py     # 템플릿 CRUD API (업로드, 목록, 조회, 삭제)
 │   │       ├── stream.py        # SSE 실시간 스트리밍 엔드포인트
 │   │       ├── history.py       # 회의 이력 API (페이지네이션, 필터링)
 │   │       ├── admin.py         # 관리자 엔드포인트
@@ -73,6 +74,7 @@ backend/
 │   ├── diarization.py          # 화자 분리 스키마 (DiarizedSegmentResult, SpeakerInfo 등)
 │   ├── minutes.py              # 회의록 스키마 (MinutesSegment, SpeakerStats, MinutesResponse 등)
 │   ├── summary.py              # 요약 스키마 (ActionItem, SummaryResult, SummaryResponse 등)
+│   ├── template.py             # 템플릿 스키마 (TemplateUpload, TemplateResponse, TemplateStructure 등)
 │   └── health.py               # 헬스 상태 스키마
 │
 ├── utils/
@@ -119,7 +121,8 @@ backend/
 │   ├── chunk_manager.py        # 청크 분할 및 병합 (30분 단위)
 │   ├── speaker_matcher.py      # STT-DIA 타임스탬프 overlap 매칭 알고리즘
 │   ├── minutes_formatter.py    # 회의록 포맷터 (세그먼트 병합, 통계, Markdown)
-│   └── summary_generator.py    # Claude API 요약 생성기 (프롬프트 구성, 응답 파싱)
+│   ├── summary_generator.py    # Claude API 요약 생성기 (프롬프트 구성, 응답 파싱)
+│   └── template_parser.py      # DOCX/PDF 양식 구조 추출 파서 (python-docx, pdfplumber)
 │
 ├── tests/
 │   ├── __init__.py
@@ -138,13 +141,15 @@ backend/
 │   │   ├── test_minutes_task.py           # 회의록 Celery 태스크 테스트
 │   │   ├── test_summary_generator.py     # 요약 생성기 테스트 (100% 커버리지)
 │   │   ├── test_summary_schemas.py       # 요약 스키마 테스트
-│   │   └── test_summary_task.py          # 요약 Celery 태스크 테스트
+│   │   ├── test_summary_task.py          # 요약 Celery 태스크 테스트
+│   │   └── test_template_parser.py       # 템플릿 파서 단위 테스트
 │   └── integration/
 │       ├── __init__.py
 │       ├── test_api.py                    # STT API 통합 테스트
 │       ├── test_diarization_api.py        # 화자 분리 API 통합 테스트
 │       ├── test_minutes_api.py            # 회의록 API 통합 테스트
-│       └── test_summary_api.py           # 요약 API 통합 테스트
+│       ├── test_summary_api.py           # 요약 API 통합 테스트
+│       └── test_template_api.py          # 템플릿 API 통합 테스트
 │
 ├── conftest.py                 # pytest 픽스처 및 설정
 ├── pyproject.toml              # Python 의존성 관리
@@ -216,6 +221,7 @@ client/
 │   │   ├── meeting.dart        # 회의 데이터 모델
 │   │   ├── audio.dart          # 오디오 파일 모델
 │   │   ├── transcription.dart  # 전사 결과 모델
+│   │   ├── template.dart       # 템플릿 데이터 모델
 │   │   └── user.dart           # 사용자 모델
 │   │
 │   ├── screens/
@@ -223,6 +229,7 @@ client/
 │   │   ├── recording_screen.dart # 녹음 화면 (실시간 파형 표시)
 │   │   ├── meeting_detail_screen.dart # 회의 상세 화면
 │   │   ├── transcription_screen.dart  # 전사 결과 표시 화면
+│   │   ├── template_screen.dart # 템플릿 관리 화면 (업로드, 목록, 삭제)
 │   │   ├── settings_screen.dart # 설정 화면 (서버 주소, 팀 정보)
 │   │   └── team_members_screen.dart # 팀 멤버 관리 화면
 │   │
@@ -241,6 +248,7 @@ client/
 │   │   ├── api_service.dart    # HTTP 클라이언트 (Dio)
 │   │   ├── audio_service.dart  # 오디오 녹음 관리 (record 패키지)
 │   │   ├── storage_service.dart # 로컬 저장소 (Hive/SQLite)
+│   │   ├── template_api.dart   # 템플릿 API 서비스 (CRUD)
 │   │   ├── auth_service.dart   # 인증 토큰 관리
 │   │   ├── sse_service.dart    # SSE 실시간 스트리밍
 │   │   └── connectivity_service.dart # 네트워크 상태 감지
@@ -249,6 +257,7 @@ client/
 │   │   ├── meeting_provider.dart     # 상태 관리 (Riverpod)
 │   │   ├── audio_provider.dart       # 오디오 상태 관리
 │   │   ├── recording_provider.dart   # 녹음 상태 관리
+│   │   ├── template_provider.dart    # 템플릿 목록/선택 상태 관리
 │   │   └── user_provider.dart        # 사용자 상태 관리
 │   │
 │   ├── utils/
@@ -278,6 +287,8 @@ client/
 ├── test/
 │   ├── widget_test.dart        # 위젯 테스트
 │   ├── integration_test.dart   # 통합 테스트
+│   ├── services/
+│   │   └── template_api_test.dart # 템플릿 API 서비스 테스트
 │   └── mocks/
 │       └── mock_api_service.dart # API 모의 객체
 │

@@ -1,7 +1,7 @@
 ---
 id: SPEC-TMPL-001
 version: "1.0.0"
-status: draft
+status: completed
 created: "2026-03-22"
 updated: "2026-03-22"
 author: kisoo
@@ -141,3 +141,59 @@ issue_number: 0
 - 파일 저장소: `storage/templates/` (서버 로컬 디스크)
 - 파일 크기 제한: 10MB
 - 지원 형식 (MVP): PDF, DOCX만
+
+---
+
+## 구현 내역
+
+### 완료 현황
+
+**SPEC-TMPL-001** 구현이 2026-03-22에 완료되었습니다.
+
+- **전체 변경**: 28개 파일 추가/수정
+- **백엔드 테스트**: 716개 테스트 통과, 90.4% 커버리지
+- **Flutter 테스트**: 127개 테스트 통과
+- **하위 호환성**: template_id=None인 경우 기존 4개 항목 방식 유지
+
+### 신규 생성 파일
+
+**Backend (5개 신규)**:
+- `backend/pipeline/template_parser.py` - DOCX/PDF 구조 추출 파서
+- `backend/schemas/template.py` - 템플릿 Pydantic 스키마
+- `backend/app/api/v1/templates.py` - 템플릿 CRUD API 라우터
+- `backend/tests/unit/test_template_parser.py` - 파서 단위 테스트
+- `backend/tests/integration/test_template_api.py` - API 통합 테스트
+
+**Flutter (4개 신규)**:
+- `client/lib/models/template.dart` - 템플릿 데이터 모델
+- `client/lib/services/template_api.dart` - 템플릿 API 서비스
+- `client/lib/providers/template_provider.dart` - Riverpod 상태 관리
+- `client/lib/screens/template_screen.dart` - 템플릿 관리 화면
+- `client/test/services/template_api_test.dart` - API 테스트
+
+### 수정 파일
+
+**Backend (7개 수정)**:
+- `backend/app/config.py` - templates_dir 설정 추가
+- `backend/app/main.py` - templates 라우터 등록
+- `backend/schemas/summary.py` - SummaryCreateRequest에 template_id 필드 추가
+- `backend/pipeline/summary_generator.py` - build_prompt에 template 구조 지시문 주입
+- `backend/workers/tasks/summary_task.py` - template_id 파라미터 전달
+- `backend/app/api/v1/summary.py` - template_id 전달 로직
+- `deploy/requirements-ubuntu.txt` - pdfplumber, python-docx 패키지 추가
+
+**Flutter (6개 수정)**:
+- `client/lib/screens/home_screen.dart` - 템플릿 관리 아이콘 추가
+- `client/lib/screens/processing_screen.dart` - 템플릿 선택 UI 추가
+- `client/lib/services/summary_api.dart` - template_id 전달 로직
+- `client/lib/providers/pipeline_provider.dart` - template_id 상태 관리
+- `client/lib/router/app_router.dart` - /templates 라우트 추가
+- `client/pubspec.yaml` - file_picker 의존성 추가
+
+### 원본 SPEC과의 차이점
+
+다음 파일들은 원본 SPEC의 "수정 대상 파일" 섹션에 명시되지 않았으나 구현 과정에서 추가 수정되었습니다:
+- `backend/app/main.py` - templates 라우터 초기화 및 통합을 위해 필요
+- `backend/app/api/v1/summary.py` - template_id 전달 로직을 위해 필요
+
+이는 API 엔드포인트 간 데이터 흐름을 완성하기 위한 필수 수정입니다.

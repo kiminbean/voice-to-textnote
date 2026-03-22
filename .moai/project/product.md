@@ -180,6 +180,14 @@
 - **배포 스크립트**: Ubuntu systemd 서비스 자동 배포
 - **의존성 관리**: Dependabot으로 보안 업데이트 자동화
 
+### 20. 회의록 양식 관리 (SPEC-TMPL-001 ✅)
+
+- **양식 업로드 API**: PDF/DOCX 파일 업로드 및 구조 추출
+- **구조 자동 추출**: python-docx와 pdfplumber를 활용한 섹션/표/필드 자동 추출
+- **양식 기반 AI 프롬프트**: 추출된 양식 구조를 Claude API 프롬프트에 주입하여 커스텀 회의록 생성
+- **Flutter 양식 관리 화면**: 양식 업로드, 목록, 삭제 기능 제공
+- **하위 호환성**: 양식을 선택하지 않으면 기본 4개 항목(summary_text, action_items, key_decisions, next_steps)으로 회의록 생성
+
 ### 1. 오디오 녹음 및 수집
 
 - **크로스 플랫폼 녹음**: 웹, iOS, Android, macOS에서 일관된 오디오 녹음 경험 제공
