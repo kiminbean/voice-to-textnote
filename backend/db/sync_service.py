@@ -14,6 +14,9 @@ from backend.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
+# SPEC-SEARCH-001: 검색 인덱스 자동 업데이트 대상 타입
+_INDEXABLE_TASK_TYPES = {"minutes", "summary"}
+
 
 def persist_task_result(
     task_id: str,
@@ -64,10 +67,66 @@ def persist_task_result(
 
             session.commit()
 
+        # SPEC-SEARCH-001: 검색 인덱스 자동 업데이트 (best-effort)
+        _try_index_search_entry(task_id, task_type, result_data)
+
     except Exception as e:
         # REQ-PERSIST-003: DB 저장 실패는 무시 (작업에 영향 없음)
         logger.warning(
             "DB 결과 저장 실패 (무시)",
+            task_id=task_id,
+            task_type=task_type,
+            error=str(e),
+        )
+
+
+def _try_index_search_entry(
+    task_id: str,
+    task_type: str,
+    result_data: dict | None,
+) -> None:
+    """
+    SPEC-SEARCH-001: 검색 인덱스 자동 업데이트 헬퍼 (best-effort)
+
+    minutes, summary 타입만 처리합니다.
+    별도 세션을 열어 FTS5 테이블에 인덱싱합니다.
+    모든 예외를 캐치하여 persist에 영향을 주지 않습니다.
+
+    Args:
+        task_id: 작업 ID
+        task_type: 작업 유형
+        result_data: 결과 데이터
+    """
+    # 인덱싱 대상 타입이 아니면 스킵
+    if task_type not in _INDEXABLE_TASK_TYPES:
+        return
+
+    if not result_data:
+        return
+
+    try:
+        from backend.db.search_models import ensure_search_index_table, index_search_entry
+        from backend.db.sync_engine import get_sync_session
+
+        with get_sync_session() as session:
+            # FTS5 테이블 존재 확인 (없으면 생성)
+            from backend.db.sync_engine import _get_sync_engine
+            engine, _ = _get_sync_engine()
+            ensure_search_index_table(engine)
+
+            # 검색 인덱스에 추가
+            index_search_entry(
+                session=session,
+                task_id=task_id,
+                task_type=task_type,
+                result_data=result_data,
+            )
+            session.commit()
+
+    except Exception as e:
+        # best-effort: 인덱싱 실패는 경고만 로그
+        logger.warning(
+            "검색 인덱스 자동 업데이트 실패 (무시)",
             task_id=task_id,
             task_type=task_type,
             error=str(e),

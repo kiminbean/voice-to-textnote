@@ -7,6 +7,7 @@ import 'package:voice_to_textnote/widgets/meeting_card.dart';
 import 'package:voice_to_textnote/widgets/offline_banner.dart';
 import 'package:voice_to_textnote/widgets/shimmer_card.dart';
 // @MX:NOTE: SPEC-TMPL-001에서 추가 - 양식 관리 화면 접근 버튼 포함
+// @MX:NOTE: SPEC-SEARCH-001에서 추가 - 검색 화면 접근 버튼 포함
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -20,8 +21,13 @@ class HomeScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Voice to TextNote'),
         centerTitle: true,
-        // 양식 관리 화면 이동 버튼 (SPEC-TMPL-001 REQ-TMPL-007)
+        // 검색 버튼 (SPEC-SEARCH-001) + 양식 관리 버튼 (SPEC-TMPL-001 REQ-TMPL-007)
         actions: [
+          IconButton(
+            icon: const Icon(Icons.search),
+            tooltip: '검색',
+            onPressed: () => context.push('/search'),
+          ),
           IconButton(
             icon: const Icon(Icons.folder_special_outlined),
             tooltip: '양식 관리',

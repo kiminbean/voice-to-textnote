@@ -15,6 +15,7 @@ from backend.app.api.v1 import (
     health,
     history,
     minutes,
+    search,
     stream,
     summary,
     templates,
@@ -142,6 +143,8 @@ def create_app() -> FastAPI:
     app.include_router(admin.router, prefix=api_prefix, dependencies=_auth)
     # REQ-TMPL-001/003: 회의록 양식 관리 엔드포인트
     app.include_router(templates.router, prefix=api_prefix, dependencies=_auth)
+    # SPEC-SEARCH-001: 회의록 전문 검색 엔드포인트
+    app.include_router(search.router, prefix=api_prefix, dependencies=_auth)
 
     return app
 
