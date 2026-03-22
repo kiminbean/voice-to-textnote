@@ -1,11 +1,13 @@
 """
-FastAPI 의존성 주입 - Redis 클라이언트, STT 엔진, 화자 분리 엔진, DB 세션
+FastAPI 의존성 주입 - Redis 클라이언트, STT 엔진, 화자 분리 엔진, DB 세션, JWT 인증
 """
 
 from collections.abc import AsyncGenerator
 from functools import lru_cache
 
 import redis.asyncio as aioredis
+from fastapi import Depends, HTTPException, Request
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.config import settings
@@ -57,3 +59,40 @@ async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
     """
     async with _session_factory() as session:
         yield session
+
+
+async def get_current_user(
+    request: Request,
+    db: AsyncSession = Depends(get_db_session),
+):
+    """
+    SPEC-TEAM-001: JWT Bearer 토큰으로 현재 사용자를 반환하는 의존성
+
+    Authorization: Bearer <access_token> 헤더 필수.
+
+    Raises:
+        HTTPException(401): 토큰 없음, 만료, 또는 사용자 없음
+    """
+    # 지연 임포트로 순환 참조 방지
+    from backend.db.auth_models import User
+    from backend.db.auth_service import AuthService
+
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="인증이 필요합니다")
+
+    token = auth_header.split(" ", 1)[1]
+    auth_service = AuthService()
+    payload = auth_service.decode_access_token(token)
+
+    user_id = payload.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="유효하지 않은 토큰입니다")
+
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+
+    if user is None or not user.is_active:
+        raise HTTPException(status_code=401, detail="사용자를 찾을 수 없습니다")
+
+    return user

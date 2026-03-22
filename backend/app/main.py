@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.api.v1 import (
     admin,
+    auth,
     diarization,
     export,
     health,
@@ -19,6 +20,7 @@ from backend.app.api.v1 import (
     search,
     stream,
     summary,
+    teams,
     templates,
     transcription,
 )
@@ -148,6 +150,12 @@ def create_app() -> FastAPI:
     app.include_router(search.router, prefix=api_prefix, dependencies=_auth)
     # SPEC-EXPORT-001: 회의록 PDF 내보내기 엔드포인트
     app.include_router(export.router, prefix=api_prefix, dependencies=_auth)
+
+    # SPEC-TEAM-001: 인증 API (공개 엔드포인트 - API Key 불필요)
+    app.include_router(auth.router, prefix=api_prefix)
+
+    # SPEC-TEAM-001: 팀 관리 API (JWT 인증은 각 엔드포인트에서 처리)
+    app.include_router(teams.router, prefix=api_prefix)
 
     return app
 

@@ -45,6 +45,11 @@ pdfplumber>=0.11.0
 # === PDF 내보내기 (SPEC-EXPORT-001) ===
 fpdf2>=2.8.1
 
+# === JWT 인증 (SPEC-TEAM-001) ===
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+email-validator>=2.0.0
+
 # === 로깅 / 모니터링 ===
 structlog>=24.1.0
 prometheus-client>=0.20.0
