@@ -207,15 +207,27 @@ class _TranscriptTab extends ConsumerWidget {
   }
 }
 
-// 회의록 탭: PDF 양식과 동일한 테이블 형태 회의록
-class _MinutesTab extends ConsumerWidget {
+// 회의록 탭: PDF 양식과 동일한 테이블 형태 회의록 + 편집 기능
+class _MinutesTab extends ConsumerStatefulWidget {
   final String? taskId;
   final Meeting? meeting;
 
   const _MinutesTab({required this.taskId, this.meeting});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_MinutesTab> createState() => _MinutesTabState();
+}
+
+class _MinutesTabState extends ConsumerState<_MinutesTab> {
+  // 편집된 섹션 값 (원본 데이터 위에 오버레이)
+  final Map<String, String> _editedSections = {};
+  bool _isEditing = false;
+
+  Meeting? get meeting => widget.meeting;
+  String? get taskId => widget.taskId;
+
+  @override
+  Widget build(BuildContext context) {
     if (taskId == null) {
       return const EmptyStateWidget(
         icon: Icons.description_outlined,
@@ -242,10 +254,30 @@ class _MinutesTab extends ConsumerWidget {
         }
 
         // REQ-UI-002: 양식 구조 있으면 동적 테이블, 없으면 기본 테이블
-        if (result.sections.isNotEmpty) {
-          return _buildDynamicTable(context, result);
-        }
-        return _buildMinutesTable(context, result);
+        return Column(
+          children: [
+            // 편집 버튼
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton.icon(
+                    onPressed: () => setState(() => _isEditing = !_isEditing),
+                    icon: Icon(_isEditing ? Icons.check : Icons.edit, size: 18),
+                    label: Text(_isEditing ? '편집 완료' : '편집'),
+                  ),
+                ],
+              ),
+            ),
+            // 테이블
+            Expanded(
+              child: result.sections.isNotEmpty
+                  ? _buildDynamicTable(context, result)
+                  : _buildMinutesTable(context, result),
+            ),
+          ],
+        );
       },
     );
   }
@@ -302,6 +334,52 @@ class _MinutesTab extends ConsumerWidget {
     );
   }
 
+  // 특정 라벨에 대해 고정값 반환 (과정명, 미팅시간 등)
+  // 편집된 값이 있으면 편집값 우선 사용
+  String _resolveValue(String label, SummaryResult result) {
+    // 편집된 값 우선
+    if (_editedSections.containsKey(label)) return _editedSections[label]!;
+
+    const courseName = '심화 ROS2와 AI를 이용한 자율주행&로봇팔 개발자 부트캠프';
+    final now = meeting?.createdAt ?? DateTime.now();
+    final dateTimeStr =
+        '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')} '
+        '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+
+    if (label == '과정명') return courseName;
+    if (label == '미팅시간' || label == '회의일시') return dateTimeStr;
+    return result.sections[label] ?? '-';
+  }
+
+  // 셀 편집 다이얼로그
+  Future<void> _editCell(String label, String currentValue) async {
+    final controller = TextEditingController(text: currentValue);
+    final newValue = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(label),
+        content: TextField(
+          controller: controller,
+          maxLines: label.contains('내용') || label.contains('이슈') ? 8 : 2,
+          decoration: const InputDecoration(border: OutlineInputBorder()),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('취소'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, controller.text),
+            child: const Text('저장'),
+          ),
+        ],
+      ),
+    );
+    if (newValue != null) {
+      setState(() => _editedSections[label] = newValue);
+    }
+  }
+
   // table_layout 기반 행 생성 (PDF 원본 행/열 구조 재현)
   List<Widget> _buildRowsFromLayout(
     List<dynamic> layout,
@@ -318,36 +396,40 @@ class _MinutesTab extends ConsumerWidget {
       if (type == 'split') {
         final cells = (rowDef['cells'] as List<dynamic>?) ?? [];
         if (cells.length == 2) {
-          // 4열 행: 라벨1 | 내용1 | 라벨2 | 내용2
           final label1 = cells[0]['label'] as String? ?? '';
           final label2 = cells[1]['label'] as String? ?? '';
-          final value1 = result.sections[label1] ?? '-';
-          final value2 = result.sections[label2] ?? '-';
+          final value1 = _resolveValue(label1, result);
+          final value2 = _resolveValue(label2, result);
           rows.add(_tableRow4Col(
             label1, headerBg, value1, null,
             label2, headerBg, value2, null,
             borderColor,
           ));
         } else if (cells.length > 2) {
-          // N열 행: 모든 셀을 균등 분할 (라벨 | 내용 | 라벨 | 내용 | ...)
           rows.add(_tableRowNCol(
             cells.map((c) => c['label'] as String? ?? '').toList(),
-            cells.map((c) => result.sections[c['label'] as String? ?? ''] ?? '-').toList(),
+            cells.map((c) => _resolveValue(c['label'] as String? ?? '', result)).toList(),
             headerBg, borderColor,
           ));
         }
       } else {
-        // 2열 행: 라벨 | 내용
         final label = rowDef['label'] as String? ?? '';
-        final value = result.sections[label] ?? '-';
-        final isLarge = label.contains('내용') || label.contains('논의') || value.length > 100;
-        rows.add(_tableRow2Col(
+        final value = _resolveValue(label, result);
+        final isLarge = label.contains('내용') || label.contains('논의') || label.contains('이슈') || value.length > 100;
+        final row = _tableRow2Col(
           label, headerBg,
           value.isNotEmpty ? value : '-',
           isLarge ? contentBg : null,
           borderColor,
           minHeight: isLarge ? 150 : 0,
-        ));
+        );
+        // 편집 모드일 때 탭하면 편집 다이얼로그
+        rows.add(_isEditing
+            ? GestureDetector(
+                onTap: () => _editCell(label, value == '-' ? '' : value),
+                child: row,
+              )
+            : row);
       }
     }
 
