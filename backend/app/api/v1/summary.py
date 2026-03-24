@@ -195,6 +195,8 @@ async def get_summary_result(
         action_items=action_items,
         key_decisions=data.get("key_decisions", []),
         next_steps=data.get("next_steps", []),
+        sections=data.get("sections", {}),
+        template_structure=data.get("template_structure"),
         tokens_used=data.get("tokens_used"),
         generation_time_seconds=data.get("generation_time_seconds"),
     )

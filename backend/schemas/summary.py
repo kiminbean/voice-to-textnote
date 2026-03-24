@@ -69,6 +69,10 @@ class SummaryResponse(BaseModel):
     key_decisions: list[str] = Field(default_factory=list)
     # 다음 단계
     next_steps: list[str] = Field(default_factory=list)
+    # REQ-UI-003: 양식 섹션별 내용 (양식 선택 시에만 존재)
+    sections: dict[str, str] = Field(default_factory=dict, description="양식 섹션별 내용")
+    # REQ-UI-001: 양식 구조 정보 (양식 선택 시에만 존재)
+    template_structure: dict | None = Field(default=None, description="양식 구조 정보")
     # 토큰 사용량 (None 허용)
     tokens_used: dict | None = Field(default=None, description="Claude API 토큰 사용량")
     # 생성 소요 시간 (None 허용)
