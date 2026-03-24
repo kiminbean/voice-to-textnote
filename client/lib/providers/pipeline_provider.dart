@@ -13,12 +13,14 @@ class PipelineNotifier extends Notifier<PipelineState> {
   // 폴링 취소 플래그 - 화면 이탈 또는 사용자 취소 시 true로 설정
   bool _cancelled = false;
 
-  // 폴링 최대 횟수 (2초 간격 × 150 = 5분)
-  static const int _maxPollingAttempts = 150;
+  // 폴링 최대 횟수 (3초 간격 × 1200 = 60분)
+  // 30분 녹음 기준: STT ~15분 + 화자분리(CPU) ~30분 + 회의록 ~1분 + 요약 ~1분
+  // 각 단계별 최대 60분까지 대기 (CPU 전용 서버에서 긴 오디오 처리 고려)
+  static const int _maxPollingAttempts = 1200;
 
-  // pending 상태 장기 체류 감지 임계값 (연속 90회 = 3분)
-  // STT 모델 최초 로드 + 큐 대기 시간을 고려한 값
-  static const int _stalePendingThreshold = 90;
+  // pending 상태 장기 체류 감지 임계값 (연속 400회 = 20분)
+  // STT/화자분리 모델 최초 로드(~2분) + 큐 대기 + 긴 오디오 전처리 시간 고려
+  static const int _stalePendingThreshold = 400;
 
   @override
   PipelineState build() {
@@ -192,7 +194,7 @@ class PipelineNotifier extends Notifier<PipelineState> {
       throw Exception('파이프라인이 취소되었습니다');
     }
     if (attempts >= _maxPollingAttempts) {
-      throw Exception('처리 시간이 초과되었습니다 (3분)');
+      throw Exception('처리 시간이 초과되었습니다 (60분)');
     }
   }
 

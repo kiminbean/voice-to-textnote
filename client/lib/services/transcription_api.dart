@@ -2,6 +2,7 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:voice_to_textnote/config/app_config.dart';
 import 'api_client.dart';
 
 // TranscriptionApi 프로바이더
@@ -15,7 +16,7 @@ class TranscriptionApi {
 
   TranscriptionApi(this._dio);
 
-  // 오디오 파일 업로드 (멀티파트)
+  // 오디오 파일 업로드 (멀티파트) - 대용량 파일용 타임아웃 별도 설정
   Future<Map<String, dynamic>> upload(String filePath) async {
     final formData = FormData.fromMap({
       'file': await MultipartFile.fromFile(
@@ -29,6 +30,8 @@ class TranscriptionApi {
       data: formData,
       options: Options(
         contentType: 'multipart/form-data',
+        sendTimeout: AppConfig.uploadSendTimeout,
+        receiveTimeout: AppConfig.uploadReceiveTimeout,
       ),
     );
 

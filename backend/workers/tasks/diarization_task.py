@@ -302,6 +302,8 @@ def diarization_task(
     max_retries=3,
     default_retry_delay=60,
     name="diarization_task",
+    soft_time_limit=3600,  # 60분 소프트 타임아웃 (CPU 화자분리는 긴 오디오에서 30분+ 소요)
+    time_limit=3900,       # 65분 하드 타임아웃
 )
 def diarization_celery_task(
     self,

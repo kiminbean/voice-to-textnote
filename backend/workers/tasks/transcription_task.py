@@ -114,6 +114,8 @@ def _decrement_active_jobs(task_id: str) -> None:
     max_retries=3,
     default_retry_delay=60,
     name="transcription_task",
+    soft_time_limit=3600,  # 60분 소프트 타임아웃 (SoftTimeLimitExceeded 발생)
+    time_limit=3900,       # 65분 하드 타임아웃 (워커 강제 종료)
 )
 def transcription_task(
     self,
