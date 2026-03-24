@@ -77,17 +77,22 @@ class MinutesPDFGenerator:
         if not segments:
             raise ValueError("Incomplete minutes data: segments is empty")
 
-        # 페이지 추가 및 각 섹션 렌더링
         self.pdf.add_page()
-        self._render_header(minutes_data)
-        self._render_speaker_stats(minutes_data)
-        self._render_minutes_body(minutes_data)
 
-        # 요약 데이터가 있으면 요약 섹션 추가
-        if summary_data:
-            self._render_summary(summary_data)
-            self._render_key_decisions(summary_data)
-            self._render_action_items(summary_data)
+        # 양식 테이블이 있으면 양식 형태로 렌더링 (화면과 동일)
+        if (summary_data
+                and summary_data.get("template_structure")
+                and summary_data["template_structure"].get("table_layout")):
+            self._render_template_table(minutes_data, summary_data)
+        else:
+            # 기존 기본 레이아웃
+            self._render_header(minutes_data)
+            self._render_speaker_stats(minutes_data)
+            self._render_minutes_body(minutes_data)
+            if summary_data:
+                self._render_summary(summary_data)
+                self._render_key_decisions(summary_data)
+                self._render_action_items(summary_data)
 
         return bytes(self.pdf.output())
 
@@ -336,6 +341,103 @@ class MinutesPDFGenerator:
             pdf.ln()
 
         pdf.ln(4)
+
+    # ---------------------------------------------------------------------------
+    # 양식 테이블 렌더링 (화면과 동일한 형태)
+    # ---------------------------------------------------------------------------
+
+    def _render_template_table(self, minutes_data: dict, summary_data: dict) -> None:
+        """화면의 회의록 양식 테이블과 동일한 형태로 PDF 생성"""
+        pdf = self.pdf
+        template = summary_data.get("template_structure", {})
+        sections = summary_data.get("sections", {})
+        table_layout = template.get("table_layout", [])
+        created_at = minutes_data.get("created_at", "")
+
+        # 고정값
+        course_name = "심화 ROS2와 AI를 이용한 자율주행&로봇팔 개발자 부트캠프"
+        date_str = created_at[:16] if len(created_at) >= 16 else created_at
+
+        # 제목
+        pdf.set_font("NotoSansKR", "B", 16)
+        pdf.set_text_color(*self.COLOR_TITLE)
+        pdf.cell(0, 10, f"회의록_{created_at[:10] if created_at else ''}", align="L",
+                 new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(4)
+
+        usable_width = pdf.w - 2 * self.MARGIN
+        label_width = usable_width * 0.22
+        value_width = usable_width * 0.78
+
+        def resolve_value(label: str) -> str:
+            if label == "과정명":
+                return course_name
+            if label in ("미팅시간", "회의일시"):
+                return date_str
+            return str(sections.get(label, "-") or "-")
+
+        def render_full_row(label: str, large: bool = False) -> None:
+            """2열 행: 라벨 | 내용"""
+            value = resolve_value(label)
+            row_h = 8
+
+            # 라벨 셀
+            pdf.set_fill_color(*self.COLOR_HEADER_BG)
+            pdf.set_font("NotoSansKR", "B", 9)
+            pdf.set_text_color(*self.COLOR_TEXT)
+
+            # 내용이 긴 경우 multi_cell 사용
+            if large or len(value) > 60:
+                # 라벨
+                pdf.cell(label_width, row_h, label, border=1, fill=True)
+                # 내용 multi_cell
+                pdf.set_font("NotoSansKR", "", 9)
+                pdf.set_fill_color(255, 255, 240)  # 연한 노란색
+                pdf.multi_cell(value_width, 6, value, border=1, fill=True)
+                # 라벨 높이 맞추기 (multi_cell이 y를 이동하므로)
+            else:
+                pdf.cell(label_width, row_h, label, border=1, fill=True)
+                pdf.set_font("NotoSansKR", "", 9)
+                pdf.set_fill_color(255, 255, 255)
+                pdf.cell(value_width, row_h, value, border=1,
+                         new_x="LMARGIN", new_y="NEXT")
+
+        def render_split_row(labels: list[str]) -> None:
+            """N열 행: 라벨1 | 내용1 | 라벨2 | 내용2 ..."""
+            n = len(labels)
+            if n == 0:
+                return
+            cell_w = usable_width / (n * 2)  # 각 라벨+값 쌍의 너비
+            lbl_w = cell_w * 0.45
+            val_w = cell_w * 0.55
+            row_h = 8
+
+            for label in labels:
+                value = resolve_value(label)
+                # 라벨
+                pdf.set_fill_color(*self.COLOR_HEADER_BG)
+                pdf.set_font("NotoSansKR", "B", 9)
+                pdf.cell(lbl_w, row_h, label, border=1, fill=True)
+                # 값
+                pdf.set_font("NotoSansKR", "", 9)
+                pdf.set_fill_color(255, 255, 255)
+                pdf.cell(val_w, row_h, value[:30], border=1)  # 30자 제한 (셀 크기)
+
+            pdf.ln()
+
+        # 테이블 레이아웃 렌더링
+        for row_def in table_layout:
+            row_type = row_def.get("type", "full")
+            if row_type == "split":
+                cells = row_def.get("cells", [])
+                labels = [c.get("label", "") for c in cells]
+                render_split_row(labels)
+            else:
+                label = row_def.get("label", "")
+                is_large = "내용" in label or "이슈" in label or "논의" in label
+                render_full_row(label, large=is_large)
+
+        pdf.ln(6)
 
     # ---------------------------------------------------------------------------
     # 유틸리티 메서드
