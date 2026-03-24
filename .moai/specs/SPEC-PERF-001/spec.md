@@ -4,7 +4,7 @@
 id: SPEC-PERF-001
 title: Long Recording Stability Improvement
 created: 2026-03-24
-status: Planned
+status: Implemented
 priority: High (P1)
 domain: PERF (Performance)
 lifecycle: spec-anchored

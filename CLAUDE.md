@@ -512,10 +512,13 @@ curl http://localhost:8000/api/v1/health
 ### 서버 재시작 (코드 업데이트 시)
 
 ```bash
-cd ~/voice-to-textnote
-git pull origin main
-pkill -f uvicorn; sleep 2
-nohup /home/kiminbean/voice-to-textnote/venv/bin/uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 >> ~/voicenote.log 2>&1 &
+cd ~/voice-to-textnote && git pull origin main && bash deploy/restart.sh
+```
+
+또는 코드 업데이트 포함:
+
+```bash
+bash deploy/restart.sh --pull
 ```
 
 ### bcrypt 호환성 (Python 3.12)
@@ -561,6 +564,9 @@ Or use the `/debug` command inside a session to inspect current session state, h
 | `/auth/me` 500 에러 (hex attribute) | JWT user_id가 str인데 UUID 컬럼 비교 | `uuid.UUID(user_id)` 변환 후 조회 |
 | bcrypt hash 실패 (Python 3.12) | passlib+bcrypt 버전 충돌 | `pip install bcrypt==4.0.1` |
 | Flutter 회원가입 무한 로딩 | AuthResponse에 없는 user 필드 파싱 | Backend 응답 스키마와 Flutter 모델 1:1 대조 |
+| 5분+ 녹음 시 타임아웃 오류 | Flutter 업로드/폴링 타임아웃 30초/5분 | uploadSendTimeout=10분, 폴링=60분으로 변경 (SPEC-PERF-001) |
+| 30분+ 녹음 시 화자분리 느림 | 전체 오디오 단일 처리 | diarize_chunked() 10분 단위 청크 분할 적용 (SPEC-PERF-001) |
+| Celery 작업 중복 실행 | Redis visibility_timeout 기본값 1시간 | `broker_transport_options.visibility_timeout=7200` 설정 |
 
 ### Reading Large PDFs
 
@@ -575,8 +581,8 @@ Large PDFs (>10 pages) return a lightweight reference when @-mentioned. Always s
 
 ---
 
-Version: 13.3.0 (Auth Troubleshooting + Server Restart Guide)
-Last Updated: 2026-03-22
+Version: 13.4.0 (SPEC-PERF-001 Long Recording Stability + Deploy Script)
+Last Updated: 2026-03-24
 Language: English
 Core Rule: MoAI is an orchestrator; direct implementation is prohibited
 
