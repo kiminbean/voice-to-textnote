@@ -98,7 +98,17 @@ class SummaryGenerator:
         API 응답 텍스트를 SummaryResult로 파싱 (REQ-SUM-002, REQ-SUM-004)
         """
         try:
-            data = json.loads(response_text)
+            # 마크다운 코드 블록 제거 (```json ... ``` 또는 ``` ... ```)
+            cleaned = response_text.strip()
+            if cleaned.startswith("```"):
+                # 첫 번째 줄(```json 또는 ```) 제거
+                first_newline = cleaned.index("\n")
+                cleaned = cleaned[first_newline + 1:]
+                # 마지막 ``` 제거
+                if cleaned.rstrip().endswith("```"):
+                    cleaned = cleaned.rstrip()[:-3].rstrip()
+
+            data = json.loads(cleaned)
 
             raw_action_items = data.get("action_items", [])
             action_items = []

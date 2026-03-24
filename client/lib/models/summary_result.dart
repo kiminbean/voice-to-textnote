@@ -5,6 +5,8 @@
 // @MX:ANCHOR: SummaryResult는 summaryResultProvider, _SummaryTab, _ActionItemsTab에서 사용
 // @MX:REASON: 백엔드 SummaryResponse 스키마와 직결되는 핵심 데이터 계약 (SPEC-APP-004)
 
+import 'dart:convert';
+
 import 'package:voice_to_textnote/models/action_item.dart';
 
 class SummaryResult {
@@ -31,24 +33,55 @@ class SummaryResult {
   // 누락된 필드에 대해 graceful하게 기본값 적용
   factory SummaryResult.fromJson(Map<String, dynamic> json) {
     // summary_text 우선, 없으면 summary 키 사용 (하위 호환성)
-    final summaryText =
+    var summaryText =
         json['summary_text'] as String? ?? json['summary'] as String? ?? '';
 
-    // action_items: Map 형식인 항목만 파싱, 잘못된 형식은 무시
-    final actionItems = (json['action_items'] as List<dynamic>? ?? [])
-        .whereType<Map<String, dynamic>>()
-        .map((e) => ActionItem.fromJson(e))
-        .toList();
+    // 방어 처리: summary_text가 JSON 문자열이면 내부 summary_text 추출
+    var actionItems = <ActionItem>[];
+    var keyDecisions = <String>[];
+    var nextSteps = <String>[];
 
-    // key_decisions: String 형식인 항목만 포함, 잘못된 형식은 무시
-    final keyDecisions = (json['key_decisions'] as List<dynamic>? ?? [])
-        .whereType<String>()
-        .toList();
+    if (summaryText.trimLeft().startsWith('{')) {
+      try {
+        final nested = jsonDecode(summaryText) as Map<String, dynamic>;
+        summaryText = nested['summary_text'] as String? ?? summaryText;
+        // 중첩 JSON에서 추가 필드도 추출
+        if (nested.containsKey('action_items')) {
+          actionItems = (nested['action_items'] as List<dynamic>? ?? [])
+              .whereType<Map<String, dynamic>>()
+              .map((e) => ActionItem.fromJson(e))
+              .toList();
+        }
+        if (nested.containsKey('key_decisions')) {
+          keyDecisions = _extractStrings(nested['key_decisions']);
+        }
+        if (nested.containsKey('next_steps')) {
+          nextSteps = _extractStrings(nested['next_steps']);
+        }
+      } catch (_) {
+        // JSON 파싱 실패 시 원본 텍스트 유지
+      }
+    }
 
-    // next_steps: String 형식인 항목만 포함, 잘못된 형식은 무시
-    final nextSteps = (json['next_steps'] as List<dynamic>? ?? [])
-        .whereType<String>()
-        .toList();
+    // 기본 필드에서 파싱 (중첩 JSON에서 이미 추출되지 않은 경우)
+    if (actionItems.isEmpty) {
+      actionItems = (json['action_items'] as List<dynamic>? ?? [])
+          .whereType<Map<String, dynamic>>()
+          .map((e) => ActionItem.fromJson(e))
+          .toList();
+    }
+
+    if (keyDecisions.isEmpty) {
+      keyDecisions = (json['key_decisions'] as List<dynamic>? ?? [])
+          .whereType<String>()
+          .toList();
+    }
+
+    if (nextSteps.isEmpty) {
+      nextSteps = (json['next_steps'] as List<dynamic>? ?? [])
+          .whereType<String>()
+          .toList();
+    }
 
     return SummaryResult(
       summaryText: summaryText,
@@ -56,5 +89,18 @@ class SummaryResult {
       keyDecisions: keyDecisions,
       nextSteps: nextSteps,
     );
+  }
+
+  // 중첩 JSON에서 문자열 목록 추출 (List<String> 또는 List<Map> 형태 모두 처리)
+  static List<String> _extractStrings(dynamic value) {
+    if (value is! List) return [];
+    return value
+        .map((e) {
+          if (e is String) return e;
+          if (e is Map) return e['decision'] as String? ?? e['step'] as String? ?? e.toString();
+          return e.toString();
+        })
+        .cast<String>()
+        .toList();
   }
 }
