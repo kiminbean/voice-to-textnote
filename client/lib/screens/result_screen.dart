@@ -82,7 +82,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     final summaryTaskId = meeting?.summaryTaskId;
 
     return DefaultTabController(
-      length: 3,
+      length: 4,
       child: Scaffold(
         appBar: AppBar(
           leading: IconButton(
@@ -111,7 +111,9 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                   ),
           ],
           bottom: const TabBar(
+            isScrollable: true,
             tabs: [
+              Tab(text: '회의 내용'),
               Tab(text: '회의록'),
               Tab(text: 'AI 요약'),
               Tab(text: '액션 아이템'),
@@ -120,9 +122,11 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         ),
         body: TabBarView(
           children: [
-            // 회의록 탭 (minutesTaskId 사용)
+            // 회의 내용 탭: 화자별 원본 발화 세그먼트
             _TranscriptTab(taskId: minutesTaskId),
-            // AI 요약 탭 (summaryTaskId 사용)
+            // 회의록 탭: 양식 기반 정리된 회의록 (summary_text)
+            _MinutesTab(taskId: summaryTaskId),
+            // AI 요약 탭: 구조화된 분석 (주요 결정 사항 + 다음 단계)
             _SummaryTab(taskId: summaryTaskId),
             // 액션 아이템 탭 (summaryTaskId 사용)
             _ActionItemsTab(taskId: summaryTaskId),
@@ -145,7 +149,7 @@ class _TranscriptTab extends ConsumerWidget {
     if (taskId == null) {
       return const EmptyStateWidget(
         icon: Icons.article_outlined,
-        title: '회의록 준비 중',
+        title: '회의 내용 준비 중',
         subtitle: '처리가 완료되지 않았습니다',
       );
     }
@@ -162,7 +166,7 @@ class _TranscriptTab extends ConsumerWidget {
         if (minutes.isEmpty) {
           return const EmptyStateWidget(
             icon: Icons.article_outlined,
-            title: '회의록이 없습니다',
+            title: '회의 내용이 없습니다',
             subtitle: '처리가 완료되지 않았을 수 있습니다',
           );
         }
@@ -172,7 +176,7 @@ class _TranscriptTab extends ConsumerWidget {
         return ListView(
           children: [
             SpeakerSegment(
-              speakerName: '회의록',
+              speakerName: '회의 내용',
               text: minutes,
               startTime: Duration.zero,
               speakerIndex: 0,
@@ -193,6 +197,93 @@ class _TranscriptTab extends ConsumerWidget {
           (_) => const Padding(
             padding: EdgeInsets.only(bottom: 16),
             child: ShimmerText(lines: 4),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// 회의록 탭: 양식(템플릿) 기반으로 정리된 회의록
+class _MinutesTab extends ConsumerWidget {
+  final String? taskId;
+
+  const _MinutesTab({required this.taskId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (taskId == null) {
+      return const EmptyStateWidget(
+        icon: Icons.description_outlined,
+        title: '회의록 준비 중',
+        subtitle: '처리가 완료되지 않았습니다',
+      );
+    }
+
+    final summaryAsync = ref.watch(summaryResultProvider(taskId!));
+
+    return summaryAsync.when(
+      loading: () => _buildShimmerLoading(),
+      error: (error, _) => ErrorRetryWidget(
+        message: '회의록을 불러올 수 없습니다',
+        onRetry: () => ref.invalidate(summaryResultProvider(taskId!)),
+      ),
+      data: (SummaryResult result) {
+        if (result.summaryText.isEmpty) {
+          return const EmptyStateWidget(
+            icon: Icons.description_outlined,
+            title: '회의록이 없습니다',
+            subtitle: '양식을 선택하여 회의록을 생성해보세요',
+          );
+        }
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.description_outlined, size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        '회의록',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    ],
+                  ),
+                  const Divider(),
+                  Text(
+                    result.summaryText,
+                    style: const TextStyle(height: 1.8),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildShimmerLoading() {
+    return const Padding(
+      padding: EdgeInsets.all(16),
+      child: Card(
+        child: Padding(
+          padding: EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ShimmerText(lines: 1),
+              SizedBox(height: 16),
+              Divider(),
+              SizedBox(height: 8),
+              ShimmerText(lines: 8),
+            ],
           ),
         ),
       ),
