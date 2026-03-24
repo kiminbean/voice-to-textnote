@@ -239,6 +239,15 @@ class MinutesPDFGenerator:
         summary_text = summary_data.get("summary_text", "")
         if not summary_text:
             return
+        # JSON 문자열이면 내부 summary_text 추출
+        if summary_text.strip().startswith("{"):
+            try:
+                import json as _json
+                parsed = _json.loads(summary_text)
+                if isinstance(parsed, dict) and "summary_text" in parsed:
+                    summary_text = parsed["summary_text"]
+            except Exception:
+                pass
 
         self._render_section_title("회의 요약")
 
@@ -264,6 +273,10 @@ class MinutesPDFGenerator:
         usable_width = pdf.w - 2 * self.MARGIN
 
         for i, decision in enumerate(key_decisions, 1):
+            # dict 형태인 경우 "decision" 키에서 추출
+            if isinstance(decision, dict):
+                decision = decision.get("decision", str(decision))
+            decision = str(decision or "")
             pdf.set_x(self.MARGIN + 3)
             pdf.multi_cell(usable_width - 3, 6, f"{i}. {decision}")
 
@@ -310,10 +323,11 @@ class MinutesPDFGenerator:
         priority_map = {"high": "높음", "medium": "중간", "low": "낮음"}
 
         for item in action_items:
-            assignee = item.get("assignee", "")
-            task = item.get("task", "")
-            deadline = item.get("deadline", "")
-            priority = priority_map.get(item.get("priority", ""), item.get("priority", ""))
+            assignee = str(item.get("assignee", "") or "")
+            task = str(item.get("task", "") or "")
+            deadline = str(item.get("deadline", "") or "")
+            raw_priority = str(item.get("priority", "") or "")
+            priority = priority_map.get(raw_priority, raw_priority)
 
             values = [assignee, task, deadline, priority]
             aligns = ["C", "L", "C", "C"]

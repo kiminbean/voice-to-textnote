@@ -395,22 +395,34 @@ class _MinutesTabState extends ConsumerState<_MinutesTab> {
 
       if (type == 'split') {
         final cells = (rowDef['cells'] as List<dynamic>?) ?? [];
+        Widget splitRow;
         if (cells.length == 2) {
           final label1 = cells[0]['label'] as String? ?? '';
           final label2 = cells[1]['label'] as String? ?? '';
           final value1 = _resolveValue(label1, result);
           final value2 = _resolveValue(label2, result);
-          rows.add(_tableRow4Col(
+          splitRow = _tableRow4Col(
             label1, headerBg, value1, null,
             label2, headerBg, value2, null,
             borderColor,
-          ));
-        } else if (cells.length > 2) {
-          rows.add(_tableRowNCol(
-            cells.map((c) => c['label'] as String? ?? '').toList(),
-            cells.map((c) => _resolveValue(c['label'] as String? ?? '', result)).toList(),
+          );
+        } else {
+          final labels = cells.map((c) => c['label'] as String? ?? '').toList();
+          splitRow = _tableRowNCol(
+            labels,
+            labels.map((l) => _resolveValue(l, result)).toList(),
             headerBg, borderColor,
+          );
+        }
+        // 편집 모드 - split 행의 첫 번째 라벨로 편집 다이얼로그
+        if (_isEditing) {
+          final firstLabel = cells.isNotEmpty ? (cells[0]['label'] as String? ?? '') : '';
+          rows.add(GestureDetector(
+            onTap: () => _editCell(firstLabel, _resolveValue(firstLabel, result)),
+            child: splitRow,
           ));
+        } else {
+          rows.add(splitRow);
         }
       } else {
         final label = rowDef['label'] as String? ?? '';
