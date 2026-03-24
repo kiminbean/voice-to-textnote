@@ -316,9 +316,9 @@ class _MinutesTab extends ConsumerWidget {
       final type = rowDef['type'] as String? ?? 'full';
 
       if (type == 'split') {
-        // 4열 행: 라벨1 | 내용1 | 라벨2 | 내용2
         final cells = (rowDef['cells'] as List<dynamic>?) ?? [];
-        if (cells.length >= 2) {
+        if (cells.length == 2) {
+          // 4열 행: 라벨1 | 내용1 | 라벨2 | 내용2
           final label1 = cells[0]['label'] as String? ?? '';
           final label2 = cells[1]['label'] as String? ?? '';
           final value1 = result.sections[label1] ?? '-';
@@ -327,6 +327,13 @@ class _MinutesTab extends ConsumerWidget {
             label1, headerBg, value1, null,
             label2, headerBg, value2, null,
             borderColor,
+          ));
+        } else if (cells.length > 2) {
+          // N열 행: 모든 셀을 균등 분할 (라벨 | 내용 | 라벨 | 내용 | ...)
+          rows.add(_tableRowNCol(
+            cells.map((c) => c['label'] as String? ?? '').toList(),
+            cells.map((c) => result.sections[c['label'] as String? ?? ''] ?? '-').toList(),
+            headerBg, borderColor,
           ));
         }
       } else {
@@ -557,6 +564,54 @@ class _MinutesTab extends ConsumerWidget {
                 child: Text(content2, style: const TextStyle(fontSize: 13)),
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // N열 동적 행: 라벨1 | 내용1 | 라벨2 | 내용2 | ... (균등 분할)
+  Widget _tableRowNCol(
+    List<String> labels,
+    List<String> values,
+    Color headerBg,
+    Color borderColor,
+  ) {
+    return Container(
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: borderColor)),
+      ),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (int i = 0; i < labels.length; i++) ...[
+              // 라벨
+              SizedBox(
+                width: 70,
+                child: Container(
+                  color: headerBg,
+                  padding: const EdgeInsets.all(8),
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    labels[i],
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
+                  ),
+                ),
+              ),
+              Container(width: 1, color: borderColor),
+              // 내용
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  child: Text(
+                    values[i],
+                    style: const TextStyle(fontSize: 11),
+                  ),
+                ),
+              ),
+              if (i < labels.length - 1) Container(width: 1, color: borderColor),
+            ],
           ],
         ),
       ),

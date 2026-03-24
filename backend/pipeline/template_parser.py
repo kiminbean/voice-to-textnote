@@ -180,15 +180,24 @@ class TemplateParser:
                                 # 행에서 라벨 셀 위치 추출
                                 row_labels: list[dict] = []
                                 for col_idx, cell in enumerate(row):
-                                    cell_text = str(cell or "").strip()
+                                    # 줄바꿈을 공백으로 치환하여 라벨 정규화
+                                    cell_text = str(cell or "").replace("\n", " ").strip()
+                                    # 라벨 조건: 한글 포함, 짧은 텍스트
+                                    # 공백 구분 단어 4개 이상이면 헤더 설명으로 건너뜀
+                                    # 숫자/언더스코어로 시작하면 제목 셀로 건너뜀
+                                    word_count = len(cell_text.split())
+                                    starts_with_special = (
+                                        cell_text[0].isdigit() or cell_text[0] == '_'
+                                    ) if cell_text else False
                                     if (cell_text
-                                            and 1 <= len(cell_text) <= 10
-                                            and "\n" not in cell_text
+                                            and 1 <= len(cell_text) <= 15
+                                            and word_count <= 3
+                                            and not starts_with_special
                                             and any('\uAC00' <= c <= '\uD7A3' for c in cell_text)):
                                         # 라벨 다음 셀의 값 추출
                                         value = ""
                                         if col_idx + 1 < len(row) and row[col_idx + 1]:
-                                            value = str(row[col_idx + 1]).strip()
+                                            value = str(row[col_idx + 1]).replace("\n", " ").strip()
                                         row_labels.append({"label": cell_text, "value": value})
 
                                 if not row_labels:

@@ -90,8 +90,16 @@ class SummaryGenerator:
             section_titles = [s.get("title", "") for s in template_structure["sections"] if s.get("title")]
             sections_keys = ", ".join(f'"{t}": "해당 내용"' for t in section_titles)
             format_instruction = self.JSON_FORMAT_WITH_SECTIONS.format(sections_keys=sections_keys)
+            # 모든 섹션 키를 명시적으로 나열하여 누락 방지
+            mandatory_sections = "\n".join(f'- "{t}"' for t in section_titles)
+            mandatory_instruction = (
+                f"\n\n[중요] sections 필드에 아래 키를 반드시 모두 포함하세요. "
+                f"해당 내용이 회의에서 언급되지 않았더라도 빈 문자열로 포함해야 합니다:\n{mandatory_sections}"
+                "\n\n[중요] JSON 안에 주석(// ...)을 절대 넣지 마세요. 순수 JSON만 출력하세요."
+            )
         else:
             format_instruction = self.JSON_FORMAT_INSTRUCTION
+            mandatory_instruction = "\n\n[중요] JSON 안에 주석(// ...)을 절대 넣지 마세요. 순수 JSON만 출력하세요."
 
         prompt = f"""다음은 회의 녹취록입니다. 회의 내용을 분석하여 핵심 요약을 작성해 주세요.
 
@@ -105,7 +113,7 @@ class SummaryGenerator:
 위 회의 내용을 분석하여 아래 항목을 작성해 주세요:
 {items_section}
 
-{format_instruction}"""
+{format_instruction}{mandatory_instruction}"""
 
         return prompt
 
