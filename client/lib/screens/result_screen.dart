@@ -248,7 +248,7 @@ class _MinutesTab extends ConsumerWidget {
     );
   }
 
-  // REQ-UI-002: 양식 섹션 기반 동적 테이블
+  // REQ-UI-002: 양식 테이블 레이아웃 기반 동적 테이블
   Widget _buildDynamicTable(BuildContext context, SummaryResult result) {
     final now = meeting?.createdAt ?? DateTime.now();
     final dateStr =
@@ -257,6 +257,9 @@ class _MinutesTab extends ConsumerWidget {
     const headerBg = Color(0xFFE3F2FD);
     const contentBg = Color(0xFFFFFDE7);
     final borderColor = Colors.grey.shade300;
+
+    // template_structure에서 table_layout 추출
+    final tableLayout = (result.templateStructure?['table_layout'] as List<dynamic>?) ?? [];
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(12),
@@ -277,32 +280,69 @@ class _MinutesTab extends ConsumerWidget {
               border: Border.all(color: borderColor),
             ),
             child: Column(
-              children: [
-                // 회의일시 행 (항상 표시)
-                _tableRow2Col(
-                  '회의일시', headerBg,
-                  dateStr, null,
-                  borderColor,
-                ),
-                // 양식 섹션 기반 동적 행 생성
-                ...result.sections.entries.map((entry) {
-                  final isLargeSection = entry.key.contains('내용') ||
-                      entry.key.contains('논의') ||
-                      entry.value.length > 100;
-                  return _tableRow2Col(
-                    entry.key, headerBg,
-                    entry.value.isNotEmpty ? entry.value : '-',
-                    isLargeSection ? contentBg : null,
-                    borderColor,
-                    minHeight: isLargeSection ? 150 : 0,
-                  );
-                }),
-              ],
+              children: tableLayout.isNotEmpty
+                  ? _buildRowsFromLayout(tableLayout, result, headerBg, contentBg, borderColor)
+                  // table_layout 없으면 sections 기반 단순 렌더링
+                  : result.sections.entries.map((entry) {
+                      final isLarge = entry.key.contains('내용') || entry.value.length > 100;
+                      return _tableRow2Col(
+                        entry.key, headerBg,
+                        entry.value.isNotEmpty ? entry.value : '-',
+                        isLarge ? contentBg : null,
+                        borderColor,
+                        minHeight: isLarge ? 150 : 0,
+                      );
+                    }).toList(),
             ),
           ),
         ],
       ),
     );
+  }
+
+  // table_layout 기반 행 생성 (PDF 원본 행/열 구조 재현)
+  List<Widget> _buildRowsFromLayout(
+    List<dynamic> layout,
+    SummaryResult result,
+    Color headerBg,
+    Color contentBg,
+    Color borderColor,
+  ) {
+    final rows = <Widget>[];
+
+    for (final rowDef in layout) {
+      final type = rowDef['type'] as String? ?? 'full';
+
+      if (type == 'split') {
+        // 4열 행: 라벨1 | 내용1 | 라벨2 | 내용2
+        final cells = (rowDef['cells'] as List<dynamic>?) ?? [];
+        if (cells.length >= 2) {
+          final label1 = cells[0]['label'] as String? ?? '';
+          final label2 = cells[1]['label'] as String? ?? '';
+          final value1 = result.sections[label1] ?? '-';
+          final value2 = result.sections[label2] ?? '-';
+          rows.add(_tableRow4Col(
+            label1, headerBg, value1, null,
+            label2, headerBg, value2, null,
+            borderColor,
+          ));
+        }
+      } else {
+        // 2열 행: 라벨 | 내용
+        final label = rowDef['label'] as String? ?? '';
+        final value = result.sections[label] ?? '-';
+        final isLarge = label.contains('내용') || label.contains('논의') || value.length > 100;
+        rows.add(_tableRow2Col(
+          label, headerBg,
+          value.isNotEmpty ? value : '-',
+          isLarge ? contentBg : null,
+          borderColor,
+          minHeight: isLarge ? 150 : 0,
+        ));
+      }
+    }
+
+    return rows;
   }
 
   // REQ-UI-004: 양식 미선택 시 기본 하드코딩 테이블

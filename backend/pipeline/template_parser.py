@@ -17,7 +17,7 @@ def _make_fallback(raw_text: str = "") -> dict:
         "sections": [],
         "fields": {},
         "has_table": False,
-        # 첫 1000자 미리보기
+        "table_layout": [],
         "raw_text_preview": raw_text[:1000],
     }
 
@@ -152,8 +152,9 @@ class TemplateParser:
                 raw_lines: list[str] = []
                 has_table = False
                 fields: dict = {}
-                # 테이블에서 추출한 라벨 (첫 열)
+                # 테이블에서 추출한 라벨 및 레이아웃
                 table_labels: list[str] = []
+                table_layout: list[dict] = []
 
                 for page in pdf.pages:
                     # 텍스트 추출
@@ -164,7 +165,7 @@ class TemplateParser:
                             if stripped:
                                 raw_lines.append(stripped)
 
-                    # 테이블 감지 및 라벨 추출
+                    # 테이블 감지 및 레이아웃 추출
                     tables = page.extract_tables()
                     if tables:
                         has_table = True
@@ -175,21 +176,41 @@ class TemplateParser:
                                 for cell in row:
                                     if cell:
                                         raw_lines.append(str(cell).strip())
-                                # 테이블 셀에서 라벨 추출 (짧은 한글 텍스트 = 필드 라벨)
-                                # PDF 구조에 따라 라벨 위치가 다를 수 있으므로 모든 셀 검사
-                                for cell in row:
+
+                                # 행에서 라벨 셀 위치 추출
+                                row_labels: list[dict] = []
+                                for col_idx, cell in enumerate(row):
                                     cell_text = str(cell or "").strip()
-                                    # 라벨 조건: 1~10자 한글 텍스트, 줄바꿈 없음
                                     if (cell_text
                                             and 1 <= len(cell_text) <= 10
                                             and "\n" not in cell_text
                                             and any('\uAC00' <= c <= '\uD7A3' for c in cell_text)):
-                                        table_labels.append(cell_text)
+                                        # 라벨 다음 셀의 값 추출
+                                        value = ""
+                                        if col_idx + 1 < len(row) and row[col_idx + 1]:
+                                            value = str(row[col_idx + 1]).strip()
+                                        row_labels.append({"label": cell_text, "value": value})
+
+                                if not row_labels:
+                                    continue
+
+                                table_labels.extend(lab["label"] for lab in row_labels)
+
+                                # 행 레이아웃 기록
+                                if len(row_labels) == 1:
+                                    table_layout.append({
+                                        "type": "full",
+                                        "label": row_labels[0]["label"],
+                                    })
+                                elif len(row_labels) >= 2:
+                                    table_layout.append({
+                                        "type": "split",
+                                        "cells": [{"label": lab["label"]} for lab in row_labels],
+                                    })
 
                 # 섹션 추출 (2가지 방법)
                 # 방법 1: 테이블 라벨 기반 (테이블이 있는 양식)
                 if has_table and table_labels:
-                    # 중복 제거하면서 순서 유지
                     seen: set[str] = set()
                     for label in table_labels:
                         if label not in seen:
@@ -215,6 +236,7 @@ class TemplateParser:
                     "sections": sections,
                     "fields": fields,
                     "has_table": has_table,
+                    "table_layout": table_layout,
                     "raw_text_preview": raw_text[:1000],
                 }
 
