@@ -66,7 +66,8 @@ class Settings(BaseSettings):
     openai_api_key: str = ""  # OPENAI_API_KEY 환경 변수
     max_concurrent_summaries: int = 2  # 최대 동시 요약 작업 수
     summary_result_ttl: int = 86400  # 요약 결과 캐시 TTL: 24시간 (초)
-    summary_max_tokens: int = 2000  # OpenAI API 최대 응답 토큰
+    # 양식 섹션 포함 시 4000+ 토큰 필요 (9개 섹션 + action_items + key_decisions)
+    summary_max_tokens: int = 4096  # OpenAI API 최대 응답 토큰
     summary_model: str = "gpt-4o-mini"  # OpenAI 모델명
 
     # -------------------------------------------------------------------------

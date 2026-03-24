@@ -166,16 +166,35 @@ class SummaryGenerator:
                 sections=sections,
             )
 
-        except (json.JSONDecodeError, ValueError, KeyError):
+        except (json.JSONDecodeError, ValueError, KeyError) as exc:
             logger.warning(
-                "API 응답이 유효한 JSON이 아님. raw text를 summary_text에 저장",
-                response_preview=response_text[:100],
+                "API 응답 JSON 파싱 실패 — 부분 추출 시도",
+                error=str(exc),
+                response_preview=response_text[:200],
             )
+            # 잘린 JSON에서라도 summary_text 추출 시도
+            summary_text = response_text
+            sections: dict[str, str] = {}
+            action_items_fallback: list[ActionItem] = []
+            try:
+                # "summary_text" 값 추출 (정규식)
+                import re as _re
+                st_match = _re.search(r'"summary_text"\s*:\s*"((?:[^"\\]|\\.)*)"', response_text)
+                if st_match:
+                    summary_text = st_match.group(1).replace('\\"', '"')
+                # "sections" 내부 키-값 추출
+                sec_match = _re.search(r'"sections"\s*:\s*\{([^}]*)\}', response_text, _re.DOTALL)
+                if sec_match:
+                    for kv in _re.finditer(r'"([^"]+)"\s*:\s*"((?:[^"\\]|\\.)*)"', sec_match.group(1)):
+                        sections[kv.group(1)] = kv.group(2).replace('\\"', '"')
+            except Exception:
+                pass
             return SummaryResult(
-                summary_text=response_text,
-                action_items=[],
+                summary_text=summary_text,
+                action_items=action_items_fallback,
                 key_decisions=[],
                 next_steps=[],
+                sections=sections,
             )
 
     def generate_summary(
