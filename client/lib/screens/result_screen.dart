@@ -255,6 +255,8 @@ class _MinutesTab extends ConsumerWidget {
     const headerBg = Color(0xFFE3F2FD); // 연한 파란색 (라벨 셀)
     const contentBg = Color(0xFFFFFDE7); // 연한 노란색 (회의내용)
     const decisionBg = Color(0xFFFFFDE7); // 연한 노란색 (결정된 사안)
+    final borderColor = Colors.grey.shade300;
+    const courseName = '심화 ROS2와 AI를 이용한 자율주행&로봇팔 개발자 부트캠프';
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(12),
@@ -265,95 +267,196 @@ class _MinutesTab extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: Text(
-              '회의록_$dateStr',
+              '회의록_${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
             ),
           ),
           // 테이블
-          Table(
-            border: TableBorder.all(color: Colors.grey.shade300),
-            columnWidths: const {
-              0: FlexColumnWidth(1),
-              1: FlexColumnWidth(2.5),
-            },
-            children: [
-              // 프로젝트명 / 회의일시
-              TableRow(children: [
-                _labelCell('프로젝트명', headerBg),
-                _contentCell(meeting?.title ?? '-'),
-              ]),
-              TableRow(children: [
-                _labelCell('회의일시', headerBg),
-                _contentCell('$dateStr $timeStr'),
-              ]),
-              // 참석자
-              TableRow(children: [
-                _labelCell('참석자', headerBg),
-                _contentCell('-'),
-              ]),
-              // 회의안건
-              TableRow(children: [
-                _labelCell('회의안건', headerBg),
-                _contentCell(meeting?.title ?? '-'),
-              ]),
-              // 회의내용 (큰 영역, 노란 배경)
-              TableRow(children: [
-                _labelCell('회의내용', headerBg),
-                Container(
-                  color: contentBg,
-                  padding: const EdgeInsets.all(12),
-                  constraints: const BoxConstraints(minHeight: 200),
-                  child: Text(
-                    result.summaryText,
-                    style: const TextStyle(height: 1.8, fontSize: 14),
-                  ),
+          Container(
+            decoration: BoxDecoration(
+              border: Border.all(color: borderColor),
+            ),
+            child: Column(
+              children: [
+                // 1행: 과정명 (고정값)
+                _tableRow2Col(
+                  '과정명', headerBg,
+                  courseName, null,
+                  borderColor,
                 ),
-              ]),
-              // 결정된 사안
-              TableRow(children: [
-                _labelCell('결정된 사안', headerBg),
-                Container(
-                  color: decisionBg,
-                  padding: const EdgeInsets.all(12),
-                  constraints: const BoxConstraints(minHeight: 60),
-                  child: Text(
-                    result.keyDecisions.isNotEmpty
-                        ? result.keyDecisions
-                            .asMap()
-                            .entries
-                            .map((e) => '${e.key + 1}. ${e.value}')
-                            .join('\n')
-                        : '-',
-                    style: const TextStyle(height: 1.8, fontSize: 14),
-                  ),
+                // 2행: 프로젝트명 | 회의일시 (4열 구조)
+                _tableRow4Col(
+                  '프로젝트명', headerBg, meeting?.title ?? '-', null,
+                  '회의일시', headerBg, '$dateStr $timeStr', null,
+                  borderColor,
                 ),
-              ]),
-            ],
+                // 3행: 팀명 | 작성자 (4열 구조)
+                _tableRow4Col(
+                  '팀명', headerBg, '-', null,
+                  '작성자', headerBg, '-', null,
+                  borderColor,
+                ),
+                // 4행: 참석자
+                _tableRow2Col(
+                  '참석자', headerBg,
+                  '-', null,
+                  borderColor,
+                ),
+                // 5행: 회의안건
+                _tableRow2Col(
+                  '회의안건', headerBg,
+                  meeting?.title ?? '-', null,
+                  borderColor,
+                ),
+                // 6행: 회의내용 (큰 영역, 노란 배경)
+                _tableRow2Col(
+                  '회의내용', headerBg,
+                  result.summaryText, contentBg,
+                  borderColor,
+                  minHeight: 200,
+                ),
+                // 7행: 결정된 사안
+                _tableRow2Col(
+                  '결정된 사안', headerBg,
+                  result.keyDecisions.isNotEmpty
+                      ? result.keyDecisions
+                          .asMap()
+                          .entries
+                          .map((e) => '${e.key + 1}. ${e.value}')
+                          .join('\n')
+                      : '-',
+                  decisionBg,
+                  borderColor,
+                  minHeight: 60,
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  // 라벨 셀 (왼쪽 열, 배경색)
-  Widget _labelCell(String text, Color bg) {
+  // 2열 행: 라벨 | 내용 (전체 폭)
+  Widget _tableRow2Col(
+    String label, Color labelBg,
+    String content, Color? contentBg,
+    Color borderColor, {
+    double minHeight = 0,
+  }) {
     return Container(
-      color: bg,
-      padding: const EdgeInsets.all(12),
-      child: Text(
-        text,
-        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: borderColor)),
+      ),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // 라벨
+            SizedBox(
+              width: 90,
+              child: Container(
+                color: labelBg,
+                padding: const EdgeInsets.all(10),
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            ),
+            Container(width: 1, color: borderColor),
+            // 내용
+            Expanded(
+              child: Container(
+                color: contentBg,
+                padding: const EdgeInsets.all(10),
+                constraints: BoxConstraints(minHeight: minHeight),
+                child: Text(
+                  content,
+                  style: const TextStyle(height: 1.7, fontSize: 13),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  // 내용 셀 (오른쪽 열)
-  Widget _contentCell(String text) {
-    return Padding(
-      padding: const EdgeInsets.all(12),
-      child: Text(text, style: const TextStyle(fontSize: 14)),
+  // 4열 행: 라벨1 | 내용1 | 라벨2 | 내용2
+  Widget _tableRow4Col(
+    String label1, Color labelBg1, String content1, Color? contentBg1,
+    String label2, Color labelBg2, String content2, Color? contentBg2,
+    Color borderColor,
+  ) {
+    return Container(
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: borderColor)),
+      ),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // 라벨1
+            SizedBox(
+              width: 90,
+              child: Container(
+                color: labelBg1,
+                padding: const EdgeInsets.all(10),
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  label1,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            ),
+            Container(width: 1, color: borderColor),
+            // 내용1
+            Expanded(
+              child: Container(
+                color: contentBg1,
+                padding: const EdgeInsets.all(10),
+                child: Text(content1, style: const TextStyle(fontSize: 13)),
+              ),
+            ),
+            Container(width: 1, color: borderColor),
+            // 라벨2
+            SizedBox(
+              width: 70,
+              child: Container(
+                color: labelBg2,
+                padding: const EdgeInsets.all(10),
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  label2,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            ),
+            Container(width: 1, color: borderColor),
+            // 내용2
+            Expanded(
+              child: Container(
+                color: contentBg2,
+                padding: const EdgeInsets.all(10),
+                child: Text(content2, style: const TextStyle(fontSize: 13)),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
