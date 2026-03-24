@@ -581,8 +581,8 @@ Large PDFs (>10 pages) return a lightweight reference when @-mentioned. Always s
 
 ---
 
-Version: 13.4.0 (SPEC-PERF-001 Long Recording Stability + Deploy Script)
-Last Updated: 2026-03-24
+Version: 13.5.0 (SPEC-UI-001 Dynamic Minutes Table + SPEC-PERF-001)
+Last Updated: 2026-03-25
 Language: English
 Core Rule: MoAI is an orchestrator; direct implementation is prohibited
 

@@ -4,7 +4,7 @@
 id: SPEC-UI-001
 title: Dynamic Minutes Table UI
 created: 2026-03-25
-status: Planned
+status: Implemented
 priority: High (P1)
 domain: UI
 issue_number: 0
