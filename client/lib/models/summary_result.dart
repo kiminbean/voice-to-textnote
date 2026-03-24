@@ -52,8 +52,8 @@ class SummaryResult {
 
     if (summaryText.trimLeft().startsWith('{')) {
       try {
-        // JSON 주석 제거 (OpenAI가 // 주석을 삽입하는 경우)
-        var cleanedJson = summaryText.replaceAll(RegExp(r'//[^\n]*'), '');
+        // JSON 주석 안전 제거 (문자열 내부 // 보호)
+        var cleanedJson = _stripJsonComments(summaryText);
         // 후행 쉼표 제거 (주석 제거 후 남은 ,} 또는 ,] 패턴)
         cleanedJson = cleanedJson.replaceAll(RegExp(r',\s*([}\]])'), r'$1');
         final nested = jsonDecode(cleanedJson) as Map<String, dynamic>;
@@ -127,6 +127,31 @@ class SummaryResult {
       sections: sections,
       templateStructure: templateStructure,
     );
+  }
+
+  // JSON 주석 안전 제거 (문자열 내부 // 보호, 문자 단위 추적)
+  static String _stripJsonComments(String text) {
+    final lines = text.split('\n');
+    final result = <String>[];
+    for (var line in lines) {
+      var inString = false;
+      var strippedLine = line;
+      for (var i = 0; i < line.length - 1; i++) {
+        final ch = line[i];
+        if (ch == '\\' && inString) {
+          i++; // 이스케이프 건너뜀
+          continue;
+        }
+        if (ch == '"') {
+          inString = !inString;
+        } else if (ch == '/' && line[i + 1] == '/' && !inString) {
+          strippedLine = line.substring(0, i).trimRight();
+          break;
+        }
+      }
+      result.add(strippedLine);
+    }
+    return result.join('\n');
   }
 
   // 중첩 JSON에서 문자열 목록 추출 (List<String> 또는 List<Map> 형태 모두 처리)

@@ -130,8 +130,9 @@ class SummaryGenerator:
                 if cleaned.rstrip().endswith("```"):
                     cleaned = cleaned.rstrip()[:-3].rstrip()
 
-            # JSON 주석 제거 (OpenAI가 // 주석을 삽입하는 경우)
-            cleaned = re.sub(r'//[^\n]*', '', cleaned)
+            # JSON 주석 제거 — 문자열 내부의 // 는 보호
+            # 각 줄에서 따옴표 밖에 있는 // 만 제거
+            cleaned = _strip_json_comments(cleaned)
             # 후행 쉼표 제거 (주석 제거 후 남은 ,} 또는 ,] 패턴)
             cleaned = re.sub(r',\s*([}\]])', r'\1', cleaned)
 
@@ -228,6 +229,33 @@ class SummaryGenerator:
         )
 
         return self.parse_response(response_text)
+
+
+def _strip_json_comments(text: str) -> str:
+    """
+    JSON 텍스트에서 // 주석을 안전하게 제거.
+    문자열 내부의 //는 보호 (문자 단위 따옴표 추적).
+    """
+    lines = text.split("\n")
+    result = []
+    for line in lines:
+        in_string = False
+        i = 0
+        stripped_line = line
+        while i < len(line) - 1:
+            ch = line[i]
+            if ch == '\\' and in_string:
+                i += 2  # 이스케이프 문자 건너뜀
+                continue
+            if ch == '"':
+                in_string = not in_string
+            elif ch == '/' and line[i + 1] == '/' and not in_string:
+                # 문자열 밖의 // 발견 → 여기서 자름
+                stripped_line = line[:i].rstrip()
+                break
+            i += 1
+        result.append(stripped_line)
+    return "\n".join(result)
 
 
 def _seconds_to_hhmmss(seconds: float) -> str:

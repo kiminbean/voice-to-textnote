@@ -619,13 +619,39 @@ class _MinutesTab extends ConsumerWidget {
   }
 
   // 회의 요약에서 첫 문장을 회의안건으로 추출
+  // JSON 주석 안전 제거 (문자열 내부 // 보호, 문자 단위 추적)
+  static String _safeStripComments(String text) {
+    final lines = text.split('\n');
+    final result = <String>[];
+    for (var line in lines) {
+      var inString = false;
+      var strippedLine = line;
+      for (var i = 0; i < line.length - 1; i++) {
+        final ch = line[i];
+        if (ch == '\\' && inString) {
+          i++;
+          continue;
+        }
+        if (ch == '"') {
+          inString = !inString;
+        } else if (ch == '/' && line[i + 1] == '/' && !inString) {
+          strippedLine = line.substring(0, i).trimRight();
+          break;
+        }
+      }
+      result.add(strippedLine);
+    }
+    return result.join('\n');
+  }
+
   String _extractAgenda(String summaryText) {
     if (summaryText.isEmpty) return '-';
     // JSON 형식이면 내부 summary_text 추출
     var text = summaryText;
     if (text.trimLeft().startsWith('{')) {
       try {
-        var cleaned = text.replaceAll(RegExp(r'//[^\n]*'), '');
+        // 안전한 주석 제거 (문자열 내부 // 보호)
+        var cleaned = _safeStripComments(text);
         cleaned = cleaned.replaceAll(RegExp(r',\s*([}\]])'), r'$1');
         final parsed = jsonDecode(cleaned) as Map<String, dynamic>;
         text = parsed['summary_text'] as String? ?? text;
