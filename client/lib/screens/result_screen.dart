@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:voice_to_textnote/models/action_item.dart';
+import 'package:voice_to_textnote/models/meeting.dart';
 import 'package:voice_to_textnote/models/summary_result.dart';
 import 'package:voice_to_textnote/providers/meeting_list_provider.dart';
 import 'package:voice_to_textnote/providers/result_provider.dart';
@@ -124,8 +125,8 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           children: [
             // 회의 내용 탭: 화자별 원본 발화 세그먼트
             _TranscriptTab(taskId: minutesTaskId),
-            // 회의록 탭: 양식 기반 정리된 회의록 (summary_text)
-            _MinutesTab(taskId: summaryTaskId),
+            // 회의록 탭: 양식 기반 테이블 형태 회의록
+            _MinutesTab(taskId: summaryTaskId, meeting: meeting),
             // AI 요약 탭: 구조화된 분석 (주요 결정 사항 + 다음 단계)
             _SummaryTab(taskId: summaryTaskId),
             // 액션 아이템 탭 (summaryTaskId 사용)
@@ -204,11 +205,12 @@ class _TranscriptTab extends ConsumerWidget {
   }
 }
 
-// 회의록 탭: 양식(템플릿) 기반으로 정리된 회의록
+// 회의록 탭: PDF 양식과 동일한 테이블 형태 회의록
 class _MinutesTab extends ConsumerWidget {
   final String? taskId;
+  final Meeting? meeting;
 
-  const _MinutesTab({required this.taskId});
+  const _MinutesTab({required this.taskId, this.meeting});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -237,35 +239,121 @@ class _MinutesTab extends ConsumerWidget {
           );
         }
 
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.description_outlined, size: 20),
-                      const SizedBox(width: 8),
-                      Text(
-                        '회의록',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                    ],
+        return _buildMinutesTable(context, result);
+      },
+    );
+  }
+
+  // PDF 양식과 동일한 테이블 형태 회의록 빌더
+  Widget _buildMinutesTable(BuildContext context, SummaryResult result) {
+    final now = meeting?.createdAt ?? DateTime.now();
+    final dateStr =
+        '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    final timeStr =
+        '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+
+    const headerBg = Color(0xFFE3F2FD); // 연한 파란색 (라벨 셀)
+    const contentBg = Color(0xFFFFFDE7); // 연한 노란색 (회의내용)
+    const decisionBg = Color(0xFFFFFDE7); // 연한 노란색 (결정된 사안)
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 제목
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Text(
+              '회의록_$dateStr',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
                   ),
-                  const Divider(),
-                  Text(
-                    result.summaryText,
-                    style: const TextStyle(height: 1.8),
-                  ),
-                ],
-              ),
             ),
           ),
-        );
-      },
+          // 테이블
+          Table(
+            border: TableBorder.all(color: Colors.grey.shade300),
+            columnWidths: const {
+              0: FlexColumnWidth(1),
+              1: FlexColumnWidth(2.5),
+            },
+            children: [
+              // 프로젝트명 / 회의일시
+              TableRow(children: [
+                _labelCell('프로젝트명', headerBg),
+                _contentCell(meeting?.title ?? '-'),
+              ]),
+              TableRow(children: [
+                _labelCell('회의일시', headerBg),
+                _contentCell('$dateStr $timeStr'),
+              ]),
+              // 참석자
+              TableRow(children: [
+                _labelCell('참석자', headerBg),
+                _contentCell('-'),
+              ]),
+              // 회의안건
+              TableRow(children: [
+                _labelCell('회의안건', headerBg),
+                _contentCell(meeting?.title ?? '-'),
+              ]),
+              // 회의내용 (큰 영역, 노란 배경)
+              TableRow(children: [
+                _labelCell('회의내용', headerBg),
+                Container(
+                  color: contentBg,
+                  padding: const EdgeInsets.all(12),
+                  constraints: const BoxConstraints(minHeight: 200),
+                  child: Text(
+                    result.summaryText,
+                    style: const TextStyle(height: 1.8, fontSize: 14),
+                  ),
+                ),
+              ]),
+              // 결정된 사안
+              TableRow(children: [
+                _labelCell('결정된 사안', headerBg),
+                Container(
+                  color: decisionBg,
+                  padding: const EdgeInsets.all(12),
+                  constraints: const BoxConstraints(minHeight: 60),
+                  child: Text(
+                    result.keyDecisions.isNotEmpty
+                        ? result.keyDecisions
+                            .asMap()
+                            .entries
+                            .map((e) => '${e.key + 1}. ${e.value}')
+                            .join('\n')
+                        : '-',
+                    style: const TextStyle(height: 1.8, fontSize: 14),
+                  ),
+                ),
+              ]),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 라벨 셀 (왼쪽 열, 배경색)
+  Widget _labelCell(String text, Color bg) {
+    return Container(
+      color: bg,
+      padding: const EdgeInsets.all(12),
+      child: Text(
+        text,
+        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+      ),
+    );
+  }
+
+  // 내용 셀 (오른쪽 열)
+  Widget _contentCell(String text) {
+    return Padding(
+      padding: const EdgeInsets.all(12),
+      child: Text(text, style: const TextStyle(fontSize: 14)),
     );
   }
 
