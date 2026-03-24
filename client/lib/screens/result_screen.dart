@@ -1,6 +1,8 @@
 // 결과 화면 - 실제 API 데이터 바인딩 + 에러/빈 상태
 // SPEC-APP-003: 액션 아이템 표시, SPEC-APP-004: 주요 결정 사항/다음 단계 표시
 // SPEC-EXPORT-001: PDF 내보내기 기능 추가
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -564,16 +566,27 @@ class _MinutesTab extends ConsumerWidget {
   // 회의 요약에서 첫 문장을 회의안건으로 추출
   String _extractAgenda(String summaryText) {
     if (summaryText.isEmpty) return '-';
+    // JSON 형식이면 내부 summary_text 추출
+    var text = summaryText;
+    if (text.trimLeft().startsWith('{')) {
+      try {
+        var cleaned = text.replaceAll(RegExp(r'//[^\n]*'), '');
+        cleaned = cleaned.replaceAll(RegExp(r',\s*([}\]])'), r'$1');
+        final parsed = jsonDecode(cleaned) as Map<String, dynamic>;
+        text = parsed['summary_text'] as String? ?? text;
+      } catch (_) {}
+    }
+    // 여전히 JSON이면 '-' 반환
+    if (text.trimLeft().startsWith('{')) return '-';
     // 마침표(.)로 끝나는 첫 문장 추출
-    final dotIndex = summaryText.indexOf('.');
+    final dotIndex = text.indexOf('.');
     if (dotIndex > 0 && dotIndex < 100) {
-      return summaryText.substring(0, dotIndex + 1);
+      return text.substring(0, dotIndex + 1);
     }
-    // 마침표가 없거나 너무 길면 80자로 자르기
-    if (summaryText.length > 80) {
-      return '${summaryText.substring(0, 80)}...';
+    if (text.length > 80) {
+      return '${text.substring(0, 80)}...';
     }
-    return summaryText;
+    return text;
   }
 
   Widget _buildShimmerLoading() {

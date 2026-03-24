@@ -52,7 +52,11 @@ class SummaryResult {
 
     if (summaryText.trimLeft().startsWith('{')) {
       try {
-        final nested = jsonDecode(summaryText) as Map<String, dynamic>;
+        // JSON 주석 제거 (OpenAI가 // 주석을 삽입하는 경우)
+        var cleanedJson = summaryText.replaceAll(RegExp(r'//[^\n]*'), '');
+        // 후행 쉼표 제거 (주석 제거 후 남은 ,} 또는 ,] 패턴)
+        cleanedJson = cleanedJson.replaceAll(RegExp(r',\s*([}\]])'), r'$1');
+        final nested = jsonDecode(cleanedJson) as Map<String, dynamic>;
         summaryText = nested['summary_text'] as String? ?? summaryText;
         // 중첩 JSON에서 추가 필드도 추출
         if (nested.containsKey('action_items')) {
