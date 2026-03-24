@@ -44,10 +44,11 @@ class SummaryResult {
     var summaryText =
         json['summary_text'] as String? ?? json['summary'] as String? ?? '';
 
-    // 방어 처리: summary_text가 JSON 문자열이면 내부 summary_text 추출
+    // 방어 처리: summary_text가 JSON 문자열이면 내부 필드 추출
     var actionItems = <ActionItem>[];
     var keyDecisions = <String>[];
     var nextSteps = <String>[];
+    var nestedSections = <String, String>{};
 
     if (summaryText.trimLeft().startsWith('{')) {
       try {
@@ -65,6 +66,12 @@ class SummaryResult {
         }
         if (nested.containsKey('next_steps')) {
           nextSteps = _extractStrings(nested['next_steps']);
+        }
+        // 중첩 JSON에서 sections도 추출
+        if (nested.containsKey('sections') && nested['sections'] is Map) {
+          for (final entry in (nested['sections'] as Map).entries) {
+            nestedSections[entry.key.toString()] = entry.value?.toString() ?? '';
+          }
         }
       } catch (_) {
         // JSON 파싱 실패 시 원본 텍스트 유지
@@ -92,12 +99,17 @@ class SummaryResult {
     }
 
     // REQ-UI-003: sections 파싱 (양식 섹션별 내용)
+    // 1순위: 외부 JSON의 sections 필드
+    // 2순위: 중첩 JSON에서 추출한 nestedSections
     final rawSections = json['sections'];
     var sections = <String, String>{};
     if (rawSections is Map) {
       for (final entry in rawSections.entries) {
         sections[entry.key.toString()] = entry.value?.toString() ?? '';
       }
+    }
+    if (sections.isEmpty && nestedSections.isNotEmpty) {
+      sections = nestedSections;
     }
 
     // REQ-UI-001: template_structure 파싱
