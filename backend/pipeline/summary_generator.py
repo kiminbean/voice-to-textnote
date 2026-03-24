@@ -289,23 +289,26 @@ def _seconds_to_hhmmss(seconds: float) -> str:
 def _build_template_items_section(template_structure: dict) -> str:
     """
     양식 구조의 섹션 목록을 프롬프트의 요청 항목으로 변환 (REQ-TMPL-004).
-
-    섹션 제목을 번호 목록으로 만들고, 기본 4개 항목(summary_text 등)도
-    JSON 출력에 포함되도록 지시한다.
+    sections 필드에 실제 내용을 채우도록 명확히 지시.
     """
     sections = template_structure.get("sections", [])
     lines: list[str] = []
 
-    # 양식 섹션을 출력 항목으로 나열
+    lines.append("아래 sections 필드의 각 항목에 회의 내용을 분석하여 상세히 작성해 주세요:")
+    lines.append("")
+
     for i, section in enumerate(sections, start=1):
         title = section.get("title", f"섹션 {i}")
-        lines.append(f"{i}. {title}: 해당 섹션 내용 작성")
+        lines.append(f'{i}. sections."{title}": 이 항목에 해당하는 내용을 회의 대화에서 추출하여 상세히 작성')
 
-    # JSON 출력에는 반드시 기본 필드 포함 (파싱 호환성)
-    lines.append(
-        "\n위 내용을 다음 JSON 필드에 맞게 정리해 주세요: "
-        "summary_text(전체 요약), action_items(액션 아이템), "
-        "key_decisions(결정 사항), next_steps(다음 단계)"
-    )
+    lines.append("")
+    lines.append("또한 다음 항목도 작성해 주세요:")
+    lines.append('- summary_text: 회의 핵심 요약 (2-3문장으로 간결하게)')
+    lines.append('- action_items: 담당자별 수행해야 할 구체적 작업 목록')
+    lines.append('- key_decisions: 회의에서 내린 주요 결정 사항')
+    lines.append('- next_steps: 향후 진행할 다음 단계')
+    lines.append("")
+    lines.append("[중요] sections 필드의 각 값에 실제 내용을 상세히 작성해야 합니다. 빈 문자열로 두지 마세요.")
+    lines.append("[중요] summary_text에는 간결한 요약만 넣고, 상세 내용은 반드시 sections에 넣으세요.")
 
     return "\n".join(lines)
