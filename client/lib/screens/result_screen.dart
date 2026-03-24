@@ -50,17 +50,22 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     if (_isExporting) return;
     setState(() => _isExporting = true);
 
+    // iOS 공유 팝오버 위치 (async 전에 캡처)
+    final box = context.findRenderObject() as RenderBox?;
+    final shareOrigin = box != null
+        ? box.localToGlobal(Offset.zero) & box.size
+        : const Rect.fromLTWH(0, 0, 100, 100);
+
     try {
       final exportApi = ref.read(exportApiProvider);
       final file = await exportApi.downloadPdf(
         minutesTaskId,
         summaryTaskId: summaryTaskId,
       );
-
-      // share_plus로 파일 공유 (AirDrop, 이메일, 저장 등)
       await Share.shareXFiles(
         [XFile(file.path, mimeType: 'application/pdf')],
         subject: '회의록 PDF',
+        sharePositionOrigin: shareOrigin,
       );
     } catch (e) {
       // 위젯이 마운트된 경우에만 SnackBar 표시
