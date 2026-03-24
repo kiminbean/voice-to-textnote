@@ -239,12 +239,73 @@ class _MinutesTab extends ConsumerWidget {
           );
         }
 
+        // REQ-UI-002: 양식 구조 있으면 동적 테이블, 없으면 기본 테이블
+        if (result.sections.isNotEmpty) {
+          return _buildDynamicTable(context, result);
+        }
         return _buildMinutesTable(context, result);
       },
     );
   }
 
-  // PDF 양식과 동일한 테이블 형태 회의록 빌더
+  // REQ-UI-002: 양식 섹션 기반 동적 테이블
+  Widget _buildDynamicTable(BuildContext context, SummaryResult result) {
+    final now = meeting?.createdAt ?? DateTime.now();
+    final dateStr =
+        '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+
+    const headerBg = Color(0xFFE3F2FD);
+    const contentBg = Color(0xFFFFFDE7);
+    final borderColor = Colors.grey.shade300;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Text(
+              '회의록_$dateStr',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+            ),
+          ),
+          Container(
+            decoration: BoxDecoration(
+              border: Border.all(color: borderColor),
+            ),
+            child: Column(
+              children: [
+                // 회의일시 행 (항상 표시)
+                _tableRow2Col(
+                  '회의일시', headerBg,
+                  dateStr, null,
+                  borderColor,
+                ),
+                // 양식 섹션 기반 동적 행 생성
+                ...result.sections.entries.map((entry) {
+                  final isLargeSection = entry.key.contains('내용') ||
+                      entry.key.contains('논의') ||
+                      entry.value.length > 100;
+                  return _tableRow2Col(
+                    entry.key, headerBg,
+                    entry.value.isNotEmpty ? entry.value : '-',
+                    isLargeSection ? contentBg : null,
+                    borderColor,
+                    minHeight: isLargeSection ? 150 : 0,
+                  );
+                }),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // REQ-UI-004: 양식 미선택 시 기본 하드코딩 테이블
   Widget _buildMinutesTable(BuildContext context, SummaryResult result) {
     final now = meeting?.createdAt ?? DateTime.now();
     final dateStr =

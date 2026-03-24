@@ -231,6 +231,9 @@ def summary_task(
             "action_items": [item.model_dump() for item in summary_result.action_items],
             "key_decisions": summary_result.key_decisions,
             "next_steps": summary_result.next_steps,
+            # REQ-UI-001: 양식 구조 및 섹션별 내용 포함
+            "sections": summary_result.sections,
+            "template_structure": template_structure,
             "generation_time_seconds": generation_time,
             "created_at": processing_start.isoformat(),
             "completed_at": processing_end.isoformat(),

@@ -48,6 +48,8 @@ class SummaryResult(BaseModel):
     key_decisions: list[str] = Field(default_factory=list, description="주요 결정 사항 목록")
     # 다음 단계
     next_steps: list[str] = Field(default_factory=list, description="다음 단계 목록")
+    # REQ-UI-003: 양식 섹션별 내용 (양식 선택 시에만 존재)
+    sections: dict[str, str] = Field(default_factory=dict, description="양식 섹션별 내용")
 
 
 class SummaryResponse(BaseModel):

@@ -21,10 +21,17 @@ class SummaryGenerator:
     OpenAI API를 사용하여 회의 요약을 생성하는 클래스
     """
 
-    # JSON 응답 형식 지시문
+    # JSON 응답 형식 지시문 (양식 없을 때)
     JSON_FORMAT_INSTRUCTION = (
         '다음 JSON 형식으로 응답하세요: {"summary_text": "...", '
         '"action_items": [...], "key_decisions": [...], "next_steps": [...]}'
+    )
+
+    # REQ-UI-003: JSON 응답 형식 지시문 (양식 있을 때 - 섹션별 개별 출력)
+    JSON_FORMAT_WITH_SECTIONS = (
+        '다음 JSON 형식으로 응답하세요: {{"summary_text": "전체 요약", '
+        '"sections": {{{sections_keys}}}, '
+        '"action_items": [...], "key_decisions": [...], "next_steps": [...]}}'
     )
 
     def build_prompt(
@@ -77,6 +84,14 @@ class SummaryGenerator:
                 "4. next_steps: 향후 진행해야 할 다음 단계 목록"
             )
 
+        # REQ-UI-003: 양식 있을 때 섹션별 JSON 출력 지시
+        if template_structure and template_structure.get("sections"):
+            section_titles = [s.get("title", "") for s in template_structure["sections"] if s.get("title")]
+            sections_keys = ", ".join(f'"{t}": "해당 내용"' for t in section_titles)
+            format_instruction = self.JSON_FORMAT_WITH_SECTIONS.format(sections_keys=sections_keys)
+        else:
+            format_instruction = self.JSON_FORMAT_INSTRUCTION
+
         prompt = f"""다음은 회의 녹취록입니다. 회의 내용을 분석하여 핵심 요약을 작성해 주세요.
 
 ## 화자 정보
@@ -89,7 +104,7 @@ class SummaryGenerator:
 위 회의 내용을 분석하여 아래 항목을 작성해 주세요:
 {items_section}
 
-{self.JSON_FORMAT_INSTRUCTION}"""
+{format_instruction}"""
 
         return prompt
 
@@ -123,11 +138,19 @@ class SummaryGenerator:
                         )
                     )
 
+            # REQ-UI-003: sections 파싱 (양식 기반 섹션별 내용)
+            raw_sections = data.get("sections", {})
+            sections: dict[str, str] = {}
+            if isinstance(raw_sections, dict):
+                for k, v in raw_sections.items():
+                    sections[str(k)] = str(v) if v else ""
+
             return SummaryResult(
                 summary_text=data.get("summary_text", ""),
                 action_items=action_items,
                 key_decisions=data.get("key_decisions", []),
                 next_steps=data.get("next_steps", []),
+                sections=sections,
             )
 
         except (json.JSONDecodeError, ValueError, KeyError):

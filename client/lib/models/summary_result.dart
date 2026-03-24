@@ -22,11 +22,19 @@ class SummaryResult {
   // 다음 단계 목록 (SPEC-APP-004 REQ-APP-043)
   final List<String> nextSteps;
 
+  // REQ-UI-003: 양식 섹션별 내용 (양식 선택 시에만 존재)
+  final Map<String, String> sections;
+
+  // REQ-UI-001: 양식 구조 정보 (양식 선택 시에만 존재)
+  final Map<String, dynamic>? templateStructure;
+
   const SummaryResult({
     required this.summaryText,
     required this.actionItems,
     required this.keyDecisions,
     required this.nextSteps,
+    this.sections = const {},
+    this.templateStructure,
   });
 
   // JSON 맵에서 SummaryResult 객체 생성
@@ -83,11 +91,25 @@ class SummaryResult {
           .toList();
     }
 
+    // REQ-UI-003: sections 파싱 (양식 섹션별 내용)
+    final rawSections = json['sections'];
+    var sections = <String, String>{};
+    if (rawSections is Map) {
+      for (final entry in rawSections.entries) {
+        sections[entry.key.toString()] = entry.value?.toString() ?? '';
+      }
+    }
+
+    // REQ-UI-001: template_structure 파싱
+    final templateStructure = json['template_structure'] as Map<String, dynamic>?;
+
     return SummaryResult(
       summaryText: summaryText,
       actionItems: actionItems,
       keyDecisions: keyDecisions,
       nextSteps: nextSteps,
+      sections: sections,
+      templateStructure: templateStructure,
     );
   }
 
