@@ -38,6 +38,10 @@ celery_app.conf.update(
     # 동시 처리 제한 - 워커 실행 시 --concurrency=3 으로 제어
     # 여기서는 기본값 설정만
     worker_prefetch_multiplier=1,  # 1개씩 가져와서 메모리 효율 보장
+    # REQ-PERF-002: 장시간 작업의 중복 실행 방지
+    # 기본값 3600초(1시간) → 7200초(2시간)로 증가
+    # soft_time_limit=3600 작업이 visibility_timeout 내에서 완료될 수 있도록 보장
+    broker_transport_options={"visibility_timeout": 7200},
     # 모니터링
     task_send_sent_event=True,
     task_track_started=True,

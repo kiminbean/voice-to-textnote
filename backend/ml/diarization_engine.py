@@ -168,6 +168,118 @@ class DiarizationEngine:
             logger.error("화자 분리 실패", error=str(e), path=str(audio_path))
             raise
 
+    def diarize_chunked(
+        self,
+        audio_path: str | Path,
+        chunk_duration_sec: int = 600,
+        overlap_sec: int = 30,
+        progress_callback: Any = None,
+    ) -> list[SpeakerSegment]:
+        """
+        REQ-PERF-001: 긴 오디오를 청크 단위로 화자 분리 후 결과 병합
+
+        Args:
+            audio_path: WAV 파일 경로
+            chunk_duration_sec: 청크 길이 (초, 기본 600=10분)
+            overlap_sec: 청크 간 오버랩 (초, 기본 30)
+            progress_callback: 청크 완료 시 호출 (current_chunk, total_chunks)
+
+        Returns:
+            SpeakerSegment 리스트 (글로벌 타임스탬프 기준)
+        """
+        if not self._model_loaded or self._pipeline is None:
+            raise RuntimeError("화자 분리 모델이 로드되지 않았습니다.")
+
+        import torchaudio
+
+        logger.info("청크 분할 화자 분리 시작", path=str(audio_path),
+                     chunk_sec=chunk_duration_sec, overlap_sec=overlap_sec)
+        start_time = time.time()
+
+        waveform, sample_rate = torchaudio.load(str(audio_path))
+        total_samples = waveform.shape[1]
+        total_duration_sec = total_samples / sample_rate
+
+        chunk_samples = chunk_duration_sec * sample_rate
+        overlap_samples = overlap_sec * sample_rate
+
+        # 청크 분할 계획 수립
+        chunks: list[tuple[int, int]] = []  # (start_sample, end_sample)
+        pos = 0
+        while pos < total_samples:
+            end = min(pos + chunk_samples + overlap_samples, total_samples)
+            chunks.append((pos, end))
+            pos += chunk_samples
+
+        total_chunks = len(chunks)
+        logger.info("청크 수", total_chunks=total_chunks,
+                     total_duration=round(total_duration_sec, 1))
+
+        all_segments: list[SpeakerSegment] = []
+        # 청크 간 스피커 ID 매핑 (오버랩 구간 타임스탬프 기반)
+        speaker_remap: dict[str, str] = {}
+        global_speaker_count = 0
+
+        for i, (chunk_start, chunk_end) in enumerate(chunks):
+            chunk_waveform = waveform[:, chunk_start:chunk_end]
+            chunk_offset_sec = chunk_start / sample_rate
+            overlap_threshold_sec = (overlap_sec if i > 0 else 0)
+
+            logger.info("청크 처리 중", chunk=i + 1, total=total_chunks)
+
+            # 청크별 화자 분리 실행
+            result = self._pipeline({"waveform": chunk_waveform, "sample_rate": sample_rate})
+            diarization = getattr(result, "speaker_diarization", result)
+
+            chunk_segments: list[SpeakerSegment] = []
+            for turn, _, speaker in diarization.itertracks(yield_label=True):
+                # 오버랩 구간 중복 제거: 첫 청크 이후, 오버랩 영역 시작 부분 세그먼트 건너뜀
+                if i > 0 and turn.start < overlap_threshold_sec:
+                    continue
+
+                # 청크 로컬 스피커 ID를 글로벌 ID로 매핑
+                local_key = f"chunk{i}_{speaker}"
+                if local_key not in speaker_remap:
+                    # 이전 청크의 오버랩 구간에서 동일 화자 탐색 (타임스탬프 기반)
+                    matched = False
+                    if i > 0 and all_segments:
+                        seg_global_start = chunk_offset_sec + turn.start
+                        for prev_seg in reversed(all_segments[-20:]):
+                            # 이전 세그먼트와 시간적으로 근접하면 동일 화자로 간주
+                            if abs(prev_seg.end - seg_global_start) < overlap_sec:
+                                speaker_remap[local_key] = prev_seg.speaker_id
+                                matched = True
+                                break
+                    if not matched:
+                        speaker_remap[local_key] = f"SPEAKER_{global_speaker_count:02d}"
+                        global_speaker_count += 1
+
+                global_start = chunk_offset_sec + turn.start
+                global_end = chunk_offset_sec + turn.end
+
+                chunk_segments.append(
+                    SpeakerSegment(
+                        speaker_id=speaker_remap[local_key],
+                        start=round(global_start, 3),
+                        end=round(global_end, 3),
+                    )
+                )
+
+            all_segments.extend(chunk_segments)
+
+            # 진행률 콜백 호출
+            if progress_callback:
+                progress_callback(i + 1, total_chunks)
+
+            logger.info("청크 완료", chunk=i + 1, segments=len(chunk_segments))
+
+        elapsed = time.time() - start_time
+        logger.info("청크 분할 화자 분리 완료",
+                     total_segments=len(all_segments),
+                     elapsed_seconds=round(elapsed, 2))
+
+        return all_segments
+
     def unload(self) -> None:
         """모델 메모리 해제"""
         with self._lock:

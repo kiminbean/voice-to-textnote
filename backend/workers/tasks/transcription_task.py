@@ -12,6 +12,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import redis
+from celery.exceptions import SoftTimeLimitExceeded
 
 from backend.app.config import settings
 from backend.ml.stt_engine import WhisperEngine
@@ -241,6 +242,19 @@ def transcription_task(
             processing_time=round(processing_time, 2),
         )
         return final_result
+
+    except SoftTimeLimitExceeded:
+        # REQ-PERF-004: 시간 초과 시 실패 상태 기록 및 정리
+        error_msg = "처리 시간이 60분을 초과하여 작업이 중단되었습니다"
+        logger.error("전사 작업 시간 초과", task_id=task_id)
+        _update_task_status(task_id, TaskStatus.failed, 0.0, error_message=error_msg)
+        _cache_result(task_id, {
+            "task_id": task_id,
+            "status": TaskStatus.failed.value,
+            "error_message": error_msg,
+            "created_at": processing_start.isoformat(),
+        })
+        return {"task_id": task_id, "status": "failed", "error": error_msg}
 
     except Exception as exc:
         # REQ-STT-009: 부분 결과 저장 금지, failed 상태 기록

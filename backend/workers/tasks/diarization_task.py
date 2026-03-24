@@ -12,6 +12,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import redis
+from celery.exceptions import SoftTimeLimitExceeded
 
 from backend.app.config import settings
 from backend.ml.diarization_engine import DiarizationEngine
@@ -178,8 +179,33 @@ def diarization_task(
 
         _update_task_status(task_id, TaskStatus.processing, 0.30, "화자 분리 처리 중...")
 
-        # --- 4단계: 화자 분리 실행 ---
-        dia_segments = engine.diarize(wav_path)
+        # --- 4단계: 화자 분리 실행 (REQ-PERF-001: 긴 오디오 청크 분할) ---
+        from backend.pipeline.audio_processor import get_audio_duration_seconds
+
+        audio_duration = get_audio_duration_seconds(wav_path)
+        threshold_sec = settings.dia_chunk_threshold_minutes * 60
+
+        if audio_duration > threshold_sec:
+            # 15분 초과 → 청크 분할 처리
+            logger.info("청크 분할 화자 분리 적용",
+                         duration=round(audio_duration, 1),
+                         threshold=threshold_sec)
+
+            def _progress_cb(current: int, total: int) -> None:
+                # 0.30 ~ 0.80 범위에서 청크별 진행률 업데이트
+                progress = 0.30 + (current / total) * 0.50
+                msg = f"화자 분리 처리 중... (청크 {current}/{total})"
+                _update_task_status(task_id, TaskStatus.processing, progress, msg)
+
+            dia_segments = engine.diarize_chunked(
+                wav_path,
+                chunk_duration_sec=settings.dia_chunk_duration_minutes * 60,
+                overlap_sec=settings.dia_chunk_overlap_seconds,
+                progress_callback=_progress_cb,
+            )
+        else:
+            # 15분 이하 → 기존 단일 파일 처리
+            dia_segments = engine.diarize(wav_path)
 
         _update_task_status(task_id, TaskStatus.processing, 0.80, "STT 결과와 화자 매칭 중...")
 
@@ -237,6 +263,21 @@ def diarization_task(
             speakers=len(speaker_stats),
         )
         return final_result
+
+    except SoftTimeLimitExceeded:
+        # REQ-PERF-004: 시간 초과 시 실패 상태 기록 및 정리
+        error_msg = "처리 시간이 60분을 초과하여 화자 분리가 중단되었습니다"
+        logger.error("화자 분리 작업 시간 초과", task_id=task_id)
+        _update_task_status(task_id, TaskStatus.failed, 0.0, error_message=error_msg)
+        failed_result = {
+            "task_id": task_id,
+            "stt_task_id": stt_task_id,
+            "status": "failed",
+            "error": error_msg,
+            "created_at": processing_start.isoformat(),
+        }
+        _cache_result(task_id, failed_result)
+        return failed_result
 
     except FileNotFoundError as exc:
         # WAV 파일 또는 STT 결과 없음 → 즉시 실패 (재시도 없음)
@@ -331,6 +372,9 @@ def diarization_celery_task(
             min_speakers=min_speakers,
             max_speakers=max_speakers,
         )
+    except SoftTimeLimitExceeded:
+        # 시간 초과 → 재시도 안 함 (diarization_task 내부에서 이미 처리)
+        return {"task_id": task_id, "status": "failed", "error": "시간 초과"}
     except FileNotFoundError as exc:
         # 파일 없음 → 재시도 안 함
         return {"task_id": task_id, "status": "failed", "error": str(exc)}

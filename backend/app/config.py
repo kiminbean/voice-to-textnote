@@ -52,6 +52,10 @@ class Settings(BaseSettings):
     max_concurrent_diarizations: int = 2
     diarization_model: str = "pyannote/speaker-diarization-3.1"
     diarization_result_ttl: int = 86400  # 24시간 (초)
+    # REQ-PERF-001: 화자 분리 청크 분할 설정
+    dia_chunk_duration_minutes: int = 10  # 청크 단위 (분)
+    dia_chunk_overlap_seconds: int = 30  # 청크 간 오버랩 (초)
+    dia_chunk_threshold_minutes: int = 15  # 이 길이 이상이면 청크 분할 적용
 
     # 회의록 생성 설정 (REQ-MIN-008, REQ-MIN-013)
     max_concurrent_minutes: int = 3  # 최대 동시 회의록 생성 작업 수
