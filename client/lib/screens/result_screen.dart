@@ -304,10 +304,10 @@ class _MinutesTab extends ConsumerWidget {
                   '-', null,
                   borderColor,
                 ),
-                // 5행: 회의안건
+                // 5행: 회의안건 (summaryText 첫 문장 추출)
                 _tableRow2Col(
                   '회의안건', headerBg,
-                  meeting?.title ?? '-', null,
+                  _extractAgenda(result.summaryText), null,
                   borderColor,
                 ),
                 // 6행: 회의내용 (큰 영역, 노란 배경)
@@ -458,6 +458,21 @@ class _MinutesTab extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  // 회의 요약에서 첫 문장을 회의안건으로 추출
+  String _extractAgenda(String summaryText) {
+    if (summaryText.isEmpty) return '-';
+    // 마침표(.)로 끝나는 첫 문장 추출
+    final dotIndex = summaryText.indexOf('.');
+    if (dotIndex > 0 && dotIndex < 100) {
+      return summaryText.substring(0, dotIndex + 1);
+    }
+    // 마침표가 없거나 너무 길면 80자로 자르기
+    if (summaryText.length > 80) {
+      return '${summaryText.substring(0, 80)}...';
+    }
+    return summaryText;
   }
 
   Widget _buildShimmerLoading() {
