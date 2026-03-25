@@ -587,7 +587,7 @@ Large PDFs (>10 pages) return a lightweight reference when @-mentioned. Always s
 
 ---
 
-Version: 13.8.0 (SPEC-UI-001 + AI Prompt Redesign + max_tokens 4096)
+Version: 13.9.0 (Dynamic Template PDF Export + Minutes Edit + AI Prompt Fix)
 Last Updated: 2026-03-25
 Language: English
 Core Rule: MoAI is an orchestrator; direct implementation is prohibited
