@@ -1,15 +1,16 @@
 """
-데이터 보존 정책 서비스 - SPEC-RETENTION-001
+데이터 보존 정책 서비스 - SPEC-RETENTION-001, SPEC-GUEST-001
 
 REQ-RET-003: 보존 기간 초과 DB 결과 삭제
 REQ-RET-004: 보존 기간 초과 임시 파일 삭제
 REQ-RET-005: 삭제 수 및 해제 공간 로깅
+REQ-GUEST-009: 게스트 데이터 24시간 후 정리
 """
 
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-from sqlalchemy import delete
+from sqlalchemy import and_, delete
 from sqlalchemy.orm import Session
 
 from backend.db.models import TaskResult
@@ -81,3 +82,39 @@ def cleanup_temp_files(temp_dir: Path, retention_hours: int) -> tuple[int, int]:
         freed_mb=round(freed_bytes / 1024 / 1024, 2),
     )
     return deleted_count, freed_bytes
+
+
+def cleanup_guest_data(session: Session, guest_retention_hours: int = 24) -> int:
+    """
+    REQ-GUEST-009: 게스트 데이터 정리
+
+    is_guest=True이고 보존 기간(기본 24시간)이 지난 task_results를 삭제합니다.
+    Redis TTL로 세션이 자동 만료되므로, DB의 게스트 레코드도 주기적으로 정리합니다.
+
+    Args:
+        session: SQLAlchemy 동기 세션
+        guest_retention_hours: 게스트 데이터 보존 기간 (시간, 기본 24)
+
+    Returns:
+        삭제된 레코드 수
+    """
+    # 게스트 데이터 보존 기간 기준 시각 계산 (타임존 없는 datetime - SQLite 호환)
+    cutoff = datetime.now(UTC).replace(tzinfo=None) - timedelta(hours=guest_retention_hours)
+
+    stmt = delete(TaskResult).where(
+        and_(
+            TaskResult.is_guest.is_(True),
+            TaskResult.created_at < cutoff,
+        )
+    )
+    result = session.execute(stmt)
+    session.commit()
+
+    deleted = result.rowcount
+    # REQ-RET-005: 삭제 수 로깅
+    logger.info(
+        "게스트 데이터 정리 완료",
+        deleted_count=deleted,
+        retention_hours=guest_retention_hours,
+    )
+    return deleted

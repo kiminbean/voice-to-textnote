@@ -1,22 +1,32 @@
 """
 SPEC-TEAM-001: 인증 API 엔드포인트
+SPEC-GUEST-001: 게스트 세션 엔드포인트 추가
 
 공개 엔드포인트 (API Key 불필요):
 - POST /auth/register - 회원 가입
 - POST /auth/login    - 로그인
 - POST /auth/refresh  - access token 갱신
 - POST /auth/logout   - 로그아웃
+- POST /auth/guest    - 게스트 세션 생성 (SPEC-GUEST-001)
 
 인증 필요 엔드포인트:
 - GET /auth/me - 현재 사용자 정보 조회
 """
 
+import json
+import uuid
+from datetime import UTC, datetime, timedelta
+
+import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends, status
+from jose import jwt
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.dependencies import get_current_user, get_db_session
+from backend.app.config import settings
+from backend.app.dependencies import get_current_user, get_db_session, get_redis_client
 from backend.db.auth_service import AuthService
 from backend.schemas.auth import (
+    GuestSessionResponse,
     LoginRequest,
     RefreshRequest,
     RegisterRequest,
@@ -109,6 +119,49 @@ async def logout(
     Refresh Token을 폐기하여 로그아웃합니다.
     """
     await _auth_service.logout(session=db, refresh_token_str=req.refresh_token)
+
+
+@router.post(
+    "/guest",
+    response_model=GuestSessionResponse,
+    status_code=status.HTTP_200_OK,
+    summary="게스트 세션 생성",
+)
+async def create_guest_session(
+    redis: aioredis.Redis = Depends(get_redis_client),
+) -> GuestSessionResponse:
+    """
+    SPEC-GUEST-001: 게스트 세션을 생성하고 JWT를 반환합니다.
+
+    - 로그인 없이 임시 세션을 생성합니다.
+    - 24시간 유효한 JWT 토큰을 발급합니다.
+    - Redis에 세션 정보를 저장합니다 (TTL 86400초).
+    """
+    # REQ-GUEST-001: UUID v4 게스트 세션 ID 생성
+    guest_session_id = str(uuid.uuid4())
+
+    # REQ-GUEST-004: 만료 시각 계산 (24시간 후)
+    ttl_hours = settings.guest_session_ttl_hours
+    expires_at = datetime.now(UTC) + timedelta(hours=ttl_hours)
+
+    # REQ-GUEST-002: JWT 생성 (type: "guest" 포함)
+    payload = {
+        "sub": guest_session_id,
+        "type": "guest",
+        "exp": expires_at,
+    }
+    guest_token = jwt.encode(payload, settings.jwt_secret, algorithm="HS256")
+
+    # REQ-GUEST-003: Redis에 세션 저장 (TTL: 86400초 = 24시간)
+    redis_key = f"guest:session:{guest_session_id}"
+    session_data = json.dumps({"created_at": datetime.now(UTC).isoformat()})
+    await redis.setex(redis_key, ttl_hours * 3600, session_data)
+
+    return GuestSessionResponse(
+        guest_session_id=guest_session_id,
+        guest_token=guest_token,
+        expires_at=expires_at,
+    )
 
 
 @router.get(

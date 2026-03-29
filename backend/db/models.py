@@ -4,13 +4,14 @@ DB ORM 모델 - SQLAlchemy 2.0 Mapped 타입 기반
 REQ-DB-004: TaskResult 모델
 REQ-DB-005: AuditLog 모델
 REQ-DB-006: UUID 기본 키, created/updated 타임스탬프
+REQ-GUEST-008: TaskResult에 게스트 세션 필드 추가
 """
 
 import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import DateTime, Float, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, Float, Integer, String, Text
 from sqlalchemy.dialects.sqlite import JSON
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -85,6 +86,19 @@ class TaskResult(Base):
     # 완료 시각 (완료 전 NULL)
     completed_at: Mapped[datetime | None] = mapped_column(
         DateTime, nullable=True
+    )
+
+    # REQ-GUEST-008: 게스트 세션 필드
+    # 게스트 요청 여부 (비로그인 임시 사용자)
+    is_guest: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default="0",
+    )
+    # 게스트 세션 ID (is_guest=True일 때 설정)
+    guest_session_id: Mapped[str | None] = mapped_column(
+        String(36), nullable=True
     )
 
     def __repr__(self) -> str:

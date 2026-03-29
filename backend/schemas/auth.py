@@ -1,9 +1,11 @@
 """
 SPEC-TEAM-001: 인증 API Pydantic 스키마
+SPEC-GUEST-001: 게스트 세션 스키마 추가
 
 REQ-AUTH-001: RegisterRequest - 이메일/비밀번호/표시명 유효성 검사
 REQ-AUTH-002: LoginRequest, TokenResponse
 REQ-AUTH-003: RefreshRequest
+REQ-GUEST-001: GuestSessionResponse - 게스트 세션 응답 스키마
 """
 
 import re
@@ -66,3 +68,18 @@ class UserResponse(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class GuestSessionResponse(BaseModel):
+    """
+    REQ-GUEST-001: 게스트 세션 응답 스키마
+
+    게스트 세션 생성 시 반환되는 데이터:
+    - guest_session_id: UUID v4 세션 식별자
+    - guest_token: 24시간 유효한 JWT (type: "guest")
+    - expires_at: 세션 만료 시각 (UTC)
+    """
+
+    guest_session_id: str
+    guest_token: str
+    expires_at: datetime
