@@ -15,8 +15,8 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final meetings = ref.watch(meetingListProvider);
-    final isLoading = meetings.isEmpty && _isInitialLoading(ref);
+    // AsyncNotifier로 변경되어 AsyncValue 처리 필요
+    final meetingsAsync = ref.watch(meetingListProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -46,43 +46,50 @@ class HomeScreen extends ConsumerWidget {
           // 오프라인 배너 (서버 연결 불가 시 상단 표시)
           const OfflineBanner(),
           Expanded(
-            child: isLoading
-                // 로딩 중: shimmer 카드 표시
-                ? _buildShimmerList()
-                : meetings.isEmpty
-                    ? const Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.mic_none, size: 64, color: Colors.grey),
-                            SizedBox(height: 16),
-                            Text(
-                              '녹음된 미팅이 없습니다',
-                              style:
-                                  TextStyle(color: Colors.grey, fontSize: 16),
-                            ),
-                            SizedBox(height: 8),
-                            Text(
-                              '아래 버튼을 눌러 녹음을 시작하세요',
-                              style:
-                                  TextStyle(color: Colors.grey, fontSize: 14),
-                            ),
-                          ],
-                        ),
-                      )
-                    : ListView.builder(
-                        itemCount: meetings.length,
-                        itemBuilder: (context, index) {
-                          final meeting = meetings[index];
-                          return MeetingCard(
-                            meeting: meeting,
-                            onTap: () {
-                              // 결과 화면으로 이동
-                              context.push('/result/${meeting.id}');
-                            },
-                          );
-                        },
+            child: meetingsAsync.when(
+              // SharedPreferences 로딩 중: shimmer 카드 표시
+              loading: () => _buildShimmerList(),
+              error: (_, __) => const Center(
+                child: Text(
+                  '미팅 목록을 불러올 수 없습니다',
+                  style: TextStyle(color: Colors.grey),
+                ),
+              ),
+              data: (meetings) => meetings.isEmpty
+                  ? const Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.mic_none, size: 64, color: Colors.grey),
+                          SizedBox(height: 16),
+                          Text(
+                            '녹음된 미팅이 없습니다',
+                            style:
+                                TextStyle(color: Colors.grey, fontSize: 16),
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            '아래 버튼을 눌러 녹음을 시작하세요',
+                            style:
+                                TextStyle(color: Colors.grey, fontSize: 14),
+                          ),
+                        ],
                       ),
+                    )
+                  : ListView.builder(
+                      itemCount: meetings.length,
+                      itemBuilder: (context, index) {
+                        final meeting = meetings[index];
+                        return MeetingCard(
+                          meeting: meeting,
+                          onTap: () {
+                            // 결과 화면으로 이동
+                            context.push('/result/${meeting.id}');
+                          },
+                        );
+                      },
+                    ),
+            ),
           ),
         ],
       ),
@@ -92,12 +99,6 @@ class HomeScreen extends ConsumerWidget {
         child: const Icon(Icons.mic),
       ),
     );
-  }
-
-  // 초기 로딩 여부 판단 (실제 로딩 상태 추가 시 교체)
-  bool _isInitialLoading(WidgetRef ref) {
-    // MVP에서는 항상 false (즉시 로딩된 목록 사용)
-    return false;
   }
 
   // shimmer 로딩 리스트 (3개 카드)

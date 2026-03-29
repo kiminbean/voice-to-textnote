@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     chunk_overlap_seconds: int = 5
 
     # Redis 캐시 TTL (초)
-    cache_ttl_seconds: int = 86400  # 24시간
+    cache_ttl_seconds: int = 604800  # 7일
 
     # 메모리 경고 임계값 (MB) - 24GB의 80%
     memory_warning_threshold_mb: int = 19660
@@ -51,7 +51,7 @@ class Settings(BaseSettings):
     # 화자 분리 설정
     max_concurrent_diarizations: int = 2
     diarization_model: str = "pyannote/speaker-diarization-3.1"
-    diarization_result_ttl: int = 86400  # 24시간 (초)
+    diarization_result_ttl: int = 604800  # 7일 (초)
     # REQ-PERF-001: 화자 분리 청크 분할 설정
     dia_chunk_duration_minutes: int = 10  # 청크 단위 (분)
     dia_chunk_overlap_seconds: int = 30  # 청크 간 오버랩 (초)
@@ -59,13 +59,13 @@ class Settings(BaseSettings):
 
     # 회의록 생성 설정 (REQ-MIN-008, REQ-MIN-013)
     max_concurrent_minutes: int = 3  # 최대 동시 회의록 생성 작업 수
-    minutes_result_ttl: int = 86400  # 결과 캐시 TTL: 24시간 (초)
+    minutes_result_ttl: int = 604800  # 결과 캐시 TTL: 7일 (초)
 
     # AI 요약 생성 설정 (REQ-SUM-008, REQ-SUM-011, REQ-SUM-014)
     anthropic_api_key: str = ""  # ANTHROPIC_API_KEY 환경 변수 (미사용 - 호환성 유지)
     openai_api_key: str = ""  # OPENAI_API_KEY 환경 변수
     max_concurrent_summaries: int = 2  # 최대 동시 요약 작업 수
-    summary_result_ttl: int = 86400  # 요약 결과 캐시 TTL: 24시간 (초)
+    summary_result_ttl: int = 604800  # 요약 결과 캐시 TTL: 7일 (초)
     # 양식 섹션 포함 시 4000+ 토큰 필요 (9개 섹션 + action_items + key_decisions)
     summary_max_tokens: int = 4096  # OpenAI API 최대 응답 토큰
     summary_model: str = "gpt-4o-mini"  # OpenAI 모델명

@@ -83,7 +83,7 @@ class TestGetResultWithFallback:
 
         with patch("backend.app.result_fallback.ResultService", return_value=mock_result_service):
             with patch("backend.app.result_fallback.settings") as mock_settings:
-                mock_settings.cache_ttl_seconds = 86400
+                mock_settings.cache_ttl_seconds = 604800
                 await get_result_with_fallback(
                     redis_client=mock_redis,
                     task_id="test-003",

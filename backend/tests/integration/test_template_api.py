@@ -100,7 +100,7 @@ def tmpl_client(mock_tmpl_redis_client, tmp_path):
     test_settings.templates_dir = tmp_path / "templates"
     test_settings.huggingface_token = "hf_testtoken"
     test_settings.diarization_model = "pyannote/speaker-diarization-3.1"
-    test_settings.cache_ttl_seconds = 86400
+    test_settings.cache_ttl_seconds = 604800
     test_settings.temp_dir.mkdir(parents=True, exist_ok=True)
     test_settings.results_dir.mkdir(parents=True, exist_ok=True)
     test_settings.templates_dir.mkdir(parents=True, exist_ok=True)

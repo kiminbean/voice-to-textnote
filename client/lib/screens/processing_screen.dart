@@ -62,7 +62,8 @@ class _ProcessingScreenState extends ConsumerState<ProcessingScreen>
 
   // Meeting의 audioFilePath를 가져와 파이프라인 시작
   void _startPipelineForMeeting() {
-    final meetings = ref.read(meetingListProvider);
+    // AsyncNotifier이므로 .value로 현재 목록 조회
+    final meetings = ref.read(meetingListProvider).value ?? [];
     final meeting = meetings.where((m) => m.id == widget.meetingId).firstOrNull;
 
     if (meeting == null || meeting.audioFilePath == null) {
@@ -132,10 +133,11 @@ class _ProcessingScreenState extends ConsumerState<ProcessingScreen>
   // 파이프라인 완료 시 Meeting 업데이트 및 결과 화면 이동
   void _onPipelineCompleted(PipelineState pipelineState) {
     // Meeting에 task ID들 저장 후 completed 상태로 변경
+    // AsyncNotifier이므로 .value?.firstWhere 사용
+    final currentMeetings = ref.read(meetingListProvider).value ?? [];
     ref.read(meetingListProvider.notifier).updateMeeting(
           widget.meetingId,
-          ref
-              .read(meetingListProvider)
+          currentMeetings
               .firstWhere((m) => m.id == widget.meetingId)
               .copyWith(
                 status: MeetingStatus.completed,
@@ -215,8 +217,8 @@ class _ProcessingScreenState extends ConsumerState<ProcessingScreen>
       } else if (next.currentStep == PipelineStep.failed &&
           next.errorMessage != null &&
           mounted) {
-        // Meeting 상태를 failed로 업데이트
-        final meetings = ref.read(meetingListProvider);
+        // Meeting 상태를 failed로 업데이트 (AsyncNotifier이므로 .value 사용)
+        final meetings = ref.read(meetingListProvider).value ?? [];
         final meeting =
             meetings.where((m) => m.id == widget.meetingId).firstOrNull;
         if (meeting != null) {

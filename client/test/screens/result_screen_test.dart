@@ -13,13 +13,13 @@ import 'package:voice_to_textnote/services/summary_api.dart';
 class MockMinutesApi extends Mock implements MinutesApi {}
 class MockSummaryApi extends Mock implements SummaryApi {}
 
-// 테스트용 Meeting 목록 Notifier
+// 테스트용 Meeting 목록 Notifier (AsyncNotifier이므로 Future<List<Meeting>> 반환)
 class _MockMeetingListNotifier extends MeetingListNotifier {
   final List<Meeting> _meetings;
   _MockMeetingListNotifier(this._meetings);
 
   @override
-  List<Meeting> build() => _meetings;
+  Future<List<Meeting>> build() async => _meetings;
 }
 
 // 액션 아이템 탭까지 진행하는 헬퍼

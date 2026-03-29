@@ -337,7 +337,7 @@ class TestTranscriptionTaskMain:
     ):
         """30분 이하 오디오 정상 처리 흐름"""
         mock_settings.results_dir = tmp_path
-        mock_settings.cache_ttl_seconds = 86400
+        mock_settings.cache_ttl_seconds = 604800
         mock_settings.chunk_duration_ms = 1800000
         mock_settings.chunk_overlap_ms = 5000
 
@@ -458,7 +458,7 @@ class TestTranscriptionTaskMain:
     ):
         """결과가 파일 시스템에도 저장되는지 확인"""
         mock_settings.results_dir = tmp_path
-        mock_settings.cache_ttl_seconds = 86400
+        mock_settings.cache_ttl_seconds = 604800
         mock_settings.chunk_duration_ms = 1800000
         mock_settings.chunk_overlap_ms = 5000
 

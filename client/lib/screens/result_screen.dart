@@ -83,8 +83,8 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Meeting에서 파이프라인 task ID 조회
-    final meetings = ref.watch(meetingListProvider);
+    // Meeting에서 파이프라인 task ID 조회 (AsyncNotifier이므로 .value 사용)
+    final meetings = ref.watch(meetingListProvider).value ?? [];
     final meeting = meetings.where((m) => m.id == widget.meetingId).firstOrNull;
     final minutesTaskId = meeting?.minutesTaskId;
     final summaryTaskId = meeting?.summaryTaskId;

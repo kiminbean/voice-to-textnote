@@ -94,12 +94,12 @@ void main() {
   });
 }
 
-// 테스트용 Mock Notifier
+// 테스트용 Mock Notifier (AsyncNotifier이므로 Future<List<Meeting>> 반환)
 class _MockMeetingListNotifier extends MeetingListNotifier {
   final List<Meeting> _initialMeetings;
 
   _MockMeetingListNotifier(this._initialMeetings);
 
   @override
-  List<Meeting> build() => _initialMeetings;
+  Future<List<Meeting>> build() async => _initialMeetings;
 }

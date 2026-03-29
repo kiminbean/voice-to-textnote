@@ -330,10 +330,10 @@ def e2e_client(e2e_redis: InMemoryRedis, tmp_path):
     test_settings.max_concurrent_summaries = 2
     test_settings.temp_dir = tmp_path / "temp"
     test_settings.results_dir = tmp_path / "results"
-    test_settings.cache_ttl_seconds = 86400
-    test_settings.diarization_result_ttl = 86400
-    test_settings.minutes_result_ttl = 86400
-    test_settings.summary_result_ttl = 86400
+    test_settings.cache_ttl_seconds = 604800
+    test_settings.diarization_result_ttl = 604800
+    test_settings.minutes_result_ttl = 604800
+    test_settings.summary_result_ttl = 604800
     test_settings.whisper_model = "mlx-community/whisper-large-v3-turbo"
     test_settings.whisper_language = "ko"
     test_settings.chunk_duration_ms = 30 * 60 * 1000
