@@ -25,6 +25,11 @@ class AppConfig {
   static const String _apiBaseUrlOverride =
       String.fromEnvironment('API_BASE_URL', defaultValue: '');
 
+  // 컴파일 시 --dart-define=API_KEY=xxx 으로 API Key 주입
+  // 서버의 X-API-Key 인증에 사용됨 (SPEC-SEC-001)
+  static const String apiKey =
+      String.fromEnvironment('API_KEY', defaultValue: '');
+
   /// 현재 실행 환경
   static Environment get environment {
     switch (_envName) {

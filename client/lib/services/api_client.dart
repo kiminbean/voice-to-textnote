@@ -17,6 +17,8 @@ final dioProvider = Provider<Dio>((ref) {
     headers: {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
+      // SPEC-SEC-001: API Key 인증 헤더 (--dart-define=API_KEY로 주입)
+      if (AppConfig.apiKey.isNotEmpty) 'X-API-Key': AppConfig.apiKey,
     },
   ));
 
