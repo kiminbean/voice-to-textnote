@@ -5,10 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:voice_to_textnote/models/meeting.dart';
 import 'package:voice_to_textnote/models/search_result.dart';
 import 'package:voice_to_textnote/providers/connectivity_provider.dart';
-import 'package:voice_to_textnote/providers/meeting_list_provider.dart';
 import 'package:voice_to_textnote/providers/search_provider.dart';
 import 'package:voice_to_textnote/screens/home_screen.dart';
 import 'package:voice_to_textnote/screens/search_screen.dart';
@@ -82,8 +80,8 @@ void main() {
     testWidgets('SearchScreen이 TextField와 함께 렌더링되어야 함',
         (WidgetTester tester) async {
       await tester.pumpWidget(
-        ProviderScope(
-          child: const MaterialApp(
+        const ProviderScope(
+          child: MaterialApp(
             home: SearchScreen(),
           ),
         ),
@@ -97,8 +95,8 @@ void main() {
     testWidgets('검색어가 없을 때 안내 메시지가 표시되어야 함',
         (WidgetTester tester) async {
       await tester.pumpWidget(
-        ProviderScope(
-          child: const MaterialApp(
+        const ProviderScope(
+          child: MaterialApp(
             home: SearchScreen(),
           ),
         ),
@@ -114,9 +112,9 @@ void main() {
     testWidgets('검색 결과가 없을 때 "검색 결과가 없습니다" 메시지가 표시되어야 함',
         (WidgetTester tester) async {
       // 빈 결과를 반환하는 오버라이드
-      final emptyQuery = SearchQuery(query: '없는검색어결과');
-      final emptyResponse = SearchResponse(
-        items: const [],
+      const emptyQuery = SearchQuery(query: '없는검색어결과');
+      const emptyResponse = SearchResponse(
+        items: [],
         total: 0,
         page: 1,
         pageSize: 20,
@@ -173,7 +171,7 @@ void main() {
         query: '키워드',
       );
 
-      final searchQuery = SearchQuery(query: '키워드');
+      const searchQuery = SearchQuery(query: '키워드');
 
       await tester.pumpWidget(
         ProviderScope(
@@ -199,14 +197,4 @@ void main() {
       expect(find.textContaining('안녕'), findsWidgets);
     });
   });
-}
-
-// 테스트용 Mock Notifier (AsyncNotifier이므로 Future<List<Meeting>> 반환)
-class _MockMeetingListNotifier extends MeetingListNotifier {
-  final List<Meeting> _initialMeetings;
-
-  _MockMeetingListNotifier(this._initialMeetings);
-
-  @override
-  Future<List<Meeting>> build() async => _initialMeetings;
 }
