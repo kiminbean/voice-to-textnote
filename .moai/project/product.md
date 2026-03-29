@@ -346,12 +346,19 @@
 - **SPEC-E2E-001**: E2E 통합 테스트 (767개 테스트, 96.94% 커버리지)
 - **SPEC-APP-002**: Flutter 기능 강화 (SSE, 오류 UI, Shimmer, 데이터바인딩, Connectivity)
 
-## 다음 단계 (Phase 5 계획)
+### Phase 5 ✅ (완료): 사용성 & 보안 강화
+
+- **SPEC-EXPORT-001**: 회의록 PDF 내보내기 (fpdf2 + NotoSansKR 한국어)
+- **SPEC-ENV-001**: Flutter 환경 설정 분리 (--dart-define 기반 dev/staging/production)
+- **SPEC-GUEST-001**: Guest 모드 (24시간 임시 저장, 회원가입 없이 앱 사용)
+- **API 인증 활성화**: X-API-Key 헤더 인증 (Flutter + Backend 연동)
+
+## 다음 단계 (Phase 6 계획)
 
 ### 향후 로드맵
 
-- **모바일 앱 출시**: iOS/Android 네이티브 구현
-- **검색 기능**: 회의록 전문 검색
-- **팀 협업**: 팀 관리, 권한 제어, 공유 & 댓글
+- **SPEC-MOBILE-001**: iOS/Android 네이티브 최적화 (Push 알림, 백그라운드 녹음)
+- **i18n**: 11개 언어 다국어 지원
+- **보안 강화**: ATS 프로덕션 설정, 파일 매직 바이트 검증
 - **클라우드 동기화**: 멀티 기기 지원
 - **고급 분석**: 발화 톤 분석, 감정 분석
