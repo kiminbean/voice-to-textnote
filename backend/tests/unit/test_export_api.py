@@ -5,14 +5,13 @@ SPEC-EXPORT-001: Export API 단위 테스트 (TDD RED 단계)
 """
 
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from backend.app.middleware.auth import verify_api_key
-
 
 # ---------------------------------------------------------------------------
 # 테스트 픽스처

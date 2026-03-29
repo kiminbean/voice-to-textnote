@@ -16,7 +16,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
-
 # ---------------------------------------------------------------------------
 # 공통 픽스처
 # ---------------------------------------------------------------------------
@@ -61,9 +60,8 @@ def team_client(admin_user):
     팀 API 테스트용 TestClient
     - admin_user로 인증된 상태
     """
-    from fastapi.testclient import TestClient
+    from backend.app.dependencies import get_current_user, get_db_session
     from backend.app.main import app
-    from backend.app.dependencies import get_db_session, get_current_user
 
     async def mock_db_session():
         yield AsyncMock()
@@ -199,9 +197,8 @@ def test_update_team_admin_only(team_client, admin_user):
 
 def test_update_team_non_admin_403(admin_user):
     """non-admin 사용자가 팀 수정 시도 시 403"""
-    from fastapi.testclient import TestClient
+    from backend.app.dependencies import get_current_user, get_db_session
     from backend.app.main import app
-    from backend.app.dependencies import get_db_session, get_current_user
 
     non_admin = _make_user("member")
 
@@ -251,9 +248,8 @@ def test_delete_team_admin_only(team_client, admin_user):
 
 def test_delete_team_non_admin_403(admin_user):
     """non-admin 사용자가 팀 삭제 시도 시 403"""
-    from fastapi.testclient import TestClient
+    from backend.app.dependencies import get_current_user, get_db_session
     from backend.app.main import app
-    from backend.app.dependencies import get_db_session, get_current_user
 
     non_admin = _make_user("viewer")
 
@@ -514,9 +510,8 @@ def test_remove_team_member_400_last_admin(team_client, admin_user):
 
 def test_remove_team_member_403_non_admin(team_client, admin_user):
     """non-admin이 다른 멤버 제거 시도 시 403"""
-    from fastapi.testclient import TestClient
+    from backend.app.dependencies import get_current_user, get_db_session
     from backend.app.main import app
-    from backend.app.dependencies import get_db_session, get_current_user
 
     non_admin = _make_user("member")
 

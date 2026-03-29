@@ -9,6 +9,7 @@ from threading import Thread
 from unittest.mock import MagicMock, patch
 
 import pytest
+import torch
 
 # ---------------------------------------------------------------------------
 # 테스트 헬퍼 - pyannote Pipeline mock 생성
@@ -27,12 +28,14 @@ def _make_mock_pipeline():
     mock_turn2.start = 6.0
     mock_turn2.end = 10.0
 
-    mock_diarization = MagicMock()
-    mock_diarization.itertracks.return_value = [
+    mock_diarization = MagicMock(spec=[])
+    mock_diarization.itertracks = MagicMock(return_value=[
         (mock_turn1, None, "SPEAKER_00"),
         (mock_turn2, None, "SPEAKER_01"),
-    ]
+    ])
 
+    # pyannote 4.x: DiarizeOutput.speaker_diarization → Annotation
+    # spec=[]로 생성하여 speaker_diarization이 없으면 getattr fallback 동작
     mock_pipeline.return_value = mock_diarization
     return mock_pipeline
 
@@ -232,7 +235,8 @@ class TestDiarizationEngineDiarize:
         wav_file = tmp_path / "test.wav"
         wav_file.write_bytes(b"\x00" * 100)
 
-        with ctx:
+        mock_waveform = torch.zeros(1, 16000)
+        with ctx, patch("torchaudio.load", return_value=(mock_waveform, 16000)):
             engine = DiarizationEngine.get_instance()
             engine.load(hf_token="hf_testtoken")
             result = engine.diarize(wav_file)
@@ -249,7 +253,8 @@ class TestDiarizationEngineDiarize:
         wav_file = tmp_path / "test.wav"
         wav_file.write_bytes(b"\x00" * 100)
 
-        with ctx:
+        mock_waveform = torch.zeros(1, 16000)
+        with ctx, patch("torchaudio.load", return_value=(mock_waveform, 16000)):
             engine = DiarizationEngine.get_instance()
             engine.load(hf_token="hf_testtoken")
             result = engine.diarize(wav_file)
@@ -266,7 +271,8 @@ class TestDiarizationEngineDiarize:
         wav_file = tmp_path / "test.wav"
         wav_file.write_bytes(b"\x00" * 100)
 
-        with ctx:
+        mock_waveform = torch.zeros(1, 16000)
+        with ctx, patch("torchaudio.load", return_value=(mock_waveform, 16000)):
             engine = DiarizationEngine.get_instance()
             engine.load(hf_token="hf_testtoken")
             result = engine.diarize(wav_file)

@@ -14,7 +14,6 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from backend.db.models import Base
 
-
 # ---------------------------------------------------------------------------
 # 테스트 픽스처
 # ---------------------------------------------------------------------------

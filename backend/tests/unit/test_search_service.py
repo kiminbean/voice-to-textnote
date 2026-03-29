@@ -7,11 +7,10 @@
 
 import pytest
 import pytest_asyncio
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from backend.db.models import Base
-
 
 # ---------------------------------------------------------------------------
 # 테스트 픽스처

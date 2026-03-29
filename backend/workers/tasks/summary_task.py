@@ -15,9 +15,9 @@ from datetime import UTC, datetime
 import redis
 
 from backend.app.config import settings
+from backend.events.publisher import publish_task_event_sync
 from backend.pipeline.summary_generator import SummaryGenerator
 from backend.schemas.transcription import TaskStatus
-from backend.events.publisher import publish_task_event_sync
 from backend.utils.logger import get_logger
 from backend.workers.celery_app import celery_app
 

@@ -15,7 +15,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
-
 # ---------------------------------------------------------------------------
 # 공통 헬퍼
 # ---------------------------------------------------------------------------
@@ -55,8 +54,8 @@ def meeting_client(current_user):
     회의록 API 테스트용 TestClient
     - current_user로 인증된 상태
     """
+    from backend.app.dependencies import get_current_user, get_db_session
     from backend.app.main import app
-    from backend.app.dependencies import get_db_session, get_current_user
 
     async def mock_db_session():
         yield AsyncMock()

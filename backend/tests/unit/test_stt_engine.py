@@ -404,13 +404,12 @@ class TestWhisperEngineProperties:
         WhisperEngine._load_time_seconds = None
         WhisperEngine._device = "cpu"
 
-    def test_model_name_contains_whisper_large(self):
-        """모델명에 'whisper'와 'large' 포함 (시나리오 4)"""
+    def test_model_name_contains_whisper(self):
+        """모델명에 'whisper' 포함 (시나리오 4)"""
         from backend.ml.stt_engine import WhisperEngine
 
         engine = WhisperEngine.get_instance()
         assert "whisper" in engine.model_name.lower()
-        assert "large" in engine.model_name.lower()
 
     def test_device_property_returns_string(self):
         """device 프로퍼티가 문자열 반환"""

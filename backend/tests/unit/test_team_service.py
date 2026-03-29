@@ -17,7 +17,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.db.auth_models import Team, TeamMember, User
 
-
 # ---------------------------------------------------------------------------
 # 픽스처
 # ---------------------------------------------------------------------------

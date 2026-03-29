@@ -11,15 +11,14 @@ SPEC-TEAM-001 REQ-TEAM-005: MeetingShareService 단위 테스트
 
 import uuid
 from datetime import UTC, datetime
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.db.auth_models import MeetingOwnership, TeamMember
+from backend.db.auth_models import MeetingOwnership
 from backend.db.models import TaskResult
-
 
 # ---------------------------------------------------------------------------
 # 픽스처

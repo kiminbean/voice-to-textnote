@@ -82,14 +82,14 @@ class TestSummaryCreateRequestSchema:
 
         req = SummaryCreateRequest(minutes_task_id="min-task-123")
         assert req.minutes_task_id == "min-task-123"
-        assert req.max_tokens == 2000  # 기본값
+        assert req.max_tokens == 4096  # 기본값 (2000→4096 변경됨)
 
     def test_create_request_max_tokens_default(self):
-        """max_tokens 기본값 = 2000 (REQ-SUM-005)"""
+        """max_tokens 기본값 = 4096 (REQ-SUM-005)"""
         from backend.schemas.summary import SummaryCreateRequest
 
         req = SummaryCreateRequest(minutes_task_id="test-id")
-        assert req.max_tokens == 2000
+        assert req.max_tokens == 4096
 
     def test_create_request_custom_max_tokens(self):
         """max_tokens 커스텀 값 설정"""

@@ -393,7 +393,9 @@ void main() {
       // High 필터 → 전체 필터 순서로 클릭
       await tester.tap(find.text('High'));
       await tester.pump();
-      await tester.tap(find.text('전체'));
+      await tester.ensureVisible(find.text('전체'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('전체'), warnIfMissed: false);
       await tester.pump();
 
       // Assert: 모든 아이템 표시

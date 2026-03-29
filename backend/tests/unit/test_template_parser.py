@@ -5,10 +5,8 @@ REQ-TMPL-002: DOCX/PDF 파일에서 구조 추출
 """
 
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import pytest
-
 
 # ---------------------------------------------------------------------------
 # 테스트용 픽스처 - 샘플 파일 생성

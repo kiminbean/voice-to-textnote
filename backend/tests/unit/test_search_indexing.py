@@ -7,7 +7,7 @@
 - 인덱싱 실패가 persist에 영향을 주지 않아야 함
 """
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 

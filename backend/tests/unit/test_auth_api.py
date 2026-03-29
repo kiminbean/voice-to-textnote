@@ -16,7 +16,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
-
 # ---------------------------------------------------------------------------
 # TestClient 픽스처
 # ---------------------------------------------------------------------------
@@ -29,9 +28,8 @@ def auth_client():
     - DB 세션을 mock으로 대체
     - 모델 로드 없이 앱 생성
     """
-    from fastapi.testclient import TestClient
-    from backend.app.main import app
     from backend.app.dependencies import get_db_session
+    from backend.app.main import app
 
     async def mock_db_session():
         yield AsyncMock()

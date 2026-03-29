@@ -9,14 +9,12 @@ REQ-AUTH-004: 로그아웃 - refresh token 폐기
 
 import uuid
 from datetime import UTC, datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.db.auth_models import RefreshToken, User
-
 
 # ---------------------------------------------------------------------------
 # 픽스처
@@ -307,6 +305,7 @@ async def test_logout_revokes_token(auth_service, mock_session):
 def test_password_validation_min_length():
     """비밀번호 최소 8자 검증 (Pydantic 스키마 레벨)"""
     from pydantic import ValidationError
+
     from backend.schemas.auth import RegisterRequest
 
     with pytest.raises(ValidationError):
@@ -316,6 +315,7 @@ def test_password_validation_min_length():
 def test_password_validation_letter_and_digit():
     """비밀번호는 영문자와 숫자를 모두 포함해야 함"""
     from pydantic import ValidationError
+
     from backend.schemas.auth import RegisterRequest
 
     # 숫자 없음

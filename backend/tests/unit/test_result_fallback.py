@@ -97,7 +97,7 @@ class TestGetResultWithFallback:
         # 첫 번째 인자는 키
         assert call_args[0][0] == "task:result:test-003"
         # 두 번째 인자는 TTL
-        assert call_args[0][1] == 86400
+        assert call_args[0][1] == 604800  # cache_ttl_seconds = 7일
         # 세 번째 인자는 JSON 직렬화된 결과
         restored_data = json.loads(call_args[0][2])
         assert restored_data == db_result_data

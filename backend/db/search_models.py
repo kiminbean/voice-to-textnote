@@ -12,7 +12,6 @@ ORM 모델이 아닌 Raw SQL을 사용합니다.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Union
 
 from sqlalchemy import Connection, Engine, text
 from sqlalchemy.orm import Session
@@ -51,7 +50,7 @@ VALUES
 _INDEXABLE_TASK_TYPES = {"minutes", "summary"}
 
 
-def ensure_search_index_table(engine_or_connection: Union[Engine, Connection]) -> None:
+def ensure_search_index_table(engine_or_connection: Engine | Connection) -> None:
     """
     FTS5 search_index 가상 테이블 생성 (없으면 생성, 있으면 무시)
 

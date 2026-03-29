@@ -59,11 +59,10 @@ async def validate_startup() -> dict:
 
     # REQ-LIFE-002: DB 연결 검증 + 개발 모드 테이블 자동 생성
     try:
-        from backend.app.config import settings
-        from backend.db.models import Base
-
         # SPEC-TEAM-001: auth 모델 import하여 Base.metadata에 등록
         import backend.db.auth_models  # noqa: F401
+        from backend.app.config import settings
+        from backend.db.models import Base
 
         engine = create_engine(settings.database_url or None)
 

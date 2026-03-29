@@ -471,8 +471,9 @@ class TestBuildPromptWithTemplateStructure:
 
     def test_build_prompt_default_template_structure_is_none(self):
         """template_structure 기본값은 None (하위 호환성)"""
-        from backend.pipeline.summary_generator import SummaryGenerator
         import inspect
+
+        from backend.pipeline.summary_generator import SummaryGenerator
 
         sig = inspect.signature(SummaryGenerator.build_prompt)
         params = sig.parameters
@@ -487,8 +488,6 @@ class TestGenerateSummaryWithTemplateStructure:
         """generate_summary()가 template_structure 파라미터를 수락해야 함"""
         from backend.pipeline.summary_generator import SummaryGenerator
         from backend.schemas.summary import SummaryResult
-
-        mock_response = _make_mock_claude_response(VALID_CLAUDE_RESPONSE_JSON)
 
         with patch("backend.pipeline.summary_generator.OpenAI") as mock_cls:
             mock_client = MagicMock()
@@ -514,8 +513,9 @@ class TestGenerateSummaryWithTemplateStructure:
 
     def test_generate_summary_default_template_structure_is_none(self):
         """generate_summary()의 template_structure 기본값은 None"""
-        from backend.pipeline.summary_generator import SummaryGenerator
         import inspect
+
+        from backend.pipeline.summary_generator import SummaryGenerator
 
         sig = inspect.signature(SummaryGenerator.generate_summary)
         params = sig.parameters

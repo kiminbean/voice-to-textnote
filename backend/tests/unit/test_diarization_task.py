@@ -88,19 +88,19 @@ class TestDiarizationTaskHappyPath:
 
         mock_engine = _make_mock_engine()
 
-        with patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis):
-            with patch(
-                "backend.workers.tasks.diarization_task.DiarizationEngine.get_instance",
-                return_value=mock_engine,
-            ):
-                with patch("backend.workers.tasks.diarization_task.settings") as mock_settings:
-                    mock_settings.temp_dir = tmp_path
-                    mock_settings.diarization_result_ttl = 86400
-                    mock_settings.max_concurrent_diarizations = 2
-                    mock_settings.huggingface_token = "hf_testtoken"
-                    mock_settings.diarization_model = "pyannote/speaker-diarization-3.1"
+        with patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis), \
+             patch("backend.workers.tasks.diarization_task.DiarizationEngine.get_instance", return_value=mock_engine), \
+             patch("backend.workers.tasks.diarization_task.settings") as mock_settings, \
+             patch("backend.pipeline.audio_processor.get_audio_duration_seconds", return_value=10.0):
+            mock_settings.temp_dir = tmp_path
+            mock_settings.diarization_result_ttl = 86400
+            mock_settings.max_concurrent_diarizations = 2
+            mock_settings.huggingface_token = "hf_testtoken"
+            mock_settings.diarization_model = "pyannote/speaker-diarization-3.1"
+            mock_settings.dia_chunk_threshold_minutes = 15
+            mock_settings.cache_ttl_seconds = 604800
 
-                    result = diarization_task(task_id=task_id, stt_task_id=stt_task_id)
+            result = diarization_task(task_id=task_id, stt_task_id=stt_task_id)
 
         assert result["status"] == "completed"
         assert result["task_id"] == task_id
@@ -123,19 +123,19 @@ class TestDiarizationTaskHappyPath:
 
         mock_engine = _make_mock_engine()
 
-        with patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis):
-            with patch(
-                "backend.workers.tasks.diarization_task.DiarizationEngine.get_instance",
-                return_value=mock_engine,
-            ):
-                with patch("backend.workers.tasks.diarization_task.settings") as mock_settings:
-                    mock_settings.temp_dir = tmp_path
-                    mock_settings.diarization_result_ttl = 86400
-                    mock_settings.max_concurrent_diarizations = 2
-                    mock_settings.huggingface_token = "hf_testtoken"
-                    mock_settings.diarization_model = "pyannote/speaker-diarization-3.1"
+        with patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis), \
+             patch("backend.workers.tasks.diarization_task.DiarizationEngine.get_instance", return_value=mock_engine), \
+             patch("backend.workers.tasks.diarization_task.settings") as mock_settings, \
+             patch("backend.pipeline.audio_processor.get_audio_duration_seconds", return_value=10.0):
+            mock_settings.temp_dir = tmp_path
+            mock_settings.diarization_result_ttl = 86400
+            mock_settings.max_concurrent_diarizations = 2
+            mock_settings.huggingface_token = "hf_testtoken"
+            mock_settings.diarization_model = "pyannote/speaker-diarization-3.1"
+            mock_settings.dia_chunk_threshold_minutes = 15
+            mock_settings.cache_ttl_seconds = 604800
 
-                    result = diarization_task(task_id=task_id, stt_task_id=stt_task_id)
+            result = diarization_task(task_id=task_id, stt_task_id=stt_task_id)
 
         assert "segments" in result
         assert len(result["segments"]) == 2
@@ -336,19 +336,19 @@ class TestDiarizationTaskStatusTransitions:
 
         mock_engine = _make_mock_engine()
 
-        with patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis):
-            with patch(
-                "backend.workers.tasks.diarization_task.DiarizationEngine.get_instance",
-                return_value=mock_engine,
-            ):
-                with patch("backend.workers.tasks.diarization_task.settings") as mock_settings:
-                    mock_settings.temp_dir = tmp_path
-                    mock_settings.diarization_result_ttl = 86400
-                    mock_settings.max_concurrent_diarizations = 2
-                    mock_settings.huggingface_token = "hf_testtoken"
-                    mock_settings.diarization_model = "pyannote/speaker-diarization-3.1"
+        with patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis), \
+             patch("backend.workers.tasks.diarization_task.DiarizationEngine.get_instance", return_value=mock_engine), \
+             patch("backend.workers.tasks.diarization_task.settings") as mock_settings, \
+             patch("backend.pipeline.audio_processor.get_audio_duration_seconds", return_value=10.0):
+            mock_settings.temp_dir = tmp_path
+            mock_settings.diarization_result_ttl = 86400
+            mock_settings.max_concurrent_diarizations = 2
+            mock_settings.huggingface_token = "hf_testtoken"
+            mock_settings.diarization_model = "pyannote/speaker-diarization-3.1"
+            mock_settings.dia_chunk_threshold_minutes = 15
+            mock_settings.cache_ttl_seconds = 604800
 
-                    diarization_task(task_id=task_id, stt_task_id=stt_task_id)
+            diarization_task(task_id=task_id, stt_task_id=stt_task_id)
 
         # processing 또는 completed 상태 업데이트가 있었는지 확인
         statuses = [u.get("status") for u in status_updates if "status" in u]
@@ -370,19 +370,19 @@ class TestDiarizationTaskStatusTransitions:
         )
         mock_engine = _make_mock_engine()
 
-        with patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis):
-            with patch(
-                "backend.workers.tasks.diarization_task.DiarizationEngine.get_instance",
-                return_value=mock_engine,
-            ):
-                with patch("backend.workers.tasks.diarization_task.settings") as mock_settings:
-                    mock_settings.temp_dir = tmp_path
-                    mock_settings.diarization_result_ttl = 86400
-                    mock_settings.max_concurrent_diarizations = 2
-                    mock_settings.huggingface_token = "hf_testtoken"
-                    mock_settings.diarization_model = "pyannote/speaker-diarization-3.1"
+        with patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis), \
+             patch("backend.workers.tasks.diarization_task.DiarizationEngine.get_instance", return_value=mock_engine), \
+             patch("backend.workers.tasks.diarization_task.settings") as mock_settings, \
+             patch("backend.pipeline.audio_processor.get_audio_duration_seconds", return_value=10.0):
+            mock_settings.temp_dir = tmp_path
+            mock_settings.diarization_result_ttl = 86400
+            mock_settings.max_concurrent_diarizations = 2
+            mock_settings.huggingface_token = "hf_testtoken"
+            mock_settings.diarization_model = "pyannote/speaker-diarization-3.1"
+            mock_settings.dia_chunk_threshold_minutes = 15
+            mock_settings.cache_ttl_seconds = 604800
 
-                    result = diarization_task(task_id=task_id, stt_task_id=stt_task_id)
+            result = diarization_task(task_id=task_id, stt_task_id=stt_task_id)
 
         assert result["status"] == "completed"
 
@@ -402,19 +402,19 @@ class TestDiarizationTaskStatusTransitions:
         )
         mock_engine = _make_mock_engine()
 
-        with patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis):
-            with patch(
-                "backend.workers.tasks.diarization_task.DiarizationEngine.get_instance",
-                return_value=mock_engine,
-            ):
-                with patch("backend.workers.tasks.diarization_task.settings") as mock_settings:
-                    mock_settings.temp_dir = tmp_path
-                    mock_settings.diarization_result_ttl = 86400
-                    mock_settings.max_concurrent_diarizations = 2
-                    mock_settings.huggingface_token = "hf_testtoken"
-                    mock_settings.diarization_model = "pyannote/speaker-diarization-3.1"
+        with patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis), \
+             patch("backend.workers.tasks.diarization_task.DiarizationEngine.get_instance", return_value=mock_engine), \
+             patch("backend.workers.tasks.diarization_task.settings") as mock_settings, \
+             patch("backend.pipeline.audio_processor.get_audio_duration_seconds", return_value=10.0):
+            mock_settings.temp_dir = tmp_path
+            mock_settings.diarization_result_ttl = 86400
+            mock_settings.max_concurrent_diarizations = 2
+            mock_settings.huggingface_token = "hf_testtoken"
+            mock_settings.diarization_model = "pyannote/speaker-diarization-3.1"
+            mock_settings.dia_chunk_threshold_minutes = 15
+            mock_settings.cache_ttl_seconds = 604800
 
-                    result = diarization_task(task_id=task_id, stt_task_id=stt_task_id)
+            result = diarization_task(task_id=task_id, stt_task_id=stt_task_id)
 
         for field in ("task_id", "stt_task_id", "status", "segments"):
             assert field in result, f"결과에 '{field}' 필드 누락"

@@ -26,7 +26,8 @@ void main() {
       ),
     );
 
-    await tester.pumpAndSettle();
+    // HomeScreen의 주기적 타이머(서버 동기화 등)로 pumpAndSettle 타임아웃 방지
+    await tester.pump(const Duration(seconds: 1));
 
     // 홈 화면이 렌더링되어야 함
     expect(find.byType(HomeScreen), findsOneWidget);

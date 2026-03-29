@@ -15,6 +15,7 @@ import redis
 from celery.exceptions import SoftTimeLimitExceeded
 
 from backend.app.config import settings
+from backend.events.publisher import publish_task_event_sync
 from backend.ml.stt_engine import WhisperEngine
 from backend.pipeline.audio_processor import (
     cleanup_temp_file,
@@ -23,7 +24,6 @@ from backend.pipeline.audio_processor import (
 )
 from backend.pipeline.chunk_manager import merge_segments, split_audio
 from backend.schemas.transcription import SegmentResult, TaskStatus
-from backend.events.publisher import publish_task_event_sync
 from backend.utils.logger import get_logger
 from backend.workers.celery_app import celery_app
 
