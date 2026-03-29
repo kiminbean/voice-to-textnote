@@ -103,7 +103,7 @@ def _unregister_active_job(task_id: str) -> None:
 def summary_task(
     task_id: str,
     minutes_task_id: str,
-    max_tokens: int = 2000,
+    max_tokens: int = 4096,
     template_id: str | None = None,
 ) -> dict:
     """
@@ -331,7 +331,7 @@ def summary_celery_task(
     self,
     task_id: str,
     minutes_task_id: str,
-    max_tokens: int = 2000,
+    max_tokens: int = 4096,
     template_id: str | None = None,
 ) -> dict:
     """
