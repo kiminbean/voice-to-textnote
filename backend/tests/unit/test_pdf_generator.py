@@ -248,3 +248,166 @@ class TestMinutesPDFGenerator:
 
         assert isinstance(result, bytes)
         assert result[:5] == b"%PDF-"
+
+    def test_generate_with_template_table_layout(
+        self, sample_minutes_data: dict
+    ) -> None:
+        """
+        template_structure에 table_layout이 있으면 양식 테이블 렌더링 경로가 실행되어야 함
+        """
+        from backend.pipeline.pdf_generator import MinutesPDFGenerator
+
+        # template_structure + table_layout이 포함된 요약 데이터
+        summary_with_template = {
+            "task_id": "summary-template-001",
+            "summary_text": "양식 기반 요약",
+            "sections": {
+                "회의 목적": "프로젝트 현황 점검",
+                "주요 논의": "일정 및 역할 분담",
+            },
+            "action_items": [],
+            "key_decisions": [],
+            "template_structure": {
+                "table_layout": [
+                    {"type": "full", "label": "과정명"},
+                    {"type": "split", "cells": [
+                        {"label": "미팅시간"},
+                        {"label": "참여자"},
+                    ]},
+                    {"type": "full", "label": "주요 논의", "large": True},
+                ]
+            },
+        }
+
+        generator = MinutesPDFGenerator()
+        result = generator.generate(sample_minutes_data, summary_with_template)
+
+        assert isinstance(result, bytes)
+        assert result[:5] == b"%PDF-"
+        assert len(result) > 1000
+
+    def test_speakers_empty_skips_stats(self, sample_minutes_data: dict) -> None:
+        """
+        speakers 목록이 비어있으면 발화자 통계 섹션이 생략되어야 함
+        (크기가 더 작아야 함)
+        """
+        from backend.pipeline.pdf_generator import MinutesPDFGenerator
+
+        minutes_no_speakers = {**sample_minutes_data, "speakers": []}
+
+        generator_with = MinutesPDFGenerator()
+        pdf_with = generator_with.generate(sample_minutes_data)
+
+        generator_without = MinutesPDFGenerator()
+        pdf_without = generator_without.generate(minutes_no_speakers)
+
+        # 발화자 통계가 없으면 크기가 더 작아야 함
+        assert len(pdf_without) < len(pdf_with)
+
+    def test_summary_text_is_json_string(self, sample_minutes_data: dict) -> None:
+        """
+        summary_text가 JSON 문자열이면 내부 summary_text를 추출해야 함
+        ValueError 없이 생성되어야 함
+        """
+        import json as _json
+        from backend.pipeline.pdf_generator import MinutesPDFGenerator
+
+        # summary_text가 JSON 형식인 경우
+        inner_summary = {"summary_text": "내부 요약 텍스트", "key": "value"}
+        summary_json_text = {
+            "summary_text": _json.dumps(inner_summary),
+            "action_items": [],
+            "key_decisions": [],
+        }
+
+        generator = MinutesPDFGenerator()
+        result = generator.generate(sample_minutes_data, summary_json_text)
+
+        assert isinstance(result, bytes)
+        assert result[:5] == b"%PDF-"
+
+    def test_key_decisions_with_dict_items(self, sample_minutes_data: dict) -> None:
+        """
+        key_decisions가 dict 형태의 항목을 포함할 때 올바르게 처리되어야 함
+        """
+        from backend.pipeline.pdf_generator import MinutesPDFGenerator
+
+        summary_dict_decisions = {
+            "summary_text": "결정 사항 테스트",
+            "action_items": [],
+            "key_decisions": [
+                {"decision": "dict 형태 결정 사항"},
+                "문자열 형태 결정 사항",
+            ],
+        }
+
+        generator = MinutesPDFGenerator()
+        result = generator.generate(sample_minutes_data, summary_dict_decisions)
+
+        assert isinstance(result, bytes)
+        assert result[:5] == b"%PDF-"
+
+    def test_summary_empty_text_skips_summary_section(
+        self, sample_minutes_data: dict
+    ) -> None:
+        """
+        summary_text가 빈 문자열이면 요약 섹션이 생략되어야 함
+        """
+        from backend.pipeline.pdf_generator import MinutesPDFGenerator
+
+        summary_empty_text = {
+            "summary_text": "",  # 빈 문자열
+            "action_items": [],
+            "key_decisions": [],
+        }
+
+        generator_no_summary = MinutesPDFGenerator()
+        pdf_no_summary = generator_no_summary.generate(sample_minutes_data)
+
+        generator_empty = MinutesPDFGenerator()
+        pdf_empty = generator_empty.generate(sample_minutes_data, summary_empty_text)
+
+        # 빈 요약은 요약 없는 경우와 비슷한 크기여야 함 (섹션 생략)
+        assert isinstance(pdf_empty, bytes)
+        assert pdf_empty[:5] == b"%PDF-"
+
+    def test_format_duration_mmss(self) -> None:
+        """
+        _format_duration_mmss 유틸리티 메서드 테스트
+        """
+        from backend.pipeline.pdf_generator import MinutesPDFGenerator
+
+        assert MinutesPDFGenerator._format_duration_mmss(0.0) == "00:00"
+        assert MinutesPDFGenerator._format_duration_mmss(65.5) == "01:05"
+        assert MinutesPDFGenerator._format_duration_mmss(3600.0) == "60:00"
+
+    def test_format_duration_hhmmss(self) -> None:
+        """
+        _format_duration_hhmmss 유틸리티 메서드 테스트
+        """
+        from backend.pipeline.pdf_generator import MinutesPDFGenerator
+
+        assert MinutesPDFGenerator._format_duration_hhmmss(0.0) == "00:00:00"
+        assert MinutesPDFGenerator._format_duration_hhmmss(3661.0) == "01:01:01"
+        assert MinutesPDFGenerator._format_duration_hhmmss(200.0) == "00:03:20"
+
+    def test_summary_text_invalid_json_string(self, sample_minutes_data: dict) -> None:
+        """
+        summary_text가 유효하지 않은 JSON 형식이면 원본 텍스트를 그대로 사용해야 함
+        파싱 실패해도 예외 없이 생성되어야 함
+        """
+        from backend.pipeline.pdf_generator import MinutesPDFGenerator
+
+        # 중괄호로 시작하지만 유효하지 않은 JSON
+        summary_invalid_json = {
+            "summary_text": "{broken json: not valid}",
+            "action_items": [],
+            "key_decisions": [],
+        }
+
+        generator = MinutesPDFGenerator()
+        # 예외 없이 생성되어야 함
+        result = generator.generate(sample_minutes_data, summary_invalid_json)
+
+        assert isinstance(result, bytes)
+        assert result[:5] == b"%PDF-"

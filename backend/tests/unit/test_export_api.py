@@ -265,3 +265,138 @@ class TestExportPdfApi:
         assert response.status_code == 200
         assert response.headers["content-type"] == "application/pdf"
         assert response.content[:5] == b"%PDF-"
+
+    def test_export_pdf_db_fallback_hit(self, valid_minutes_data: dict) -> None:
+        """
+        Redis 미스 후 DB 폴백에서 데이터를 찾으면 200 반환
+        """
+        from backend.app.api.v1 import export
+        from backend.app.dependencies import get_db_session, get_redis_client
+        from backend.app.middleware.auth import verify_api_key
+        from backend.db.models import TaskResult
+
+        app = FastAPI()
+        app.include_router(export.router, prefix="/api/v1")
+
+        # Redis: 항상 None 반환 (미스)
+        mock_redis = AsyncMock()
+        mock_redis.get.return_value = None
+
+        async def override_redis():
+            return mock_redis
+
+        # DB: 회의록 데이터 반환
+        async def override_db_with_data():
+            db_mock = AsyncMock()
+            record_mock = MagicMock(spec=TaskResult)
+            record_mock.result_data = valid_minutes_data
+            result_mock = MagicMock()
+            result_mock.scalars.return_value.first.return_value = record_mock
+            db_mock.execute.return_value = result_mock
+            yield db_mock
+
+        async def override_auth():
+            return "test-bypass"
+
+        app.dependency_overrides[get_redis_client] = override_redis
+        app.dependency_overrides[get_db_session] = override_db_with_data
+        app.dependency_overrides[verify_api_key] = override_auth
+
+        client = TestClient(app)
+        response = client.get("/api/v1/export/pdf/minutes-task-001")
+
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "application/pdf"
+        assert response.content[:5] == b"%PDF-"
+
+    def test_export_pdf_summary_task_id_not_found(
+        self, valid_minutes_data: dict
+    ) -> None:
+        """
+        summary_task_id가 지정됐지만 데이터를 찾을 수 없으면
+        요약 없이 PDF 생성 (200 반환, 경고 로그)
+        """
+        def redis_side_effect(key: str):
+            # 회의록은 반환, 요약은 None
+            if "min:result" in key:
+                return json.dumps(valid_minutes_data)
+            return None
+
+        mock_redis = AsyncMock()
+        mock_redis.get.side_effect = redis_side_effect
+
+        app = _make_export_app(mock_redis)
+        client = TestClient(app)
+
+        # summary_task_id가 있지만 데이터 없음
+        response = client.get(
+            "/api/v1/export/pdf/minutes-task-001?summary_task_id=nonexistent-summary"
+        )
+
+        # 요약 없이도 PDF 생성 성공
+        assert response.status_code == 200
+        assert response.content[:5] == b"%PDF-"
+
+    def test_export_pdf_pdf_generation_error(self) -> None:
+        """
+        PDF 생성 중 예외 발생 시 500 반환
+        (MinutesPDFGenerator.generate가 예외를 던지는 경우)
+        """
+        from unittest.mock import patch
+
+        minutes_with_segments = {
+            "task_id": "minutes-error-test",
+            "segments": [{"speaker_name": "테스트", "text": "테스트", "start": 0.0, "end": 1.0}],
+            "speakers": [],
+            "total_duration": 1.0,
+            "total_speakers": 0,
+            "markdown": "",
+            "created_at": "2026-03-22T14:00:00",
+        }
+
+        mock_redis = AsyncMock()
+        mock_redis.get.return_value = json.dumps(minutes_with_segments)
+
+        app = _make_export_app(mock_redis)
+
+        # MinutesPDFGenerator.generate를 예외 발생하도록 패치
+        with patch(
+            "backend.pipeline.pdf_generator.MinutesPDFGenerator.generate",
+            side_effect=RuntimeError("PDF 생성 내부 오류"),
+        ):
+            client = TestClient(app, raise_server_exceptions=False)
+            response = client.get("/api/v1/export/pdf/minutes-error-test")
+
+        assert response.status_code == 500
+
+    def test_export_pdf_value_error_returns_422(self) -> None:
+        """
+        MinutesPDFGenerator.generate가 ValueError를 던지면 422 반환
+        (segments가 API 레벨 검증 후에도 PDF 생성기에서 ValueError가 발생하는 경우)
+        """
+        from unittest.mock import patch
+
+        minutes_with_segments = {
+            "task_id": "minutes-value-error-test",
+            "segments": [{"speaker_name": "테스트", "text": "테스트", "start": 0.0, "end": 1.0}],
+            "speakers": [],
+            "total_duration": 1.0,
+            "total_speakers": 0,
+            "markdown": "",
+            "created_at": "2026-03-22T14:00:00",
+        }
+
+        mock_redis = AsyncMock()
+        mock_redis.get.return_value = json.dumps(minutes_with_segments)
+
+        app = _make_export_app(mock_redis)
+
+        # MinutesPDFGenerator.generate를 ValueError로 패치
+        with patch(
+            "backend.pipeline.pdf_generator.MinutesPDFGenerator.generate",
+            side_effect=ValueError("유효하지 않은 데이터"),
+        ):
+            client = TestClient(app, raise_server_exceptions=False)
+            response = client.get("/api/v1/export/pdf/minutes-value-error-test")
+
+        assert response.status_code == 422
