@@ -28,6 +28,8 @@ GoRouter createRouter(ProviderContainer container) {
     redirect: (context, state) {
       final authState = container.read(authStateProvider);
       final isAuthenticated = authState.isAuthenticated;
+      // SPEC-GUEST-001: 게스트 모드도 홈 접근 허용
+      final isGuest = authState.isGuest;
       final isLoading = authState.isLoading || authState.status == AuthStatus.initial;
       final currentPath = state.uri.path;
 
@@ -36,11 +38,11 @@ GoRouter createRouter(ProviderContainer container) {
 
       final isPublicPath = _publicPaths.contains(currentPath);
 
-      // 미인증 상태에서 보호된 경로 접근 시 로그인으로
-      if (!isAuthenticated && !isPublicPath) return '/login';
+      // 미인증 + 비게스트 상태에서 보호된 경로 접근 시 로그인으로
+      if (!isAuthenticated && !isGuest && !isPublicPath) return '/login';
 
       // 인증 상태에서 공개 경로(로그인/회원가입) 접근 시 홈으로
-      if (isAuthenticated && isPublicPath) return '/';
+      if ((isAuthenticated || isGuest) && isPublicPath) return '/';
 
       return null;
     },

@@ -34,6 +34,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         );
   }
 
+  // 게스트로 시작 처리 (SPEC-GUEST-001)
+  Future<void> _handleGuestStart() async {
+    await ref.read(authStateProvider.notifier).startAsGuest();
+  }
+
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authStateProvider);
@@ -169,6 +174,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         child: const Text('회원가입'),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 8),
+
+                  // 게스트로 시작 버튼 (SPEC-GUEST-001)
+                  TextButton(
+                    onPressed: isLoading ? null : _handleGuestStart,
+                    child: const Text(
+                      '게스트로 시작 (24시간 저장)',
+                      style: TextStyle(color: Colors.grey),
+                    ),
                   ),
                 ],
               ),

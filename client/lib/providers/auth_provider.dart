@@ -5,7 +5,7 @@ import 'package:voice_to_textnote/services/auth_api.dart';
 import 'package:voice_to_textnote/services/auth_service.dart';
 
 // 인증 상태 sealed class 대신 enum + 데이터 클래스 사용 (freezed 미사용 프로젝트)
-enum AuthStatus { initial, loading, authenticated, unauthenticated }
+enum AuthStatus { initial, loading, authenticated, unauthenticated, guest }
 
 class AuthState {
   final AuthStatus status;
@@ -24,9 +24,13 @@ class AuthState {
       : status = AuthStatus.authenticated, user = u, errorMessage = null;
   const AuthState.unauthenticated([String? msg])
       : status = AuthStatus.unauthenticated, user = null, errorMessage = msg;
+  // SPEC-GUEST-001: 게스트 상태 - authenticated와 동일하게 홈 접근 허용
+  const AuthState.guest() : status = AuthStatus.guest, user = null, errorMessage = null;
 
   bool get isAuthenticated => status == AuthStatus.authenticated;
   bool get isLoading => status == AuthStatus.loading;
+  // SPEC-GUEST-001: 게스트 여부 - 라우터와 홈 배너에서 사용
+  bool get isGuest => status == AuthStatus.guest;
 }
 
 // @MX:ANCHOR: 앱 전역 인증 상태를 관리하는 핵심 Notifier
@@ -38,9 +42,17 @@ class AuthNotifier extends StateNotifier<AuthState> {
   AuthNotifier(this._authApi, this._authService) : super(const AuthState.initial());
 
   // 앱 시작 시 저장된 토큰으로 인증 상태 복원
+  // SPEC-GUEST-001: 게스트 토큰이 있으면 게스트 상태로 복원
   Future<void> checkAuth() async {
     state = const AuthState.loading();
     try {
+      // 게스트 토큰 먼저 확인
+      final isGuest = await _authService.isGuestMode();
+      if (isGuest) {
+        state = const AuthState.guest();
+        return;
+      }
+
       final hasTokens = await _authService.hasTokens();
       if (!hasTokens) {
         state = const AuthState.unauthenticated();
@@ -104,7 +116,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  // 로그아웃
+  // 로그아웃 (일반 + 게스트 공통)
+  // SPEC-GUEST-001: 게스트 세션 데이터도 함께 삭제
   Future<void> logout() async {
     try {
       final accessToken = await _authService.getAccessToken();
@@ -118,9 +131,40 @@ class AuthNotifier extends StateNotifier<AuthState> {
     } catch (_) {
       // 서버 오류 무시하고 로컬 토큰 삭제
     } finally {
-      await _authService.clearTokens();
+      // 일반 토큰과 게스트 세션 모두 삭제
+      await Future.wait([
+        _authService.clearTokens(),
+        _authService.clearGuestSession(),
+      ]);
       state = const AuthState.unauthenticated();
     }
+  }
+
+  // 게스트로 시작 (SPEC-GUEST-001)
+  // 서버에서 게스트 세션 생성 후 로컬 저장
+  Future<void> startAsGuest() async {
+    state = const AuthState.loading();
+    try {
+      final data = await _authApi.createGuestSession();
+      final guestToken = data['guest_token'] as String;
+      final sessionId = data['guest_session_id'] as String;
+      await _authService.saveGuestToken(guestToken, sessionId);
+      state = const AuthState.guest();
+    } on Exception catch (e) {
+      state = AuthState.unauthenticated(_parseError(e));
+    }
+  }
+
+  // 테스트 전용: 게스트 상태로 직접 설정
+  // @visibleForTesting
+  void setGuestStateForTest() {
+    state = const AuthState.guest();
+  }
+
+  // 테스트 전용: 인증 상태로 직접 설정
+  // @visibleForTesting
+  void setAuthenticatedStateForTest(AuthUser user) {
+    state = AuthState.authenticated(user);
   }
 
   // 토큰 갱신 시도 (내부용)

@@ -91,4 +91,11 @@ class AuthApi {
     );
     return AuthUser.fromJson(response.data as Map<String, dynamic>);
   }
+
+  // 게스트 세션 생성 (SPEC-GUEST-001)
+  // 백엔드 응답: { guest_session_id, guest_token, expires_at }
+  Future<Map<String, dynamic>> createGuestSession() async {
+    final response = await _dio.post('/auth/guest');
+    return response.data as Map<String, dynamic>;
+  }
 }

@@ -3,9 +3,11 @@
 // @MX:NOTE: SPEC-SEARCH-001에서 추가 - 검색 화면 접근 버튼 포함
 // @MX:NOTE: SPEC-TEAM-001에서 추가 - 팀 관리 화면 접근 버튼 포함
 // @MX:NOTE: SPEC-HISTSYNC-001 - 서버 동기화, RefreshIndicator, 롱프레스 삭제 추가
+// @MX:NOTE: SPEC-GUEST-001 - 게스트 모드 배너 추가
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:voice_to_textnote/providers/auth_provider.dart';
 import 'package:voice_to_textnote/providers/meeting_list_provider.dart';
 import 'package:voice_to_textnote/services/history_api.dart';
 import 'package:voice_to_textnote/widgets/meeting_card.dart';
@@ -19,6 +21,8 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // AsyncNotifier로 변경되어 AsyncValue 처리 필요
     final meetingsAsync = ref.watch(meetingListProvider);
+    // SPEC-GUEST-001: 게스트 상태 감시
+    final authState = ref.watch(authStateProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -45,6 +49,37 @@ class HomeScreen extends ConsumerWidget {
       ),
       body: Column(
         children: [
+          // 게스트 모드 배너 (SPEC-GUEST-001)
+          if (authState.isGuest)
+            Container(
+              width: double.infinity,
+              color: Colors.amber.shade50,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline, size: 16, color: Colors.amber),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      '게스트 모드 — 데이터가 24시간 후 삭제됩니다',
+                      style: TextStyle(fontSize: 13, color: Colors.black87),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => context.push('/register'),
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.zero,
+                      minimumSize: const Size(0, 0),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: const Text(
+                      '회원가입',
+                      style: TextStyle(fontSize: 13),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           // 오프라인 배너 (서버 연결 불가 시 상단 표시)
           const OfflineBanner(),
           Expanded(

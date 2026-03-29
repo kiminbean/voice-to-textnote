@@ -6,6 +6,9 @@ import 'package:jwt_decoder/jwt_decoder.dart';
 // SecureStorage 키 상수
 const _kAccessToken = 'access_token';
 const _kRefreshToken = 'refresh_token';
+// 게스트 세션 키 상수 (SPEC-GUEST-001)
+const _kGuestToken = 'guest_token';
+const _kGuestSessionId = 'guest_session_id';
 
 // AuthService 프로바이더
 final authServiceProvider = Provider<AuthService>((ref) {
@@ -63,5 +66,32 @@ class AuthService {
   Future<bool> hasTokens() async {
     final token = await getAccessToken();
     return token != null && token.isNotEmpty;
+  }
+
+  // 게스트 토큰 저장 (SPEC-GUEST-001)
+  Future<void> saveGuestToken(String token, String sessionId) async {
+    await Future.wait([
+      _storage.write(key: _kGuestToken, value: token),
+      _storage.write(key: _kGuestSessionId, value: sessionId),
+    ]);
+  }
+
+  // 게스트 모드 여부 확인 (SPEC-GUEST-001)
+  Future<bool> isGuestMode() async {
+    final token = await _storage.read(key: _kGuestToken);
+    return token != null && token.isNotEmpty;
+  }
+
+  // 게스트 세션 데이터 삭제 (SPEC-GUEST-001)
+  Future<void> clearGuestSession() async {
+    await Future.wait([
+      _storage.delete(key: _kGuestToken),
+      _storage.delete(key: _kGuestSessionId),
+    ]);
+  }
+
+  // 게스트 토큰 조회 (api_client.dart 인터셉터에서 사용)
+  Future<String?> getGuestToken() async {
+    return _storage.read(key: _kGuestToken);
   }
 }
