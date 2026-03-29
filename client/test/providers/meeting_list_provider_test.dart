@@ -1,14 +1,27 @@
 // MeetingListProvider 상태 관리 테스트 (AsyncNotifier 기반)
+// SPEC-HISTSYNC-001: 서버 동기화 로직 포함
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:voice_to_textnote/models/meeting.dart';
 import 'package:voice_to_textnote/providers/meeting_list_provider.dart';
+import 'package:voice_to_textnote/services/history_api.dart';
+
+// HistoryApi Mock 클래스
+class MockHistoryApi extends Mock implements HistoryApi {}
 
 void main() {
+  // SharedPreferences 바인딩 초기화
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   group('MeetingListProvider', () {
     late ProviderContainer container;
 
     setUp(() {
+      // 테스트 환경에서 SharedPreferences 목 초기화
+      SharedPreferences.setMockInitialValues({});
       container = ProviderContainer();
     });
 
@@ -99,6 +112,200 @@ void main() {
 
       final meetings = container.read(meetingListProvider).value ?? [];
       expect(meetings.length, 3);
+    });
+  });
+
+  // SPEC-HISTSYNC-001: 서버 동기화 테스트 그룹
+  group('MeetingListProvider - 서버 동기화 (SPEC-HISTSYNC-001)', () {
+    late MockHistoryApi mockHistoryApi;
+
+    setUp(() {
+      // 각 테스트마다 SharedPreferences 초기화
+      SharedPreferences.setMockInitialValues({});
+      mockHistoryApi = MockHistoryApi();
+    });
+
+    // REQ-HSYNC-002: 서버 이력이 로컬 목록에 없는 경우 병합 테스트
+    test('refreshFromServer가 서버 이력을 로컬 목록과 병합해야 함', () async {
+      // Arrange: 서버에 1개의 summary 이력이 있음
+      when(() => mockHistoryApi.list(
+            taskType: any(named: 'taskType'),
+            status: any(named: 'status'),
+            page: any(named: 'page'),
+            pageSize: any(named: 'pageSize'),
+          )).thenAnswer(
+        (_) async => {
+          'items': [
+            {
+              'task_id': 'srv-001',
+              'task_type': 'summary',
+              'status': 'completed',
+              'created_at': '2024-01-15T10:00:00Z',
+              'completed_at': '2024-01-15T10:05:00Z',
+            }
+          ],
+          'total': 1,
+          'page': 1,
+          'page_size': 20,
+        },
+      );
+
+      final container = ProviderContainer(
+        overrides: [
+          historyApiProvider.overrideWithValue(mockHistoryApi),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await container.read(meetingListProvider.future);
+
+      // Act: 서버에서 새로 고침
+      await container.read(meetingListProvider.notifier).refreshFromServer();
+
+      // Assert: 서버 이력이 목록에 추가됨
+      final meetings = container.read(meetingListProvider).value ?? [];
+      expect(meetings.any((m) => m.id == 'srv-001'), isTrue);
+    });
+
+    // REQ-HSYNC-002: 로컬에 이미 있는 이력은 중복 추가 안 함
+    test('refreshFromServer가 이미 로컬에 있는 미팅은 중복 추가하지 않아야 함', () async {
+      // Arrange: 서버와 로컬 모두 동일한 항목 보유
+      when(() => mockHistoryApi.list(
+            taskType: any(named: 'taskType'),
+            status: any(named: 'status'),
+            page: any(named: 'page'),
+            pageSize: any(named: 'pageSize'),
+          )).thenAnswer(
+        (_) async => {
+          'items': [
+            {
+              'task_id': 'local-001',
+              'task_type': 'summary',
+              'status': 'completed',
+              'created_at': '2024-01-15T10:00:00Z',
+              'completed_at': '2024-01-15T10:05:00Z',
+            }
+          ],
+          'total': 1,
+          'page': 1,
+          'page_size': 20,
+        },
+      );
+
+      final container = ProviderContainer(
+        overrides: [
+          historyApiProvider.overrideWithValue(mockHistoryApi),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await container.read(meetingListProvider.future);
+
+      // 로컬에 동일한 id 미팅 추가
+      await container.read(meetingListProvider.notifier).addMeeting(Meeting(
+            id: 'local-001',
+            title: '기존 미팅',
+            createdAt: DateTime(2024, 1, 15, 10, 0),
+            status: MeetingStatus.completed,
+          ));
+
+      // Act
+      await container.read(meetingListProvider.notifier).refreshFromServer();
+
+      // Assert: 중복 없이 1개만 존재
+      final meetings = container.read(meetingListProvider).value ?? [];
+      final localItems = meetings.where((m) => m.id == 'local-001').toList();
+      expect(localItems.length, 1);
+    });
+
+    // REQ-HSYNC-007: 서버 오류 시 로컬 데이터 보존 테스트
+    test('refreshFromServer가 서버 오류 시 로컬 데이터를 보존해야 함', () async {
+      // Arrange: 서버 호출 시 예외 발생
+      when(() => mockHistoryApi.list(
+            taskType: any(named: 'taskType'),
+            status: any(named: 'status'),
+            page: any(named: 'page'),
+            pageSize: any(named: 'pageSize'),
+          )).thenThrow(
+        DioException(
+          requestOptions: RequestOptions(path: ''),
+          message: '서버 연결 오류',
+        ),
+      );
+
+      final container = ProviderContainer(
+        overrides: [
+          historyApiProvider.overrideWithValue(mockHistoryApi),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await container.read(meetingListProvider.future);
+
+      // 로컬에 1개 미팅 추가
+      await container.read(meetingListProvider.notifier).addMeeting(Meeting(
+            id: 'local-001',
+            title: '로컬 미팅',
+            createdAt: DateTime.now(),
+            status: MeetingStatus.completed,
+          ));
+
+      // Act: 서버 오류 시 예외가 전파되어야 하고, 로컬 데이터는 유지되어야 함
+      // 호출자(홈 화면)가 try-catch로 SnackBar 표시
+      await expectLater(
+        container.read(meetingListProvider.notifier).refreshFromServer(),
+        throwsA(isA<Exception>()),
+      );
+
+      // Assert: 로컬 데이터 보존 (state는 변경되지 않음)
+      final meetings = container.read(meetingListProvider).value ?? [];
+      expect(meetings.length, 1);
+      expect(meetings.first.id, 'local-001');
+    });
+
+    // REQ-HSYNC-002: 서버 이력에서 Meeting 객체 변환 테스트
+    test('refreshFromServer가 서버 HistoryItem을 Meeting으로 올바르게 변환해야 함', () async {
+      // Arrange
+      when(() => mockHistoryApi.list(
+            taskType: any(named: 'taskType'),
+            status: any(named: 'status'),
+            page: any(named: 'page'),
+            pageSize: any(named: 'pageSize'),
+          )).thenAnswer(
+        (_) async => {
+          'items': [
+            {
+              'task_id': 'sum-abc',
+              'task_type': 'summary',
+              'status': 'completed',
+              'created_at': '2024-03-01T09:00:00Z',
+              'completed_at': '2024-03-01T09:10:00Z',
+            }
+          ],
+          'total': 1,
+          'page': 1,
+          'page_size': 20,
+        },
+      );
+
+      final container = ProviderContainer(
+        overrides: [
+          historyApiProvider.overrideWithValue(mockHistoryApi),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await container.read(meetingListProvider.future);
+
+      // Act
+      await container.read(meetingListProvider.notifier).refreshFromServer();
+
+      // Assert: Meeting 변환 검증
+      final meetings = container.read(meetingListProvider).value ?? [];
+      final meeting = meetings.firstWhere((m) => m.id == 'sum-abc');
+      expect(meeting.status, MeetingStatus.completed);
+      expect(meeting.summaryTaskId, 'sum-abc');
+      expect(meeting.createdAt, DateTime.utc(2024, 3, 1, 9, 0, 0));
     });
   });
 }

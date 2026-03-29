@@ -1,4 +1,5 @@
 // 미팅 목록 카드 위젯
+// @MX:NOTE: SPEC-HISTSYNC-001 REQ-HSYNC-005 - onLongPress 삭제 콜백 추가
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:voice_to_textnote/models/meeting.dart';
@@ -6,11 +7,14 @@ import 'package:voice_to_textnote/models/meeting.dart';
 class MeetingCard extends StatelessWidget {
   final Meeting meeting;
   final VoidCallback? onTap;
+  // REQ-HSYNC-005: 롱프레스 삭제 콜백
+  final VoidCallback? onLongPress;
 
   const MeetingCard({
     super.key,
     required this.meeting,
     this.onTap,
+    this.onLongPress,
   });
 
   @override
@@ -19,6 +23,7 @@ class MeetingCard extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: ListTile(
         onTap: onTap,
+        onLongPress: onLongPress,
         title: Text(
           meeting.title,
           style: Theme.of(context).textTheme.titleMedium,
