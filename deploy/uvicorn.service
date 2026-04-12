@@ -1,0 +1,16 @@
+[Unit]
+Description=Voice-to-TextNote Uvicorn Server
+After=network.target redis-server.service
+
+[Service]
+Type=simple
+User=kiminbean
+Group=kiminbean
+WorkingDirectory=/home/kiminbean/voice-to-textnote
+ExecStart=/home/kiminbean/voice-to-textnote/venv/bin/uvicorn backend.app.main:app --host 0.0.0.0 --port 8000
+Restart=always
+RestartSec=3
+Environment=PATH=/home/kiminbean/voice-to-textnote/venv/bin:/usr/bin:/bin
+
+[Install]
+WantedBy=multi-user.target

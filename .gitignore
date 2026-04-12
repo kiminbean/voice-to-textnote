@@ -207,8 +207,10 @@ dist-ssr/
 # ===========================================
 # Voice to TextNote - STT Storage
 # ===========================================
-storage/temp/
-storage/results/
+storage/
 
 # MLX 모델 캐시
 .cache/huggingface/
+
+# Runtime output
+nohup.out
