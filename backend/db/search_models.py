@@ -11,7 +11,7 @@ ORM 모델이 아닌 Raw SQL을 사용합니다.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import Connection, Engine, text
 from sqlalchemy.orm import Session
@@ -97,7 +97,9 @@ def index_search_entry(
         )
 
         created_at_str = (
-            created_at.isoformat() if created_at else datetime.utcnow().isoformat()
+            created_at.isoformat()
+            if created_at
+            else datetime.now(UTC).replace(tzinfo=None).isoformat()
         )
 
         # FTS5 upsert: 기존 항목 삭제 후 재삽입

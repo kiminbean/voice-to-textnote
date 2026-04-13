@@ -2,10 +2,20 @@
 앱 설정 모듈 - pydantic-settings 기반 환경 변수 관리
 """
 
+import secrets
 from pathlib import Path
+from urllib.parse import urlparse
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+_ALLOWED_ENVIRONMENTS = {"development", "staging", "production"}
+_DEFAULT_CORS_ORIGINS = [
+    "http://localhost:3000",
+    "http://localhost:8080",
+    "http://localhost:5173",
+]
 
 
 class Settings(BaseSettings):
@@ -78,10 +88,10 @@ class Settings(BaseSettings):
     database_url: str = ""
 
     # 커넥션 풀 최소 크기 (REQ-DB-003)
-    db_pool_size: int = 5
+    db_pool_size: int = Field(default=5, ge=1, le=100)
 
     # 커넥션 풀 최대 초과 (pool_size + max_overflow = 최대 연결 수, REQ-DB-003)
-    db_max_overflow: int = 15
+    db_max_overflow: int = Field(default=15, ge=0, le=100)
 
     # 실행 환경 (development, staging, production)
     environment: str = "development"
@@ -109,14 +119,17 @@ class Settings(BaseSettings):
 
     # SPEC-TEAM-001: JWT 시크릿 키 (access token 서명용)
     # 프로덕션에서는 반드시 환경 변수로 강력한 키 설정 필요
-    jwt_secret: str = Field(default="", env="JWT_SECRET")
+    jwt_secret: str = Field(
+        default_factory=lambda: secrets.token_urlsafe(48),
+        env="JWT_SECRET",
+    )
 
     # SPEC-GUEST-001: 게스트 세션 TTL (시간)
-    guest_session_ttl_hours: int = 24  # Guest 세션 TTL (시간)
+    guest_session_ttl_hours: int = Field(default=24, ge=1, le=168)
 
     # REQ-SEC-001/REQ-SEC-004: API Key 인증
     # 쉼표로 구분된 유효한 API Key 목록 (비어있으면 개발 모드 - 인증 비활성화)
-    api_keys: list[str] = []
+    api_keys: list[str] = Field(default_factory=list)
 
     # REQ-SEC-007: IP 기반 Rate Limiting (분당 요청 횟수)
     # REQ-ERR-007: 범위 유효성 검사 (1-1000)
@@ -124,9 +137,9 @@ class Settings(BaseSettings):
 
     # REQ-SEC-009/REQ-SEC-010: CORS 설정
     # 허용할 HTTP 메서드 목록 (와일드카드 금지)
-    cors_allow_methods: list[str] = ["GET", "POST", "DELETE"]
+    cors_allow_methods: list[str] = Field(default_factory=lambda: ["GET", "POST", "DELETE"])
     # 허용할 Origins 목록 (기본: 로컬 개발 환경)
-    cors_allow_origins: list[str] = ["http://localhost:3000", "http://localhost:8080", "http://localhost:5173"]
+    cors_allow_origins: list[str] = Field(default_factory=lambda: list(_DEFAULT_CORS_ORIGINS))
 
     @field_validator("temp_dir", "results_dir", "templates_dir", mode="before")
     @classmethod
@@ -152,6 +165,46 @@ class Settings(BaseSettings):
                 return []
             return [item.strip() for item in v.split(",") if item.strip()]
         return v
+
+    @field_validator("environment")
+    @classmethod
+    def validate_environment(cls, v: str) -> str:
+        normalized = v.strip().lower()
+        if normalized not in _ALLOWED_ENVIRONMENTS:
+            allowed = ", ".join(sorted(_ALLOWED_ENVIRONMENTS))
+            raise ValueError(f"environment는 다음 중 하나여야 합니다: {allowed}")
+        return normalized
+
+    @field_validator("cors_allow_methods")
+    @classmethod
+    def validate_cors_allow_methods(cls, v: list[str]) -> list[str]:
+        methods = [method.strip().upper() for method in v if method.strip()]
+        if not methods:
+            raise ValueError("cors_allow_methods는 최소 1개 이상의 메서드를 포함해야 합니다")
+        if "*" in methods:
+            raise ValueError("cors_allow_methods에 와일드카드(*)를 사용할 수 없습니다")
+        return methods
+
+    @field_validator("cors_allow_origins")
+    @classmethod
+    def validate_cors_allow_origins(cls, v: list[str]) -> list[str]:
+        origins = [origin.strip() for origin in v if origin.strip()]
+        if not origins:
+            raise ValueError("cors_allow_origins는 최소 1개 이상의 origin을 포함해야 합니다")
+        if "*" in origins:
+            raise ValueError("allow_credentials=True 환경에서는 cors_allow_origins에 '*'를 사용할 수 없습니다")
+
+        for origin in origins:
+            parsed = urlparse(origin)
+            if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+                raise ValueError(f"유효하지 않은 origin 형식입니다: {origin}")
+        return origins
+
+    @model_validator(mode="after")
+    def validate_production_security(self) -> "Settings":
+        if self.environment == "production" and not self.api_keys:
+            raise ValueError("production 환경에서는 API_KEYS를 반드시 설정해야 합니다")
+        return self
 
     @property
     def max_file_size_bytes(self) -> int:

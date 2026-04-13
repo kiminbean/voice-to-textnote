@@ -47,6 +47,9 @@ def validate_file_size(file_size_bytes: int, max_size_bytes: int) -> tuple[bool,
     파일 크기 검증 (REQ-STT-003: 최대 500MB)
     Returns: (is_valid, error_message)
     """
+    if file_size_bytes <= 0:
+        return False, "빈 파일은 업로드할 수 없습니다."
+
     if file_size_bytes > max_size_bytes:
         max_mb = max_size_bytes / (1024 * 1024)
         actual_mb = file_size_bytes / (1024 * 1024)

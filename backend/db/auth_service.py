@@ -69,10 +69,13 @@ class AuthService:
         if expires_delta is None:
             expires_delta = timedelta(minutes=self.ACCESS_TOKEN_EXPIRE_MINUTES)
 
-        expire = datetime.now(UTC) + expires_delta
+        now = datetime.now(UTC)
+        expire = now + expires_delta
         payload = {
             "sub": user_id,
             "email": email,
+            "type": "access",
+            "iat": now,
             "exp": expire,
         }
         return jwt.encode(payload, self._secret_key, algorithm=self.ALGORITHM)
@@ -91,12 +94,19 @@ class AuthService:
         """
         try:
             payload = jwt.decode(token, self._secret_key, algorithms=[self.ALGORITHM])
-            return payload
         except JWTError:
             raise HTTPException(
                 status_code=401,
                 detail="유효하지 않거나 만료된 토큰입니다",
             )
+
+        if payload.get("type") != "access":
+            raise HTTPException(
+                status_code=401,
+                detail="유효하지 않은 토큰입니다",
+            )
+
+        return payload
 
     @staticmethod
     def _hash_token(token: str) -> str:

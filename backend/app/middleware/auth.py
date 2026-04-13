@@ -8,6 +8,8 @@ REQ-SEC-005: API Key 평문 로그 금지
 REQ-GUEST-005: Bearer guest:<token> 형식 게스트 토큰 인증 지원
 """
 
+import secrets
+
 import redis.asyncio as aioredis
 from fastapi import Depends, HTTPException, Request, Security, status
 from fastapi.security import APIKeyHeader
@@ -111,6 +113,12 @@ async def verify_api_key(
 
     # REQ-SEC-004: API_KEYS 미설정 시 개발 모드 - 모든 요청 허용
     if not settings.api_keys:
+        if getattr(settings, "environment", "development") == "production":
+            logger.error("프로덕션 환경에서 API Key 미설정")
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="서버 인증 설정이 완료되지 않았습니다.",
+            )
         logger.debug("인증 비활성화 (개발 모드 - API_KEYS 미설정)")
         return "dev-mode"
 
@@ -125,10 +133,11 @@ async def verify_api_key(
 
     # REQ-SEC-003: 유효한 키 검증
     # REQ-SEC-005: 키의 앞 4자리만 로그에 기록 (평문 금지)
-    if api_key_header in settings.api_keys:
-        key_prefix = api_key_header[:4] + "****" if len(api_key_header) >= 4 else "****"
-        logger.debug("API Key 인증 성공", key_prefix=key_prefix)
-        return api_key_header
+    for configured_key in settings.api_keys:
+        if secrets.compare_digest(api_key_header, configured_key):
+            key_prefix = api_key_header[:4] + "****" if len(api_key_header) >= 4 else "****"
+            logger.debug("API Key 인증 성공", key_prefix=key_prefix)
+            return api_key_header
 
     # REQ-SEC-002: 잘못된 키 시 401 반환 (키 값은 로그에 포함하지 않음)
     logger.warning("잘못된 API Key - 인증 거부")

@@ -13,6 +13,8 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
+from backend.app.config import settings
+
 # 개발/테스트 모드 기본 SQLite URL
 DEFAULT_DB_URL = "sqlite+aiosqlite:///./voice_to_textnote.db"
 
@@ -40,8 +42,8 @@ def create_engine(database_url: str | None = None) -> AsyncEngine:
     # pool_size=5 (최소), max_overflow=15 → 총 최대 20 연결
     return create_async_engine(
         url,
-        pool_size=5,
-        max_overflow=15,
+        pool_size=settings.db_pool_size,
+        max_overflow=settings.db_max_overflow,
         echo=False,
     )
 
