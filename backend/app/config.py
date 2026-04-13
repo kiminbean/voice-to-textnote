@@ -109,7 +109,7 @@ class Settings(BaseSettings):
 
     # SPEC-TEAM-001: JWT 시크릿 키 (access token 서명용)
     # 프로덕션에서는 반드시 환경 변수로 강력한 키 설정 필요
-    jwt_secret: str = "dev-jwt-secret-change-me-in-production-32chars"
+    jwt_secret: str = Field(default="", env="JWT_SECRET")
 
     # SPEC-GUEST-001: 게스트 세션 TTL (시간)
     guest_session_ttl_hours: int = 24  # Guest 세션 TTL (시간)
