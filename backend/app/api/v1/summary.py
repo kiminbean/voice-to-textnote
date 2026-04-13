@@ -127,6 +127,7 @@ async def get_summary_status(
         status=TaskStatus(data["status"]),
         progress=data.get("progress", 0.0),
         message=data.get("message"),
+        error_message=data.get("error_message"),
     )
 
 
@@ -169,6 +170,7 @@ async def get_summary_result(
             action_items=[],
             key_decisions=[],
             next_steps=[],
+            error_message=status_data.get("error_message"),
         )
 
     data = json.loads(raw)
@@ -199,6 +201,7 @@ async def get_summary_result(
         template_structure=data.get("template_structure"),
         tokens_used=data.get("tokens_used"),
         generation_time_seconds=data.get("generation_time_seconds"),
+        error_message=data.get("error_message") or data.get("error"),
     )
 
 

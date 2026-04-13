@@ -7,10 +7,12 @@ REQ-STT-017: 손상 파일 감지
 
 import os
 import tempfile
+import wave
 from pathlib import Path
 
 from pydub import AudioSegment
 from pydub.exceptions import CouldntDecodeError
+from pydub.utils import mediainfo
 
 from backend.utils.logger import get_logger
 
@@ -105,8 +107,25 @@ def convert_and_normalize(input_path: str | Path, output_path: str | Path | None
 
 def get_audio_duration_seconds(file_path: str | Path) -> float:
     """오디오 재생 시간(초) 반환"""
+    path = Path(file_path)
+
     try:
-        audio = AudioSegment.from_file(str(file_path))
+        # BUGFIX: 업로드 검증/화자 분리 임계값 확인 단계에서 전체 오디오를 메모리에
+        # 올리면 긴 파일에서 불필요한 메모리 사용이 커집니다. WAV는 헤더만 읽고,
+        # 그 외 포맷은 mediainfo(ffprobe) 우선으로 길이를 계산해 전체 로드를 피합니다.
+        if path.suffix.lower() == ".wav":
+            with wave.open(str(path), "rb") as wav_file:
+                frame_rate = wav_file.getframerate()
+                if frame_rate <= 0:
+                    raise ValueError("유효하지 않은 WAV 샘플레이트")
+                return wav_file.getnframes() / float(frame_rate)
+
+        info = mediainfo(str(path))
+        duration_str = info.get("duration")
+        if duration_str:
+            return float(duration_str)
+
+        audio = AudioSegment.from_file(str(path))
         return len(audio) / 1000.0
     except Exception as e:
         raise ValueError(f"오디오 재생 시간 측정 실패: {e}") from e

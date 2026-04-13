@@ -87,22 +87,34 @@ class SpeakerMatcher:
         if stt_duration <= 0:
             return None, 0.0
 
-        # 각 화자 세그먼트와 겹침 계산
-        overlaps: list[tuple[float, float, str]] = []  # (overlap_time, start, speaker_id)
+        # BUGFIX: 같은 화자가 여러 diarization 세그먼트로 잘려 있으면 개별 세그먼트의
+        # 최대 겹침만 비교해서 다른 화자로 잘못 선택될 수 있습니다. 화자별 총 겹침을
+        # 합산해 비교해야 청크 경계/세그먼트 분할 상황에서도 안정적으로 매칭됩니다.
+        overlaps_by_speaker: dict[str, float] = {}
+        earliest_start_by_speaker: dict[str, float] = {}
         for dia_seg in dia_segments:
             overlap = self._calc_overlap(stt_start, stt_end, dia_seg.start, dia_seg.end)
             if overlap > 0:
-                overlaps.append((overlap, dia_seg.start, dia_seg.speaker_id))
+                overlaps_by_speaker[dia_seg.speaker_id] = (
+                    overlaps_by_speaker.get(dia_seg.speaker_id, 0.0) + overlap
+                )
+                current_earliest = earliest_start_by_speaker.get(dia_seg.speaker_id, dia_seg.start)
+                earliest_start_by_speaker[dia_seg.speaker_id] = min(current_earliest, dia_seg.start)
 
-        if not overlaps:
+        if not overlaps_by_speaker:
             return None, 0.0
+
+        overlaps = [
+            (total_overlap, earliest_start_by_speaker[speaker_id], speaker_id)
+            for speaker_id, total_overlap in overlaps_by_speaker.items()
+        ]
 
         # 최대 겹침 찾기 (동점 시 빠른 시작 시간)
         best_overlap = max(overlaps, key=lambda x: (x[0], -x[1]))
         max_overlap_time = best_overlap[0]
 
         # 동점 확인 - 동일한 최대 겹침 값이 여러 개인 경우
-        top_overlaps = [o for o in overlaps if o[0] == max_overlap_time]
+        top_overlaps = [o for o in overlaps if abs(o[0] - max_overlap_time) < 1e-9]
         if len(top_overlaps) > 1:
             # 동점: 가장 빠른 시작 시간 선택
             best_overlap = min(top_overlaps, key=lambda x: x[1])

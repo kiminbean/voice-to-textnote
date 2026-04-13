@@ -83,6 +83,11 @@ def _cache_result(task_id: str, result: dict) -> None:
     r.setex(result_key, settings.diarization_result_ttl, json.dumps(result))
 
 
+def _extract_cached_error_message(result: dict) -> str | None:
+    """레거시 error 키와 신규 error_message 키를 모두 지원"""
+    return result.get("error_message") or result.get("error")
+
+
 def _get_active_dia_count() -> int:
     """현재 활성 화자 분리 작업 수 조회"""
     r = _get_redis()
@@ -138,6 +143,7 @@ def diarization_task(
             "stt_task_id": stt_task_id,
             "status": "rejected",
             "error": error_msg,
+            "error_message": error_msg,
             "created_at": processing_start.isoformat(),
         }
         _cache_result(task_id, failed_result)
@@ -158,6 +164,14 @@ def diarization_task(
             raise FileNotFoundError(f"STT 결과를 찾을 수 없습니다: stt_task_id={stt_task_id}")
 
         stt_result = json.loads(stt_result_raw)
+        stt_status = stt_result.get("status")
+        if stt_status and stt_status != TaskStatus.completed.value:
+            # BUGFIX: 선행 STT가 실패했는데도 후속 DIA가 빈 결과로 진행되면
+            # 실제 원인이 가려집니다. 선행 작업 상태를 먼저 확인하고 즉시 중단합니다.
+            upstream_error = _extract_cached_error_message(stt_result) or (
+                f"STT 작업이 완료되지 않았습니다: status={stt_status}"
+            )
+            raise RuntimeError(f"STT 작업 실패로 화자 분리를 시작할 수 없습니다: {upstream_error}")
         stt_segments = stt_result.get("segments", [])
 
         _update_task_status(task_id, TaskStatus.processing, 0.10, "WAV 파일 확인 중...")
@@ -185,8 +199,9 @@ def diarization_task(
         audio_duration = get_audio_duration_seconds(wav_path)
         threshold_sec = settings.dia_chunk_threshold_minutes * 60
 
-        if audio_duration > threshold_sec:
-            # 15분 초과 → 청크 분할 처리
+        if audio_duration >= threshold_sec:
+            # BUGFIX: 설정 설명은 "15분 이상"인데 구현은 "15분 초과"라서
+            # 정확히 15분인 파일만 단일 처리로 빠졌습니다. 경계값도 청크 경로로 보냅니다.
             logger.info("청크 분할 화자 분리 적용",
                          duration=round(audio_duration, 1),
                          threshold=threshold_sec)
@@ -274,6 +289,7 @@ def diarization_task(
             "stt_task_id": stt_task_id,
             "status": "failed",
             "error": error_msg,
+            "error_message": error_msg,
             "created_at": processing_start.isoformat(),
         }
         _cache_result(task_id, failed_result)
@@ -289,6 +305,7 @@ def diarization_task(
             "stt_task_id": stt_task_id,
             "status": "failed",
             "error": error_msg,
+            "error_message": error_msg,
             "created_at": processing_start.isoformat(),
         }
         _cache_result(task_id, failed_result)
@@ -316,6 +333,7 @@ def diarization_task(
             "stt_task_id": stt_task_id,
             "status": "failed",
             "error": error_msg,
+            "error_message": error_msg,
             "created_at": processing_start.isoformat(),
         }
         _cache_result(task_id, failed_result)
@@ -343,7 +361,7 @@ def diarization_task(
     max_retries=3,
     default_retry_delay=60,
     name="diarization_task",
-    soft_time_limit=3600,  # 60분 소프트 타임아웃 (CPU 화자분리는 긴 오디오에서 30분+ 소요)
+    soft_time_limit=3600,  # 60분 소프트 타임아웃 (개별 DIA Celery task 기준)
     time_limit=3900,       # 65분 하드 타임아웃
 )
 def diarization_celery_task(

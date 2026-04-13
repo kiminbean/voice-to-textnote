@@ -115,7 +115,7 @@ def _decrement_active_jobs(task_id: str) -> None:
     max_retries=3,
     default_retry_delay=60,
     name="transcription_task",
-    soft_time_limit=3600,  # 60분 소프트 타임아웃 (SoftTimeLimitExceeded 발생)
+    soft_time_limit=3600,  # 60분 소프트 타임아웃 (개별 STT Celery task 기준)
     time_limit=3900,       # 65분 하드 타임아웃 (워커 강제 종료)
 )
 def transcription_task(
@@ -141,6 +141,9 @@ def transcription_task(
     processing_start = datetime.now(UTC)
     temp_files: list[Path] = []  # 정리할 임시 파일 목록
     temp_dir: Path | None = None
+    diarization_wav_path: Path | None = None
+    task_completed = False
+    retry_scheduled = False
 
     logger.info("전사 작업 시작", task_id=task_id, language=language)
 
@@ -161,6 +164,7 @@ def transcription_task(
         # 화자 분리(diarization)가 사용할 수 있도록 WAV를 temp_dir에 복사 보존
         wav_for_dia = settings.temp_dir / f"{task_id}.wav"
         shutil.copy2(str(processed_path), str(wav_for_dia))
+        diarization_wav_path = wav_for_dia
 
         temp_files.append(processed_path)
 
@@ -235,6 +239,7 @@ def transcription_task(
             pass  # DB 저장 실패는 무시 (Redis에 이미 저장됨)
 
         _update_task_status(task_id, TaskStatus.completed, 1.0, "전사 완료")
+        task_completed = True
         logger.info(
             "전사 작업 완료",
             task_id=task_id,
@@ -293,8 +298,13 @@ def transcription_task(
 
         # Celery 재시도 (최대 3회, 지수 백오프)
         try:
+            # BUGFIX: 재시도 예약 직후 원본 업로드 파일을 finally에서 지우면
+            # 다음 재시도 시 입력 파일이 사라져 즉시 FileNotFoundError가 납니다.
+            # retry가 실제로 예약된 경우에만 원본 파일 정리를 미룹니다.
+            retry_scheduled = True
             raise self.retry(exc=exc, countdown=2**self.request.retries * 30)
         except self.MaxRetriesExceededError:
+            retry_scheduled = False
             logger.error("최대 재시도 초과", task_id=task_id)
             return {"task_id": task_id, "status": "failed", "error": error_msg}
 
@@ -308,8 +318,14 @@ def transcription_task(
         if temp_dir and temp_dir.exists():
             shutil.rmtree(temp_dir, ignore_errors=True)
 
-        # 원본 업로드 파일 삭제 (처리 완료 후)
-        cleanup_temp_file(audio_file_path)
+        # BUGFIX: STT가 실패하거나 재시도되는 경우 화자 분리용 WAV 사본은 더 이상
+        # 신뢰할 수 있는 입력이 아니므로 정리합니다. 성공한 경우에만 후속 DIA에서 사용합니다.
+        if not task_completed and diarization_wav_path is not None:
+            cleanup_temp_file(diarization_wav_path)
+
+        if not retry_scheduled:
+            # 원본 업로드 파일 삭제 (처리 완료 또는 최종 실패 후)
+            cleanup_temp_file(audio_file_path)
 
 
 def _process_chunks(

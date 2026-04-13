@@ -128,6 +128,7 @@ async def get_minutes_status(
         status=TaskStatus(data["status"]),
         progress=data.get("progress", 0.0),
         message=data.get("message"),
+        error_message=data.get("error_message"),
     )
 
 
@@ -170,6 +171,7 @@ async def get_minutes_result(
             speakers=[],
             total_duration=0.0,
             total_speakers=0,
+            error_message=status_data.get("error_message"),
         )
 
     data = json.loads(raw)
@@ -187,6 +189,7 @@ async def get_minutes_result(
         total_duration=data.get("total_duration", 0.0),
         total_speakers=data.get("total_speakers", 0),
         markdown=data.get("markdown"),
+        error_message=data.get("error_message") or data.get("error"),
     )
 
 

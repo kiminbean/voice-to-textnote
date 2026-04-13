@@ -82,6 +82,11 @@ def _cache_result(task_id: str, result: dict) -> None:
     r.setex(result_key, settings.summary_result_ttl, json.dumps(result))
 
 
+def _extract_cached_error_message(result: dict) -> str | None:
+    """레거시 error 키와 신규 error_message 키를 모두 지원"""
+    return result.get("error_message") or result.get("error")
+
+
 def _get_active_sum_count() -> int:
     """현재 활성 요약 작업 수 조회"""
     r = _get_redis()
@@ -131,6 +136,7 @@ def summary_task(
             "minutes_task_id": minutes_task_id,
             "status": "failed",
             "error": error_msg,
+            "error_message": error_msg,
             "created_at": processing_start.isoformat(),
         }
         _cache_result(task_id, failed_result)
@@ -150,6 +156,7 @@ def summary_task(
             "minutes_task_id": minutes_task_id,
             "status": "rejected",
             "error": error_msg,
+            "error_message": error_msg,
             "created_at": processing_start.isoformat(),
         }
         _cache_result(task_id, failed_result)
@@ -173,6 +180,14 @@ def summary_task(
             )
 
         min_result = json.loads(min_result_raw)
+        min_status = min_result.get("status")
+        if min_status and min_status != TaskStatus.completed.value:
+            # BUGFIX: 회의록 실패 결과를 그대로 요약 단계에 넘기면 빈 입력으로
+            # 요약이 완료 처리되거나 LLM 오류로 바뀌어 원인이 흐려집니다.
+            upstream_error = _extract_cached_error_message(min_result) or (
+                f"회의록 작업이 완료되지 않았습니다: status={min_status}"
+            )
+            raise RuntimeError(f"회의록 생성 실패로 요약을 시작할 수 없습니다: {upstream_error}")
         segments = min_result.get("segments", [])
         speaker_stats = min_result.get("speakers", [])
 
@@ -272,6 +287,7 @@ def summary_task(
             "minutes_task_id": minutes_task_id,
             "status": "failed",
             "error": error_msg,
+            "error_message": error_msg,
             "created_at": processing_start.isoformat(),
         }
         _cache_result(task_id, failed_result)
@@ -299,6 +315,7 @@ def summary_task(
             "minutes_task_id": minutes_task_id,
             "status": "failed",
             "error": error_msg,
+            "error_message": error_msg,
             "created_at": processing_start.isoformat(),
         }
         _cache_result(task_id, failed_result)

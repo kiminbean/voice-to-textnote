@@ -55,6 +55,7 @@ class MinutesResponse(BaseModel):
     total_speakers: int = Field(..., description="총 화자 수")
     # markdown: output_format=markdown 요청 시 생성 (REQ-MIN-003)
     markdown: str | None = Field(default=None, description="마크다운 형식 회의록")
+    error_message: str | None = Field(default=None, description="실패 시 오류 메시지")
 
 
 class MinutesStatusResponse(BaseModel):
@@ -64,3 +65,4 @@ class MinutesStatusResponse(BaseModel):
     status: TaskStatus
     progress: float = Field(default=0.0, ge=0.0, le=1.0, description="진행률 (0.0~1.0)")
     message: str | None = Field(default=None, description="상태 메시지")
+    error_message: str | None = Field(default=None, description="실패 시 오류 메시지")

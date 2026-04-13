@@ -191,7 +191,7 @@ async def get_diarization_result(
         completed_at=(
             datetime.fromisoformat(data["completed_at"]) if data.get("completed_at") else None
         ),
-        error_message=data.get("error_message"),
+        error_message=data.get("error_message") or data.get("error"),
     )
 
 

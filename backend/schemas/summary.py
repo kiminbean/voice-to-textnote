@@ -79,6 +79,7 @@ class SummaryResponse(BaseModel):
     generation_time_seconds: float | None = Field(
         default=None, description="요약 생성 소요 시간 (초)"
     )
+    error_message: str | None = Field(default=None, description="실패 시 오류 메시지")
 
 
 class SummaryStatusResponse(BaseModel):
@@ -92,3 +93,4 @@ class SummaryStatusResponse(BaseModel):
     progress: float = Field(default=0.0, ge=0.0, le=1.0, description="진행률")
     # 상태 메시지 (None 허용)
     message: str | None = Field(default=None, description="상태 메시지")
+    error_message: str | None = Field(default=None, description="실패 시 오류 메시지")

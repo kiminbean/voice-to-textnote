@@ -82,6 +82,11 @@ def _cache_result(task_id: str, result: dict) -> None:
     r.setex(result_key, settings.minutes_result_ttl, json.dumps(result))
 
 
+def _extract_cached_error_message(result: dict) -> str | None:
+    """레거시 error 키와 신규 error_message 키를 모두 지원"""
+    return result.get("error_message") or result.get("error")
+
+
 def _get_active_min_count() -> int:
     """현재 활성 회의록 작업 수 조회"""
     r = _get_redis()
@@ -135,6 +140,7 @@ def minutes_task(
             "diarization_task_id": diarization_task_id,
             "status": "rejected",
             "error": error_msg,
+            "error_message": error_msg,
             "created_at": processing_start.isoformat(),
         }
         _cache_result(task_id, failed_result)
@@ -158,6 +164,14 @@ def minutes_task(
             )
 
         dia_result = json.loads(dia_result_raw)
+        dia_status = dia_result.get("status")
+        if dia_status and dia_status != TaskStatus.completed.value:
+            # BUGFIX: 화자 분리 실패 결과를 빈 segments로 처리하면 회의록이
+            # 잘못 completed 될 수 있습니다. 선행 DIA 실패를 그대로 전파합니다.
+            upstream_error = _extract_cached_error_message(dia_result) or (
+                f"화자 분리 작업이 완료되지 않았습니다: status={dia_status}"
+            )
+            raise RuntimeError(f"화자 분리 실패로 회의록을 생성할 수 없습니다: {upstream_error}")
         raw_segments = dia_result.get("segments", [])
 
         _update_task_status(task_id, TaskStatus.processing, 0.3, "회의록 포맷 변환 중...")
@@ -234,6 +248,7 @@ def minutes_task(
             "diarization_task_id": diarization_task_id,
             "status": "failed",
             "error": error_msg,
+            "error_message": error_msg,
             "created_at": processing_start.isoformat(),
         }
         _cache_result(task_id, failed_result)
@@ -261,6 +276,7 @@ def minutes_task(
             "diarization_task_id": diarization_task_id,
             "status": "failed",
             "error": error_msg,
+            "error_message": error_msg,
             "created_at": processing_start.isoformat(),
         }
         _cache_result(task_id, failed_result)

@@ -7,6 +7,7 @@ REQ-DIA-010: HuggingFace 토큰 인증
 REQ-DIA-011: 서버 시작 시 사전 로드 (warm-up)
 """
 
+import gc
 import time
 from pathlib import Path
 from threading import Lock
@@ -131,28 +132,22 @@ class DiarizationEngine:
 
         logger.info("화자 분리 시작", path=str(audio_path))
         start_time = time.time()
+        waveform = None
+        result = None
 
         try:
             # torchaudio로 오디오 로드 (torchcodec 의존성 우회)
+            import torch
             import torchaudio
+
             waveform, sample_rate = torchaudio.load(str(audio_path))
 
-            # Pipeline 실행 (메모리 기반 입력, REQ-DIA-009)
-            result = self._pipeline({"waveform": waveform, "sample_rate": sample_rate})
+            # BUGFIX: 긴 CPU 추론에서 gradient 추적이 남으면 메모리 사용량이 불필요하게
+            # 커질 수 있습니다. inference_mode로 감싸고 추론 후 참조를 즉시 해제합니다.
+            with torch.inference_mode():
+                result = self._pipeline({"waveform": waveform, "sample_rate": sample_rate})
 
-            # pyannote 4.x: DiarizeOutput → .speaker_diarization으로 Annotation 추출
-            diarization = getattr(result, "speaker_diarization", result)
-
-            # itertracks() 결과를 SpeakerSegment 리스트로 변환
-            segments: list[SpeakerSegment] = []
-            for turn, _, speaker in diarization.itertracks(yield_label=True):
-                segments.append(
-                    SpeakerSegment(
-                        speaker_id=speaker,
-                        start=round(turn.start, 3),
-                        end=round(turn.end, 3),
-                    )
-                )
+            segments = self._segments_from_result(result)
 
             elapsed = time.time() - start_time
             logger.info(
@@ -167,6 +162,10 @@ class DiarizationEngine:
         except Exception as e:
             logger.error("화자 분리 실패", error=str(e), path=str(audio_path))
             raise
+        finally:
+            waveform = None
+            result = None
+            gc.collect()
 
     def diarize_chunked(
         self,
@@ -190,18 +189,28 @@ class DiarizationEngine:
         if not self._model_loaded or self._pipeline is None:
             raise RuntimeError("화자 분리 모델이 로드되지 않았습니다.")
 
+        import torch
         import torchaudio
 
-        logger.info("청크 분할 화자 분리 시작", path=str(audio_path),
-                     chunk_sec=chunk_duration_sec, overlap_sec=overlap_sec)
+        logger.info(
+            "청크 분할 화자 분리 시작",
+            path=str(audio_path),
+            chunk_sec=chunk_duration_sec,
+            overlap_sec=overlap_sec,
+        )
         start_time = time.time()
 
-        waveform, sample_rate = torchaudio.load(str(audio_path))
-        total_samples = waveform.shape[1]
+        audio_info = torchaudio.info(str(audio_path))
+        sample_rate = audio_info.sample_rate
+        total_samples = audio_info.num_frames
         total_duration_sec = total_samples / sample_rate
 
         chunk_samples = chunk_duration_sec * sample_rate
         overlap_samples = overlap_sec * sample_rate
+
+        if total_samples <= 0:
+            logger.warning("비어 있는 오디오 파일", path=str(audio_path))
+            return []
 
         # 청크 분할 계획 수립
         chunks: list[tuple[int, int]] = []  # (start_sample, end_sample)
@@ -212,73 +221,197 @@ class DiarizationEngine:
             pos += chunk_samples
 
         total_chunks = len(chunks)
-        logger.info("청크 수", total_chunks=total_chunks,
-                     total_duration=round(total_duration_sec, 1))
+        logger.info(
+            "청크 수",
+            total_chunks=total_chunks,
+            total_duration=round(total_duration_sec, 1),
+        )
 
         all_segments: list[SpeakerSegment] = []
-        # 청크 간 스피커 ID 매핑 (오버랩 구간 타임스탬프 기반)
-        speaker_remap: dict[str, str] = {}
         global_speaker_count = 0
 
         for i, (chunk_start, chunk_end) in enumerate(chunks):
-            chunk_waveform = waveform[:, chunk_start:chunk_end]
+            chunk_waveform = None
+            result = None
             chunk_offset_sec = chunk_start / sample_rate
-            overlap_threshold_sec = (overlap_sec if i > 0 else 0)
+            overlap_threshold_sec = overlap_sec if i > 0 else 0
 
             logger.info("청크 처리 중", chunk=i + 1, total=total_chunks)
 
-            # 청크별 화자 분리 실행
-            result = self._pipeline({"waveform": chunk_waveform, "sample_rate": sample_rate})
-            diarization = getattr(result, "speaker_diarization", result)
-
-            chunk_segments: list[SpeakerSegment] = []
-            for turn, _, speaker in diarization.itertracks(yield_label=True):
-                # 오버랩 구간 중복 제거: 첫 청크 이후, 오버랩 영역 시작 부분 세그먼트 건너뜀
-                if i > 0 and turn.start < overlap_threshold_sec:
-                    continue
-
-                # 청크 로컬 스피커 ID를 글로벌 ID로 매핑
-                local_key = f"chunk{i}_{speaker}"
-                if local_key not in speaker_remap:
-                    # 이전 청크의 오버랩 구간에서 동일 화자 탐색 (타임스탬프 기반)
-                    matched = False
-                    if i > 0 and all_segments:
-                        seg_global_start = chunk_offset_sec + turn.start
-                        for prev_seg in reversed(all_segments[-20:]):
-                            # 이전 세그먼트와 시간적으로 근접하면 동일 화자로 간주
-                            if abs(prev_seg.end - seg_global_start) < overlap_sec:
-                                speaker_remap[local_key] = prev_seg.speaker_id
-                                matched = True
-                                break
-                    if not matched:
-                        speaker_remap[local_key] = f"SPEAKER_{global_speaker_count:02d}"
-                        global_speaker_count += 1
-
-                global_start = chunk_offset_sec + turn.start
-                global_end = chunk_offset_sec + turn.end
-
-                chunk_segments.append(
-                    SpeakerSegment(
-                        speaker_id=speaker_remap[local_key],
-                        start=round(global_start, 3),
-                        end=round(global_end, 3),
-                    )
+            try:
+                # BUGFIX: 기존 구현은 torchaudio.load()로 전체 waveform을 한 번에 메모리에
+                # 올린 뒤 슬라이싱해서 긴 파일에서 OOM 위험이 있었습니다. 각 청크만 부분
+                # 로드해 pyannote 입력으로 넘기면 긴 오디오에서도 메모리 상한이 고정됩니다.
+                chunk_waveform, _ = torchaudio.load(
+                    str(audio_path),
+                    frame_offset=chunk_start,
+                    num_frames=chunk_end - chunk_start,
                 )
 
-            all_segments.extend(chunk_segments)
+                with torch.inference_mode():
+                    result = self._pipeline({"waveform": chunk_waveform, "sample_rate": sample_rate})
 
-            # 진행률 콜백 호출
-            if progress_callback:
-                progress_callback(i + 1, total_chunks)
+                local_segments = self._segments_from_result(result)
 
-            logger.info("청크 완료", chunk=i + 1, segments=len(chunk_segments))
+                local_to_global = self._match_chunk_speakers(
+                    local_segments=local_segments,
+                    previous_segments=all_segments,
+                    chunk_offset_sec=chunk_offset_sec,
+                    overlap_sec=overlap_sec,
+                )
+
+                chunk_segments: list[SpeakerSegment] = []
+                for local_seg in local_segments:
+                    global_speaker_id = local_to_global.get(local_seg.speaker_id)
+                    if global_speaker_id is None:
+                        global_speaker_id = f"SPEAKER_{global_speaker_count:02d}"
+                        local_to_global[local_seg.speaker_id] = global_speaker_id
+                        global_speaker_count += 1
+
+                    # BUGFIX: 이전 구현은 start < overlap_sec인 세그먼트를 통째로 버려서
+                    # 경계에 걸친 발화의 뒷부분까지 잃었습니다. 오버랩 구간만 잘라내고
+                    # 그 이후 구간은 유지해야 STT와의 매칭이 끊기지 않습니다.
+                    trimmed_start = max(local_seg.start, overlap_threshold_sec)
+                    if local_seg.end <= trimmed_start:
+                        continue
+
+                    chunk_segments.append(
+                        SpeakerSegment(
+                            speaker_id=global_speaker_id,
+                            start=round(chunk_offset_sec + trimmed_start, 3),
+                            end=round(chunk_offset_sec + local_seg.end, 3),
+                        )
+                    )
+
+                all_segments.extend(chunk_segments)
+
+                # 진행률 콜백 호출
+                if progress_callback:
+                    progress_callback(i + 1, total_chunks)
+
+                logger.info("청크 완료", chunk=i + 1, segments=len(chunk_segments))
+            finally:
+                chunk_waveform = None
+                result = None
+                gc.collect()
 
         elapsed = time.time() - start_time
-        logger.info("청크 분할 화자 분리 완료",
-                     total_segments=len(all_segments),
-                     elapsed_seconds=round(elapsed, 2))
+        merged_segments = self._merge_adjacent_segments(all_segments)
+        logger.info(
+            "청크 분할 화자 분리 완료",
+            total_segments=len(merged_segments),
+            elapsed_seconds=round(elapsed, 2),
+        )
 
-        return all_segments
+        return merged_segments
+
+    @staticmethod
+    def _segments_from_result(result: Any) -> list[SpeakerSegment]:
+        """pyannote 출력 객체를 SpeakerSegment 리스트로 정규화"""
+        diarization = getattr(result, "speaker_diarization", result)
+
+        segments: list[SpeakerSegment] = []
+        for turn, _, speaker in diarization.itertracks(yield_label=True):
+            segments.append(
+                SpeakerSegment(
+                    speaker_id=speaker,
+                    start=round(turn.start, 3),
+                    end=round(turn.end, 3),
+                )
+            )
+        return segments
+
+    @staticmethod
+    def _calc_overlap(a_start: float, a_end: float, b_start: float, b_end: float) -> float:
+        overlap_start = max(a_start, b_start)
+        overlap_end = min(a_end, b_end)
+        return max(0.0, overlap_end - overlap_start)
+
+    @classmethod
+    def _match_chunk_speakers(
+        cls,
+        local_segments: list[SpeakerSegment],
+        previous_segments: list[SpeakerSegment],
+        chunk_offset_sec: float,
+        overlap_sec: int,
+    ) -> dict[str, str]:
+        """오버랩 구간의 실제 시간 겹침으로 현재 청크 화자를 이전 글로벌 ID에 매핑"""
+        if chunk_offset_sec <= 0 or not previous_segments:
+            return {}
+
+        overlap_window_start = chunk_offset_sec
+        overlap_window_end = chunk_offset_sec + overlap_sec
+        previous_overlap_segments = [
+            seg
+            for seg in previous_segments
+            if seg.end > overlap_window_start and seg.start < overlap_window_end
+        ]
+        if not previous_overlap_segments:
+            return {}
+
+        candidate_pairs: list[tuple[float, float, str, str]] = []
+        for local_seg in local_segments:
+            local_overlap_start = max(local_seg.start, 0.0)
+            local_overlap_end = min(local_seg.end, float(overlap_sec))
+            if local_overlap_end <= local_overlap_start:
+                continue
+
+            global_overlap_start = chunk_offset_sec + local_overlap_start
+            global_overlap_end = chunk_offset_sec + local_overlap_end
+            for previous_seg in previous_overlap_segments:
+                overlap = cls._calc_overlap(
+                    global_overlap_start,
+                    global_overlap_end,
+                    previous_seg.start,
+                    previous_seg.end,
+                )
+                if overlap > 0:
+                    candidate_pairs.append(
+                        (
+                            overlap,
+                            previous_seg.start,
+                            local_seg.speaker_id,
+                            previous_seg.speaker_id,
+                        )
+                    )
+
+        candidate_pairs.sort(key=lambda item: (-item[0], item[1]))
+
+        matched: dict[str, str] = {}
+        used_global_speakers: set[str] = set()
+        for _, _, local_speaker_id, global_speaker_id in candidate_pairs:
+            if local_speaker_id in matched or global_speaker_id in used_global_speakers:
+                continue
+            matched[local_speaker_id] = global_speaker_id
+            used_global_speakers.add(global_speaker_id)
+
+        return matched
+
+    @staticmethod
+    def _merge_adjacent_segments(
+        segments: list[SpeakerSegment],
+        tolerance_sec: float = 0.05,
+    ) -> list[SpeakerSegment]:
+        """같은 화자의 인접/중첩 세그먼트를 병합해 청크 경계 아티팩트를 줄임"""
+        if not segments:
+            return []
+
+        sorted_segments = sorted(segments, key=lambda seg: (seg.start, seg.end, seg.speaker_id))
+        merged = [sorted_segments[0]]
+        for segment in sorted_segments[1:]:
+            previous = merged[-1]
+            if (
+                segment.speaker_id == previous.speaker_id
+                and segment.start <= previous.end + tolerance_sec
+            ):
+                merged[-1] = SpeakerSegment(
+                    speaker_id=previous.speaker_id,
+                    start=previous.start,
+                    end=round(max(previous.end, segment.end), 3),
+                )
+                continue
+            merged.append(segment)
+        return merged
 
     def unload(self) -> None:
         """모델 메모리 해제"""
