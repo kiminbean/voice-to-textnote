@@ -31,7 +31,7 @@ dependencies = [
     "aiosqlite>=0.20",
     "alembic>=1.13",
     # SPEC-EXPORT-001: PDF 생성 의존성
-    "fpdf2>=2.8.1",
+    "fpdf2>=2.8.7",
     # SPEC-TEAM-001: JWT 인증 의존성
     "python-jose[cryptography]>=3.3.0",
     "passlib[bcrypt]>=1.7.4",
