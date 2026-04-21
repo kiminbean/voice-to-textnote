@@ -36,7 +36,17 @@ _redis_client: redis.Redis | None = None
 def _get_redis() -> redis.Redis:
     global _redis_client
     if _redis_client is None:
-        _redis_client = redis.from_url(settings.redis_url, decode_responses=True)
+        # Redis 연결 풀링 설정으로 성능 개선
+        from redis.connection import ConnectionPool
+        
+        connection_pool = ConnectionPool.from_url(
+            settings.redis_url,
+            max_connections=10,  # 연결 풀 최대 크기
+            decode_responses=True,
+            socket_timeout=5,
+            socket_connect_timeout=5,
+        )
+        _redis_client = redis.Redis(connection_pool=connection_pool)
     return _redis_client
 
 
@@ -47,37 +57,54 @@ def _update_task_status(
     message: str | None = None,
     error_message: str | None = None,
 ) -> None:
-    """Redis에 작업 상태 업데이트 + Pub/Sub 이벤트 발행"""
+    """Redis에 작업 상태 업데이트 + Pub/Sub 이벤트 발행 (Pipeline으로 성능 개선)"""
     r = _get_redis()
+    now = datetime.now(UTC).isoformat()
+    
+    # Pipeline 사용으로 Redis 라운드트립 감소
+    pipe = r.pipeline()
+    
     status_key = f"task:status:{task_id}"
-
-    # 기존 created_at 보존
-    existing_created_at = None
-    existing_raw = r.get(status_key)
-    if existing_raw:
-        existing_data = json.loads(existing_raw)
-        existing_created_at = existing_data.get("created_at")
-
-    data = {
+    pipe.get(status_key)
+    pipe.setex(status_key, settings.cache_ttl_seconds, json.dumps({
         "task_id": task_id,
         "status": status.value,
         "progress": progress,
-        "updated_at": datetime.now(UTC).isoformat(),
-    }
-    if existing_created_at:
-        data["created_at"] = existing_created_at
-    if message:
-        data["message"] = message
-    if error_message:
-        data["error_message"] = error_message
+        "updated_at": now,
+        "message": message,
+        "error_message": error_message,
+    }))
+    
+    # 기존 created_at 보존 및 업데이트
+    existing_raw = pipe.execute()[0]
+    if existing_raw:
+        existing_data = json.loads(existing_raw)
+        existing_created_at = existing_data.get("created_at")
+        if existing_created_at:
+            # created_at이 있는 경우 다시 업데이트
+            pipe.setex(status_key, settings.cache_ttl_seconds, json.dumps({
+                "task_id": task_id,
+                "status": status.value,
+                "progress": progress,
+                "created_at": existing_created_at,
+                "updated_at": now,
+                "message": message,
+                "error_message": error_message,
+            }))
+            pipe.execute()
 
-    r.setex(status_key, settings.cache_ttl_seconds, json.dumps(data))
-
-    # SSE 스트림 구독자에게 이벤트 발행
+    # SSE 스트림 구독자에게 이벤트 발행 (별도 요청)
     event_type = "completed" if status == TaskStatus.completed else (
         "failed" if status == TaskStatus.failed else "status_update"
     )
-    publish_task_event_sync(r, task_id, event_type, data)
+    publish_task_event_sync(r, task_id, event_type, {
+        "task_id": task_id,
+        "status": status.value,
+        "progress": progress,
+        "updated_at": now,
+        "message": message,
+        "error_message": error_message,
+    })
 
 
 def _cache_result(task_id: str, result: dict) -> None:

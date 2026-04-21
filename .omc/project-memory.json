@@ -1,0 +1,184 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1776666855187,
+  "projectRoot": "/Users/ibkim/Projects/voice-to-textnote",
+  "techStack": {
+    "languages": [
+      {
+        "name": "Python",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "pyproject.toml"
+        ]
+      }
+    ],
+    "frameworks": [
+      {
+        "name": "fastapi",
+        "version": null,
+        "category": "backend"
+      },
+      {
+        "name": "pytest",
+        "version": null,
+        "category": "testing"
+      }
+    ],
+    "packageManager": null,
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": null,
+    "testCommand": "pytest",
+    "lintCommand": "ruff check",
+    "devCommand": null,
+    "scripts": {}
+  },
+  "conventions": {
+    "namingStyle": null,
+    "importStyle": null,
+    "testPattern": null,
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [],
+    "gitBranches": {
+      "defaultBranch": "main",
+      "branchingStrategy": null
+    }
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "alembic": {
+      "path": "alembic",
+      "purpose": null,
+      "fileCount": 3,
+      "lastAccessed": 1776666855160,
+      "keyFiles": [
+        "__init__.py",
+        "env.py",
+        "script.py.mako"
+      ]
+    },
+    "backend": {
+      "path": "backend",
+      "purpose": null,
+      "fileCount": 2,
+      "lastAccessed": 1776666855160,
+      "keyFiles": [
+        "__init__.py",
+        "conftest.py"
+      ]
+    },
+    "client": {
+      "path": "client",
+      "purpose": null,
+      "fileCount": 6,
+      "lastAccessed": 1776666855161,
+      "keyFiles": [
+        "README.md",
+        "analysis_options.yaml",
+        "pubspec.lock",
+        "pubspec.yaml"
+      ]
+    },
+    "deploy": {
+      "path": "deploy",
+      "purpose": null,
+      "fileCount": 4,
+      "lastAccessed": 1776666855161,
+      "keyFiles": [
+        "requirements-ubuntu.txt",
+        "restart.sh",
+        "setup-ubuntu.sh",
+        "uvicorn.service"
+      ]
+    },
+    "nginx": {
+      "path": "nginx",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1776666855161,
+      "keyFiles": [
+        "nginx.conf"
+      ]
+    },
+    "venv": {
+      "path": "venv",
+      "purpose": null,
+      "fileCount": 2,
+      "lastAccessed": 1776666855161,
+      "keyFiles": [
+        "pyvenv.cfg"
+      ]
+    },
+    "backend/app": {
+      "path": "backend/app",
+      "purpose": "Application code",
+      "fileCount": 9,
+      "lastAccessed": 1776666855161,
+      "keyFiles": [
+        "__init__.py",
+        "config.py",
+        "dependencies.py"
+      ]
+    },
+    "backend/assets": {
+      "path": "backend/assets",
+      "purpose": "Static assets",
+      "fileCount": 0,
+      "lastAccessed": 1776666855161,
+      "keyFiles": []
+    },
+    "backend/schemas": {
+      "path": "backend/schemas",
+      "purpose": "Schema definitions",
+      "fileCount": 13,
+      "lastAccessed": 1776666855162,
+      "keyFiles": [
+        "__init__.py",
+        "auth.py",
+        "diarization.py"
+      ]
+    },
+    "client/lib": {
+      "path": "client/lib",
+      "purpose": "Library code",
+      "fileCount": 1,
+      "lastAccessed": 1776666855162,
+      "keyFiles": [
+        "main.dart"
+      ]
+    },
+    "venv/bin": {
+      "path": "venv/bin",
+      "purpose": "Executable scripts",
+      "fileCount": 7,
+      "lastAccessed": 1776666855162,
+      "keyFiles": [
+        "Activate.ps1",
+        "activate",
+        "activate.csh"
+      ]
+    },
+    "venv/lib": {
+      "path": "venv/lib",
+      "purpose": "Library code",
+      "fileCount": 0,
+      "lastAccessed": 1776666855162,
+      "keyFiles": []
+    }
+  },
+  "hotPaths": [
+    {
+      "path": "pyproject.toml",
+      "accessCount": 1,
+      "lastAccessed": 1776666883982,
+      "type": "file"
+    }
+  ],
+  "userDirectives": []
+}

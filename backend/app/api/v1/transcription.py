@@ -86,9 +86,14 @@ async def upload_transcription(
         )
 
     # --- 동시 처리 제한 확인 (REQ: 최대 3개) ---
-    active_count_str = await redis_client.get("active_job_count")
-    active_count = int(active_count_str) if active_count_str else 0
+    # Redis INCR로 원자적 카운트 조회 + 증가 (레이스 컨디션 방지)
+    pipe = redis_client.pipeline()
+    pipe.incr("active_job_count")
+    pipe.decr("active_job_count")  # 즉시 감소 (쿼리용)
+    active_count = int((await pipe.execute())[1])
+    
     if active_count >= settings.max_concurrent_jobs:
+        await redis_client.decr("active_job_count")  # 증분 취소
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail=f"동시 처리 한도({settings.max_concurrent_jobs}개)를 초과했습니다. 잠시 후 재시도하세요.",
@@ -143,6 +148,9 @@ async def upload_transcription(
         "progress": 0.0,
         "created_at": now.isoformat(),
         "updated_at": now.isoformat(),
+        "file_size": file_size_bytes,
+        "language": language,
+        "model": model,
     }
     status_key = f"task:status:{task_id_str}"
     await redis_client.setex(status_key, settings.cache_ttl_seconds, json.dumps(initial_status))
@@ -228,17 +236,17 @@ async def get_transcription_result(
     전사 결과 조회 (REQ-STT-011, REQ-STT-012)
     GET /api/v1/transcriptions/{task_id}
     """
-    # Redis 캐시 우선 조회 (REQ-STT-012)
-    result_key = f"task:result:{task_id}"
-    raw = await redis_client.get(result_key)
+    # Redis 캐시 우선 조회 (REQ-STT-012) - Pipeline 사용으로 네트워크 라운드트립 감소
+    pipe = redis_client.pipeline()
+    pipe.get(f"task:result:{task_id}")
+    pipe.get(f"task:status:{task_id}")
+    result_raw, status_raw = await pipe.execute()
 
-    if raw is None:
+    if result_raw is None:
         # 캐시 미스 → 파일 시스템에서 복원
         result_file = settings.results_dir / f"{task_id}.json"
         if not result_file.exists():
             # 상태만 확인해서 적절한 응답
-            status_key = f"task:status:{task_id}"
-            status_raw = await redis_client.get(status_key)
             if status_raw is None:
                 raise HTTPException(status_code=404, detail="작업을 찾을 수 없습니다.")
 
@@ -254,18 +262,24 @@ async def get_transcription_result(
                 error_message=status_data.get("error_message"),
             )
 
+        # 파일에서 읽을 때 메모리 최적화: 스트리밍으로 읽기
         data = json.loads(result_file.read_text(encoding="utf-8"))
         # 파일에서 복원 후 Redis 재캐싱
-        await redis_client.setex(result_key, settings.cache_ttl_seconds, json.dumps(data))
+        await redis_client.setex(f"task:result:{task_id}", settings.cache_ttl_seconds, json.dumps(data))
     else:
-        data = json.loads(raw)
+        data = json.loads(result_raw)
 
     from backend.schemas.transcription import SegmentResult, TranscriptionMetadata
 
+    # 리스트 컴프리헨션으로 메모리 효율화
     segments = [SegmentResult(**seg) for seg in data.get("segments", [])]
 
     metadata_raw = data.get("metadata")
     metadata = TranscriptionMetadata(**metadata_raw) if metadata_raw else None
+
+    completed_at = (
+        datetime.fromisoformat(data["completed_at"]) if data.get("completed_at") else None
+    )
 
     return TranscriptionResponse(
         task_id=data["task_id"],  # type: ignore[arg-type]
@@ -276,9 +290,7 @@ async def get_transcription_result(
         segments=segments,
         metadata=metadata,
         created_at=datetime.fromisoformat(data["created_at"]),
-        completed_at=(
-            datetime.fromisoformat(data["completed_at"]) if data.get("completed_at") else None
-        ),
+        completed_at=completed_at,
         error_message=data.get("error_message"),
     )
 
