@@ -185,6 +185,84 @@
       "accessCount": 1,
       "lastAccessed": 1776666883982,
       "type": "file"
+    },
+    {
+      "path": "backend/app/main.py",
+      "accessCount": 1,
+      "lastAccessed": 1776841421434,
+      "type": "file"
+    },
+    {
+      "path": "backend/app/api/v1/search.py",
+      "accessCount": 1,
+      "lastAccessed": 1776841421778,
+      "type": "file"
+    },
+    {
+      "path": "backend/app/api/v1/history.py",
+      "accessCount": 1,
+      "lastAccessed": 1776841422191,
+      "type": "file"
+    },
+    {
+      "path": "backend/db/models.py",
+      "accessCount": 1,
+      "lastAccessed": 1776841422483,
+      "type": "file"
+    },
+    {
+      "path": "backend/db/service.py",
+      "accessCount": 1,
+      "lastAccessed": 1776841433967,
+      "type": "file"
+    },
+    {
+      "path": "backend/app/dependencies.py",
+      "accessCount": 1,
+      "lastAccessed": 1776841434748,
+      "type": "file"
+    },
+    {
+      "path": "backend/events/publisher.py",
+      "accessCount": 1,
+      "lastAccessed": 1776841435111,
+      "type": "file"
+    },
+    {
+      "path": "backend/schemas/history.py",
+      "accessCount": 1,
+      "lastAccessed": 1776841435604,
+      "type": "file"
+    },
+    {
+      "path": "backend",
+      "accessCount": 1,
+      "lastAccessed": 1776841442047,
+      "type": "directory"
+    },
+    {
+      "path": "backend/app/config.py",
+      "accessCount": 1,
+      "lastAccessed": 1776841442442,
+      "type": "file"
+    },
+    {
+      "path": "backend/tests/unit/test_history_api.py",
+      "accessCount": 1,
+      "lastAccessed": 1776841465634,
+      "type": "file"
+    },
+    {
+      "path": "backend/conftest.py",
+      "accessCount": 1,
+      "lastAccessed": 1776841466326,
+      "type": "file"
+    },
+    {
+      "path": "backend/db/auth_models.py",
+      "accessCount": 1,
+      "lastAccessed": 1776841466881,
+      "type": "file"
     }
   ],
   "userDirectives": []
