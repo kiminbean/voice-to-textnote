@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "lastScanned": 1776666855187,
+  "lastScanned": 1776839707734,
   "projectRoot": "/Users/ibkim/Projects/voice-to-textnote",
   "techStack": {
     "languages": [
@@ -56,7 +56,7 @@
       "path": "alembic",
       "purpose": null,
       "fileCount": 3,
-      "lastAccessed": 1776666855160,
+      "lastAccessed": 1776839707724,
       "keyFiles": [
         "__init__.py",
         "env.py",
@@ -67,7 +67,7 @@
       "path": "backend",
       "purpose": null,
       "fileCount": 2,
-      "lastAccessed": 1776666855160,
+      "lastAccessed": 1776839707724,
       "keyFiles": [
         "__init__.py",
         "conftest.py"
@@ -77,7 +77,7 @@
       "path": "client",
       "purpose": null,
       "fileCount": 6,
-      "lastAccessed": 1776666855161,
+      "lastAccessed": 1776839707724,
       "keyFiles": [
         "README.md",
         "analysis_options.yaml",
@@ -89,7 +89,7 @@
       "path": "deploy",
       "purpose": null,
       "fileCount": 4,
-      "lastAccessed": 1776666855161,
+      "lastAccessed": 1776839707725,
       "keyFiles": [
         "requirements-ubuntu.txt",
         "restart.sh",
@@ -101,16 +101,23 @@
       "path": "nginx",
       "purpose": null,
       "fileCount": 1,
-      "lastAccessed": 1776666855161,
+      "lastAccessed": 1776839707725,
       "keyFiles": [
         "nginx.conf"
       ]
+    },
+    "storage": {
+      "path": "storage",
+      "purpose": null,
+      "fileCount": 0,
+      "lastAccessed": 1776839707725,
+      "keyFiles": []
     },
     "venv": {
       "path": "venv",
       "purpose": null,
       "fileCount": 2,
-      "lastAccessed": 1776666855161,
+      "lastAccessed": 1776839707725,
       "keyFiles": [
         "pyvenv.cfg"
       ]
@@ -119,7 +126,7 @@
       "path": "backend/app",
       "purpose": "Application code",
       "fileCount": 9,
-      "lastAccessed": 1776666855161,
+      "lastAccessed": 1776839707725,
       "keyFiles": [
         "__init__.py",
         "config.py",
@@ -130,14 +137,14 @@
       "path": "backend/assets",
       "purpose": "Static assets",
       "fileCount": 0,
-      "lastAccessed": 1776666855161,
+      "lastAccessed": 1776839707726,
       "keyFiles": []
     },
     "backend/schemas": {
       "path": "backend/schemas",
       "purpose": "Schema definitions",
       "fileCount": 13,
-      "lastAccessed": 1776666855162,
+      "lastAccessed": 1776839707726,
       "keyFiles": [
         "__init__.py",
         "auth.py",
@@ -148,7 +155,7 @@
       "path": "client/lib",
       "purpose": "Library code",
       "fileCount": 1,
-      "lastAccessed": 1776666855162,
+      "lastAccessed": 1776839707727,
       "keyFiles": [
         "main.dart"
       ]
@@ -156,8 +163,8 @@
     "venv/bin": {
       "path": "venv/bin",
       "purpose": "Executable scripts",
-      "fileCount": 7,
-      "lastAccessed": 1776666855162,
+      "fileCount": 57,
+      "lastAccessed": 1776839707728,
       "keyFiles": [
         "Activate.ps1",
         "activate",
@@ -168,7 +175,7 @@
       "path": "venv/lib",
       "purpose": "Library code",
       "fileCount": 0,
-      "lastAccessed": 1776666855162,
+      "lastAccessed": 1776839707728,
       "keyFiles": []
     }
   },
