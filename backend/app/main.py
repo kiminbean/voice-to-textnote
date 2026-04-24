@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.app.api.v1 import (
     admin,
     auth,
+    bookmarks,
     diarization,
     export,
     health,
@@ -19,6 +20,7 @@ from backend.app.api.v1 import (
     meetings,
     minutes,
     search,
+    statistics,
     stream,
     summary,
     teams,
@@ -151,6 +153,8 @@ def create_app() -> FastAPI:
     app.include_router(search.router, prefix=api_prefix, dependencies=_auth)
     # SPEC-EXPORT-001: 회의록 PDF 내보내기 엔드포인트
     app.include_router(export.router, prefix=api_prefix, dependencies=_auth)
+    # SPEC-STATS-001: 회의 통계 대시보드 엔드포인트 (읽기 전용)
+    app.include_router(statistics.router, prefix=api_prefix, dependencies=_auth)
 
     # SPEC-TEAM-001: 인증 API (공개 엔드포인트 - API Key 불필요)
     app.include_router(auth.router, prefix=api_prefix)
@@ -160,6 +164,9 @@ def create_app() -> FastAPI:
 
     # SPEC-TEAM-001 REQ-TEAM-005: 회의록 공유 API (JWT 인증은 각 엔드포인트에서 처리)
     app.include_router(meetings.router, prefix=api_prefix)
+
+    # SPEC-BOOKMARK-001: 북마크/하이라이트 API (JWT 인증은 각 엔드포인트에서 처리)
+    app.include_router(bookmarks.router, prefix=api_prefix)
 
     return app
 

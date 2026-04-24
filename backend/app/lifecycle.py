@@ -61,6 +61,8 @@ async def validate_startup() -> dict:
     try:
         # SPEC-TEAM-001: auth 모델 import하여 Base.metadata에 등록
         import backend.db.auth_models  # noqa: F401
+        # SPEC-BOOKMARK-001: 북마크 모델 import
+        import backend.db.bookmark_models  # noqa: F401
         from backend.app.config import settings
         from backend.db.models import Base
 

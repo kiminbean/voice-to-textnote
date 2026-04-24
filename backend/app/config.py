@@ -135,9 +135,21 @@ class Settings(BaseSettings):
     # REQ-ERR-007: 범위 유효성 검사 (1-1000)
     rate_limit_per_minute: int = Field(default=60, ge=1, le=1000)
 
+    # SPEC-BOOKMARK-001: 회의록 북마크/하이라이트 설정
+    # 한 회의록당 최대 북마크 수 (무분별한 생성 방지)
+    bookmark_max_per_meeting: int = Field(default=200, ge=1, le=10000)
+    # 북마크 노트 최대 길이 (문자)
+    bookmark_note_max_length: int = Field(default=2000, ge=1, le=20000)
+
+    # SPEC-STATS-001: 회의 통계 대시보드 설정
+    # 키워드 빈도 상위 N개 반환
+    statistics_keyword_top_n: int = Field(default=20, ge=1, le=200)
+    # 키워드로 계산할 최소 글자 수 (한글 1글자, 영어 1글자 구분 없이 공통)
+    statistics_keyword_min_length: int = Field(default=2, ge=1, le=10)
+
     # REQ-SEC-009/REQ-SEC-010: CORS 설정
     # 허용할 HTTP 메서드 목록 (와일드카드 금지)
-    cors_allow_methods: list[str] = Field(default_factory=lambda: ["GET", "POST", "DELETE"])
+    cors_allow_methods: list[str] = Field(default_factory=lambda: ["GET", "POST", "PATCH", "DELETE"])
     # 허용할 Origins 목록 (기본: 로컬 개발 환경)
     cors_allow_origins: list[str] = Field(default_factory=lambda: list(_DEFAULT_CORS_ORIGINS))
 
