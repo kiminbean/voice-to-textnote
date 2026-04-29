@@ -62,3 +62,17 @@ def publish_task_event_sync(
     except Exception:
         # Pub/Sub 발행 실패는 무시 (폴링 폴백으로 처리 가능)
         logger.warning("태스크 이벤트 발행 실패", task_id=task_id, event_type=event_type)
+
+    # SPEC-WEBHOOK-001: 작업 완료/실패 시 등록된 웹훅 URL로 best-effort 알림
+    if event_type in ("completed", "failed"):
+        try:
+            from backend.services.webhook_notifier import notify_webhooks_sync
+            task_type = data.get("task_type", "unknown")
+            notify_webhooks_sync(
+                task_id=task_id,
+                event_type=event_type,
+                task_type=task_type,
+                data=data,
+            )
+        except Exception:
+            logger.warning("웹훅 알림 호출 실패 (무시)", task_id=task_id, event_type=event_type)

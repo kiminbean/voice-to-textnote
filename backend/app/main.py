@@ -20,12 +20,14 @@ from backend.app.api.v1 import (
     meetings,
     minutes,
     search,
+    speakers,
     statistics,
     stream,
     summary,
     teams,
     templates,
     transcription,
+    webhooks,
 )
 from backend.app.config import settings
 from backend.app.error_handlers import register_exception_handlers
@@ -167,6 +169,12 @@ def create_app() -> FastAPI:
 
     # SPEC-BOOKMARK-001: 북마크/하이라이트 API (JWT 인증은 각 엔드포인트에서 처리)
     app.include_router(bookmarks.router, prefix=api_prefix)
+
+    # SPEC-SPEAKER-001: 화자 프로필 관리 API (JWT 인증은 각 엔드포인트에서 처리)
+    app.include_router(speakers.router, prefix=api_prefix)
+
+    # SPEC-WEBHOOK-001: 웹훅 엔드포인트 관리 API (JWT 인증은 각 엔드포인트에서 처리)
+    app.include_router(webhooks.router, prefix=api_prefix)
 
     return app
 

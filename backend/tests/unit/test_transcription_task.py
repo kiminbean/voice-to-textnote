@@ -111,17 +111,21 @@ class TestUpdateTaskStatus:
     """Redis에 작업 상태 저장 검증"""
 
     @patch("backend.workers.tasks.transcription_task._get_redis")
-    def test_stores_status_in_redis(self, mock_get_redis):
+    @patch("backend.workers.tasks.transcription_task.publish_task_event_sync")
+    def test_stores_status_in_redis(self, mock_pubsub, mock_get_redis):
         from backend.workers.tasks.transcription_task import _update_task_status
 
         mock_redis = MagicMock()
-        mock_redis.get.return_value = None  # 기존 상태 없음
+        mock_pipe = MagicMock()
+        mock_pipe.execute.return_value = [None]  # 기존 상태 없음
+        mock_redis.pipeline.return_value = mock_pipe
         mock_get_redis.return_value = mock_redis
 
         _update_task_status("test-task-id", TaskStatus.processing, 0.5, "처리 중...")
 
-        mock_redis.setex.assert_called_once()
-        call_args = mock_redis.setex.call_args
+        # pipe.setex 호출 확인
+        mock_pipe.setex.assert_called()
+        call_args = mock_pipe.setex.call_args
         key = call_args[0][0]
         assert key == "task:status:test-task-id"
 
@@ -132,11 +136,14 @@ class TestUpdateTaskStatus:
         assert stored_data["message"] == "처리 중..."
 
     @patch("backend.workers.tasks.transcription_task._get_redis")
-    def test_stores_error_message(self, mock_get_redis):
+    @patch("backend.workers.tasks.transcription_task.publish_task_event_sync")
+    def test_stores_error_message(self, mock_pubsub, mock_get_redis):
         from backend.workers.tasks.transcription_task import _update_task_status
 
         mock_redis = MagicMock()
-        mock_redis.get.return_value = None  # 기존 상태 없음
+        mock_pipe = MagicMock()
+        mock_pipe.execute.return_value = [None]  # 기존 상태 없음
+        mock_redis.pipeline.return_value = mock_pipe
         mock_get_redis.return_value = mock_redis
 
         _update_task_status(
@@ -146,16 +153,19 @@ class TestUpdateTaskStatus:
             error_message="파일 손상",
         )
 
-        stored_data = json.loads(mock_redis.setex.call_args[0][2])
+        stored_data = json.loads(mock_pipe.setex.call_args[0][2])
         assert stored_data["error_message"] == "파일 손상"
         assert stored_data["status"] == "failed"
 
     @patch("backend.workers.tasks.transcription_task._get_redis")
-    def test_omits_optional_fields_when_none(self, mock_get_redis):
+    @patch("backend.workers.tasks.transcription_task.publish_task_event_sync")
+    def test_omits_optional_fields_when_none(self, mock_pubsub, mock_get_redis):
         from backend.workers.tasks.transcription_task import _update_task_status
 
         mock_redis = MagicMock()
-        mock_redis.get.return_value = None  # 기존 상태 없음
+        mock_pipe = MagicMock()
+        mock_pipe.execute.return_value = [None]  # 기존 상태 없음
+        mock_redis.pipeline.return_value = mock_pipe
         mock_get_redis.return_value = mock_redis
 
         _update_task_status("test-id", TaskStatus.pending)

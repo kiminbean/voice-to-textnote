@@ -63,6 +63,10 @@ async def validate_startup() -> dict:
         import backend.db.auth_models  # noqa: F401
         # SPEC-BOOKMARK-001: 북마크 모델 import
         import backend.db.bookmark_models  # noqa: F401
+        # SPEC-SPEAKER-001: 화자 프로필 모델 import
+        import backend.db.speaker_models  # noqa: F401
+        # SPEC-WEBHOOK-001: 웹훅 엔드포인트 모델 import
+        import backend.db.webhook_models  # noqa: F401
         from backend.app.config import settings
         from backend.db.models import Base
 

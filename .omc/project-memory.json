@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "lastScanned": 1777012461494,
+  "lastScanned": 1777446253273,
   "projectRoot": "/Users/ibkim/Projects/voice-to-textnote",
   "techStack": {
     "languages": [
@@ -56,7 +56,7 @@
       "path": "alembic",
       "purpose": null,
       "fileCount": 3,
-      "lastAccessed": 1777012461485,
+      "lastAccessed": 1777446253246,
       "keyFiles": [
         "__init__.py",
         "env.py",
@@ -66,18 +66,21 @@
     "backend": {
       "path": "backend",
       "purpose": null,
-      "fileCount": 2,
-      "lastAccessed": 1777012461485,
+      "fileCount": 18,
+      "lastAccessed": 1777446253247,
       "keyFiles": [
-        "__init__.py",
-        "conftest.py"
+        "<MagicMock name='settings.temp_dir.__truediv__()' id='4521707904'>",
+        "<MagicMock name='settings.temp_dir.__truediv__()' id='4537726160'>",
+        "<MagicMock name='settings.temp_dir.__truediv__()' id='4704011664'>",
+        "<MagicMock name='settings.temp_dir.__truediv__()' id='4719083936'>",
+        "<MagicMock name='settings.temp_dir.__truediv__()' id='4740055792'>"
       ]
     },
     "client": {
       "path": "client",
       "purpose": null,
       "fileCount": 6,
-      "lastAccessed": 1777012461486,
+      "lastAccessed": 1777446253247,
       "keyFiles": [
         "README.md",
         "analysis_options.yaml",
@@ -89,7 +92,7 @@
       "path": "deploy",
       "purpose": null,
       "fileCount": 4,
-      "lastAccessed": 1777012461486,
+      "lastAccessed": 1777446253247,
       "keyFiles": [
         "requirements-ubuntu.txt",
         "restart.sh",
@@ -101,7 +104,7 @@
       "path": "nginx",
       "purpose": null,
       "fileCount": 1,
-      "lastAccessed": 1777012461486,
+      "lastAccessed": 1777446253247,
       "keyFiles": [
         "nginx.conf"
       ]
@@ -110,52 +113,23 @@
       "path": "storage",
       "purpose": null,
       "fileCount": 0,
-      "lastAccessed": 1777012461486,
+      "lastAccessed": 1777446253248,
       "keyFiles": []
     },
     "venv": {
       "path": "venv",
       "purpose": null,
       "fileCount": 2,
-      "lastAccessed": 1777012461486,
+      "lastAccessed": 1777446253248,
       "keyFiles": [
         "pyvenv.cfg"
-      ]
-    },
-    "backend/app": {
-      "path": "backend/app",
-      "purpose": "Application code",
-      "fileCount": 9,
-      "lastAccessed": 1777012461486,
-      "keyFiles": [
-        "__init__.py",
-        "config.py",
-        "dependencies.py"
-      ]
-    },
-    "backend/assets": {
-      "path": "backend/assets",
-      "purpose": "Static assets",
-      "fileCount": 0,
-      "lastAccessed": 1777012461487,
-      "keyFiles": []
-    },
-    "backend/schemas": {
-      "path": "backend/schemas",
-      "purpose": "Schema definitions",
-      "fileCount": 13,
-      "lastAccessed": 1777012461487,
-      "keyFiles": [
-        "__init__.py",
-        "auth.py",
-        "diarization.py"
       ]
     },
     "client/lib": {
       "path": "client/lib",
       "purpose": "Library code",
       "fileCount": 1,
-      "lastAccessed": 1777012461487,
+      "lastAccessed": 1777446253248,
       "keyFiles": [
         "main.dart"
       ]
@@ -164,7 +138,7 @@
       "path": "venv/bin",
       "purpose": "Executable scripts",
       "fileCount": 57,
-      "lastAccessed": 1777012461488,
+      "lastAccessed": 1777446253252,
       "keyFiles": [
         "Activate.ps1",
         "activate",
@@ -175,21 +149,69 @@
       "path": "venv/lib",
       "purpose": "Library code",
       "fileCount": 0,
-      "lastAccessed": 1777012461488,
+      "lastAccessed": 1777446253252,
       "keyFiles": []
     }
   },
   "hotPaths": [
     {
       "path": "backend/app/main.py",
-      "accessCount": 6,
-      "lastAccessed": 1777025929274,
+      "accessCount": 11,
+      "lastAccessed": 1777446761673,
       "type": "file"
     },
     {
+      "path": "backend",
+      "accessCount": 6,
+      "lastAccessed": 1777185166686,
+      "type": "directory"
+    },
+    {
       "path": "backend/app/config.py",
+      "accessCount": 6,
+      "lastAccessed": 1777446311283,
+      "type": "file"
+    },
+    {
+      "path": "backend/app/lifecycle.py",
+      "accessCount": 6,
+      "lastAccessed": 1777446749271,
+      "type": "file"
+    },
+    {
+      "path": "backend/app/api/v1/transcription.py",
+      "accessCount": 5,
+      "lastAccessed": 1777446294848,
+      "type": "file"
+    },
+    {
+      "path": "backend/db/models.py",
+      "accessCount": 5,
+      "lastAccessed": 1777446416217,
+      "type": "file"
+    },
+    {
+      "path": "backend/services/statistics.py",
       "accessCount": 4,
-      "lastAccessed": 1777025754686,
+      "lastAccessed": 1777185146999,
+      "type": "file"
+    },
+    {
+      "path": "backend/pipeline/audio_processor.py",
+      "accessCount": 4,
+      "lastAccessed": 1777185229527,
+      "type": "file"
+    },
+    {
+      "path": "backend/app/dependencies.py",
+      "accessCount": 4,
+      "lastAccessed": 1777446421292,
+      "type": "file"
+    },
+    {
+      "path": "backend/db/auth_models.py",
+      "accessCount": 4,
+      "lastAccessed": 1777446558745,
       "type": "file"
     },
     {
@@ -199,27 +221,27 @@
       "type": "file"
     },
     {
-      "path": "backend/services/statistics.py",
+      "path": "backend/app/api/v1",
       "accessCount": 3,
-      "lastAccessed": 1777025892588,
+      "lastAccessed": 1777185162521,
+      "type": "directory"
+    },
+    {
+      "path": "backend/app/api/v1/summary.py",
+      "accessCount": 3,
+      "lastAccessed": 1777446303996,
+      "type": "file"
+    },
+    {
+      "path": "backend/db/bookmark_models.py",
+      "accessCount": 3,
+      "lastAccessed": 1777446420893,
       "type": "file"
     },
     {
       "path": "backend/app/api/v1/search.py",
       "accessCount": 2,
       "lastAccessed": 1777025679003,
-      "type": "file"
-    },
-    {
-      "path": "backend/db/models.py",
-      "accessCount": 2,
-      "lastAccessed": 1777025693241,
-      "type": "file"
-    },
-    {
-      "path": "backend/db/auth_models.py",
-      "accessCount": 2,
-      "lastAccessed": 1777025693937,
       "type": "file"
     },
     {
@@ -235,33 +257,69 @@
       "type": "file"
     },
     {
-      "path": "backend/app/dependencies.py",
+      "path": "backend/db/service.py",
       "accessCount": 2,
-      "lastAccessed": 1777025726954,
+      "lastAccessed": 1777185124447,
       "type": "file"
     },
     {
-      "path": "backend/app/lifecycle.py",
+      "path": "backend/services",
       "accessCount": 2,
-      "lastAccessed": 1777025936257,
+      "lastAccessed": 1777185147278,
+      "type": "directory"
+    },
+    {
+      "path": "backend/workers/tasks",
+      "accessCount": 2,
+      "lastAccessed": 1777185162136,
+      "type": "directory"
+    },
+    {
+      "path": "backend/workers/tasks/transcription_task.py",
+      "accessCount": 2,
+      "lastAccessed": 1777185229777,
+      "type": "file"
+    },
+    {
+      "path": "backend/workers/tasks/diarization_task.py",
+      "accessCount": 2,
+      "lastAccessed": 1777185235780,
+      "type": "file"
+    },
+    {
+      "path": "backend/services/retention.py",
+      "accessCount": 2,
+      "lastAccessed": 1777185236129,
       "type": "file"
     },
     {
       "path": "pyproject.toml",
-      "accessCount": 1,
-      "lastAccessed": 1776666883982,
+      "accessCount": 2,
+      "lastAccessed": 1777446285197,
       "type": "file"
     },
     {
-      "path": "backend/db/service.py",
-      "accessCount": 1,
-      "lastAccessed": 1776841433967,
+      "path": "backend/app/api/v1/bookmarks.py",
+      "accessCount": 2,
+      "lastAccessed": 1777446404956,
+      "type": "file"
+    },
+    {
+      "path": "backend/db/bookmark_service.py",
+      "accessCount": 2,
+      "lastAccessed": 1777446416428,
+      "type": "file"
+    },
+    {
+      "path": "backend/tests/unit/test_bookmarks_api.py",
+      "accessCount": 2,
+      "lastAccessed": 1777446421685,
       "type": "file"
     },
     {
       "path": "backend/events/publisher.py",
-      "accessCount": 1,
-      "lastAccessed": 1776841435111,
+      "accessCount": 2,
+      "lastAccessed": 1777446782147,
       "type": "file"
     },
     {
@@ -271,27 +329,9 @@
       "type": "file"
     },
     {
-      "path": "backend",
-      "accessCount": 1,
-      "lastAccessed": 1776841442047,
-      "type": "directory"
-    },
-    {
       "path": "CLAUDE.md",
       "accessCount": 1,
       "lastAccessed": 1776926137208,
-      "type": "file"
-    },
-    {
-      "path": "backend/pipeline/audio_processor.py",
-      "accessCount": 1,
-      "lastAccessed": 1776926137602,
-      "type": "file"
-    },
-    {
-      "path": "backend/app/api/v1/transcription.py",
-      "accessCount": 1,
-      "lastAccessed": 1776926142505,
       "type": "file"
     },
     {
@@ -307,27 +347,9 @@
       "type": "file"
     },
     {
-      "path": "backend/db/bookmark_models.py",
-      "accessCount": 1,
-      "lastAccessed": 1777025776890,
-      "type": "file"
-    },
-    {
       "path": "backend/schemas/bookmark.py",
       "accessCount": 1,
       "lastAccessed": 1777025789241,
-      "type": "file"
-    },
-    {
-      "path": "backend/db/bookmark_service.py",
-      "accessCount": 1,
-      "lastAccessed": 1777025811665,
-      "type": "file"
-    },
-    {
-      "path": "backend/app/api/v1/bookmarks.py",
-      "accessCount": 1,
-      "lastAccessed": 1777025826705,
       "type": "file"
     },
     {
@@ -343,15 +365,93 @@
       "type": "file"
     },
     {
-      "path": "backend/tests/unit/test_bookmarks_api.py",
-      "accessCount": 1,
-      "lastAccessed": 1777025966140,
-      "type": "file"
-    },
-    {
       "path": "backend/tests/unit/test_statistics_api.py",
       "accessCount": 1,
       "lastAccessed": 1777025993283,
+      "type": "file"
+    },
+    {
+      "path": "backend/app/exceptions.py",
+      "accessCount": 1,
+      "lastAccessed": 1777185120145,
+      "type": "file"
+    },
+    {
+      "path": "backend/app/error_handlers.py",
+      "accessCount": 1,
+      "lastAccessed": 1777185120585,
+      "type": "file"
+    },
+    {
+      "path": "backend/db/engine.py",
+      "accessCount": 1,
+      "lastAccessed": 1777185123766,
+      "type": "file"
+    },
+    {
+      "path": "backend/workers/celery_app.py",
+      "accessCount": 1,
+      "lastAccessed": 1777185131567,
+      "type": "file"
+    },
+    {
+      "path": "backend/pipeline",
+      "accessCount": 1,
+      "lastAccessed": 1777185141705,
+      "type": "directory"
+    },
+    {
+      "path": "backend/workers/tasks/summary_task.py",
+      "accessCount": 1,
+      "lastAccessed": 1777185147067,
+      "type": "file"
+    },
+    {
+      "path": "backend/db/search_service.py",
+      "accessCount": 1,
+      "lastAccessed": 1777185150290,
+      "type": "file"
+    },
+    {
+      "path": "backend/workers",
+      "accessCount": 1,
+      "lastAccessed": 1777185154153,
+      "type": "directory"
+    },
+    {
+      "path": "backend/app/middleware/auth.py",
+      "accessCount": 1,
+      "lastAccessed": 1777185156688,
+      "type": "file"
+    },
+    {
+      "path": "backend/app/api/v1/stream.py",
+      "accessCount": 1,
+      "lastAccessed": 1777185156874,
+      "type": "file"
+    },
+    {
+      "path": "backend/ml/stt_engine.py",
+      "accessCount": 1,
+      "lastAccessed": 1777185157462,
+      "type": "file"
+    },
+    {
+      "path": "backend/app/api/v1/health.py",
+      "accessCount": 1,
+      "lastAccessed": 1777446294791,
+      "type": "file"
+    },
+    {
+      "path": "backend/db/search_models.py",
+      "accessCount": 1,
+      "lastAccessed": 1777446300412,
+      "type": "file"
+    },
+    {
+      "path": "backend/app/api/v1/teams.py",
+      "accessCount": 1,
+      "lastAccessed": 1777446303819,
       "type": "file"
     }
   ],

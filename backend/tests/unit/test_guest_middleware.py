@@ -24,11 +24,14 @@ from jose import jwt
 
 def _make_guest_token(
     session_id: str,
-    secret: str = "dev-jwt-secret-change-me-in-production-32chars",
+    secret: str | None = None,
     expires_delta: timedelta | None = None,
     token_type: str = "guest",
 ) -> str:
     """테스트용 게스트 JWT 생성"""
+    if secret is None:
+        from backend.app.config import settings
+        secret = settings.jwt_secret
     if expires_delta is None:
         expires_delta = timedelta(hours=24)
     expire = datetime.now(UTC) + expires_delta

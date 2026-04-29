@@ -156,15 +156,13 @@ class TestCorsOriginsConfig:
     def test_cors_origins_default_value_is_localhost(self):
         """REQ-SEC-010: 기본 Origins는 로컬호스트"""
         with patch.dict("os.environ", {}, clear=True):
-            # 실제 환경 변수 없이 기본값 확인
             from backend.app.config import Settings
 
-            # 기본 Settings의 cors_allow_origins 확인
-            # 환경 변수 없이는 기본값 사용
-            default_origins = Settings.model_fields["cors_allow_origins"].default
-            if default_origins is not None:
-                # 기본값이 있다면 localhost 포함 여부 확인
-                assert any("localhost" in str(origin) for origin in default_origins)
+            # default_factory 필드는 .default가 Undefined이므로
+            # 인스턴스를 생성해서 기본값 확인
+            s = Settings()
+            default_origins = s.cors_allow_origins
+            assert any("localhost" in str(origin) for origin in default_origins)
 
 
 # ---------------------------------------------------------------------------
