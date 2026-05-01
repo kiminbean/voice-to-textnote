@@ -67,6 +67,8 @@ async def validate_startup() -> dict:
         import backend.db.speaker_models  # noqa: F401
         # SPEC-WEBHOOK-001: 웹훅 엔드포인트 모델 import
         import backend.db.webhook_models  # noqa: F401
+        # SPEC-VERSION-001: 회의록 버전 관리 모델 import
+        import backend.db.version_models  # noqa: F401
         from backend.app.config import settings
         from backend.db.models import Base
 

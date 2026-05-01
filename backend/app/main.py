@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.app.api.v1 import (
     admin,
     auth,
+    batch,
     bookmarks,
     diarization,
     export,
@@ -27,6 +28,7 @@ from backend.app.api.v1 import (
     teams,
     templates,
     transcription,
+    versions,
     webhooks,
 )
 from backend.app.config import settings
@@ -138,6 +140,8 @@ def create_app() -> FastAPI:
     # health 라우터는 인증 불필요 (헬스체크, /metrics, /docs, /redoc 포함)
     api_prefix = "/api/v1"
     _auth = [Depends(verify_api_key)]
+    # 배치 라우터는 /transcriptions/{task_id} 경로 충돌 방지를 위해 transcription보다 먼저 등록
+    app.include_router(batch.router, prefix=api_prefix, dependencies=_auth)
     app.include_router(transcription.router, prefix=api_prefix, dependencies=_auth)
     app.include_router(diarization.router, prefix=api_prefix, dependencies=_auth)
     app.include_router(minutes.router, prefix=api_prefix, dependencies=_auth)
@@ -175,6 +179,9 @@ def create_app() -> FastAPI:
 
     # SPEC-WEBHOOK-001: 웹훅 엔드포인트 관리 API (JWT 인증은 각 엔드포인트에서 처리)
     app.include_router(webhooks.router, prefix=api_prefix)
+
+    # SPEC-VERSION-001: 회의록 버전 관리 API (JWT 인증은 각 엔드포인트에서 처리)
+    app.include_router(versions.router, prefix=api_prefix)
 
     return app
 

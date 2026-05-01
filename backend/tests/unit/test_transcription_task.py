@@ -170,9 +170,9 @@ class TestUpdateTaskStatus:
 
         _update_task_status("test-id", TaskStatus.pending)
 
-        stored_data = json.loads(mock_redis.setex.call_args[0][2])
-        assert "message" not in stored_data
-        assert "error_message" not in stored_data
+        stored_data = json.loads(mock_pipe.setex.call_args[0][2])
+        assert stored_data.get("message") is None
+        assert stored_data.get("error_message") is None
 
 
 # ---------------------------------------------------------------------------
