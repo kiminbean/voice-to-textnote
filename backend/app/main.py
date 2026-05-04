@@ -30,6 +30,7 @@ from backend.app.api.v1 import (
     transcription,
     versions,
     webhooks,
+    sentiment,
 )
 from backend.app.config import settings
 from backend.app.error_handlers import register_exception_handlers
@@ -182,6 +183,8 @@ def create_app() -> FastAPI:
 
     # SPEC-VERSION-001: 회의록 버전 관리 API (JWT 인증은 각 엔드포인트에서 처리)
     app.include_router(versions.router, prefix=api_prefix)
+
+    app.include_router(sentiment.router, prefix=api_prefix, dependencies=_auth)
 
     return app
 
