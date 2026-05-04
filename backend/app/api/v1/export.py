@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.dependencies import get_db_session, get_redis_client
 from backend.db.models import TaskResult
+from backend.pipeline.docx_generator import MinutesDOCXGenerator
 from backend.pipeline.pdf_generator import MinutesPDFGenerator
 from backend.utils.logger import get_logger
 
@@ -170,6 +171,92 @@ async def export_pdf(
     return StreamingResponse(
         content=io.BytesIO(pdf_bytes),
         media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+        },
+    )
+
+
+@router.get(
+    "/export/docx/{minutes_task_id}",
+    response_class=StreamingResponse,
+    responses={
+        200: {
+            "content": {
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {}
+            },
+            "description": "DOCX 파일 다운로드",
+        },
+        404: {"description": "회의록 데이터를 찾을 수 없음"},
+        422: {"description": "회의록 데이터 불완전 (segments 없음)"},
+    },
+    summary="회의록 DOCX 내보내기",
+    description=(
+        "회의록 데이터를 DOCX로 변환하여 반환합니다. "
+        "summary_task_id를 지정하면 요약 섹션이 포함됩니다."
+    ),
+)
+async def export_docx(
+    minutes_task_id: str,
+    summary_task_id: str | None = Query(
+        default=None,
+        description="요약 태스크 ID (지정하면 요약 섹션 포함)",
+    ),
+    redis_client: aioredis.Redis = Depends(get_redis_client),
+    db: AsyncSession = Depends(get_db_session),
+) -> StreamingResponse:
+    """
+    SPEC-EXPORT-002: 회의록 DOCX 다운로드
+
+    PDF와 동일한 데이터 소스에서 DOCX 포맷으로 내보냅니다.
+    """
+    # 1. 회의록 데이터 조회 (PDF 엔드포인트와 동일 로직)
+    minutes_data = await _get_task_result(redis_client, db, "min", minutes_task_id)
+    if minutes_data is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"회의록 데이터를 찾을 수 없습니다. (task_id: {minutes_task_id})",
+        )
+
+    if not minutes_data.get("segments"):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="회의록 데이터가 불완전합니다. segments가 없습니다.",
+        )
+
+    # 2. 요약 데이터 조회 (선택)
+    summary_data: dict | None = None
+    if summary_task_id:
+        summary_data = await _get_task_result(redis_client, db, "sum", summary_task_id)
+
+    # 3. DOCX 생성
+    try:
+        generator = MinutesDOCXGenerator()
+        docx_bytes = generator.generate(minutes_data, summary_data)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(e),
+        ) from e
+    except Exception as e:
+        logger.error("DOCX 생성 중 오류", error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="DOCX 생성 중 오류가 발생했습니다.",
+        ) from e
+
+    # 4. 응답
+    filename = f"minutes_{minutes_task_id}.docx"
+    logger.info(
+        "DOCX 생성 완료",
+        task_id=minutes_task_id,
+        size_bytes=len(docx_bytes),
+        include_summary=summary_data is not None,
+    )
+
+    return StreamingResponse(
+        content=io.BytesIO(docx_bytes),
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         headers={
             "Content-Disposition": f'attachment; filename="{filename}"',
         },
