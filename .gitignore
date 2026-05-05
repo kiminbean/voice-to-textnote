@@ -215,3 +215,6 @@ storage/
 # Runtime output
 nohup.out
 storage/temp/**
+
+# Mock artifact files from tests
+<MagicMock*

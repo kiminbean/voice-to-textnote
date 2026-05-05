@@ -121,7 +121,6 @@ class Settings(BaseSettings):
     # 프로덕션에서는 반드시 환경 변수로 강력한 키 설정 필요
     jwt_secret: str = Field(
         default_factory=lambda: secrets.token_urlsafe(48),
-        env="JWT_SECRET",
     )
 
     # SPEC-GUEST-001: 게스트 세션 TTL (시간)
