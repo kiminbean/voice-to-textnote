@@ -69,6 +69,8 @@ async def validate_startup() -> dict:
         import backend.db.webhook_models  # noqa: F401
         # SPEC-VERSION-001: 회의록 버전 관리 모델 import
         import backend.db.version_models  # noqa: F401
+        # SPEC-TAG-001: 회의록 자동 태깅 모델 import
+        import backend.db.tag_models  # noqa: F401
         from backend.app.config import settings
         from backend.db.models import Base
 

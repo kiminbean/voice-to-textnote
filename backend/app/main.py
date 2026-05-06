@@ -26,6 +26,7 @@ from backend.app.api.v1 import (
     statistics,
     stream,
     summary,
+    tags,
     teams,
     templates,
     transcription,
@@ -188,6 +189,9 @@ def create_app() -> FastAPI:
     app.include_router(versions.router, prefix=api_prefix)
 
     app.include_router(sentiment.router, prefix=api_prefix, dependencies=_auth)
+
+    # SPEC-TAG-001: 회의록 자동 태깅
+    app.include_router(tags.router, prefix=api_prefix, dependencies=_auth)
 
     return app
 

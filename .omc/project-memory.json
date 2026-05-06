@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "lastScanned": 1777446253273,
+  "lastScanned": 1778051016099,
   "projectRoot": "/Users/ibkim/Projects/voice-to-textnote",
   "techStack": {
     "languages": [
@@ -56,7 +56,7 @@
       "path": "alembic",
       "purpose": null,
       "fileCount": 3,
-      "lastAccessed": 1777446253246,
+      "lastAccessed": 1778051016092,
       "keyFiles": [
         "__init__.py",
         "env.py",
@@ -66,21 +66,21 @@
     "backend": {
       "path": "backend",
       "purpose": null,
-      "fileCount": 18,
-      "lastAccessed": 1777446253247,
+      "fileCount": 12,
+      "lastAccessed": 1778051016092,
       "keyFiles": [
-        "<MagicMock name='settings.temp_dir.__truediv__()' id='4521707904'>",
-        "<MagicMock name='settings.temp_dir.__truediv__()' id='4537726160'>",
-        "<MagicMock name='settings.temp_dir.__truediv__()' id='4704011664'>",
-        "<MagicMock name='settings.temp_dir.__truediv__()' id='4719083936'>",
-        "<MagicMock name='settings.temp_dir.__truediv__()' id='4740055792'>"
+        "<MagicMock name='settings.temp_dir.__truediv__()' id='4761173504'>",
+        "<MagicMock name='settings.temp_dir.__truediv__()' id='4801821200'>",
+        "<MagicMock name='settings.temp_dir.__truediv__()' id='4803837440'>",
+        "<MagicMock name='settings.temp_dir.__truediv__()' id='4807735824'>",
+        "<MagicMock name='settings.temp_dir.__truediv__()' id='4984011280'>"
       ]
     },
     "client": {
       "path": "client",
       "purpose": null,
       "fileCount": 6,
-      "lastAccessed": 1777446253247,
+      "lastAccessed": 1778051016092,
       "keyFiles": [
         "README.md",
         "analysis_options.yaml",
@@ -92,7 +92,7 @@
       "path": "deploy",
       "purpose": null,
       "fileCount": 4,
-      "lastAccessed": 1777446253247,
+      "lastAccessed": 1778051016092,
       "keyFiles": [
         "requirements-ubuntu.txt",
         "restart.sh",
@@ -104,7 +104,7 @@
       "path": "nginx",
       "purpose": null,
       "fileCount": 1,
-      "lastAccessed": 1777446253247,
+      "lastAccessed": 1778051016092,
       "keyFiles": [
         "nginx.conf"
       ]
@@ -113,14 +113,14 @@
       "path": "storage",
       "purpose": null,
       "fileCount": 0,
-      "lastAccessed": 1777446253248,
+      "lastAccessed": 1778051016092,
       "keyFiles": []
     },
     "venv": {
       "path": "venv",
       "purpose": null,
       "fileCount": 2,
-      "lastAccessed": 1777446253248,
+      "lastAccessed": 1778051016092,
       "keyFiles": [
         "pyvenv.cfg"
       ]
@@ -129,7 +129,7 @@
       "path": "client/lib",
       "purpose": "Library code",
       "fileCount": 1,
-      "lastAccessed": 1777446253248,
+      "lastAccessed": 1778051016093,
       "keyFiles": [
         "main.dart"
       ]
@@ -137,8 +137,8 @@
     "venv/bin": {
       "path": "venv/bin",
       "purpose": "Executable scripts",
-      "fileCount": 57,
-      "lastAccessed": 1777446253252,
+      "fileCount": 58,
+      "lastAccessed": 1778051016093,
       "keyFiles": [
         "Activate.ps1",
         "activate",
@@ -149,7 +149,7 @@
       "path": "venv/lib",
       "purpose": "Library code",
       "fileCount": 0,
-      "lastAccessed": 1777446253252,
+      "lastAccessed": 1778051016093,
       "keyFiles": []
     }
   },
