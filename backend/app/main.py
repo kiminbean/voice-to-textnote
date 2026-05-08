@@ -10,7 +10,9 @@ from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.api.v1 import (
+    action_items,
     admin,
+    audio_analysis,
     auth,
     batch,
     bookmarks,
@@ -192,6 +194,12 @@ def create_app() -> FastAPI:
 
     # SPEC-TAG-001: 회의록 자동 태깅
     app.include_router(tags.router, prefix=api_prefix, dependencies=_auth)
+
+    # SPEC-ACTION-001: 액션 아이템 추출 API
+    app.include_router(action_items.router, prefix=api_prefix, dependencies=_auth)
+
+    # SPEC-AUDIO-ANALYSIS-001: 오디오 품질 분석 API
+    app.include_router(audio_analysis.router, prefix=api_prefix, dependencies=_auth)
 
     return app
 
