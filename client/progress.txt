@@ -1,0 +1,42 @@
+# UI/UX Remaining Fixes Progress
+
+## Date: 2026-05-07
+
+### Status Summary
+
+| Issue | Title | Status | Notes |
+|-------|-------|--------|-------|
+| UIX-004 | Recording button visual feedback | ✅ Fixed | Added ScaleTransition + SingleTickerProviderStateMixin; replaced hard-coded `Colors.blue` with `Theme.of(context).colorScheme.primary` |
+| UIX-005 | No logout button on home screen | ✅ Already Fixed | Logout was already in PopupMenuButton |
+| UIX-006 | Hard-coded colors in result_screen.dart | ✅ Fixed | Replaced brightness-branching Color(0xFF...) with `theme.colorScheme.primaryContainer/secondaryContainer/tertiaryContainer`; replaced `Colors.grey.shade300` with `theme.dividerColor`; updated all table text styles to use `theme.colorScheme.onSurface` |
+| UIX-007 | MeetingCard trailing text overflow | ✅ Already Fixed | Flexible + overflow: TextOverflow.ellipsis was present |
+| UIX-008 | AppBar actions overflow on narrow screens | ✅ Fixed | Consolidated all actions (teams, search, templates, logout) into single PopupMenuButton |
+| UIX-009 | TextEditingController not properly disposed | ✅ Already Fixed | All controllers properly disposed in all screens |
+| UIX-010 | SpeakerSegment hardcoded width | ✅ Already Fixed | ConstrainedBox with min/max width was present |
+| UIX-011 | Template bottom sheet dismiss protection | ✅ Already Fixed | `isDismissible: false, enableDrag: false` was present |
+| UIX-012 | Status badge Korean text overflow | ✅ Already Fixed | FittedBox was present in status badge |
+| UIX-015 | CheckboxListTile subtitle Column overflow | ✅ Already Fixed | `mainAxisSize: MainAxisSize.min`, `isThreeLine`, overflow handling all present |
+| UIX-016 | ProcessingScreen cancel option | ✅ Already Fixed | Cancel TextButton in AppBar actions was present |
+
+### Changes Made (3 files modified):
+
+1. **lib/screens/recording_screen.dart**
+   - Added `SingleTickerProviderStateMixin` to `_RecordingScreenState`
+   - Added `_scaleController` and `_scaleAnimation` for press feedback
+   - Wrapped recording button in `ScaleTransition` with press down/up animations
+   - Replaced `Colors.blue` with `Theme.of(context).colorScheme.primary`
+
+2. **lib/screens/home_screen.dart**
+   - Consolidated all AppBar actions into single `PopupMenuButton` with items for: 팀, 검색, 양식 관리, 로그아웃
+
+3. **lib/screens/result_screen.dart**
+   - Replaced brightness-conditional `Color(0xFF...)` with theme-aware `theme.colorScheme.*Container` in `_buildDynamicTable` and `_buildMinutesTable`
+   - Replaced `Colors.grey.shade300` border with `theme.dividerColor`
+   - Updated all table cell text styles (`_tableRow2Col`, `_tableRow4Col`, `_tableRowNCol`) to use `theme.colorScheme.onSurface`
+
+### Verification:
+- `flutter analyze` could not run (Flutter SDK not installed on this machine)
+- `dart analyze` produces only false-positive errors from unresolved Flutter/Riverpod packages
+- All changes are syntactically minimal and surgical
+- No API interfaces changed, no tests affected
+- Korean text and labels preserved

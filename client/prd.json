@@ -1,0 +1,21 @@
+{
+  "title": "UI/UX Optimization & Bug Fix Pass",
+  "date": "2026-05-07",
+  "stories": [
+    {"id": "UIX-001", "title": "Missing search route in GoRouter", "severity": "bug", "file": "lib/router/app_router.dart", "status": "fixed"},
+    {"id": "UIX-002", "title": "DropdownButtonFormField uses non-existent initialValue", "severity": "bug", "file": "lib/screens/team_detail_screen.dart", "status": "fixed"},
+    {"id": "UIX-004", "title": "Recording button has no visual feedback", "severity": "ux", "file": "lib/screens/recording_screen.dart", "status": "fixed"},
+    {"id": "UIX-005", "title": "No logout button anywhere in the app", "severity": "ux", "file": "lib/screens/home_screen.dart", "status": "fixed"},
+    {"id": "UIX-006", "title": "Hard-coded colors in result_screen table headers", "severity": "theme", "file": "lib/screens/result_screen.dart", "status": "fixed"},
+    {"id": "UIX-007", "title": "MeetingCard trailing Row overflow on narrow screens", "severity": "bug", "file": "lib/widgets/meeting_card.dart", "status": "fixed"},
+    {"id": "UIX-008", "title": "AppBar actions overflow with 3+ IconButtons", "severity": "bug", "file": "lib/screens/home_screen.dart", "status": "fixed"},
+    {"id": "UIX-010", "title": "SpeakerSegment width 80px hardcoded — truncates Korean names", "severity": "i18n", "file": "lib/widgets/speaker_segment.dart", "status": "fixed"},
+    {"id": "UIX-011", "title": "Template bottom sheet dismissible by tap-outside", "severity": "ux", "file": "lib/screens/processing_screen.dart", "status": "fixed"},
+    {"id": "UIX-012", "title": "Status badge Korean text overflow", "severity": "i18n", "file": "lib/widgets/meeting_card.dart", "status": "fixed"},
+    {"id": "UIX-015", "title": "CheckboxListTile subtitle overflow in action items", "severity": "bug", "file": "lib/screens/result_screen.dart", "status": "fixed"},
+    {"id": "UIX-016", "title": "ProcessingScreen has no cancel/back option", "severity": "ux", "file": "lib/screens/processing_screen.dart", "status": "fixed"},
+    {"id": "UIX-009", "title": "TextEditingController lifecycle in dialogs", "severity": "bug", "file": "lib/screens/team_list_screen.dart", "status": "skipped"},
+    {"id": "UIX-013", "title": "Missing semantic labels for accessibility", "severity": "a11y", "file": "lib/screens/recording_screen.dart", "status": "fixed"},
+    {"id": "UIX-014", "title": "Tab text '액션 아이템' length", "severity": "i18n", "file": "lib/screens/result_screen.dart", "status": "no_action_needed"}
+  ]
+}

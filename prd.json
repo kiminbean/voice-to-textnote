@@ -1,0 +1,110 @@
+{
+  "project": "voice-to-textnote backend optimization",
+  "date": "2026-05-07",
+  "stories": [
+    {
+      "id": "BUG-001",
+      "title": "transcription_task _update_task_status pipeline race: created_at lost on first write",
+      "severity": "high",
+      "area": "workers/tasks/transcription_task.py",
+      "description": "The pipeline-based _update_task_status does GET+SETEX in a pipeline, but then reads execute()[0] to get the existing raw. However execute()[0] is from the GET and execute()[1] is from the SETEX. Then it conditionally does another SETEX. The first SETEX overwrites without created_at, and the second (conditional) tries to fix it. But on the first call, there IS no existing data, so the first SETEX writes without created_at. Subsequent reads never find created_at. Fix: only SETEX once, including created_at from existing or generating new.",
+      "acceptance": "_update_task_status always preserves or creates created_at in a single pipeline execution"
+    },
+    {
+      "id": "BUG-002",
+      "title": "Race condition in upload_transcription active_job_count check",
+      "severity": "medium",
+      "area": "app/api/v1/transcription.py",
+      "description": "upload_transcription does INCR then DECR in pipeline to read active count atomically. But INCR permanently increments even though DECR immediately follows — the net effect is zero but there's a window where another concurrent request sees an inflated count. More importantly, if the request later fails validation (duration check), the count was never truly incremented for this task, yet the transcription_task worker will _increment_active_jobs again. The API-level check and worker-level count are independent and can diverge.",
+      "acceptance": "Active job counting is consistent between API and worker; no phantom increments"
+    },
+    {
+      "id": "BUG-003",
+      "title": "file_size_bytes undefined variable in upload_transcription",
+      "severity": "high",
+      "area": "app/api/v1/transcription.py",
+      "description": "Line in initial_status dict uses `file_size_bytes` but the variable is named `file_size` (from `file_size = len(raw_content)`). This will cause NameError at runtime.",
+      "acceptance": "initial_status dict uses correct variable name for file size"
+    },
+    {
+      "id": "BUG-004",
+      "title": "lifecycle.py creates new DB engine on every startup/shutdown instead of reusing",
+      "severity": "medium",
+      "area": "app/lifecycle.py",
+      "description": "validate_startup() calls create_engine() independently, creating a separate engine from the one in dependencies.py. cleanup_shutdown() also creates a new engine to dispose. This means the disposed engine is not the one used by the app, so connections are never properly cleaned up.",
+      "acceptance": "lifecycle uses the same engine instance as dependencies.py"
+    },
+    {
+      "id": "BUG-005",
+      "title": "Redis client leak in lifecycle validate_startup",
+      "severity": "low",
+      "area": "app/lifecycle.py",
+      "description": "validate_startup creates a new aioredis connection with from_url, pings, then acloses. But the connection pool created internally is not properly closed — aclose() on the Redis instance may not close the underlying pool in all versions.",
+      "acceptance": "Redis validation uses the app's shared Redis client or properly closes its own"
+    },
+    {
+      "id": "BUG-006",
+      "title": "Duplicated Redis client singleton pattern across workers — no shared connection pool",
+      "severity": "medium",
+      "area": "workers/tasks/*.py",
+      "description": "Each worker task file (transcription_task, summary_task, diarization_task) has its own _redis_client global singleton with no connection pooling. Only transcription_task added a ConnectionPool. The others use plain redis.from_url which creates a new connection per command. Under load, this wastes connections.",
+      "acceptance": "All worker tasks share a common Redis connection pool configuration"
+    },
+    {
+      "id": "BUG-007",
+      "title": "chunk_manager split_audio loads entire audio into memory",
+      "severity": "medium",
+      "area": "pipeline/chunk_manager.py",
+      "description": "split_audio does AudioSegment.from_file which loads the entire file into memory. For a 4-hour audio at 16kHz mono, this is ~460MB. Should at minimum be documented or use streaming chunking for very large files.",
+      "acceptance": "Memory usage documented; or streaming chunking for large files considered"
+    },
+    {
+      "id": "PERF-001",
+      "title": "tagging_engine creates new httpx.AsyncClient per call",
+      "severity": "medium",
+      "area": "ml/tagging_engine.py",
+      "description": "generate_auto_tags creates a new httpx.AsyncClient for every call. Client creation involves TCP connection setup. Should reuse a client instance or use the app-level httpx client.",
+      "acceptance": "httpx.AsyncClient is reused across calls or uses a shared client"
+    },
+    {
+      "id": "PERF-002",
+      "title": "transcription API reads entire file into memory before validation",
+      "severity": "medium",
+      "area": "app/api/v1/transcription.py",
+      "description": "upload_transcription does `raw_content = await file.read()` which loads the entire file (up to 500MB) into memory. Should stream to disk first, then validate size from the file.",
+      "acceptance": "File upload streams to disk first, validates size from file stats"
+    },
+    {
+      "id": "SEC-001",
+      "title": "temp_path.write_bytes in upload_transcription has no error handling",
+      "severity": "low",
+      "area": "app/api/v1/transcription.py",
+      "description": "If write_bytes fails (disk full), the temp file may be partially written and never cleaned up. The function should handle IOError and clean up.",
+      "acceptance": "IOError during file write is caught and temp file cleaned up"
+    },
+    {
+      "id": "QUAL-001",
+      "title": "WhisperEngine singleton _lock is class-level mutable — shared across instances",
+      "severity": "low",
+      "area": "ml/stt_engine.py",
+      "description": "_lock is defined as a class attribute `Lock()` at class body level. Since it's mutable, it's actually shared across all references correctly (Python class-level mutable attrs are shared). This is actually fine for a singleton but misleading. Same pattern in DiarizationEngine. Not a bug but worth documenting.",
+      "acceptance": "Document that class-level Lock is intentional for singleton pattern"
+    },
+    {
+      "id": "BUG-008",
+      "title": "summary_task and diarization_task active job tracking not resilient to worker crashes",
+      "severity": "medium",
+      "area": "workers/tasks/summary_task.py, diarization_task.py",
+      "description": "Active jobs are tracked in a Redis SET. If a worker crashes (OOM killed, SIGKILL), the finally block never runs and the task_id stays in the SET forever, permanently reducing available slots. Need TTL-based or periodic cleanup.",
+      "acceptance": "Active job tracking is resilient to worker crashes (TTL or periodic cleanup)"
+    },
+    {
+      "id": "BUG-009",
+      "title": "diarization_celery_task catches SoftTimeLimitExceeded but diarization_task also catches it internally",
+      "severity": "low",
+      "area": "workers/tasks/diarization_task.py",
+      "description": "If SoftTimeLimitExceeded is raised inside diarization_task, it's caught there and returns a failed dict. The celery wrapper also catches it but will never see it. Not a bug per se, but the wrapper handler is dead code.",
+      "acceptance": "Remove redundant SoftTimeLimitExceeded handler in celery wrapper or document it's defensive"
+    }
+  ]
+}

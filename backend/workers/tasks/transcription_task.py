@@ -8,6 +8,7 @@ REQ-STT-018: 30분 초과 청크 분할 처리
 import json
 import shutil
 import tempfile
+import time
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -26,28 +27,14 @@ from backend.pipeline.chunk_manager import merge_segments, split_audio
 from backend.schemas.transcription import SegmentResult, TaskStatus
 from backend.utils.logger import get_logger
 from backend.workers.celery_app import celery_app
+from backend.workers.redis_client import get_worker_redis
 
 logger = get_logger(__name__)
 
-# Redis 동기 클라이언트 (Celery 워커는 동기 환경)
-_redis_client: redis.Redis | None = None
-
 
 def _get_redis() -> redis.Redis:
-    global _redis_client
-    if _redis_client is None:
-        # Redis 연결 풀링 설정으로 성능 개선
-        from redis.connection import ConnectionPool
-        
-        connection_pool = ConnectionPool.from_url(
-            settings.redis_url,
-            max_connections=10,  # 연결 풀 최대 크기
-            decode_responses=True,
-            socket_timeout=5,
-            socket_connect_timeout=5,
-        )
-        _redis_client = redis.Redis(connection_pool=connection_pool)
-    return _redis_client
+    """Redis 클라이언트 (공유 연결 풀)"""
+    return get_worker_redis()
 
 
 def _update_task_status(
@@ -60,51 +47,35 @@ def _update_task_status(
     """Redis에 작업 상태 업데이트 + Pub/Sub 이벤트 발행 (Pipeline으로 성능 개선)"""
     r = _get_redis()
     now = datetime.now(UTC).isoformat()
-    
-    # Pipeline 사용으로 Redis 라운드트립 감소
-    pipe = r.pipeline()
-    
     status_key = f"task:status:{task_id}"
-    pipe.get(status_key)
-    pipe.setex(status_key, settings.cache_ttl_seconds, json.dumps({
-        "task_id": task_id,
-        "status": status.value,
-        "progress": progress,
-        "updated_at": now,
-        "message": message,
-        "error_message": error_message,
-    }))
-    
-    # 기존 created_at 보존 및 업데이트
-    existing_raw = pipe.execute()[0]
+
+    # 기존 created_at 보존: 먼저 읽고, 한 번만 SETEX
+    existing_raw = r.get(status_key)
+    existing_created_at = None
     if existing_raw:
         existing_data = json.loads(existing_raw)
         existing_created_at = existing_data.get("created_at")
-        if existing_created_at:
-            # created_at이 있는 경우 다시 업데이트
-            pipe.setex(status_key, settings.cache_ttl_seconds, json.dumps({
-                "task_id": task_id,
-                "status": status.value,
-                "progress": progress,
-                "created_at": existing_created_at,
-                "updated_at": now,
-                "message": message,
-                "error_message": error_message,
-            }))
-            pipe.execute()
 
-    # SSE 스트림 구독자에게 이벤트 발행 (별도 요청)
-    event_type = "completed" if status == TaskStatus.completed else (
-        "failed" if status == TaskStatus.failed else "status_update"
-    )
-    publish_task_event_sync(r, task_id, event_type, {
+    data: dict = {
         "task_id": task_id,
         "status": status.value,
         "progress": progress,
         "updated_at": now,
-        "message": message,
-        "error_message": error_message,
-    })
+    }
+    if existing_created_at:
+        data["created_at"] = existing_created_at
+    if message:
+        data["message"] = message
+    if error_message:
+        data["error_message"] = error_message
+
+    r.setex(status_key, settings.cache_ttl_seconds, json.dumps(data))
+
+    # SSE 스트림 구독자에게 이벤트 발행
+    event_type = "completed" if status == TaskStatus.completed else (
+        "failed" if status == TaskStatus.failed else "status_update"
+    )
+    publish_task_event_sync(r, task_id, event_type, data)
 
 
 def _cache_result(task_id: str, result: dict) -> None:
@@ -115,25 +86,30 @@ def _cache_result(task_id: str, result: dict) -> None:
 
 
 def _get_active_job_count() -> int:
-    """현재 활성 작업 수 조회 (동시 처리 제한용)"""
+    """현재 활성 작업 수 조회 (만료된 항목 자동 정리)"""
     r = _get_redis()
-    count_str = r.get("active_job_count")
-    return int(count_str) if count_str else 0
+    now = time.time()
+    # 2시간 초과 항목은 작업 타임아웃(65분)을 넘었으므로 고아 항목
+    stale_cutoff = now - 7200
+    pipe = r.pipeline()
+    pipe.zremrangebyscore("active_jobs_ts", "-inf", stale_cutoff)
+    pipe.zcard("active_jobs_ts")
+    results = pipe.execute()
+    return results[1]
 
 
 def _increment_active_jobs(task_id: str) -> None:
     r = _get_redis()
+    now = time.time()
     pipe = r.pipeline()
-    pipe.incr("active_job_count")
-    pipe.sadd("active_jobs", task_id)
+    pipe.zadd("active_jobs_ts", {task_id: now})
     pipe.execute()
 
 
 def _decrement_active_jobs(task_id: str) -> None:
     r = _get_redis()
     pipe = r.pipeline()
-    pipe.decr("active_job_count")
-    pipe.srem("active_jobs", task_id)
+    pipe.zrem("active_jobs_ts", task_id)
     pipe.execute()
 
 

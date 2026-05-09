@@ -27,21 +27,28 @@ class MeetingCard extends StatelessWidget {
         title: Text(
           meeting.title,
           style: Theme.of(context).textTheme.titleMedium,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
         ),
         subtitle: Text(
           DateFormat('yyyy년 MM월 dd일 HH:mm').format(meeting.createdAt),
           style: Theme.of(context).textTheme.bodySmall,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
         ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             // 소요 시간 표시
             if (meeting.duration != null)
-              Text(
-                _formatDuration(meeting.duration!),
-                style: Theme.of(context).textTheme.bodySmall,
+              Flexible(
+                child: Text(
+                  _formatDuration(meeting.duration!),
+                  style: Theme.of(context).textTheme.bodySmall,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-            const SizedBox(width: 8),
+            if (meeting.duration != null) const SizedBox(width: 8),
             // 상태 배지
             _buildStatusBadge(context, meeting.status),
           ],
@@ -66,12 +73,14 @@ class MeetingCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: color),
       ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: color,
-          fontSize: 12,
-          fontWeight: FontWeight.bold,
+      child: FittedBox(
+        child: Text(
+          label,
+          style: TextStyle(
+            color: color,
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
     );

@@ -39,8 +39,8 @@ class SpeakerSegment extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // 화자 이름 (컬러로 구분)
-          SizedBox(
-            width: 80,
+          ConstrainedBox(
+            constraints: const BoxConstraints(minWidth: 60, maxWidth: 90),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -51,6 +51,8 @@ class SpeakerSegment extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                     fontSize: 13,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 // 타임스탬프 표시
                 if (startTime != null)

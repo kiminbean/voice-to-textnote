@@ -14,12 +14,32 @@ class RecordingScreen extends ConsumerStatefulWidget {
   ConsumerState<RecordingScreen> createState() => _RecordingScreenState();
 }
 
-class _RecordingScreenState extends ConsumerState<RecordingScreen> {
+class _RecordingScreenState extends ConsumerState<RecordingScreen>
+    with SingleTickerProviderStateMixin {
   Timer? _timer;
+  late AnimationController _scaleController;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _scaleController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 150),
+      lowerBound: 0.9,
+      upperBound: 1.0,
+      value: 1.0,
+    );
+    _scaleAnimation = CurvedAnimation(
+      parent: _scaleController,
+      curve: Curves.easeInOut,
+    );
+  }
 
   @override
   void dispose() {
     _timer?.cancel();
+    _scaleController.dispose();
     super.dispose();
   }
 
@@ -138,20 +158,32 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
               ),
             ),
             const SizedBox(height: 48),
-            // 녹음 버튼
-            GestureDetector(
-              onTap: _toggleRecording,
-              child: Container(
-                width: 100,
-                height: 100,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: isRecording ? Colors.red : Colors.blue,
-                ),
-                child: Icon(
-                  isRecording ? Icons.stop : Icons.mic,
-                  color: Colors.white,
-                  size: 48,
+            // 녹음 버튼 (스케일 애니메이션 피드백)
+            ScaleTransition(
+              scale: _scaleAnimation,
+              child: Semantics(
+                button: true,
+                label: isRecording ? '녹음 중지' : '녹음 시작',
+                child: Material(
+                  color: isRecording ? Colors.red : Theme.of(context).colorScheme.primary,
+                  shape: const CircleBorder(),
+                  clipBehavior: Clip.antiAlias,
+                  child: InkWell(
+                    onTap: _toggleRecording,
+                    onTapDown: (_) => _scaleController.reverse(),
+                    onTapUp: (_) => _scaleController.forward(),
+                    onTapCancel: () => _scaleController.forward(),
+                    splashColor: Colors.white.withAlpha(80),
+                    child: SizedBox(
+                      width: 100,
+                      height: 100,
+                      child: Icon(
+                        isRecording ? Icons.stop : Icons.mic,
+                        color: Colors.white,
+                        size: 48,
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ),

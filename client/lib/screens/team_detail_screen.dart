@@ -255,7 +255,7 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen>
                 const SizedBox(height: 12),
                 // 역할 선택 드롭다운
                 DropdownButtonFormField<String>(
-                  initialValue: selectedRole,
+                  value: selectedRole,
                   decoration: const InputDecoration(
                     labelText: '역할',
                     border: OutlineInputBorder(),

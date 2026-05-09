@@ -293,9 +293,10 @@ class _MinutesTabState extends ConsumerState<_MinutesTab> {
     final dateStr =
         '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
 
-    const headerBg = Color(0xFFE3F2FD);
-    const contentBg = Color(0xFFFFFDE7);
-    final borderColor = Colors.grey.shade300;
+    final theme = Theme.of(context);
+    final headerBg = theme.colorScheme.primaryContainer.withAlpha(60);
+    final contentBg = theme.colorScheme.secondaryContainer.withAlpha(40);
+    final borderColor = theme.dividerColor;
 
     // template_structure에서 table_layout 추출
     final tableLayout = (result.templateStructure?['table_layout'] as List<dynamic>?) ?? [];
@@ -357,31 +358,44 @@ class _MinutesTabState extends ConsumerState<_MinutesTab> {
   }
 
   // 셀 편집 다이얼로그
+  // @MX:NOTE: TextEditingController 메모리 누수 방지를 위해 finally에서 dispose 호출
   Future<void> _editCell(String label, String currentValue) async {
     final controller = TextEditingController(text: currentValue);
-    final newValue = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(label),
-        content: TextField(
-          controller: controller,
-          maxLines: label.contains('내용') || label.contains('이슈') ? 8 : 2,
-          decoration: const InputDecoration(border: OutlineInputBorder()),
+    try {
+      final newValue = await showDialog<String>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(label),
+          content: TextField(
+            controller: controller,
+            maxLines: label.contains('내용') || label.contains('이슈') ? 8 : 2,
+            decoration: const InputDecoration(border: OutlineInputBorder()),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('취소'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, controller.text),
+              child: const Text('저장'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('취소'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, controller.text),
-            child: const Text('저장'),
-          ),
-        ],
-      ),
-    );
-    if (newValue != null) {
-      setState(() => _editedSections[label] = newValue);
+      );
+      // async gap 후 mounted 체크 (위젯이 dispose된 경우 setState 방지)
+      if (newValue != null && mounted) {
+        setState(() => _editedSections[label] = newValue);
+      }
+    } catch (e) {
+      // 다이얼로그 오류 시 사용자에게 알림 (위젯이 살아있을 때만)
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('편집 중 오류가 발생했습니다: $e')),
+        );
+      }
+    } finally {
+      controller.dispose();
     }
   }
 
@@ -461,10 +475,11 @@ class _MinutesTabState extends ConsumerState<_MinutesTab> {
     final timeStr =
         '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
 
-    const headerBg = Color(0xFFE3F2FD); // 연한 파란색 (라벨 셀)
-    const contentBg = Color(0xFFFFFDE7); // 연한 노란색 (회의내용)
-    const decisionBg = Color(0xFFFFFDE7); // 연한 노란색 (결정된 사안)
-    final borderColor = Colors.grey.shade300;
+    final theme = Theme.of(context);
+    final headerBg = theme.colorScheme.primaryContainer.withAlpha(60);
+    final contentBg = theme.colorScheme.secondaryContainer.withAlpha(40);
+    final decisionBg = theme.colorScheme.tertiaryContainer.withAlpha(40);
+    final borderColor = theme.dividerColor;
     const courseName = '심화 ROS2와 AI를 이용한 자율주행&로봇팔 개발자 부트캠프';
 
     return SingleChildScrollView(
@@ -555,6 +570,7 @@ class _MinutesTabState extends ConsumerState<_MinutesTab> {
     Color borderColor, {
     double minHeight = 0,
   }) {
+    final theme = Theme.of(context);
     return Container(
       decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: borderColor)),
@@ -572,10 +588,13 @@ class _MinutesTabState extends ConsumerState<_MinutesTab> {
                 alignment: Alignment.centerLeft,
                 child: Text(
                   label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 13,
+                    color: theme.colorScheme.onSurface,
                   ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ),
@@ -588,7 +607,8 @@ class _MinutesTabState extends ConsumerState<_MinutesTab> {
                 constraints: BoxConstraints(minHeight: minHeight),
                 child: Text(
                   content,
-                  style: const TextStyle(height: 1.7, fontSize: 13),
+                  style: TextStyle(height: 1.7, fontSize: 13, color: theme.colorScheme.onSurface),
+                  softWrap: true,
                 ),
               ),
             ),
@@ -604,6 +624,7 @@ class _MinutesTabState extends ConsumerState<_MinutesTab> {
     String label2, Color labelBg2, String content2, Color? contentBg2,
     Color borderColor,
   ) {
+    final theme = Theme.of(context);
     return Container(
       decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: borderColor)),
@@ -621,10 +642,13 @@ class _MinutesTabState extends ConsumerState<_MinutesTab> {
                 alignment: Alignment.centerLeft,
                 child: Text(
                   label1,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 13,
+                    color: theme.colorScheme.onSurface,
                   ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ),
@@ -634,7 +658,11 @@ class _MinutesTabState extends ConsumerState<_MinutesTab> {
               child: Container(
                 color: contentBg1,
                 padding: const EdgeInsets.all(10),
-                child: Text(content1, style: const TextStyle(fontSize: 13)),
+                child: Text(
+                  content1,
+                  style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface),
+                  softWrap: true,
+                ),
               ),
             ),
             Container(width: 1, color: borderColor),
@@ -647,10 +675,13 @@ class _MinutesTabState extends ConsumerState<_MinutesTab> {
                 alignment: Alignment.centerLeft,
                 child: Text(
                   label2,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 13,
+                    color: theme.colorScheme.onSurface,
                   ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ),
@@ -660,7 +691,11 @@ class _MinutesTabState extends ConsumerState<_MinutesTab> {
               child: Container(
                 color: contentBg2,
                 padding: const EdgeInsets.all(10),
-                child: Text(content2, style: const TextStyle(fontSize: 13)),
+                child: Text(
+                  content2,
+                  style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface),
+                  softWrap: true,
+                ),
               ),
             ),
           ],
@@ -676,6 +711,7 @@ class _MinutesTabState extends ConsumerState<_MinutesTab> {
     Color headerBg,
     Color borderColor,
   ) {
+    final theme = Theme.of(context);
     return Container(
       decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: borderColor)),
@@ -694,7 +730,9 @@ class _MinutesTabState extends ConsumerState<_MinutesTab> {
                   alignment: Alignment.centerLeft,
                   child: Text(
                     labels[i],
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: theme.colorScheme.onSurface),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ),
@@ -705,7 +743,8 @@ class _MinutesTabState extends ConsumerState<_MinutesTab> {
                   padding: const EdgeInsets.all(8),
                   child: Text(
                     values[i],
-                    style: const TextStyle(fontSize: 11),
+                    style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurface),
+                    softWrap: true,
                   ),
                 ),
               ),
@@ -1098,12 +1137,22 @@ class _ActionItemCardListState extends State<_ActionItemCardList> {
             // 담당자 + 마감일 표시
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text('담당자: ${item.assignee ?? '미지정'}'),
+                Text(
+                  '담당자: ${item.assignee ?? '미지정'}',
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
                 if (item.deadline != null)
-                  Text('마감: ${item.deadline}'),
+                  Text(
+                    '마감: ${item.deadline}',
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
               ],
             ),
+            isThreeLine: item.deadline != null,
             // 우선순위 배지
             secondary: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),

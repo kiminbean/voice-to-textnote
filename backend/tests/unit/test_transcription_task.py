@@ -112,24 +112,25 @@ class TestUpdateTaskStatus:
 
     @patch("backend.workers.tasks.transcription_task._get_redis")
     @patch("backend.workers.tasks.transcription_task.publish_task_event_sync")
-    def test_stores_status_in_redis(self, mock_pubsub, mock_get_redis):
+    @patch("backend.workers.tasks.transcription_task.settings")
+    def test_stores_status_in_redis(self, mock_settings, mock_pubsub, mock_get_redis):
         from backend.workers.tasks.transcription_task import _update_task_status
 
+        mock_settings.cache_ttl_seconds = 86400
+
         mock_redis = MagicMock()
-        mock_pipe = MagicMock()
-        mock_pipe.execute.return_value = [None]  # 기존 상태 없음
-        mock_redis.pipeline.return_value = mock_pipe
+        mock_redis.get.return_value = None  # 기존 상태 없음
         mock_get_redis.return_value = mock_redis
 
         _update_task_status("test-task-id", TaskStatus.processing, 0.5, "처리 중...")
 
-        # pipe.setex 호출 확인
-        mock_pipe.setex.assert_called()
-        call_args = mock_pipe.setex.call_args
-        key = call_args[0][0]
+        # setex 호출 확인
+        mock_redis.setex.assert_called()
+        call_args = mock_redis.setex.call_args[0]
+        key = call_args[0]
         assert key == "task:status:test-task-id"
 
-        stored_data = json.loads(call_args[0][2])
+        stored_data = json.loads(call_args[2])
         assert stored_data["task_id"] == "test-task-id"
         assert stored_data["status"] == "processing"
         assert stored_data["progress"] == 0.5
@@ -137,13 +138,14 @@ class TestUpdateTaskStatus:
 
     @patch("backend.workers.tasks.transcription_task._get_redis")
     @patch("backend.workers.tasks.transcription_task.publish_task_event_sync")
-    def test_stores_error_message(self, mock_pubsub, mock_get_redis):
+    @patch("backend.workers.tasks.transcription_task.settings")
+    def test_stores_error_message(self, mock_settings, mock_pubsub, mock_get_redis):
         from backend.workers.tasks.transcription_task import _update_task_status
 
+        mock_settings.cache_ttl_seconds = 86400
+
         mock_redis = MagicMock()
-        mock_pipe = MagicMock()
-        mock_pipe.execute.return_value = [None]  # 기존 상태 없음
-        mock_redis.pipeline.return_value = mock_pipe
+        mock_redis.get.return_value = None
         mock_get_redis.return_value = mock_redis
 
         _update_task_status(
@@ -153,26 +155,27 @@ class TestUpdateTaskStatus:
             error_message="파일 손상",
         )
 
-        stored_data = json.loads(mock_pipe.setex.call_args[0][2])
+        stored_data = json.loads(mock_redis.setex.call_args[0][2])
         assert stored_data["error_message"] == "파일 손상"
         assert stored_data["status"] == "failed"
 
     @patch("backend.workers.tasks.transcription_task._get_redis")
     @patch("backend.workers.tasks.transcription_task.publish_task_event_sync")
-    def test_omits_optional_fields_when_none(self, mock_pubsub, mock_get_redis):
+    @patch("backend.workers.tasks.transcription_task.settings")
+    def test_omits_optional_fields_when_none(self, mock_settings, mock_pubsub, mock_get_redis):
         from backend.workers.tasks.transcription_task import _update_task_status
 
+        mock_settings.cache_ttl_seconds = 86400
+
         mock_redis = MagicMock()
-        mock_pipe = MagicMock()
-        mock_pipe.execute.return_value = [None]  # 기존 상태 없음
-        mock_redis.pipeline.return_value = mock_pipe
+        mock_redis.get.return_value = None
         mock_get_redis.return_value = mock_redis
 
         _update_task_status("test-id", TaskStatus.pending)
 
-        stored_data = json.loads(mock_pipe.setex.call_args[0][2])
-        assert stored_data.get("message") is None
-        assert stored_data.get("error_message") is None
+        stored_data = json.loads(mock_redis.setex.call_args[0][2])
+        assert "message" not in stored_data
+        assert "error_message" not in stored_data
 
 
 # ---------------------------------------------------------------------------
@@ -212,7 +215,11 @@ class TestActiveJobTracking:
         from backend.workers.tasks.transcription_task import _get_active_job_count
 
         mock_redis = MagicMock()
-        mock_redis.get.return_value = None
+        mock_pipe = MagicMock()
+        mock_pipe.zremrangebyscore.return_value = 0
+        mock_pipe.zcard.return_value = 0
+        mock_pipe.execute.return_value = [0, 0]
+        mock_redis.pipeline.return_value = mock_pipe
         mock_get_redis.return_value = mock_redis
 
         assert _get_active_job_count() == 0
@@ -222,7 +229,11 @@ class TestActiveJobTracking:
         from backend.workers.tasks.transcription_task import _get_active_job_count
 
         mock_redis = MagicMock()
-        mock_redis.get.return_value = "2"
+        mock_pipe = MagicMock()
+        mock_pipe.zremrangebyscore.return_value = 0
+        mock_pipe.zcard.return_value = 2
+        mock_pipe.execute.return_value = [0, 2]
+        mock_redis.pipeline.return_value = mock_pipe
         mock_get_redis.return_value = mock_redis
 
         assert _get_active_job_count() == 2
@@ -238,8 +249,7 @@ class TestActiveJobTracking:
 
         _increment_active_jobs("task-123")
 
-        mock_pipe.incr.assert_called_once_with("active_job_count")
-        mock_pipe.sadd.assert_called_once_with("active_jobs", "task-123")
+        mock_pipe.zadd.assert_called_once_with("active_jobs_ts", {"task-123": mock_pipe.zadd.call_args[0][1]["task-123"]})
         mock_pipe.execute.assert_called_once()
 
     @patch("backend.workers.tasks.transcription_task._get_redis")
@@ -253,8 +263,7 @@ class TestActiveJobTracking:
 
         _decrement_active_jobs("task-123")
 
-        mock_pipe.decr.assert_called_once_with("active_job_count")
-        mock_pipe.srem.assert_called_once_with("active_jobs", "task-123")
+        mock_pipe.zrem.assert_called_once_with("active_jobs_ts", "task-123")
         mock_pipe.execute.assert_called_once()
 
 

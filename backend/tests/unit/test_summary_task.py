@@ -12,6 +12,8 @@ import json
 import uuid
 from unittest.mock import MagicMock, patch
 
+from backend.workers.tasks.summary_task import _get_redis
+
 # ---------------------------------------------------------------------------
 # 테스트 헬퍼 / 모의 데이터
 # ---------------------------------------------------------------------------
@@ -71,6 +73,14 @@ def _make_mock_redis(active_count: int = 0) -> MagicMock:
     mock.scard.return_value = active_count
     mock.sadd.return_value = 1
     mock.srem.return_value = 1
+    # _get_active_sum_count() uses pipeline() → zremrangebyscore, zcard, execute
+    mock_pipe = MagicMock()
+    mock_pipe.zremrangebyscore.return_value = 0
+    mock_pipe.zcard.return_value = active_count
+    mock_pipe.zadd.return_value = 1
+    mock_pipe.zrem.return_value = 1
+    mock_pipe.execute.return_value = [0, active_count]
+    mock.pipeline.return_value = mock_pipe
     return mock
 
 
@@ -359,39 +369,18 @@ class TestSummaryTaskRedisClient:
     """_get_redis() 싱글톤 동작 테스트"""
 
     def test_get_redis_creates_client_when_none(self):
-        """_redis_client가 None일 때 새 클라이언트 생성"""
-        import backend.workers.tasks.summary_task as task_module
-
-        original = task_module._redis_client
-        task_module._redis_client = None
-
-        try:
-            with patch("backend.workers.tasks.summary_task.settings") as mock_settings:
-                mock_settings.redis_url = "redis://localhost:6379/0"
-                with patch("backend.workers.tasks.summary_task.redis") as mock_redis_module:
-                    mock_client = MagicMock()
-                    mock_redis_module.from_url.return_value = mock_client
-
-                    result = task_module._get_redis()
-
-            assert result is mock_client
-            mock_redis_module.from_url.assert_called_once()
-        finally:
-            task_module._redis_client = original
+        """_get_redis()가 get_worker_redis()를 호출해 클라이언트 반환"""
+        mock_client = MagicMock()
+        with patch("backend.workers.tasks.summary_task.get_worker_redis", return_value=mock_client):
+            result = _get_redis()
+        assert result is mock_client
 
     def test_get_redis_returns_cached_client(self):
-        """_redis_client가 있으면 기존 클라이언트 반환 (싱글톤)"""
-        import backend.workers.tasks.summary_task as task_module
-
-        existing_client = MagicMock()
-        original = task_module._redis_client
-        task_module._redis_client = existing_client
-
-        try:
-            result = task_module._get_redis()
-            assert result is existing_client
-        finally:
-            task_module._redis_client = original
+        """_get_redis()가 항상 get_worker_redis() 결과를 반환"""
+        mock_client = MagicMock()
+        with patch("backend.workers.tasks.summary_task.get_worker_redis", return_value=mock_client):
+            result = _get_redis()
+        assert result is mock_client
 
 
 # ---------------------------------------------------------------------------

@@ -1,0 +1,57 @@
+# Voice-to-TextNote Backend Optimization Progress
+
+## Completed Changes
+
+### BUG-001 ✅ transcription_task _update_task_status pipeline race
+- **File:** `backend/workers/tasks/transcription_task.py`
+- **Fix:** Replaced the buggy GET+SETEX pipeline (which wrote without created_at first, then conditionally overwrote) with a simple GET → build dict → single SETEX. Now always preserves or omits created_at correctly in one write.
+
+### BUG-002 ✅ upload_transcription active_job_count race condition
+- **File:** `backend/app/api/v1/transcription.py`
+- **Fix:** Replaced the INCR+DECR pipeline (which created phantom increments) with a simple ZCARD query on the same `active_jobs_ts` sorted set that the worker uses. No mutation on read.
+
+### BUG-003 ✅ file_size_bytes undefined variable
+- **File:** `backend/app/api/v1/transcription.py`
+- **Fix:** Changed `file_size_bytes` to `file_size` in the initial_status dict (NameError at runtime).
+
+### BUG-004 ✅ lifecycle.py creates separate DB engine
+- **File:** `backend/app/lifecycle.py`
+- **Fix:** Both validate_startup() and cleanup_shutdown() now import `_db_engine` from `backend.app.dependencies` instead of calling `create_engine()`. This ensures table creation happens on the actual app engine and dispose() cleans up the real pool.
+
+### BUG-005 ✅ Redis client leak in validate_startup
+- **File:** `backend/app/lifecycle.py`
+- **Fix:** validate_startup now uses the shared `get_redis_client()` from dependencies.py instead of creating a new connection with `aioredis.from_url()`.
+
+### BUG-006 ✅ Duplicated Redis client singleton across workers
+- **File:** New `backend/workers/redis_client.py`, updated all task files
+- **Fix:** Created a shared `get_worker_redis()` function with a ConnectionPool. All 5 worker task files (transcription, summary, diarization, minutes, sentiment) now use this shared pool instead of independent `redis.from_url()` calls.
+
+### BUG-008 ✅ Active job tracking not crash-resilient
+- **Files:** `backend/workers/tasks/transcription_task.py`, `summary_task.py`, `diarization_task.py`
+- **Fix:** Replaced plain SET+INCR tracking with Redis sorted sets scored by timestamp. On each read, entries older than 2 hours (exceeding the 65-min hard timeout) are pruned. This prevents orphan entries from permanently reducing capacity if a worker crashes.
+
+### PERF-001 ✅ tagging_engine creates new httpx client per call
+- **File:** `backend/ml/tagging_engine.py`
+- **Fix:** Added module-level `_http_client` singleton with lazy init. `generate_auto_tags` reuses the client across calls instead of creating a new `AsyncClient` per invocation.
+
+### PERF-002 ✅ transcription API reads entire file into memory
+- **File:** `backend/app/api/v1/transcription.py`
+- **Fix:** Changed upload to stream chunks (1MB) to disk, then validate size from file stats. Eliminates loading up to 500MB into Python memory.
+
+### SEC-001 ✅ temp_path.write_bytes has no error handling
+- **File:** `backend/app/api/v1/transcription.py`
+- **Fix:** Replaced write_bytes with streaming write in try/except IOError. On failure, temp file is cleaned up before returning 422.
+
+## Not Fixed (documented/triaged)
+
+### BUG-007 chunk_manager split_audio loads entire audio into memory
+- **Status:** Documented limitation. For 4-hour audio at 16kHz mono, ~460MB is loaded. pydub AudioSegment requires full in-memory load. Streaming chunking would require switching to pydub-less chunking (e.g., ffmpeg subprocess). Marked as future optimization.
+
+### BUG-009 Redundant SoftTimeLimitExceeded handler
+- **Status:** Defensive code — the inner handler returns a dict, the outer wrapper's handler would only trigger if the inner function somehow re-raised. Left as-is (not harmful).
+
+### QUAL-001 Class-level Lock for singletons
+- **Status:** Not a bug — Python class-level mutable attributes are shared across all references. The double-checked locking pattern works correctly.
+
+## Tests Updated
+- `backend/tests/unit/test_lifecycle.py` — Updated all mocks to patch `backend.app.dependencies` instead of the removed `backend.app.lifecycle.create_engine` and `redis.asyncio.from_url`.

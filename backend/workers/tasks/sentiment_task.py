@@ -4,6 +4,7 @@ SPEC-SENTIMENT-001: 회의록 완료 후 화자별/구간별 감정 분석
 """
 
 import json
+import time
 from datetime import UTC, datetime
 
 import redis
@@ -14,17 +15,14 @@ from backend.pipeline.sentiment_analyzer import SentimentAnalyzer
 from backend.schemas.transcription import TaskStatus
 from backend.utils.logger import get_logger
 from backend.workers.celery_app import celery_app
+from backend.workers.redis_client import get_worker_redis
 
 logger = get_logger(__name__)
 
-_redis_client: redis.Redis | None = None
-
 
 def _get_redis() -> redis.Redis:
-    global _redis_client
-    if _redis_client is None:
-        _redis_client = redis.from_url(settings.redis_url, decode_responses=True)
-    return _redis_client
+    """Redis 클라이언트 (공유 연결 풀)"""
+    return get_worker_redis()
 
 
 def _update_task_status(
@@ -71,18 +69,24 @@ def _cache_result(task_id: str, result: dict) -> None:
 
 
 def _get_active_sentiment_count() -> int:
+    """현재 활성 감정 분석 작업 수 조회 (고아 항목 자동 정리)"""
     r = _get_redis()
-    return r.scard("active_sentiment_jobs") or 0
+    now = time.time()
+    stale_cutoff = now - 7200
+    pipe = r.pipeline()
+    pipe.zremrangebyscore("active_sentiment_jobs_ts", "-inf", stale_cutoff)
+    pipe.zcard("active_sentiment_jobs_ts")
+    return pipe.execute()[1]
 
 
 def _register_active_job(task_id: str) -> None:
     r = _get_redis()
-    r.sadd("active_sentiment_jobs", task_id)
+    r.zadd("active_sentiment_jobs_ts", {task_id: time.time()})
 
 
 def _unregister_active_job(task_id: str) -> None:
     r = _get_redis()
-    r.srem("active_sentiment_jobs", task_id)
+    r.zrem("active_sentiment_jobs_ts", task_id)
 
 
 MAX_CONCURRENT_SENTIMENT = 3

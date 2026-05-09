@@ -94,6 +94,8 @@ class _ProcessingScreenState extends ConsumerState<ProcessingScreen>
     final chosen = await showModalBottomSheet<String?>(
       context: context,
       isScrollControlled: true,
+      isDismissible: false,
+      enableDrag: false,
       builder: (ctx) => _TemplateSelectorSheet(
         initialTemplateId: selectedTemplateId,
       ),
@@ -235,6 +237,15 @@ class _ProcessingScreenState extends ConsumerState<ProcessingScreen>
       appBar: AppBar(
         title: const Text('처리 중'),
         automaticallyImplyLeading: false, // 뒤로가기 비활성화
+        actions: [
+          TextButton(
+            onPressed: () async {
+              await ref.read(pipelineProvider.notifier).cancelPipeline();
+              if (mounted) context.go('/');
+            },
+            child: const Text('취소'),
+          ),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(24),

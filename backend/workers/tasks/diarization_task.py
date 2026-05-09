@@ -8,6 +8,7 @@ REQ-DIA-017: 오류 시 failed 상태 저장
 """
 
 import json
+import time
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -21,19 +22,14 @@ from backend.pipeline.speaker_matcher import SpeakerMatcher
 from backend.schemas.transcription import TaskStatus
 from backend.utils.logger import get_logger
 from backend.workers.celery_app import celery_app
+from backend.workers.redis_client import get_worker_redis
 
 logger = get_logger(__name__)
 
-# Redis 동기 클라이언트 (Celery 워커는 동기 환경)
-_redis_client: redis.Redis | None = None
-
 
 def _get_redis() -> redis.Redis:
-    """Redis 클라이언트 싱글톤 반환"""
-    global _redis_client
-    if _redis_client is None:
-        _redis_client = redis.from_url(settings.redis_url, decode_responses=True)
-    return _redis_client
+    """Redis 클라이언트 (공유 연결 풀)"""
+    return get_worker_redis()
 
 
 def _update_task_status(
@@ -89,21 +85,26 @@ def _extract_cached_error_message(result: dict) -> str | None:
 
 
 def _get_active_dia_count() -> int:
-    """현재 활성 화자 분리 작업 수 조회"""
+    """현재 활성 화자 분리 작업 수 조회 (고아 항목 자동 정리)"""
     r = _get_redis()
-    return r.scard("active_dia_jobs") or 0
+    now = time.time()
+    stale_cutoff = now - 7200
+    pipe = r.pipeline()
+    pipe.zremrangebyscore("active_dia_jobs_ts", "-inf", stale_cutoff)
+    pipe.zcard("active_dia_jobs_ts")
+    return pipe.execute()[1]
 
 
 def _register_active_job(task_id: str) -> None:
     """활성 작업 등록"""
     r = _get_redis()
-    r.sadd("active_dia_jobs", task_id)
+    r.zadd("active_dia_jobs_ts", {task_id: time.time()})
 
 
 def _unregister_active_job(task_id: str) -> None:
     """활성 작업 해제"""
     r = _get_redis()
-    r.srem("active_dia_jobs", task_id)
+    r.zrem("active_dia_jobs_ts", task_id)
 
 
 def diarization_task(

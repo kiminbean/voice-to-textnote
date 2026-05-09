@@ -13,6 +13,7 @@ import 'package:voice_to_textnote/screens/result_screen.dart';
 import 'package:voice_to_textnote/screens/template_screen.dart';
 // SPEC-TEAM-001: 팀 관리 화면 추가
 import 'package:voice_to_textnote/screens/team_list_screen.dart';
+import 'package:voice_to_textnote/screens/search_screen.dart';
 import 'package:voice_to_textnote/screens/team_detail_screen.dart';
 
 // 인증이 불필요한 공개 경로 목록
@@ -80,6 +81,11 @@ GoRouter createRouter(ProviderContainer container) {
         builder: (_, state) => ResultScreen(
           meetingId: state.pathParameters['id']!,
         ),
+      ),
+      // 검색 화면 (SPEC-SEARCH-001)
+      GoRoute(
+        path: '/search',
+        builder: (_, __) => const SearchScreen(),
       ),
       // 양식 관리 화면 (SPEC-TMPL-001 REQ-TMPL-007)
       GoRoute(

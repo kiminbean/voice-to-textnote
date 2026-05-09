@@ -5,6 +5,7 @@ REQ-STT-010~014: 상태 조회 및 결과 반환
 """
 
 import json
+import time
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
@@ -65,11 +66,31 @@ async def upload_transcription(
         )
 
     # --- 파일 크기 검증 (REQ-STT-003) ---
-    # content_length가 없으면 실제 파일 읽어서 확인
-    raw_content = await file.read()
-    file_size = len(raw_content)
+    # Stream to disk first to avoid loading entire file into memory (up to 500MB).
+    # Then validate size from file stats.
+    task_id = uuid.uuid4()
+    task_id_str = str(task_id)
+    suffix = Path(filename).suffix.lower()
+    temp_path = settings.temp_dir / f"{task_id_str}{suffix}"
+
+    try:
+        with temp_path.open("wb") as f:
+            while True:
+                chunk = await file.read(1024 * 1024)  # 1MB 청크
+                if not chunk:
+                    break
+                f.write(chunk)
+    except IOError as e:
+        temp_path.unlink(missing_ok=True)
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=[{"field": "file", "message": f"파일 저장 실패: {e}", "type": "write_error"}],
+        )
+
+    file_size = temp_path.stat().st_size
     is_valid_size, size_error = validate_file_size(file_size, settings.max_file_size_bytes)
     if not is_valid_size:
+        temp_path.unlink(missing_ok=True)
         errors.append(
             ValidationErrorDetail(
                 field="file",
@@ -85,27 +106,23 @@ async def upload_transcription(
             detail=[e.model_dump() for e in errors],
         )
 
-    # --- 동시 처리 제한 확인 (REQ: 최대 3개) ---
-    # Redis INCR로 원자적 카운트 조회 + 증가 (레이스 컨디션 방지)
-    pipe = redis_client.pipeline()
-    pipe.incr("active_job_count")
-    pipe.decr("active_job_count")  # 즉시 감소 (쿼리용)
-    active_count = int((await pipe.execute())[1])
-    
+    # --- 동시 처리 제한 확인 (REQ: 최대 N개) ---
+    # Soft check: 워커의 ZSET 기반 카운트와 다를 수 있지만 과도한 큐잉은 방지합니다.
+    try:
+        now_ts = time.time()
+        pipe = redis_client.pipeline()
+        pipe.zremrangebyscore("active_jobs_ts", "-inf", now_ts - 7200)
+        pipe.zcard("active_jobs_ts")
+        active_count = (await pipe.execute())[1]
+    except Exception:
+        active_count = 0
     if active_count >= settings.max_concurrent_jobs:
-        await redis_client.decr("active_job_count")  # 증분 취소
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail=f"동시 처리 한도({settings.max_concurrent_jobs}개)를 초과했습니다. 잠시 후 재시도하세요.",
         )
 
-    # --- 임시 파일 저장 ---
-    task_id = uuid.uuid4()
-    task_id_str = str(task_id)
-
-    suffix = Path(filename).suffix.lower()
-    temp_path = settings.temp_dir / f"{task_id_str}{suffix}"
-    temp_path.write_bytes(raw_content)
+    # temp_path, task_id_str already set above during streaming upload
 
     # --- 재생 시간 검증 (REQ-STT-003: 4시간 초과 거부) ---
     try:
@@ -148,7 +165,7 @@ async def upload_transcription(
         "progress": 0.0,
         "created_at": now.isoformat(),
         "updated_at": now.isoformat(),
-        "file_size": file_size_bytes,
+        "file_size": file_size,
         "language": language,
         "model": model,
     }

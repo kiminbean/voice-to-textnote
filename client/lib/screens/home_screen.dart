@@ -28,22 +28,56 @@ class HomeScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Voice to TextNote'),
         centerTitle: true,
-        // 검색 버튼 (SPEC-SEARCH-001) + 팀 버튼 (SPEC-TEAM-001) + 양식 관리 버튼 (SPEC-TMPL-001)
+        // 모든 액션을 PopupMenuButton으로 통합 (UIX-008: 좁은 화면 오버플로우 방지)
         actions: [
-          IconButton(
-            icon: const Icon(Icons.groups),
-            tooltip: '팀',
-            onPressed: () => context.push('/teams'),
-          ),
-          IconButton(
-            icon: const Icon(Icons.search),
-            tooltip: '검색',
-            onPressed: () => context.push('/search'),
-          ),
-          IconButton(
-            icon: const Icon(Icons.folder_special_outlined),
-            tooltip: '양식 관리',
-            onPressed: () => context.push('/templates'),
+          PopupMenuButton<String>(
+            tooltip: '더보기',
+            onSelected: (value) {
+              switch (value) {
+                case 'teams':
+                  context.push('/teams');
+                case 'search':
+                  context.push('/search');
+                case 'templates':
+                  context.push('/templates');
+                case 'logout':
+                  _onLogout(context, ref);
+              }
+            },
+            itemBuilder: (_) => [
+              const PopupMenuItem(
+                value: 'teams',
+                child: ListTile(
+                  leading: Icon(Icons.groups),
+                  title: Text('팀'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'search',
+                child: ListTile(
+                  leading: Icon(Icons.search),
+                  title: Text('검색'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'templates',
+                child: ListTile(
+                  leading: Icon(Icons.folder_special_outlined),
+                  title: Text('양식 관리'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'logout',
+                child: ListTile(
+                  leading: Icon(Icons.logout),
+                  title: Text('로그아웃'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -63,6 +97,9 @@ class HomeScreen extends ConsumerWidget {
                     child: Text(
                       '게스트 모드 — 데이터가 24시간 후 삭제됩니다',
                       style: TextStyle(fontSize: 13, color: Colors.black87),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      softWrap: true,
                     ),
                   ),
                   TextButton(
@@ -124,6 +161,30 @@ class HomeScreen extends ConsumerWidget {
         child: const Icon(Icons.mic),
       ),
     );
+  }
+
+  // 로그아웃
+  Future<void> _onLogout(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('로그아웃'),
+        content: const Text('로그아웃하시겠습니까?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('로그아웃'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && context.mounted) {
+      await ref.read(authStateProvider.notifier).logout();
+    }
   }
 
   // REQ-HSYNC-003: 당겨서 새로 고침 처리

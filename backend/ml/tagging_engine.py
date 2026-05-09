@@ -13,6 +13,17 @@ from backend.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
+# 공유 httpx 클라이언트 (연결 재사용)
+_http_client: httpx.AsyncClient | None = None
+
+
+def _get_http_client() -> httpx.AsyncClient:
+    """공유 httpx.AsyncClient 반환 (lazy init)"""
+    global _http_client
+    if _http_client is None or _http_client.is_closed:
+        _http_client = httpx.AsyncClient(timeout=30.0)
+    return _http_client
+
 # 태깅 프롬프트 템플릿
 _TAGGING_SYSTEM_PROMPT = """당신은 회의록 분석 전문가입니다.
 주어진 회의록 텍스트를 분석하여 다음 종류의 태그를 추출하세요:
@@ -66,33 +77,33 @@ async def generate_auto_tags(content: str, max_tags: int = 10) -> list[dict]:
         # 텍스트가 너무 길면 자르기
         truncated = content[:6000] if len(content) > 6000 else content
 
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(
-                "https://api.openai.com/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {settings.openai_api_key}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": settings.summary_model,
-                    "messages": [
-                        {"role": "system", "content": _TAGGING_SYSTEM_PROMPT},
-                        {
-                            "role": "user",
-                            "content": f"다음 회의록을 분석해서 태그를 추출해주세요:\n\n{truncated}",
-                        },
-                    ],
-                    "max_tokens": 1024,
-                    "temperature": 0.3,
-                },
-            )
-            response.raise_for_status()
-            data = response.json()
-            raw_text = data["choices"][0]["message"]["content"]
+        client = _get_http_client()
+        response = await client.post(
+            "https://api.openai.com/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {settings.openai_api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": settings.summary_model,
+                "messages": [
+                    {"role": "system", "content": _TAGGING_SYSTEM_PROMPT},
+                    {
+                        "role": "user",
+                        "content": f"다음 회의록을 분석해서 태그를 추출해주세요:\n\n{truncated}",
+                    },
+                ],
+                "max_tokens": 1024,
+                "temperature": 0.3,
+            },
+        )
+        response.raise_for_status()
+        data = response.json()
+        raw_text = data["choices"][0]["message"]["content"]
 
-            parsed = _extract_json(raw_text)
-            tags = parsed.get("tags", [])
-            return tags[:max_tags]
+        parsed = _extract_json(raw_text)
+        tags = parsed.get("tags", [])
+        return tags[:max_tags]
 
     except Exception as e:
         logger.warning("AI 자동 태깅 실패, 규칙 기반 폴백", error=str(e))

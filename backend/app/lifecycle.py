@@ -11,7 +11,6 @@ REQ-LIFE-005: 종료 완료 로그 출력
 
 from datetime import UTC, datetime
 
-from backend.db.engine import create_engine
 from backend.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -43,15 +42,12 @@ async def validate_startup() -> dict:
 
     status: dict[str, str] = {}
 
-    # REQ-LIFE-001: Redis 연결 검증
+    # REQ-LIFE-001: Redis 연결 검증 - 앱 공유 클라이언트 사용 (연결 누수 방지)
     try:
-        import redis.asyncio as aioredis
+        from backend.app.dependencies import get_redis_client
 
-        from backend.app.config import settings
-
-        r = aioredis.from_url(settings.redis_url)
+        r = get_redis_client()
         await r.ping()
-        await r.aclose()
         status["redis"] = "ok"
     except Exception as e:
         status["redis"] = f"warning: {e}"
@@ -71,13 +67,14 @@ async def validate_startup() -> dict:
         import backend.db.version_models  # noqa: F401
         # SPEC-TAG-001: 회의록 자동 태깅 모델 import
         import backend.db.tag_models  # noqa: F401
-        from backend.app.config import settings
         from backend.db.models import Base
 
-        engine = create_engine(settings.database_url or None)
+        # BUGFIX: dependencies.py의 동일 엔진 재사용 (별도 엔진 생성 방지)
+        # 이전에는 매번 create_engine()을 호출해 실제 사용하는 엔진과 다른 엔진을
+        # 생성/폐기했으므로 테이블 생성이 앱 엔진에 반영되지 않았습니다.
+        from backend.app.dependencies import _db_engine
 
-        # 테이블 자동 생성 (SQLite 폴백 또는 DATABASE_URL 설정 시 모두)
-        async with engine.begin() as conn:
+        async with _db_engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
 
         status["database"] = "ok"
@@ -95,14 +92,14 @@ async def cleanup_shutdown() -> None:
     """
     종료 시 리소스 정리
 
-    REQ-LIFE-004: DB 커넥션 풀 dispose
+    REQ-LIFE-004: DB 커넥션 풀 dispose (앱 공유 엔진)
     REQ-LIFE-005: 종료 완료 로그
     """
     try:
-        from backend.app.config import settings
+        # BUGFIX: dependencies.py의 동일 엔진 dispose (별도 엔진 생성 방지)
+        from backend.app.dependencies import _db_engine
 
-        engine = create_engine(settings.database_url or None)
-        await engine.dispose()
+        await _db_engine.dispose()
         logger.info("DB 커넥션 풀 정리 완료")
     except Exception as e:
         logger.warning("종료 정리 실패", error=str(e))
