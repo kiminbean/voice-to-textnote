@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "lastScanned": 1778051016099,
+  "lastScanned": 1778483100989,
   "projectRoot": "/Users/ibkim/Projects/voice-to-textnote",
   "techStack": {
     "languages": [
@@ -56,7 +56,7 @@
       "path": "alembic",
       "purpose": null,
       "fileCount": 3,
-      "lastAccessed": 1778051016092,
+      "lastAccessed": 1778483100968,
       "keyFiles": [
         "__init__.py",
         "env.py",
@@ -66,33 +66,34 @@
     "backend": {
       "path": "backend",
       "purpose": null,
-      "fileCount": 12,
-      "lastAccessed": 1778051016092,
+      "fileCount": 45,
+      "lastAccessed": 1778483100968,
       "keyFiles": [
-        "<MagicMock name='settings.temp_dir.__truediv__()' id='4761173504'>",
-        "<MagicMock name='settings.temp_dir.__truediv__()' id='4801821200'>",
-        "<MagicMock name='settings.temp_dir.__truediv__()' id='4803837440'>",
-        "<MagicMock name='settings.temp_dir.__truediv__()' id='4807735824'>",
-        "<MagicMock name='settings.temp_dir.__truediv__()' id='4984011280'>"
+        "<MagicMock name='settings.temp_dir.__truediv__()' id='4439559872'>",
+        "<MagicMock name='settings.temp_dir.__truediv__()' id='4455705840'>",
+        "<MagicMock name='settings.temp_dir.__truediv__()' id='4551615424'>",
+        "<MagicMock name='settings.temp_dir.__truediv__()' id='4552441344'>",
+        "<MagicMock name='settings.temp_dir.__truediv__()' id='4726112672'>"
       ]
     },
     "client": {
       "path": "client",
       "purpose": null,
-      "fileCount": 6,
-      "lastAccessed": 1778051016092,
+      "fileCount": 8,
+      "lastAccessed": 1778483100968,
       "keyFiles": [
         "README.md",
         "analysis_options.yaml",
-        "pubspec.lock",
-        "pubspec.yaml"
+        "prd.json",
+        "progress.txt",
+        "pubspec.lock"
       ]
     },
     "deploy": {
       "path": "deploy",
       "purpose": null,
       "fileCount": 4,
-      "lastAccessed": 1778051016092,
+      "lastAccessed": 1778483100969,
       "keyFiles": [
         "requirements-ubuntu.txt",
         "restart.sh",
@@ -104,7 +105,7 @@
       "path": "nginx",
       "purpose": null,
       "fileCount": 1,
-      "lastAccessed": 1778051016092,
+      "lastAccessed": 1778483100969,
       "keyFiles": [
         "nginx.conf"
       ]
@@ -113,14 +114,14 @@
       "path": "storage",
       "purpose": null,
       "fileCount": 0,
-      "lastAccessed": 1778051016092,
+      "lastAccessed": 1778483100970,
       "keyFiles": []
     },
     "venv": {
       "path": "venv",
       "purpose": null,
       "fileCount": 2,
-      "lastAccessed": 1778051016092,
+      "lastAccessed": 1778483100970,
       "keyFiles": [
         "pyvenv.cfg"
       ]
@@ -129,7 +130,7 @@
       "path": "client/lib",
       "purpose": "Library code",
       "fileCount": 1,
-      "lastAccessed": 1778051016093,
+      "lastAccessed": 1778483100970,
       "keyFiles": [
         "main.dart"
       ]
@@ -137,8 +138,8 @@
     "venv/bin": {
       "path": "venv/bin",
       "purpose": "Executable scripts",
-      "fileCount": 58,
-      "lastAccessed": 1778051016093,
+      "fileCount": 60,
+      "lastAccessed": 1778483100971,
       "keyFiles": [
         "Activate.ps1",
         "activate",
@@ -149,15 +150,15 @@
       "path": "venv/lib",
       "purpose": "Library code",
       "fileCount": 0,
-      "lastAccessed": 1778051016093,
+      "lastAccessed": 1778483100971,
       "keyFiles": []
     }
   },
   "hotPaths": [
     {
       "path": "backend/app/main.py",
-      "accessCount": 11,
-      "lastAccessed": 1777446761673,
+      "accessCount": 12,
+      "lastAccessed": 1778483115291,
       "type": "file"
     },
     {
@@ -240,8 +241,14 @@
     },
     {
       "path": "backend/app/api/v1/search.py",
-      "accessCount": 2,
-      "lastAccessed": 1777025679003,
+      "accessCount": 3,
+      "lastAccessed": 1778483129010,
+      "type": "file"
+    },
+    {
+      "path": "backend/app/api/v1/bookmarks.py",
+      "accessCount": 3,
+      "lastAccessed": 1778483129761,
       "type": "file"
     },
     {
@@ -299,12 +306,6 @@
       "type": "file"
     },
     {
-      "path": "backend/app/api/v1/bookmarks.py",
-      "accessCount": 2,
-      "lastAccessed": 1777446404956,
-      "type": "file"
-    },
-    {
       "path": "backend/db/bookmark_service.py",
       "accessCount": 2,
       "lastAccessed": 1777446416428,
@@ -323,6 +324,18 @@
       "type": "file"
     },
     {
+      "path": "backend/app/api/v1/export.py",
+      "accessCount": 2,
+      "lastAccessed": 1778483129378,
+      "type": "file"
+    },
+    {
+      "path": "backend/app/api/v1/statistics.py",
+      "accessCount": 2,
+      "lastAccessed": 1778483149178,
+      "type": "file"
+    },
+    {
       "path": "backend/schemas/history.py",
       "accessCount": 1,
       "lastAccessed": 1776841435604,
@@ -332,12 +345,6 @@
       "path": "CLAUDE.md",
       "accessCount": 1,
       "lastAccessed": 1776926137208,
-      "type": "file"
-    },
-    {
-      "path": "backend/app/api/v1/export.py",
-      "accessCount": 1,
-      "lastAccessed": 1777025679132,
       "type": "file"
     },
     {
@@ -356,12 +363,6 @@
       "path": "backend/schemas/statistics.py",
       "accessCount": 1,
       "lastAccessed": 1777025834928,
-      "type": "file"
-    },
-    {
-      "path": "backend/app/api/v1/statistics.py",
-      "accessCount": 1,
-      "lastAccessed": 1777025904740,
       "type": "file"
     },
     {
