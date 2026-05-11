@@ -48,7 +48,7 @@ fpdf2>=2.8.1
 # === JWT 인증 (SPEC-TEAM-001) ===
 python-jose[cryptography]>=3.3.0
 passlib[bcrypt]>=1.7.4
-email-validator>=2.0.0
+email-validator>=2.3.0
 
 # === 로깅 / 모니터링 ===
 structlog>=24.1.0
