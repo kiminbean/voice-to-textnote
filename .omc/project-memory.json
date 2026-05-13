@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "lastScanned": 1778483100989,
+  "lastScanned": 1778656004686,
   "projectRoot": "/Users/ibkim/Projects/voice-to-textnote",
   "techStack": {
     "languages": [
@@ -56,7 +56,7 @@
       "path": "alembic",
       "purpose": null,
       "fileCount": 3,
-      "lastAccessed": 1778483100968,
+      "lastAccessed": 1778656004676,
       "keyFiles": [
         "__init__.py",
         "env.py",
@@ -66,21 +66,21 @@
     "backend": {
       "path": "backend",
       "purpose": null,
-      "fileCount": 45,
-      "lastAccessed": 1778483100968,
+      "fileCount": 50,
+      "lastAccessed": 1778656004676,
       "keyFiles": [
         "<MagicMock name='settings.temp_dir.__truediv__()' id='4439559872'>",
+        "<MagicMock name='settings.temp_dir.__truediv__()' id='4445691520'>",
         "<MagicMock name='settings.temp_dir.__truediv__()' id='4455705840'>",
-        "<MagicMock name='settings.temp_dir.__truediv__()' id='4551615424'>",
-        "<MagicMock name='settings.temp_dir.__truediv__()' id='4552441344'>",
-        "<MagicMock name='settings.temp_dir.__truediv__()' id='4726112672'>"
+        "<MagicMock name='settings.temp_dir.__truediv__()' id='4464703344'>",
+        "<MagicMock name='settings.temp_dir.__truediv__()' id='4523564000'>"
       ]
     },
     "client": {
       "path": "client",
       "purpose": null,
       "fileCount": 8,
-      "lastAccessed": 1778483100968,
+      "lastAccessed": 1778656004677,
       "keyFiles": [
         "README.md",
         "analysis_options.yaml",
@@ -93,7 +93,7 @@
       "path": "deploy",
       "purpose": null,
       "fileCount": 4,
-      "lastAccessed": 1778483100969,
+      "lastAccessed": 1778656004677,
       "keyFiles": [
         "requirements-ubuntu.txt",
         "restart.sh",
@@ -105,7 +105,7 @@
       "path": "nginx",
       "purpose": null,
       "fileCount": 1,
-      "lastAccessed": 1778483100969,
+      "lastAccessed": 1778656004677,
       "keyFiles": [
         "nginx.conf"
       ]
@@ -114,14 +114,14 @@
       "path": "storage",
       "purpose": null,
       "fileCount": 0,
-      "lastAccessed": 1778483100970,
+      "lastAccessed": 1778656004677,
       "keyFiles": []
     },
     "venv": {
       "path": "venv",
       "purpose": null,
       "fileCount": 2,
-      "lastAccessed": 1778483100970,
+      "lastAccessed": 1778656004677,
       "keyFiles": [
         "pyvenv.cfg"
       ]
@@ -130,7 +130,7 @@
       "path": "client/lib",
       "purpose": "Library code",
       "fileCount": 1,
-      "lastAccessed": 1778483100970,
+      "lastAccessed": 1778656004677,
       "keyFiles": [
         "main.dart"
       ]
@@ -139,7 +139,7 @@
       "path": "venv/bin",
       "purpose": "Executable scripts",
       "fileCount": 60,
-      "lastAccessed": 1778483100971,
+      "lastAccessed": 1778656004678,
       "keyFiles": [
         "Activate.ps1",
         "activate",
@@ -150,27 +150,27 @@
       "path": "venv/lib",
       "purpose": "Library code",
       "fileCount": 0,
-      "lastAccessed": 1778483100971,
+      "lastAccessed": 1778656004678,
       "keyFiles": []
     }
   },
   "hotPaths": [
     {
       "path": "backend/app/main.py",
-      "accessCount": 12,
-      "lastAccessed": 1778483115291,
+      "accessCount": 13,
+      "lastAccessed": 1778656023138,
       "type": "file"
     },
     {
       "path": "backend",
-      "accessCount": 6,
-      "lastAccessed": 1777185166686,
+      "accessCount": 7,
+      "lastAccessed": 1778656041821,
       "type": "directory"
     },
     {
       "path": "backend/app/config.py",
-      "accessCount": 6,
-      "lastAccessed": 1777446311283,
+      "accessCount": 7,
+      "lastAccessed": 1778656091650,
       "type": "file"
     },
     {
@@ -192,15 +192,15 @@
       "type": "file"
     },
     {
-      "path": "backend/services/statistics.py",
-      "accessCount": 4,
-      "lastAccessed": 1777185146999,
+      "path": "backend/pipeline/audio_processor.py",
+      "accessCount": 5,
+      "lastAccessed": 1778656049305,
       "type": "file"
     },
     {
-      "path": "backend/pipeline/audio_processor.py",
+      "path": "backend/services/statistics.py",
       "accessCount": 4,
-      "lastAccessed": 1777185229527,
+      "lastAccessed": 1777185146999,
       "type": "file"
     },
     {
@@ -217,8 +217,8 @@
     },
     {
       "path": "backend/conftest.py",
-      "accessCount": 3,
-      "lastAccessed": 1777025728003,
+      "accessCount": 4,
+      "lastAccessed": 1778557042210,
       "type": "file"
     },
     {
@@ -249,6 +249,12 @@
       "path": "backend/app/api/v1/bookmarks.py",
       "accessCount": 3,
       "lastAccessed": 1778483129761,
+      "type": "file"
+    },
+    {
+      "path": "pyproject.toml",
+      "accessCount": 3,
+      "lastAccessed": 1778557041816,
       "type": "file"
     },
     {
@@ -297,12 +303,6 @@
       "path": "backend/services/retention.py",
       "accessCount": 2,
       "lastAccessed": 1777185236129,
-      "type": "file"
-    },
-    {
-      "path": "pyproject.toml",
-      "accessCount": 2,
-      "lastAccessed": 1777446285197,
       "type": "file"
     },
     {
