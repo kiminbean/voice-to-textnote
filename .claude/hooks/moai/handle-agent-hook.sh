@@ -44,8 +44,8 @@ if [ -f "/Users/ibkim/go/bin/moai" ]; then
 fi
 
 # Try default ~/go/bin/moai
-if [ -f "/Users/ibkim/go/bin/moai" ]; then
-    exec "/Users/ibkim/go/bin/moai" hook agent "$action" < "$temp_file"
+if [ -f "$HOME/go/bin/moai" ]; then
+    exec "$HOME/go/bin/moai" hook agent "$action" < "$temp_file"
 fi
 
 # Not found - exit silently (Claude Code handles missing hooks gracefully)

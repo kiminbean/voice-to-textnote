@@ -18,6 +18,7 @@
       "Bash(git add:*)",
       "Bash(git rebase:*)",
       "Bash(GIT_EDITOR=true git rebase --continue)"
-    ]
+    ],
+    "defaultMode": "bypassPermissions"
   }
 }
