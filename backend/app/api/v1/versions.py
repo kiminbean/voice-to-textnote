@@ -13,6 +13,7 @@ from backend.db.auth_models import User
 from backend.db.version_models import MinutesVersion
 from backend.db.version_service import VersionService
 from backend.schemas.version import (
+    StructuredDiffResponse,
     VersionCreate,
     VersionDiffResponse,
     VersionListResponse,
@@ -110,6 +111,39 @@ async def get_diff(
         unified_diff=diff["unified_diff"],
         added_lines=diff["added_lines"],
         removed_lines=diff["removed_lines"],
+        changed=diff["changed"],
+    )
+
+
+@router.get(
+    "/{task_id}/versions/{from_version_id}/structured-diff/{to_version_id}",
+    response_model=StructuredDiffResponse,
+    responses={404: {"description": "버전 없음"}},
+)
+async def get_structured_diff(
+    task_id: str,
+    from_version_id: uuid.UUID,
+    to_version_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db_session),
+    current_user: User = Depends(get_current_user),
+) -> StructuredDiffResponse:
+    """JSON 구조 기반 회의록 diff 조회.
+
+    summary_text / sections(title 매칭) / action_items(id 또는 text 매칭)을
+    added / removed / modified로 분리해 반환한다. 클라이언트는 별도 파싱 없이
+    필드 단위 UI 렌더링이 가능하다.
+    """
+    from_ver = await _service.get_version(db, task_id, from_version_id)
+    to_ver = await _service.get_version(db, task_id, to_version_id)
+    diff = _service.compute_structured_diff(from_ver.content, to_ver.content)
+
+    return StructuredDiffResponse(
+        from_version=from_ver.version_number,
+        to_version=to_ver.version_number,
+        summary_text=diff["summary_text"],
+        sections=diff["sections"],
+        action_items=diff["action_items"],
+        total_changes=diff["total_changes"],
         changed=diff["changed"],
     )
 

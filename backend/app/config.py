@@ -140,6 +140,16 @@ class Settings(BaseSettings):
     # 북마크 노트 최대 길이 (문자)
     bookmark_note_max_length: int = Field(default=2000, ge=1, le=20000)
 
+    # SPEC-AUDIO-PREP-001: 오디오 전처리 API 설정
+    # 전처리 엔드포인트 활성화 여부 (운영에서 비활성화하려면 false)
+    audio_preprocess_enabled: bool = True
+    # 전처리에 허용되는 최대 업로드 크기 (MB). 메인 max_file_size_mb와 별도.
+    audio_preprocess_max_file_mb: int = Field(default=200, ge=1, le=2000)
+    # 전처리 동시 실행 제한 (서버 CPU 보호)
+    audio_preprocess_max_concurrent: int = Field(default=2, ge=1, le=10)
+    # 기본 high-pass 컷오프 (요청에 명시 안 했을 때 사용; 0이면 비활성)
+    audio_preprocess_default_high_pass_hz: int = Field(default=0, ge=0, le=500)
+
     # SPEC-STATS-001: 회의 통계 대시보드 설정
     # 키워드 빈도 상위 N개 반환
     statistics_keyword_top_n: int = Field(default=20, ge=1, le=200)

@@ -157,14 +157,20 @@
   "hotPaths": [
     {
       "path": "backend/app/main.py",
-      "accessCount": 16,
-      "lastAccessed": 1778861750396,
+      "accessCount": 19,
+      "lastAccessed": 1778864806164,
       "type": "file"
     },
     {
       "path": "backend/app/config.py",
-      "accessCount": 9,
-      "lastAccessed": 1778861750906,
+      "accessCount": 11,
+      "lastAccessed": 1778864738983,
+      "type": "file"
+    },
+    {
+      "path": "backend/pipeline/audio_processor.py",
+      "accessCount": 10,
+      "lastAccessed": 1778864973269,
       "type": "file"
     },
     {
@@ -181,14 +187,8 @@
     },
     {
       "path": "backend/conftest.py",
-      "accessCount": 6,
-      "lastAccessed": 1778861203517,
-      "type": "file"
-    },
-    {
-      "path": "backend/pipeline/audio_processor.py",
-      "accessCount": 6,
-      "lastAccessed": 1778861736008,
+      "accessCount": 7,
+      "lastAccessed": 1778864599401,
       "type": "file"
     },
     {
@@ -360,6 +360,12 @@
       "type": "file"
     },
     {
+      "path": "backend/app/api/v1/stream.py",
+      "accessCount": 2,
+      "lastAccessed": 1778864542424,
+      "type": "file"
+    },
+    {
       "path": "backend/schemas/history.py",
       "accessCount": 1,
       "lastAccessed": 1776841435604,
@@ -430,12 +436,6 @@
       "accessCount": 1,
       "lastAccessed": 1777185154153,
       "type": "directory"
-    },
-    {
-      "path": "backend/app/api/v1/stream.py",
-      "accessCount": 1,
-      "lastAccessed": 1777185156874,
-      "type": "file"
     },
     {
       "path": "backend/app/api/v1/health.py",

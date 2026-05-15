@@ -13,6 +13,7 @@ from backend.app.api.v1 import (
     action_items,
     admin,
     audio_analysis,
+    audio_preprocess,
     auth,
     batch,
     bookmarks,
@@ -200,6 +201,9 @@ def create_app() -> FastAPI:
 
     # SPEC-AUDIO-ANALYSIS-001: 오디오 품질 분석 API
     app.include_router(audio_analysis.router, prefix=api_prefix, dependencies=_auth)
+
+    # SPEC-AUDIO-PREP-001: 오디오 전처리(노이즈/무음 트리밍/정규화) API
+    app.include_router(audio_preprocess.router, prefix=api_prefix, dependencies=_auth)
 
     return app
 

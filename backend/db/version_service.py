@@ -148,6 +148,134 @@ class VersionService:
             "changed": added > 0 or removed > 0,
         }
 
+    @staticmethod
+    def _normalize_sections(content: dict[str, Any]) -> dict[str, str]:
+        """sections 배열을 {title: content_text} 매핑으로 정규화."""
+        sections: dict[str, str] = {}
+        for section in content.get("sections") or []:
+            if not isinstance(section, dict):
+                continue
+            title = (section.get("title") or "").strip()
+            if not title:
+                continue
+            body = section.get("content")
+            sections[title] = str(body) if body is not None else ""
+        return sections
+
+    @staticmethod
+    def _action_item_key(item: dict[str, Any]) -> str:
+        """action_items 매칭에 사용할 안정 키. id 우선, 없으면 text."""
+        if isinstance(item.get("id"), (str, int)):
+            return f"id:{item['id']}"
+        text = item.get("text")
+        if isinstance(text, str) and text.strip():
+            return f"text:{text.strip()}"
+        return f"hash:{hash(frozenset((k, str(v)) for k, v in item.items()))}"
+
+    @classmethod
+    def _normalize_action_items(
+        cls, content: dict[str, Any]
+    ) -> dict[str, dict[str, Any]]:
+        """action_items를 {key: item_dict}로 정규화."""
+        items: dict[str, dict[str, Any]] = {}
+        for raw in content.get("action_items") or []:
+            if not isinstance(raw, dict):
+                continue
+            items[cls._action_item_key(raw)] = raw
+        return items
+
+    def compute_structured_diff(
+        self,
+        old_content: dict[str, Any],
+        new_content: dict[str, Any],
+    ) -> dict[str, Any]:
+        """회의록 JSON 구조 기반 diff 계산.
+
+        summary_text, sections(title 매칭), action_items(id/text 매칭)을
+        added/removed/modified로 분리한다. 라이브러리 diff 의존을 제거하여
+        프런트에서 곧바로 UI 렌더링이 가능한 형태를 반환한다.
+        """
+        # summary_text -------------------------------------------------------
+        old_summary = old_content.get("summary_text") if isinstance(
+            old_content.get("summary_text"), str
+        ) else None
+        new_summary = new_content.get("summary_text") if isinstance(
+            new_content.get("summary_text"), str
+        ) else None
+        summary_changed = (old_summary or "") != (new_summary or "")
+
+        # sections -----------------------------------------------------------
+        old_sections = self._normalize_sections(old_content)
+        new_sections = self._normalize_sections(new_content)
+        added_sections: list[dict[str, Any]] = []
+        removed_sections: list[dict[str, Any]] = []
+        modified_sections: list[dict[str, Any]] = []
+        for title, body in new_sections.items():
+            if title not in old_sections:
+                added_sections.append(
+                    {"title": title, "before_content": None, "after_content": body}
+                )
+            elif old_sections[title] != body:
+                modified_sections.append(
+                    {
+                        "title": title,
+                        "before_content": old_sections[title],
+                        "after_content": body,
+                    }
+                )
+        for title, body in old_sections.items():
+            if title not in new_sections:
+                removed_sections.append(
+                    {"title": title, "before_content": body, "after_content": None}
+                )
+
+        # action_items -------------------------------------------------------
+        old_items = self._normalize_action_items(old_content)
+        new_items = self._normalize_action_items(new_content)
+        added_items: list[dict[str, Any]] = []
+        removed_items: list[dict[str, Any]] = []
+        modified_items: list[dict[str, Any]] = []
+        for key, item in new_items.items():
+            if key not in old_items:
+                added_items.append({"key": key, "before": None, "after": item})
+            elif old_items[key] != item:
+                modified_items.append(
+                    {"key": key, "before": old_items[key], "after": item}
+                )
+        for key, item in old_items.items():
+            if key not in new_items:
+                removed_items.append({"key": key, "before": item, "after": None})
+
+        total_changes = (
+            (1 if summary_changed else 0)
+            + len(added_sections)
+            + len(removed_sections)
+            + len(modified_sections)
+            + len(added_items)
+            + len(removed_items)
+            + len(modified_items)
+        )
+
+        return {
+            "summary_text": {
+                "changed": summary_changed,
+                "before": old_summary,
+                "after": new_summary,
+            },
+            "sections": {
+                "added": added_sections,
+                "removed": removed_sections,
+                "modified": modified_sections,
+            },
+            "action_items": {
+                "added": added_items,
+                "removed": removed_items,
+                "modified": modified_items,
+            },
+            "total_changes": total_changes,
+            "changed": total_changes > 0,
+        }
+
     async def delete_version(
         self,
         session: AsyncSession,
