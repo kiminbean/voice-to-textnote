@@ -472,67 +472,6 @@ User can explicitly request context search at any time during conversation.
 
 ---
 
-## Quick Start (Ubuntu 서버)
-
-### 필수 시스템 패키지
-
-```bash
-sudo apt install -y redis-server ffmpeg python3-venv
-```
-
-### 서버 실행
-
-```bash
-# 1. Redis 시작
-sudo systemctl start redis-server
-
-# 2. 가상환경 생성 및 의존성 설치
-cd ~/voice-to-textnote
-python3 -m venv venv
-source venv/bin/activate
-pip install --upgrade pip
-pip install -r deploy/requirements-ubuntu.txt
-
-# 3. storage 디렉토리 생성
-mkdir -p storage/temp storage/results
-
-# 4. API 서버 실행 (포트 8000)
-uvicorn backend.app.main:app --host 0.0.0.0 --port 8000
-
-# 5. Celery 워커 실행 (별도 터미널)
-celery -A backend.workers.celery_app:celery_app worker --loglevel=info --concurrency=2
-```
-
-### Health Check
-
-```bash
-curl http://localhost:8000/api/v1/health
-```
-
-### 서버 재시작 (코드 업데이트 시)
-
-```bash
-cd ~/voice-to-textnote && git pull origin main && bash deploy/restart.sh
-```
-
-또는 코드 업데이트 포함:
-
-```bash
-bash deploy/restart.sh --pull
-```
-
-### bcrypt 호환성 (Python 3.12)
-
-```bash
-pip install bcrypt==4.0.1
-```
-
-### Tailscale 접속
-
-아이폰에서: `http://100.110.255.105:8000`
-
----
-
 ## Troubleshooting
 
 ### Debugging MoAI Sessions
@@ -560,19 +499,6 @@ Or use the `/debug` command inside a session to inspect current session state, h
 | Agent Teams messages not delivered | Session was resumed after interrupt | Spawn new teammates; old teammates are orphaned |
 | `moai hook subagent-stop` fails | Binary not in PATH | Run `which moai` to verify installation |
 | settings.json not updated after `moai update` | Conflict with user modifications | Run `moai update -t` for template-only sync |
-| 회원가입/로그인 500 에러 | auth_models 테이블 미생성 | lifecycle.py에 `import backend.db.auth_models` 확인 |
-| `/auth/me` 500 에러 (hex attribute) | JWT user_id가 str인데 UUID 컬럼 비교 | `uuid.UUID(user_id)` 변환 후 조회 |
-| bcrypt hash 실패 (Python 3.12) | passlib+bcrypt 버전 충돌 | `pip install bcrypt==4.0.1` |
-| Flutter 회원가입 무한 로딩 | AuthResponse에 없는 user 필드 파싱 | Backend 응답 스키마와 Flutter 모델 1:1 대조 |
-| 5분+ 녹음 시 타임아웃 오류 | Flutter 업로드/폴링 타임아웃 30초/5분 | uploadSendTimeout=10분, 폴링=60분으로 변경 (SPEC-PERF-001) |
-| 30분+ 녹음 시 화자분리 느림 | 전체 오디오 단일 처리 | diarize_chunked() 10분 단위 청크 분할 적용 (SPEC-PERF-001) |
-| Celery 작업 중복 실행 | Redis visibility_timeout 기본값 1시간 | `broker_transport_options.visibility_timeout=7200` 설정 |
-| 회의록 탭에 JSON 원문 표시 | OpenAI JSON에 // 주석 삽입 → 파싱 실패 | 문자 단위 따옴표 추적으로 문자열 밖 // 만 제거 (_strip_json_comments) |
-| 회의록 sections/action_items 빈값 (regex) | re.sub(//...) 가 JSON 값 내 // 도 파괴 | 단순 regex → 문자 단위 in_string 추적 방식으로 변경 |
-| 회의록 sections 값 전부 빈 문자열 | AI가 summary_text에만 내용 작성, sections 비움 | 프롬프트 재설계: sections에 상세 작성 + summary_text는 2-3문장 요약만 |
-| OpenAI 응답 토큰 부족 | max_tokens=2000 → 양식 9개 섹션 JSON 잘림 | summary_max_tokens 2000→4096 + 잘린 JSON 부분 추출 fallback |
-| 동적 양식 테이블 미적용 | SummaryResponse에 sections 필드 없음 | 스키마 + API 엔드포인트에 sections/template_structure 추가 |
-| 동적 양식 섹션 누락 | PDF 라벨이 row[0]이 아닌 row[2+]에 위치 | 모든 셀 검사 + 한글 1~15자 라벨 감지 |
 
 ### Reading Large PDFs
 
@@ -587,8 +513,8 @@ Large PDFs (>10 pages) return a lightweight reference when @-mentioned. Always s
 
 ---
 
-Version: 13.9.0 (Dynamic Template PDF Export + Minutes Edit + AI Prompt Fix)
-Last Updated: 2026-03-25
+Version: 13.1.0 (Agent Teams Integration)
+Last Updated: 2026-02-10
 Language: English
 Core Rule: MoAI is an orchestrator; direct implementation is prohibited
 

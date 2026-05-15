@@ -75,3 +75,9 @@ workflow:
         plan: 30000
         run: 180000
         sync: 40000
+    worktree:
+        auto_cleanup: true
+        auto_create: true
+        auto_merge: true
+        session_name_pattern: moai-{ProjectName}-{SPEC-ID}
+        tmux_preferred: true

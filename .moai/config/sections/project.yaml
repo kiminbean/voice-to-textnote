@@ -5,4 +5,4 @@ project:
     mode: personal
     name: my-project
     optimized: false
-    template_version: 2.7.14
+    template_version: 2.7.22
