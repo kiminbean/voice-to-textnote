@@ -22,9 +22,11 @@ from backend.app.api.v1 import (
     export,
     health,
     history,
+    keywords,
     meetings,
     minutes,
     search,
+    sentiment,
     speakers,
     statistics,
     stream,
@@ -35,7 +37,6 @@ from backend.app.api.v1 import (
     transcription,
     versions,
     webhooks,
-    sentiment,
 )
 from backend.app.config import settings
 from backend.app.error_handlers import register_exception_handlers
@@ -195,6 +196,9 @@ def create_app() -> FastAPI:
 
     # SPEC-TAG-001: 회의록 자동 태깅
     app.include_router(tags.router, prefix=api_prefix, dependencies=_auth)
+
+    # SPEC-KEYWORD-001: 자동 키워드 추출/추천
+    app.include_router(keywords.router, prefix=api_prefix, dependencies=_auth)
 
     # SPEC-ACTION-001: 액션 아이템 추출 API
     app.include_router(action_items.router, prefix=api_prefix, dependencies=_auth)

@@ -23,7 +23,7 @@ _API_PREFIX = "/api/v1/"
 _KNOWN_SEGMENTS = frozenset({
     "api", "v1", "transcriptions", "diarizations", "minutes",
     "summaries", "tasks", "history", "health", "metrics",
-    "status", "stream", "admin", "retention",
+    "status", "stream", "admin", "retention", "keywords", "extract", "recommend",
 })
 
 

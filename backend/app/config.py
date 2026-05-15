@@ -9,7 +9,6 @@ from urllib.parse import urlparse
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-
 _ALLOWED_ENVIRONMENTS = {"development", "staging", "production"}
 _DEFAULT_CORS_ORIGINS = [
     "http://localhost:3000",
@@ -155,6 +154,18 @@ class Settings(BaseSettings):
     statistics_keyword_top_n: int = Field(default=20, ge=1, le=200)
     # 키워드로 계산할 최소 글자 수 (한글 1글자, 영어 1글자 구분 없이 공통)
     statistics_keyword_min_length: int = Field(default=2, ge=1, le=10)
+
+    # SPEC-KEYWORD-001: 자동 키워드 추천 설정
+    keyword_max_keywords: int = Field(default=20, ge=1, le=100)
+    keyword_min_score: float = Field(default=0.05, ge=0.0, le=1.0)
+    keyword_min_term_length: int = Field(default=2, ge=1, le=20)
+    keyword_tfidf_weight: float = Field(default=0.6, ge=0.0, le=1.0)
+    keyword_textrank_weight: float = Field(default=0.4, ge=0.0, le=1.0)
+    keyword_textrank_window: int = Field(default=4, ge=2, le=10)
+    keyword_cluster_similarity_threshold: float = Field(default=0.34, ge=0.0, le=1.0)
+    keyword_history_limit: int = Field(default=20, ge=1, le=200)
+    keyword_result_ttl: int = Field(default=604800, ge=60)
+    keyword_max_text_chars: int = Field(default=100000, ge=1000, le=1000000)
 
     # REQ-SEC-009/REQ-SEC-010: CORS 설정
     # 허용할 HTTP 메서드 목록 (와일드카드 금지)
