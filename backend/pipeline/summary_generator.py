@@ -187,8 +187,12 @@ class SummaryGenerator:
                 if sec_match:
                     for kv in _re.finditer(r'"([^"]+)"\s*:\s*"((?:[^"\\]|\\.)*)"', sec_match.group(1)):
                         sections[kv.group(1)] = kv.group(2).replace('\\"', '"')
-            except Exception:
-                pass
+            except Exception as parse_exc:
+                # 폴백 파싱 실패는 치명적이지 않지만 디버깅을 위해 로그를 남긴다.
+                logger.warning(
+                    "요약 폴백 파싱 실패",
+                    error=str(parse_exc),
+                )
             return SummaryResult(
                 summary_text=summary_text,
                 action_items=action_items_fallback,

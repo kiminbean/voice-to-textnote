@@ -33,12 +33,22 @@ async def _check_task_status_directly(
     """Redis에서 태스크 상태를 직접 조회 (Pub/Sub 폴백)"""
     for prefix in STATUS_KEY_PREFIXES:
         raw = await redis_client.get(f"{prefix}{task_id}")
-        if raw:
+        if not raw:
+            continue
+        try:
             data = json.loads(raw)
-            status = data.get("status")
-            if status in ("completed", "failed"):
-                event_type = status
-                return {"event": event_type, "data": data}
+        except json.JSONDecodeError as exc:
+            # 캐시 손상은 SSE 스트림을 중단시키지 않고 다음 prefix로 진행한다.
+            logger.warning(
+                "상태 키 JSON 파싱 실패 — 건너뜀",
+                task_id=task_id,
+                prefix=prefix,
+                error=str(exc),
+            )
+            continue
+        status = data.get("status")
+        if status in ("completed", "failed"):
+            return {"event": status, "data": data}
     return None
 
 
@@ -72,7 +82,18 @@ async def subscribe_task_events(
             )
 
             if message is not None and message["type"] == "message":
-                event_data = json.loads(message["data"])
+                try:
+                    event_data = json.loads(message["data"])
+                except (json.JSONDecodeError, TypeError) as exc:
+                    # 잘못된 페이로드 하나로 스트림이 끊기지 않도록 다음 메시지로 진행한다.
+                    logger.warning(
+                        "Pub/Sub 메시지 JSON 파싱 실패 — 무시",
+                        task_id=task_id,
+                        error=str(exc),
+                    )
+                    await asyncio.sleep(0.1)
+                    continue
+
                 yield event_data
 
                 # 종료 이벤트면 루프 탈출

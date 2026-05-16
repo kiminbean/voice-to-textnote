@@ -157,20 +157,44 @@
   "hotPaths": [
     {
       "path": "backend/app/main.py",
-      "accessCount": 19,
-      "lastAccessed": 1778864806164,
+      "accessCount": 20,
+      "lastAccessed": 1778891554159,
       "type": "file"
     },
     {
       "path": "backend/app/config.py",
-      "accessCount": 11,
-      "lastAccessed": 1778864738983,
+      "accessCount": 12,
+      "lastAccessed": 1778891594596,
       "type": "file"
     },
     {
       "path": "backend/pipeline/audio_processor.py",
+      "accessCount": 11,
+      "lastAccessed": 1778891568618,
+      "type": "file"
+    },
+    {
+      "path": "backend/app/api/v1/export.py",
       "accessCount": 10,
-      "lastAccessed": 1778864973269,
+      "lastAccessed": 1778891817029,
+      "type": "file"
+    },
+    {
+      "path": "backend/app/lifecycle.py",
+      "accessCount": 9,
+      "lastAccessed": 1778891654229,
+      "type": "file"
+    },
+    {
+      "path": "backend/app/api/v1/transcription.py",
+      "accessCount": 9,
+      "lastAccessed": 1778891719934,
+      "type": "file"
+    },
+    {
+      "path": "backend/services/statistics.py",
+      "accessCount": 9,
+      "lastAccessed": 1778891830642,
       "type": "file"
     },
     {
@@ -180,51 +204,57 @@
       "type": "directory"
     },
     {
-      "path": "backend/app/lifecycle.py",
-      "accessCount": 7,
-      "lastAccessed": 1778861196304,
-      "type": "file"
-    },
-    {
       "path": "backend/conftest.py",
       "accessCount": 7,
       "lastAccessed": 1778864599401,
       "type": "file"
     },
     {
-      "path": "backend/app/api/v1/transcription.py",
-      "accessCount": 5,
-      "lastAccessed": 1777446294848,
+      "path": "backend/app/dependencies.py",
+      "accessCount": 7,
+      "lastAccessed": 1778891720889,
       "type": "file"
     },
     {
       "path": "backend/db/models.py",
-      "accessCount": 5,
-      "lastAccessed": 1777446416217,
-      "type": "file"
-    },
-    {
-      "path": "backend/app/dependencies.py",
-      "accessCount": 5,
-      "lastAccessed": 1778861196616,
-      "type": "file"
-    },
-    {
-      "path": "backend/services/statistics.py",
-      "accessCount": 4,
-      "lastAccessed": 1777185146999,
+      "accessCount": 6,
+      "lastAccessed": 1778891576550,
       "type": "file"
     },
     {
       "path": "backend/db/auth_models.py",
-      "accessCount": 4,
-      "lastAccessed": 1777446558745,
+      "accessCount": 5,
+      "lastAccessed": 1778891579616,
+      "type": "file"
+    },
+    {
+      "path": "backend/workers/tasks/transcription_task.py",
+      "accessCount": 5,
+      "lastAccessed": 1778891871534,
+      "type": "file"
+    },
+    {
+      "path": "backend/services/retention.py",
+      "accessCount": 5,
+      "lastAccessed": 1778891884505,
       "type": "file"
     },
     {
       "path": "pyproject.toml",
       "accessCount": 4,
       "lastAccessed": 1778861203281,
+      "type": "file"
+    },
+    {
+      "path": "backend/app/api/v1/search.py",
+      "accessCount": 4,
+      "lastAccessed": 1778891562296,
+      "type": "file"
+    },
+    {
+      "path": "backend/db/bookmark_models.py",
+      "accessCount": 4,
+      "lastAccessed": 1778891579852,
       "type": "file"
     },
     {
@@ -240,39 +270,69 @@
       "type": "file"
     },
     {
-      "path": "backend/db/bookmark_models.py",
-      "accessCount": 3,
-      "lastAccessed": 1777446420893,
-      "type": "file"
-    },
-    {
-      "path": "backend/app/api/v1/search.py",
-      "accessCount": 3,
-      "lastAccessed": 1778483129010,
-      "type": "file"
-    },
-    {
       "path": "backend/app/api/v1/bookmarks.py",
       "accessCount": 3,
       "lastAccessed": 1778483129761,
       "type": "file"
     },
     {
+      "path": "backend/app/middleware/auth.py",
+      "accessCount": 3,
+      "lastAccessed": 1778891556797,
+      "type": "file"
+    },
+    {
       "path": "backend/app/api/v1/history.py",
-      "accessCount": 2,
-      "lastAccessed": 1777025694596,
+      "accessCount": 3,
+      "lastAccessed": 1778891562461,
+      "type": "file"
+    },
+    {
+      "path": "backend/ml/stt_engine.py",
+      "accessCount": 3,
+      "lastAccessed": 1778891564529,
+      "type": "file"
+    },
+    {
+      "path": "backend/db/service.py",
+      "accessCount": 3,
+      "lastAccessed": 1778891572222,
+      "type": "file"
+    },
+    {
+      "path": "backend/db/bookmark_service.py",
+      "accessCount": 3,
+      "lastAccessed": 1778891576133,
+      "type": "file"
+    },
+    {
+      "path": "backend/workers/celery_app.py",
+      "accessCount": 3,
+      "lastAccessed": 1778891582978,
+      "type": "file"
+    },
+    {
+      "path": "backend/events/publisher.py",
+      "accessCount": 3,
+      "lastAccessed": 1778891583758,
+      "type": "file"
+    },
+    {
+      "path": "backend/db/engine.py",
+      "accessCount": 3,
+      "lastAccessed": 1778891584394,
+      "type": "file"
+    },
+    {
+      "path": "backend/workers/tasks/diarization_task.py",
+      "accessCount": 3,
+      "lastAccessed": 1778891586713,
       "type": "file"
     },
     {
       "path": "backend/tests/unit/test_history_api.py",
       "accessCount": 2,
       "lastAccessed": 1777025726212,
-      "type": "file"
-    },
-    {
-      "path": "backend/db/service.py",
-      "accessCount": 2,
-      "lastAccessed": 1777185124447,
       "type": "file"
     },
     {
@@ -288,45 +348,9 @@
       "type": "directory"
     },
     {
-      "path": "backend/workers/tasks/transcription_task.py",
-      "accessCount": 2,
-      "lastAccessed": 1777185229777,
-      "type": "file"
-    },
-    {
-      "path": "backend/workers/tasks/diarization_task.py",
-      "accessCount": 2,
-      "lastAccessed": 1777185235780,
-      "type": "file"
-    },
-    {
-      "path": "backend/services/retention.py",
-      "accessCount": 2,
-      "lastAccessed": 1777185236129,
-      "type": "file"
-    },
-    {
-      "path": "backend/db/bookmark_service.py",
-      "accessCount": 2,
-      "lastAccessed": 1777446416428,
-      "type": "file"
-    },
-    {
       "path": "backend/tests/unit/test_bookmarks_api.py",
       "accessCount": 2,
       "lastAccessed": 1777446421685,
-      "type": "file"
-    },
-    {
-      "path": "backend/events/publisher.py",
-      "accessCount": 2,
-      "lastAccessed": 1777446782147,
-      "type": "file"
-    },
-    {
-      "path": "backend/app/api/v1/export.py",
-      "accessCount": 2,
-      "lastAccessed": 1778483129378,
       "type": "file"
     },
     {
@@ -336,33 +360,45 @@
       "type": "file"
     },
     {
-      "path": "backend/db/engine.py",
-      "accessCount": 2,
-      "lastAccessed": 1778861199828,
-      "type": "file"
-    },
-    {
-      "path": "backend/workers/celery_app.py",
-      "accessCount": 2,
-      "lastAccessed": 1778861203126,
-      "type": "file"
-    },
-    {
-      "path": "backend/app/middleware/auth.py",
-      "accessCount": 2,
-      "lastAccessed": 1778861206996,
-      "type": "file"
-    },
-    {
-      "path": "backend/ml/stt_engine.py",
-      "accessCount": 2,
-      "lastAccessed": 1778861207427,
-      "type": "file"
-    },
-    {
       "path": "backend/app/api/v1/stream.py",
       "accessCount": 2,
       "lastAccessed": 1778864542424,
+      "type": "file"
+    },
+    {
+      "path": "backend/app/error_handlers.py",
+      "accessCount": 2,
+      "lastAccessed": 1778891554459,
+      "type": "file"
+    },
+    {
+      "path": "backend/app/exceptions.py",
+      "accessCount": 2,
+      "lastAccessed": 1778891557125,
+      "type": "file"
+    },
+    {
+      "path": "backend/db/auth_service.py",
+      "accessCount": 2,
+      "lastAccessed": 1778891572459,
+      "type": "file"
+    },
+    {
+      "path": "backend/db/search_service.py",
+      "accessCount": 2,
+      "lastAccessed": 1778891576286,
+      "type": "file"
+    },
+    {
+      "path": "backend/workers/tasks/summary_task.py",
+      "accessCount": 2,
+      "lastAccessed": 1778891586488,
+      "type": "file"
+    },
+    {
+      "path": "backend/db/search_models.py",
+      "accessCount": 2,
+      "lastAccessed": 1778891593974,
       "type": "file"
     },
     {
@@ -375,12 +411,6 @@
       "path": "CLAUDE.md",
       "accessCount": 1,
       "lastAccessed": 1776926137208,
-      "type": "file"
-    },
-    {
-      "path": "backend/db/auth_service.py",
-      "accessCount": 1,
-      "lastAccessed": 1777025727561,
       "type": "file"
     },
     {
@@ -402,34 +432,10 @@
       "type": "file"
     },
     {
-      "path": "backend/app/exceptions.py",
-      "accessCount": 1,
-      "lastAccessed": 1777185120145,
-      "type": "file"
-    },
-    {
-      "path": "backend/app/error_handlers.py",
-      "accessCount": 1,
-      "lastAccessed": 1777185120585,
-      "type": "file"
-    },
-    {
       "path": "backend/pipeline",
       "accessCount": 1,
       "lastAccessed": 1777185141705,
       "type": "directory"
-    },
-    {
-      "path": "backend/workers/tasks/summary_task.py",
-      "accessCount": 1,
-      "lastAccessed": 1777185147067,
-      "type": "file"
-    },
-    {
-      "path": "backend/db/search_service.py",
-      "accessCount": 1,
-      "lastAccessed": 1777185150290,
-      "type": "file"
     },
     {
       "path": "backend/workers",
@@ -441,12 +447,6 @@
       "path": "backend/app/api/v1/health.py",
       "accessCount": 1,
       "lastAccessed": 1777446294791,
-      "type": "file"
-    },
-    {
-      "path": "backend/db/search_models.py",
-      "accessCount": 1,
-      "lastAccessed": 1777446300412,
       "type": "file"
     },
     {

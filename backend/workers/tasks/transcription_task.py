@@ -182,11 +182,14 @@ def transcription_task(
             engine.load(model_name)
 
         # --- 3단계: STT 추론 (청크 분할 여부 결정) ---
+        # 임시 디렉토리는 미리 추적하여 split_audio가 빈 리스트를 반환해도 누수 없이 정리한다.
+        chunk_output_dir = Path(tempfile.mkdtemp())
+        temp_dir = chunk_output_dir
         chunks = split_audio(
             processed_path,
             chunk_duration_ms=settings.chunk_duration_ms,
             overlap_ms=settings.chunk_overlap_ms,
-            output_dir=tempfile.mkdtemp(),
+            output_dir=chunk_output_dir,
         )
 
         if chunks:

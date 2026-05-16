@@ -18,6 +18,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.config import settings
 from backend.db.models import TaskResult
 from backend.schemas.statistics import KeywordStat, SpeakerStat, StatisticsResponse
+from backend.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 # 공백/문장부호로 토큰 분할 (한/영/숫자 모두 대응)
 _TOKEN_SPLIT = re.compile(r"[\s\.,!?\[\]\(\)\"'“”‘’~·…:;／/\\\-—=+*#@`|<>]+")
@@ -52,7 +55,15 @@ async def _fetch_minutes_result(
     redis_key = f"task:min:result:{task_id}"
     raw = await redis_client.get(redis_key)
     if raw:
-        return json.loads(raw)
+        try:
+            return json.loads(raw)
+        except json.JSONDecodeError as exc:
+            # Redis 캐시가 손상되었을 때 DB로 폴백시키기 위해 None을 반환한다.
+            logger.warning(
+                "회의록 Redis 캐시 JSON 파싱 실패 — DB 폴백",
+                task_id=task_id,
+                error=str(exc),
+            )
 
     stmt = select(TaskResult).where(
         TaskResult.task_id == task_id,

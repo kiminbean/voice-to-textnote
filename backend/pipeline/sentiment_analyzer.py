@@ -204,12 +204,20 @@ class SentimentAnalyzer:
             messages=[{"role": "user", "content": prompt}],
         )
 
-        response_text = response.choices[0].message.content
+        # OpenAI가 안전 필터 등으로 빈 choices를 반환하면 IndexError가 발생하므로 방어.
+        if not response.choices:
+            logger.warning(
+                "감정 분석 API가 빈 choices를 반환 — 빈 결과로 폴백",
+                model=model,
+            )
+            return self.parse_response("")
+
+        response_text = response.choices[0].message.content or ""
 
         logger.info(
             "감정 분석 API 응답 수신",
-            input_tokens=response.usage.prompt_tokens,
-            output_tokens=response.usage.completion_tokens,
+            input_tokens=response.usage.prompt_tokens if response.usage else 0,
+            output_tokens=response.usage.completion_tokens if response.usage else 0,
         )
 
         return self.parse_response(response_text)

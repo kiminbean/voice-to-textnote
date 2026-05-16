@@ -9,6 +9,7 @@ SPEC-EXPORT-001: 회의록 PDF 내보내기 API
 
 import io
 import json
+import re
 
 import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -25,6 +26,20 @@ from backend.utils.logger import get_logger
 logger = get_logger(__name__)
 
 router = APIRouter(tags=["export"])
+
+# @MX:NOTE: Content-Disposition 파일명에 허용할 문자(영숫자/대시/언더스코어/하이픈)만 통과.
+# Reason: minutes_task_id가 URL 경로에서 들어오므로 CRLF·따옴표 인젝션을 막아야 함.
+_FILENAME_SAFE_RE = re.compile(r"[^A-Za-z0-9._-]")
+
+
+def _safe_export_filename(task_id: str, extension: str) -> str:
+    """헤더 인젝션 방지용 파일명 생성기.
+
+    영숫자, 마침표, 대시, 언더스코어만 남기고 나머지를 제거한다.
+    빈 문자열이 되면 'minutes'를 기본값으로 사용.
+    """
+    sanitized = _FILENAME_SAFE_RE.sub("", task_id)[:64] or "minutes"
+    return f"minutes_{sanitized}.{extension}"
 
 
 # ---------------------------------------------------------------------------
@@ -160,7 +175,7 @@ async def export_pdf(
         ) from e
 
     # 5. StreamingResponse 반환
-    filename = f"minutes_{minutes_task_id}.pdf"
+    filename = _safe_export_filename(minutes_task_id, "pdf")
     logger.info(
         "PDF 생성 완료",
         task_id=minutes_task_id,
@@ -246,7 +261,7 @@ async def export_docx(
         ) from e
 
     # 4. 응답
-    filename = f"minutes_{minutes_task_id}.docx"
+    filename = _safe_export_filename(minutes_task_id, "docx")
     logger.info(
         "DOCX 생성 완료",
         task_id=minutes_task_id,

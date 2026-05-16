@@ -69,11 +69,25 @@ def cleanup_temp_files(temp_dir: Path, retention_hours: int) -> tuple[int, int]:
 
     for f in temp_dir.iterdir():
         # 파일만 처리 (하위 디렉토리 제외)
-        if f.is_file() and f.stat().st_mtime < cutoff:
-            size = f.stat().st_size
+        # 동시 정리/재시도 시 다른 프로세스가 먼저 unlink할 수 있으므로 OSError 전반을 흡수한다.
+        try:
+            stat_result = f.stat()
+            if not f.is_file() or stat_result.st_mtime >= cutoff:
+                continue
+            size = stat_result.st_size
             f.unlink()
-            deleted_count += 1
-            freed_bytes += size
+        except FileNotFoundError:
+            # 다른 워커가 먼저 삭제 — 경쟁 상태이므로 무시
+            continue
+        except OSError as exc:
+            logger.warning(
+                "임시 파일 삭제 실패 — 건너뜀",
+                path=str(f),
+                error=str(exc),
+            )
+            continue
+        deleted_count += 1
+        freed_bytes += size
 
     # REQ-RET-005: 삭제 수 및 해제 공간 로깅
     logger.info(
