@@ -163,6 +163,13 @@ async def preprocess_endpoint(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
             ) from exc
+        except Exception as exc:  # noqa: BLE001 - pydub/ffmpeg failure modes vary
+            _safe_unlink(src_path)
+            logger.error("오디오 전처리 실패", error=str(exc))
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="오디오 전처리 중 오류가 발생했습니다",
+            ) from exc
 
     # 메타데이터 헤더 구성
     try:
@@ -177,6 +184,14 @@ async def preprocess_endpoint(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="전처리 결과 검증 실패",
+        ) from exc
+    except OSError as exc:
+        _safe_unlink(src_path)
+        _safe_unlink(out_path)
+        logger.error("전처리 결과 파일 접근 실패", error=str(exc))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="전처리 결과 파일 접근 실패",
         ) from exc
 
     meta = PreprocessResultMetadata(

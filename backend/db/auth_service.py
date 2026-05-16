@@ -7,23 +7,30 @@ REQ-AUTH-003: Refresh Token Rotation (기존 폐기, 신규 발급)
 REQ-AUTH-004: 로그아웃 (refresh token 폐기)
 """
 
+import base64
 import hashlib
 import secrets
 import uuid
 from datetime import UTC, datetime, timedelta
 
+import bcrypt
 from fastapi import HTTPException
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.config import settings
 from backend.db.auth_models import RefreshToken, User
 
-# bcrypt 컨텍스트 (단방향 해싱)
-# @MX:NOTE: deprecated=auto 설정으로 구버전 해시 자동 업그레이드
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# 신규 비밀번호 해시는 bcrypt의 72바이트 입력 제한을 피하기 위해 SHA-256을
+# 먼저 적용한다. 기존 passlib bcrypt 해시는 verify_password()에서 계속 검증한다.
+_BCRYPT_SHA256_PREFIX = "bcrypt_sha256$"
+
+
+def _bcrypt_sha256_secret(password: str) -> bytes:
+    """bcrypt 입력으로 사용할 고정 길이 SHA-256 secret."""
+    digest = hashlib.sha256(password.encode("utf-8")).digest()
+    return base64.b64encode(digest)
 
 
 class AuthService:
@@ -46,11 +53,22 @@ class AuthService:
 
     def hash_password(self, password: str) -> str:
         """비밀번호를 bcrypt로 해싱"""
-        return pwd_context.hash(password)
+        hashed = bcrypt.hashpw(_bcrypt_sha256_secret(password), bcrypt.gensalt())
+        return _BCRYPT_SHA256_PREFIX + hashed.decode("ascii")
 
     def verify_password(self, plain: str, hashed: str) -> bool:
         """평문 비밀번호와 해시 비교"""
-        return pwd_context.verify(plain, hashed)
+        try:
+            if hashed.startswith(_BCRYPT_SHA256_PREFIX):
+                bcrypt_hash = hashed.removeprefix(_BCRYPT_SHA256_PREFIX).encode("ascii")
+                return bcrypt.checkpw(_bcrypt_sha256_secret(plain), bcrypt_hash)
+
+            # Legacy passlib/bcrypt hashes stored the raw password. Older bcrypt
+            # silently truncated after 72 bytes; bcrypt>=5 raises instead, so
+            # mimic the legacy behavior only for legacy hashes.
+            return bcrypt.checkpw(plain.encode("utf-8")[:72], hashed.encode("ascii"))
+        except (TypeError, ValueError):
+            return False
 
     def create_access_token(
         self,

@@ -1,6 +1,6 @@
 {
-  "last_turn_at": "2026-05-15T17:35:42.720Z",
-  "turn_count": 3,
-  "last_progress_at": "2026-05-15T17:35:42.720Z",
-  "last_agent_output": "Implemented the keyword recommendation feature.\n\nRelevant files:\n- [keyword_service.py](/Users/ibkim"
+  "last_turn_at": "2026-05-15T19:40:09.046Z",
+  "turn_count": 4,
+  "last_progress_at": "2026-05-15T19:40:09.046Z",
+  "last_agent_output": "완료했습니다. `progress.txt`도 BUG-010부터 BUG-016까지 새로 기록했습니다.\n\n주요 수정:\n- 인증 해시: `passlib`/`bcrypt 5` 런타임 실패를"
 }

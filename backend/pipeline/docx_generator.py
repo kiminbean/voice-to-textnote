@@ -9,7 +9,7 @@ from io import BytesIO
 from typing import Any
 
 from docx import Document
-from docx.shared import Pt, RGBColor, Inches
+from docx.shared import Pt, RGBColor
 
 
 class MinutesDOCXGenerator:

@@ -4,17 +4,17 @@ SPEC-WEBHOOK-001: 웹훅 엔드포인트 Pydantic 스키마
 
 import uuid
 from datetime import datetime
-from typing import Annotated
 
-from pydantic import AnyHttpUrl, BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 from backend.db.webhook_models import WEBHOOK_EVENT_TYPES
+from backend.utils.validators import validate_webhook_url
 
 
 class WebhookEndpointCreate(BaseModel):
     """웹훅 엔드포인트 생성 요청"""
 
-    url: Annotated[str, AnyHttpUrl] = Field(..., description="수신 URL (HTTP/HTTPS)")
+    url: str = Field(..., max_length=500, description="수신 URL (HTTP/HTTPS)")
     events: list[str] = Field(
         default_factory=list,
         description="수신할 이벤트 타입. 빈 배열이면 전체 이벤트 수신.",
@@ -29,7 +29,7 @@ class WebhookEndpointCreate(BaseModel):
     @field_validator("url", mode="before")
     @classmethod
     def coerce_url_to_str(cls, v: object) -> str:
-        return str(v)
+        return validate_webhook_url(v)
 
     @field_validator("events")
     @classmethod
@@ -61,6 +61,13 @@ class WebhookEndpointUpdate(BaseModel):
             if event not in WEBHOOK_EVENT_TYPES:
                 raise ValueError(f"지원하지 않는 이벤트 타입: {event!r}")
         return list(dict.fromkeys(v))
+
+    @field_validator("url")
+    @classmethod
+    def validate_url(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        return validate_webhook_url(v)
 
 
 class WebhookEndpointResponse(BaseModel):

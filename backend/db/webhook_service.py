@@ -2,6 +2,7 @@
 SPEC-WEBHOOK-001: 웹훅 엔드포인트 CRUD 서비스 (비동기 - API 레이어용)
 """
 
+import asyncio
 import hashlib
 import hmac
 import json
@@ -15,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.db.webhook_models import WebhookEndpoint
 from backend.schemas.webhook import WebhookEndpointCreate, WebhookEndpointUpdate
+from backend.utils.validators import validate_webhook_url
 
 _MAX_WEBHOOKS_PER_USER = 20
 _DELIVERY_TIMEOUT = 10  # 초
@@ -152,10 +154,17 @@ class WebhookService:
             headers["X-Webhook-Signature"] = f"sha256={sig}"
 
         try:
+            url = await asyncio.to_thread(
+                validate_webhook_url,
+                endpoint.url,
+                resolve_host=True,
+            )
             async with httpx.AsyncClient(timeout=_DELIVERY_TIMEOUT) as client:
-                resp = await client.post(str(endpoint.url), content=body, headers=headers)
+                resp = await client.post(url, content=body, headers=headers)
             success = resp.status_code < 400
             return resp.status_code, success, ("전송 성공" if success else f"HTTP {resp.status_code}")
+        except ValueError as exc:
+            return None, False, str(exc)
         except httpx.TimeoutException:
             return None, False, f"타임아웃 ({_DELIVERY_TIMEOUT}초 초과)"
         except Exception as exc:

@@ -3,12 +3,23 @@
 REQ-STT-001, REQ-STT-003, REQ-STT-004 구현
 """
 
+import ipaddress
 import shutil
+import socket
 from pathlib import Path
+from urllib.parse import urlsplit
+
+from pydantic import AnyHttpUrl, TypeAdapter, ValidationError
 
 from backend.utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+_WEBHOOK_URL_ADAPTER = TypeAdapter(AnyHttpUrl)
+_FORBIDDEN_WEBHOOK_HOSTS = {
+    "localhost",
+    "localhost.localdomain",
+}
 
 # 허용 오디오 형식 및 MIME 타입
 ALLOWED_EXTENSIONS = {".wav", ".mp3", ".m4a", ".ogg"}
@@ -62,3 +73,71 @@ def validate_file_size(file_size_bytes: int, max_size_bytes: int) -> tuple[bool,
 def check_ffmpeg_available() -> bool:
     """ffmpeg 설치 여부 확인"""
     return shutil.which("ffmpeg") is not None
+
+
+def _is_forbidden_webhook_ip(address: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
+    """서버 내부망으로 향하는 웹훅 URL 차단 여부."""
+    return (
+        address.is_private
+        or address.is_loopback
+        or address.is_link_local
+        or address.is_multicast
+        or address.is_reserved
+        or address.is_unspecified
+    )
+
+
+def _assert_public_webhook_host(hostname: str, port: int | None, resolve_host: bool) -> None:
+    normalized = hostname.strip().rstrip(".").lower()
+    if normalized in _FORBIDDEN_WEBHOOK_HOSTS or normalized.endswith(".localhost"):
+        raise ValueError("웹훅 URL은 localhost를 사용할 수 없습니다")
+
+    try:
+        literal_ip = ipaddress.ip_address(normalized.strip("[]"))
+    except ValueError:
+        literal_ip = None
+
+    if literal_ip is not None:
+        if _is_forbidden_webhook_ip(literal_ip):
+            raise ValueError("웹훅 URL은 사설/로컬 네트워크 주소를 사용할 수 없습니다")
+        return
+
+    if not resolve_host:
+        return
+
+    try:
+        addrinfo = socket.getaddrinfo(normalized, port or 443, type=socket.SOCK_STREAM)
+    except OSError as exc:
+        raise ValueError(f"웹훅 URL 호스트를 확인할 수 없습니다: {hostname}") from exc
+
+    for entry in addrinfo:
+        sockaddr = entry[4]
+        ip_text = sockaddr[0]
+        try:
+            resolved_ip = ipaddress.ip_address(ip_text)
+        except ValueError:
+            continue
+        if _is_forbidden_webhook_ip(resolved_ip):
+            raise ValueError("웹훅 URL은 사설/로컬 네트워크로 해석될 수 없습니다")
+
+
+def validate_webhook_url(value: object, *, resolve_host: bool = False) -> str:
+    """
+    웹훅 수신 URL을 검증하고 정규화한다.
+
+    HTTP(S) URL만 허용하며, SSRF 방지를 위해 localhost/사설망/링크 로컬/예약
+    주소를 거부한다. resolve_host=True이면 실제 전송 직전에 DNS 결과도 검사한다.
+    """
+    try:
+        url = str(_WEBHOOK_URL_ADAPTER.validate_python(value))
+    except ValidationError as exc:
+        raise ValueError("웹훅 URL은 유효한 HTTP(S) URL이어야 합니다") from exc
+
+    parsed = urlsplit(url)
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+        raise ValueError("웹훅 URL은 유효한 HTTP(S) URL이어야 합니다")
+    if parsed.username or parsed.password:
+        raise ValueError("웹훅 URL에는 사용자 정보를 포함할 수 없습니다")
+
+    _assert_public_webhook_host(parsed.hostname, parsed.port, resolve_host)
+    return url

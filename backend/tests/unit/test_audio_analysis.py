@@ -10,9 +10,8 @@ import pytest
 
 from backend.ml.audio_analysis_engine import (
     AudioAnalysisResult,
-    SilenceSegment,
-    analyze_audio,
     _evaluate_quality,
+    analyze_audio,
 )
 
 
@@ -29,8 +28,8 @@ def _create_test_wav(
     tmp.close()
 
     n_frames = int(duration_seconds * sample_rate)
-    import struct
     import math
+    import struct
 
     with wave.open(tmp_path, "w") as wf:
         wf.setnchannels(channels)
@@ -100,6 +99,8 @@ class TestAnalyzeAudio:
             result = analyze_audio(path)
             assert result.max_dbfs is not None
             assert result.avg_dbfs is not None
+            assert result.rms_dbfs is not None
+            assert result.rms_dbfs < 0
         finally:
             os.unlink(path)
 
@@ -196,6 +197,22 @@ class TestEvaluateQuality:
             silence_ratio=0.1,
         )
         assert any("샘플레이트" in issue for issue in issues)
+
+    def test_very_low_sample_rate_penalized_more(self):
+        """8kHz 미만 샘플레이트는 별도 중대 이슈로 평가"""
+        from unittest.mock import MagicMock
+
+        audio = MagicMock()
+        score, issues, recommendation = _evaluate_quality(
+            audio=audio,
+            duration_seconds=30.0,
+            sample_rate=7000,
+            channels=1,
+            avg_dbfs=-15.0,
+            silence_ratio=0.1,
+        )
+        assert score <= 0.6
+        assert any("크게 저하" in issue for issue in issues)
 
     def test_high_silence_ratio(self):
         """높은 무음 비율 감지"""

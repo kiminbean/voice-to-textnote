@@ -117,7 +117,11 @@ class TestValidateStartupDatabase:
     async def test_database_warning_when_engine_fails(self):
         """REQ-LIFE-002: DB 엔진 생성 실패 시 status['database']에 'warning' 포함"""
         mock_engine = MagicMock()
-        mock_engine.begin = AsyncMock(side_effect=Exception("DB connection failed"))
+
+        def raise_begin():
+            raise Exception("DB connection failed")
+
+        mock_engine.begin = raise_begin
 
         with _patches(mock_engine=mock_engine):
             from backend.app.lifecycle import validate_startup
@@ -130,7 +134,11 @@ class TestValidateStartupDatabase:
     async def test_database_failure_does_not_raise(self):
         """REQ-LIFE-002: DB 연결 실패해도 예외 발생하지 않음"""
         mock_engine = MagicMock()
-        mock_engine.begin = AsyncMock(side_effect=Exception("DB connection failed"))
+
+        def raise_begin():
+            raise Exception("DB connection failed")
+
+        mock_engine.begin = raise_begin
 
         with _patches(mock_engine=mock_engine):
             from backend.app.lifecycle import validate_startup
@@ -182,13 +190,21 @@ class TestCleanupShutdown:
     async def test_cleanup_shutdown_disposes_engine(self):
         """REQ-LIFE-004: 종료 시 DB 엔진 dispose 호출"""
         mock_engine = _mock_engine()
+        mock_close_redis = AsyncMock()
+        mock_close_http = AsyncMock()
 
-        with patch("backend.app.dependencies._db_engine", mock_engine):
+        with (
+            patch("backend.app.dependencies._db_engine", mock_engine),
+            patch("backend.app.dependencies.close_redis_client", mock_close_redis),
+            patch("backend.ml.tagging_engine.close_http_client", mock_close_http),
+        ):
             from backend.app.lifecycle import cleanup_shutdown
 
             await cleanup_shutdown()
 
         mock_engine.dispose.assert_called_once()
+        mock_close_redis.assert_awaited_once()
+        mock_close_http.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_cleanup_shutdown_does_not_raise(self):

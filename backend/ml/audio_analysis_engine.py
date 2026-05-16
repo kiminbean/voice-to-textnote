@@ -3,7 +3,7 @@
 SPEC-AUDIO-ANALYSIS-001: 오디오 파일 품질 분석, 무음 구간 감지, STT 적합성 평가
 """
 
-import os
+import math
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -91,7 +91,8 @@ def analyze_audio(
     avg_dbfs = audio.dBFS
     # RMS 계산
     rms = audio.rms
-    rms_dbfs = 20 * (rms / (32767.0 ** 2)) ** 0.5 * 10 if rms > 0 else -float("inf")
+    max_possible_amplitude = float(1 << (8 * sample_width - 1))
+    rms_dbfs = 20 * math.log10(rms / max_possible_amplitude) if rms > 0 else -float("inf")
 
     # 무음 구간 감지
     silence_segments: list[SilenceSegment] = []
@@ -197,22 +198,22 @@ def _evaluate_quality(
 
     # 1. 볼륨 레벨 검사
     if avg_dbfs < -30:
-        issues.append("볼륨이 매우 낮습니다 (평균 {:.1f} dBFS)".format(avg_dbfs))
+        issues.append(f"볼륨이 매우 낮습니다 (평균 {avg_dbfs:.1f} dBFS)")
         score -= 0.2
     elif avg_dbfs < -20:
-        issues.append("볼륨이 다소 낮습니다 (평균 {:.1f} dBFS)".format(avg_dbfs))
+        issues.append(f"볼륨이 다소 낮습니다 (평균 {avg_dbfs:.1f} dBFS)")
         score -= 0.1
     elif avg_dbfs > -3:
         issues.append("볼륨이 너무 높습니다 (클리핑 가능성)")
         score -= 0.15
 
     # 2. 샘플레이트 검사
-    if sample_rate < 16000:
-        issues.append(f"샘플레이트가 낮습니다 ({sample_rate}Hz, 권장: 16kHz 이상)")
-        score -= 0.2
-    elif sample_rate < 8000:
+    if sample_rate < 8000:
         issues.append(f"샘플레이트가 너무 낮아 STT 품질이 크게 저하될 수 있습니다 ({sample_rate}Hz)")
         score -= 0.4
+    elif sample_rate < 16000:
+        issues.append(f"샘플레이트가 낮습니다 ({sample_rate}Hz, 권장: 16kHz 이상)")
+        score -= 0.2
 
     # 3. 채널 수
     if channels > 2:

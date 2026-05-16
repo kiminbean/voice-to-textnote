@@ -310,6 +310,7 @@ class TestMinutesPDFGenerator:
         ValueError 없이 생성되어야 함
         """
         import json as _json
+
         from backend.pipeline.pdf_generator import MinutesPDFGenerator
 
         # summary_text가 JSON 형식인 경우
@@ -363,6 +364,7 @@ class TestMinutesPDFGenerator:
 
         generator_no_summary = MinutesPDFGenerator()
         pdf_no_summary = generator_no_summary.generate(sample_minutes_data)
+        assert pdf_no_summary[:5] == b"%PDF-"
 
         generator_empty = MinutesPDFGenerator()
         pdf_empty = generator_empty.generate(sample_minutes_data, summary_empty_text)

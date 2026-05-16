@@ -9,7 +9,7 @@ SPEC-STATS-002: 전체 회의 통계 대시보드 API
 import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.dependencies import get_db_session, get_redis_client

@@ -33,8 +33,8 @@ def sync_session(sync_engine):
     """동기 세션 픽스처"""
     from sqlalchemy.orm import sessionmaker
 
-    Session = sessionmaker(sync_engine)
-    session = Session()
+    session_factory = sessionmaker(sync_engine)
+    session = session_factory()
     yield session
     session.close()
 

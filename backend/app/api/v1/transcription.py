@@ -80,7 +80,7 @@ async def upload_transcription(
                 if not chunk:
                     break
                 f.write(chunk)
-    except IOError as e:
+    except OSError as e:
         temp_path.unlink(missing_ok=True)
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

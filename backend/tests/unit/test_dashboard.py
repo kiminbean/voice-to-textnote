@@ -2,8 +2,6 @@
 SPEC-STATS-002: 전체 회의 통계 대시보드 API 테스트
 """
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock
 from backend.app.api.v1.dashboard import DashboardOverview
 
 

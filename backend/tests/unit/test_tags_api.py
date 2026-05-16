@@ -3,11 +3,10 @@ SPEC-TAG-001: 회의록 태그 API 유닛 테스트
 """
 
 import uuid
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from backend.db.tag_models import MeetingTag
 from backend.schemas.tag import TagCreate, TagUpdate
 
 
@@ -52,7 +51,7 @@ class TestTagService:
             tag_value="프로젝트A",
         )
 
-        tag = await service.create(mock_db, user_id, payload)
+        await service.create(mock_db, user_id, payload)
 
         mock_db.add.assert_called_once()
         mock_db.commit.assert_called_once()
@@ -100,6 +99,17 @@ class TestTagService:
 
 class TestTaggingEngine:
     """자동 태깅 엔진 테스트."""
+
+    async def test_shared_http_client_can_be_created_and_closed(self):
+        """공유 httpx 클라이언트는 lazy init 후 명시적으로 닫힌다."""
+        from backend.ml import tagging_engine
+
+        client = tagging_engine._get_http_client()
+        assert client.is_closed is False
+
+        await tagging_engine.close_http_client()
+
+        assert tagging_engine._http_client is None
 
     def test_rule_based_tags_basic(self):
         """규칙 기반 태깅 기본 테스트."""

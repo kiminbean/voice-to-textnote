@@ -57,22 +57,27 @@ async def validate_startup() -> dict:
     try:
         # SPEC-TEAM-001: auth 모델 import하여 Base.metadata에 등록
         import backend.db.auth_models  # noqa: F401
+
         # SPEC-BOOKMARK-001: 북마크 모델 import
         import backend.db.bookmark_models  # noqa: F401
+
         # SPEC-SPEAKER-001: 화자 프로필 모델 import
         import backend.db.speaker_models  # noqa: F401
-        # SPEC-WEBHOOK-001: 웹훅 엔드포인트 모델 import
-        import backend.db.webhook_models  # noqa: F401
-        # SPEC-VERSION-001: 회의록 버전 관리 모델 import
-        import backend.db.version_models  # noqa: F401
+
         # SPEC-TAG-001: 회의록 자동 태깅 모델 import
         import backend.db.tag_models  # noqa: F401
-        from backend.db.models import Base
+
+        # SPEC-VERSION-001: 회의록 버전 관리 모델 import
+        import backend.db.version_models  # noqa: F401
+
+        # SPEC-WEBHOOK-001: 웹훅 엔드포인트 모델 import
+        import backend.db.webhook_models  # noqa: F401
 
         # BUGFIX: dependencies.py의 동일 엔진 재사용 (별도 엔진 생성 방지)
         # 이전에는 매번 create_engine()을 호출해 실제 사용하는 엔진과 다른 엔진을
         # 생성/폐기했으므로 테이블 생성이 앱 엔진에 반영되지 않았습니다.
         from backend.app.dependencies import _db_engine
+        from backend.db.models import Base
 
         async with _db_engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
@@ -95,6 +100,22 @@ async def cleanup_shutdown() -> None:
     REQ-LIFE-004: DB 커넥션 풀 dispose (앱 공유 엔진)
     REQ-LIFE-005: 종료 완료 로그
     """
+    try:
+        from backend.ml.tagging_engine import close_http_client
+
+        await close_http_client()
+        logger.info("태깅 HTTP 클라이언트 정리 완료")
+    except Exception as e:
+        logger.warning("태깅 HTTP 클라이언트 정리 실패", error=str(e))
+
+    try:
+        from backend.app.dependencies import close_redis_client
+
+        await close_redis_client()
+        logger.info("Redis 클라이언트 정리 완료")
+    except Exception as e:
+        logger.warning("Redis 클라이언트 정리 실패", error=str(e))
+
     try:
         # BUGFIX: dependencies.py의 동일 엔진 dispose (별도 엔진 생성 방지)
         from backend.app.dependencies import _db_engine

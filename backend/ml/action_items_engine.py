@@ -7,7 +7,6 @@ LLM 기반 추출은 summary 엔진과 동일한 OpenAI API를 사용할 수 있
 기본 구현은 규칙 기반으로 외부 의존성 없이 동작합니다.
 """
 
-import os
 import re
 from dataclasses import dataclass
 

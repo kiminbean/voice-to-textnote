@@ -59,6 +59,25 @@ def test_verify_password_wrong(auth_service):
     assert auth_service.verify_password("wrongpassword", hashed) is False
 
 
+def test_hash_password_long_password(auth_service):
+    """bcrypt 72바이트 제한보다 긴 비밀번호도 안정적으로 처리한다"""
+    password = "password123" * 10
+    hashed = auth_service.hash_password(password)
+
+    assert hashed != password
+    assert auth_service.verify_password(password, hashed) is True
+    assert auth_service.verify_password(password + "x", hashed) is False
+
+
+def test_verify_legacy_bcrypt_hash(auth_service):
+    """기존 raw bcrypt 해시는 계속 검증한다"""
+    import bcrypt
+
+    legacy_hash = bcrypt.hashpw(b"password123", bcrypt.gensalt()).decode("ascii")
+    assert auth_service.verify_password("password123", legacy_hash) is True
+    assert auth_service.verify_password("wrongpassword", legacy_hash) is False
+
+
 # ---------------------------------------------------------------------------
 # JWT 토큰 테스트
 # ---------------------------------------------------------------------------

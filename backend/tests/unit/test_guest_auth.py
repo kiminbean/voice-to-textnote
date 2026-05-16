@@ -8,13 +8,12 @@ REQ-GUEST-004: expires_at은 현재 시각 + 24시간
 """
 
 from datetime import UTC, datetime, timedelta
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from jose import jwt
-
 
 # ---------------------------------------------------------------------------
 # 테스트 픽스처

@@ -17,6 +17,7 @@ from backend.db.auth_models import MeetingOwnership
 from backend.db.sync_engine import get_sync_session
 from backend.db.webhook_models import WebhookEndpoint
 from backend.utils.logger import get_logger
+from backend.utils.validators import validate_webhook_url
 
 logger = get_logger(__name__)
 
@@ -42,6 +43,7 @@ def _make_signature(secret: str, body: bytes) -> str:
 
 def _send_one(url: str, body: bytes, event_name: str, secret: str | None) -> None:
     """단일 웹훅 URL로 동기 HTTP POST 전송."""
+    safe_url = validate_webhook_url(url, resolve_host=True)
     headers = {
         "Content-Type": "application/json",
         "User-Agent": "VoiceToTextNote-Webhook/1.0",
@@ -51,7 +53,7 @@ def _send_one(url: str, body: bytes, event_name: str, secret: str | None) -> Non
         headers["X-Webhook-Signature"] = _make_signature(secret, body)
 
     with httpx.Client(timeout=_DELIVERY_TIMEOUT) as client:
-        resp = client.post(url, content=body, headers=headers)
+        resp = client.post(safe_url, content=body, headers=headers)
 
     if resp.status_code >= 400:
         logger.warning(

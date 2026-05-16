@@ -7,6 +7,7 @@ SPEC-AUDIO-ANALYSIS-001: 오디오 품질 분석 API
 
 import os
 import tempfile
+from pathlib import Path
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
 
@@ -55,21 +56,24 @@ async def analyze_audio_file(
             detail=f"지원하지 않는 파일 포맷: {ext}. 지원 포맷: {', '.join(sorted(_ALLOWED_EXTENSIONS))}",
         )
 
-    # 파일 크기 검증
+    # 임시 파일로 스트리밍 저장하며 크기 검증
     max_bytes = settings.max_file_size_mb * 1024 * 1024
-    contents = await file.read()
-    if len(contents) > max_bytes:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail=f"파일 크기 초과: {len(contents)} bytes (최대 {settings.max_file_size_mb}MB)",
-        )
-
-    # 임시 파일로 저장 후 분석
     tmp_path = None
     try:
         with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
-            tmp.write(contents)
             tmp_path = tmp.name
+            bytes_read = 0
+            while chunk := await file.read(1024 * 1024):
+                bytes_read += len(chunk)
+                if bytes_read > max_bytes:
+                    raise HTTPException(
+                        status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                        detail=(
+                            f"파일 크기 초과: {bytes_read} bytes "
+                            f"(최대 {settings.max_file_size_mb}MB)"
+                        ),
+                    )
+                tmp.write(chunk)
 
         result = analyze_audio(
             file_path=tmp_path,
@@ -77,6 +81,14 @@ async def analyze_audio_file(
             silence_threshold_db=silence_threshold_db,
             min_silence_duration_ms=min_silence_duration_ms,
         )
+    except HTTPException:
+        raise
+    except OSError as e:
+        logger.error("오디오 분석 업로드 저장 실패", error=str(e), filename=filename)
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"파일 저장 실패: {e}",
+        ) from e
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -89,8 +101,8 @@ async def analyze_audio_file(
             detail=f"오디오 분석 중 오류 발생: {e}",
         ) from e
     finally:
-        if tmp_path and os.path.exists(tmp_path):
-            os.unlink(tmp_path)
+        if tmp_path:
+            Path(tmp_path).unlink(missing_ok=True)
 
     logger.info(
         "오디오 분석 완료",

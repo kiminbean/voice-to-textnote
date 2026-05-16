@@ -42,6 +42,34 @@
 - **File:** `backend/app/api/v1/transcription.py`
 - **Fix:** Replaced write_bytes with streaming write in try/except IOError. On failure, temp file is cleaned up before returning 422.
 
+### BUG-010 ✅ AuthService bcrypt/passlib runtime failure with bcrypt 5
+- **File:** `backend/db/auth_service.py`
+- **Fix:** Replaced passlib bcrypt hashing with direct bcrypt + SHA-256 prehashing for new passwords, while preserving verification for legacy raw bcrypt hashes. This avoids bcrypt 5's 72-byte password ValueError and passlib backend detection failure.
+
+### BUG-011 ✅ tagging_engine shared httpx client NameError and shutdown leak
+- **Files:** `backend/ml/tagging_engine.py`, `backend/app/lifecycle.py`
+- **Fix:** Added the missing module-level httpx import, removed the function-local import mismatch, and added shutdown cleanup for the shared AsyncClient.
+
+### BUG-012 ✅ Webhook URL validation was ineffective
+- **Files:** `backend/schemas/webhook.py`, `backend/utils/validators.py`, `backend/db/webhook_service.py`, `backend/services/webhook_notifier.py`
+- **Fix:** Replaced the ineffective `Annotated[str, AnyHttpUrl]` usage with explicit URL normalization/validation. Invalid schemes, malformed URLs, localhost, private IPs, link-local metadata IPs, and private DNS resolutions are rejected before webhook sends.
+
+### BUG-013 ✅ audio_analysis RMS dBFS calculation and sample-rate scoring
+- **File:** `backend/ml/audio_analysis_engine.py`
+- **Fix:** Corrected RMS dBFS to use `20 * log10(rms / max_amplitude)` and reordered sample-rate checks so sub-8kHz audio receives the intended stronger quality penalty.
+
+### BUG-014 ✅ audio_analysis upload reads full file before enforcing size
+- **File:** `backend/app/api/v1/audio_analysis.py`
+- **Fix:** Changed upload handling to stream chunks to a temp file while enforcing the size limit, preventing large uploads from being fully loaded into memory.
+
+### BUG-015 ✅ App shutdown leaves shared Redis client open
+- **Files:** `backend/app/dependencies.py`, `backend/app/lifecycle.py`
+- **Fix:** Added `close_redis_client()` and wired it into shutdown cleanup without creating a Redis client if one was never initialized.
+
+### BUG-016 ✅ Alembic local package shadows external alembic library
+- **Files:** `alembic/__init__.py`, `alembic/versions/__init__.py`
+- **Fix:** Removed empty package marker files so `from alembic import context/op` resolves to the installed Alembic library. Verified `alembic heads` returns `001 (head)`.
+
 ## Not Fixed (documented/triaged)
 
 ### BUG-007 chunk_manager split_audio loads entire audio into memory

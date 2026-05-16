@@ -7,15 +7,13 @@ REQ-GUEST-007: Redis에 세션 없는 게스트 토큰 → 401 반환
 REQ-GUEST-008: 기존 API Key 인증 흐름 영향 없음
 """
 
-import json
 from datetime import UTC, datetime, timedelta
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
 from fastapi import Depends, FastAPI, Request
 from fastapi.testclient import TestClient
 from jose import jwt
-
 
 # ---------------------------------------------------------------------------
 # 헬퍼 함수

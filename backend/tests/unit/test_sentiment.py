@@ -17,7 +17,6 @@ from backend.schemas.sentiment import (
     SpeakerSentiment,
 )
 
-
 # ── Fixtures ──
 
 @pytest.fixture

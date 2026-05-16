@@ -8,6 +8,8 @@ OpenAI API 기반 (settings.summary_model 사용).
 import json
 import re
 
+import httpx
+
 from backend.app.config import settings
 from backend.utils.logger import get_logger
 
@@ -23,6 +25,15 @@ def _get_http_client() -> httpx.AsyncClient:
     if _http_client is None or _http_client.is_closed:
         _http_client = httpx.AsyncClient(timeout=30.0)
     return _http_client
+
+
+async def close_http_client() -> None:
+    """태깅 엔진의 공유 HTTP 클라이언트를 종료."""
+    global _http_client
+    if _http_client is not None and not _http_client.is_closed:
+        await _http_client.aclose()
+    _http_client = None
+
 
 # 태깅 프롬프트 템플릿
 _TAGGING_SYSTEM_PROMPT = """당신은 회의록 분석 전문가입니다.
@@ -72,8 +83,6 @@ async def generate_auto_tags(content: str, max_tags: int = 10) -> list[dict]:
         return _rule_based_tags(content, max_tags)
 
     try:
-        import httpx
-
         # 텍스트가 너무 길면 자르기
         truncated = content[:6000] if len(content) > 6000 else content
 

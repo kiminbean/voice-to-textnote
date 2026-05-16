@@ -2,10 +2,8 @@
 액션 아이템 추출 엔진 테스트
 """
 
-import pytest
 
 from backend.ml.action_items_engine import (
-    ExtractedActionItem,
     _extract_assignee,
     _extract_deadline,
     _extract_priority,

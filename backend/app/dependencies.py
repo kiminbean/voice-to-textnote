@@ -2,6 +2,7 @@
 FastAPI 의존성 주입 - Redis 클라이언트, STT 엔진, 화자 분리 엔진, DB 세션, JWT 인증
 """
 
+import inspect
 from collections.abc import AsyncGenerator
 from functools import lru_cache
 
@@ -31,6 +32,20 @@ def get_redis_client() -> aioredis.Redis:
         encoding="utf-8",
         decode_responses=True,
     )
+
+
+async def close_redis_client() -> None:
+    """캐시된 Redis 클라이언트를 종료하고 싱글톤 캐시를 비운다."""
+    if get_redis_client.cache_info().currsize == 0:
+        return
+
+    client = get_redis_client()
+    close = getattr(client, "aclose", None) or getattr(client, "close", None)
+    if close is not None:
+        result = close()
+        if inspect.isawaitable(result):
+            await result
+    get_redis_client.cache_clear()
 
 
 @lru_cache

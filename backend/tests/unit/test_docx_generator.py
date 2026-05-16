@@ -3,6 +3,7 @@ SPEC-EXPORT-002: DOCX 생성기 단위 테스트
 """
 
 import pytest
+
 from backend.pipeline.docx_generator import MinutesDOCXGenerator
 
 
