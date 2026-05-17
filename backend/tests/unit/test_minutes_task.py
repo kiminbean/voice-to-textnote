@@ -313,6 +313,33 @@ class TestMinutesTaskErrors:
 
         assert result["status"] == "failed"
 
+    def test_failed_diarization_result_propagates_upstream_error(self):
+        """선행 화자 분리 실패 시 원인 메시지를 보존"""
+        from backend.workers.tasks.minutes_task import minutes_task
+
+        task_id = str(uuid.uuid4())
+        dia_task_id = str(uuid.uuid4())
+        failed_dia = {
+            "task_id": dia_task_id,
+            "status": "failed",
+            "error_message": "STT 작업 실패",
+        }
+
+        mock_redis = _make_mock_redis()
+        mock_redis.get.side_effect = lambda key: (
+            json.dumps(failed_dia) if f"dia:result:{dia_task_id}" in key else None
+        )
+
+        with patch("backend.workers.tasks.minutes_task._get_redis", return_value=mock_redis):
+            with patch("backend.workers.tasks.minutes_task.settings") as mock_settings:
+                mock_settings.minutes_result_ttl = 86400
+                mock_settings.max_concurrent_minutes = 3
+
+                result = minutes_task(task_id=task_id, diarization_task_id=dia_task_id)
+
+        assert result["status"] == "failed"
+        assert "STT 작업 실패" in result["error_message"]
+
 
 # ---------------------------------------------------------------------------
 # 상태 전환 테스트
@@ -417,3 +444,39 @@ class TestMinutesTaskStatusTransitions:
 
         for field in ("task_id", "diarization_task_id", "status", "segments", "speakers"):
             assert field in result, f"결과에 '{field}' 필드 누락"
+
+
+class TestMinutesCeleryWrapper:
+    """minutes_celery_task wrapper 분기 검증"""
+
+    def test_wrapper_returns_failed_for_missing_diarization(self):
+        from backend.workers.tasks.minutes_task import minutes_celery_task
+
+        with patch(
+            "backend.workers.tasks.minutes_task.minutes_task",
+            side_effect=FileNotFoundError("missing diarization"),
+        ):
+            result = minutes_celery_task.run("task-id", "dia-id")
+
+        assert result == {
+            "task_id": "task-id",
+            "status": "failed",
+            "error": "missing diarization",
+        }
+
+    def test_wrapper_returns_failed_after_max_retries(self):
+        from backend.workers.tasks.minutes_task import minutes_celery_task
+
+        with patch(
+            "backend.workers.tasks.minutes_task.minutes_task",
+            side_effect=RuntimeError("temporary outage"),
+        ), patch.object(
+            minutes_celery_task,
+            "retry",
+            side_effect=minutes_celery_task.MaxRetriesExceededError(),
+        ) as retry:
+            result = minutes_celery_task.run("task-id", "dia-id")
+
+        retry.assert_called_once_with(exc=retry.call_args.kwargs["exc"], countdown=30)
+        assert result["status"] == "failed"
+        assert result["error"] == "temporary outage"

@@ -510,3 +510,74 @@ class TestTranscriptionTaskMain:
         saved = json.loads(result_file.read_text())
         assert saved["task_id"] == "fs-save-task"
         assert saved["status"] == "completed"
+
+    @patch("backend.workers.tasks.transcription_task.cleanup_temp_file")
+    @patch("backend.workers.tasks.transcription_task._decrement_active_jobs")
+    @patch("backend.workers.tasks.transcription_task._increment_active_jobs")
+    @patch("backend.workers.tasks.transcription_task._cache_result")
+    @patch("backend.workers.tasks.transcription_task._update_task_status")
+    @patch("backend.workers.tasks.transcription_task._process_chunks")
+    @patch("backend.workers.tasks.transcription_task.split_audio")
+    @patch("backend.workers.tasks.transcription_task.get_audio_duration_seconds")
+    @patch("backend.workers.tasks.transcription_task.convert_and_normalize")
+    @patch("backend.workers.tasks.transcription_task.WhisperEngine")
+    @patch("backend.workers.tasks.transcription_task.settings")
+    def test_chunked_audio_loads_model_and_uses_chunk_processor(
+        self,
+        mock_settings,
+        mock_engine_cls,
+        mock_convert,
+        mock_duration,
+        mock_split,
+        mock_process_chunks,
+        mock_status,
+        mock_cache,
+        mock_incr,
+        mock_decr,
+        mock_cleanup,
+        tmp_path,
+    ):
+        """청크가 생성되면 모델 로드 후 _process_chunks 경로 사용"""
+        mock_settings.results_dir = tmp_path
+        mock_settings.temp_dir = tmp_path
+        mock_settings.cache_ttl_seconds = 604800
+        mock_settings.chunk_duration_ms = 1800000
+        mock_settings.chunk_overlap_ms = 5000
+
+        audio_file = tmp_path / "long.wav"
+        audio_file.write_bytes(b"fake audio")
+        processed = tmp_path / "processed.wav"
+        processed.write_bytes(b"processed")
+        mock_convert.return_value = processed
+        mock_duration.return_value = 3600.0
+
+        chunk_dir = tmp_path / "chunks"
+        chunk_dir.mkdir()
+        chunk = MagicMock()
+        chunk.file_path = chunk_dir / "chunk_0.wav"
+        mock_split.return_value = [chunk]
+        mock_process_chunks.return_value = [
+            SegmentResult(id=0, start=0.0, end=1.0, text="청크 결과", confidence=0.8)
+        ]
+
+        mock_engine = MagicMock()
+        mock_engine.is_loaded = False
+        mock_engine_cls.get_instance.return_value = mock_engine
+
+        from backend.workers.tasks.transcription_task import transcription_task
+
+        result = transcription_task.apply(
+            args=(),
+            kwargs={
+                "task_id": "chunked-task",
+                "audio_file_path": str(audio_file),
+                "model_name": "test-model",
+            },
+        ).result
+
+        assert result["status"] == "completed"
+        assert result["segments"][0]["text"] == "청크 결과"
+        mock_engine.load.assert_called_once_with("test-model")
+        mock_process_chunks.assert_called_once_with(mock_engine, [chunk], "chunked-task", "ko")
+        mock_incr.assert_called_once_with("chunked-task")
+        mock_decr.assert_called_once_with("chunked-task")

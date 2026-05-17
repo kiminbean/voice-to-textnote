@@ -56,6 +56,36 @@ setup_logging(settings.log_level)
 logger = get_logger(__name__)
 
 
+TAGS_METADATA = [
+    {"name": "health", "description": "Service liveness, readiness, and version checks."},
+    {"name": "batch", "description": "Batch transcription submission and status APIs."},
+    {"name": "transcriptions", "description": "Audio upload, STT processing, and result retrieval."},
+    {"name": "diarizations", "description": "Speaker diarization task submission and results."},
+    {"name": "minutes", "description": "Structured meeting minutes generation and retrieval."},
+    {"name": "summaries", "description": "AI summary generation from meeting minutes."},
+    {"name": "stream", "description": "Server-sent task progress updates."},
+    {"name": "history", "description": "Stored task history lookup and deletion."},
+    {"name": "admin", "description": "Operational maintenance endpoints."},
+    {"name": "templates", "description": "Meeting minutes template upload and management."},
+    {"name": "search", "description": "Full-text meeting search."},
+    {"name": "export", "description": "Meeting export endpoints."},
+    {"name": "statistics", "description": "Meeting statistics and dashboard views."},
+    {"name": "auth", "description": "User authentication and session APIs."},
+    {"name": "teams", "description": "Team workspace management."},
+    {"name": "meetings", "description": "Shared meeting records and permissions."},
+    {"name": "bookmarks", "description": "Meeting bookmarks and highlights."},
+    {"name": "speakers", "description": "Speaker profile management."},
+    {"name": "webhooks", "description": "Webhook endpoint management."},
+    {"name": "versions", "description": "Meeting minutes version history."},
+    {"name": "sentiment", "description": "Meeting sentiment analysis."},
+    {"name": "tags", "description": "Automatic meeting tags and tag management."},
+    {"name": "keywords", "description": "Automatic keyword extraction and recommendation."},
+    {"name": "action-items", "description": "Action item extraction from meeting text."},
+    {"name": "audio-analysis", "description": "Audio quality analysis."},
+    {"name": "audio-preprocess", "description": "Audio cleanup and normalization."},
+]
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
@@ -110,6 +140,7 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
         docs_url=docs_url,
         redoc_url=redoc_url,
+        openapi_tags=TAGS_METADATA,
     )
 
     # REQ-ERR-003 ~ REQ-ERR-006: 전역 예외 핸들러 등록 (가장 먼저 등록)

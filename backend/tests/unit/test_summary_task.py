@@ -359,6 +359,107 @@ class TestSummaryTaskErrors:
 
         assert result["status"] == "failed"
 
+    def test_failed_minutes_result_propagates_upstream_error(self):
+        """선행 회의록 작업 실패 시 원인 메시지를 보존"""
+        from backend.workers.tasks.summary_task import summary_task
+
+        task_id = str(uuid.uuid4())
+        min_task_id = str(uuid.uuid4())
+        failed_minutes = {
+            "task_id": min_task_id,
+            "status": "failed",
+            "error_message": "화자 분리 실패",
+        }
+
+        mock_redis = _make_mock_redis()
+        mock_redis.get.side_effect = lambda key: (
+            json.dumps(failed_minutes) if f"min:result:{min_task_id}" in key else None
+        )
+
+        with patch("backend.workers.tasks.summary_task._get_redis", return_value=mock_redis):
+            with patch("backend.workers.tasks.summary_task.settings") as mock_settings:
+                mock_settings.summary_result_ttl = 86400
+                mock_settings.max_concurrent_summaries = 2
+                mock_settings.openai_api_key = "sk-test-key"
+                mock_settings.summary_model = "gpt-4o-mini"
+
+                result = summary_task(task_id=task_id, minutes_task_id=min_task_id)
+
+        assert result["status"] == "failed"
+        assert "화자 분리 실패" in result["error_message"]
+
+    def test_valid_template_structure_is_passed_to_generator(self):
+        """template_id가 있으면 Redis 양식 구조를 요약기에 전달"""
+        from backend.workers.tasks.summary_task import summary_task
+
+        task_id = str(uuid.uuid4())
+        min_task_id = str(uuid.uuid4())
+        template_id = str(uuid.uuid4())
+        template_structure = {"sections": [{"title": "결정사항", "prompt": "요약"}]}
+
+        mock_redis = _make_mock_redis()
+
+        def get_side_effect(key):
+            if f"min:result:{min_task_id}" in key:
+                return json.dumps(MOCK_MIN_RESULT)
+            if key == f"template:{template_id}":
+                return json.dumps({"structure": template_structure})
+            return None
+
+        mock_redis.get.side_effect = get_side_effect
+        mock_gen_cls = _make_mock_summary_generator()
+
+        with patch("backend.workers.tasks.summary_task._get_redis", return_value=mock_redis):
+            with patch("backend.workers.tasks.summary_task.settings") as mock_settings:
+                mock_settings.summary_result_ttl = 86400
+                mock_settings.max_concurrent_summaries = 2
+                mock_settings.openai_api_key = "sk-test-key"
+                mock_settings.summary_model = "gpt-4o-mini"
+                with patch("backend.workers.tasks.summary_task.SummaryGenerator", mock_gen_cls):
+                    result = summary_task(
+                        task_id=task_id,
+                        minutes_task_id=min_task_id,
+                        template_id=template_id,
+                    )
+
+        assert result["template_structure"] == template_structure
+        generate_call = mock_gen_cls.return_value.generate_summary.call_args.kwargs
+        assert generate_call["template_structure"] == template_structure
+
+    def test_invalid_template_metadata_falls_back_to_default_summary(self):
+        """양식 메타데이터가 깨져도 기본 요약으로 진행"""
+        from backend.workers.tasks.summary_task import summary_task
+
+        task_id = str(uuid.uuid4())
+        min_task_id = str(uuid.uuid4())
+        template_id = str(uuid.uuid4())
+
+        mock_redis = _make_mock_redis()
+        mock_redis.get.side_effect = lambda key: (
+            json.dumps(MOCK_MIN_RESULT)
+            if f"min:result:{min_task_id}" in key
+            else "{not-json"
+            if key == f"template:{template_id}"
+            else None
+        )
+        mock_gen_cls = _make_mock_summary_generator()
+
+        with patch("backend.workers.tasks.summary_task._get_redis", return_value=mock_redis):
+            with patch("backend.workers.tasks.summary_task.settings") as mock_settings:
+                mock_settings.summary_result_ttl = 86400
+                mock_settings.max_concurrent_summaries = 2
+                mock_settings.openai_api_key = "sk-test-key"
+                mock_settings.summary_model = "gpt-4o-mini"
+                with patch("backend.workers.tasks.summary_task.SummaryGenerator", mock_gen_cls):
+                    result = summary_task(
+                        task_id=task_id,
+                        minutes_task_id=min_task_id,
+                        template_id=template_id,
+                    )
+
+        assert result["status"] == "completed"
+        assert result["template_structure"] is None
+
 
 # ---------------------------------------------------------------------------
 # Redis 클라이언트 싱글톤 테스트
@@ -455,3 +556,39 @@ class TestSummaryTaskStatusTransitions:
 
         statuses = [u.get("status") for u in status_updates if "status" in u]
         assert any(s in ("processing", "completed") for s in statuses)
+
+
+class TestSummaryCeleryWrapper:
+    """summary_celery_task wrapper 분기 검증"""
+
+    def test_wrapper_returns_failed_for_missing_minutes(self):
+        from backend.workers.tasks.summary_task import summary_celery_task
+
+        with patch(
+            "backend.workers.tasks.summary_task.summary_task",
+            side_effect=FileNotFoundError("missing minutes"),
+        ):
+            result = summary_celery_task.run("task-id", "minutes-id")
+
+        assert result == {
+            "task_id": "task-id",
+            "status": "failed",
+            "error": "missing minutes",
+        }
+
+    def test_wrapper_returns_failed_after_max_retries(self):
+        from backend.workers.tasks.summary_task import summary_celery_task
+
+        with patch(
+            "backend.workers.tasks.summary_task.summary_task",
+            side_effect=RuntimeError("temporary outage"),
+        ), patch.object(
+            summary_celery_task,
+            "retry",
+            side_effect=summary_celery_task.MaxRetriesExceededError(),
+        ) as retry:
+            result = summary_celery_task.run("task-id", "minutes-id")
+
+        retry.assert_called_once_with(exc=retry.call_args.kwargs["exc"], countdown=30)
+        assert result["status"] == "failed"
+        assert result["error"] == "temporary outage"
