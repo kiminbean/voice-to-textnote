@@ -344,11 +344,14 @@ def diarization_task(
 
         _update_task_status(task_id, TaskStatus.completed, 1.0, "화자 분리 완료")
 
+        # BUGFIX: 병렬 모드에서는 diarized_segments 변수가 정의되지 않으므로
+        # final_result["segments"]를 참조해야 두 분기 모두에서 안전하다.
         logger.info(
             "화자 분리 작업 완료",
             task_id=task_id,
-            segments=len(diarized_segments),
+            segments=len(final_result["segments"]),
             speakers=len(speaker_stats),
+            matched=final_result.get("matched", True),
         )
         return final_result
 

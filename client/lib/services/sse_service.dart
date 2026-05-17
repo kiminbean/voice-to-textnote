@@ -3,6 +3,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'package:voice_to_textnote/config/app_config.dart';
 
 // @MX:ANCHOR: SSE 스트리밍 연결 관리 - 리소스 정리 필수
 // @MX:REASON: 화면 종료 시 disconnect() 호출 없으면 메모리 누수 발생
@@ -28,6 +29,11 @@ class SseService {
     );
     request.headers['Accept'] = 'text/event-stream';
     request.headers['Cache-Control'] = 'no-cache';
+    // BUGFIX: SSE 엔드포인트도 API Key 인증 필요 (SPEC-SEC-001).
+    // 헤더가 없으면 401 Unauthorized로 즉시 끊겨 폴링으로 폴백되어 성능 이득이 사라진다.
+    if (AppConfig.apiKey.isNotEmpty) {
+      request.headers['X-API-Key'] = AppConfig.apiKey;
+    }
 
     try {
       final response = await _client!.send(request);
