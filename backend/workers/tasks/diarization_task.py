@@ -244,6 +244,7 @@ def diarization_task(
                 msg = f"화자 분리 처리 중... (청크 {current}/{total})"
                 _update_task_status(task_id, TaskStatus.processing, progress, msg)
 
+            # 청크 모드는 현재 num_speakers 힌트 미지원 (각 청크별 별도 추정)
             dia_segments = engine.diarize_chunked(
                 wav_path,
                 chunk_duration_sec=settings.dia_chunk_duration_minutes * 60,
@@ -251,8 +252,13 @@ def diarization_task(
                 progress_callback=_progress_cb,
             )
         else:
-            # 15분 이하 → 기존 단일 파일 처리
-            dia_segments = engine.diarize(wav_path)
+            # 15분 이하 → 기존 단일 파일 처리. REQ-DIA-PERF-001: max_speakers 힌트로 clustering 가속.
+            dia_segments = engine.diarize(
+                wav_path,
+                num_speakers=num_speakers,
+                min_speakers=min_speakers,
+                max_speakers=max_speakers,
+            )
 
         # --- 5단계: 매칭 (모드별 분기) ---
         if parallel_mode and not stt_segments:

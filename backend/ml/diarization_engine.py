@@ -114,12 +114,22 @@ class DiarizationEngine:
                 logger.error("화자 분리 모델 로드 실패", error=str(e))
                 raise RuntimeError(f"화자 분리 모델 로드 실패: {e}") from e
 
-    def diarize(self, audio_path: str | Path) -> list[SpeakerSegment]:
+    def diarize(
+        self,
+        audio_path: str | Path,
+        num_speakers: int | None = None,
+        min_speakers: int | None = None,
+        max_speakers: int | None = None,
+    ) -> list[SpeakerSegment]:
         """
         오디오 파일 화자 분리 실행 (REQ-DIA-009)
 
         Args:
             audio_path: WAV 파일 경로 (16kHz 모노 권장)
+            num_speakers: 정확한 화자 수가 알려져 있을 때 명시 (clustering 강제)
+            min_speakers: 화자 수 하한 (자동 추정 범위 제한)
+            max_speakers: 화자 수 상한 (REQ-DIA-PERF-001:
+                회의록 앱 default=4로 clustering 후보를 줄여 10~20% 가속 기대)
 
         Returns:
             SpeakerSegment 리스트 (speaker_id, start, end)
@@ -130,7 +140,13 @@ class DiarizationEngine:
         if not self._model_loaded or self._pipeline is None:
             raise RuntimeError("화자 분리 모델이 로드되지 않았습니다. load()를 먼저 호출하세요.")
 
-        logger.info("화자 분리 시작", path=str(audio_path))
+        logger.info(
+            "화자 분리 시작",
+            path=str(audio_path),
+            num_speakers=num_speakers,
+            min_speakers=min_speakers,
+            max_speakers=max_speakers,
+        )
         start_time = time.time()
         waveform = None
         result = None
@@ -142,10 +158,23 @@ class DiarizationEngine:
 
             waveform, sample_rate = torchaudio.load(str(audio_path))
 
+            # 화자 수 hint 구성: num_speakers 우선, 없으면 min/max 범위
+            pipeline_kwargs: dict = {}
+            if num_speakers is not None:
+                pipeline_kwargs["num_speakers"] = num_speakers
+            else:
+                if min_speakers is not None:
+                    pipeline_kwargs["min_speakers"] = min_speakers
+                if max_speakers is not None:
+                    pipeline_kwargs["max_speakers"] = max_speakers
+
             # BUGFIX: 긴 CPU 추론에서 gradient 추적이 남으면 메모리 사용량이 불필요하게
             # 커질 수 있습니다. inference_mode로 감싸고 추론 후 참조를 즉시 해제합니다.
             with torch.inference_mode():
-                result = self._pipeline({"waveform": waveform, "sample_rate": sample_rate})
+                result = self._pipeline(
+                    {"waveform": waveform, "sample_rate": sample_rate},
+                    **pipeline_kwargs,
+                )
 
             segments = self._segments_from_result(result)
 
