@@ -333,6 +333,7 @@ class DiarizationEngine:
         min_speakers: int | None = None,
         max_speakers: int | None = None,
         vad_filter: bool = True,
+        target_sample_rate: int | None = None,
     ) -> list[SpeakerSegment]:
         """
         오디오 파일 화자 분리 실행 (REQ-DIA-009)
@@ -374,6 +375,20 @@ class DiarizationEngine:
             import torchaudio
 
             waveform, sample_rate = torchaudio.load(str(audio_path))
+
+            # REQ-DIA-PERF-003: 다운샘플링 (실험적)
+            # pyannote 3.1은 16kHz로 학습되어 8kHz 입력 시 정확도 손실이 큼.
+            # 사용자가 명시적으로 settings에서 활성화한 경우에만 적용.
+            if target_sample_rate and target_sample_rate > 0 and target_sample_rate != sample_rate:
+                logger.warning(
+                    "DIA 다운샘플링 적용 (정확도 영향 가능)",
+                    original_sr=sample_rate,
+                    target_sr=target_sample_rate,
+                )
+                waveform = torchaudio.functional.resample(
+                    waveform, sample_rate, target_sample_rate
+                )
+                sample_rate = target_sample_rate
 
             # VAD 사전 필터링 (선택)
             mapping: list[dict] = []

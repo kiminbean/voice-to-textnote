@@ -253,11 +253,14 @@ def diarization_task(
             )
         else:
             # 15분 이하 → 기존 단일 파일 처리. REQ-DIA-PERF-001: max_speakers 힌트로 clustering 가속.
+            # REQ-DIA-PERF-003: settings.dia_target_sample_rate > 0이면 다운샘플링 적용 (실험적).
+            target_sr = settings.dia_target_sample_rate if settings.dia_target_sample_rate > 0 else None
             dia_segments = engine.diarize(
                 wav_path,
                 num_speakers=num_speakers,
                 min_speakers=min_speakers,
                 max_speakers=max_speakers,
+                target_sample_rate=target_sr,
             )
 
         # --- 5단계: 매칭 (모드별 분기) ---

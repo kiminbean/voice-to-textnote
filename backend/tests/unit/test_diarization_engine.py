@@ -395,3 +395,267 @@ class TestDiarizationEngineProperties:
             engine.load(hf_token="hf_testtoken")
             assert engine.load_time_seconds is not None
             assert engine.load_time_seconds >= 0.0
+
+
+# ---------------------------------------------------------------------------
+# Speaker hints + VAD + downsampling 테스트
+# (REQ-DIA-PERF-001/002/003)
+# ---------------------------------------------------------------------------
+
+
+def _make_loaded_engine_with_mock_pipeline():
+    """diarize() 테스트용 — 모델이 로드된 상태의 엔진 + pipeline 호출 추적 mock"""
+    from backend.ml.diarization_engine import DiarizationEngine
+
+    _reset_engine()
+    mock_pipeline = _make_mock_pipeline()
+    engine = DiarizationEngine.get_instance()
+    engine._pipeline = mock_pipeline
+    engine._model_loaded = True
+    return engine, mock_pipeline
+
+
+def _make_silero_vad_mock(timestamps=None):
+    """silero_vad 모듈 mock 생성
+
+    timestamps: get_speech_timestamps가 반환할 list[dict{start, end}]
+    """
+    if timestamps is None:
+        timestamps = []
+    mock_module = MagicMock()
+    mock_module.load_silero_vad.return_value = MagicMock()
+    mock_module.get_speech_timestamps.return_value = timestamps
+    return mock_module
+
+
+class TestDiarizeHints:
+    """REQ-DIA-PERF-001: num_speakers/min_speakers/max_speakers hint 전달"""
+
+    def setup_method(self):
+        _reset_engine()
+
+    def test_max_speakers_passed_to_pipeline(self, tmp_path):
+        """max_speakers 인자가 pipeline 호출에 kwargs로 전달돼야 함"""
+
+        engine, mock_pipeline = _make_loaded_engine_with_mock_pipeline()
+        audio = tmp_path / "fake.wav"
+        audio.write_bytes(b"")
+
+        mock_torchaudio = MagicMock()
+        mock_torchaudio.load.return_value = (torch.zeros((1, 16000)), 16000)
+
+        with patch.dict(sys.modules, {"torchaudio": mock_torchaudio}):
+            # vad_filter=False로 VAD 경로 제외하고 hint만 검증
+            engine.diarize(audio, max_speakers=4, vad_filter=False)
+
+        call_args = mock_pipeline.call_args
+        kwargs = call_args.kwargs if hasattr(call_args, "kwargs") else {}
+        assert kwargs.get("max_speakers") == 4
+
+    def test_num_speakers_takes_priority_over_min_max(self, tmp_path):
+        """num_speakers가 명시되면 min/max는 무시되고 num_speakers만 전달"""
+
+        engine, mock_pipeline = _make_loaded_engine_with_mock_pipeline()
+        audio = tmp_path / "fake.wav"
+        audio.write_bytes(b"")
+
+        mock_torchaudio = MagicMock()
+        mock_torchaudio.load.return_value = (torch.zeros((1, 16000)), 16000)
+
+        with patch.dict(sys.modules, {"torchaudio": mock_torchaudio}):
+            engine.diarize(
+                audio,
+                num_speakers=2,
+                min_speakers=1,
+                max_speakers=10,
+                vad_filter=False,
+            )
+
+        kwargs = mock_pipeline.call_args.kwargs
+        assert kwargs.get("num_speakers") == 2
+        # num_speakers 모드에서는 min/max 미전달
+        assert "min_speakers" not in kwargs
+        assert "max_speakers" not in kwargs
+
+    def test_no_hints_means_no_kwargs(self, tmp_path):
+        """인자 미제공 시 pipeline에 hint kwargs 전달 안 됨 (자동 추정)"""
+
+        engine, mock_pipeline = _make_loaded_engine_with_mock_pipeline()
+        audio = tmp_path / "fake.wav"
+        audio.write_bytes(b"")
+
+        mock_torchaudio = MagicMock()
+        mock_torchaudio.load.return_value = (torch.zeros((1, 16000)), 16000)
+
+        with patch.dict(sys.modules, {"torchaudio": mock_torchaudio}):
+            engine.diarize(audio, vad_filter=False)
+
+        kwargs = mock_pipeline.call_args.kwargs
+        for key in ("num_speakers", "min_speakers", "max_speakers"):
+            assert key not in kwargs
+
+
+class TestDiarizeVAD:
+    """REQ-DIA-PERF-002: Silero VAD 사전 필터 + 안전장치"""
+
+    def setup_method(self):
+        from backend.ml.diarization_engine import DiarizationEngine
+
+        _reset_engine()
+        DiarizationEngine._vad_model = None
+        DiarizationEngine._vad_loaded = False
+
+    def test_vad_skip_when_compression_gain_too_low(self, tmp_path):
+        """speech_ratio > VAD_MIN_COMPRESSION_GAIN이면 VAD 미적용 (mapping=[])"""
+
+        engine, _ = _make_loaded_engine_with_mock_pipeline()
+
+        # 음성이 거의 전부 (16000 samples 중 15000 = 0.94 ratio)
+        # threshold(0.85)보다 크므로 VAD skip되어 원본 사용
+        vad_mock = _make_silero_vad_mock(
+            timestamps=[{"start": 0, "end": 15000}]
+        )
+
+        waveform = torch.zeros((1, 16000))
+        with patch.dict(sys.modules, {"silero_vad": vad_mock}):
+            compressed, mapping = engine._compress_with_vad(waveform, 16000)
+
+        # 효과 부족 → mapping 비어있어야 함
+        assert mapping == []
+        # 원본 waveform 그대로 반환
+        assert compressed is waveform
+
+    def test_vad_applies_when_silence_significant(self, tmp_path):
+        """speech_ratio가 threshold 이하면 VAD 압축 적용"""
+
+        engine, _ = _make_loaded_engine_with_mock_pipeline()
+
+        # 16000 samples 중 음성 8000 (ratio 0.5, threshold 0.85보다 작음)
+        vad_mock = _make_silero_vad_mock(
+            timestamps=[
+                {"start": 0, "end": 4000},
+                {"start": 12000, "end": 16000},
+            ]
+        )
+
+        waveform = torch.zeros((1, 16000))
+        with patch.dict(sys.modules, {"silero_vad": vad_mock}):
+            compressed, mapping = engine._compress_with_vad(waveform, 16000)
+
+        # VAD 적용 → 2개 음성 segment에 대한 mapping이 생성됨
+        assert len(mapping) == 2
+        # 첫 mapping은 원본 start=0
+        assert mapping[0]["original_start"] == 0
+        assert mapping[1]["original_start"] == 12000
+        # compressed는 원본보다 짧음 (8000 + silence padding)
+        assert compressed.shape[-1] < waveform.shape[-1] + int(
+            16000 * engine.VAD_SILENCE_PAD_SEC
+        )
+
+    def test_adjacent_segments_merged(self, tmp_path):
+        """인접 짧은 음성 segment (간격 < VAD_MERGE_GAP_SEC)는 하나로 병합"""
+
+        engine, _ = _make_loaded_engine_with_mock_pipeline()
+
+        # 두 segment 간격 8000 samples = 0.5s < merge_gap (1s) → 병합
+        # 음성 1000 + 1000 = 2000 (ratio 0.125, threshold 통과)
+        vad_mock = _make_silero_vad_mock(
+            timestamps=[
+                {"start": 0, "end": 1000},
+                {"start": 9000, "end": 10000},
+            ]
+        )
+
+        waveform = torch.zeros((1, 16000))
+        with patch.dict(sys.modules, {"silero_vad": vad_mock}):
+            _, mapping = engine._compress_with_vad(waveform, 16000)
+
+        # 병합되어 mapping이 1개여야 함
+        assert len(mapping) == 1
+        assert mapping[0]["original_start"] == 0
+
+    def test_map_segments_back_to_original_time(self):
+        """compressed 시간의 segment를 원본 시간으로 역매핑"""
+        from backend.pipeline.speaker_matcher import SpeakerSegment
+
+        engine, _ = _make_loaded_engine_with_mock_pipeline()
+
+        # mapping: 0~1초의 음성이 원본의 5~6초에 위치
+        mapping = [
+            {
+                "compressed_start": 0,
+                "compressed_end": 16000,
+                "original_start": 80000,  # 5초 (16000Hz)
+            }
+        ]
+        # compressed에서 0.5~0.7초 segment
+        raw_segments = [
+            SpeakerSegment(speaker_id="SPEAKER_00", start=0.5, end=0.7)
+        ]
+
+        mapped = engine._map_segments(raw_segments, mapping, 16000)
+
+        assert len(mapped) == 1
+        # 원본 5.5~5.7초로 매핑돼야 함
+        assert abs(mapped[0].start - 5.5) < 0.01
+        assert abs(mapped[0].end - 5.7) < 0.01
+
+
+class TestDiarizeDownsampling:
+    """REQ-DIA-PERF-003: target_sample_rate 다운샘플링 옵션 (실험적)"""
+
+    def setup_method(self):
+        _reset_engine()
+
+    def test_no_downsample_when_target_is_none(self, tmp_path):
+        """target_sample_rate=None이면 resample 호출되지 않음"""
+
+        engine, _ = _make_loaded_engine_with_mock_pipeline()
+        audio = tmp_path / "fake.wav"
+        audio.write_bytes(b"")
+
+        mock_torchaudio = MagicMock()
+        mock_torchaudio.load.return_value = (torch.zeros((1, 16000)), 16000)
+        mock_torchaudio.functional.resample = MagicMock()
+
+        with patch.dict(sys.modules, {"torchaudio": mock_torchaudio}):
+            engine.diarize(audio, target_sample_rate=None, vad_filter=False)
+
+        mock_torchaudio.functional.resample.assert_not_called()
+
+    def test_no_downsample_when_target_matches_source(self, tmp_path):
+        """target_sample_rate == source면 resample 호출되지 않음"""
+
+        engine, _ = _make_loaded_engine_with_mock_pipeline()
+        audio = tmp_path / "fake.wav"
+        audio.write_bytes(b"")
+
+        mock_torchaudio = MagicMock()
+        mock_torchaudio.load.return_value = (torch.zeros((1, 16000)), 16000)
+        mock_torchaudio.functional.resample = MagicMock()
+
+        with patch.dict(sys.modules, {"torchaudio": mock_torchaudio}):
+            engine.diarize(audio, target_sample_rate=16000, vad_filter=False)
+
+        mock_torchaudio.functional.resample.assert_not_called()
+
+    def test_downsample_when_target_differs(self, tmp_path):
+        """target_sample_rate > 0 && != source면 resample 호출"""
+
+        engine, _ = _make_loaded_engine_with_mock_pipeline()
+        audio = tmp_path / "fake.wav"
+        audio.write_bytes(b"")
+
+        mock_torchaudio = MagicMock()
+        mock_torchaudio.load.return_value = (torch.zeros((1, 16000)), 16000)
+        # resample 결과는 8kHz 길이의 절반 길이 waveform
+        mock_torchaudio.functional.resample.return_value = torch.zeros((1, 8000))
+
+        with patch.dict(sys.modules, {"torchaudio": mock_torchaudio}):
+            engine.diarize(audio, target_sample_rate=8000, vad_filter=False)
+
+        # resample 한 번 호출되고 args는 (waveform, 16000, 8000)
+        assert mock_torchaudio.functional.resample.call_count == 1
+        args = mock_torchaudio.functional.resample.call_args.args
+        assert args[1] == 16000
+        assert args[2] == 8000

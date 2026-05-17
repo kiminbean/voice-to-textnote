@@ -65,6 +65,10 @@ class Settings(BaseSettings):
     dia_chunk_duration_minutes: int = 10  # 청크 단위 (분)
     dia_chunk_overlap_seconds: int = 30  # 청크 간 오버랩 (초)
     dia_chunk_threshold_minutes: int = 15  # 이 길이 이상이면 청크 분할 적용
+    # REQ-DIA-PERF-003: 다운샘플링 (실험적, 정확도 손실 위험으로 default 비활성)
+    # 0 또는 음수면 비활성. 8000 등으로 설정하면 pyannote 입력 전 resample.
+    # pyannote 3.1은 16kHz로 학습됐으므로 다운샘플링 시 정확도 영향 가능.
+    dia_target_sample_rate: int = 0
 
     # 회의록 생성 설정 (REQ-MIN-008, REQ-MIN-013)
     max_concurrent_minutes: int = 3  # 최대 동시 회의록 생성 작업 수
