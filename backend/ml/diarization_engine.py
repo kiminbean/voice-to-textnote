@@ -39,6 +39,19 @@ class DiarizationEngine:
     _model_name: str = "pyannote/speaker-diarization-3.1"
     _pipeline: Any = None
 
+    # REQ-DIA-PERF-002: Silero VAD 사전 필터 (회의 무음 구간 제거)
+    _vad_model: Any = None
+    _vad_loaded: bool = False
+
+    # VAD 통합 상수
+    # - segment 간 silence padding: pyannote가 segment boundary를 인식하도록 보장
+    # - 너무 짧으면 segment 연속 처리 / 너무 길면 압축 효과 감소
+    VAD_SILENCE_PAD_SEC: float = 0.5
+    # - silero get_speech_timestamps의 무음 임계 (이보다 짧은 무음은 발화로 간주)
+    VAD_MIN_SILENCE_MS: int = 500
+    # - 각 음성 구간 양쪽 padding (boundary 정확도 향상)
+    VAD_SPEECH_PAD_MS: int = 200
+
     def __init__(self) -> None:
         pass
 
@@ -114,12 +127,172 @@ class DiarizationEngine:
                 logger.error("화자 분리 모델 로드 실패", error=str(e))
                 raise RuntimeError(f"화자 분리 모델 로드 실패: {e}") from e
 
+    def _load_vad(self) -> Any:
+        """Silero VAD 모델 lazy load (싱글톤 캐싱)"""
+        if self._vad_loaded and self._vad_model is not None:
+            return self._vad_model
+
+        with self._lock:
+            if self._vad_loaded and self._vad_model is not None:
+                return self._vad_model
+
+            try:
+                from silero_vad import load_silero_vad
+
+                logger.info("Silero VAD 모델 로드 시작")
+                vad_start = time.time()
+                self._vad_model = load_silero_vad()
+                self._vad_loaded = True
+                logger.info(
+                    "Silero VAD 모델 로드 완료",
+                    load_time_seconds=round(time.time() - vad_start, 2),
+                )
+                return self._vad_model
+            except ImportError as e:
+                logger.warning("silero-vad 미설치, VAD 사전 필터 비활성화", error=str(e))
+                return None
+            except Exception as e:
+                logger.warning("Silero VAD 로드 실패, VAD 사전 필터 비활성화", error=str(e))
+                return None
+
+    def _compress_with_vad(
+        self,
+        waveform: Any,
+        sample_rate: int,
+    ) -> tuple[Any, list[dict]]:
+        """Silero VAD로 음성 구간만 추출하고 segment 사이에 silence padding 삽입
+
+        Args:
+            waveform: torch.Tensor (channels, samples)
+            sample_rate: 샘플레이트 (Hz)
+
+        Returns:
+            (compressed_waveform, mapping_list)
+            - compressed_waveform: torch.Tensor — 음성+silence padding으로 구성된 새 waveform
+            - mapping_list: 각 음성 구간의 (compressed_start_sample, compressed_end_sample,
+              original_start_sample)을 보관해 역매핑에 사용
+
+        VAD 실패/패키지 미설치/음성 없음 시 빈 mapping 반환 (호출자가 원본 사용 결정).
+        """
+        import torch
+
+        vad_model = self._load_vad()
+        if vad_model is None:
+            return waveform, []
+
+        try:
+            from silero_vad import get_speech_timestamps
+
+            # silero_vad는 mono 1D 텐서를 기대
+            mono_waveform = waveform.squeeze() if waveform.dim() > 1 else waveform
+
+            speech_ts = get_speech_timestamps(
+                mono_waveform,
+                vad_model,
+                sampling_rate=sample_rate,
+                min_silence_duration_ms=self.VAD_MIN_SILENCE_MS,
+                speech_pad_ms=self.VAD_SPEECH_PAD_MS,
+            )
+
+            if not speech_ts:
+                logger.warning("VAD: 음성 구간 없음, 원본 waveform 사용")
+                return waveform, []
+
+            # 음성 구간 사이에 silence padding 삽입 (pyannote가 boundary 인식하도록)
+            silence_samples = int(sample_rate * self.VAD_SILENCE_PAD_SEC)
+            channels = waveform.shape[0] if waveform.dim() > 1 else 1
+            silence_chunk = torch.zeros((channels, silence_samples))
+
+            chunks: list[Any] = []
+            mapping: list[dict] = []
+            cumulative = 0
+
+            for i, ts in enumerate(speech_ts):
+                if i > 0:
+                    chunks.append(silence_chunk)
+                    cumulative += silence_samples
+
+                # 양 채널 모두 보존
+                if waveform.dim() > 1:
+                    seg_wav = waveform[:, ts["start"]:ts["end"]]
+                else:
+                    seg_wav = waveform[ts["start"]:ts["end"]].unsqueeze(0)
+
+                seg_length = ts["end"] - ts["start"]
+                mapping.append(
+                    {
+                        "compressed_start": cumulative,
+                        "compressed_end": cumulative + seg_length,
+                        "original_start": ts["start"],
+                    }
+                )
+                chunks.append(seg_wav)
+                cumulative += seg_length
+
+            compressed = torch.cat(chunks, dim=1)
+            original_duration = waveform.shape[-1] / sample_rate
+            compressed_duration = compressed.shape[-1] / sample_rate
+            logger.info(
+                "VAD 압축 완료",
+                speech_segments=len(speech_ts),
+                original_seconds=round(original_duration, 2),
+                compressed_seconds=round(compressed_duration, 2),
+                ratio=round(compressed_duration / original_duration, 3) if original_duration > 0 else 0,
+            )
+            return compressed, mapping
+        except Exception as e:
+            logger.warning("VAD 처리 실패, 원본 waveform 사용", error=str(e))
+            return waveform, []
+
+    def _map_segments(
+        self,
+        raw_segments: list[SpeakerSegment],
+        mapping: list[dict],
+        sample_rate: int,
+    ) -> list[SpeakerSegment]:
+        """compressed 시간의 segment를 원본 시간으로 역매핑
+
+        한 segment가 silence padding을 가로질러 여러 mapping에 걸칠 수 있으므로,
+        각 mapping에서 겹치는 부분만 잘라 별도 segment로 생성한다.
+        """
+        if not mapping:
+            return raw_segments
+
+        mapped: list[SpeakerSegment] = []
+        for seg in raw_segments:
+            seg_start_sample = int(seg.start * sample_rate)
+            seg_end_sample = int(seg.end * sample_rate)
+
+            for m in mapping:
+                # 이 mapping과 겹치는 구간 계산
+                overlap_start = max(seg_start_sample, m["compressed_start"])
+                overlap_end = min(seg_end_sample, m["compressed_end"])
+                if overlap_end <= overlap_start:
+                    continue
+
+                offset_start = overlap_start - m["compressed_start"]
+                offset_end = overlap_end - m["compressed_start"]
+                orig_start_sample = m["original_start"] + offset_start
+                orig_end_sample = m["original_start"] + offset_end
+
+                mapped.append(
+                    SpeakerSegment(
+                        speaker_id=seg.speaker_id,
+                        start=round(orig_start_sample / sample_rate, 3),
+                        end=round(orig_end_sample / sample_rate, 3),
+                    )
+                )
+
+        # 같은 화자의 인접 segment 병합 (silence padding으로 인한 작은 끊김 제거)
+        return self._merge_adjacent_segments(mapped)
+
     def diarize(
         self,
         audio_path: str | Path,
         num_speakers: int | None = None,
         min_speakers: int | None = None,
         max_speakers: int | None = None,
+        vad_filter: bool = True,
     ) -> list[SpeakerSegment]:
         """
         오디오 파일 화자 분리 실행 (REQ-DIA-009)
@@ -130,6 +303,8 @@ class DiarizationEngine:
             min_speakers: 화자 수 하한 (자동 추정 범위 제한)
             max_speakers: 화자 수 상한 (REQ-DIA-PERF-001:
                 회의록 앱 default=4로 clustering 후보를 줄여 10~20% 가속 기대)
+            vad_filter: REQ-DIA-PERF-002 — True면 Silero VAD로 무음 구간을 사전에 제거해
+                pyannote 입력을 줄인다. 회의 무음 비율(보통 30~50%) 만큼 가속.
 
         Returns:
             SpeakerSegment 리스트 (speaker_id, start, end)
@@ -146,9 +321,11 @@ class DiarizationEngine:
             num_speakers=num_speakers,
             min_speakers=min_speakers,
             max_speakers=max_speakers,
+            vad_filter=vad_filter,
         )
         start_time = time.time()
         waveform = None
+        compressed = None
         result = None
 
         try:
@@ -157,6 +334,13 @@ class DiarizationEngine:
             import torchaudio
 
             waveform, sample_rate = torchaudio.load(str(audio_path))
+
+            # VAD 사전 필터링 (선택)
+            mapping: list[dict] = []
+            if vad_filter:
+                compressed, mapping = self._compress_with_vad(waveform, sample_rate)
+            else:
+                compressed = waveform
 
             # 화자 수 hint 구성: num_speakers 우선, 없으면 min/max 범위
             pipeline_kwargs: dict = {}
@@ -172,11 +356,18 @@ class DiarizationEngine:
             # 커질 수 있습니다. inference_mode로 감싸고 추론 후 참조를 즉시 해제합니다.
             with torch.inference_mode():
                 result = self._pipeline(
-                    {"waveform": waveform, "sample_rate": sample_rate},
+                    {"waveform": compressed, "sample_rate": sample_rate},
                     **pipeline_kwargs,
                 )
 
-            segments = self._segments_from_result(result)
+            raw_segments = self._segments_from_result(result)
+
+            # VAD 압축을 적용했으면 원본 timestamp로 역매핑
+            segments = (
+                self._map_segments(raw_segments, mapping, sample_rate)
+                if mapping
+                else raw_segments
+            )
 
             elapsed = time.time() - start_time
             logger.info(
@@ -184,6 +375,7 @@ class DiarizationEngine:
                 path=str(audio_path),
                 segments=len(segments),
                 elapsed_seconds=round(elapsed, 2),
+                vad_applied=bool(mapping),
             )
 
             return segments
@@ -193,6 +385,7 @@ class DiarizationEngine:
             raise
         finally:
             waveform = None
+            compressed = None
             result = None
             gc.collect()
 
