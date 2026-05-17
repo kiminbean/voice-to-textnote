@@ -19,6 +19,13 @@ class MinutesCreateRequest(BaseModel):
     speaker_names: dict[str, str] | None = Field(
         default=None, description="화자 ID → 이름 매핑 (None이면 자동 생성)"
     )
+    # REQ-STT-PERF-002: 병렬 모드에서 STT/DIA를 동시에 실행한 경우,
+    # diarization 결과가 raw segments(matched=False)일 수 있다.
+    # 이 경우 stt_task_id를 함께 전달해야 minutes_task가 SpeakerMatcher로 매칭한다.
+    stt_task_id: str | None = Field(
+        default=None,
+        description="STT 작업 ID (병렬 모드에서 매칭에 사용, 기존 사용자는 생략 가능)",
+    )
 
 
 class MinutesSegment(BaseModel):

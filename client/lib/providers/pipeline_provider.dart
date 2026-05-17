@@ -1,10 +1,13 @@
 // 파이프라인 처리 상태 관리 프로바이더
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:voice_to_textnote/config/app_config.dart';
 import 'package:voice_to_textnote/models/pipeline_state.dart';
 import 'package:voice_to_textnote/services/diarization_api.dart';
 import 'package:voice_to_textnote/services/minutes_api.dart';
+import 'package:voice_to_textnote/services/sse_service.dart';
 import 'package:voice_to_textnote/services/summary_api.dart';
 import 'package:voice_to_textnote/services/transcription_api.dart';
 
@@ -52,37 +55,56 @@ class PipelineNotifier extends Notifier<PipelineState> {
       final uploadResult = await sttApi.upload(audioFilePath);
       final sttTaskId = uploadResult['task_id'] as String;
 
-      // 2단계: STT 폴링
+      // 서버 응답에서 자동 시작된 화자 분리 task_id 추출 (병렬 모드)
+      // 구버전 서버는 이 필드가 없으므로 폴백으로 별도 POST /diarizations 사용
+      final autoDiaTaskId = uploadResult['diarization_task_id'] as String?;
+
+      // 2단계: STT와 화자 분리를 병렬로 대기 (SSE)
+      // 서버에서 STT 등록 직후 DIA도 함께 시작했으므로 둘은 동시에 진행 중이다.
       state = state.copyWith(
         currentStep: PipelineStep.transcribing,
         progress: 0.2,
         currentTaskId: sttTaskId,
       );
-      await _pollUntilCompleted(() => sttApi.getStatus(sttTaskId));
 
-      // 3단계: 화자 분리 생성
-      state = state.copyWith(
-        currentStep: PipelineStep.diarizing,
-        progress: 0.4,
-      );
-      final diaResult = await diaApi.create(sttTaskId);
-      final diaTaskId = diaResult['task_id'] as String;
+      String diaTaskId;
+      if (autoDiaTaskId != null) {
+        // 병렬 모드: 두 task를 동시에 대기. Future.wait로 동시 SSE listen.
+        await Future.wait([
+          _waitForCompletion(sttTaskId, () => sttApi.getStatus(sttTaskId)),
+          _waitForCompletion(
+            autoDiaTaskId,
+            () => diaApi.getStatus(autoDiaTaskId),
+          ),
+        ]);
+        diaTaskId = autoDiaTaskId;
+      } else {
+        // 레거시 모드: STT 완료 대기 → DIA POST → DIA 대기 (직렬)
+        await _waitForCompletion(sttTaskId, () => sttApi.getStatus(sttTaskId));
+        state = state.copyWith(
+          currentStep: PipelineStep.diarizing,
+          progress: 0.4,
+        );
+        final diaResult = await diaApi.create(sttTaskId);
+        diaTaskId = diaResult['task_id'] as String;
+        await _waitForCompletion(diaTaskId, () => diaApi.getStatus(diaTaskId));
+      }
 
-      // 4단계: 화자 분리 폴링
-      await _pollUntilCompleted(() => diaApi.getStatus(diaTaskId));
-
-      // 5단계: 회의록 생성
+      // 5단계: 회의록 생성 (병렬 모드면 sttTaskId도 전달해 매칭 수행)
       state = state.copyWith(
         currentStep: PipelineStep.generatingMinutes,
         progress: 0.6,
       );
-      final minResult = await minApi.create(diaTaskId);
+      final minResult = await minApi.create(
+        diaTaskId,
+        sttTaskId: autoDiaTaskId != null ? sttTaskId : null,
+      );
       final minTaskId = minResult['task_id'] as String;
       // ResultScreen 조회용으로 minutesTaskId 저장
       state = state.copyWith(minutesTaskId: minTaskId);
 
-      // 6단계: 회의록 폴링
-      await _pollUntilCompleted(() => minApi.getStatus(minTaskId));
+      // 6단계: 회의록 완료 대기 (SSE 우선)
+      await _waitForCompletion(minTaskId, () => minApi.getStatus(minTaskId));
 
       // 7단계: 요약 생성 (templateId가 있으면 양식 기반 요약)
       state = state.copyWith(
@@ -94,8 +116,8 @@ class PipelineNotifier extends Notifier<PipelineState> {
       // ResultScreen 조회용으로 summaryTaskId 저장
       state = state.copyWith(summaryTaskId: sumTaskId);
 
-      // 8단계: 요약 폴링
-      await _pollUntilCompleted(() => sumApi.getStatus(sumTaskId));
+      // 8단계: 요약 완료 대기 (SSE 우선)
+      await _waitForCompletion(sumTaskId, () => sumApi.getStatus(sumTaskId));
 
       // 완료 - currentTaskId를 명시적으로 null 클리어
       state = state.copyWith(
@@ -131,7 +153,80 @@ class PipelineNotifier extends Notifier<PipelineState> {
     }
   }
 
-  // 태스크가 completed 될 때까지 폴링
+  // 태스크 완료 대기 - SSE 우선, 실패 시 폴링 폴백
+  //
+  // 서버 SSE 엔드포인트(GET /api/v1/tasks/{task_id}/stream)를 통해 실시간으로
+  // 상태 변화를 수신한다. 네트워크/서버 SSE 미가용 시 기존 3초 폴링으로 자동 폴백.
+  //
+  // - completed 이벤트 수신 → 즉시 반환 (폴링 대비 평균 1.5초 절약/단계)
+  // - failed 이벤트 수신 → 예외 전파
+  // - status_update 이벤트 → progress 갱신
+  // - 스트림 오류 → 폴링 폴백
+  Future<void> _waitForCompletion(
+    String taskId,
+    Future<Map<String, dynamic>> Function() getStatus,
+  ) async {
+    final sseService = SseService(baseUrl: AppConfig.apiBaseUrl);
+
+    try {
+      bool completedViaSse = false;
+      try {
+        await for (final event in sseService.connect(taskId)) {
+          if (_cancelled) {
+            throw Exception('파이프라인이 취소되었습니다');
+          }
+
+          final eventStatus = event['status'] as String?;
+          if (eventStatus == 'completed') {
+            completedViaSse = true;
+            return;
+          }
+          if (eventStatus == 'failed') {
+            final errMsg = event['error_message'] ?? event['error'] ?? '알 수 없는 오류';
+            throw Exception('태스크 처리 실패: $errMsg');
+          }
+
+          // 서버에서 보고한 진행률을 UI에 반영 (폴링 경로와 동일한 보간 로직)
+          final serverProgress = event['progress'] as num?;
+          if (serverProgress != null && serverProgress > 0) {
+            final currentBase = state.progress;
+            const stepRange = 0.2;
+            final adjustedProgress =
+                currentBase + (serverProgress.toDouble() * stepRange);
+            if (adjustedProgress > state.progress) {
+              state = state.copyWith(
+                progress: adjustedProgress.clamp(0.0, 0.99),
+              );
+            }
+          }
+        }
+      } on Exception {
+        // 사용자 취소나 명시적 failure는 그대로 위로 전파
+        if (_cancelled) rethrow;
+        // 그 외 SSE 통신 실패(네트워크/서버 미지원)는 폴링 폴백
+        // 호출 직후 한 번 상태를 확인하고, 완료 아니면 기존 폴링으로 전환
+        final fallbackStatus = await getStatus();
+        if (fallbackStatus['status'] == 'completed') {
+          return;
+        }
+        await _pollUntilCompleted(getStatus);
+        return;
+      }
+
+      // SSE 스트림이 자연 종료됐지만 completed 이벤트가 없었던 경우 (드뭄)
+      if (!completedViaSse) {
+        final finalStatus = await getStatus();
+        if (finalStatus['status'] != 'completed') {
+          // 안전망: 폴링으로 마무리 확인
+          await _pollUntilCompleted(getStatus);
+        }
+      }
+    } finally {
+      sseService.disconnect();
+    }
+  }
+
+  // 태스크가 completed 될 때까지 폴링 (SSE 폴백 경로)
   // 취소 플래그(_cancelled) 또는 최대 횟수(3분) 초과 시 종료
   Future<void> _pollUntilCompleted(
     Future<Map<String, dynamic>> Function() getStatus,

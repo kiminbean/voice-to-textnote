@@ -15,8 +15,18 @@ class MinutesApi {
   MinutesApi(this._dio);
 
   // 화자 분리 태스크 ID로 회의록 생성
-  Future<Map<String, dynamic>> create(String diaTaskId) async {
-    final response = await _dio.post('/minutes', data: {'diarization_task_id': diaTaskId});
+  //
+  // [sttTaskId]가 제공되면 병렬 모드로 매칭됨. STT와 DIA를 동시 시작한 경우
+  // DIA 결과가 matched=False일 수 있어 minutes_task가 직접 매칭한다.
+  Future<Map<String, dynamic>> create(
+    String diaTaskId, {
+    String? sttTaskId,
+  }) async {
+    final data = <String, dynamic>{'diarization_task_id': diaTaskId};
+    if (sttTaskId != null) {
+      data['stt_task_id'] = sttTaskId;
+    }
+    final response = await _dio.post('/minutes', data: data);
     return response.data as Map<String, dynamic>;
   }
 

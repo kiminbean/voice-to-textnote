@@ -172,7 +172,11 @@ async def upload_transcription(
     status_key = f"task:status:{task_id_str}"
     await redis_client.setex(status_key, settings.cache_ttl_seconds, json.dumps(initial_status))
 
-    # --- Celery 작업 등록 ---
+    # --- Celery 작업 등록 (STT + DIA 병렬 시작) ---
+    # REQ-STT-PERF-002: STT와 화자 분리는 둘 다 WAV만 필요하므로 동시에 시작한다.
+    # DIA는 audio_path를 직접 받아 STT 완료를 기다리지 않는다 (matched=False 결과).
+    # minutes_task가 STT와 DIA 결과를 모두 받아 SpeakerMatcher로 매칭한다.
+    from backend.workers.tasks.diarization_task import diarization_celery_task
     from backend.workers.tasks.transcription_task import transcription_task
 
     transcription_task.delay(
@@ -184,9 +188,40 @@ async def upload_transcription(
         file_size_bytes=file_size,
     )
 
+    # 화자 분리 태스크 사전 등록 - 클라이언트가 별도 POST를 하지 않아도 자동 시작
+    dia_task_id = str(uuid.uuid4())
+    dia_initial_status = {
+        "task_id": dia_task_id,
+        "stt_task_id": task_id_str,
+        "status": TaskStatus.pending.value,
+        "progress": 0.0,
+        "created_at": now.isoformat(),
+        "updated_at": now.isoformat(),
+    }
+    dia_status_key = f"task:dia:status:{dia_task_id}"
+    await redis_client.setex(
+        dia_status_key,
+        settings.diarization_result_ttl,
+        json.dumps(dia_initial_status),
+    )
+
+    # DIA는 STT가 만드는 WAV 사본(settings.temp_dir/{task_id_str}.wav)을 입력으로 받는다.
+    # transcription_task가 convert_and_normalize 직후 그 경로에 WAV를 복사한다.
+    # WAV가 아직 없을 수 있으므로 짧은 지연(countdown) 후 시작한다.
+    dia_audio_path = str(settings.temp_dir / f"{task_id_str}.wav")
+    diarization_celery_task.apply_async(
+        kwargs={
+            "task_id": dia_task_id,
+            "stt_task_id": task_id_str,  # 매칭에는 사용 안 하지만 추적용
+            "audio_path": dia_audio_path,
+        },
+        countdown=2,  # WAV 변환 완료 여유 (보통 1초 이내)
+    )
+
     logger.info(
-        "전사 작업 등록",
-        task_id=task_id_str,
+        "전사+화자분리 작업 동시 등록",
+        stt_task_id=task_id_str,
+        dia_task_id=dia_task_id,
         filename=filename,
         file_size_bytes=file_size,
         duration_seconds=round(duration_seconds, 2),
@@ -201,6 +236,7 @@ async def upload_transcription(
         status_url=status_url,
         result_url=result_url,
         created_at=now,
+        diarization_task_id=dia_task_id,
     )
 
 

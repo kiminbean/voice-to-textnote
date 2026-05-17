@@ -17,6 +17,7 @@ import redis
 from backend.app.config import settings
 from backend.events.publisher import publish_task_event_sync
 from backend.pipeline.minutes_formatter import MinutesFormatter
+from backend.pipeline.speaker_matcher import SpeakerMatcher, SpeakerSegment
 from backend.schemas.diarization import DiarizedSegmentResult
 from backend.schemas.transcription import TaskStatus
 from backend.utils.logger import get_logger
@@ -111,15 +112,27 @@ def minutes_task(
     diarization_task_id: str,
     output_format: str = "json",
     speaker_names: dict[str, str] | None = None,
+    stt_task_id: str | None = None,
 ) -> dict:
     """
     메인 회의록 생성 처리 함수 (Celery 워커에서 호출)
+
+    두 가지 입력 모드를 지원한다:
+
+    1) 레거시 모드 (stt_task_id=None):
+       - diarization_task가 이미 STT-DIA 매칭을 수행한 결과를 받음
+       - segments에는 text가 채워져 있음
+
+    2) 병렬 모드 (stt_task_id 제공):
+       - diarization_task가 raw segments만 반환한 경우 (matched=False)
+       - 이 task에서 STT 결과를 추가 조회 후 SpeakerMatcher로 매칭 수행
 
     Args:
         task_id: 회의록 작업 UUID
         diarization_task_id: 화자 분리 작업 UUID (결과 조회용)
         output_format: 출력 형식 ("json" 또는 "markdown")
         speaker_names: 화자 ID → 이름 매핑 (REQ-MIN-017)
+        stt_task_id: STT 작업 UUID (병렬 모드에서 사후 매칭에 사용)
 
     Returns:
         완료 또는 실패 결과 딕셔너리
@@ -174,11 +187,50 @@ def minutes_task(
             )
             raise RuntimeError(f"화자 분리 실패로 회의록을 생성할 수 없습니다: {upstream_error}")
         raw_segments = dia_result.get("segments", [])
+        dia_matched = dia_result.get("matched", True)  # 기존 결과는 매칭됐다고 가정
 
         _update_task_status(task_id, TaskStatus.processing, 0.3, "회의록 포맷 변환 중...")
 
-        # --- 2단계: DiarizedSegmentResult 객체 변환 ---
-        diarized_segments = [DiarizedSegmentResult(**seg) for seg in raw_segments]
+        # --- 2단계: 매칭 수행 (병렬 모드에서 dia가 raw segments만 반환한 경우) ---
+        if not dia_matched:
+            # 병렬 모드: STT 결과를 조회해 SpeakerMatcher 사용
+            if not stt_task_id:
+                raise RuntimeError(
+                    "매칭되지 않은 dia 결과(matched=False)를 받았지만 "
+                    "stt_task_id가 제공되지 않았습니다. 클라이언트가 두 ID를 모두 전달해야 합니다."
+                )
+
+            stt_result_key = f"task:result:{stt_task_id}"
+            stt_result_raw = r.get(stt_result_key)
+            if stt_result_raw is None:
+                raise FileNotFoundError(
+                    f"STT 결과를 찾을 수 없습니다: stt_task_id={stt_task_id}"
+                )
+            stt_result = json.loads(stt_result_raw)
+            if stt_result.get("status") != TaskStatus.completed.value:
+                upstream_error = _extract_cached_error_message(stt_result) or (
+                    f"STT 작업이 완료되지 않았습니다: status={stt_result.get('status')}"
+                )
+                raise RuntimeError(
+                    f"STT 작업 실패로 회의록을 생성할 수 없습니다: {upstream_error}"
+                )
+
+            stt_segments = stt_result.get("segments", [])
+            dia_speaker_segments = [
+                SpeakerSegment(
+                    speaker_id=seg["speaker_id"],
+                    start=seg["start"],
+                    end=seg["end"],
+                )
+                for seg in raw_segments
+            ]
+
+            matcher = SpeakerMatcher()
+            matched = matcher.match(stt_segments, dia_speaker_segments)
+            diarized_segments = matched
+        else:
+            # 레거시 모드: 이미 매칭된 segments를 변환
+            diarized_segments = [DiarizedSegmentResult(**seg) for seg in raw_segments]
 
         # 전체 대화 시간 계산
         total_duration = max((seg.end for seg in diarized_segments), default=0.0)
@@ -312,6 +364,7 @@ def minutes_celery_task(
     diarization_task_id: str,
     output_format: str = "json",
     speaker_names: dict[str, str] | None = None,
+    stt_task_id: str | None = None,
 ) -> dict:
     """
     Celery 래퍼: minutes_task 호출 + 재시도 처리 (REQ-MIN-009)
@@ -321,6 +374,7 @@ def minutes_celery_task(
         diarization_task_id: 화자 분리 작업 UUID
         output_format: 출력 형식 ("json" 또는 "markdown")
         speaker_names: 화자 이름 매핑
+        stt_task_id: STT 작업 UUID (병렬 모드 - dia가 matched=False일 때 매칭에 사용)
     """
     try:
         return minutes_task(
@@ -328,6 +382,7 @@ def minutes_celery_task(
             diarization_task_id=diarization_task_id,
             output_format=output_format,
             speaker_names=speaker_names,
+            stt_task_id=stt_task_id,
         )
     except FileNotFoundError as exc:
         # 화자 분리 결과 없음 → 재시도 안 함 (REQ-MIN-010)

@@ -39,13 +39,20 @@ class TranscriptionMetadata(BaseModel):
 
 
 class TranscriptionCreate(BaseModel):
-    """POST /api/v1/transcriptions 응답 (201 Created)"""
+    """POST /api/v1/transcriptions 응답 (201 Created)
+
+    REQ-STT-PERF-002: 병렬화를 위해 화자 분리 task_id도 함께 반환한다.
+    클라이언트는 두 task의 status를 동시에 폴링/SSE할 수 있다.
+    """
 
     task_id: UUID
     status: TaskStatus = TaskStatus.pending
     status_url: str
     result_url: str
     created_at: datetime
+    # 서버가 STT와 함께 자동으로 시작한 화자 분리 task_id (병렬 모드)
+    # 기존 호환을 위해 선택적. 클라이언트가 별도 POST /diarizations를 호출할 수도 있다.
+    diarization_task_id: str | None = None
 
 
 class TaskStatusResponse(BaseModel):

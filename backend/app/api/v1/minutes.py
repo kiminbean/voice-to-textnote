@@ -81,12 +81,14 @@ async def create_minutes(
         diarization_task_id=request.diarization_task_id,
         output_format=request.output_format,
         speaker_names=request.speaker_names,
+        stt_task_id=request.stt_task_id,
     )
 
     logger.info(
         "회의록 생성 작업 등록",
         task_id=task_id,
         diarization_task_id=request.diarization_task_id,
+        stt_task_id=request.stt_task_id,
     )
 
     return {

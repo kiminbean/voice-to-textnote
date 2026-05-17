@@ -109,26 +109,45 @@ def _unregister_active_job(task_id: str) -> None:
 
 def diarization_task(
     task_id: str,
-    stt_task_id: str,
+    stt_task_id: str | None = None,
     num_speakers: int | None = None,
     min_speakers: int = 1,
     max_speakers: int = 10,
+    audio_path: str | None = None,
 ) -> dict:
     """
     메인 화자 분리 처리 함수 (Celery 워커에서 호출)
 
+    두 가지 운영 모드를 지원한다:
+
+    1) 레거시 직렬 모드 (audio_path is None, stt_task_id 필수):
+       - STT 완료 결과를 Redis에서 조회 (기다리지 않음, 없으면 실패)
+       - 화자 분리 후 STT segments와 매칭한 결과를 반환
+
+    2) 병렬 모드 (audio_path 제공, stt_task_id 선택):
+       - WAV 파일을 직접 받아 STT 완료를 기다리지 않고 즉시 화자 분리
+       - stt_task_id를 함께 받으면 결과 도착 시점에 매칭, 없으면 매칭 skip
+         (매칭되지 않은 raw segments는 minutes_task에서 STT와 결합)
+
     Args:
         task_id: 화자 분리 작업 UUID
-        stt_task_id: STT 작업 UUID (결과 조회용)
+        stt_task_id: STT 작업 UUID (병렬 모드에서는 선택, 매칭에만 사용)
         num_speakers: 예상 화자 수 (None이면 자동 감지)
         min_speakers: 최소 화자 수
         max_speakers: 최대 화자 수
+        audio_path: WAV 파일 직접 경로 (병렬 모드)
 
     Returns:
         완료 또는 실패 결과 딕셔너리
     """
     processing_start = datetime.now(UTC)
-    logger.info("화자 분리 작업 시작", task_id=task_id, stt_task_id=stt_task_id)
+    parallel_mode = audio_path is not None
+    logger.info(
+        "화자 분리 작업 시작",
+        task_id=task_id,
+        stt_task_id=stt_task_id,
+        parallel_mode=parallel_mode,
+    )
 
     # --- 동시 작업 수 제한 확인 (REQ-DIA-014: 최대 2개) ---
     active_count = _get_active_dia_count()
@@ -154,33 +173,45 @@ def diarization_task(
     _register_active_job(task_id)
 
     try:
-        _update_task_status(task_id, TaskStatus.processing, 0.05, "STT 결과 조회 중...")
-
-        # --- 1단계: STT 결과 조회 ---
         r = _get_redis()
-        stt_result_key = f"task:result:{stt_task_id}"
-        stt_result_raw = r.get(stt_result_key)
+        stt_segments: list[dict] = []
 
-        if stt_result_raw is None:
-            raise FileNotFoundError(f"STT 결과를 찾을 수 없습니다: stt_task_id={stt_task_id}")
+        if parallel_mode:
+            # --- 병렬 모드: STT 결과를 기다리지 않고 WAV 직접 처리 ---
+            _update_task_status(task_id, TaskStatus.processing, 0.05, "WAV 파일 확인 중...")
+            wav_path = Path(audio_path)  # type: ignore[arg-type]
+            if not wav_path.exists():
+                raise FileNotFoundError(f"WAV 파일을 찾을 수 없습니다: {wav_path}")
+        else:
+            # --- 레거시 직렬 모드: STT 결과 조회 후 매칭 ---
+            if not stt_task_id:
+                raise RuntimeError("레거시 모드에서는 stt_task_id가 필요합니다.")
 
-        stt_result = json.loads(stt_result_raw)
-        stt_status = stt_result.get("status")
-        if stt_status and stt_status != TaskStatus.completed.value:
-            # BUGFIX: 선행 STT가 실패했는데도 후속 DIA가 빈 결과로 진행되면
-            # 실제 원인이 가려집니다. 선행 작업 상태를 먼저 확인하고 즉시 중단합니다.
-            upstream_error = _extract_cached_error_message(stt_result) or (
-                f"STT 작업이 완료되지 않았습니다: status={stt_status}"
-            )
-            raise RuntimeError(f"STT 작업 실패로 화자 분리를 시작할 수 없습니다: {upstream_error}")
-        stt_segments = stt_result.get("segments", [])
+            _update_task_status(task_id, TaskStatus.processing, 0.05, "STT 결과 조회 중...")
+            stt_result_key = f"task:result:{stt_task_id}"
+            stt_result_raw = r.get(stt_result_key)
 
-        _update_task_status(task_id, TaskStatus.processing, 0.10, "WAV 파일 확인 중...")
+            if stt_result_raw is None:
+                raise FileNotFoundError(
+                    f"STT 결과를 찾을 수 없습니다: stt_task_id={stt_task_id}"
+                )
 
-        # --- 2단계: WAV 파일 확인 ---
-        wav_path = Path(settings.temp_dir) / f"{stt_task_id}.wav"
-        if not wav_path.exists():
-            raise FileNotFoundError(f"WAV 파일을 찾을 수 없습니다: {wav_path}")
+            stt_result = json.loads(stt_result_raw)
+            stt_status = stt_result.get("status")
+            if stt_status and stt_status != TaskStatus.completed.value:
+                upstream_error = _extract_cached_error_message(stt_result) or (
+                    f"STT 작업이 완료되지 않았습니다: status={stt_status}"
+                )
+                raise RuntimeError(
+                    f"STT 작업 실패로 화자 분리를 시작할 수 없습니다: {upstream_error}"
+                )
+            stt_segments = stt_result.get("segments", [])
+
+            _update_task_status(task_id, TaskStatus.processing, 0.10, "WAV 파일 확인 중...")
+
+            wav_path = Path(settings.temp_dir) / f"{stt_task_id}.wav"
+            if not wav_path.exists():
+                raise FileNotFoundError(f"WAV 파일을 찾을 수 없습니다: {wav_path}")
 
         _update_task_status(task_id, TaskStatus.processing, 0.20, "화자 분리 모델 준비 중...")
 
@@ -223,38 +254,79 @@ def diarization_task(
             # 15분 이하 → 기존 단일 파일 처리
             dia_segments = engine.diarize(wav_path)
 
-        _update_task_status(task_id, TaskStatus.processing, 0.80, "STT 결과와 화자 매칭 중...")
-
-        # --- 5단계: STT 세그먼트와 화자 매핑 ---
-        matcher = SpeakerMatcher()
-        diarized_segments = matcher.match(stt_segments, dia_segments)
-
-        # 화자 통계 생성
-        speaker_stats: dict[str, dict] = {}
-        for seg in diarized_segments:
-            if seg.speaker_id is not None:
-                if seg.speaker_id not in speaker_stats:
-                    speaker_stats[seg.speaker_id] = {
-                        "speaker_id": seg.speaker_id,
+        # --- 5단계: 매칭 (모드별 분기) ---
+        if parallel_mode and not stt_segments:
+            # 병렬 모드 + STT 결과 없음: 매칭 skip, raw 화자 segments만 반환
+            # (minutes_task가 STT/DIA 결과를 결합하여 매칭 수행)
+            _update_task_status(
+                task_id, TaskStatus.processing, 0.85, "화자 segments 정리 중..."
+            )
+            speaker_stats: dict[str, dict] = {}
+            for dseg in dia_segments:
+                sp = dseg.speaker_id
+                if sp not in speaker_stats:
+                    speaker_stats[sp] = {
+                        "speaker_id": sp,
                         "total_speaking_time": 0.0,
                         "segment_count": 0,
                     }
-                speaker_stats[seg.speaker_id]["total_speaking_time"] += seg.end - seg.start
-                speaker_stats[seg.speaker_id]["segment_count"] += 1
+                speaker_stats[sp]["total_speaking_time"] += dseg.end - dseg.start
+                speaker_stats[sp]["segment_count"] += 1
 
-        processing_end = datetime.now(UTC)
+            processing_end = datetime.now(UTC)
+            final_result = {
+                "task_id": task_id,
+                "stt_task_id": stt_task_id,
+                "status": TaskStatus.completed.value,
+                # 매칭 전 raw segments (text 없음). minutes_task가 이를 보고 매칭 수행.
+                "segments": [
+                    {
+                        "speaker_id": dseg.speaker_id,
+                        "start": dseg.start,
+                        "end": dseg.end,
+                    }
+                    for dseg in dia_segments
+                ],
+                "speakers": list(speaker_stats.values()),
+                "num_speakers": len(speaker_stats),
+                "matched": False,  # minutes_task가 매칭을 수행해야 함을 알림
+                "created_at": processing_start.isoformat(),
+                "completed_at": processing_end.isoformat(),
+            }
+        else:
+            # 레거시 직렬 모드 (또는 병렬 모드인데 STT 결과까지 함께 받은 경우)
+            _update_task_status(
+                task_id, TaskStatus.processing, 0.80, "STT 결과와 화자 매칭 중..."
+            )
+            matcher = SpeakerMatcher()
+            diarized_segments = matcher.match(stt_segments, dia_segments)
 
-        # --- 6단계: 결과 저장 ---
-        final_result = {
-            "task_id": task_id,
-            "stt_task_id": stt_task_id,
-            "status": TaskStatus.completed.value,
-            "segments": [seg.model_dump() for seg in diarized_segments],
-            "speakers": list(speaker_stats.values()),
-            "num_speakers": len(speaker_stats),
-            "created_at": processing_start.isoformat(),
-            "completed_at": processing_end.isoformat(),
-        }
+            speaker_stats = {}
+            for seg in diarized_segments:
+                if seg.speaker_id is not None:
+                    if seg.speaker_id not in speaker_stats:
+                        speaker_stats[seg.speaker_id] = {
+                            "speaker_id": seg.speaker_id,
+                            "total_speaking_time": 0.0,
+                            "segment_count": 0,
+                        }
+                    speaker_stats[seg.speaker_id]["total_speaking_time"] += (
+                        seg.end - seg.start
+                    )
+                    speaker_stats[seg.speaker_id]["segment_count"] += 1
+
+            processing_end = datetime.now(UTC)
+            final_result = {
+                "task_id": task_id,
+                "stt_task_id": stt_task_id,
+                "status": TaskStatus.completed.value,
+                "segments": [seg.model_dump() for seg in diarized_segments],
+                "speakers": list(speaker_stats.values()),
+                "num_speakers": len(speaker_stats),
+                "matched": True,
+                "created_at": processing_start.isoformat(),
+                "completed_at": processing_end.isoformat(),
+            }
 
         _cache_result(task_id, final_result)
 
@@ -368,20 +440,22 @@ def diarization_task(
 def diarization_celery_task(
     self,
     task_id: str,
-    stt_task_id: str,
+    stt_task_id: str | None = None,
     num_speakers: int | None = None,
     min_speakers: int = 1,
     max_speakers: int = 10,
+    audio_path: str | None = None,
 ) -> dict:
     """
     Celery 래퍼: diarization_task 호출 + 재시도 처리
 
     Args:
         task_id: 화자 분리 작업 UUID
-        stt_task_id: STT 작업 UUID
+        stt_task_id: STT 작업 UUID (병렬 모드에서는 선택)
         num_speakers: 예상 화자 수
         min_speakers: 최소 화자 수
         max_speakers: 최대 화자 수
+        audio_path: WAV 파일 직접 경로 (병렬 모드)
     """
     try:
         return diarization_task(
@@ -390,6 +464,7 @@ def diarization_celery_task(
             num_speakers=num_speakers,
             min_speakers=min_speakers,
             max_speakers=max_speakers,
+            audio_path=audio_path,
         )
     except SoftTimeLimitExceeded:
         # 시간 초과 → 재시도 안 함 (diarization_task 내부에서 이미 처리)

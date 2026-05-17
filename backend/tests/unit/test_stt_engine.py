@@ -435,3 +435,221 @@ class TestWhisperEngineProperties:
                 engine.load()
                 assert engine.load_time_seconds is not None
                 assert engine.load_time_seconds >= 0.0
+
+
+# ---------------------------------------------------------------------------
+# faster-whisper 백엔드 테스트 (REQ-STT-PERF-001)
+# ---------------------------------------------------------------------------
+
+
+def _make_mock_faster_whisper(segments=None, language="ko"):
+    """faster_whisper mock 모듈 생성 헬퍼
+
+    Args:
+        segments: 반환할 SegmentResult mock 리스트 (None이면 빈 리스트)
+        language: info.language 값
+
+    Returns:
+        faster_whisper 모듈 mock과 WhisperModel 인스턴스 mock의 튜플
+    """
+    if segments is None:
+        segments = []
+
+    mock_info = MagicMock()
+    mock_info.language = language
+
+    mock_model = MagicMock()
+    # transcribe()는 (generator, info) 튜플을 반환
+    mock_model.transcribe.return_value = (iter(segments), mock_info)
+
+    mock_module = MagicMock()
+    mock_module.WhisperModel.return_value = mock_model
+    return mock_module, mock_model
+
+
+def _make_fw_segment(idx, start, end, text, avg_logprob=-0.3):
+    """faster-whisper SegmentResult mock 생성 헬퍼"""
+    seg = MagicMock()
+    seg.id = idx
+    seg.start = start
+    seg.end = end
+    seg.text = text
+    seg.avg_logprob = avg_logprob
+    seg.no_speech_prob = 0.05
+    seg.compression_ratio = 1.2
+    return seg
+
+
+class TestFasterWhisperBackend:
+    """faster-whisper 백엔드 로드/추론 테스트"""
+
+    def setup_method(self):
+        from backend.ml.stt_engine import WhisperEngine
+
+        WhisperEngine._instance = None
+        WhisperEngine._model_loaded = False
+        WhisperEngine._load_time_seconds = None
+        WhisperEngine._device = "cpu"
+        WhisperEngine._backend = "unknown"
+        WhisperEngine._faster_whisper_model = None
+        WhisperEngine._whisper_model = None
+
+    def test_faster_whisper_loads_on_linux_when_mlx_unavailable(self):
+        """MLX 미설치 + faster-whisper 설치 시 faster-whisper 백엔드 선택"""
+        from backend.ml.stt_engine import WhisperEngine
+
+        mock_fw, _ = _make_mock_faster_whisper()
+        # mlx_whisper를 ImportError로 만들기 위해 sys.modules에서 제거
+        with patch.dict(sys.modules, {"faster_whisper": mock_fw, "mlx_whisper": None}):
+            with patch("platform.system", return_value="Linux"):
+                engine = WhisperEngine.get_instance()
+                engine.load()
+                assert engine.is_loaded is True
+                assert engine.backend == "faster_whisper"
+
+    def test_faster_whisper_uses_cpu_int8_when_no_cuda(self):
+        """CUDA 미가용 시 device='cpu', compute_type='int8' 선택"""
+        from backend.ml.stt_engine import WhisperEngine
+
+        mock_fw, _ = _make_mock_faster_whisper()
+        mock_torch = MagicMock()
+        mock_torch.cuda.is_available.return_value = False
+
+        with patch.dict(
+            sys.modules,
+            {"faster_whisper": mock_fw, "torch": mock_torch, "mlx_whisper": None},
+        ):
+            with patch("platform.system", return_value="Linux"):
+                engine = WhisperEngine.get_instance()
+                engine.load()
+                # WhisperModel() 호출 시 device, compute_type 확인
+                call_args = mock_fw.WhisperModel.call_args
+                kwargs = call_args.kwargs if hasattr(call_args, "kwargs") else {}
+                assert kwargs.get("device") == "cpu"
+                assert kwargs.get("compute_type") == "int8"
+                assert engine.device == "cpu"
+
+    def test_faster_whisper_uses_cuda_float16_when_available(self):
+        """CUDA 가용 시 device='cuda', compute_type='float16' 선택"""
+        from backend.ml.stt_engine import WhisperEngine
+
+        mock_fw, _ = _make_mock_faster_whisper()
+        mock_torch = MagicMock()
+        mock_torch.cuda.is_available.return_value = True
+
+        with patch.dict(
+            sys.modules,
+            {"faster_whisper": mock_fw, "torch": mock_torch, "mlx_whisper": None},
+        ):
+            with patch("platform.system", return_value="Linux"):
+                engine = WhisperEngine.get_instance()
+                engine.load()
+                call_args = mock_fw.WhisperModel.call_args
+                kwargs = call_args.kwargs if hasattr(call_args, "kwargs") else {}
+                assert kwargs.get("device") == "cuda"
+                assert kwargs.get("compute_type") == "float16"
+                assert engine.device == "cuda"
+
+    def test_faster_whisper_model_name_mapping(self):
+        """mlx-community 모델명을 faster-whisper 모델명으로 변환"""
+        from backend.ml.stt_engine import _resolve_faster_whisper_model
+
+        assert _resolve_faster_whisper_model("mlx-community/whisper-small-mlx") == "small"
+        assert (
+            _resolve_faster_whisper_model("mlx-community/whisper-large-v3-turbo")
+            == "large-v3-turbo"
+        )
+        # 매핑에 없는 이름은 그대로 반환 (자유 형식 모델 지원)
+        assert _resolve_faster_whisper_model("custom/my-model") == "custom/my-model"
+
+    def test_faster_whisper_transcribe_returns_compatible_format(
+        self, test_audio_file: Path
+    ):
+        """faster-whisper 출력이 openai-whisper와 호환되는 형식인지 검증"""
+        from backend.ml.stt_engine import WhisperEngine
+
+        segments = [
+            _make_fw_segment(0, 0.0, 5.6, "지금부터 회의 시작하겠습니다."),
+            _make_fw_segment(1, 6.68, 15.4, "노트 준비해 주시기 바랍니다."),
+        ]
+        mock_fw, mock_model = _make_mock_faster_whisper(segments=segments, language="ko")
+        mock_torch = MagicMock()
+        mock_torch.cuda.is_available.return_value = False
+
+        with patch.dict(
+            sys.modules,
+            {"faster_whisper": mock_fw, "torch": mock_torch, "mlx_whisper": None},
+        ):
+            with patch("platform.system", return_value="Linux"):
+                engine = WhisperEngine.get_instance()
+                engine.load()
+                result = engine.transcribe(test_audio_file)
+
+        # openai-whisper 호환 키 확인
+        assert "segments" in result
+        assert "language" in result
+        assert "text" in result
+        assert result["language"] == "ko"
+        assert len(result["segments"]) == 2
+
+        # 각 세그먼트의 필수 키
+        for seg in result["segments"]:
+            for field in ("id", "start", "end", "text", "avg_logprob"):
+                assert field in seg
+
+        # 첫 세그먼트 내용 확인
+        assert result["segments"][0]["start"] == 0.0
+        assert result["segments"][0]["end"] == 5.6
+        assert "회의" in result["segments"][0]["text"]
+
+    def test_faster_whisper_transcribe_calls_with_optimization_flags(
+        self, test_audio_file: Path
+    ):
+        """transcribe() 호출 시 속도 최적화 옵션이 적용되는지 확인"""
+        from backend.ml.stt_engine import WhisperEngine
+
+        mock_fw, mock_model = _make_mock_faster_whisper()
+        mock_torch = MagicMock()
+        mock_torch.cuda.is_available.return_value = False
+
+        with patch.dict(
+            sys.modules,
+            {"faster_whisper": mock_fw, "torch": mock_torch, "mlx_whisper": None},
+        ):
+            with patch("platform.system", return_value="Linux"):
+                engine = WhisperEngine.get_instance()
+                engine.load()
+                engine.transcribe(test_audio_file, language="ko")
+
+                call_args = mock_model.transcribe.call_args
+                kwargs = call_args.kwargs if hasattr(call_args, "kwargs") else {}
+                # 속도 최적화 옵션 검증
+                assert kwargs.get("language") == "ko"
+                assert kwargs.get("word_timestamps") is False
+                assert kwargs.get("beam_size") == 1
+                assert kwargs.get("vad_filter") is True
+
+    def test_falls_back_to_openai_whisper_when_faster_unavailable(self):
+        """faster-whisper 미설치 시 openai-whisper로 폴백"""
+        from backend.ml.stt_engine import WhisperEngine
+
+        mock_whisper = MagicMock()
+        mock_whisper.load_model.return_value = MagicMock()
+        mock_torch = MagicMock()
+        mock_torch.cuda.is_available.return_value = False
+
+        # faster_whisper는 ImportError 발생 시뮬레이션 → None 매핑
+        with patch.dict(
+            sys.modules,
+            {
+                "faster_whisper": None,
+                "whisper": mock_whisper,
+                "torch": mock_torch,
+                "mlx_whisper": None,
+            },
+        ):
+            with patch("platform.system", return_value="Linux"):
+                engine = WhisperEngine.get_instance()
+                engine.load()
+                # faster-whisper 실패 → openai-whisper 선택
+                assert engine.backend == "whisper"
