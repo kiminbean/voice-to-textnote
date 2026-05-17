@@ -43,14 +43,19 @@ class DiarizationEngine:
     _vad_model: Any = None
     _vad_loaded: bool = False
 
-    # VAD 통합 상수
-    # - segment 간 silence padding: pyannote가 segment boundary를 인식하도록 보장
-    # - 너무 짧으면 segment 연속 처리 / 너무 길면 압축 효과 감소
-    VAD_SILENCE_PAD_SEC: float = 0.5
-    # - silero get_speech_timestamps의 무음 임계 (이보다 짧은 무음은 발화로 간주)
-    VAD_MIN_SILENCE_MS: int = 500
+    # VAD 통합 상수 (실측 튜닝: 24-segment 폭증 + padding overhead 문제 해결)
+    # - segment 간 silence padding을 최소화하여 압축 효과를 보존
+    VAD_SILENCE_PAD_SEC: float = 0.1
+    # - 너무 짧은 무음(<1.5s)은 그냥 발화로 보고 segment 폭증 방지
+    VAD_MIN_SILENCE_MS: int = 1500
     # - 각 음성 구간 양쪽 padding (boundary 정확도 향상)
-    VAD_SPEECH_PAD_MS: int = 200
+    VAD_SPEECH_PAD_MS: int = 300
+    # - VAD 결과 인접 segment 병합 임계: 이 간격 이하 무음은 두 segment를 하나로 합침
+    #   (pyannote에 짧은 boundary가 많이 들어가면 처리 시간이 폭증하므로 보수적으로 병합)
+    VAD_MERGE_GAP_SEC: float = 1.0
+    # - 압축비가 이 값보다 크면(즉 15% 미만 절약) VAD overhead가 효과를 넘어서므로
+    #   원본 waveform을 그대로 사용한다 (mapping=[] 반환)
+    VAD_MIN_COMPRESSION_GAIN: float = 0.85
 
     def __init__(self) -> None:
         pass
@@ -186,7 +191,7 @@ class DiarizationEngine:
             # silero_vad는 mono 1D 텐서를 기대
             mono_waveform = waveform.squeeze() if waveform.dim() > 1 else waveform
 
-            speech_ts = get_speech_timestamps(
+            raw_speech_ts = get_speech_timestamps(
                 mono_waveform,
                 vad_model,
                 sampling_rate=sample_rate,
@@ -194,8 +199,40 @@ class DiarizationEngine:
                 speech_pad_ms=self.VAD_SPEECH_PAD_MS,
             )
 
-            if not speech_ts:
+            if not raw_speech_ts:
                 logger.warning("VAD: 음성 구간 없음, 원본 waveform 사용")
+                return waveform, []
+
+            # 인접한 짧은 음성 구간 병합 (pyannote에 짧은 segment가 많이 들어가면
+            # segmentation/embedding 오버헤드가 폭증하므로 보수적으로 합침)
+            merge_gap_samples = int(sample_rate * self.VAD_MERGE_GAP_SEC)
+            speech_ts: list[dict] = []
+            for ts in raw_speech_ts:
+                if (
+                    speech_ts
+                    and ts["start"] - speech_ts[-1]["end"] <= merge_gap_samples
+                ):
+                    speech_ts[-1] = {
+                        "start": speech_ts[-1]["start"],
+                        "end": ts["end"],
+                    }
+                else:
+                    speech_ts.append({"start": ts["start"], "end": ts["end"]})
+
+            # 압축 효과 검증: 절약이 충분하지 않으면 VAD 사용 안 함
+            original_samples = waveform.shape[-1]
+            speech_samples = sum(ts["end"] - ts["start"] for ts in speech_ts)
+            speech_ratio = (
+                speech_samples / original_samples if original_samples > 0 else 1.0
+            )
+            if speech_ratio > self.VAD_MIN_COMPRESSION_GAIN:
+                logger.info(
+                    "VAD 압축 효과 부족, 원본 사용",
+                    speech_ratio=round(speech_ratio, 3),
+                    threshold=self.VAD_MIN_COMPRESSION_GAIN,
+                    merged_segments=len(speech_ts),
+                    raw_segments=len(raw_speech_ts),
+                )
                 return waveform, []
 
             # 음성 구간 사이에 silence padding 삽입 (pyannote가 boundary 인식하도록)
@@ -230,14 +267,17 @@ class DiarizationEngine:
                 cumulative += seg_length
 
             compressed = torch.cat(chunks, dim=1)
-            original_duration = waveform.shape[-1] / sample_rate
+            original_duration = original_samples / sample_rate
             compressed_duration = compressed.shape[-1] / sample_rate
             logger.info(
                 "VAD 압축 완료",
-                speech_segments=len(speech_ts),
+                raw_segments=len(raw_speech_ts),
+                merged_segments=len(speech_ts),
                 original_seconds=round(original_duration, 2),
                 compressed_seconds=round(compressed_duration, 2),
-                ratio=round(compressed_duration / original_duration, 3) if original_duration > 0 else 0,
+                ratio=round(compressed_duration / original_duration, 3)
+                if original_duration > 0
+                else 0,
             )
             return compressed, mapping
         except Exception as e:
