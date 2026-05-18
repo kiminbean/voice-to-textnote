@@ -40,7 +40,7 @@ dependencies = [
     # SPEC-TEAM-001: JWT 인증 의존성
     "python-jose[cryptography]>=3.3.0",
     "passlib[bcrypt]>=1.7.4",
-    "bcrypt>=4.0.0,<5.0.0",
+    "bcrypt>=4.0.0,<6.0.0",
     "pydantic[email]>=2.9",
 ]
 
