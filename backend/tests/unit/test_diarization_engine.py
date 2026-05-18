@@ -557,12 +557,12 @@ class TestDiarizeVAD:
 
         engine, _ = _make_loaded_engine_with_mock_pipeline()
 
-        # 두 segment 간격 8000 samples = 0.5s < merge_gap (1s) → 병합
+        # 두 segment 간격 500 samples = 0.05s < merge_gap (0.3s) → 병합
         # 음성 1000 + 1000 = 2000 (ratio 0.125, threshold 통과)
         vad_mock = _make_silero_vad_mock(
             timestamps=[
                 {"start": 0, "end": 1000},
-                {"start": 9000, "end": 10000},
+                {"start": 1500, "end": 2500},
             ]
         )
 

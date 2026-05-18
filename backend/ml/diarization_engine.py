@@ -52,7 +52,7 @@ class DiarizationEngine:
     VAD_SPEECH_PAD_MS: int = 300
     # - VAD 결과 인접 segment 병합 임계: 이 간격 이하 무음은 두 segment를 하나로 합침
     #   (pyannote에 짧은 boundary가 많이 들어가면 처리 시간이 폭증하므로 보수적으로 병합)
-    VAD_MERGE_GAP_SEC: float = 1.0
+    VAD_MERGE_GAP_SEC: float = 0.3
     # - 압축비가 이 값보다 크면(즉 15% 미만 절약) VAD overhead가 효과를 넘어서므로
     #   원본 waveform을 그대로 사용한다 (mapping=[] 반환)
     VAD_MIN_COMPRESSION_GAIN: float = 0.85
@@ -210,7 +210,7 @@ class DiarizationEngine:
             for ts in raw_speech_ts:
                 if (
                     speech_ts
-                    and ts["start"] - speech_ts[-1]["end"] <= merge_gap_samples
+                    and (ts["start"] - speech_ts[-1]["end"]) <= merge_gap_samples
                 ):
                     speech_ts[-1] = {
                         "start": speech_ts[-1]["start"],
