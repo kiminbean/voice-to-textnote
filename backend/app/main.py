@@ -25,6 +25,7 @@ from backend.app.api.v1 import (
     keywords,
     meetings,
     minutes,
+    quality_assessment,
     search,
     sentiment,
     speakers,
@@ -70,6 +71,7 @@ TAGS_METADATA = [
     {"name": "search", "description": "Full-text meeting search."},
     {"name": "export", "description": "Meeting export endpoints."},
     {"name": "statistics", "description": "Meeting statistics and dashboard views."},
+    {"name": "quality", "description": "Meeting minutes quality assessment and improvement suggestions."},
     {"name": "auth", "description": "User authentication and session APIs."},
     {"name": "teams", "description": "Team workspace management."},
     {"name": "meetings", "description": "Shared meeting records and permissions."},
@@ -239,6 +241,9 @@ def create_app() -> FastAPI:
 
     # SPEC-AUDIO-PREP-001: 오디오 전처리(노이즈/무음 트리밍/정규화) API
     app.include_router(audio_preprocess.router, prefix=api_prefix, dependencies=_auth)
+
+    # SPEC-QUALITY-001: 회의록 품질 평가 및 개선 제안 API
+    app.include_router(quality_assessment.router, prefix=api_prefix, dependencies=_auth)
 
     return app
 

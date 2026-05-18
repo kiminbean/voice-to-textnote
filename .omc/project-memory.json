@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "lastScanned": 1778861153209,
+  "lastScanned": 1779087755964,
   "projectRoot": "/Users/ibkim/Projects/voice-to-textnote",
   "techStack": {
     "languages": [
@@ -55,10 +55,9 @@
     "alembic": {
       "path": "alembic",
       "purpose": null,
-      "fileCount": 3,
-      "lastAccessed": 1778861153202,
+      "fileCount": 2,
+      "lastAccessed": 1779087755952,
       "keyFiles": [
-        "__init__.py",
         "env.py",
         "script.py.mako"
       ]
@@ -66,21 +65,21 @@
     "backend": {
       "path": "backend",
       "purpose": null,
-      "fileCount": 57,
-      "lastAccessed": 1778861153202,
+      "fileCount": 83,
+      "lastAccessed": 1779087755952,
       "keyFiles": [
         "<MagicMock name='settings.temp_dir.__truediv__()' id='4439559872'>",
         "<MagicMock name='settings.temp_dir.__truediv__()' id='4445691520'>",
         "<MagicMock name='settings.temp_dir.__truediv__()' id='4455705840'>",
-        "<MagicMock name='settings.temp_dir.__truediv__()' id='4464703344'>",
-        "<MagicMock name='settings.temp_dir.__truediv__()' id='4477472448'>"
+        "<MagicMock name='settings.temp_dir.__truediv__()' id='4461842112'>",
+        "<MagicMock name='settings.temp_dir.__truediv__()' id='4464703344'>"
       ]
     },
     "client": {
       "path": "client",
       "purpose": null,
       "fileCount": 8,
-      "lastAccessed": 1778861153202,
+      "lastAccessed": 1779087755953,
       "keyFiles": [
         "README.md",
         "analysis_options.yaml",
@@ -93,7 +92,7 @@
       "path": "deploy",
       "purpose": null,
       "fileCount": 4,
-      "lastAccessed": 1778861153202,
+      "lastAccessed": 1779087755953,
       "keyFiles": [
         "requirements-ubuntu.txt",
         "restart.sh",
@@ -105,7 +104,7 @@
       "path": "nginx",
       "purpose": null,
       "fileCount": 1,
-      "lastAccessed": 1778861153203,
+      "lastAccessed": 1779087755953,
       "keyFiles": [
         "nginx.conf"
       ]
@@ -114,14 +113,14 @@
       "path": "storage",
       "purpose": null,
       "fileCount": 0,
-      "lastAccessed": 1778861153203,
+      "lastAccessed": 1779087755953,
       "keyFiles": []
     },
     "venv": {
       "path": "venv",
       "purpose": null,
       "fileCount": 2,
-      "lastAccessed": 1778861153203,
+      "lastAccessed": 1779087755954,
       "keyFiles": [
         "pyvenv.cfg"
       ]
@@ -130,7 +129,7 @@
       "path": "client/lib",
       "purpose": "Library code",
       "fileCount": 1,
-      "lastAccessed": 1778861153203,
+      "lastAccessed": 1779087755954,
       "keyFiles": [
         "main.dart"
       ]
@@ -139,7 +138,7 @@
       "path": "venv/bin",
       "purpose": "Executable scripts",
       "fileCount": 60,
-      "lastAccessed": 1778861153204,
+      "lastAccessed": 1779087755955,
       "keyFiles": [
         "Activate.ps1",
         "activate",
@@ -150,21 +149,21 @@
       "path": "venv/lib",
       "purpose": "Library code",
       "fileCount": 0,
-      "lastAccessed": 1778861153204,
+      "lastAccessed": 1779087755955,
       "keyFiles": []
     }
   },
   "hotPaths": [
     {
       "path": "backend/app/main.py",
-      "accessCount": 20,
-      "lastAccessed": 1778891554159,
+      "accessCount": 21,
+      "lastAccessed": 1779087774316,
       "type": "file"
     },
     {
       "path": "backend/app/config.py",
-      "accessCount": 12,
-      "lastAccessed": 1778891594596,
+      "accessCount": 13,
+      "lastAccessed": 1779087774520,
       "type": "file"
     },
     {
@@ -175,8 +174,8 @@
     },
     {
       "path": "backend/app/api/v1/export.py",
-      "accessCount": 10,
-      "lastAccessed": 1778891817029,
+      "accessCount": 11,
+      "lastAccessed": 1779087840805,
       "type": "file"
     },
     {
@@ -240,15 +239,15 @@
       "type": "file"
     },
     {
-      "path": "pyproject.toml",
-      "accessCount": 4,
-      "lastAccessed": 1778861203281,
+      "path": "backend/app/api/v1/search.py",
+      "accessCount": 5,
+      "lastAccessed": 1779087839818,
       "type": "file"
     },
     {
-      "path": "backend/app/api/v1/search.py",
+      "path": "pyproject.toml",
       "accessCount": 4,
-      "lastAccessed": 1778891562296,
+      "lastAccessed": 1778861203281,
       "type": "file"
     },
     {
@@ -330,6 +329,12 @@
       "type": "file"
     },
     {
+      "path": "backend/db/search_service.py",
+      "accessCount": 3,
+      "lastAccessed": 1779087840361,
+      "type": "file"
+    },
+    {
       "path": "backend/tests/unit/test_history_api.py",
       "accessCount": 2,
       "lastAccessed": 1777025726212,
@@ -381,12 +386,6 @@
       "path": "backend/db/auth_service.py",
       "accessCount": 2,
       "lastAccessed": 1778891572459,
-      "type": "file"
-    },
-    {
-      "path": "backend/db/search_service.py",
-      "accessCount": 2,
-      "lastAccessed": 1778891576286,
       "type": "file"
     },
     {
