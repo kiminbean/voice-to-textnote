@@ -275,6 +275,15 @@ class _MinutesTabState extends ConsumerState<_MinutesTab> {
                 ],
               ),
             ),
+            // 편집 모드 시각적 피드백
+            if (_isEditing)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Text(
+                  '📌 편집할 셀을 탭하세요',
+                  style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.primary),
+                ),
+              ),
             // 테이블
             Expanded(
               child: result.sections.isNotEmpty
@@ -325,18 +334,107 @@ class _MinutesTabState extends ConsumerState<_MinutesTab> {
                   // table_layout 없으면 sections 기반 단순 렌더링
                   : result.sections.entries.map((entry) {
                       final isLarge = entry.key.contains('내용') || entry.value.length > 100;
-                      return _tableRow2Col(
+                      final value = entry.value.isNotEmpty ? entry.value : '-';
+                      final row = _tableRow2Col(
                         entry.key, headerBg,
-                        entry.value.isNotEmpty ? entry.value : '-',
+                        value,
                         isLarge ? contentBg : null,
                         borderColor,
                         minHeight: isLarge ? 150 : 0,
                       );
+                      return _isEditing
+                          ? GestureDetector(
+                              onTap: () => _editCell(entry.key, value == '-' ? '' : value),
+                              child: row,
+                            )
+                          : row;
                     }).toList(),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  // 편집 모드에서 split 행의 각 셀을 개별적으로 편집 가능하도록 래핑
+  Widget _wrapSplitRowWithEdit(
+    List<dynamic> cells,
+    SummaryResult result,
+    Color headerBg,
+    Color contentBg,
+    Color borderColor,
+  ) {
+    if (cells.length == 2) {
+      final label1 = cells[0]['label'] as String? ?? '';
+      final label2 = cells[1]['label'] as String? ?? '';
+      final value1 = _resolveValue(label1, result);
+      final value2 = _resolveValue(label2, result);
+      final theme = Theme.of(context);
+      final editBorder = theme.colorScheme.primary.withAlpha(100);
+
+      return Container(
+        decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: borderColor)),
+        ),
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // 셀 1
+              SizedBox(
+                width: 90,
+                child: Container(
+                  color: headerBg,
+                  padding: const EdgeInsets.all(10),
+                  alignment: Alignment.centerLeft,
+                  child: Text(label1, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: theme.colorScheme.onSurface), maxLines: 2, overflow: TextOverflow.ellipsis),
+                ),
+              ),
+              Container(width: 1, color: borderColor),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => _editCell(label1, value1),
+                  child: Container(
+                    decoration: BoxDecoration(border: Border.all(color: editBorder, width: 1)),
+                    padding: const EdgeInsets.all(10),
+                    child: Text(value1, style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface), softWrap: true),
+                  ),
+                ),
+              ),
+              Container(width: 1, color: borderColor),
+              // 셀 2
+              SizedBox(
+                width: 70,
+                child: Container(
+                  color: headerBg,
+                  padding: const EdgeInsets.all(10),
+                  alignment: Alignment.centerLeft,
+                  child: Text(label2, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: theme.colorScheme.onSurface), maxLines: 2, overflow: TextOverflow.ellipsis),
+                ),
+              ),
+              Container(width: 1, color: borderColor),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => _editCell(label2, value2),
+                  child: Container(
+                    decoration: BoxDecoration(border: Border.all(color: editBorder, width: 1)),
+                    padding: const EdgeInsets.all(10),
+                    child: Text(value2, style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface), softWrap: true),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    // 3+ 셀: 단순 N열 레이아웃
+    final labels = cells.map((c) => c['label'] as String? ?? '').toList();
+    final values = labels.map((l) => _resolveValue(l, result)).toList();
+    final row = _tableRowNCol(labels, values, headerBg, borderColor);
+    return GestureDetector(
+      onTap: () => _editCell(labels.first, values.first),
+      child: row,
     );
   }
 
@@ -435,11 +533,8 @@ class _MinutesTabState extends ConsumerState<_MinutesTab> {
         }
         // 편집 모드 - split 행의 첫 번째 라벨로 편집 다이얼로그
         if (_isEditing) {
-          final firstLabel = cells.isNotEmpty ? (cells[0]['label'] as String? ?? '') : '';
-          rows.add(GestureDetector(
-            onTap: () => _editCell(firstLabel, _resolveValue(firstLabel, result)),
-            child: splitRow,
-          ));
+          // 편집 모드: 각 셀을 개별적으로 편집 가능하도록 IntrinsicHeight Row 내부에 GestureDetector 삽입
+          rows.add(_wrapSplitRowWithEdit(cells, result, headerBg, contentBg, borderColor));
         } else {
           rows.add(splitRow);
         }
@@ -505,45 +600,28 @@ class _MinutesTabState extends ConsumerState<_MinutesTab> {
             child: Column(
               children: [
                 // 1행: 과정명 (고정값)
-                _tableRow2Col(
-                  '과정명', headerBg,
-                  courseName, null,
-                  borderColor,
-                ),
+                _wrapEditRow('과정명', courseName, headerBg, null, borderColor),
                 // 2행: 프로젝트명 | 회의일시 (4열 구조)
-                _tableRow4Col(
+                _wrapEditSplitRow(
                   '프로젝트명', headerBg, meeting?.title ?? '-', null,
                   '회의일시', headerBg, '$dateStr $timeStr', null,
                   borderColor,
                 ),
                 // 3행: 팀명 | 작성자 (4열 구조)
-                _tableRow4Col(
+                _wrapEditSplitRow(
                   '팀명', headerBg, '-', null,
                   '작성자', headerBg, '-', null,
                   borderColor,
                 ),
                 // 4행: 참석자
-                _tableRow2Col(
-                  '참석자', headerBg,
-                  '-', null,
-                  borderColor,
-                ),
+                _wrapEditRow('참석자', '-', headerBg, null, borderColor),
                 // 5행: 회의안건 (summaryText 첫 문장 추출)
-                _tableRow2Col(
-                  '회의안건', headerBg,
-                  _extractAgenda(result.summaryText), null,
-                  borderColor,
-                ),
+                _wrapEditRow('회의안건', _extractAgenda(result.summaryText), headerBg, null, borderColor),
                 // 6행: 회의내용 (큰 영역, 노란 배경)
-                _tableRow2Col(
-                  '회의내용', headerBg,
-                  result.summaryText, contentBg,
-                  borderColor,
-                  minHeight: 200,
-                ),
+                _wrapEditRow('회의내용', result.summaryText, headerBg, contentBg, borderColor, minHeight: 200),
                 // 7행: 결정된 사안
-                _tableRow2Col(
-                  '결정된 사안', headerBg,
+                _wrapEditRow(
+                  '결정된 사안',
                   result.keyDecisions.isNotEmpty
                       ? result.keyDecisions
                           .asMap()
@@ -552,6 +630,7 @@ class _MinutesTabState extends ConsumerState<_MinutesTab> {
                           .join('\n')
                       : '-',
                   decisionBg,
+                  decisionBg,
                   borderColor,
                   minHeight: 60,
                 ),
@@ -559,6 +638,93 @@ class _MinutesTabState extends ConsumerState<_MinutesTab> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // 편집 모드 래핑: 2열 행
+  Widget _wrapEditRow(String label, String value, Color labelBg, Color? contentBg, Color borderColor, {double minHeight = 0}) {
+    final displayValue = _editedSections.containsKey(label) ? _editedSections[label]! : value;
+    final row = _tableRow2Col(label, labelBg, displayValue.isEmpty ? '-' : displayValue, contentBg, borderColor, minHeight: minHeight);
+    if (!_isEditing) return row;
+    final theme = Theme.of(context);
+    return GestureDetector(
+      onTap: () => _editCell(label, displayValue == '-' ? '' : displayValue),
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border.all(color: theme.colorScheme.primary.withAlpha(80), width: 1),
+        ),
+        child: row,
+      ),
+    );
+  }
+
+  // 편집 모드 래핑: 4열 split 행 — 각 셀 개별 편집
+  Widget _wrapEditSplitRow(
+    String label1, Color labelBg1, String content1, Color? contentBg1,
+    String label2, Color labelBg2, String content2, Color? contentBg2,
+    Color borderColor,
+  ) {
+    final displayVal1 = _editedSections.containsKey(label1) ? _editedSections[label1]! : content1;
+    final displayVal2 = _editedSections.containsKey(label2) ? _editedSections[label2]! : content2;
+
+    if (!_isEditing) {
+      return _tableRow4Col(label1, labelBg1, displayVal1, contentBg1, label2, labelBg2, displayVal2, contentBg2, borderColor);
+    }
+
+    final theme = Theme.of(context);
+    final editBorder = theme.colorScheme.primary.withAlpha(100);
+    return Container(
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: borderColor)),
+      ),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SizedBox(
+              width: 90,
+              child: Container(
+                color: labelBg1,
+                padding: const EdgeInsets.all(10),
+                alignment: Alignment.centerLeft,
+                child: Text(label1, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: theme.colorScheme.onSurface), maxLines: 2, overflow: TextOverflow.ellipsis),
+              ),
+            ),
+            Container(width: 1, color: borderColor),
+            Expanded(
+              child: GestureDetector(
+                onTap: () => _editCell(label1, displayVal1 == '-' ? '' : displayVal1),
+                child: Container(
+                  decoration: BoxDecoration(border: Border.all(color: editBorder, width: 1)),
+                  padding: const EdgeInsets.all(10),
+                  child: Text(displayVal1, style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface), softWrap: true),
+                ),
+              ),
+            ),
+            Container(width: 1, color: borderColor),
+            SizedBox(
+              width: 70,
+              child: Container(
+                color: labelBg2,
+                padding: const EdgeInsets.all(10),
+                alignment: Alignment.centerLeft,
+                child: Text(label2, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: theme.colorScheme.onSurface), maxLines: 2, overflow: TextOverflow.ellipsis),
+              ),
+            ),
+            Container(width: 1, color: borderColor),
+            Expanded(
+              child: GestureDetector(
+                onTap: () => _editCell(label2, displayVal2 == '-' ? '' : displayVal2),
+                child: Container(
+                  decoration: BoxDecoration(border: Border.all(color: editBorder, width: 1)),
+                  padding: const EdgeInsets.all(10),
+                  child: Text(displayVal2, style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface), softWrap: true),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
