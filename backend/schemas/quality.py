@@ -4,6 +4,7 @@
 
 from datetime import datetime
 from enum import Enum
+from typing import Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -181,4 +182,86 @@ class QualityHistory(BaseModel):
     grade: str = Field(..., description="등급")
     changes: dict[str, float | str] | None = Field(
         default=None, description="변화량"
+    )
+
+
+# ---------------------------------------------------------------------------
+# SPEC-QUALITY-MONITOR-001: 실시간 모니터링/피드백/추세 스키마
+# ---------------------------------------------------------------------------
+
+
+class FeedbackCategory(str, Enum):
+    """피드백 카테고리"""
+    ACCURACY = "accuracy"
+    COMPLETENESS = "completeness"
+    CLARITY = "clarity"
+    STRUCTURE = "structure"
+    OTHER = "other"
+
+
+class LiveQualityScoreResponse(BaseModel):
+    """실시간 경량 품질 점수 응답 (AI 호출 없음)"""
+    task_id: str = Field(..., description="Task ID")
+    overall_score: float = Field(..., ge=0.0, le=100.0, description="전체 점수")
+    grade: str = Field(..., description="등급 (A+ ~ F)")
+    completeness_score: float = Field(..., ge=0.0, le=100.0)
+    clarity_score: float = Field(..., ge=0.0, le=100.0)
+    structure_score: float = Field(..., ge=0.0, le=100.0)
+    word_count: int = Field(..., ge=0)
+    computed_at: datetime
+    mode: str = Field(default="lightweight", description="평가 모드")
+
+
+class QualityFeedbackCreate(BaseModel):
+    """품질 피드백 제출 요청"""
+    rating: int = Field(..., ge=1, le=5, description="별점 1~5")
+    category: FeedbackCategory = Field(
+        default=FeedbackCategory.OTHER, description="피드백 카테고리"
+    )
+    comment: Optional[str] = Field(
+        default=None, max_length=2000, description="자유 텍스트 코멘트"
+    )
+
+
+class QualityFeedbackResponse(BaseModel):
+    """단일 피드백 응답"""
+    id: str = Field(..., description="피드백 ID")
+    task_id: str
+    rating: int
+    category: FeedbackCategory
+    comment: Optional[str] = None
+    created_at: datetime
+
+
+class QualityFeedbackSummary(BaseModel):
+    """피드백 누적 요약"""
+    task_id: str
+    total_feedbacks: int = Field(..., ge=0)
+    avg_rating: Optional[float] = Field(default=None, ge=0.0, le=5.0)
+    category_breakdown: Dict[str, int] = Field(default_factory=dict)
+    recent: List[QualityFeedbackResponse] = Field(default_factory=list)
+
+
+class QualityTrendPoint(BaseModel):
+    """추세 데이터 포인트"""
+    timestamp: datetime
+    overall_score: float = Field(..., ge=0.0, le=100.0)
+    grade: str
+    mode: str
+
+
+class QualityTrendsResponse(BaseModel):
+    """품질 추세 분석 응답"""
+    task_id: str
+    points: List[QualityTrendPoint] = Field(default_factory=list)
+    points_count: int = Field(..., ge=0)
+    avg_score: Optional[float] = Field(default=None, ge=0.0, le=100.0)
+    min_score: Optional[float] = Field(default=None, ge=0.0, le=100.0)
+    max_score: Optional[float] = Field(default=None, ge=0.0, le=100.0)
+    trend_direction: str = Field(
+        default="stable",
+        description="up | down | stable | insufficient_data",
+    )
+    warning: Optional[str] = Field(
+        default=None, description="추세에 따른 경고 메시지"
     )

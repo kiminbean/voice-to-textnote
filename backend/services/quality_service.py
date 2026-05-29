@@ -1,13 +1,20 @@
 """
 회의록 품질 평가 서비스
+SPEC-QUALITY-MONITOR-001: 실시간 점수/피드백/추세 분석 확장
 """
 
 import json
+import os
 import re
-from datetime import datetime
+import uuid as _uuid
+from typing import Dict, List, Optional, Tuple, Union
+from datetime import datetime, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import desc, func, select
 
+from backend.db.models import TaskResult
+from backend.db.quality_feedback_models import QualityFeedback, QualityScoreSnapshot
 from backend.ml.openai_client import get_openai_client
 from backend.schemas.quality import (
     AssessmentFocus,
@@ -16,9 +23,16 @@ from backend.schemas.quality import (
     ImprovementType,
     IssueSeverity,
     Priority,
+    FeedbackCategory,
+    LiveQualityScoreResponse,
     QualityAssessmentResponse,
+    QualityFeedbackCreate,
+    QualityFeedbackResponse,
+    QualityFeedbackSummary,
     QualityIssue,
     QualityScore,
+    QualityTrendPoint,
+    QualityTrendsResponse,
 )
 from backend.utils.logger import get_logger
 
@@ -811,3 +825,229 @@ class QualityService:
         action_plan.append("4. 정기적으로 진행 상황을 검토합니다")
 
         return action_plan
+
+    # ------------------------------------------------------------------
+    # SPEC-QUALITY-MONITOR-001: 실시간 점수 / 피드백 / 추세 분석
+    # ------------------------------------------------------------------
+
+    async def compute_live_score(
+        self,
+        task_id: str,
+        meeting_content: str,
+        db: Optional[AsyncSession] = None,
+        persist_snapshot: bool = True,
+    ) -> LiveQualityScoreResponse:
+        """경량 실시간 품질 점수 계산 (AI 호출 없음).
+
+        Args:
+            task_id: 평가 대상 Task ID
+            meeting_content: 회의록 본문
+            db: 스냅샷 저장용 DB 세션 (None이면 저장 생략)
+            persist_snapshot: True면 QualityScoreSnapshot에 저장
+
+        Returns:
+            LiveQualityScoreResponse
+        """
+        basic = await self._perform_basic_analysis(meeting_content)
+
+        # AI 분석은 호출하지 않고 기본 분석만으로 카테고리 점수 산출
+        empty_ai: Dict[str, Union[str, float, List[str]]] = {}
+        completeness = self._evaluate_completeness(basic, empty_ai)
+        clarity = self._evaluate_clarity(basic, empty_ai)
+        structure = self._evaluate_structure(basic, empty_ai)
+
+        overall = (completeness + clarity + structure) / 3.0
+        grade = self._calculate_grade(overall)
+        now = datetime.now()
+
+        if db is not None and persist_snapshot:
+            snapshot = QualityScoreSnapshot()
+            snapshot.id = _uuid.uuid4()
+            snapshot.task_id = task_id
+            snapshot.overall_score = overall
+            snapshot.grade = grade
+            snapshot.completeness_score = completeness
+            snapshot.clarity_score = clarity
+            snapshot.structure_score = structure
+            snapshot.mode = "lightweight"
+            db.add(snapshot)
+            await db.commit()
+
+        return LiveQualityScoreResponse(
+            task_id=task_id,
+            overall_score=round(overall, 2),
+            grade=grade,
+            completeness_score=round(completeness, 2),
+            clarity_score=round(clarity, 2),
+            structure_score=round(structure, 2),
+            word_count=int(basic.get("word_count", 0) or 0),
+            computed_at=now,
+            mode="lightweight",
+        )
+
+    async def submit_feedback(
+        self,
+        db: AsyncSession,
+        task_id: str,
+        user_id: Optional[_uuid.UUID],
+        payload: QualityFeedbackCreate,
+    ) -> QualityFeedbackResponse:
+        """사용자 피드백을 저장한다."""
+        feedback = QualityFeedback()
+        feedback.id = _uuid.uuid4()
+        feedback.task_id = task_id
+        feedback.user_id = user_id
+        feedback.rating = payload.rating
+        feedback.category = payload.category.value
+        feedback.comment = payload.comment
+
+        db.add(feedback)
+        await db.commit()
+        await db.refresh(feedback)
+
+        return QualityFeedbackResponse(
+            id=str(feedback.id),
+            task_id=feedback.task_id,
+            rating=feedback.rating,
+            category=FeedbackCategory(feedback.category),
+            comment=feedback.comment,
+            created_at=feedback.created_at,
+        )
+
+    async def get_feedback_summary(
+        self,
+        db: AsyncSession,
+        task_id: str,
+        recent_limit: int = 10,
+    ) -> QualityFeedbackSummary:
+        """누적 피드백 요약."""
+        avg_stmt = select(
+            func.count(QualityFeedback.id),
+            func.avg(QualityFeedback.rating),
+        ).where(QualityFeedback.task_id == task_id)
+        agg = (await db.execute(avg_stmt)).one()
+        total = int(agg[0] or 0)
+        avg_rating = float(agg[1]) if agg[1] is not None else None
+
+        cat_stmt = (
+            select(QualityFeedback.category, func.count(QualityFeedback.id))
+            .where(QualityFeedback.task_id == task_id)
+            .group_by(QualityFeedback.category)
+        )
+        breakdown: Dict[str, int] = {
+            row[0]: int(row[1])
+            for row in (await db.execute(cat_stmt)).all()
+        }
+
+        recent_stmt = (
+            select(QualityFeedback)
+            .where(QualityFeedback.task_id == task_id)
+            .order_by(desc(QualityFeedback.created_at))
+            .limit(max(1, min(recent_limit, 50)))
+        )
+        recent_rows = (await db.execute(recent_stmt)).scalars().all()
+        recent = [
+            QualityFeedbackResponse(
+                id=str(row.id),
+                task_id=row.task_id,
+                rating=row.rating,
+                category=FeedbackCategory(row.category),
+                comment=row.comment,
+                created_at=row.created_at,
+            )
+            for row in recent_rows
+        ]
+
+        return QualityFeedbackSummary(
+            task_id=task_id,
+            total_feedbacks=total,
+            avg_rating=round(avg_rating, 2) if avg_rating is not None else None,
+            category_breakdown=breakdown,
+            recent=recent,
+        )
+
+    async def get_quality_trends(
+        self,
+        db: AsyncSession,
+        task_id: str,
+        limit: int = 50,
+        warning_drop_threshold: Optional[float] = None,
+    ) -> QualityTrendsResponse:
+        """저장된 품질 스냅샷으로 추세 분석을 수행한다."""
+        if warning_drop_threshold is None:
+            try:
+                warning_drop_threshold = float(
+                    os.getenv("QUALITY_TRENDS_WARNING_DROP", "10")
+                )
+            except (TypeError, ValueError):
+                warning_drop_threshold = 10.0
+
+        stmt = (
+            select(QualityScoreSnapshot)
+            .where(QualityScoreSnapshot.task_id == task_id)
+            .order_by(QualityScoreSnapshot.created_at)
+            .limit(max(1, min(limit, 500)))
+        )
+        rows = (await db.execute(stmt)).scalars().all()
+
+        if not rows:
+            return QualityTrendsResponse(
+                task_id=task_id,
+                points=[],
+                points_count=0,
+                avg_score=None,
+                min_score=None,
+                max_score=None,
+                trend_direction="insufficient_data",
+                warning=None,
+            )
+
+        points = [
+            QualityTrendPoint(
+                timestamp=row.created_at,
+                overall_score=row.overall_score,
+                grade=row.grade,
+                mode=row.mode,
+            )
+            for row in rows
+        ]
+        scores = [p.overall_score for p in points]
+        avg_score = sum(scores) / len(scores)
+        min_score = min(scores)
+        max_score = max(scores)
+
+        if len(scores) < 2:
+            direction = "insufficient_data"
+            warning = None
+        else:
+            first_half = scores[: len(scores) // 2] or scores[:1]
+            second_half = scores[len(scores) // 2 :] or scores[-1:]
+            first_avg = sum(first_half) / len(first_half)
+            second_avg = sum(second_half) / len(second_half)
+            delta = second_avg - first_avg
+
+            if delta > 2.0:
+                direction = "up"
+            elif delta < -2.0:
+                direction = "down"
+            else:
+                direction = "stable"
+
+            warning = None
+            drop = scores[0] - scores[-1]
+            if drop >= warning_drop_threshold:
+                warning = (
+                    f"품질 점수가 초기값 대비 {drop:.1f}점 하락했습니다. "
+                    "원인 검토를 권장합니다."
+                )
+
+        return QualityTrendsResponse(
+            task_id=task_id,
+            points=points,
+            points_count=len(points),
+            avg_score=round(avg_score, 2),
+            min_score=round(min_score, 2),
+            max_score=round(max_score, 2),
+            trend_direction=direction,
+            warning=warning,
+        )
