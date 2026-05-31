@@ -165,7 +165,7 @@ class VersionService:
     @staticmethod
     def _action_item_key(item: dict[str, Any]) -> str:
         """action_items 매칭에 사용할 안정 키. id 우선, 없으면 text."""
-        if isinstance(item.get("id"), (str, int)):
+        if isinstance(item.get("id"), str | int):
             return f"id:{item['id']}"
         text = item.get("text")
         if isinstance(text, str) and text.strip():

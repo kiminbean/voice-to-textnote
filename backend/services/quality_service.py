@@ -2,38 +2,32 @@
 회의록 품질 평가 서비스
 """
 
-import asyncio
 import json
 import re
-from typing import Dict, List, Optional, Tuple, Union
-from datetime import datetime, timedelta
+from datetime import datetime
 
-import numpy as np
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 
-from backend.db.models import Task, MeetingMinutes
+from backend.ml.openai_client import get_openai_client
 from backend.schemas.quality import (
-    QualityAssessmentResponse,
-    QualityImprovementResponse,
-    QualityScore,
-    QualityIssue,
-    ImprovementSuggestion,
+    AssessmentFocus,
     AssessmentSummary,
-    IssueSeverity,
+    ImprovementSuggestion,
     ImprovementType,
+    IssueSeverity,
     Priority,
-    AssessmentFocus
+    QualityAssessmentResponse,
+    QualityIssue,
+    QualityScore,
 )
 from backend.utils.logger import get_logger
-from backend.ml.openai_client import get_openai_client
 
 logger = get_logger(__name__)
 
 
 class QualityService:
     """회의록 품질 평가 서비스"""
-    
+
     def __init__(self):
         self.openai_client = get_openai_client()
         self.assessment_weights = {
@@ -49,20 +43,20 @@ class QualityService:
             IssueSeverity.MEDIUM: 0.4,
             IssueSeverity.LOW: 0.1
         }
-    
+
     async def assess_minutes(
         self,
         task_id: str,
         meeting_content: str,
         meeting_title: str,
         include_details: bool = True,
-        custom_criteria: Optional[Dict[str, Union[int, float, List[str]]]] = None,
-        assessment_focus: Optional[List[AssessmentFocus]] = None,
-        db: Optional[AsyncSession] = None
+        custom_criteria: dict[str, int | float | list[str]] | None = None,
+        assessment_focus: list[AssessmentFocus] | None = None,
+        db: AsyncSession | None = None
     ) -> QualityAssessmentResponse:
         """
         회의록 품질 평가 수행
-        
+
         Args:
             task_id: Task ID
             meeting_content: 회의 내용
@@ -71,38 +65,38 @@ class QualityService:
             custom_criteria: 커스텀 평가 기준
             assessment_focus: 평가 집중 영역
             db: 데이터베이션 세션
-            
+
         Returns:
             QualityAssessmentResponse
         """
         try:
             # 기본 분석 수행
             basic_analysis = await self._perform_basic_analysis(meeting_content)
-            
+
             # AI 기반 심층 분석
             ai_analysis = await self._ai_based_assessment(
-                meeting_content, 
+                meeting_content,
                 meeting_title,
                 assessment_focus or list(AssessmentFocus)
             )
-            
+
             # 개별 카테고리 평가
             category_scores = await self._evaluate_categories(
-                basic_analysis, 
+                basic_analysis,
                 ai_analysis,
                 custom_criteria
             )
-            
+
             # 종합 점수 계산
             overall_score = self._calculate_overall_score(category_scores)
-            
+
             # 문제 식별
             issues = await self._identify_issues(
-                basic_analysis, 
+                basic_analysis,
                 ai_analysis,
                 overall_score
             )
-            
+
             # 평가 요약 생성
             summary = await self._create_assessment_summary(
                 overall_score,
@@ -110,13 +104,13 @@ class QualityService:
                 issues,
                 meeting_title
             )
-            
+
             # 추천 사항 생성
             recommendations = await self._generate_recommendations(
                 issues,
                 category_scores
             )
-            
+
             return QualityAssessmentResponse(
                 task_id=task_id,
                 assessment_summary=summary,
@@ -130,16 +124,16 @@ class QualityService:
                     "word_count": len(meeting_content.split())
                 }
             )
-            
+
         except Exception as e:
             logger.error(f"Quality assessment failed for task {task_id}", error=str(e))
             raise
-    
-    async def _perform_basic_analysis(self, content: str) -> Dict[str, Union[int, float, List[str]]]:
+
+    async def _perform_basic_analysis(self, content: str) -> dict[str, int | float | list[str]]:
         """기본 분석 수행"""
         words = content.split()
         sentences = re.split(r'[.!?]+', content)
-        
+
         # 기본 통계
         analysis = {
             "word_count": len(words),
@@ -153,43 +147,43 @@ class QualityService:
             "has_structure": bool(re.search(r'(agenda|section|topic|item)', content, re.IGNORECASE)),
             "readability_score": self._calculate_readability(words, sentences)
         }
-        
+
         return analysis
-    
-    def _calculate_readability(self, words: List[str], sentences: List[str]) -> float:
+
+    def _calculate_readability(self, words: list[str], sentences: list[str]) -> float:
         """가독성 점수 계산 (간단한 Flesch Reading Ease 공식)"""
         if not sentences:
             return 0.0
-        
+
         avg_sentence_length = len(words) / len(sentences)
         avg_syllables_per_word = sum(len(word) for word in words) / len(words) * 0.39
-        
+
         # Flesch Reading Ease: 206.835 - 1.015 * avg_sentence_length - 84.6 * avg_syllables_per_word
         # 간단화된 버전 (0-100 점)
         score = max(0, min(100, 206.835 - 1.015 * avg_sentence_length - 84.6 * avg_syllables_per_word))
         return score
-    
+
     async def _ai_based_assessment(
-        self, 
+        self,
         content: str,
         title: str,
-        assessment_focus: List[AssessmentFocus]
-    ) -> Dict[str, Union[str, float, List[str]]]:
+        assessment_focus: list[AssessmentFocus]
+    ) -> dict[str, str | float | list[str]]:
         """AI 기반 심층 분석"""
-        
+
         prompt = f"""
         다음 회의록의 품질을 평가해주세요. 회의 제목: {title}
-        
+
         평가 기준:
         - 완전성 (completeness): 모든 중요한 내용이 포함되었는가
         - 명확성 (clarity): 내용이 명확하고 이해하기 쉬운가
         - 구조 (structure): 논리적 구조가 잘 되어있는가
         - 내용 (content): 내용이 유용하고 정보가 풍부한가
         - 액션 아이템 (action_items): 실행할 사항이 명확하게 제시되었는가
-        
+
         회의록 내용:
         {content[:3000]}  # 최대 3000자까지만 분석
-        
+
         다음 형식으로 JSON 응답을 생성해주세요:
         {{
             "completeness_score": 0-100,
@@ -202,31 +196,31 @@ class QualityService:
             "key_issues": ["주요 문제1", "주요 문제2"]
         }}
         """
-        
+
         try:
             response = await self.openai_client.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.1
             )
-            
+
             ai_text = response.choices[0].message.content
             # JSON 파싱 (간단한 방식)
             json_start = ai_text.find('{')
             json_end = ai_text.rfind('}') + 1
-            
+
             if json_start != -1 and json_end != -1:
                 json_str = ai_text[json_start:json_end]
                 return json.loads(json_str)
             else:
                 # JSON 파싱 실패 시 기본값 반환
                 return self._get_default_ai_assessment()
-                
+
         except Exception as e:
             logger.error("AI assessment failed", error=str(e))
             return self._get_default_ai_assessment()
-    
-    def _get_default_ai_assessment(self) -> Dict[str, Union[str, float, List[str]]]:
+
+    def _get_default_ai_assessment(self) -> dict[str, str | float | list[str]]:
         """AI 분석 실패 시 기본값 반환"""
         return {
             "completeness_score": 60.0,
@@ -238,17 +232,17 @@ class QualityService:
             "weaknesses": ["심층 분석 불가"],
             "key_issues": ["AI 분석 실패"]
         }
-    
+
     async def _evaluate_categories(
         self,
-        basic_analysis: Dict[str, Union[int, float, List[str]]],
-        ai_analysis: Dict[str, Union[str, float, List[str]]],
-        custom_criteria: Optional[Dict[str, Union[int, float, List[str]]]] = None
-    ) -> List[QualityScore]:
+        basic_analysis: dict[str, int | float | list[str]],
+        ai_analysis: dict[str, str | float | list[str]],
+        custom_criteria: dict[str, int | float | list[str]] | None = None
+    ) -> list[QualityScore]:
         """개별 카테고리 평가"""
-        
+
         scores = []
-        
+
         # 완전성 평가
         completeness_score = self._evaluate_completeness(basic_analysis, ai_analysis)
         scores.append(QualityScore(
@@ -256,7 +250,7 @@ class QualityService:
             score=completeness_score,
             description="회의록의 완전성 (정보 누락 검사)"
         ))
-        
+
         # 명확성 평가
         clarity_score = self._evaluate_clarity(basic_analysis, ai_analysis)
         scores.append(QualityScore(
@@ -264,7 +258,7 @@ class QualityService:
             score=clarity_score,
             description="내용의 명확성"
         ))
-        
+
         # 구조 평가
         structure_score = self._evaluate_structure(basic_analysis, ai_analysis)
         scores.append(QualityScore(
@@ -272,7 +266,7 @@ class QualityService:
             score=structure_score,
             description="회의록의 구조"
         ))
-        
+
         # 내용 평가
         content_score = self._evaluate_content(basic_analysis, ai_analysis)
         scores.append(QualityScore(
@@ -280,7 +274,7 @@ class QualityService:
             score=content_score,
             description="내용의 품질"
         ))
-        
+
         # 액션 아이템 평가
         action_items_score = self._evaluate_action_items(basic_analysis, ai_analysis)
         scores.append(QualityScore(
@@ -288,63 +282,63 @@ class QualityService:
             score=action_items_score,
             description="액션 아이템의 명확성"
         ))
-        
+
         # 커스텀 기준이 있는 경우 추가 평가
         if custom_criteria:
             scores.extend(await self._evaluate_custom_criteria(
                 custom_criteria, basic_analysis, ai_analysis
             ))
-        
+
         return scores
-    
+
     def _evaluate_completeness(
         self,
-        basic_analysis: Dict[str, Union[int, float, List[str]]],
-        ai_analysis: Dict[str, Union[str, float, List[str]]]
+        basic_analysis: dict[str, int | float | list[str]],
+        ai_analysis: dict[str, str | float | list[str]]
     ) -> float:
         """완전성 평가"""
         score = 0.0
         components = 0
-        
+
         # 기본 요소 확인
         if basic_analysis.get("has_attendees", False):
             score += 20
         components += 1
-        
+
         if basic_analysis.get("has_timeline", False):
             score += 20
         components += 1
-        
+
         if basic_analysis.get("has_decisions", False):
             score += 20
         components += 1
-        
+
         if basic_analysis.get("has_action_items", False):
             score += 20
         components += 1
-        
+
         # AI 분석 결과 반영
         if "completeness_score" in ai_analysis:
             score += ai_analysis["completeness_score"] * 0.2
             components += 1
-        
+
         # 단어 수 기준
         word_count = basic_analysis.get("word_count", 0)
         if word_count > 500:
             score += min(20, (word_count - 500) / 50)
         components += 1
-        
+
         return min(100, score / max(components, 1))
-    
+
     def _evaluate_clarity(
         self,
-        basic_analysis: Dict[str, Union[int, float, List[str]]],
-        ai_analysis: Dict[str, Union[str, float, List[str]]]
+        basic_analysis: dict[str, int | float | list[str]],
+        ai_analysis: dict[str, str | float | list[str]]
     ) -> float:
         """명확성 평가"""
         score = 0.0
         components = 0
-        
+
         # 문장 길이 기준
         avg_sentence_length = basic_analysis.get("avg_sentence_length", 0)
         if 15 <= avg_sentence_length <= 30:
@@ -352,28 +346,28 @@ class QualityService:
         else:
             score += max(0, 30 - abs(avg_sentence_length - 22.5) * 2)
         components += 1
-        
+
         # 가독성
         readability = basic_analysis.get("readability_score", 0)
         score += min(40, readability * 0.4)
         components += 1
-        
+
         # AI 명확성 점수
         if "clarity_score" in ai_analysis:
             score += ai_analysis["clarity_score"] * 0.3
             components += 1
-        
+
         return min(100, score / max(components, 1))
-    
+
     def _evaluate_structure(
         self,
-        basic_analysis: Dict[str, Union[int, float, List[str]]],
-        ai_analysis: Dict[str, Union[str, float, List[str]]]
+        basic_analysis: dict[str, int | float | list[str]],
+        ai_analysis: dict[str, str | float | list[str]]
     ) -> float:
         """구조 평가"""
         score = 0.0
         components = 0
-        
+
         # 단락 수
         paragraph_count = basic_analysis.get("paragraph_count", 0)
         if paragraph_count >= 3:
@@ -381,28 +375,28 @@ class QualityService:
         else:
             score += paragraph_count * 10
         components += 1
-        
+
         # 구조적 요소 확인
         if basic_analysis.get("has_structure", False):
             score += 30
         components += 1
-        
+
         # AI 구조 점수
         if "structure_score" in ai_analysis:
             score += ai_analysis["structure_score"] * 0.4
             components += 1
-        
+
         return min(100, score / max(components, 1))
-    
+
     def _evaluate_content(
         self,
-        basic_analysis: Dict[str, Union[int, float, List[str]]],
-        ai_analysis: Dict[str, Union[str, float, List[str]]]
+        basic_analysis: dict[str, int | float | list[str]],
+        ai_analysis: dict[str, str | float | list[str]]
     ) -> float:
         """내용 평가"""
         score = 0.0
         components = 0
-        
+
         # 단어 수 기준
         word_count = basic_analysis.get("word_count", 0)
         if word_count > 200:
@@ -410,87 +404,87 @@ class QualityService:
         else:
             score += word_count * 0.2
         components += 1
-        
+
         # AI 내용 점수
         if "content_score" in ai_analysis:
             score += ai_analysis["content_score"] * 0.6
             components += 1
-        
+
         return min(100, score / max(components, 1))
-    
+
     def _evaluate_action_items(
         self,
-        basic_analysis: Dict[str, Union[int, float, List[str]]],
-        ai_analysis: Dict[str, Union[str, float, List[str]]]
+        basic_analysis: dict[str, int | float | list[str]],
+        ai_analysis: dict[str, str | float | list[str]]
     ) -> float:
         """액션 아이템 평가"""
         score = 0.0
         components = 0
-        
+
         # 액션 아이템 존재 여부
         if basic_analysis.get("has_action_items", False):
             score += 50
         else:
             score += 10  # 적은 점수 부여
         components += 1
-        
+
         # AI 액션 아이템 점수
         if "action_items_score" in ai_analysis:
             score += ai_analysis["action_items_score"] * 0.5
             components += 1
-        
+
         return min(100, score / max(components, 1))
-    
+
     async def _evaluate_custom_criteria(
         self,
-        custom_criteria: Dict[str, Union[int, float, List[str]]],
-        basic_analysis: Dict[str, Union[int, float, List[str]]],
-        ai_analysis: Dict[str, Union[str, float, List[str]]]
-    ) -> List[QualityScore]:
+        custom_criteria: dict[str, int | float | list[str]],
+        basic_analysis: dict[str, int | float | list[str]],
+        ai_analysis: dict[str, str | float | list[str]]
+    ) -> list[QualityScore]:
         """커스텀 기준 평가"""
         scores = []
-        
+
         # 간단한 커스텀 기준 구현 (확장 가능)
         for criterion_name, criterion_value in custom_criteria.items():
-            if isinstance(criterion_value, (int, float)):
+            if isinstance(criterion_value, int | float):
                 score = min(100, max(0, criterion_value))
                 scores.append(QualityScore(
                     category=f"custom_{criterion_name}",
                     score=score,
                     description=f"커스텀 기준: {criterion_name}"
                 ))
-        
+
         return scores
-    
+
     def _calculate_overall_score(
         self,
-        category_scores: List[QualityScore]
+        category_scores: list[QualityScore]
     ) -> float:
         """종합 점수 계산"""
         if not category_scores:
             return 0.0
-        
+
         # 기본 카테고리만 고려
         basic_categories = ["completeness", "clarity", "structure", "content", "action_items"]
         relevant_scores = [
-            score.score for score in category_scores 
+            score.score for score in category_scores
             if score.category in basic_categories
         ]
-        
+
         if not relevant_scores:
             return 0.0
-        
+
         return sum(relevant_scores) / len(relevant_scores)
-    
+
     async def _identify_issues(
         self,
-        basic_analysis: Dict[str, Union[int, float, List[str]]],
-        ai_analysis: Dict[str, Union[str, float, List[str]]],
+        basic_analysis: dict[str, int | float | list[str]],
+        ai_analysis: dict[str, str | float | list[str]],
         overall_score: float
-    ) -> List[QualityIssue]:
+    ) -> list[QualityIssue]:
         """문제 식별"""
         issues = []
-        
+
         # 완전성 문제
         if not basic_analysis.get("has_attendees", False):
             issues.append(QualityIssue(
@@ -500,7 +494,7 @@ class QualityService:
                 description="참석자 정보가 누락되었습니다",
                 suggestion="회의 시작 시 참석자 목록을 명시해주세요"
             ))
-        
+
         if not basic_analysis.get("has_timeline", False):
             issues.append(QualityIssue(
                 id="issue_002",
@@ -509,7 +503,7 @@ class QualityService:
                 description="시간 정보가 누락되었습니다",
                 suggestion="회의 시간 및 소요 시간을 기록해주세요"
             ))
-        
+
         # 명확성 문제
         avg_sentence_length = basic_analysis.get("avg_sentence_length", 0)
         if avg_sentence_length > 50:
@@ -520,7 +514,7 @@ class QualityService:
                 description="문장이 너무 깁니다",
                 suggestion=f"평균 문장 길이: {avg_sentence_length:.0f}자. 30자 이하로 줄이세요"
             ))
-        
+
         # 액션 아이템 문제
         if not basic_analysis.get("has_action_items", False):
             issues.append(QualityIssue(
@@ -530,7 +524,7 @@ class QualityService:
                 description="액션 아이템이 정의되지 않았습니다",
                 suggestion="의결 사항과 실행 계획을 명확히 기록하세요"
             ))
-        
+
         # AI 분석에서 심각한 문제가 발견된 경우
         if "key_issues" in ai_analysis:
             for i, issue in enumerate(ai_analysis["key_issues"][:3]):
@@ -542,7 +536,7 @@ class QualityService:
                     description=issue,
                     suggestion=f"AI 분석에 의한 제안: {issue}"
                 ))
-        
+
         # 전체 점수에 따라 심각도 조정
         if overall_score < 50:
             for issue in issues:
@@ -550,41 +544,41 @@ class QualityService:
                     issue.severity = IssueSeverity.HIGH
                 elif issue.severity == IssueSeverity.LOW:
                     issue.severity = IssueSeverity.MEDIUM
-        
+
         return issues
-    
+
     async def _create_assessment_summary(
         self,
         overall_score: float,
-        category_scores: List[QualityScore],
-        issues: List[QualityIssue],
+        category_scores: list[QualityScore],
+        issues: list[QualityIssue],
         title: str
     ) -> AssessmentSummary:
         """평가 요약 생성"""
         # 등급 계산
         grade = self._calculate_grade(overall_score)
-        
+
         # 문제 통계
         total_issues = len(issues)
         critical_issues = len([i for i in issues if i.severity == IssueSeverity.CRITICAL])
-        
+
         # 강점 및 약점 식별
         strengths = []
         weaknesses = []
-        
+
         for score in category_scores:
             if score.score >= 80:
                 strengths.append(f"{score.category} 우수")
             elif score.score < 60:
                 weaknesses.append(f"{score.category} 개선 필요")
-        
+
         # AI 분석에서 강점/약점 추가
         strengths.extend(["기본적인 정보 포함", "논리적 구조"])
         if overall_score >= 70:
             strengths.append("전체적으로 좋은 품질")
         else:
             weaknesses.append("전체적인 품질 개선 필요")
-        
+
         return AssessmentSummary(
             overall_score=overall_score,
             grade=grade,
@@ -594,7 +588,7 @@ class QualityService:
             weaknesses=list(set(weaknesses)),  # 중복 제거
             last_assessed=datetime.now()
         )
-    
+
     def _calculate_grade(self, score: float) -> str:
         """점수에 따른 등급 계산"""
         if score >= 90:
@@ -613,15 +607,15 @@ class QualityService:
             return "D"
         else:
             return "F"
-    
+
     async def _generate_recommendations(
         self,
-        issues: List[QualityIssue],
-        category_scores: List[QualityScore]
-    ) -> List[str]:
+        issues: list[QualityIssue],
+        category_scores: list[QualityScore]
+    ) -> list[str]:
         """추천 사항 생성"""
         recommendations = []
-        
+
         # 점수가 낮은 카테고리에 대한 추천
         for score in category_scores:
             if score.score < 70:
@@ -635,32 +629,32 @@ class QualityService:
                     recommendations.append("더 구체적인 정보와 예시를 추가하세요")
                 elif score.category == "action_items":
                     recommendations.append("명확한 액션 아이템과 책임자를 정의하세요")
-        
+
         # 심각한 문제에 대한 추천
         critical_issues = [i for i in issues if i.severity in [IssueSeverity.CRITICAL, IssueSeverity.HIGH]]
         for issue in critical_issues[:3]:  # 상위 3개만
             if issue.suggestion:
                 recommendations.append(f"{issue.description}: {issue.suggestion}")
-        
+
         # 일반적인 추천
         recommendations.extend([
             "정기적인 품질 검사를 실시하세요",
             "참석자 피드백을 반영하여 개선하세요",
             "유사한 회의의 템플릿을 활용하세요"
         ])
-        
+
         return list(set(recommendations))  # 중복 제거
-    
+
     async def get_improvement_suggestions(
         self,
         task_id: str,
         improvement_type: str = "all",
         priority: str = "high",
-        db: Optional[AsyncSession] = None
-    ) -> List[ImprovementSuggestion]:
+        db: AsyncSession | None = None
+    ) -> list[ImprovementSuggestion]:
         """개선 제안 가져오기"""
         suggestions = []
-        
+
         # 개선 제안 템플릿
         templates = {
             "structure": [
@@ -742,7 +736,7 @@ class QualityService:
                 }
             ]
         }
-        
+
         # 개선 유형 필터링
         if improvement_type == "all":
             selected_templates = []
@@ -750,14 +744,14 @@ class QualityService:
                 selected_templates.extend(category_templates)
         else:
             selected_templates = templates.get(improvement_type, [])
-        
+
         # 우선순위 필터링
         if priority != "all":
             selected_templates = [
-                t for t in selected_templates 
+                t for t in selected_templates
                 if t["priority"].value == priority
             ]
-        
+
         # ImprovementSuggestion 객체 생성
         for i, template in enumerate(selected_templates):
             suggestions.append(ImprovementSuggestion(
@@ -770,48 +764,48 @@ class QualityService:
                 estimated_effort=template.get("estimated_effort"),
                 impact=template.get("impact")
             ))
-        
+
         return suggestions
-    
-    async def generate_action_plan(self, improvements: List[ImprovementSuggestion]) -> List[str]:
+
+    async def generate_action_plan(self, improvements: list[ImprovementSuggestion]) -> list[str]:
         """개선 계획 생성"""
         if not improvements:
             return ["개선 제안이 없습니다"]
-        
+
         action_plan = []
         action_plan.append("## 개선 계획")
-        
+
         # 우선순위별로 정렬
         high_priority = [i for i in improvements if i.priority == Priority.HIGH]
         medium_priority = [i for i in improvements if i.priority == Priority.MEDIUM]
         low_priority = [i for i in improvements if i.priority == Priority.LOW]
-        
+
         if high_priority:
             action_plan.append("\n### 1순위 (즉시 실행)")
             for improvement in high_priority:
                 action_plan.append(f"- {improvement.title}")
                 if improvement.estimated_effort:
                     action_plan.append(f"  - 예상 소요 시간: {improvement.estimated_effort}")
-        
+
         if medium_priority:
             action_plan.append("\n### 2순위 (단기 실행)")
             for improvement in medium_priority:
                 action_plan.append(f"- {improvement.title}")
                 if improvement.estimated_effort:
                     action_plan.append(f"  - 예상 소요 시간: {improvement.estimated_effort}")
-        
+
         if low_priority:
             action_plan.append("\n### 3순위 (장기 실행)")
             for improvement in low_priority:
                 action_plan.append(f"- {improvement.title}")
                 if improvement.estimated_effort:
                     action_plan.append(f"  - 예상 소요 시간: {improvement.estimated_effort}")
-        
+
         # 실행 계획
         action_plan.append("\n### 실행 계획")
         action_plan.append("1. 1순위 항목을 즉시 실행합니다")
         action_plan.append("2. 2순위 항목은 1-2주 내에 실행합니다")
         action_plan.append("3. 3순위 항목은 1개월 내에 실행합니다")
         action_plan.append("4. 정기적으로 진행 상황을 검토합니다")
-        
+
         return action_plan
