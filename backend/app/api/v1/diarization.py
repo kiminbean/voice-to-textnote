@@ -9,9 +9,11 @@ from datetime import UTC, datetime
 
 import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.config import settings
-from backend.app.dependencies import get_redis_client
+from backend.app.dependencies import get_db_session, get_redis_client
+from backend.app.result_fallback import get_result_with_fallback
 from backend.schemas.diarization import (
     DiarizationCreateRequest,
     DiarizationResponse,
@@ -142,16 +144,24 @@ async def get_diarization_status(
 async def get_diarization_result(
     task_id: str,
     redis_client: aioredis.Redis = Depends(get_redis_client),
+    db_session: AsyncSession = Depends(get_db_session),
 ) -> DiarizationResponse:
     """
     화자 분리 결과 조회
     GET /api/v1/diarizations/{task_id}
     """
     result_key = f"task:dia:result:{task_id}"
-    raw = await redis_client.get(result_key)
 
-    if raw is None:
-        # Redis 캐시 미스 → 상태 확인
+    # Redis 캐시 우선, 미스 시 DB 폴백 (REQ-PERSIST-009)
+    raw_data = await get_result_with_fallback(
+        redis_client=redis_client,
+        task_id=task_id,
+        redis_key=result_key,
+        db_session=db_session,
+    )
+
+    if raw_data is None:
+        # Redis + DB 모두 미스 → 상태 키 확인
         status_key = f"task:dia:status:{task_id}"
         status_raw = await redis_client.get(status_key)
         if status_raw is None:
@@ -173,25 +183,27 @@ async def get_diarization_result(
             error_message=status_data.get("error_message"),
         )
 
-    data = json.loads(raw)
-
     from backend.schemas.diarization import DiarizedSegmentResult, SpeakerInfo
 
-    segments = [DiarizedSegmentResult(**seg) for seg in data.get("segments", [])]
-    speakers = [SpeakerInfo(**sp) for sp in data.get("speakers", [])]
+    segments = [DiarizedSegmentResult(**seg) for seg in raw_data.get("segments", [])]
+    speakers = [SpeakerInfo(**sp) for sp in raw_data.get("speakers", [])]
 
     return DiarizationResponse(
-        task_id=data["task_id"],  # type: ignore[arg-type]
-        stt_task_id=data.get("stt_task_id", task_id),  # type: ignore[arg-type]
-        status=TaskStatus(data["status"]),
+        task_id=raw_data["task_id"],  # type: ignore[arg-type]
+        stt_task_id=raw_data.get("stt_task_id", task_id),  # type: ignore[arg-type]
+        status=TaskStatus(raw_data["status"]),
         segments=segments,
         speakers=speakers,
-        num_speakers=data.get("num_speakers"),
-        created_at=datetime.fromisoformat(data["created_at"]) if data.get("created_at") else datetime.now(UTC),
+        num_speakers=raw_data.get("num_speakers"),
+        created_at=datetime.fromisoformat(raw_data["created_at"])
+        if raw_data.get("created_at")
+        else datetime.now(UTC),
         completed_at=(
-            datetime.fromisoformat(data["completed_at"]) if data.get("completed_at") else None
+            datetime.fromisoformat(raw_data["completed_at"])
+            if raw_data.get("completed_at")
+            else None
         ),
-        error_message=data.get("error_message") or data.get("error"),
+        error_message=raw_data.get("error_message") or raw_data.get("error"),
     )
 
 

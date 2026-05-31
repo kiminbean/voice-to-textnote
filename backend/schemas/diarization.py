@@ -12,16 +12,20 @@ from backend.schemas.transcription import TaskStatus
 
 
 class DiarizedSegmentResult(BaseModel):
-    """화자 정보가 포함된 STT 세그먼트 결과"""
+    """화자 정보가 포함된 STT 세그먼트 결과
+
+    병렬 모드(matched=False)에서는 id, text, confidence가 없을 수 있음.
+    직렬 모드(matched=True)에서는 STT 매칭 후 모든 필드가 채워짐.
+    """
 
     # frozen=True: 불변 객체 (기존 SegmentResult 패턴과 동일)
     model_config = ConfigDict(frozen=True)
 
-    # 기존 SegmentResult 필드 (STT 결과에서 상속 역할)
-    id: int
+    # STT 매칭 후 채워지는 필드 (병렬 모드에서는 누락 가능)
+    id: int | None = Field(default=None, description="세그먼트 순서 ID (매칭 후 할당)")
     start: float = Field(..., description="세그먼트 시작 시간 (초)")
     end: float = Field(..., description="세그먼트 종료 시간 (초)")
-    text: str = Field(..., description="전사된 텍스트")
+    text: str = Field(default="", description="전사된 텍스트 (매칭 전은 빈 문자열)")
     confidence: float = Field(default=0.0, ge=0.0, le=1.0, description="STT 신뢰도 점수")
 
     # 화자 분리 추가 필드
