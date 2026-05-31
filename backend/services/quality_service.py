@@ -198,10 +198,12 @@ class QualityService:
         """
 
         try:
+            # response_format=json_object: 모델이 항상 valid JSON을 반환하도록 강제.
             response = await self.openai_client.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[{"role": "user", "content": prompt}],
-                temperature=0.1
+                temperature=0.1,
+                response_format={"type": "json_object"},
             )
 
             ai_text = response.choices[0].message.content

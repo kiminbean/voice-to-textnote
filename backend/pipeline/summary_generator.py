@@ -237,10 +237,13 @@ class SummaryGenerator:
         )
 
         client = OpenAI(api_key=api_key)
+        # response_format=json_object: 모델이 항상 valid JSON을 반환하도록 강제.
+        # 일반 모드는 간헐적으로 깨진 JSON을 생성해 raw text fallback으로 빠짐.
         response = client.chat.completions.create(
             model=model,
             max_tokens=max_tokens,
             messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"},
         )
 
         response_text = response.choices[0].message.content
