@@ -102,10 +102,13 @@ class MindMapGenerator:
         )
 
         client = OpenAI(api_key=api_key)
+        # response_format=json_object: gpt-4o-mini가 항상 valid JSON을 반환하도록 강제.
+        # 일반 모드는 간헐적으로 깨진 JSON(이스케이프 누락 등)을 생성해 파싱이 실패함.
         response = client.chat.completions.create(
             model=model,
             max_tokens=max_tokens,
             messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"},
         )
 
         response_text = response.choices[0].message.content
