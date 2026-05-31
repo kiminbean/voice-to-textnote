@@ -14,6 +14,7 @@ from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 # ---------------------------------------------------------------------------
@@ -37,6 +38,37 @@ COMPLETED_SUMMARY_RESULT = {
     "next_steps": ["다음 주 후속 미팅"],
     "tokens_used": None,
     "generation_time_seconds": 3.14,
+    "created_at": datetime.now(UTC).isoformat(),
+    "completed_at": datetime.now(UTC).isoformat(),
+}
+
+COMPLETED_MIND_MAP_RESULT = {
+    "task_id": str(uuid.uuid4()),
+    "summary_task_id": COMPLETED_SUMMARY_RESULT["task_id"],
+    "status": "completed",
+    "root": {
+        "id": "root",
+        "title": "회의 핵심",
+        "summary": "주요 결정과 후속 실행",
+        "source_refs": ["summary_text"],
+        "children": [
+            {
+                "id": "decision_1",
+                "title": "안건 승인",
+                "summary": "안건 1번 승인",
+                "source_refs": ["key_decisions"],
+                "children": [],
+            }
+        ],
+    },
+    "edges": [
+        {
+            "source": "root",
+            "target": "decision_1",
+            "relation": "contains",
+        }
+    ],
+    "generation_time_seconds": 2.12,
     "created_at": datetime.now(UTC).isoformat(),
     "completed_at": datetime.now(UTC).isoformat(),
 }
@@ -68,9 +100,12 @@ def sum_client(mock_sum_redis_client, tmp_path):
     - Celery mock
     - 모델 로드 mock
     """
+    from backend.app.api.v1.summary import router as summary_router
     from backend.app.config import Settings
     from backend.app.dependencies import get_redis_client
-    from backend.app.main import app
+
+    app = FastAPI()
+    app.include_router(summary_router, prefix="/api/v1")
 
     # 테스트용 Settings mock
     test_settings = MagicMock(spec=Settings)
@@ -95,25 +130,20 @@ def sum_client(mock_sum_redis_client, tmp_path):
 
     app.dependency_overrides[get_redis_client] = override_redis
 
-    with patch("backend.app.main.WhisperEngine") as mock_whisper_cls:
-        mock_whisper_inst = MagicMock()
-        mock_whisper_inst.is_loaded = True
-        mock_whisper_inst.load.return_value = None
-        mock_whisper_cls.get_instance.return_value = mock_whisper_inst
+    with patch("backend.app.api.v1.summary.settings", test_settings):
+        with patch("backend.workers.tasks.summary_task.summary_celery_task") as mock_celery:
+            mock_task_result = MagicMock()
+            mock_task_result.id = "mock-summary-task-id"
+            mock_celery.delay.return_value = mock_task_result
 
-        with patch("backend.app.main.DiarizationEngine") as mock_dia_cls:
-            mock_dia_inst = MagicMock()
-            mock_dia_inst.is_loaded = True
-            mock_dia_inst.load.return_value = None
-            mock_dia_cls.get_instance.return_value = mock_dia_inst
+            with patch(
+                "backend.workers.tasks.mind_map_task.mind_map_celery_task"
+            ) as mock_mind_map_celery:
+                mock_mind_map_task_result = MagicMock()
+                mock_mind_map_task_result.id = "mock-mind-map-task-id"
+                mock_mind_map_celery.delay.return_value = mock_mind_map_task_result
 
-            with patch("backend.app.api.v1.summary.settings", test_settings):
-                with patch("backend.workers.tasks.summary_task.summary_celery_task") as mock_celery:
-                    mock_task_result = MagicMock()
-                    mock_task_result.id = "mock-summary-task-id"
-                    mock_celery.delay.return_value = mock_task_result
-
-                    yield TestClient(app, raise_server_exceptions=True)
+                yield TestClient(app, raise_server_exceptions=True)
 
     app.dependency_overrides.clear()
 
@@ -170,9 +200,12 @@ class TestPostSummaries:
 
     def test_create_summary_429_when_limit_exceeded(self, mock_sum_redis_client, tmp_path):
         """동시 작업 한도 초과 → 429 Too Many Requests (REQ-SUM-008)"""
+        from backend.app.api.v1.summary import router as summary_router
         from backend.app.config import Settings
         from backend.app.dependencies import get_redis_client
-        from backend.app.main import app
+
+        app = FastAPI()
+        app.include_router(summary_router, prefix="/api/v1")
 
         # 이미 2개 활성 작업
         mock_sum_redis_client.scard.return_value = 2
@@ -186,25 +219,142 @@ class TestPostSummaries:
 
         app.dependency_overrides[get_redis_client] = override_redis
 
-        with patch("backend.app.main.WhisperEngine") as mock_whisper_cls:
-            mock_whisper_inst = MagicMock()
-            mock_whisper_inst.is_loaded = True
-            mock_whisper_cls.get_instance.return_value = mock_whisper_inst
-
-            with patch("backend.app.main.DiarizationEngine") as mock_dia_cls:
-                mock_dia_inst = MagicMock()
-                mock_dia_inst.is_loaded = True
-                mock_dia_cls.get_instance.return_value = mock_dia_inst
-
-                with patch("backend.app.api.v1.summary.settings", test_settings):
-                    client = TestClient(app, raise_server_exceptions=True)
-                    response = client.post(
-                        "/api/v1/summaries",
-                        json={"minutes_task_id": str(uuid.uuid4())},
-                    )
+        with patch("backend.app.api.v1.summary.settings", test_settings):
+            client = TestClient(app, raise_server_exceptions=True)
+            response = client.post(
+                "/api/v1/summaries",
+                json={"minutes_task_id": str(uuid.uuid4())},
+            )
 
         app.dependency_overrides.clear()
         assert response.status_code == 429
+
+
+# ---------------------------------------------------------------------------
+# POST /api/v1/summaries/{summary_task_id}/mind-map 테스트
+# ---------------------------------------------------------------------------
+
+
+class TestPostSummaryMindMap:
+    """POST /api/v1/summaries/{summary_task_id}/mind-map - 마인드맵 생성 요청"""
+
+    def test_create_mind_map_returns_202(self, sum_client, mock_sum_redis_client):
+        """완료된 요약 결과 → 202 Accepted"""
+        summary_task_id = str(uuid.uuid4())
+        result_data = {**COMPLETED_SUMMARY_RESULT, "task_id": summary_task_id}
+        mock_sum_redis_client.get.return_value = json.dumps(result_data)
+
+        response = sum_client.post(f"/api/v1/summaries/{summary_task_id}/mind-map")
+
+        assert response.status_code == 202
+
+    def test_create_mind_map_returns_task_urls(self, sum_client, mock_sum_redis_client):
+        """202 응답에 status_url/result_url 포함"""
+        summary_task_id = str(uuid.uuid4())
+        result_data = {**COMPLETED_SUMMARY_RESULT, "task_id": summary_task_id}
+        mock_sum_redis_client.get.return_value = json.dumps(result_data)
+
+        response = sum_client.post(
+            f"/api/v1/summaries/{summary_task_id}/mind-map",
+            json={"max_tokens": 1024},
+        )
+        data = response.json()
+
+        assert data["summary_task_id"] == summary_task_id
+        assert data["status"] == "pending"
+        assert "/api/v1/summaries/mind-map/" in data["status_url"]
+        assert "/api/v1/summaries/mind-map/" in data["result_url"]
+
+    def test_create_mind_map_404_when_summary_missing(self, sum_client, mock_sum_redis_client):
+        """요약 결과 없음 → 404"""
+        mock_sum_redis_client.get.return_value = None
+
+        response = sum_client.post(f"/api/v1/summaries/{uuid.uuid4()}/mind-map")
+
+        assert response.status_code == 404
+
+    def test_create_mind_map_409_when_summary_not_completed(
+        self, sum_client, mock_sum_redis_client
+    ):
+        """완료되지 않은 요약 결과 → 409"""
+        summary_task_id = str(uuid.uuid4())
+        result_data = {**COMPLETED_SUMMARY_RESULT, "task_id": summary_task_id, "status": "failed"}
+        mock_sum_redis_client.get.return_value = json.dumps(result_data)
+
+        response = sum_client.post(f"/api/v1/summaries/{summary_task_id}/mind-map")
+
+        assert response.status_code == 409
+
+
+# ---------------------------------------------------------------------------
+# GET /api/v1/summaries/mind-map/{task_id} 테스트
+# ---------------------------------------------------------------------------
+
+
+class TestGetMindMapResult:
+    """GET /api/v1/summaries/mind-map/{task_id} - 마인드맵 결과 조회"""
+
+    def test_get_mind_map_result_completed_returns_200(
+        self, sum_client, mock_sum_redis_client
+    ):
+        """완료된 마인드맵 결과 조회 → 200"""
+        task_id = str(uuid.uuid4())
+        result_data = {**COMPLETED_MIND_MAP_RESULT, "task_id": task_id}
+        mock_sum_redis_client.get.return_value = json.dumps(result_data)
+
+        response = sum_client.get(f"/api/v1/summaries/mind-map/{task_id}")
+
+        assert response.status_code == 200
+
+    def test_get_mind_map_result_has_graph_fields(self, sum_client, mock_sum_redis_client):
+        """결과에 root, edges 포함"""
+        task_id = str(uuid.uuid4())
+        result_data = {**COMPLETED_MIND_MAP_RESULT, "task_id": task_id}
+        mock_sum_redis_client.get.return_value = json.dumps(result_data)
+
+        response = sum_client.get(f"/api/v1/summaries/mind-map/{task_id}")
+        data = response.json()
+
+        assert data["root"]["id"] == "root"
+        assert data["edges"][0]["relation"] == "contains"
+
+    def test_get_mind_map_pending_when_no_result_but_status_exists(
+        self, sum_client, mock_sum_redis_client
+    ):
+        """결과는 없지만 상태 존재 → pending 응답"""
+        task_id = str(uuid.uuid4())
+        status_data = {
+            "task_id": task_id,
+            "summary_task_id": str(uuid.uuid4()),
+            "status": "pending",
+            "progress": 0.0,
+            "created_at": datetime.now(UTC).isoformat(),
+            "updated_at": datetime.now(UTC).isoformat(),
+        }
+
+        async def side_effect(key):
+            if "task:mind:result" in key:
+                return None
+            if "task:mind:status" in key:
+                return json.dumps(status_data)
+            return None
+
+        mock_sum_redis_client.get.side_effect = side_effect
+
+        response = sum_client.get(f"/api/v1/summaries/mind-map/{task_id}")
+        data = response.json()
+
+        assert response.status_code == 200
+        assert data["status"] == "pending"
+        assert data["root"] is None
+
+    def test_get_mind_map_404_when_missing(self, sum_client, mock_sum_redis_client):
+        """결과도 상태도 없으면 404"""
+        mock_sum_redis_client.get.return_value = None
+
+        response = sum_client.get(f"/api/v1/summaries/mind-map/{uuid.uuid4()}")
+
+        assert response.status_code == 404
 
 
 # ---------------------------------------------------------------------------

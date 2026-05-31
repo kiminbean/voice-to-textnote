@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:voice_to_textnote/models/action_item.dart';
 import 'package:voice_to_textnote/models/meeting.dart';
+import 'package:voice_to_textnote/models/mind_map_result.dart';
 import 'package:voice_to_textnote/models/summary_result.dart';
 import 'package:voice_to_textnote/providers/meeting_list_provider.dart';
 import 'package:voice_to_textnote/providers/result_provider.dart';
@@ -90,7 +91,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     final summaryTaskId = meeting?.summaryTaskId;
 
     return DefaultTabController(
-      length: 4,
+      length: 5,
       child: Scaffold(
         appBar: AppBar(
           leading: IconButton(
@@ -124,6 +125,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
               Tab(text: '회의 내용'),
               Tab(text: '회의록'),
               Tab(text: 'AI 요약'),
+              Tab(text: '마인드맵'),
               Tab(text: '액션 아이템'),
             ],
           ),
@@ -136,6 +138,8 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
             _MinutesTab(taskId: summaryTaskId, meeting: meeting),
             // AI 요약 탭: 구조화된 분석 (주요 결정 사항 + 다음 단계)
             _SummaryTab(taskId: summaryTaskId),
+            // 마인드맵 탭: 백엔드 AI 생성 API 기반 관계 그래프
+            _MindMapTab(taskId: summaryTaskId),
             // 액션 아이템 탭 (summaryTaskId 사용)
             _ActionItemsTab(taskId: summaryTaskId),
           ],
@@ -1107,6 +1111,268 @@ class _SummaryTab extends ConsumerWidget {
               ShimmerText(lines: 5),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// 마인드맵 탭: 백엔드 AI 생성 API를 통해 관계 추론형 그래프를 표시
+class _MindMapTab extends ConsumerWidget {
+  final String? taskId;
+
+  const _MindMapTab({required this.taskId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (taskId == null) {
+      return const EmptyStateWidget(
+        icon: Icons.account_tree_outlined,
+        title: '마인드맵 준비 중',
+        subtitle: '처리가 완료되지 않았습니다',
+      );
+    }
+
+    final mindMapAsync = ref.watch(mindMapResultProvider(taskId!));
+
+    return mindMapAsync.when(
+      loading: () => _buildShimmerLoading(),
+      error: (error, _) => ErrorRetryWidget(
+        message: '마인드맵을 불러올 수 없습니다',
+        onRetry: () => ref.invalidate(mindMapResultProvider(taskId!)),
+      ),
+      data: (MindMapResult result) {
+        final root = result.root;
+        if (root == null) {
+          return const EmptyStateWidget(
+            icon: Icons.account_tree_outlined,
+            title: '마인드맵을 만들 내용이 없습니다',
+            subtitle: 'AI 요약을 먼저 생성해 주세요',
+          );
+        }
+
+        return ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            _MindMapRootNode(
+              title: root.title.isNotEmpty ? root.title : '회의 인사이트',
+              subtitle: root.summary,
+            ),
+            const SizedBox(height: 12),
+            ...root.children.map((node) => _MindMapGraphNode(node: node)),
+            if (result.edges.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              _MindMapRelations(edges: result.edges),
+            ],
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildShimmerLoading() {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: List.generate(
+          4,
+          (_) => const Padding(
+            padding: EdgeInsets.only(bottom: 12),
+            child: ShimmerText(lines: 2),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MindMapRootNode extends StatelessWidget {
+  final String title;
+  final String subtitle;
+
+  const _MindMapRootNode({required this.title, required this.subtitle});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primaryContainer.withAlpha(80),
+        border: Border.all(color: theme.colorScheme.primary.withAlpha(80)),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.account_tree_outlined, color: theme.colorScheme.primary),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          if (subtitle.trim().isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              subtitle,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                height: 1.5,
+                color: theme.colorScheme.onSurface,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _MindMapGraphNode extends StatelessWidget {
+  final MindMapNode node;
+  final int depth;
+
+  const _MindMapGraphNode({required this.node, this.depth = 0});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final leftInset = depth * 14.0;
+
+    return Padding(
+      padding: EdgeInsets.only(left: leftInset, bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Column(
+            children: [
+              Container(
+                width: 9,
+                height: 9,
+                margin: const EdgeInsets.only(top: 20),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              if (node.children.isNotEmpty)
+                Container(
+                  width: 1,
+                  height: 28,
+                  color: theme.dividerColor,
+                ),
+            ],
+          ),
+          Container(
+            width: 18,
+            height: 1,
+            margin: const EdgeInsets.only(top: 24),
+            color: theme.dividerColor,
+          ),
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: depth == 0
+                    ? theme.colorScheme.surfaceContainerHighest.withAlpha(100)
+                    : theme.colorScheme.surface,
+                border: Border.all(color: theme.dividerColor),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    node.title.isNotEmpty ? node.title : node.id,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  if (node.summary.trim().isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      node.summary,
+                      style: const TextStyle(height: 1.45),
+                    ),
+                  ],
+                  if (node.sourceRefs.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: node.sourceRefs
+                          .map((ref) => Chip(
+                                label: Text(ref),
+                                visualDensity: VisualDensity.compact,
+                                materialTapTargetSize:
+                                    MaterialTapTargetSize.shrinkWrap,
+                              ))
+                          .toList(),
+                    ),
+                  ],
+                  if (node.children.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    ...node.children.map(
+                      (child) => _MindMapGraphNode(
+                        node: child,
+                        depth: depth + 1,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MindMapRelations extends StatelessWidget {
+  final List<MindMapEdge> edges;
+
+  const _MindMapRelations({required this.edges});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.hub_outlined, size: 20, color: theme.colorScheme.primary),
+                const SizedBox(width: 8),
+                Text(
+                  '관계',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            ...edges.take(12).map(
+                  (edge) => Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Text(
+                      '${edge.source} → ${edge.target} · ${edge.relation}',
+                      style: const TextStyle(height: 1.4),
+                    ),
+                  ),
+                ),
+          ],
         ),
       ),
     );

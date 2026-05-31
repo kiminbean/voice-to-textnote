@@ -11,6 +11,7 @@ import 'package:voice_to_textnote/services/minutes_api.dart';
 import 'package:voice_to_textnote/services/summary_api.dart';
 
 class MockMinutesApi extends Mock implements MinutesApi {}
+
 class MockSummaryApi extends Mock implements SummaryApi {}
 
 // 테스트용 Meeting 목록 Notifier (AsyncNotifier이므로 Future<List<Meeting>> 반환)
@@ -25,7 +26,16 @@ class _MockMeetingListNotifier extends MeetingListNotifier {
 // 액션 아이템 탭까지 진행하는 헬퍼
 Future<void> _pumpToActionItemsTab(WidgetTester tester) async {
   // 액션 아이템 탭 버튼 클릭
+  await tester.ensureVisible(find.text('액션 아이템'));
+  await tester.pumpAndSettle();
   await tester.tap(find.text('액션 아이템'));
+  await tester.pumpAndSettle();
+}
+
+Future<void> _pumpToMindMapTab(WidgetTester tester) async {
+  await tester.ensureVisible(find.text('마인드맵'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('마인드맵'));
   await tester.pumpAndSettle();
 }
 
@@ -50,6 +60,27 @@ void main() {
     // 회의록 기본 응답
     when(() => mockMinApi.getResult(any())).thenAnswer(
       (_) async => {'markdown': '# 회의록\n내용'},
+    );
+    when(() => mockSumApi.createMindMap(any())).thenAnswer(
+      (_) async => {'task_id': 'mind-task-001', 'status': 'pending'},
+    );
+    when(() => mockSumApi.getMindMapStatus(any())).thenAnswer(
+      (_) async => {'status': 'completed'},
+    );
+    when(() => mockSumApi.getMindMapResult(any())).thenAnswer(
+      (_) async => {
+        'task_id': 'mind-task-001',
+        'summary_task_id': 'sum-task-001',
+        'status': 'completed',
+        'root': {
+          'id': 'root',
+          'title': '회의 인사이트',
+          'summary': '회의 핵심 요약입니다.',
+          'source_refs': ['summary_text'],
+          'children': <dynamic>[],
+        },
+        'edges': <dynamic>[],
+      },
     );
   });
 
@@ -161,8 +192,7 @@ void main() {
     });
 
     // 번호 매기기 목록 표시 테스트
-    testWidgets('키 결정 사항이 번호 매기기 목록으로 표시되어야 함',
-        (WidgetTester tester) async {
+    testWidgets('키 결정 사항이 번호 매기기 목록으로 표시되어야 함', (WidgetTester tester) async {
       // Arrange
       when(() => mockSumApi.getResult(any())).thenAnswer((_) async => {
             'summary_text': '요약',
@@ -213,8 +243,7 @@ void main() {
     });
 
     // 담당자 없을 때 "미지정" 표시 테스트
-    testWidgets('담당자가 없으면 "미지정"으로 표시되어야 함',
-        (WidgetTester tester) async {
+    testWidgets('담당자가 없으면 "미지정"으로 표시되어야 함', (WidgetTester tester) async {
       // Arrange
       when(() => mockSumApi.getResult(any())).thenAnswer((_) async => {
             'summary': '요약',
@@ -236,8 +265,7 @@ void main() {
     });
 
     // 체크박스 토글 테스트
-    testWidgets('체크박스 토글 시 취소선이 적용되어야 함',
-        (WidgetTester tester) async {
+    testWidgets('체크박스 토글 시 취소선이 적용되어야 함', (WidgetTester tester) async {
       // Arrange
       when(() => mockSumApi.getResult(any())).thenAnswer((_) async => {
             'summary': '요약',
@@ -264,10 +292,70 @@ void main() {
     });
   });
 
+  group('_MindMapTab - 요약 결과 계층 표시', () {
+    testWidgets('백엔드 마인드맵 root, children, edges를 표시해야 함',
+        (WidgetTester tester) async {
+      // Arrange
+      when(() => mockSumApi.getMindMapResult(any())).thenAnswer((_) async => {
+            'task_id': 'mind-task-001',
+            'summary_task_id': 'sum-task-001',
+            'status': 'completed',
+            'root': {
+              'id': 'root',
+              'title': '회의 인사이트',
+              'summary': '회의 핵심 요약입니다.',
+              'source_refs': ['summary_text'],
+              'children': [
+                {
+                  'id': 'benchmark',
+                  'title': '회의 안건',
+                  'summary': '신규 기능 벤치마킹',
+                  'source_refs': ['sections.회의 안건'],
+                  'children': [
+                    {
+                      'id': 'decision',
+                      'title': '주요 결정',
+                      'summary': '마인드맵 탭 추가',
+                      'source_refs': ['key_decisions'],
+                      'children': <dynamic>[],
+                    },
+                  ],
+                },
+                {
+                  'id': 'action',
+                  'title': '액션 아이템',
+                  'summary': '마인드맵 UI 검토',
+                  'source_refs': ['action_items'],
+                  'children': <dynamic>[],
+                },
+              ],
+            },
+            'edges': [
+              {
+                'source': 'benchmark',
+                'target': 'decision',
+                'relation': 'leads_to',
+              },
+            ],
+          });
+
+      // Act
+      await tester.pumpWidget(buildTestWidget([]));
+      await _pumpToMindMapTab(tester);
+
+      // Assert
+      expect(find.text('회의 인사이트'), findsOneWidget);
+      expect(find.text('회의 안건'), findsOneWidget);
+      expect(find.text('신규 기능 벤치마킹'), findsOneWidget);
+      expect(find.text('주요 결정'), findsOneWidget);
+      expect(find.text('마인드맵 탭 추가'), findsOneWidget);
+      expect(find.text('액션 아이템'), findsWidgets);
+    });
+  });
+
   group('_ActionItemsTab - 우선순위 배지 색상', () {
     // high 우선순위는 빨간색 배지
-    testWidgets('high 우선순위는 빨간색 배지로 표시되어야 함',
-        (WidgetTester tester) async {
+    testWidgets('high 우선순위는 빨간색 배지로 표시되어야 함', (WidgetTester tester) async {
       // Arrange
       when(() => mockSumApi.getResult(any())).thenAnswer((_) async => {
             'summary': '요약',
@@ -285,8 +373,7 @@ void main() {
     });
 
     // medium 우선순위는 주황색 배지
-    testWidgets('medium 우선순위는 주황색 배지로 표시되어야 함',
-        (WidgetTester tester) async {
+    testWidgets('medium 우선순위는 주황색 배지로 표시되어야 함', (WidgetTester tester) async {
       // Arrange
       when(() => mockSumApi.getResult(any())).thenAnswer((_) async => {
             'summary': '요약',
@@ -304,8 +391,7 @@ void main() {
     });
 
     // low 우선순위는 초록색 배지
-    testWidgets('low 우선순위는 초록색 배지로 표시되어야 함',
-        (WidgetTester tester) async {
+    testWidgets('low 우선순위는 초록색 배지로 표시되어야 함', (WidgetTester tester) async {
       // Arrange
       when(() => mockSumApi.getResult(any())).thenAnswer((_) async => {
             'summary': '요약',
@@ -375,8 +461,7 @@ void main() {
     });
 
     // 전체 필터로 복귀 테스트
-    testWidgets('전체 필터 선택 시 모든 아이템이 표시되어야 함',
-        (WidgetTester tester) async {
+    testWidgets('전체 필터 선택 시 모든 아이템이 표시되어야 함', (WidgetTester tester) async {
       // Arrange
       when(() => mockSumApi.getResult(any())).thenAnswer((_) async => {
             'summary': '요약',

@@ -3,6 +3,8 @@ AI 요약 생성 요청/응답 Pydantic v2 스키마
 REQ-SUM-005: ActionItem, SummaryCreateRequest, SummaryResult, SummaryResponse, SummaryStatusResponse
 """
 
+from __future__ import annotations
+
 from pydantic import BaseModel, Field
 
 from backend.schemas.transcription import TaskStatus
@@ -93,4 +95,40 @@ class SummaryStatusResponse(BaseModel):
     progress: float = Field(default=0.0, ge=0.0, le=1.0, description="진행률")
     # 상태 메시지 (None 허용)
     message: str | None = Field(default=None, description="상태 메시지")
+    error_message: str | None = Field(default=None, description="실패 시 오류 메시지")
+
+
+class MindMapCreateRequest(BaseModel):
+    """POST /api/v1/summaries/{summary_task_id}/mind-map 요청 본문"""
+
+    max_tokens: int = Field(default=2048, ge=512, le=8192, description="OpenAI API 최대 응답 토큰 수")
+
+
+class MindMapNode(BaseModel):
+    """관계 추론형 마인드맵 노드"""
+
+    id: str = Field(..., description="노드 고유 ID")
+    title: str = Field(..., description="노드 제목")
+    summary: str = Field(default="", description="노드 설명")
+    children: list[MindMapNode] = Field(default_factory=list, description="하위 노드")
+    source_refs: list[str] = Field(default_factory=list, description="근거가 된 요약/섹션 참조")
+
+
+class MindMapEdge(BaseModel):
+    """마인드맵 노드 간 관계"""
+
+    source: str = Field(..., description="시작 노드 ID")
+    target: str = Field(..., description="대상 노드 ID")
+    relation: str = Field(default="related_to", description="관계 라벨")
+
+
+class MindMapResponse(BaseModel):
+    """GET /api/v1/summaries/mind-map/{task_id} 응답"""
+
+    task_id: str = Field(..., description="마인드맵 작업 ID")
+    summary_task_id: str = Field(..., description="원본 요약 작업 ID")
+    status: TaskStatus
+    root: MindMapNode | None = Field(default=None, description="마인드맵 루트 노드")
+    edges: list[MindMapEdge] = Field(default_factory=list, description="노드 간 관계")
+    generation_time_seconds: float | None = Field(default=None, description="생성 소요 시간 (초)")
     error_message: str | None = Field(default=None, description="실패 시 오류 메시지")

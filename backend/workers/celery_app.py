@@ -17,6 +17,7 @@ celery_app = Celery(
         "backend.workers.tasks.diarization_task",
         "backend.workers.tasks.minutes_task",
         "backend.workers.tasks.summary_task",
+        "backend.workers.tasks.mind_map_task",
         "backend.workers.tasks.cleanup_task",
     ],
 )

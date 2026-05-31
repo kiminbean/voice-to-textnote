@@ -10,6 +10,7 @@ import 'package:voice_to_textnote/services/minutes_api.dart';
 import 'package:voice_to_textnote/services/summary_api.dart';
 
 class MockMinutesApi extends Mock implements MinutesApi {}
+
 class MockSummaryApi extends Mock implements SummaryApi {}
 
 // 테스트용 Meeting 목록 Notifier (AsyncNotifier이므로 Future<List<Meeting>> 반환)
@@ -59,6 +60,27 @@ void main() {
         'action_items': <dynamic>[],
         'key_decisions': <dynamic>[],
         'next_steps': <dynamic>[],
+      },
+    );
+    when(() => mockSumApi.createMindMap(any())).thenAnswer(
+      (_) async => {'task_id': 'mind-task-export-001', 'status': 'pending'},
+    );
+    when(() => mockSumApi.getMindMapStatus(any())).thenAnswer(
+      (_) async => {'status': 'completed'},
+    );
+    when(() => mockSumApi.getMindMapResult(any())).thenAnswer(
+      (_) async => {
+        'task_id': 'mind-task-export-001',
+        'summary_task_id': 'sum-task-export-001',
+        'status': 'completed',
+        'root': {
+          'id': 'root',
+          'title': '회의 인사이트',
+          'summary': '요약 내용',
+          'children': <dynamic>[],
+          'source_refs': <dynamic>[],
+        },
+        'edges': <dynamic>[],
       },
     );
   });
@@ -130,8 +152,7 @@ void main() {
     });
 
     // AppBar 제목이 올바르게 표시되는지 테스트
-    testWidgets('AppBar 제목이 "회의 결과"로 표시되어야 함',
-        (WidgetTester tester) async {
+    testWidgets('AppBar 제목이 "회의 결과"로 표시되어야 함', (WidgetTester tester) async {
       // Act
       await tester.pumpWidget(buildTestWidget(completedMeeting));
       await tester.pumpAndSettle();
@@ -142,8 +163,8 @@ void main() {
   });
 
   group('ResultScreen - TabBar 구조', () {
-    // 3개 탭이 올바르게 표시되는지 테스트
-    testWidgets('회의록/AI 요약/액션 아이템 탭이 표시되어야 함',
+    // 결과 탭이 올바르게 표시되는지 테스트
+    testWidgets('회의록/AI 요약/마인드맵/액션 아이템 탭이 표시되어야 함',
         (WidgetTester tester) async {
       // Act
       await tester.pumpWidget(buildTestWidget(completedMeeting));
@@ -153,12 +174,12 @@ void main() {
       // "회의록" 텍스트는 TabBar와 SpeakerSegment 헤더에 중복될 수 있어 findsWidgets 사용
       expect(find.text('회의록'), findsWidgets);
       expect(find.text('AI 요약'), findsOneWidget);
+      expect(find.text('마인드맵'), findsOneWidget);
       expect(find.text('액션 아이템'), findsOneWidget);
     });
 
     // 탭 전환이 동작하는지 테스트
-    testWidgets('AI 요약 탭으로 전환이 가능해야 함',
-        (WidgetTester tester) async {
+    testWidgets('AI 요약 탭으로 전환이 가능해야 함', (WidgetTester tester) async {
       // Act
       await tester.pumpWidget(buildTestWidget(completedMeeting));
       await tester.pumpAndSettle();

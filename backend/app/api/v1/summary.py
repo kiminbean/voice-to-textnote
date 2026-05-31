@@ -19,6 +19,10 @@ from backend.app.config import settings
 from backend.app.dependencies import get_redis_client
 from backend.schemas.summary import (
     ActionItem,
+    MindMapCreateRequest,
+    MindMapEdge,
+    MindMapNode,
+    MindMapResponse,
     SummaryCreateRequest,
     SummaryResponse,
     SummaryStatusResponse,
@@ -96,6 +100,154 @@ async def create_summary(
         "result_url": f"/api/v1/summaries/{task_id}",
         "created_at": now.isoformat(),
     }
+
+
+@router.post(
+    "/{summary_task_id}/mind-map",
+    status_code=status.HTTP_202_ACCEPTED,
+    responses={404: {"description": "요약 작업 없음"}},
+)
+async def create_mind_map(
+    summary_task_id: str,
+    request: MindMapCreateRequest | None = None,
+    redis_client: aioredis.Redis = Depends(get_redis_client),
+) -> dict:
+    """
+    완료된 요약 결과를 기반으로 AI 마인드맵 생성 작업 요청.
+    POST /api/v1/summaries/{summary_task_id}/mind-map
+    """
+    summary_raw = await redis_client.get(f"task:sum:result:{summary_task_id}")
+    if summary_raw is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="요약 결과를 찾을 수 없습니다.",
+        )
+
+    summary_data = json.loads(summary_raw)
+    if summary_data.get("status") != TaskStatus.completed.value:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="완료된 요약 결과에서만 마인드맵을 생성할 수 있습니다.",
+        )
+
+    task_id = str(uuid.uuid4())
+    now = datetime.now(UTC)
+    initial_status = {
+        "task_id": task_id,
+        "summary_task_id": summary_task_id,
+        "task_type": "mind_map",
+        "status": TaskStatus.pending.value,
+        "progress": 0.0,
+        "created_at": now.isoformat(),
+        "updated_at": now.isoformat(),
+    }
+    await redis_client.setex(
+        f"task:mind:status:{task_id}",
+        settings.summary_result_ttl,
+        json.dumps(initial_status),
+    )
+
+    from backend.workers.tasks.mind_map_task import mind_map_celery_task
+
+    body = request or MindMapCreateRequest()
+    mind_map_celery_task.delay(
+        task_id=task_id,
+        summary_task_id=summary_task_id,
+        max_tokens=body.max_tokens,
+    )
+
+    logger.info("마인드맵 생성 작업 등록", task_id=task_id, summary_task_id=summary_task_id)
+
+    return {
+        "task_id": task_id,
+        "summary_task_id": summary_task_id,
+        "status": TaskStatus.pending.value,
+        "status_url": f"/api/v1/summaries/mind-map/{task_id}/status",
+        "result_url": f"/api/v1/summaries/mind-map/{task_id}",
+        "created_at": now.isoformat(),
+    }
+
+
+@router.get(
+    "/mind-map/{task_id}/status",
+    response_model=SummaryStatusResponse,
+    responses={404: {"description": "작업 없음"}},
+)
+async def get_mind_map_status(
+    task_id: str,
+    redis_client: aioredis.Redis = Depends(get_redis_client),
+) -> SummaryStatusResponse:
+    """
+    마인드맵 작업 상태 조회.
+    GET /api/v1/summaries/mind-map/{task_id}/status
+    """
+    raw = await redis_client.get(f"task:mind:status:{task_id}")
+    if raw is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="마인드맵 작업을 찾을 수 없습니다.",
+        )
+
+    data = json.loads(raw)
+    return SummaryStatusResponse(
+        task_id=task_id,
+        status=TaskStatus(data["status"]),
+        progress=data.get("progress", 0.0),
+        message=data.get("message"),
+        error_message=data.get("error_message"),
+    )
+
+
+@router.get(
+    "/mind-map/{task_id}",
+    response_model=MindMapResponse,
+    responses={404: {"description": "작업 없음"}},
+)
+async def get_mind_map_result(
+    task_id: str,
+    redis_client: aioredis.Redis = Depends(get_redis_client),
+) -> MindMapResponse:
+    """
+    마인드맵 결과 조회.
+    GET /api/v1/summaries/mind-map/{task_id}
+    """
+    raw = await redis_client.get(f"task:mind:result:{task_id}")
+
+    if raw is None:
+        status_raw = await redis_client.get(f"task:mind:status:{task_id}")
+        if status_raw is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="마인드맵 작업을 찾을 수 없습니다.",
+            )
+
+        status_data = json.loads(status_raw)
+        return MindMapResponse(
+            task_id=task_id,
+            summary_task_id=status_data.get("summary_task_id", ""),
+            status=TaskStatus(status_data["status"]),
+            root=None,
+            edges=[],
+            error_message=status_data.get("error_message"),
+        )
+
+    data = json.loads(raw)
+    root = MindMapNode.model_validate(data["root"]) if data.get("root") else None
+    edges = [
+        MindMapEdge.model_validate(edge)
+        for edge in data.get("edges", [])
+        if isinstance(edge, dict)
+    ]
+
+    return MindMapResponse(
+        task_id=data["task_id"],
+        summary_task_id=data.get("summary_task_id", ""),
+        status=TaskStatus(data["status"]),
+        root=root,
+        edges=edges,
+        generation_time_seconds=data.get("generation_time_seconds"),
+        error_message=data.get("error_message") or data.get("error"),
+    )
 
 
 @router.get(

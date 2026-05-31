@@ -1,6 +1,7 @@
 // 결과 데이터 로딩 상태 프로바이더
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:voice_to_textnote/models/action_item.dart';
+import 'package:voice_to_textnote/models/mind_map_result.dart';
 import 'package:voice_to_textnote/models/summary_result.dart';
 import 'package:voice_to_textnote/services/minutes_api.dart';
 import 'package:voice_to_textnote/services/summary_api.dart';
@@ -64,6 +65,39 @@ final summaryResultProvider =
   final sumApi = ref.watch(summaryApiProvider);
   final data = await sumApi.getResult(summaryTaskId);
   return SummaryResult.fromJson(data);
+});
+
+// 관계 추론형 마인드맵 결과 로딩 프로바이더.
+// 백엔드가 비동기 생성 작업을 반환하므로 create → status polling → result 순서로 처리한다.
+final mindMapResultProvider =
+    FutureProvider.family<MindMapResult, String>((ref, summaryTaskId) async {
+  final sumApi = ref.watch(summaryApiProvider);
+  final createData = await sumApi.createMindMap(summaryTaskId);
+  final mindMapTaskId = createData['task_id'] as String? ?? '';
+
+  if (mindMapTaskId.isEmpty) {
+    throw StateError('마인드맵 작업 ID를 받지 못했습니다.');
+  }
+
+  for (var attempt = 0; attempt < 30; attempt++) {
+    final statusData = await sumApi.getMindMapStatus(mindMapTaskId);
+    final status = statusData['status'] as String? ?? 'pending';
+
+    if (status == 'completed') {
+      final resultData = await sumApi.getMindMapResult(mindMapTaskId);
+      return MindMapResult.fromJson(resultData);
+    }
+
+    if (status == 'failed') {
+      final message =
+          statusData['error_message'] as String? ?? '마인드맵 생성에 실패했습니다.';
+      throw StateError(message);
+    }
+
+    await Future<void>.delayed(const Duration(seconds: 1));
+  }
+
+  throw StateError('마인드맵 생성 시간이 초과되었습니다.');
 });
 
 // 기존 통합 프로바이더 (하위 호환성 유지 - 두 ID가 동일한 경우)

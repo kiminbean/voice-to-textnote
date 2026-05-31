@@ -4,12 +4,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:voice_to_textnote/models/action_item.dart';
+import 'package:voice_to_textnote/models/mind_map_result.dart';
 import 'package:voice_to_textnote/models/summary_result.dart';
 import 'package:voice_to_textnote/providers/result_provider.dart';
 import 'package:voice_to_textnote/services/minutes_api.dart';
 import 'package:voice_to_textnote/services/summary_api.dart';
 
 class MockMinutesApi extends Mock implements MinutesApi {}
+
 class MockSummaryApi extends Mock implements SummaryApi {}
 
 void main() {
@@ -188,7 +190,9 @@ void main() {
     });
 
     // SummaryResult에 keyDecisions와 nextSteps가 포함되는지 테스트
-    test('summaryResultProvider가 keyDecisions와 nextSteps를 포함한 SummaryResult를 반환해야 함', () async {
+    test(
+        'summaryResultProvider가 keyDecisions와 nextSteps를 포함한 SummaryResult를 반환해야 함',
+        () async {
       // Arrange
       when(() => mockSumApi.getResult(any())).thenAnswer((_) async => {
             'summary_text': '요약',
@@ -210,8 +214,57 @@ void main() {
       expect(result.nextSteps[0], '다음 단계 1');
     });
 
+    test('mindMapResultProvider가 생성 작업 완료 후 MindMapResult를 반환해야 함', () async {
+      // Arrange
+      when(() => mockSumApi.createMindMap(any())).thenAnswer(
+        (_) async => {'task_id': 'mind-task-001', 'status': 'pending'},
+      );
+      when(() => mockSumApi.getMindMapStatus(any())).thenAnswer(
+        (_) async => {'status': 'completed'},
+      );
+      when(() => mockSumApi.getMindMapResult(any())).thenAnswer((_) async => {
+            'task_id': 'mind-task-001',
+            'summary_task_id': 'sum-001',
+            'status': 'completed',
+            'root': {
+              'id': 'root',
+              'title': '회의 인사이트',
+              'summary': '핵심 관계',
+              'children': [
+                {
+                  'id': 'decision',
+                  'title': '주요 결정',
+                  'summary': '마인드맵 API 연결',
+                  'children': <dynamic>[],
+                  'source_refs': ['key_decisions'],
+                },
+              ],
+              'source_refs': ['summary_text'],
+            },
+            'edges': [
+              {
+                'source': 'root',
+                'target': 'decision',
+                'relation': 'contains',
+              }
+            ],
+          });
+
+      // Act
+      await container.read(mindMapResultProvider('sum-001').future);
+      final state = container.read(mindMapResultProvider('sum-001'));
+
+      // Assert
+      expect(state, isA<AsyncData<MindMapResult>>());
+      final result = state.value!;
+      expect(result.root?.title, '회의 인사이트');
+      expect(result.root?.children.first.summary, '마인드맵 API 연결');
+      expect(result.edges.first.relation, 'contains');
+    });
+
     // MeetingResult에 keyDecisions와 nextSteps가 포함되는지 테스트
-    test('resultProvider MeetingResult에 keyDecisions와 nextSteps가 포함되어야 함', () async {
+    test('resultProvider MeetingResult에 keyDecisions와 nextSteps가 포함되어야 함',
+        () async {
       // Arrange
       when(() => mockMinApi.getResult(any())).thenAnswer((_) async => {
             'minutes': '회의록 내용',

@@ -16,7 +16,8 @@ class SummaryApi {
 
   // 회의록 태스크 ID로 요약 생성
   // templateId: 양식 기반 요약 시 사용 (null = 기본 양식, SPEC-TMPL-001 REQ-TMPL-006)
-  Future<Map<String, dynamic>> create(String minTaskId, {String? templateId}) async {
+  Future<Map<String, dynamic>> create(String minTaskId,
+      {String? templateId}) async {
     final Map<String, dynamic> data = {'minutes_task_id': minTaskId};
     if (templateId != null) {
       data['template_id'] = templateId;
@@ -34,6 +35,30 @@ class SummaryApi {
   // 태스크 결과 조회
   Future<Map<String, dynamic>> getResult(String taskId) async {
     final response = await _dio.get('/summaries/$taskId');
+    return response.data as Map<String, dynamic>;
+  }
+
+  // 완료된 요약 태스크 ID로 관계 추론형 마인드맵 생성
+  Future<Map<String, dynamic>> createMindMap(
+    String summaryTaskId, {
+    int maxTokens = 2048,
+  }) async {
+    final response = await _dio.post(
+      '/summaries/$summaryTaskId/mind-map',
+      data: {'max_tokens': maxTokens},
+    );
+    return response.data as Map<String, dynamic>;
+  }
+
+  // 마인드맵 태스크 상태 조회
+  Future<Map<String, dynamic>> getMindMapStatus(String taskId) async {
+    final response = await _dio.get('/summaries/mind-map/$taskId/status');
+    return response.data as Map<String, dynamic>;
+  }
+
+  // 마인드맵 태스크 결과 조회
+  Future<Map<String, dynamic>> getMindMapResult(String taskId) async {
+    final response = await _dio.get('/summaries/mind-map/$taskId');
     return response.data as Map<String, dynamic>;
   }
 
