@@ -205,14 +205,16 @@ async def upload_transcription(
         json.dumps(dia_initial_status),
     )
 
-    # DIA는 STT가 만드는 WAV 사본(settings.temp_dir/{task_id_str}.wav)을 입력으로 받는다.
+    # DIA는 STT가 만드는 DIA 전용 WAV 사본(settings.temp_dir/{task_id_str}_dia.wav)을 입력으로 받는다.
     # transcription_task가 convert_and_normalize 직후 그 경로에 WAV를 복사한다.
+    # 원본({task_id}.wav)과 경로를 분리해, 순차 실행(concurrency=1) 시 STT가 원본을
+    # 삭제해도 DIA 입력이 사라지지 않게 한다. 사본은 DIA가 완료 후 직접 정리한다.
     # WAV가 아직 없을 수 있으므로 짧은 지연(countdown) 후 시작한다.
     #
     # REQ-DIA-PERF-001: 회의록 앱 기본 max_speakers=4로 clustering 후보를 좁혀
     # 화자 분리 추론 시간을 10~20% 단축한다. 더 많은 화자가 예상되면
     # /diarizations 엔드포인트로 별도 호출 가능하다.
-    dia_audio_path = str(settings.temp_dir / f"{task_id_str}.wav")
+    dia_audio_path = str(settings.temp_dir / f"{task_id_str}_dia.wav")
     diarization_celery_task.apply_async(
         kwargs={
             "task_id": dia_task_id,

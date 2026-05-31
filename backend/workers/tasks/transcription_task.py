@@ -165,7 +165,7 @@ def transcription_task(
         processed_path = convert_and_normalize(audio_path)
 
         # 화자 분리(diarization)가 사용할 수 있도록 WAV를 temp_dir에 복사 보존
-        wav_for_dia = settings.temp_dir / f"{task_id}.wav"
+        wav_for_dia = settings.temp_dir / f"{task_id}_dia.wav"
         shutil.copy2(str(processed_path), str(wav_for_dia))
         diarization_wav_path = wav_for_dia
 

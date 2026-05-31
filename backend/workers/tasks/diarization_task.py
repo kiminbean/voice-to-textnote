@@ -439,6 +439,14 @@ def diarization_task(
 
     finally:
         _unregister_active_job(task_id)
+        # 병렬 모드에서 STT가 만든 DIA 전용 WAV 사본({task_id}_dia.wav)은
+        # DIA가 소유한다. STT는 이 파일을 삭제하지 않으므로(순차 실행 시 race 방지)
+        # DIA 완료/실패 후 여기서 정리한다.
+        if audio_path:
+            try:
+                Path(audio_path).unlink(missing_ok=True)
+            except OSError:
+                pass
 
 
 @celery_app.task(
