@@ -38,7 +38,12 @@ class PipelineNotifier extends Notifier<PipelineState> {
   // 파이프라인 전체 처리 시작
   // 업로드 -> STT 폴링 -> 화자 분리 -> 화자 분리 폴링 -> 회의록 생성 -> 회의록 폴링 -> 요약 -> 요약 폴링 -> 완료
   // templateId: 요약 생성 시 사용할 양식 ID (null = 기본 양식)
-  Future<void> startPipeline(String audioFilePath, {String? templateId}) async {
+  // vocabularyId: STT 정확도 향상용 사용자 사전 ID (null = 사전 없음)
+  Future<void> startPipeline(
+    String audioFilePath, {
+    String? templateId,
+    String? vocabularyId,
+  }) async {
     // 새 파이프라인 시작 시 취소 플래그 초기화
     _cancelled = false;
     final sttApi = ref.read(transcriptionApiProvider);
@@ -52,7 +57,10 @@ class PipelineNotifier extends Notifier<PipelineState> {
         currentStep: PipelineStep.uploading,
         progress: 0.0,
       );
-      final uploadResult = await sttApi.upload(audioFilePath);
+      final uploadResult = await sttApi.upload(
+        audioFilePath,
+        vocabularyId: vocabularyId,
+      );
       final sttTaskId = uploadResult['task_id'] as String;
 
       // 서버 응답에서 자동 시작된 화자 분리 task_id 추출 (병렬 모드)

@@ -4,6 +4,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
@@ -14,10 +15,19 @@ import 'package:voice_to_textnote/models/summary_result.dart';
 import 'package:voice_to_textnote/providers/meeting_list_provider.dart';
 import 'package:voice_to_textnote/providers/result_provider.dart';
 import 'package:voice_to_textnote/services/export_api.dart';
+import 'package:voice_to_textnote/services/statistics_api.dart';
+import 'package:voice_to_textnote/services/sentiment_api.dart';
+import 'package:voice_to_textnote/services/bookmark_api.dart';
+import 'package:voice_to_textnote/services/team_api.dart';
+import 'package:voice_to_textnote/models/team.dart';
 import 'package:voice_to_textnote/widgets/empty_state_widget.dart';
 import 'package:voice_to_textnote/widgets/error_retry_widget.dart';
 import 'package:voice_to_textnote/widgets/shimmer_text.dart';
 import 'package:voice_to_textnote/widgets/speaker_segment.dart';
+import 'package:voice_to_textnote/widgets/find_replace_bar.dart';
+import 'package:voice_to_textnote/widgets/audio_player_bar.dart';
+import 'package:voice_to_textnote/providers/audio_player_provider.dart';
+import 'package:voice_to_textnote/providers/qa_provider.dart';
 
 // ConsumerStatefulWidget으로 변경: _isExporting 상태 관리 필요
 class ResultScreen extends ConsumerStatefulWidget {
@@ -30,54 +40,103 @@ class ResultScreen extends ConsumerStatefulWidget {
 }
 
 class _ResultScreenState extends ConsumerState<ResultScreen> {
-  // PDF 내보내기 진행 중 여부 (중복 탭 방지)
   bool _isExporting = false;
 
-  /// PDF 내보내기 및 공유 처리
-  Future<void> _exportPdf(
+  Future<void> _export(
     BuildContext context,
+    ExportFormat format,
     String? minutesTaskId,
     String? summaryTaskId,
   ) async {
-    // minutesTaskId 없으면 내보내기 불가
     if (minutesTaskId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('회의록 처리가 완료되지 않아 PDF를 내보낼 수 없습니다.')),
+        const SnackBar(content: Text('회의록 처리가 완료되지 않아 내보낼 수 없습니다.')),
       );
       return;
     }
 
-    // 중복 탭 방지
     if (_isExporting) return;
     setState(() => _isExporting = true);
 
-    // iOS 공유 팝오버 위치 (async 전에 캡처)
     final box = context.findRenderObject() as RenderBox?;
     final shareOrigin = box != null
         ? box.localToGlobal(Offset.zero) & box.size
         : const Rect.fromLTWH(0, 0, 100, 100);
 
+    final (mimeType, subject) = switch (format) {
+      ExportFormat.pdf => ('application/pdf', '회의록 PDF'),
+      ExportFormat.docx => (
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          '회의록 DOCX',
+        ),
+      ExportFormat.markdown => ('text/markdown', '회의록 Markdown'),
+    };
+
     try {
       final exportApi = ref.read(exportApiProvider);
-      final file = await exportApi.downloadPdf(
-        minutesTaskId,
-        summaryTaskId: summaryTaskId,
-      );
+      final file = await switch (format) {
+        ExportFormat.pdf => exportApi.downloadPdf(minutesTaskId,
+            summaryTaskId: summaryTaskId),
+        ExportFormat.docx => exportApi.downloadDocx(minutesTaskId,
+            summaryTaskId: summaryTaskId),
+        ExportFormat.markdown => exportApi.downloadMarkdown(minutesTaskId,
+            summaryTaskId: summaryTaskId),
+      };
       await Share.shareXFiles(
-        [XFile(file.path, mimeType: 'application/pdf')],
-        subject: '회의록 PDF',
+        [XFile(file.path, mimeType: mimeType)],
+        subject: subject,
         sharePositionOrigin: shareOrigin,
       );
     } catch (e) {
-      // 위젯이 마운트된 경우에만 SnackBar 표시
       if (context.mounted) {
+        final label = switch (format) {
+          ExportFormat.pdf => 'PDF',
+          ExportFormat.docx => 'DOCX',
+          ExportFormat.markdown => 'Markdown',
+        };
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('PDF 내보내기 실패: $e')),
+          SnackBar(content: Text('$label 내보내기 실패: $e')),
         );
       }
     } finally {
       if (mounted) {
         setState(() => _isExporting = false);
+      }
+    }
+  }
+
+  Future<void> _showShareDialog(BuildContext context, String? minutesTaskId) async {
+    if (minutesTaskId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('회의록 처리가 완료되지 않아 공유할 수 없습니다')),
+      );
+      return;
+    }
+
+    try {
+      final teamApi = ref.read(teamApiProvider);
+      final teams = await teamApi.getTeams();
+      if (!mounted) return;
+
+      if (teams.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('가입된 팀이 없습니다. 먼저 팀을 만들어 주세요.')),
+        );
+        return;
+      }
+
+      await showDialog(
+        context: context,
+        builder: (ctx) => _ShareDialog(
+          teams: teams,
+          taskId: minutesTaskId,
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('팀 목록을 불러올 수 없습니다: $e')),
+        );
       }
     }
   }
@@ -91,7 +150,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     final summaryTaskId = meeting?.summaryTaskId;
 
     return DefaultTabController(
-      length: 5,
+      length: 7,
       child: Scaffold(
         appBar: AppBar(
           leading: IconButton(
@@ -101,7 +160,6 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                 : context.go('/'),
           ),
           title: const Text('회의 결과'),
-          // PDF 내보내기 버튼 추가
           actions: [
             _isExporting
                 ? const Padding(
@@ -112,12 +170,43 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     ),
                   )
-                : IconButton(
-                    icon: const Icon(Icons.picture_as_pdf_outlined),
-                    tooltip: 'PDF 내보내기',
-                    onPressed: () =>
-                        _exportPdf(context, minutesTaskId, summaryTaskId),
+                : PopupMenuButton<ExportFormat>(
+                    icon: const Icon(Icons.ios_share),
+                    tooltip: '내보내기',
+                    onSelected: (format) =>
+                        _export(context, format, minutesTaskId, summaryTaskId),
+                    itemBuilder: (_) => const [
+                      PopupMenuItem(
+                        value: ExportFormat.pdf,
+                        child: Row(children: [
+                          Icon(Icons.picture_as_pdf_outlined, size: 20),
+                          SizedBox(width: 12),
+                          Text('PDF'),
+                        ]),
+                      ),
+                      PopupMenuItem(
+                        value: ExportFormat.docx,
+                        child: Row(children: [
+                          Icon(Icons.description_outlined, size: 20),
+                          SizedBox(width: 12),
+                          Text('DOCX'),
+                        ]),
+                      ),
+                      PopupMenuItem(
+                        value: ExportFormat.markdown,
+                        child: Row(children: [
+                          Icon(Icons.code_outlined, size: 20),
+                          SizedBox(width: 12),
+                          Text('Markdown'),
+                        ]),
+                      ),
+                    ],
                   ),
+            IconButton(
+              icon: const Icon(Icons.share_outlined),
+              tooltip: '팀에 공유',
+              onPressed: () => _showShareDialog(context, minutesTaskId),
+            ),
           ],
           bottom: const TabBar(
             isScrollable: true,
@@ -127,21 +216,38 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
               Tab(text: 'AI 요약'),
               Tab(text: '마인드맵'),
               Tab(text: '액션 아이템'),
+              Tab(text: 'Q&A'),
+              Tab(text: '통계'),
             ],
           ),
         ),
-        body: TabBarView(
+        body: Column(
           children: [
-            // 회의 내용 탭: 화자별 원본 발화 세그먼트
-            _TranscriptTab(taskId: minutesTaskId),
-            // 회의록 탭: 양식 기반 테이블 형태 회의록
-            _MinutesTab(taskId: summaryTaskId, meeting: meeting),
-            // AI 요약 탭: 구조화된 분석 (주요 결정 사항 + 다음 단계)
-            _SummaryTab(taskId: summaryTaskId),
-            // 마인드맵 탭: 백엔드 AI 생성 API 기반 관계 그래프
-            _MindMapTab(taskId: summaryTaskId),
-            // 액션 아이템 탭 (summaryTaskId 사용)
-            _ActionItemsTab(taskId: summaryTaskId),
+            Expanded(
+              child: TabBarView(
+                children: [
+                  // 회의 내용 탭: 화자별 원본 발화 세그먼트
+                  _TranscriptTab(taskId: minutesTaskId, transcriptionTaskId: meeting?.transcriptionTaskId),
+                  // 회의록 탭: 양식 기반 테이블 형태 회의록
+                  _MinutesTab(taskId: summaryTaskId, meeting: meeting),
+                  // AI 요약 탭: 구조화된 분석 (주요 결정 사항 + 다음 단계)
+                  _SummaryTab(taskId: summaryTaskId),
+                  // 마인드맵 탭: 백엔드 AI 생성 API 기반 관계 그래프
+                  _MindMapTab(taskId: summaryTaskId),
+                  // 액션 아이템 탭 (summaryTaskId 사용)
+                  _ActionItemsTab(taskId: summaryTaskId),
+                  // Q&A 탭: 회의 내용 질문/답변 (SPEC-QA-001)
+                  _QATab(taskId: summaryTaskId ?? minutesTaskId),
+                  _StatisticsTab(taskId: minutesTaskId),
+                ],
+              ),
+            ),
+            // 오디오 플레이어 바 (업로드된 오디오가 있을 때만 표시)
+            if (meeting?.transcriptionTaskId != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                child: AudioPlayerBar(taskId: meeting!.transcriptionTaskId!),
+              ),
           ],
         ),
       ),
@@ -150,15 +256,54 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
 }
 
 // 회의록 탭
-class _TranscriptTab extends ConsumerWidget {
+class _TranscriptTab extends ConsumerStatefulWidget {
   final String? taskId;
+  final String? transcriptionTaskId;
 
-  const _TranscriptTab({required this.taskId});
+  const _TranscriptTab({required this.taskId, this.transcriptionTaskId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // task ID가 없으면 빈 상태 표시
-    if (taskId == null) {
+  ConsumerState<_TranscriptTab> createState() => _TranscriptTabState();
+}
+
+class _TranscriptTabState extends ConsumerState<_TranscriptTab> {
+  bool _showSearch = false;
+  String _searchQuery = '';
+  int _matchCount = 0;
+  int _currentMatchIndex = 0;
+  final _scrollController = ScrollController();
+
+  void _updateSearch(String query, String content) {
+    setState(() {
+      _searchQuery = query;
+      if (query.isEmpty) {
+        _matchCount = 0;
+        _currentMatchIndex = 0;
+      } else {
+        _matchCount = RegExp(RegExp.escape(query), caseSensitive: false).allMatches(content).length;
+        if (_matchCount > 0 && _currentMatchIndex >= _matchCount) {
+          _currentMatchIndex = _matchCount - 1;
+        }
+      }
+    });
+  }
+
+  void _copyToClipboard(String text) {
+    Clipboard.setData(ClipboardData(text: text));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('클립보드에 복사되었습니다')),
+    );
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.taskId == null) {
       return const EmptyStateWidget(
         icon: Icons.article_outlined,
         title: '회의 내용 준비 중',
@@ -166,16 +311,18 @@ class _TranscriptTab extends ConsumerWidget {
       );
     }
 
-    final minutesAsync = ref.watch(minutesResultProvider(taskId!));
+    final segmentsAsync =
+        ref.watch(transcriptSegmentsProvider(widget.taskId!));
 
-    return minutesAsync.when(
+    return segmentsAsync.when(
       loading: () => _buildShimmerLoading(),
       error: (error, _) => ErrorRetryWidget(
         message: '회의록을 불러올 수 없습니다',
-        onRetry: () => ref.invalidate(minutesResultProvider(taskId!)),
+        onRetry: () =>
+            ref.invalidate(transcriptSegmentsProvider(widget.taskId!)),
       ),
-      data: (minutes) {
-        if (minutes.isEmpty) {
+      data: (segments) {
+        if (segments.isEmpty) {
           return const EmptyStateWidget(
             icon: Icons.article_outlined,
             title: '회의 내용이 없습니다',
@@ -183,36 +330,562 @@ class _TranscriptTab extends ConsumerWidget {
           );
         }
 
-        // 회의록 텍스트를 세그먼트로 파싱하여 표시
-        // MVP: 단일 텍스트 블록으로 표시
-        return ListView(
-          children: [
-            SpeakerSegment(
-              speakerName: '회의 내용',
-              text: minutes,
-              startTime: Duration.zero,
-              speakerIndex: 0,
-            ),
-          ],
-        );
+        return _buildSegmentList(segments);
       },
     );
   }
 
-  // shimmer 로딩 스켈레톤
+  Widget _buildSegmentList(List<TranscriptSegment> segments) {
+    final audioState = ref.watch(audioPlayerProvider);
+    final positionSec = audioState.position.inMilliseconds / 1000.0;
+    final isPlaying = audioState.playbackState == AudioPlaybackState.playing ||
+        audioState.playbackState == AudioPlaybackState.paused;
+
+    final allText = segments.map((s) => s.text).join(' ');
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.search),
+                onPressed: () => setState(() {
+                  _showSearch = !_showSearch;
+                  if (!_showSearch) {
+                    _searchQuery = '';
+                    _matchCount = 0;
+                  }
+                }),
+                tooltip: '검색',
+              ),
+              IconButton(
+                icon: const Icon(Icons.copy),
+                onPressed: () => _copyToClipboard(allText),
+                tooltip: '복사',
+              ),
+            ],
+          ),
+        ),
+        AnimatedSize(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeInOut,
+          child: _showSearch
+              ? FindReplaceBar(
+                  searchQuery: _searchQuery,
+                  onSearchChanged: (q) => _updateSearch(q, allText),
+                  onNext: () {
+                    setState(() {
+                      _currentMatchIndex = (_currentMatchIndex + 1) % _matchCount;
+                    });
+                  },
+                  onPrevious: () {
+                    setState(() {
+                      _currentMatchIndex = (_currentMatchIndex - 1 + _matchCount) % _matchCount;
+                    });
+                  },
+                  onClose: () => setState(() {
+                    _showSearch = false;
+                    _searchQuery = '';
+                    _matchCount = 0;
+                  }),
+                  matchCount: _matchCount,
+                  currentMatchIndex: _currentMatchIndex,
+                )
+              : const SizedBox.shrink(),
+        ),
+        Expanded(
+          child: ListView.builder(
+            controller: _scrollController,
+            itemCount: segments.length,
+            itemBuilder: (_, index) {
+              final seg = segments[index];
+              final isActive = isPlaying &&
+                  positionSec >= seg.start &&
+                  positionSec < seg.end;
+
+              return GestureDetector(
+                onTap: widget.transcriptionTaskId != null
+                    ? () => _seekToSegment(seg.start)
+                    : null,
+                onLongPress: () => _addBookmark(seg),
+                child: SpeakerSegment(
+                  speakerName: seg.speakerName,
+                  text: seg.text,
+                  startTime: Duration(milliseconds: (seg.start * 1000).round()),
+                  speakerIndex: seg.speakerIndex,
+                  searchQuery: _searchQuery,
+                  isHighlighted: isActive,
+                  onSpeakerTap: () => _showRenameDialog(segments, index),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _seekToSegment(double startSec) {
+    ref
+        .read(audioPlayerProvider.notifier)
+        .seekTo(Duration(milliseconds: (startSec * 1000).round()));
+  }
+
+  Future<void> _addBookmark(TranscriptSegment seg) async {
+    final noteController = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('북마크 추가'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '[${seg.speakerName}] ${seg.text}',
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 13),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: noteController,
+              decoration: const InputDecoration(
+                labelText: '메모',
+                hintText: '이 구간에 대한 메모를 남겨보세요',
+                isDense: true,
+              ),
+              textCapitalization: TextCapitalization.sentences,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('저장'),
+          ),
+        ],
+      ),
+    );
+    noteController.dispose();
+
+    if (confirmed != true || !mounted) return;
+
+    try {
+      final api = ref.read(bookmarkApiProvider);
+      await api.create(
+        taskId: widget.taskId!,
+        segmentStart: seg.start,
+        segmentEnd: seg.end,
+        textSnippet: seg.text.length > 100 ? '${seg.text.substring(0, 100)}...' : seg.text,
+        note: noteController.text.trim().isNotEmpty ? noteController.text.trim() : null,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('북마크가 추가되었습니다')),
+        );
+        ref.invalidate(bookmarksProvider(widget.taskId!));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('북마크 추가 실패: $e')),
+        );
+      }
+    }
+  }
+
+  void _showRenameDialog(List<TranscriptSegment> segments, int tappedIndex) {
+    final tapped = segments[tappedIndex];
+    final controller = TextEditingController(text: tapped.speakerName);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('화자 이름 변경'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(
+            labelText: '이름',
+            hintText: '화자 이름을 입력하세요',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            onPressed: () {
+              final newName = controller.text.trim();
+              if (newName.isNotEmpty && newName != tapped.speakerName) {
+                setState(() {
+                  for (int i = 0; i < segments.length; i++) {
+                    if (segments[i].speakerName == tapped.speakerName) {
+                      segments[i] = TranscriptSegment(
+                        speakerName: newName,
+                        text: segments[i].text,
+                        start: segments[i].start,
+                        end: segments[i].end,
+                        speakerIndex: segments[i].speakerIndex,
+                      );
+                    }
+                  }
+                });
+              }
+              Navigator.pop(ctx);
+            },
+            child: const Text('변경'),
+          ),
+        ],
+       ),
+     );
+   }
+
   Widget _buildShimmerLoading() {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: List.generate(
-          4,
-          (_) => const Padding(
-            padding: EdgeInsets.only(bottom: 16),
-            child: ShimmerText(lines: 4),
+    return const Padding(
+      padding: EdgeInsets.all(16),
+      child: Card(
+        child: Padding(
+          padding: EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ShimmerText(lines: 1),
+              SizedBox(height: 16),
+              Divider(),
+              SizedBox(height: 8),
+              ShimmerText(lines: 8),
+            ],
           ),
         ),
       ),
     );
+  }
+}
+
+class _StatisticsTab extends ConsumerStatefulWidget {
+  final String? taskId;
+
+  const _StatisticsTab({required this.taskId});
+
+  @override
+  ConsumerState<_StatisticsTab> createState() => _StatisticsTabState();
+}
+
+class _StatisticsTabState extends ConsumerState<_StatisticsTab> {
+  @override
+  Widget build(BuildContext context) {
+    if (widget.taskId == null) {
+      return const EmptyStateWidget(
+        icon: Icons.bar_chart_outlined,
+        title: '통계 준비 중',
+        subtitle: '회의록 처리가 완료되지 않았습니다',
+      );
+    }
+
+    final statsAsync = ref.watch(statisticsProvider(widget.taskId!));
+
+    return statsAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => ErrorRetryWidget(
+        message: '통계를 불러올 수 없습니다',
+        onRetry: () => ref.invalidate(statisticsProvider(widget.taskId!)),
+      ),
+      data: (stats) => buildContent(context, stats),
+    );
+  }
+
+  Widget buildContent(BuildContext context, StatisticsResponse stats) {
+    final theme = Theme.of(context);
+    final sentimentAsync = ref.watch(sentimentProvider(widget.taskId!));
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('회의 개요', style: theme.textTheme.titleMedium),
+                const SizedBox(height: 12),
+                _statRow(context, '총 세그먼트', '${stats.totalSegments}개'),
+                _statRow(context, '총 단어 수', '${stats.totalWords}개'),
+                _statRow(
+                    context, '총 발화 시간', _formatDuration(stats.totalDurationSeconds)),
+                _statRow(context, '참여 화자', '${stats.uniqueSpeakers}명'),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('화자별 발화 시간', style: theme.textTheme.titleMedium),
+                const SizedBox(height: 12),
+                ...stats.speakers.map((s) => Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(s.speaker,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w600)),
+                              Text(
+                                '${_formatDuration(s.speakingTimeSeconds)} (${(s.speakingRatio * 100).toStringAsFixed(1)}%)',
+                                style: theme.textTheme.bodySmall,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child: LinearProgressIndicator(
+                              value: s.speakingRatio,
+                              minHeight: 8,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${s.segmentCount}회 발화, ${s.wordCount}단어',
+                            style: theme.textTheme.labelSmall,
+                          ),
+                        ],
+                      ),
+                    )),
+              ],
+            ),
+          ),
+        ),
+        if (stats.topKeywords.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('주요 키워드', style: theme.textTheme.titleMedium),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: stats.topKeywords.map((k) => Chip(
+                          label: Text('${k.keyword} (${k.count})'),
+                          materialTapTargetSize:
+                              MaterialTapTargetSize.shrinkWrap,
+                        )).toList(),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+        // 감정 분석 카드
+        const SizedBox(height: 16),
+        sentimentAsync.when(
+          loading: () => const SizedBox.shrink(),
+          error: (_, __) => const SizedBox.shrink(),
+          data: (segments) {
+            if (segments.isEmpty) return const SizedBox.shrink();
+            return _buildSentimentCard(theme, segments);
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSentimentCard(ThemeData theme, List<SentimentSegment> segments) {
+    // 감정 분포 집계
+    final counts = <String, int>{};
+    final emotions = <String, int>{};
+    final speakerSentiment = <String, Map<String, int>>{};
+
+    for (final seg in segments) {
+      counts[seg.sentiment] = (counts[seg.sentiment] ?? 0) + 1;
+      emotions[seg.emotion] = (emotions[seg.emotion] ?? 0) + 1;
+      speakerSentiment
+          .putIfAbsent(seg.speaker, () => {'positive': 0, 'neutral': 0, 'negative': 0});
+      speakerSentiment[seg.speaker]![seg.sentiment] =
+          (speakerSentiment[seg.speaker]![seg.sentiment] ?? 0) + 1;
+    }
+
+    final total = segments.length;
+    final positiveRatio = (counts['positive'] ?? 0) / total;
+    final neutralRatio = (counts['neutral'] ?? 0) / total;
+    final negativeRatio = (counts['negative'] ?? 0) / total;
+
+    final sentimentColor = (String s) {
+      switch (s) {
+        case 'positive': return Colors.green;
+        case 'negative': return Colors.red;
+        default: return Colors.grey;
+      }
+    };
+
+    final emotionIcon = (String e) {
+      switch (e) {
+        case 'joy': return Icons.sentiment_very_satisfied;
+        case 'anger': return Icons.sentiment_very_dissatisfied;
+        case 'sadness': return Icons.sentiment_dissatisfied;
+        case 'surprise': return Icons.sentiment_neutral;
+        case 'fear': return Icons.warning_amber;
+        default: return Icons.sentiment_neutral;
+      }
+    };
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('감정 분석', style: theme.textTheme.titleMedium),
+            const SizedBox(height: 12),
+            // 감정 분포 바
+            Text('전체 분위기', style: theme.textTheme.bodySmall),
+            const SizedBox(height: 6),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: SizedBox(
+                height: 24,
+                child: Row(
+                  children: [
+                    if (positiveRatio > 0)
+                      Expanded(
+                        flex: (positiveRatio * 100).round().clamp(1, 100),
+                        child: Container(color: Colors.green, alignment: Alignment.center,
+                          child: Text('${(positiveRatio * 100).toStringAsFixed(0)}%',
+                            style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold))),
+                      ),
+                    if (neutralRatio > 0)
+                      Expanded(
+                        flex: (neutralRatio * 100).round().clamp(1, 100),
+                        child: Container(color: Colors.grey, alignment: Alignment.center,
+                          child: Text('${(neutralRatio * 100).toStringAsFixed(0)}%',
+                            style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold))),
+                      ),
+                    if (negativeRatio > 0)
+                      Expanded(
+                        flex: (negativeRatio * 100).round().clamp(1, 100),
+                        child: Container(color: Colors.red, alignment: Alignment.center,
+                          child: Text('${(negativeRatio * 100).toStringAsFixed(0)}%',
+                            style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold))),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                _legendDot(Colors.green, '긍정'),
+                const SizedBox(width: 12),
+                _legendDot(Colors.grey, '중립'),
+                const SizedBox(width: 12),
+                _legendDot(Colors.red, '부정'),
+              ],
+            ),
+            // 감정 종류
+            if (emotions.length > 1) ...[
+              const SizedBox(height: 12),
+              Text('감정 유형', style: theme.textTheme.bodySmall),
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 6,
+                runSpacing: 4,
+                children: emotions.entries.map((e) => Chip(
+                  avatar: Icon(emotionIcon(e.key), size: 16),
+                  label: Text('${e.key} (${e.value})'),
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                )).toList(),
+              ),
+            ],
+            // 화자별 감정
+            if (speakerSentiment.length > 1) ...[
+              const SizedBox(height: 12),
+              Text('화자별 감정', style: theme.textTheme.bodySmall),
+              const SizedBox(height: 6),
+              ...speakerSentiment.entries.map((entry) {
+                final sp = entry.key;
+                final sc = entry.value;
+                final spTotal = sc.values.fold(0, (a, b) => a + b);
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Row(
+                    children: [
+                      SizedBox(width: 80, child: Text(sp, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12))),
+                      Expanded(
+                        child: Row(
+                          children: ['positive', 'neutral', 'negative'].map((s) {
+                            final ratio = (sc[s] ?? 0) / spTotal;
+                            if (ratio == 0) return const SizedBox.shrink();
+                            return Expanded(
+                              flex: (ratio * 100).round().clamp(1, 100),
+                              child: Container(height: 8, color: sentimentColor(s)),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _legendDot(Color color, String label) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(width: 10, height: 10, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+        const SizedBox(width: 4),
+        Text(label, style: const TextStyle(fontSize: 11)),
+      ],
+    );
+  }
+
+  Widget _statRow(BuildContext context, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: Theme.of(context).textTheme.bodyMedium),
+          Text(value,
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyMedium
+                  ?.copyWith(fontWeight: FontWeight.w600)),
+        ],
+      ),
+    );
+  }
+
+  String _formatDuration(double seconds) {
+    final m = (seconds / 60).floor();
+    final s = (seconds % 60).round();
+    return m > 0 ? '$m분 ${s}초' : '$s초';
   }
 }
 
@@ -234,6 +907,53 @@ class _MinutesTabState extends ConsumerState<_MinutesTab> {
 
   Meeting? get meeting => widget.meeting;
   String? get taskId => widget.taskId;
+
+  void _copyToClipboard(SummaryResult result) {
+    final buffer = StringBuffer();
+    final now = meeting?.createdAt ?? DateTime.now();
+    final dateStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    
+    buffer.writeln('회의록_$dateStr');
+    buffer.writeln('---');
+    
+    if (result.sections.isNotEmpty) {
+      for (final entry in result.sections.entries) {
+        buffer.writeln('[${entry.key}]');
+        final value = _editedSections[entry.key] ?? entry.value;
+        buffer.writeln(value.isNotEmpty ? value : '-');
+        buffer.writeln();
+      }
+    } else {
+      buffer.writeln('[회의 안건]');
+      buffer.writeln(_extractAgenda(result.summaryText));
+      buffer.writeln();
+      
+      buffer.writeln('[회의 내용]');
+      buffer.writeln(result.summaryText);
+      buffer.writeln();
+      
+      if (result.keyDecisions.isNotEmpty) {
+        buffer.writeln('[결정 사항]');
+        for (var i = 0; i < result.keyDecisions.length; i++) {
+          buffer.writeln('${i + 1}. ${result.keyDecisions[i]}');
+        }
+        buffer.writeln();
+      }
+      
+      if (result.nextSteps.isNotEmpty) {
+        buffer.writeln('[향후 계획]');
+        for (var i = 0; i < result.nextSteps.length; i++) {
+          buffer.writeln('${i + 1}. ${result.nextSteps[i]}');
+        }
+        buffer.writeln();
+      }
+    }
+
+    Clipboard.setData(ClipboardData(text: buffer.toString()));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('클립보드에 복사되었습니다')),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -271,6 +991,11 @@ class _MinutesTabState extends ConsumerState<_MinutesTab> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
+                  IconButton(
+                    icon: const Icon(Icons.copy),
+                    onPressed: () => _copyToClipboard(result),
+                    tooltip: '복사',
+                  ),
                   TextButton.icon(
                     onPressed: () => setState(() => _isEditing = !_isEditing),
                     icon: Icon(_isEditing ? Icons.check : Icons.edit, size: 18),
@@ -1001,15 +1726,112 @@ class _MinutesTabState extends ConsumerState<_MinutesTab> {
 }
 
 // AI 요약 탭
-class _SummaryTab extends ConsumerWidget {
+class _SummaryTab extends ConsumerStatefulWidget {
   final String? taskId;
 
   const _SummaryTab({required this.taskId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_SummaryTab> createState() => _SummaryTabState();
+}
+
+class _SummaryTabState extends ConsumerState<_SummaryTab> {
+  bool _showSearch = false;
+  String _searchQuery = '';
+  int _matchCount = 0;
+  int _currentMatchIndex = 0;
+
+  void _updateSearch(String query, SummaryResult result) {
+    setState(() {
+      _searchQuery = query;
+      if (query.isEmpty) {
+        _matchCount = 0;
+        _currentMatchIndex = 0;
+      } else {
+        final regex = RegExp(RegExp.escape(query), caseSensitive: false);
+        int count = regex.allMatches(result.summaryText).length;
+        for (final decision in result.keyDecisions) {
+          count += regex.allMatches(decision).length;
+        }
+        for (final step in result.nextSteps) {
+          count += regex.allMatches(step).length;
+        }
+        _matchCount = count;
+        if (_matchCount > 0 && _currentMatchIndex >= _matchCount) {
+          _currentMatchIndex = _matchCount - 1;
+        }
+      }
+    });
+  }
+
+  void _copyToClipboard(SummaryResult result) {
+    final buffer = StringBuffer();
+    buffer.writeln('AI 요약');
+    buffer.writeln('---');
+    buffer.writeln(result.summaryText);
+    
+    if (result.keyDecisions.isNotEmpty) {
+      buffer.writeln('\n주요 결정 사항');
+      buffer.writeln('---');
+      for (var i = 0; i < result.keyDecisions.length; i++) {
+        buffer.writeln('${i + 1}. ${result.keyDecisions[i]}');
+      }
+    }
+    
+    if (result.nextSteps.isNotEmpty) {
+      buffer.writeln('\n다음 단계');
+      buffer.writeln('---');
+      for (var i = 0; i < result.nextSteps.length; i++) {
+        buffer.writeln('${i + 1}. ${result.nextSteps[i]}');
+      }
+    }
+
+    Clipboard.setData(ClipboardData(text: buffer.toString()));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('클립보드에 복사되었습니다')),
+    );
+  }
+
+  Widget _buildHighlightedText(String text, TextStyle? style) {
+    if (_searchQuery.isEmpty) {
+      return Text(text, style: style);
+    }
+
+    final matches = RegExp(RegExp.escape(_searchQuery), caseSensitive: false).allMatches(text).toList();
+    if (matches.isEmpty) {
+      return Text(text, style: style);
+    }
+
+    final spans = <TextSpan>[];
+    int lastMatchEnd = 0;
+
+    for (final match in matches) {
+      if (match.start > lastMatchEnd) {
+        spans.add(TextSpan(text: text.substring(lastMatchEnd, match.start)));
+      }
+      spans.add(TextSpan(
+        text: text.substring(match.start, match.end),
+        style: const TextStyle(backgroundColor: Colors.yellow, color: Colors.black),
+      ));
+      lastMatchEnd = match.end;
+    }
+
+    if (lastMatchEnd < text.length) {
+      spans.add(TextSpan(text: text.substring(lastMatchEnd)));
+    }
+
+    return RichText(
+      text: TextSpan(
+        style: style ?? DefaultTextStyle.of(context).style,
+        children: spans,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     // task ID가 없으면 빈 상태 표시
-    if (taskId == null) {
+    if (widget.taskId == null) {
       return const EmptyStateWidget(
         icon: Icons.summarize_outlined,
         title: 'AI 요약 준비 중',
@@ -1017,13 +1839,13 @@ class _SummaryTab extends ConsumerWidget {
       );
     }
 
-    final summaryAsync = ref.watch(summaryResultProvider(taskId!));
+    final summaryAsync = ref.watch(summaryResultProvider(widget.taskId!));
 
     return summaryAsync.when(
       loading: () => _buildShimmerLoading(),
       error: (error, _) => ErrorRetryWidget(
         message: 'AI 요약을 불러올 수 없습니다',
-        onRetry: () => ref.invalidate(summaryResultProvider(taskId!)),
+        onRetry: () => ref.invalidate(summaryResultProvider(widget.taskId!)),
       ),
       data: (SummaryResult result) {
         if (result.summaryText.isEmpty) {
@@ -1033,63 +1855,120 @@ class _SummaryTab extends ConsumerWidget {
           );
         }
 
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  Text(
-                    'AI 요약',
-                    style: Theme.of(context).textTheme.titleMedium,
+                  IconButton(
+                    icon: const Icon(Icons.search),
+                    onPressed: () => setState(() {
+                      _showSearch = !_showSearch;
+                      if (!_showSearch) {
+                        _searchQuery = '';
+                        _matchCount = 0;
+                      }
+                    }),
+                    tooltip: '검색',
                   ),
-                  const Divider(),
-                  Text(
-                    result.summaryText,
-                    style: const TextStyle(height: 1.6),
+                  IconButton(
+                    icon: const Icon(Icons.copy),
+                    onPressed: () => _copyToClipboard(result),
+                    tooltip: '복사',
                   ),
-                  // 주요 결정 사항 섹션 (SPEC-APP-004 REQ-APP-042)
-                  if (result.keyDecisions.isNotEmpty) ...[
-                    const SizedBox(height: 16),
-                    Text(
-                      '주요 결정 사항',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const Divider(),
-                    ...result.keyDecisions.asMap().entries.map((e) =>
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 4),
-                        child: Text(
-                          '${e.key + 1}. ${e.value}',
-                          style: const TextStyle(height: 1.6),
-                        ),
-                      ),
-                    ),
-                  ],
-                  // 다음 단계 섹션 (SPEC-APP-004 REQ-APP-043)
-                  if (result.nextSteps.isNotEmpty) ...[
-                    const SizedBox(height: 16),
-                    Text(
-                      '다음 단계',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const Divider(),
-                    ...result.nextSteps.asMap().entries.map((e) =>
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 4),
-                        child: Text(
-                          '${e.key + 1}. ${e.value}',
-                          style: const TextStyle(height: 1.6),
-                        ),
-                      ),
-                    ),
-                  ],
                 ],
               ),
             ),
-          ),
+            AnimatedSize(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeInOut,
+              child: _showSearch
+                  ? FindReplaceBar(
+                      searchQuery: _searchQuery,
+                      onSearchChanged: (q) => _updateSearch(q, result),
+                      onNext: () {
+                        setState(() {
+                          _currentMatchIndex = (_currentMatchIndex + 1) % _matchCount;
+                        });
+                      },
+                      onPrevious: () {
+                        setState(() {
+                          _currentMatchIndex = (_currentMatchIndex - 1 + _matchCount) % _matchCount;
+                        });
+                      },
+                      onClose: () => setState(() {
+                        _showSearch = false;
+                        _searchQuery = '';
+                        _matchCount = 0;
+                      }),
+                      matchCount: _matchCount,
+                      currentMatchIndex: _currentMatchIndex,
+                    )
+                  : const SizedBox.shrink(),
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'AI 요약',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const Divider(),
+                        _buildHighlightedText(
+                          result.summaryText,
+                          const TextStyle(height: 1.6),
+                        ),
+                        // 주요 결정 사항 섹션 (SPEC-APP-004 REQ-APP-042)
+                        if (result.keyDecisions.isNotEmpty) ...[
+                          const SizedBox(height: 16),
+                          Text(
+                            '주요 결정 사항',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          const Divider(),
+                          ...result.keyDecisions.asMap().entries.map((e) =>
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 4),
+                              child: _buildHighlightedText(
+                                '${e.key + 1}. ${e.value}',
+                                const TextStyle(height: 1.6),
+                              ),
+                            ),
+                          ),
+                        ],
+                        // 다음 단계 섹션 (SPEC-APP-004 REQ-APP-043)
+                        if (result.nextSteps.isNotEmpty) ...[
+                          const SizedBox(height: 16),
+                          Text(
+                            '다음 단계',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          const Divider(),
+                          ...result.nextSteps.asMap().entries.map((e) =>
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 4),
+                              child: _buildHighlightedText(
+                                '${e.key + 1}. ${e.value}',
+                                const TextStyle(height: 1.6),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         );
       },
     );
@@ -1610,5 +2489,275 @@ class _ActionItemCardListState extends State<_ActionItemCardList> {
         );
       },
     );
+  }
+}
+
+// Q&A 탭: 회의 내용에 대한 자연어 질문/답변 (SPEC-QA-001)
+class _QATab extends ConsumerStatefulWidget {
+  final String? taskId;
+
+  const _QATab({required this.taskId});
+
+  @override
+  ConsumerState<_QATab> createState() => _QATabState();
+}
+
+class _QATabState extends ConsumerState<_QATab> {
+  final _controller = TextEditingController();
+  final _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.taskId == null) {
+      return const EmptyStateWidget(
+        icon: Icons.chat_outlined,
+        title: 'Q&A 준비 중',
+        subtitle: '회의 처리가 완료되면 질문할 수 있습니다',
+      );
+    }
+
+    final qaState = ref.watch(qaProvider(widget.taskId!));
+    final theme = Theme.of(context);
+
+    return Column(
+      children: [
+        Expanded(
+          child: qaState.messages.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.chat_bubble_outline,
+                          size: 48, color: theme.colorScheme.outline),
+                      const SizedBox(height: 12),
+                      const Text('회의 내용에 대해 질문해 보세요'),
+                      const SizedBox(height: 4),
+                      Text(
+                        '예: "어떤 결정이 내려졌나요?"',
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                )
+              : ListView.builder(
+                  controller: _scrollController,
+                  padding: const EdgeInsets.all(16),
+                  itemCount: qaState.messages.length,
+                  itemBuilder: (ctx, i) {
+                    final msg = qaState.messages[i];
+                    return _ChatBubble(
+                      message: msg,
+                      theme: theme,
+                    );
+                  },
+                ),
+        ),
+        if (qaState.isLoading)
+          const Padding(
+            padding: EdgeInsets.all(8),
+            child: LinearProgressIndicator(),
+          ),
+        // 입력 바
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _controller,
+                  decoration: InputDecoration(
+                    hintText: '질문을 입력하세요...',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                  ),
+                  textInputAction: TextInputAction.send,
+                  onSubmitted: (_) => _send(qaState),
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton.filled(
+                icon: const Icon(Icons.send),
+                onPressed: qaState.isLoading
+                    ? null
+                    : () => _send(qaState),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _send(QAState qaState) {
+    final text = _controller.text.trim();
+    if (text.isEmpty || qaState.isLoading) return;
+    _controller.clear();
+    ref.read(qaProvider(widget.taskId!).notifier).ask(text);
+    _scrollToBottom();
+  }
+}
+
+class _ChatBubble extends StatelessWidget {
+  final ChatMessage message;
+  final ThemeData theme;
+
+  const _ChatBubble({required this.message, required this.theme});
+
+  @override
+  Widget build(BuildContext context) {
+    final isUser = message.isUser;
+    final align = isUser ? Alignment.centerRight : Alignment.centerLeft;
+    final bg = isUser
+        ? theme.colorScheme.primary
+        : theme.colorScheme.surfaceContainerHighest;
+    final fg = isUser
+        ? theme.colorScheme.onPrimary
+        : theme.colorScheme.onSurface;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      alignment: align,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.sizeOf(context).width * 0.8,
+        ),
+        child: Column(
+          crossAxisAlignment:
+              isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: bg,
+                borderRadius: BorderRadius.only(
+                  topLeft: const Radius.circular(16),
+                  topRight: const Radius.circular(16),
+                  bottomLeft: Radius.circular(isUser ? 16 : 4),
+                  bottomRight: Radius.circular(isUser ? 4 : 16),
+                ),
+              ),
+              child: Text(
+                message.text,
+                style: TextStyle(color: fg, height: 1.5),
+              ),
+            ),
+            if (message.sources.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              ...message.sources.map((s) => Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      '[${s.speaker ?? "화자"}] ${s.text}',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.outline,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  )),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// 팀 공유 다이얼로그
+class _ShareDialog extends ConsumerStatefulWidget {
+  final List<Team> teams;
+  final String taskId;
+
+  const _ShareDialog({required this.teams, required this.taskId});
+
+  @override
+  ConsumerState<_ShareDialog> createState() => _ShareDialogState();
+}
+
+class _ShareDialogState extends ConsumerState<_ShareDialog> {
+  bool _isSharing = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return AlertDialog(
+      title: const Text('팀에 공유'),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: ListView.builder(
+          shrinkWrap: true,
+          itemCount: widget.teams.length,
+          itemBuilder: (_, i) {
+            final team = widget.teams[i];
+            return ListTile(
+              leading: CircleAvatar(
+                backgroundColor: theme.colorScheme.primaryContainer,
+                child: Text(team.name.isNotEmpty ? team.name[0].toUpperCase() : '?'),
+              ),
+              title: Text(team.name),
+              subtitle: team.description != null && team.description!.isNotEmpty
+                  ? Text(team.description!, maxLines: 1, overflow: TextOverflow.ellipsis)
+                  : null,
+              trailing: _isSharing
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.send),
+              onTap: _isSharing ? null : () => _shareToTeam(team),
+            );
+          },
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('닫기'),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _shareToTeam(Team team) async {
+    setState(() => _isSharing = true);
+    try {
+      final api = ref.read(teamApiProvider);
+      await api.shareMeeting(widget.taskId, team.id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("'${team.name}' 팀에 공유했습니다")),
+        );
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('공유 실패: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSharing = false);
+    }
   }
 }

@@ -19,6 +19,8 @@ class Meeting {
   final String? diarizationTaskId;
   final String? minutesTaskId;
   final String? summaryTaskId;
+  // STT 정확도 향상용 사용자 사전 ID (Phase 2)
+  final String? vocabularyId;
 
   const Meeting({
     required this.id,
@@ -31,6 +33,7 @@ class Meeting {
     this.diarizationTaskId,
     this.minutesTaskId,
     this.summaryTaskId,
+    this.vocabularyId,
   });
 
   // 특정 필드만 변경한 복사본 반환
@@ -45,6 +48,7 @@ class Meeting {
     String? diarizationTaskId,
     String? minutesTaskId,
     String? summaryTaskId,
+    String? vocabularyId,
   }) {
     return Meeting(
       id: id ?? this.id,
@@ -57,6 +61,7 @@ class Meeting {
       diarizationTaskId: diarizationTaskId ?? this.diarizationTaskId,
       minutesTaskId: minutesTaskId ?? this.minutesTaskId,
       summaryTaskId: summaryTaskId ?? this.summaryTaskId,
+      vocabularyId: vocabularyId ?? this.vocabularyId,
     );
   }
 

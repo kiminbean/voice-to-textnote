@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:voice_to_textnote/models/meeting.dart';
 import 'package:voice_to_textnote/providers/meeting_list_provider.dart';
 import 'package:voice_to_textnote/providers/recording_provider.dart';
+import 'package:voice_to_textnote/providers/vocabulary_provider.dart';
 
 class RecordingScreen extends ConsumerStatefulWidget {
   const RecordingScreen({super.key});
@@ -19,6 +20,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
   Timer? _timer;
   late AnimationController _scaleController;
   late Animation<double> _scaleAnimation;
+  String? _selectedVocabularyId;
 
   @override
   void initState() {
@@ -106,6 +108,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
       status: MeetingStatus.processing,
       duration: Duration(seconds: elapsedSeconds),
       audioFilePath: filePath,
+      vocabularyId: _selectedVocabularyId,
     );
 
     // meetingListProvider에 추가
@@ -158,6 +161,14 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
               ),
             ),
             const SizedBox(height: 48),
+            // 사용자 사전 선택 (녹음 전에만 표시)
+            if (!isRecording && state.status != RecordingStatus.stopped)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 48),
+                child: _buildVocabularySelector(context),
+              ),
+            if (!isRecording && state.status != RecordingStatus.stopped)
+              const SizedBox(height: 24),
             // 녹음 버튼 (스케일 애니메이션 피드백)
             ScaleTransition(
               scale: _scaleAnimation,
@@ -201,5 +212,52 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
       RecordingStatus.paused => '일시 정지됨',
       RecordingStatus.stopped => '녹음 완료',
     };
+  }
+
+  // 사용자 사전 선택 드롭다운
+  Widget _buildVocabularySelector(BuildContext context) {
+    final vocabAsync = ref.watch(vocabularyListProvider);
+
+    return vocabAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (vocabularies) {
+        if (vocabularies.isEmpty) return const SizedBox.shrink();
+
+        return InputDecorator(
+          decoration: InputDecoration(
+            labelText: '사용자 사전 (선택)',
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String?>(
+              value: _selectedVocabularyId,
+              isDense: true,
+              isExpanded: true,
+              hint: const Text('사전 없음'),
+              items: [
+                const DropdownMenuItem<String?>(
+                  value: null,
+                  child: Text('사전 없음'),
+                ),
+                ...vocabularies.map((v) => DropdownMenuItem<String?>(
+                  value: v.id,
+                  child: Text(
+                    '${v.name} (${v.words.length}단어)',
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                )),
+              ],
+              onChanged: (value) {
+                setState(() => _selectedVocabularyId = value);
+              },
+            ),
+          ),
+        );
+      },
+    );
   }
 }

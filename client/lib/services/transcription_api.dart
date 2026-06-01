@@ -17,12 +17,17 @@ class TranscriptionApi {
   TranscriptionApi(this._dio);
 
   // 오디오 파일 업로드 (멀티파트) - 대용량 파일용 타임아웃 별도 설정
-  Future<Map<String, dynamic>> upload(String filePath) async {
+  // vocabulary_id: STT 정확도 향상용 사용자 사전 ID (선택)
+  Future<Map<String, dynamic>> upload(
+    String filePath, {
+    String? vocabularyId,
+  }) async {
     final formData = FormData.fromMap({
       'file': await MultipartFile.fromFile(
         filePath,
         filename: File(filePath).uri.pathSegments.last,
       ),
+      if (vocabularyId != null) 'vocabulary_id': vocabularyId,
     });
 
     final response = await _dio.post(

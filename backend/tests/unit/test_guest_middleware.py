@@ -210,7 +210,7 @@ class TestExpiredGuestTokenReturns401:
     def test_non_guest_type_token_as_guest_returns_401(self, guest_middleware_app):
         """REQ-GUEST-006: type이 'guest'가 아닌 토큰을 게스트 형식으로 전달 → 401"""
         session_id = "wrong-type-session"
-        # type: "user" 토큰을 "Bearer guest:" 형식으로 전달
+        # token_type="user" 토큰을 "Bearer guest:" 형식으로 전달
         token = _make_guest_token(session_id, token_type="user")
 
         response = guest_middleware_app.get(

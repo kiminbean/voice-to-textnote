@@ -11,6 +11,8 @@ import 'package:voice_to_textnote/screens/register_screen.dart';
 import 'package:voice_to_textnote/screens/result_screen.dart';
 // SPEC-TMPL-001: 양식 관리 화면 추가
 import 'package:voice_to_textnote/screens/template_screen.dart';
+import 'package:voice_to_textnote/screens/vocabulary_screen.dart';
+import 'package:voice_to_textnote/screens/speaker_profile_screen.dart';
 // SPEC-TEAM-001: 팀 관리 화면 추가
 import 'package:voice_to_textnote/screens/team_list_screen.dart';
 import 'package:voice_to_textnote/screens/search_screen.dart';
@@ -91,6 +93,18 @@ GoRouter createRouter(ProviderContainer container) {
       GoRoute(
         path: '/templates',
         builder: (_, __) => const TemplateScreen(),
+      ),
+      // 사용자 사전 관리 화면
+      GoRoute(
+        path: '/vocabulary',
+        builder: (_, __) => const VocabularyScreen(),
+      ),
+      // 화자 프로필 관리 화면 (SPEC-SPEAKER-001)
+      GoRoute(
+        path: '/speakers',
+        builder: (_, state) => SpeakerProfileScreen(
+          taskId: state.uri.queryParameters['taskId'],
+        ),
       ),
       // 팀 목록 화면 (SPEC-TEAM-001 REQ-TEAM-006)
       GoRoute(

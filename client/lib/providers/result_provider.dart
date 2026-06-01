@@ -4,7 +4,35 @@ import 'package:voice_to_textnote/models/action_item.dart';
 import 'package:voice_to_textnote/models/mind_map_result.dart';
 import 'package:voice_to_textnote/models/summary_result.dart';
 import 'package:voice_to_textnote/services/minutes_api.dart';
+import 'package:voice_to_textnote/services/statistics_api.dart';
+import 'package:voice_to_textnote/services/bookmark_api.dart';
+import 'package:voice_to_textnote/services/sentiment_api.dart';
 import 'package:voice_to_textnote/services/summary_api.dart';
+
+class TranscriptSegment {
+  final String speakerName;
+  final String text;
+  final double start;
+  final double end;
+  final int speakerIndex;
+
+  const TranscriptSegment({
+    required this.speakerName,
+    required this.text,
+    required this.start,
+    required this.end,
+    this.speakerIndex = 0,
+  });
+
+  factory TranscriptSegment.fromJson(Map<String, dynamic> json, int index) =>
+      TranscriptSegment(
+        speakerName: json['speaker_name'] as String? ?? '알 수 없음',
+        text: json['text'] as String? ?? '',
+        start: (json['start'] as num?)?.toDouble() ?? 0.0,
+        end: (json['end'] as num?)?.toDouble() ?? 0.0,
+        speakerIndex: index,
+      );
+}
 
 // 결과 데이터 모델 (keyDecisions, nextSteps 포함 - SPEC-APP-004 REQ-APP-041)
 class MeetingResult {
@@ -57,6 +85,30 @@ final minutesResultProvider =
   return buffer.toString().trim();
 });
 
+final transcriptSegmentsProvider =
+    FutureProvider.family<List<TranscriptSegment>, String>(
+        (ref, minutesTaskId) async {
+  final minApi = ref.watch(minutesApiProvider);
+  final data = await minApi.getResult(minutesTaskId);
+  final raw = data['segments'] as List<dynamic>? ?? [];
+  final seen = <String, int>{};
+  return raw.asMap().entries.map((e) {
+    final seg = TranscriptSegment.fromJson(
+      e.value as Map<String, dynamic>,
+      e.key,
+    );
+    final key = seg.speakerName;
+    seen.putIfAbsent(key, () => seen.length);
+    return TranscriptSegment(
+      speakerName: seg.speakerName,
+      text: seg.text,
+      start: seg.start,
+      end: seg.end,
+      speakerIndex: seen[key]!,
+    );
+  }).toList();
+});
+
 // 요약 결과 로딩 프로바이더 (summaryTaskId 기반) - SPEC-APP-004 REQ-APP-041
 // @MX:ANCHOR: ResultScreen _SummaryTab, _ActionItemsTab에서 summaryTaskId로 요약 로드
 // @MX:REASON: SummaryResult 타입 안전성 보장, key_decisions/next_steps 포함
@@ -98,6 +150,28 @@ final mindMapResultProvider =
   }
 
   throw StateError('마인드맵 생성 시간이 초과되었습니다.');
+});
+
+final statisticsProvider =
+    FutureProvider.family<StatisticsResponse, String>((ref, taskId) async {
+  final api = ref.watch(statisticsApiProvider);
+  return api.getStatistics(taskId);
+});
+
+final bookmarksProvider =
+    FutureProvider.family<List<Bookmark>, String>((ref, taskId) async {
+  final api = ref.watch(bookmarkApiProvider);
+  return api.list(taskId: taskId);
+});
+
+final sentimentProvider =
+    FutureProvider.family<List<SentimentSegment>, String>((ref, taskId) async {
+  final api = ref.watch(sentimentApiProvider);
+  try {
+    return api.getByMeeting(taskId);
+  } catch (_) {
+    return <SentimentSegment>[];
+  }
 });
 
 // 기존 통합 프로바이더 (하위 호환성 유지 - 두 ID가 동일한 경우)

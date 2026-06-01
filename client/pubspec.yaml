@@ -48,6 +48,7 @@ dependencies:
   flutter_secure_storage: ^9.2.0
   jwt_decoder: ^2.0.1
   shared_preferences: ^2.3.0
+  just_audio: ^0.9.42
 
 dev_dependencies:
   flutter_test:

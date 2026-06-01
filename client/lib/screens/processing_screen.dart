@@ -81,11 +81,13 @@ class _ProcessingScreenState extends ConsumerState<ProcessingScreen>
 
     // 양식 선택 다이얼로그 표시 후 파이프라인 시작
     // 선택된 templateId는 요약 생성 시 사용
-    _showTemplateSelectorAndStart(meeting.audioFilePath!);
+    _showTemplateSelectorAndStart(meeting.audioFilePath!, meeting.vocabularyId);
   }
 
-  // 양식 선택 바텀시트 표시 후 파이프라인 시작 (SPEC-TMPL-001 REQ-TMPL-006)
-  Future<void> _showTemplateSelectorAndStart(String audioFilePath) async {
+  Future<void> _showTemplateSelectorAndStart(
+    String audioFilePath,
+    String? vocabularyId,
+  ) async {
     if (!mounted) return;
 
     String? selectedTemplateId = ref.read(selectedTemplateIdProvider);
@@ -117,7 +119,7 @@ class _ProcessingScreenState extends ConsumerState<ProcessingScreen>
     // templateId는 SUM 단계에서 summaryApi.create() 호출 시 사용
     ref
         .read(pipelineProvider.notifier)
-        .startPipeline(audioFilePath, templateId: templateId);
+        .startPipeline(audioFilePath, templateId: templateId, vocabularyId: vocabularyId);
   }
 
   // currentTaskId 변경 감지 시 SSE 재연결

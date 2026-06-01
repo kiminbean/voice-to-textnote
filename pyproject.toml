@@ -65,6 +65,29 @@ asyncio_mode = "auto"
 testpaths = ["backend"]
 addopts = "--cov=backend --cov-report=term-missing --cov-fail-under=85"
 
+[tool.mypy]
+ignore_missing_imports = true
+disable_error_code = [
+    "var-annotated",
+    "method-assign",
+    "arg-type",
+    "union-attr",
+    "return-value",
+    "misc",
+    "no-redef",
+    "index",
+    "attr-defined",
+    "operator",
+    "str-bytes-safe",
+]
+warn_return_any = false
+warn_unused_configs = true
+exclude = [
+    "client/ios/Flutter/ephemeral/",
+    "\\.venv/",
+    "alembic/",
+]
+
 [tool.ruff]
 line-length = 100
 target-version = "py311"

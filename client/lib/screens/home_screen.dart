@@ -40,6 +40,8 @@ class HomeScreen extends ConsumerWidget {
                   context.push('/search');
                 case 'templates':
                   context.push('/templates');
+                case 'vocabulary':
+                  context.push('/vocabulary');
                 case 'logout':
                   _onLogout(context, ref);
               }
@@ -66,6 +68,14 @@ class HomeScreen extends ConsumerWidget {
                 child: ListTile(
                   leading: Icon(Icons.folder_special_outlined),
                   title: Text('양식 관리'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'vocabulary',
+                child: ListTile(
+                  leading: Icon(Icons.menu_book),
+                  title: Text('사용자 사전'),
                   contentPadding: EdgeInsets.zero,
                 ),
               ),
