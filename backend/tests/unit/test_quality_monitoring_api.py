@@ -2,7 +2,6 @@
 SPEC-QUALITY-MONITOR-001: 실시간 품질 모니터링 / 피드백 / 추세 API 테스트
 """
 
-import uuid
 
 import pytest
 import pytest_asyncio
@@ -13,7 +12,6 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 import backend.db.auth_models  # noqa: F401
 import backend.db.quality_feedback_models  # noqa: F401
 from backend.db.models import Base, TaskResult
-
 
 _SAMPLE_MINUTES_TEXT = (
     "## 회의 개요\n"

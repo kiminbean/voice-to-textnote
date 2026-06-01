@@ -8,24 +8,16 @@ SPEC-ENHANCED-STATS-001: 고급 통계 대시보드 API
   전체 프로젝트 통계 개요
 """
 
+
 import redis.asyncio as aioredis
-from datetime import datetime, timedelta
-from typing import List, Optional
-from fastapi import APIRouter, Depends, Query, HTTPException
-from sqlalchemy import select, func, and_, or_
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.sql import extract
 
 from backend.app.dependencies import get_db_session, get_redis_client
 from backend.schemas.enhanced_statistics import (
     EnhancedStatisticsResponse,
     OverviewResponse,
-    TimeSeriesData,
-    SpeakerParticipation,
-    MeetingEfficiencyMetrics,
-    KeywordTrend
 )
-from backend.db.models import TaskResult, SpeakerVoice
 from backend.services.enhanced_statistics import EnhancedStatisticsService
 
 router = APIRouter(prefix="/enhanced-statistics", tags=["enhanced_statistics"])
@@ -45,7 +37,7 @@ async def get_enhanced_statistics(
 ) -> EnhancedStatisticsResponse:
     """
     고급 통계 정보 제공
-    
+
     Args:
         task_id: 분석할 회의록 task ID
         time_range: 분석 시간 범위
@@ -75,7 +67,7 @@ async def get_project_overview(
 ) -> OverviewResponse:
     """
     프로젝트 전체 통계 개요
-    
+
     Args:
         period: 통계 기간
         top_meetings: 상위 회의 수

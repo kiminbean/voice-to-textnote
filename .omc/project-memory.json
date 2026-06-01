@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "lastScanned": 1780038461843,
+  "lastScanned": 1780336819221,
   "projectRoot": "/Users/ibkim/Projects/voice-to-textnote",
   "techStack": {
     "languages": [
@@ -56,7 +56,7 @@
       "path": "alembic",
       "purpose": null,
       "fileCount": 2,
-      "lastAccessed": 1780038461835,
+      "lastAccessed": 1780336819210,
       "keyFiles": [
         "env.py",
         "script.py.mako"
@@ -66,7 +66,7 @@
       "path": "backend",
       "purpose": null,
       "fileCount": 116,
-      "lastAccessed": 1780038461835,
+      "lastAccessed": 1780336819212,
       "keyFiles": [
         "<MagicMock name='settings.temp_dir.__truediv__()' id='4439559872'>",
         "<MagicMock name='settings.temp_dir.__truediv__()' id='4445691520'>",
@@ -79,7 +79,7 @@
       "path": "client",
       "purpose": null,
       "fileCount": 8,
-      "lastAccessed": 1780038461836,
+      "lastAccessed": 1780336819213,
       "keyFiles": [
         "README.md",
         "analysis_options.yaml",
@@ -92,7 +92,7 @@
       "path": "deploy",
       "purpose": null,
       "fileCount": 4,
-      "lastAccessed": 1780038461836,
+      "lastAccessed": 1780336819213,
       "keyFiles": [
         "requirements-ubuntu.txt",
         "restart.sh",
@@ -104,7 +104,7 @@
       "path": "nginx",
       "purpose": null,
       "fileCount": 1,
-      "lastAccessed": 1780038461836,
+      "lastAccessed": 1780336819213,
       "keyFiles": [
         "nginx.conf"
       ]
@@ -113,14 +113,14 @@
       "path": "storage",
       "purpose": null,
       "fileCount": 0,
-      "lastAccessed": 1780038461836,
+      "lastAccessed": 1780336819214,
       "keyFiles": []
     },
     "venv": {
       "path": "venv",
       "purpose": null,
       "fileCount": 2,
-      "lastAccessed": 1780038461837,
+      "lastAccessed": 1780336819214,
       "keyFiles": [
         "pyvenv.cfg"
       ]
@@ -129,7 +129,7 @@
       "path": "client/lib",
       "purpose": "Library code",
       "fileCount": 1,
-      "lastAccessed": 1780038461837,
+      "lastAccessed": 1780336819214,
       "keyFiles": [
         "main.dart"
       ]
@@ -138,7 +138,7 @@
       "path": "venv/bin",
       "purpose": "Executable scripts",
       "fileCount": 60,
-      "lastAccessed": 1780038461837,
+      "lastAccessed": 1780336819215,
       "keyFiles": [
         "Activate.ps1",
         "activate",
@@ -149,201 +149,309 @@
       "path": "venv/lib",
       "purpose": "Library code",
       "fileCount": 0,
-      "lastAccessed": 1780038461838,
+      "lastAccessed": 1780336819215,
       "keyFiles": []
     }
   },
   "hotPaths": [
     {
-      "path": "backend/app/api/v1/quality_assessment.py",
-      "accessCount": 15,
-      "lastAccessed": 1780333969287,
+      "path": "backend/tests/unit/test_qa_service.py",
+      "accessCount": 8,
+      "lastAccessed": 1780340984603,
+      "type": "file"
+    },
+    {
+      "path": "backend/app/api/v1/batch.py",
+      "accessCount": 7,
+      "lastAccessed": 1780341170931,
+      "type": "file"
+    },
+    {
+      "path": "backend/tests/unit/test_batch_api.py",
+      "accessCount": 6,
+      "lastAccessed": 1780340691683,
+      "type": "file"
+    },
+    {
+      "path": "backend/tests/unit/test_statistics_api.py",
+      "accessCount": 6,
+      "lastAccessed": 1780341037531,
+      "type": "file"
+    },
+    {
+      "path": "backend/tests/unit/test_audio_analysis_api.py",
+      "accessCount": 6,
+      "lastAccessed": 1780341037815,
       "type": "file"
     },
     {
       "path": "backend/services/quality_service.py",
-      "accessCount": 8,
-      "lastAccessed": 1780334020652,
+      "accessCount": 5,
+      "lastAccessed": 1780337176110,
       "type": "file"
     },
     {
-      "path": "backend/db/models.py",
+      "path": "backend/tests/unit/test_speakers_api.py",
+      "accessCount": 5,
+      "lastAccessed": 1780340621239,
+      "type": "file"
+    },
+    {
+      "path": "backend/tests/unit/test_oauth_service.py",
+      "accessCount": 5,
+      "lastAccessed": 1780341038101,
+      "type": "file"
+    },
+    {
+      "path": "backend/tests/unit/test_quality_assessment_api.py",
       "accessCount": 4,
-      "lastAccessed": 1779865623420,
+      "lastAccessed": 1780338998736,
       "type": "file"
     },
     {
-      "path": "backend/app/main.py",
+      "path": "backend/services/qa_service.py",
       "accessCount": 4,
-      "lastAccessed": 1780038484398,
+      "lastAccessed": 1780340731349,
       "type": "file"
     },
     {
-      "path": "backend/schemas/quality.py",
+      "path": "backend/app/api/v1/meetings.py",
       "accessCount": 4,
-      "lastAccessed": 1780334020176,
+      "lastAccessed": 1780340843293,
       "type": "file"
     },
     {
-      "path": "backend/schemas/speaker.py",
+      "path": "backend/services/webhook_notifier.py",
+      "accessCount": 4,
+      "lastAccessed": 1780341170646,
+      "type": "file"
+    },
+    {
+      "path": "backend/tests/unit/test_speaker_voice_service.py",
       "accessCount": 3,
-      "lastAccessed": 1779695875171,
+      "lastAccessed": 1780340837060,
       "type": "file"
     },
     {
-      "path": "backend/app/api/v1/speakers.py",
+      "path": "backend/app/api/v1/audio_analysis.py",
       "accessCount": 3,
-      "lastAccessed": 1779696043258,
+      "lastAccessed": 1780340880948,
       "type": "file"
     },
     {
-      "path": "backend/app/dependencies.py",
+      "path": "backend/tests/unit/test_webhook_notifier.py",
       "accessCount": 3,
-      "lastAccessed": 1780038509460,
+      "lastAccessed": 1780341202216,
       "type": "file"
     },
     {
-      "path": "backend/db",
+      "path": "backend/tests/unit/test_quality_service_monitoring.py",
       "accessCount": 2,
-      "lastAccessed": 1779696160054,
-      "type": "directory"
-    },
-    {
-      "path": "backend",
-      "accessCount": 2,
-      "lastAccessed": 1779696176302,
-      "type": "directory"
-    },
-    {
-      "path": "backend/services/keyword_service.py",
-      "accessCount": 2,
-      "lastAccessed": 1779696190306,
-      "type": "directory"
-    },
-    {
-      "path": "backend/tests/unit/test_quality_monitoring_api.py",
-      "accessCount": 2,
-      "lastAccessed": 1779865581105,
+      "lastAccessed": 1780337249414,
       "type": "file"
     },
     {
-      "path": "backend/app/api/v1/statistics.py",
+      "path": "backend/tests/unit/test_auth_api.py",
       "accessCount": 2,
-      "lastAccessed": 1780038492290,
+      "lastAccessed": 1780338888038,
       "type": "file"
     },
     {
-      "path": "backend/app/api/v1/dashboard.py",
+      "path": "backend/app/api/v1/audio.py",
       "accessCount": 2,
-      "lastAccessed": 1780038493268,
+      "lastAccessed": 1780339677640,
+      "type": "file"
+    },
+    {
+      "path": "backend/services/retention.py",
+      "accessCount": 2,
+      "lastAccessed": 1780339677698,
+      "type": "file"
+    },
+    {
+      "path": "backend/app/api/v1/health.py",
+      "accessCount": 2,
+      "lastAccessed": 1780339677735,
+      "type": "file"
+    },
+    {
+      "path": "backend/tests/unit/test_retention.py",
+      "accessCount": 2,
+      "lastAccessed": 1780339735850,
+      "type": "file"
+    },
+    {
+      "path": "backend/services/speaker_voice_service.py",
+      "accessCount": 2,
+      "lastAccessed": 1780340539528,
       "type": "file"
     },
     {
       "path": "backend/services/statistics.py",
       "accessCount": 2,
-      "lastAccessed": 1780038494343,
+      "lastAccessed": 1780340539630,
       "type": "file"
     },
     {
-      "path": "backend/schemas/statistics.py",
+      "path": "backend/app/api/v1/speakers.py",
       "accessCount": 2,
-      "lastAccessed": 1780038494837,
-      "type": "file"
-    },
-    {
-      "path": "backend/app/config.py",
-      "accessCount": 2,
-      "lastAccessed": 1780038509985,
-      "type": "file"
-    },
-    {
-      "path": "backend/db/speaker_service.py",
-      "accessCount": 1,
-      "lastAccessed": 1779695735661,
-      "type": "file"
-    },
-    {
-      "path": "backend/tests/unit/test_speakers_api.py",
-      "accessCount": 1,
-      "lastAccessed": 1779695736717,
-      "type": "file"
-    },
-    {
-      "path": "backend/db/speaker_models.py",
-      "accessCount": 1,
-      "lastAccessed": 1779695746951,
-      "type": "file"
-    },
-    {
-      "path": "backend/conftest.py",
-      "accessCount": 1,
-      "lastAccessed": 1779695748492,
-      "type": "file"
-    },
-    {
-      "path": "backend/app/api/v1/audio_analysis.py",
-      "accessCount": 1,
-      "lastAccessed": 1779695748545,
-      "type": "file"
-    },
-    {
-      "path": "backend/ml/audio_analysis_engine.py",
-      "accessCount": 1,
-      "lastAccessed": 1779695809291,
-      "type": "file"
-    },
-    {
-      "path": "backend/db/speaker_voice_models.py",
-      "accessCount": 1,
-      "lastAccessed": 1779695834575,
-      "type": "file"
-    },
-    {
-      "path": "backend/db/quality_feedback_models.py",
-      "accessCount": 1,
-      "lastAccessed": 1779695848989,
-      "type": "file"
-    },
-    {
-      "path": "backend/services/speaker_voice_service.py",
-      "accessCount": 1,
-      "lastAccessed": 1779695945918,
-      "type": "file"
-    },
-    {
-      "path": "backend/app/api/v1/minutes.py",
-      "accessCount": 1,
-      "lastAccessed": 1779696174448,
-      "type": "directory"
-    },
-    {
-      "path": "backend/tests/unit/test_speakers_voice_api.py",
-      "accessCount": 1,
-      "lastAccessed": 1779696385021,
-      "type": "file"
-    },
-    {
-      "path": "backend/app/api/v1/summary.py",
-      "accessCount": 1,
-      "lastAccessed": 1779865566272,
+      "lastAccessed": 1780340576814,
       "type": "file"
     },
     {
       "path": "backend/app/api/v1/enhanced_statistics.py",
       "accessCount": 1,
-      "lastAccessed": 1780038493899,
+      "lastAccessed": 1780336870316,
       "type": "file"
     },
     {
-      "path": "backend/app/api/v1/stream.py",
+      "path": "backend/tests/unit/test_quality_monitoring_api.py",
       "accessCount": 1,
-      "lastAccessed": 1780038495332,
+      "lastAccessed": 1780336870376,
       "type": "file"
     },
     {
-      "path": "backend/app/middleware/auth.py",
+      "path": "backend/app/api/v1/quality_assessment.py",
       "accessCount": 1,
-      "lastAccessed": 1780038510671,
+      "lastAccessed": 1780336870428,
+      "type": "file"
+    },
+    {
+      "path": "backend/conftest.py",
+      "accessCount": 1,
+      "lastAccessed": 1780336870485,
+      "type": "file"
+    },
+    {
+      "path": "backend/db/speaker_models.py",
+      "accessCount": 1,
+      "lastAccessed": 1780336928956,
+      "type": "file"
+    },
+    {
+      "path": "backend/schemas/speaker.py",
+      "accessCount": 1,
+      "lastAccessed": 1780336928970,
+      "type": "file"
+    },
+    {
+      "path": "backend/db/speaker_voice_models.py",
+      "accessCount": 1,
+      "lastAccessed": 1780336928981,
+      "type": "file"
+    },
+    {
+      "path": "backend/db/quality_feedback_models.py",
+      "accessCount": 1,
+      "lastAccessed": 1780336929022,
+      "type": "file"
+    },
+    {
+      "path": "backend/db/auth_models.py",
+      "accessCount": 1,
+      "lastAccessed": 1780336979354,
+      "type": "file"
+    },
+    {
+      "path": "backend/ml/audio_analysis_engine.py",
+      "accessCount": 1,
+      "lastAccessed": 1780336979405,
+      "type": "file"
+    },
+    {
+      "path": "backend/schemas/quality.py",
+      "accessCount": 1,
+      "lastAccessed": 1780337159429,
+      "type": "file"
+    },
+    {
+      "path": "backend/app/api/v1/audio_preprocess.py",
+      "accessCount": 1,
+      "lastAccessed": 1780338097431,
+      "type": "file"
+    },
+    {
+      "path": "backend/services/oauth_service.py",
+      "accessCount": 1,
+      "lastAccessed": 1780338097514,
+      "type": "file"
+    },
+    {
+      "path": "backend/schemas/batch.py",
+      "accessCount": 1,
+      "lastAccessed": 1780338318553,
+      "type": "file"
+    },
+    {
+      "path": "backend/tests/unit/test_audio_preprocess_api.py",
+      "accessCount": 1,
+      "lastAccessed": 1780338438754,
+      "type": "file"
+    },
+    {
+      "path": "backend/app/api/v1/qa.py",
+      "accessCount": 1,
+      "lastAccessed": 1780338722587,
+      "type": "file"
+    },
+    {
+      "path": "backend/app/api/v1/auth.py",
+      "accessCount": 1,
+      "lastAccessed": 1780338722601,
+      "type": "file"
+    },
+    {
+      "path": "backend/tests/unit/test_qa_api.py",
+      "accessCount": 1,
+      "lastAccessed": 1780338754250,
+      "type": "file"
+    },
+    {
+      "path": "backend/app/api/v1/versions.py",
+      "accessCount": 1,
+      "lastAccessed": 1780339677683,
+      "type": "file"
+    },
+    {
+      "path": "backend/tests/unit/test_health_version.py",
+      "accessCount": 1,
+      "lastAccessed": 1780339683420,
+      "type": "file"
+    },
+    {
+      "path": "backend/tests/unit/test_health_ready.py",
+      "accessCount": 1,
+      "lastAccessed": 1780339683454,
+      "type": "file"
+    },
+    {
+      "path": "backend/tests/unit/test_webhook_security.py",
+      "accessCount": 1,
+      "lastAccessed": 1780339683532,
+      "type": "file"
+    },
+    {
+      "path": "backend/tests/unit/test_audio_api.py",
+      "accessCount": 1,
+      "lastAccessed": 1780339929680,
+      "type": "file"
+    },
+    {
+      "path": "backend/tests/unit/test_health_endpoints.py",
+      "accessCount": 1,
+      "lastAccessed": 1780339988584,
+      "type": "file"
+    },
+    {
+      "path": "backend/schemas/version.py",
+      "accessCount": 1,
+      "lastAccessed": 1780340169409,
+      "type": "file"
+    },
+    {
+      "path": "backend/tests/unit/test_versions_api.py",
+      "accessCount": 1,
+      "lastAccessed": 1780340206166,
       "type": "file"
     }
   ],

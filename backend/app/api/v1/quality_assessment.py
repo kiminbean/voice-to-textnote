@@ -12,14 +12,12 @@ SPEC-QUALITY-MONITOR-001: 실시간 품질 점수/피드백/추세 분석 확장
 - GET  /api/v1/quality/{task_id}/quality-trends   - 품질 추세 분석
 """
 
-import json
-from typing import Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.dependencies import get_db_session, get_redis_client
+from backend.app.dependencies import get_db_session
 from backend.db.models import TaskResult
 from backend.schemas.quality import (
     LiveQualityScoreResponse,
@@ -29,9 +27,6 @@ from backend.schemas.quality import (
     QualityFeedbackResponse,
     QualityFeedbackSummary,
     QualityImprovementResponse,
-    ImprovementSuggestion,
-    QualityIssue,
-    QualityScore,
     QualityTrendsResponse,
 )
 from backend.services.quality_service import QualityService
@@ -44,11 +39,11 @@ router = APIRouter(prefix="/quality", tags=["quality"])
 _service = QualityService()
 
 
-def _extract_minutes_text(result_data: Optional[Dict]) -> str:
+def _extract_minutes_text(result_data: dict | None) -> str:
     """TaskResult.result_data에서 회의록 본문 텍스트 추출."""
     if not result_data:
         return ""
-    parts: List[str] = []
+    parts: list[str] = []
     for key in ("text", "markdown", "summary_text", "transcription"):
         value = result_data.get(key)
         if isinstance(value, str) and value.strip():
@@ -68,7 +63,7 @@ def _extract_minutes_text(result_data: Optional[Dict]) -> str:
     return "\n\n".join(parts)
 
 
-def _extract_minutes_title(result_data: Optional[Dict]) -> str:
+def _extract_minutes_title(result_data: dict | None) -> str:
     if not result_data:
         return ""
     value = result_data.get("title")
@@ -405,7 +400,7 @@ async def list_quality_feedback(
 async def get_quality_trends(
     task_id: str,
     limit: int = Query(default=50, ge=1, le=500),
-    warning_drop_threshold: Optional[float] = Query(
+    warning_drop_threshold: float | None = Query(
         default=None,
         ge=0.0,
         le=100.0,

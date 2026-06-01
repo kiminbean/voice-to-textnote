@@ -272,3 +272,27 @@ async def test_delete_speaker(db_engine, seeded_db):
 
         get_resp = client.get(f"/api/v1/speakers/{profile_id}")
         assert get_resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# 단건 조회 (GET /api/v1/speakers/{speaker_id})
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_get_speaker_by_id(db_engine, seeded_db):
+    """생성된 화자 프로필을 ID로 조회한다."""
+    app = _make_app(db_engine, seeded_db["user_a"])
+    with TestClient(app) as client:
+        create_resp = client.post(
+            "/api/v1/speakers",
+            json={"speaker_label": "SPEAKER_01", "display_name": "조회 대상"},
+        )
+        assert create_resp.status_code == 201
+        profile_id = create_resp.json()["id"]
+
+        get_resp = client.get(f"/api/v1/speakers/{profile_id}")
+        assert get_resp.status_code == 200
+        body = get_resp.json()
+        assert body["id"] == profile_id
+        assert body["display_name"] == "조회 대상"

@@ -207,6 +207,8 @@ def test_get_me_authenticated(auth_client):
     mock_user.display_name = "나"
     mock_user.is_active = True
     mock_user.created_at = datetime.now(UTC).replace(tzinfo=None)
+    mock_user.provider = "email"
+    mock_user.avatar_url = None
 
     async def mock_get_user():
         return mock_user

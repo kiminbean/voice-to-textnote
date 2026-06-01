@@ -7,24 +7,22 @@ import json
 import os
 import re
 import uuid as _uuid
-from typing import Dict, List, Optional, Tuple, Union
-from datetime import datetime, timedelta
+from datetime import datetime
 
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import desc, func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.db.models import TaskResult
 from backend.db.quality_feedback_models import QualityFeedback, QualityScoreSnapshot
 from backend.ml.openai_client import get_openai_client
 from backend.schemas.quality import (
     AssessmentFocus,
     AssessmentSummary,
+    FeedbackCategory,
     ImprovementSuggestion,
     ImprovementType,
     IssueSeverity,
-    Priority,
-    FeedbackCategory,
     LiveQualityScoreResponse,
+    Priority,
     QualityAssessmentResponse,
     QualityFeedbackCreate,
     QualityFeedbackResponse,
@@ -834,7 +832,7 @@ class QualityService:
         self,
         task_id: str,
         meeting_content: str,
-        db: Optional[AsyncSession] = None,
+        db: AsyncSession | None = None,
         persist_snapshot: bool = True,
     ) -> LiveQualityScoreResponse:
         """경량 실시간 품질 점수 계산 (AI 호출 없음).
@@ -851,7 +849,7 @@ class QualityService:
         basic = await self._perform_basic_analysis(meeting_content)
 
         # AI 분석은 호출하지 않고 기본 분석만으로 카테고리 점수 산출
-        empty_ai: Dict[str, Union[str, float, List[str]]] = {}
+        empty_ai: dict[str, str | float | list[str]] = {}
         completeness = self._evaluate_completeness(basic, empty_ai)
         clarity = self._evaluate_clarity(basic, empty_ai)
         structure = self._evaluate_structure(basic, empty_ai)
@@ -889,7 +887,7 @@ class QualityService:
         self,
         db: AsyncSession,
         task_id: str,
-        user_id: Optional[_uuid.UUID],
+        user_id: _uuid.UUID | None,
         payload: QualityFeedbackCreate,
     ) -> QualityFeedbackResponse:
         """사용자 피드백을 저장한다."""
@@ -934,7 +932,7 @@ class QualityService:
             .where(QualityFeedback.task_id == task_id)
             .group_by(QualityFeedback.category)
         )
-        breakdown: Dict[str, int] = {
+        breakdown: dict[str, int] = {
             row[0]: int(row[1])
             for row in (await db.execute(cat_stmt)).all()
         }
@@ -971,7 +969,7 @@ class QualityService:
         db: AsyncSession,
         task_id: str,
         limit: int = 50,
-        warning_drop_threshold: Optional[float] = None,
+        warning_drop_threshold: float | None = None,
     ) -> QualityTrendsResponse:
         """저장된 품질 스냅샷으로 추세 분석을 수행한다."""
         if warning_drop_threshold is None:

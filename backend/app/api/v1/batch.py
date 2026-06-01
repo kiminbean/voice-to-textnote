@@ -51,12 +51,10 @@ async def upload_batch_transcription(
     """
     다중 오디오 파일 일괄 업로드 및 전사 작업 생성.
     개별 파일 검증 실패 시 해당 항목만 failed 처리하고 나머지는 계속 진행한다.
+
+    Note: files 빈 리스트 검증은 FastAPI File(...) 필수 검증이 먼저 동작하므로
+    이 함수에 도달할 때 files는 항상 최소 1개 이상임.
     """
-    if not files:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="최소 1개 이상의 파일이 필요합니다.",
-        )
     if len(files) > _BATCH_MAX_FILES:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

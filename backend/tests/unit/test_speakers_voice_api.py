@@ -21,7 +21,6 @@ import backend.db.speaker_voice_models  # noqa: F401
 from backend.db.auth_models import User
 from backend.db.models import Base, TaskResult
 
-
 # ---------------------------------------------------------------------------
 # 픽스처
 # ---------------------------------------------------------------------------

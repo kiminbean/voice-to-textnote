@@ -4,7 +4,6 @@
 
 from datetime import datetime
 from enum import Enum
-from typing import Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -218,7 +217,7 @@ class QualityFeedbackCreate(BaseModel):
     category: FeedbackCategory = Field(
         default=FeedbackCategory.OTHER, description="피드백 카테고리"
     )
-    comment: Optional[str] = Field(
+    comment: str | None = Field(
         default=None, max_length=2000, description="자유 텍스트 코멘트"
     )
 
@@ -229,7 +228,7 @@ class QualityFeedbackResponse(BaseModel):
     task_id: str
     rating: int
     category: FeedbackCategory
-    comment: Optional[str] = None
+    comment: str | None = None
     created_at: datetime
 
 
@@ -237,9 +236,9 @@ class QualityFeedbackSummary(BaseModel):
     """피드백 누적 요약"""
     task_id: str
     total_feedbacks: int = Field(..., ge=0)
-    avg_rating: Optional[float] = Field(default=None, ge=0.0, le=5.0)
-    category_breakdown: Dict[str, int] = Field(default_factory=dict)
-    recent: List[QualityFeedbackResponse] = Field(default_factory=list)
+    avg_rating: float | None = Field(default=None, ge=0.0, le=5.0)
+    category_breakdown: dict[str, int] = Field(default_factory=dict)
+    recent: list[QualityFeedbackResponse] = Field(default_factory=list)
 
 
 class QualityTrendPoint(BaseModel):
@@ -253,15 +252,15 @@ class QualityTrendPoint(BaseModel):
 class QualityTrendsResponse(BaseModel):
     """품질 추세 분석 응답"""
     task_id: str
-    points: List[QualityTrendPoint] = Field(default_factory=list)
+    points: list[QualityTrendPoint] = Field(default_factory=list)
     points_count: int = Field(..., ge=0)
-    avg_score: Optional[float] = Field(default=None, ge=0.0, le=100.0)
-    min_score: Optional[float] = Field(default=None, ge=0.0, le=100.0)
-    max_score: Optional[float] = Field(default=None, ge=0.0, le=100.0)
+    avg_score: float | None = Field(default=None, ge=0.0, le=100.0)
+    min_score: float | None = Field(default=None, ge=0.0, le=100.0)
+    max_score: float | None = Field(default=None, ge=0.0, le=100.0)
     trend_direction: str = Field(
         default="stable",
         description="up | down | stable | insufficient_data",
     )
-    warning: Optional[str] = Field(
+    warning: str | None = Field(
         default=None, description="추세에 따른 경고 메시지"
     )

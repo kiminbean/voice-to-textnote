@@ -163,3 +163,66 @@ class TestStatistics:
             params={"top_n": 0},
         )
         assert resp.status_code == 422
+
+
+class TestStatisticsEmptySegments:
+    """빈/비정상 세그먼트 처리 테스트"""
+
+    def test_empty_segments_returns_zero_stats(self, db_engine):
+        """세그먼트가 빈 배열이면 200 + zero 통계 반환"""
+        import json
+        client = _make_app_with_redis(db_engine, json.dumps({
+            "status": "completed",
+            "result": {"segments": []},
+        }))
+        resp = client.get("/api/v1/statistics/minutes-stats-001")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["total_segments"] == 0
+        assert body["total_words"] == 0
+
+    def test_non_dict_and_invalid_segments_skipped(self, db_engine):
+        """비정상 세그먼트가 있으면 무시하고 정상 항목만 집계"""
+        import json
+        client = _make_app_with_redis(db_engine, json.dumps({
+            "status": "completed",
+            "result": {
+                "segments": [
+                    "not_a_dict",
+                    42,
+                    {"start": "abc", "end": "xyz", "text": "bad"},
+                    {"start": 0, "end": 10, "text": "good"},
+                ]
+            },
+        }))
+        resp = client.get("/api/v1/statistics/minutes-stats-001")
+        assert resp.status_code == 200
+        # 비정상 세그먼트가 모두 무시되었는지 확인 (total_segments ≤ 1)
+        body = resp.json()
+        assert body["total_segments"] <= 1
+
+
+def _make_app_with_redis(db_engine, redis_data: str) -> TestClient:
+    """커스텀 Redis 데이터로 TestClient 생성"""
+    from backend.app.api.v1.statistics import router
+    from backend.app.dependencies import get_db_session, get_redis_client
+
+    app = FastAPI()
+    app.include_router(router, prefix="/api/v1")
+
+    session_factory = async_sessionmaker(db_engine, expire_on_commit=False)
+
+    async def override_db_session():
+        async with session_factory() as session:
+            yield session
+
+    redis_mock = AsyncMock()
+    redis_mock.get.return_value = redis_data
+
+    async def override_redis():
+        return redis_mock
+
+    app.dependency_overrides[get_db_session] = override_db_session
+    app.dependency_overrides[get_redis_client] = override_redis
+
+    return TestClient(app)

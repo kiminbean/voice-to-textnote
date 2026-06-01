@@ -113,14 +113,14 @@ def notify_webhooks_sync(
                         "웹훅 전송 완료",
                         webhook_id=str(endpoint.id),
                         url=endpoint.url,
-                        event=event_name,
+                        webhook_event=event_name,
                     )
                 except Exception as exc:
                     logger.warning(
                         "웹훅 전송 실패 (무시)",
                         webhook_id=str(endpoint.id),
                         url=endpoint.url,
-                        event=event_name,
+                        webhook_event=event_name,
                         error=str(exc),
                     )
 
