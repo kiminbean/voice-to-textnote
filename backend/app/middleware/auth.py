@@ -6,6 +6,7 @@ REQ-SEC-003: 유효한 API Key → 정상 처리
 REQ-SEC-004: API_KEYS 미설정 시 인증 비활성화 (개발 모드)
 REQ-SEC-005: API Key 평문 로그 금지
 REQ-GUEST-005: Bearer guest:<token> 형식 게스트 토큰 인증 지원
+SPEC-TEAM-001: Bearer <jwt> 액세스 토큰 인증 지원
 """
 
 import secrets
@@ -85,6 +86,49 @@ async def _verify_guest_token(
     return guest_session_id
 
 
+async def _verify_access_token(
+    request: Request,
+    token_str: str,
+    redis_client: aioredis.Redis,
+) -> str:
+    """
+    SPEC-TEAM-001: JWT 액세스 토큰 검증
+
+    1. JWT 디코딩 및 서명 검증
+    2. type 클레임 = "access" 확인
+    3. request.state에 사용자 정보 설정
+
+    Returns:
+        검증된 user_id
+    """
+    try:
+        payload = jwt.decode(token_str, settings.jwt_secret, algorithms=["HS256"])
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="유효하지 않거나 만료된 토큰입니다.",
+        )
+
+    if payload.get("type") != "access":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="유효하지 않은 토큰입니다.",
+        )
+
+    user_id = payload.get("sub")
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="유효하지 않은 토큰입니다.",
+        )
+
+    request.state.is_guest = False
+    request.state.user_id = user_id
+    request.state.user_email = payload.get("email", "")
+
+    return user_id
+
+
 # @MX:ANCHOR: API Key + 게스트 토큰 통합 인증 의존성
 # @MX:REASON: fan_in >= 3 (main.py, 각 API 라우터에서 Depends로 사용)
 async def verify_api_key(
@@ -103,13 +147,18 @@ async def verify_api_key(
     REQ-SEC-004: API_KEYS가 비어있으면 개발 모드 - 인증 건너뜀
     REQ-SEC-005: 키 평문은 절대 로그에 남기지 않음
     """
-    # REQ-GUEST-005: Bearer guest: 형식 게스트 토큰 처리
-    # request가 None이면 (직접 호출 시) 게스트 인증 건너뜀
+    # Bearer 토큰 인증 처리 (게스트 + JWT 액세스 토큰)
     if request is not None:
         auth_header = request.headers.get("Authorization", "")
-        if auth_header.startswith("Bearer guest:"):
-            token_str = auth_header[len("Bearer guest:"):]
-            return await _verify_guest_token(request, token_str, redis_client)
+        if auth_header.startswith("Bearer "):
+            token_str = auth_header[len("Bearer "):]
+            # 게스트 토큰: "guest:" 접두사
+            if token_str.startswith("guest:"):
+                return await _verify_guest_token(
+                    request, token_str[len("guest:"):], redis_client
+                )
+            # JWT 액세스 토큰 (SPEC-TEAM-001)
+            return await _verify_access_token(request, token_str, redis_client)
 
     # REQ-SEC-004: API_KEYS 미설정 시 개발 모드 - 모든 요청 허용
     if not settings.api_keys:
