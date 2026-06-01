@@ -20,5 +20,6 @@
       "Bash(GIT_EDITOR=true git rebase --continue)"
     ],
     "defaultMode": "bypassPermissions"
-  }
+  },
+  "teammateMode": "tmux"
 }
