@@ -93,9 +93,32 @@ class AuthApi {
   }
 
   // 게스트 세션 생성 (SPEC-GUEST-001)
-  // 백엔드 응답: { guest_session_id, guest_token, expires_at }
   Future<Map<String, dynamic>> createGuestSession() async {
     final response = await _dio.post('/auth/guest');
     return response.data as Map<String, dynamic>;
+  }
+
+  // Google 소셜 로그인 (REQ-OAUTH-001)
+  Future<AuthResponse> loginWithGoogle({required String idToken}) async {
+    final response = await _dio.post(
+      '/auth/google',
+      data: {'id_token': idToken},
+    );
+    return AuthResponse.fromJson(response.data as Map<String, dynamic>);
+  }
+
+  // Apple 소셜 로그인 (REQ-OAUTH-001)
+  Future<AuthResponse> loginWithApple({
+    required String idToken,
+    String? displayName,
+  }) async {
+    final response = await _dio.post(
+      '/auth/apple',
+      data: {
+        'id_token': idToken,
+        if (displayName != null) 'display_name': displayName,
+      },
+    );
+    return AuthResponse.fromJson(response.data as Map<String, dynamic>);
   }
 }

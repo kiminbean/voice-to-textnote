@@ -1,5 +1,7 @@
 // 인증 상태 관리 프로바이더
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:voice_to_textnote/models/auth_user.dart';
 import 'package:voice_to_textnote/services/auth_api.dart';
 import 'package:voice_to_textnote/services/auth_service.dart';
@@ -165,6 +167,67 @@ class AuthNotifier extends StateNotifier<AuthState> {
   // @visibleForTesting
   void setAuthenticatedStateForTest(AuthUser user) {
     state = AuthState.authenticated(user);
+  }
+
+  // Google 소셜 로그인 (REQ-OAUTH-001)
+  Future<void> loginWithGoogle() async {
+    state = const AuthState.loading();
+    try {
+      final googleSignIn = GoogleSignIn();
+      final googleAccount = await googleSignIn.signIn();
+      if (googleAccount == null) {
+        state = const AuthState.unauthenticated();
+        return;
+      }
+
+      final googleAuth = await googleAccount.authentication;
+      final idToken = googleAuth.idToken;
+      if (idToken == null) {
+        state = const AuthState.unauthenticated('Google 인증에 실패했습니다.');
+        return;
+      }
+
+      final response = await _authApi.loginWithGoogle(idToken: idToken);
+      await _authService.saveTokens(response.accessToken, response.refreshToken);
+      final user = await _authApi.getMe(response.accessToken);
+      state = AuthState.authenticated(user);
+    } on Exception catch (e) {
+      state = AuthState.unauthenticated(_parseError(e));
+    }
+  }
+
+  // Apple 소셜 로그인 (REQ-OAUTH-001)
+  Future<void> loginWithApple() async {
+    state = const AuthState.loading();
+    try {
+      final credential = await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+      );
+
+      final idToken = credential.identityToken;
+      if (idToken == null) {
+        state = const AuthState.unauthenticated('Apple 인증에 실패했습니다.');
+        return;
+      }
+
+      final displayName = [
+        credential.givenName,
+        credential.familyName,
+      ].where((n) => n != null && n.isNotEmpty).join(' ');
+
+      final response = await _authApi.loginWithApple(
+        idToken: idToken,
+        displayName: displayName.isEmpty ? null : displayName,
+      );
+      await _authService.saveTokens(response.accessToken, response.refreshToken);
+      final user = await _authApi.getMe(response.accessToken);
+      state = AuthState.authenticated(user);
+    } on Exception catch (e) {
+      state = AuthState.unauthenticated(_parseError(e));
+    }
   }
 
   // 토큰 갱신 시도 (내부용)

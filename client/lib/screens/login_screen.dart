@@ -39,6 +39,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     await ref.read(authStateProvider.notifier).startAsGuest();
   }
 
+  // Google 소셜 로그인 (REQ-OAUTH-001)
+  Future<void> _handleGoogleLogin() async {
+    await ref.read(authStateProvider.notifier).loginWithGoogle();
+  }
+
+  // Apple 소셜 로그인 (REQ-OAUTH-001)
+  Future<void> _handleAppleLogin() async {
+    await ref.read(authStateProvider.notifier).loginWithApple();
+  }
+
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authStateProvider);
@@ -159,6 +169,44 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ),
                           )
                         : const Text('로그인', style: TextStyle(fontSize: 16)),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // 소셜 로그인 구분선 (REQ-OAUTH-001)
+                  Row(
+                    children: [
+                      const Expanded(child: Divider()),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Text(
+                          '또는',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ),
+                      const Expanded(child: Divider()),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Google 로그인 버튼
+                  OutlinedButton.icon(
+                    onPressed: isLoading ? null : _handleGoogleLogin,
+                    icon: const Icon(Icons.g_mobiledata, size: 24),
+                    label: const Text('Google로 계속하기'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+
+                  // Apple 로그인 버튼
+                  OutlinedButton.icon(
+                    onPressed: isLoading ? null : _handleAppleLogin,
+                    icon: const Icon(Icons.apple, size: 24),
+                    label: const Text('Apple로 계속하기'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
                   ),
                   const SizedBox(height: 16),
 

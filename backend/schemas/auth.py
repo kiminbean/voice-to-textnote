@@ -66,8 +66,29 @@ class UserResponse(BaseModel):
     display_name: str
     is_active: bool
     created_at: datetime
+    provider: str = "email"
+    avatar_url: str | None = None
 
     model_config = {"from_attributes": True}
+
+
+class GoogleLoginRequest(BaseModel):
+    """REQ-OAUTH-001: Google 소셜 로그인 요청"""
+
+    id_token: str
+
+
+class AppleLoginRequest(BaseModel):
+    """REQ-OAUTH-001: Apple 소셜 로그인 요청"""
+
+    id_token: str
+    display_name: str | None = None
+
+
+class LinkProviderRequest(BaseModel):
+    """REQ-OAUTH-001: 소셜 계정 연동 요청"""
+
+    id_token: str
 
 
 class GuestSessionResponse(BaseModel):

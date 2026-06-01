@@ -303,3 +303,136 @@ class AuthService:
         if token_record is not None:
             token_record.is_revoked = True
             await session.commit()
+
+    async def social_login_or_register(
+        self,
+        session: AsyncSession,
+        *,
+        provider: str,
+        provider_id: str,
+        email: str,
+        display_name: str,
+        avatar_url: str | None = None,
+    ) -> tuple[User, str, str]:
+        """
+        REQ-OAUTH-001: 소셜 로그인/자동가입.
+
+        기존 소셜 계정이 있으면 로그인, 없으면 자동 가입 후 JWT 발급.
+        이메일 기반 계정과 provider+provider_id로 구분.
+
+        Returns:
+            (User, access_token, refresh_token) 튜플
+        """
+        # 기존 소셜 계정 조회
+        result = await session.execute(
+            select(User).where(
+                User.provider == provider,
+                User.provider_id == provider_id,
+            )
+        )
+        user = result.scalar_one_or_none()
+
+        if user is None:
+            existing_email = await session.execute(
+                select(User).where(User.email == email)
+            )
+            if existing_email.scalar_one_or_none() is not None:
+                raise HTTPException(
+                    status_code=409,
+                    detail="해당 이메일로 이미 가입된 계정이 있습니다. 계정 연동을 이용해주세요.",
+                )
+
+            user = User()
+            user.id = uuid.uuid4()
+            user.email = email
+            user.password_hash = self.hash_password(secrets.token_urlsafe(32))
+            user.display_name = display_name
+            user.provider = provider
+            user.provider_id = provider_id
+            user.avatar_url = avatar_url
+            user.is_active = True
+            session.add(user)
+
+        elif not user.is_active:
+            raise HTTPException(status_code=401, detail="비활성화된 계정입니다")
+
+        else:
+            if avatar_url and user.avatar_url != avatar_url:
+                user.avatar_url = avatar_url
+
+        raw_refresh = self.create_refresh_token()
+        refresh_record = RefreshToken()
+        refresh_record.id = uuid.uuid4()
+        refresh_record.user_id = user.id
+        refresh_record.token_hash = self._hash_token(raw_refresh)
+        refresh_record.expires_at = (
+            datetime.now(UTC) + timedelta(days=self.REFRESH_TOKEN_EXPIRE_DAYS)
+        ).replace(tzinfo=None)
+        refresh_record.is_revoked = False
+        session.add(refresh_record)
+
+        await session.commit()
+
+        access_token = self.create_access_token(str(user.id), user.email)
+        return user, access_token, raw_refresh
+
+    async def link_provider(
+        self,
+        session: AsyncSession,
+        user: User,
+        *,
+        provider: str,
+        provider_id: str,
+        avatar_url: str | None = None,
+    ) -> User:
+        """
+        REQ-OAUTH-001: 기존 계정에 소셜 제공자 연동.
+
+        동일 제공자가 이미 연동되어 있거나 다른 계정에서 사용 중이면 409.
+        """
+        if user.provider == provider and user.provider_id == provider_id:
+            raise HTTPException(status_code=409, detail=f"{provider} 계정이 이미 연동되어 있습니다")
+
+        existing = await session.execute(
+            select(User).where(
+                User.provider == provider,
+                User.provider_id == provider_id,
+            )
+        )
+        if existing.scalar_one_or_none() is not None:
+            raise HTTPException(
+                status_code=409,
+                detail=f"해당 {provider} 계정이 다른 계정에 연동되어 있습니다",
+            )
+
+        user.provider = provider
+        user.provider_id = provider_id
+        if avatar_url:
+            user.avatar_url = avatar_url
+        await session.commit()
+        return user
+
+    async def unlink_provider(
+        self,
+        session: AsyncSession,
+        user: User,
+        provider: str,
+    ) -> User:
+        """
+        REQ-OAUTH-001: 소셜 제공자 연동 해제.
+
+        이메일 가입 계정(provider="email")은 해제할 수 없음.
+        """
+        if user.provider != provider:
+            raise HTTPException(status_code=400, detail=f"{provider} 계정이 연동되어 있지 않습니다")
+
+        if not user.password_hash or not user.email:
+            raise HTTPException(
+                status_code=400,
+                detail="비밀번호 설정 후 소셜 계정 연동을 해제할 수 있습니다",
+            )
+
+        user.provider = "email"
+        user.provider_id = None
+        await session.commit()
+        return user

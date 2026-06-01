@@ -28,7 +28,7 @@ class User(Base):
     """
     SPEC-TEAM-001: 사용자 모델
 
-    이메일/비밀번호 기반 인증 사용자.
+    이메일/비밀번호 기반 및 소셜 로그인(Google/Apple) 지원.
     """
 
     __tablename__ = "users"
@@ -59,6 +59,24 @@ class User(Base):
         nullable=False,
     )
 
+    # REQ-OAUTH-001: 소셜 로그인 제공자 ("email", "google", "apple")
+    provider: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default="email",
+        server_default="email",
+    )
+
+    provider_id: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+    )
+
+    avatar_url: Mapped[str | None] = mapped_column(
+        String(500),
+        nullable=True,
+    )
+
     # 계정 활성화 여부
     is_active: Mapped[bool] = mapped_column(
         Boolean,
@@ -80,7 +98,12 @@ class User(Base):
     )
 
     def __repr__(self) -> str:
-        return f"<User(id={self.id}, email={self.email!r})>"
+        return f"<User(id={self.id}, email={self.email!r}, provider={self.provider!r})>"
+
+    # 소셜 계정 중복 방지 (provider + provider_id 조합 유니크, email 가입은 provider_id=NULL)
+    __table_args__ = (
+        UniqueConstraint("provider", "provider_id", name="uq_user_provider"),
+    )
 
 
 class Team(Base):

@@ -49,6 +49,8 @@ dependencies:
   jwt_decoder: ^2.0.1
   shared_preferences: ^2.3.0
   just_audio: ^0.9.42
+  google_sign_in: ^6.2.0
+  sign_in_with_apple: ^6.1.0
 
 dev_dependencies:
   flutter_test:

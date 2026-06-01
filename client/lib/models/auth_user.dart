@@ -5,6 +5,8 @@ class AuthUser {
   final String displayName;
   final bool isActive;
   final DateTime? createdAt;
+  final String provider;
+  final String? avatarUrl;
 
   const AuthUser({
     required this.id,
@@ -12,9 +14,10 @@ class AuthUser {
     required this.displayName,
     required this.isActive,
     this.createdAt,
+    this.provider = 'email',
+    this.avatarUrl,
   });
 
-  // JSON에서 AuthUser 객체 생성
   factory AuthUser.fromJson(Map<String, dynamic> json) {
     return AuthUser(
       id: json['id'] as String,
@@ -24,10 +27,11 @@ class AuthUser {
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'] as String)
           : null,
+      provider: json['provider'] as String? ?? 'email',
+      avatarUrl: json['avatar_url'] as String?,
     );
   }
 
-  // AuthUser 객체를 JSON으로 변환
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -35,16 +39,19 @@ class AuthUser {
       'display_name': displayName,
       'is_active': isActive,
       'created_at': createdAt?.toIso8601String(),
+      'provider': provider,
+      'avatar_url': avatarUrl,
     };
   }
 
-  // 특정 필드만 변경한 복사본 반환
   AuthUser copyWith({
     String? id,
     String? email,
     String? displayName,
     bool? isActive,
     DateTime? createdAt,
+    String? provider,
+    String? avatarUrl,
   }) {
     return AuthUser(
       id: id ?? this.id,
@@ -52,6 +59,8 @@ class AuthUser {
       displayName: displayName ?? this.displayName,
       isActive: isActive ?? this.isActive,
       createdAt: createdAt ?? this.createdAt,
+      provider: provider ?? this.provider,
+      avatarUrl: avatarUrl ?? this.avatarUrl,
     );
   }
 }

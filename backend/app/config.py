@@ -129,6 +129,14 @@ class Settings(BaseSettings):
     # SPEC-GUEST-001: 게스트 세션 TTL (시간)
     guest_session_ttl_hours: int = Field(default=24, ge=1, le=168)
 
+    # REQ-OAUTH-001: Google OAuth 설정
+    google_client_id: str = ""
+
+    # REQ-OAUTH-001: Apple Sign-In 설정
+    apple_team_id: str = ""
+    apple_client_id: str = ""
+    apple_key_id: str = ""
+
     # REQ-SEC-001/REQ-SEC-004: API Key 인증
     # 쉼표로 구분된 유효한 API Key 목록 (비어있으면 개발 모드 - 인증 비활성화)
     api_keys: list[str] | str = Field(default_factory=list)
