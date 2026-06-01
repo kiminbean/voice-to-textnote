@@ -62,6 +62,12 @@ class _AuthInterceptor extends Interceptor {
     final token = await authService.getAccessToken();
     if (token != null) {
       options.headers['Authorization'] = 'Bearer $token';
+    } else {
+      // 게스트 토큰이 있으면 Bearer guest:<token> 형식으로 전송
+      final guestToken = await authService.getGuestToken();
+      if (guestToken != null) {
+        options.headers['Authorization'] = 'Bearer guest:$guestToken';
+      }
     }
     return handler.next(options);
   }
