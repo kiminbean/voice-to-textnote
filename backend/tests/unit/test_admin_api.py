@@ -15,7 +15,16 @@ from fastapi.testclient import TestClient
 def client():
     """TestClient 픽스처 - admin 라우터 포함"""
     from backend.app.main import app
-    return TestClient(app, raise_server_exceptions=False)
+    from backend.app.middleware.auth import verify_api_key
+
+    async def override_verify_api_key():
+        return "test-bypass"
+
+    app.dependency_overrides[verify_api_key] = override_verify_api_key
+    try:
+        yield TestClient(app, raise_server_exceptions=False)
+    finally:
+        app.dependency_overrides.clear()
 
 
 class TestTriggerCleanup:

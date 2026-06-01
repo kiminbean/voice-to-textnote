@@ -9,12 +9,15 @@ import time
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
+from uuid import UUID
 
 import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.config import settings
-from backend.app.dependencies import get_redis_client
+from backend.app.dependencies import get_db_session, get_redis_client
+from backend.db.vocabulary_service import VocabularyService
 from backend.pipeline.audio_processor import get_audio_duration_seconds
 from backend.schemas.transcription import (
     TaskStatus,
@@ -45,12 +48,27 @@ async def upload_transcription(
     file: UploadFile = File(..., description="오디오 파일 (WAV, MP3, M4A, OGG)"),
     language: str = Form(default="ko", description="전사 언어 코드"),
     model: str = Form(default="mlx-community/whisper-small-mlx"),
+    vocabulary_id: str | None = Form(default=None, description="커스텀 어휘 리스트 UUID (REQ-VOCAB-001)"),
     redis_client: aioredis.Redis = Depends(get_redis_client),
+    db: AsyncSession = Depends(get_db_session),
 ) -> TranscriptionCreate:
     """
     오디오 파일 업로드 및 전사 작업 생성
     POST /api/v1/transcriptions
     """
+    # REQ-VOCAB-001: 어휘 ID가 제공되면 initial_prompt 문자열로 변환
+    initial_prompt: str | None = None
+    if vocabulary_id:
+        try:
+            vocab_uuid = UUID(vocabulary_id)
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=[{"field": "vocabulary_id", "message": "유효하지 않은 UUID 형식입니다", "type": "invalid_uuid"}],
+            )
+        vocab_service = VocabularyService()
+        initial_prompt = await vocab_service.get_initial_prompt(db, vocab_uuid)
+
     errors: list[ValidationErrorDetail] = []
 
     # --- 파일 형식 검증 (REQ-STT-001, REQ-STT-003) ---
@@ -186,6 +204,7 @@ async def upload_transcription(
         model_name=model,
         original_filename=filename,
         file_size_bytes=file_size,
+        initial_prompt=initial_prompt,
     )
 
     # 화자 분리 태스크 사전 등록 - 클라이언트가 별도 POST를 하지 않아도 자동 시작

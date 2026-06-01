@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.app.api.v1 import (
     action_items,
     admin,
+    audio,
     audio_analysis,
     audio_preprocess,
     auth,
@@ -25,6 +26,7 @@ from backend.app.api.v1 import (
     keywords,
     meetings,
     minutes,
+    qa,
     quality_assessment,
     search,
     sentiment,
@@ -37,6 +39,7 @@ from backend.app.api.v1 import (
     templates,
     transcription,
     versions,
+    vocabulary,
     webhooks,
 )
 from backend.app.config import settings
@@ -244,6 +247,11 @@ def create_app() -> FastAPI:
 
     # SPEC-QUALITY-001: 회의록 품질 평가 및 개선 제안 API
     app.include_router(quality_assessment.router, prefix=api_prefix, dependencies=_auth)
+
+    # REQ-VOCAB-001: 커스텀 어휘 관리 API
+    app.include_router(vocabulary.router, prefix=api_prefix, dependencies=_auth)
+    app.include_router(audio.router, prefix=api_prefix)
+    app.include_router(qa.router, prefix=api_prefix, dependencies=_auth)
 
     return app
 

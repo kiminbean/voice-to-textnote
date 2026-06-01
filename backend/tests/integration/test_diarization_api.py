@@ -42,6 +42,7 @@ def dia_client(mock_dia_redis_client, tmp_path):
     from backend.app.config import Settings
     from backend.app.dependencies import get_redis_client
     from backend.app.main import app
+    from backend.app.middleware.auth import verify_api_key
 
     # 임시 디렉토리를 스토리지로 사용
     test_settings = MagicMock(spec=Settings)
@@ -70,6 +71,11 @@ def dia_client(mock_dia_redis_client, tmp_path):
 
     app.dependency_overrides[get_redis_client] = override_redis
 
+    async def override_verify_api_key():
+        return "test-bypass"
+
+    app.dependency_overrides[verify_api_key] = override_verify_api_key
+
     with patch("backend.app.main.WhisperEngine") as mock_whisper_cls:
         mock_whisper_inst = MagicMock()
         mock_whisper_inst.is_loaded = True
@@ -84,13 +90,17 @@ def dia_client(mock_dia_redis_client, tmp_path):
 
             with patch("backend.app.api.v1.diarization.settings", test_settings):
                 with patch(
-                    "backend.workers.tasks.diarization_task.diarization_celery_task.delay"
-                ) as mock_delay:
-                    mock_task_result = MagicMock()
-                    mock_task_result.id = "mock-dia-task-id"
-                    mock_delay.return_value = mock_task_result
+                    "backend.app.result_fallback.ResultService.get_result",
+                    return_value=None,
+                ):
+                    with patch(
+                        "backend.workers.tasks.diarization_task.diarization_celery_task.delay"
+                    ) as mock_delay:
+                        mock_task_result = MagicMock()
+                        mock_task_result.id = "mock-dia-task-id"
+                        mock_delay.return_value = mock_task_result
 
-                    yield TestClient(app, raise_server_exceptions=True)
+                        yield TestClient(app, raise_server_exceptions=True)
 
     app.dependency_overrides.clear()
 

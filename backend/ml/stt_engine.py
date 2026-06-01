@@ -244,9 +244,15 @@ class WhisperEngine:
         self,
         audio_path: str | Path,
         language: str = "ko",
+        initial_prompt: str | None = None,
     ) -> dict[str, Any]:
         """
         STT 추론 실행 (REQ-STT-005, REQ-STT-008)
+
+        Args:
+            audio_path: 오디오 파일 경로
+            language: 전사 언어 코드 (기본: "ko")
+            initial_prompt: Whisper 프롬프트 — 어휘/스펠링 힌트 (REQ-VOCAB-001)
 
         Returns:
             dict with keys: text, segments, language
@@ -257,16 +263,17 @@ class WhisperEngine:
 
         self._check_memory_usage()
 
-        logger.info("STT 추론 시작", path=str(audio_path), language=language, backend=self._backend)
+        logger.info("STT 추론 시작", path=str(audio_path), language=language, backend=self._backend,
+                     has_initial_prompt=initial_prompt is not None)
         start_time = time.time()
 
         try:
             if self._backend == "mlx":
-                result = self._transcribe_mlx(audio_path, language)
+                result = self._transcribe_mlx(audio_path, language, initial_prompt)
             elif self._backend == "faster_whisper":
-                result = self._transcribe_faster_whisper(audio_path, language)
+                result = self._transcribe_faster_whisper(audio_path, language, initial_prompt)
             else:
-                result = self._transcribe_whisper(audio_path, language)
+                result = self._transcribe_whisper(audio_path, language, initial_prompt)
 
             elapsed = time.time() - start_time
             segment_count = len(result.get("segments", []))
@@ -285,28 +292,38 @@ class WhisperEngine:
             logger.error("STT 추론 실패", error=str(e), path=str(audio_path))
             raise
 
-    def _transcribe_mlx(self, audio_path: str | Path, language: str) -> dict[str, Any]:
+    def _transcribe_mlx(
+        self, audio_path: str | Path, language: str, initial_prompt: str | None = None,
+    ) -> dict[str, Any]:
         """MLX 백엔드 추론"""
         import mlx_whisper
 
-        return mlx_whisper.transcribe(
-            str(audio_path),
+        kwargs: dict[str, Any] = dict(
             path_or_hf_repo=self._model_name,
             language=language,
             word_timestamps=True,
         )
+        if initial_prompt:
+            kwargs["initial_prompt"] = initial_prompt
 
-    def _transcribe_whisper(self, audio_path: str | Path, language: str) -> dict[str, Any]:
+        return mlx_whisper.transcribe(str(audio_path), **kwargs)
+
+    def _transcribe_whisper(
+        self, audio_path: str | Path, language: str, initial_prompt: str | None = None,
+    ) -> dict[str, Any]:
         """openai-whisper 백엔드 추론"""
-        result = self._whisper_model.transcribe(
-            str(audio_path),
+        kwargs: dict[str, Any] = dict(
             language=language,
             word_timestamps=True,
         )
+        if initial_prompt:
+            kwargs["initial_prompt"] = initial_prompt
+
+        result = self._whisper_model.transcribe(str(audio_path), **kwargs)
         return result
 
     def _transcribe_faster_whisper(
-        self, audio_path: str | Path, language: str
+        self, audio_path: str | Path, language: str, initial_prompt: str | None = None,
     ) -> dict[str, Any]:
         """faster-whisper 백엔드 추론
 
@@ -315,12 +332,18 @@ class WhisperEngine:
         - beam_size=1: greedy decoding (속도 우선, small 모델은 정확도 차이 미미)
         - vad_filter=True: Silero VAD로 무음 구간 제거 (정확도/속도 향상)
         """
-        segments_gen, info = self._faster_whisper_model.transcribe(
-            str(audio_path),
+        kwargs: dict[str, Any] = dict(
             language=language,
             word_timestamps=False,
             beam_size=1,
             vad_filter=True,
+        )
+        if initial_prompt:
+            kwargs["initial_prompt"] = initial_prompt
+
+        segments_gen, info = self._faster_whisper_model.transcribe(
+            str(audio_path),
+            **kwargs,
         )
 
         # generator → list (info 객체의 일부 필드는 소비 후 확정됨)

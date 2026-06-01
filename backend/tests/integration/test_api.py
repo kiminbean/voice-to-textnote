@@ -552,9 +552,8 @@ class TestScenario8ConcurrencyLimit:
         self, client: TestClient, mock_redis_client: AsyncMock
     ):
         """3개 활성 작업 중 4번째 업로드 → 201 + pending (시나리오 8)"""
-        # active_job_count = 0 으로 설정 (4번째도 허용)
-        # 참고: 실제로는 Celery 큐에 pending으로 들어감
-        mock_redis_client.get.return_value = "0"  # active_count = 0
+        # pipeline().execute() → [0, 0] → active_count = 0 (한도 미달)
+        mock_redis_client._set_pipeline_results([0, 0])
 
         wav_bytes = _make_wav_bytes()
         response = client.post(
@@ -563,19 +562,14 @@ class TestScenario8ConcurrencyLimit:
         )
         assert response.status_code == 201
         assert response.json()["status"] == "pending"
+        mock_redis_client._set_pipeline_results(None)
 
     def test_exceeding_concurrent_limit_returns_429(
         self, client: TestClient, mock_redis_client: AsyncMock
     ):
         """동시 처리 한도(3개) 초과 시 429 반환 (시나리오 8)"""
-
-        # active_job_count = 3 (한도 초과)
-        def mock_get(key):
-            if key == "active_job_count":
-                return "3"
-            return None
-
-        mock_redis_client.get.side_effect = mock_get
+        # pipeline().execute() 가 [0, 3] 을 반환하도록 설정 → active_count = 3
+        mock_redis_client._set_pipeline_results([0, 3])
 
         wav_bytes = _make_wav_bytes()
         response = client.post(
@@ -583,6 +577,7 @@ class TestScenario8ConcurrencyLimit:
             files={"file": _make_upload_tuple("meeting.wav", wav_bytes)},
         )
         assert response.status_code == 429
+        mock_redis_client._set_pipeline_results(None)
 
 
 # ---------------------------------------------------------------------------
@@ -687,13 +682,11 @@ class TestScenario10CacheRetrieval:
     ):
         """결과 저장 시 setex로 24h TTL 설정 (REQ-STT-013)"""
         task_id = completed_task_data["task_id"]
-        # 캐시 미스 상황에서 파일 시스템 복원 후 재캐싱 확인
         mock_redis_client.get.return_value = json.dumps(completed_task_data)
 
         response = client.get(f"/api/v1/transcriptions/{task_id}")
         assert response.status_code == 200
-        # Redis get이 호출되었음을 확인
-        mock_redis_client.get.assert_called()
+        mock_redis_client.pipeline.assert_called()
 
 
 # ---------------------------------------------------------------------------

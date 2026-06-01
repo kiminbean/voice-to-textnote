@@ -83,7 +83,13 @@ async def stream_task_status(
     # 태스크 존재 여부 확인 (Redis에 태스크 데이터가 있는지)
     # 각 태스크 타입별 status key 패턴을 모두 확인
     task_exists = False
-    for prefix in ("task:status:", "task:dia:status:", "task:min:status:", "task:sum:status:"):
+    for prefix in (
+        "task:status:",
+        "task:dia:status:",
+        "task:min:status:",
+        "task:sum:status:",
+        "task:mind:status:",
+    ):
         if await redis_client.exists(f"{prefix}{task_id}"):
             task_exists = True
             break

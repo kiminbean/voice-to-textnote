@@ -276,3 +276,83 @@ async def export_docx(
             "Content-Disposition": f'attachment; filename="{filename}"',
         },
     )
+
+
+@router.get(
+    "/export/markdown/{minutes_task_id}",
+    response_class=StreamingResponse,
+    responses={
+        200: {
+            "content": {"text/markdown; charset=utf-8": {}},
+            "description": "Markdown 파일 다운로드",
+        },
+        404: {"description": "회의록 데이터를 찾을 수 없음"},
+    },
+    summary="회의록 Markdown 내보내기",
+    description="회의록 데이터를 Markdown으로 변환하여 반환합니다.",
+)
+async def export_markdown(
+    minutes_task_id: str,
+    summary_task_id: str | None = Query(
+        default=None,
+        description="요약 태스크 ID (지정하면 요약 섹션 포함)",
+    ),
+    redis_client: aioredis.Redis = Depends(get_redis_client),
+    db: AsyncSession = Depends(get_db_session),
+) -> StreamingResponse:
+    """회의록 Markdown 내보내기."""
+    minutes_data = await _get_task_result(redis_client, db, "min", minutes_task_id)
+    if minutes_data is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"회의록 데이터를 찾을 수 없습니다. (task_id: {minutes_task_id})",
+        )
+
+    if not minutes_data.get("segments"):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="회의록 데이터가 불완전합니다. segments가 없습니다.",
+        )
+
+    summary_data: dict | None = None
+    if summary_task_id:
+        summary_data = await _get_task_result(redis_client, db, "sum", summary_task_id)
+
+    lines = ["# 회의록\n"]
+
+    for seg in minutes_data.get("segments", []):
+        speaker = seg.get("speaker", "알 수 없음")
+        text = seg.get("text", "")
+        lines.append(f"**{speaker}**: {text}\n")
+
+    if summary_data:
+        summary_text = summary_data.get("summary_text", "")
+        if summary_text:
+            lines.append("\n---\n\n## AI 요약\n")
+            lines.append(summary_text)
+
+        key_decisions = summary_data.get("key_decisions", [])
+        if key_decisions:
+            lines.append("\n### 주요 결정 사항\n")
+            for i, d in enumerate(key_decisions, 1):
+                lines.append(f"{i}. {d}")
+
+        next_steps = summary_data.get("next_steps", [])
+        if next_steps:
+            lines.append("\n### 다음 단계\n")
+            for i, s in enumerate(next_steps, 1):
+                lines.append(f"{i}. {s}")
+
+    md_content = "\n".join(lines)
+    md_bytes = md_content.encode("utf-8")
+
+    filename = _safe_export_filename(minutes_task_id, "md")
+    logger.info("Markdown 생성 완료", task_id=minutes_task_id, size_bytes=len(md_bytes))
+
+    return StreamingResponse(
+        content=io.BytesIO(md_bytes),
+        media_type="text/markdown; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+        },
+    )

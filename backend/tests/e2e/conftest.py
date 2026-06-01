@@ -317,6 +317,7 @@ def e2e_client(e2e_redis: InMemoryRedis, tmp_path):
     from backend.app.config import Settings
     from backend.app.dependencies import get_redis_client
     from backend.app.main import app
+    from backend.app.middleware.auth import verify_api_key
 
     # 임시 디렉토리 설정
     test_settings = MagicMock(spec=Settings)
@@ -347,6 +348,12 @@ def e2e_client(e2e_redis: InMemoryRedis, tmp_path):
         return e2e_redis
 
     app.dependency_overrides[get_redis_client] = override_redis
+
+    # REQ-SEC-004: 테스트에서 API Key 검증 건너뜀
+    async def override_verify_api_key():
+        return "test-bypass"
+
+    app.dependency_overrides[verify_api_key] = override_verify_api_key
 
     # STT: transcription_task.delay mock
     mock_stt_result = MagicMock()
@@ -392,15 +399,20 @@ def e2e_client(e2e_redis: InMemoryRedis, tmp_path):
                         mock_dia_delay.return_value = mock_dia_result
 
                         with patch(
-                            "backend.workers.tasks.minutes_task.minutes_celery_task.delay"
-                        ) as mock_min_delay:
-                            mock_min_delay.return_value = mock_min_result
+                            "backend.workers.tasks.diarization_task.diarization_celery_task.apply_async"
+                        ) as mock_dia_apply:
+                            mock_dia_apply.return_value = mock_dia_result
 
                             with patch(
-                                "backend.workers.tasks.summary_task.summary_celery_task.delay"
-                            ) as mock_sum_delay:
-                                mock_sum_delay.return_value = mock_sum_result
+                                "backend.workers.tasks.minutes_task.minutes_celery_task.delay"
+                            ) as mock_min_delay:
+                                mock_min_delay.return_value = mock_min_result
 
-                                yield TestClient(app, raise_server_exceptions=True)
+                                with patch(
+                                    "backend.workers.tasks.summary_task.summary_celery_task.delay"
+                                ) as mock_sum_delay:
+                                    mock_sum_delay.return_value = mock_sum_result
+
+                                    yield TestClient(app, raise_server_exceptions=True)
 
     app.dependency_overrides.clear()

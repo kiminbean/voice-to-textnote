@@ -88,6 +88,7 @@ def min_client(mock_min_redis_client, tmp_path):
     from backend.app.config import Settings
     from backend.app.dependencies import get_redis_client
     from backend.app.main import app
+    from backend.app.middleware.auth import verify_api_key
 
     # 테스트용 Settings mock
     test_settings = MagicMock(spec=Settings)
@@ -106,6 +107,11 @@ def min_client(mock_min_redis_client, tmp_path):
         return mock_min_redis_client
 
     app.dependency_overrides[get_redis_client] = override_redis
+
+    async def override_verify_api_key():
+        return "test-bypass"
+
+    app.dependency_overrides[verify_api_key] = override_verify_api_key
 
     with patch("backend.app.main.WhisperEngine") as mock_whisper_cls:
         mock_whisper_inst = MagicMock()
@@ -191,6 +197,7 @@ class TestPostMinutes:
         from backend.app.config import Settings
         from backend.app.dependencies import get_redis_client
         from backend.app.main import app
+        from backend.app.middleware.auth import verify_api_key
 
         # 이미 3개 활성 작업
         mock_min_redis_client.scard.return_value = 3
@@ -203,6 +210,11 @@ class TestPostMinutes:
             return mock_min_redis_client
 
         app.dependency_overrides[get_redis_client] = override_redis
+
+        async def override_verify_api_key():
+            return "test-bypass"
+
+        app.dependency_overrides[verify_api_key] = override_verify_api_key
 
         with patch("backend.app.main.WhisperEngine") as mock_whisper_cls:
             mock_whisper_inst = MagicMock()

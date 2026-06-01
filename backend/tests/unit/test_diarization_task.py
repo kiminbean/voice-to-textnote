@@ -98,6 +98,9 @@ class TestDiarizationTaskHappyPath:
             mock_settings.huggingface_token = "hf_testtoken"
             mock_settings.diarization_model = "pyannote/speaker-diarization-3.1"
             mock_settings.dia_chunk_threshold_minutes = 15
+            mock_settings.dia_chunk_duration_minutes = 10
+            mock_settings.dia_chunk_overlap_seconds = 5
+            mock_settings.dia_target_sample_rate = 0
             mock_settings.cache_ttl_seconds = 604800
 
             result = diarization_task(task_id=task_id, stt_task_id=stt_task_id)
@@ -133,6 +136,9 @@ class TestDiarizationTaskHappyPath:
             mock_settings.huggingface_token = "hf_testtoken"
             mock_settings.diarization_model = "pyannote/speaker-diarization-3.1"
             mock_settings.dia_chunk_threshold_minutes = 15
+            mock_settings.dia_chunk_duration_minutes = 10
+            mock_settings.dia_chunk_overlap_seconds = 5
+            mock_settings.dia_target_sample_rate = 0
             mock_settings.cache_ttl_seconds = 604800
 
             result = diarization_task(task_id=task_id, stt_task_id=stt_task_id)
@@ -362,6 +368,9 @@ class TestDiarizationTaskErrors:
             mock_settings.huggingface_token = "hf_testtoken"
             mock_settings.diarization_model = "pyannote/speaker-diarization-3.1"
             mock_settings.dia_chunk_threshold_minutes = 15
+            mock_settings.dia_chunk_duration_minutes = 10
+            mock_settings.dia_chunk_overlap_seconds = 5
+            mock_settings.dia_target_sample_rate = 0
 
             result = diarization_task(task_id=task_id, stt_task_id=stt_task_id)
 
@@ -464,6 +473,9 @@ class TestDiarizationTaskStatusTransitions:
             mock_settings.huggingface_token = "hf_testtoken"
             mock_settings.diarization_model = "pyannote/speaker-diarization-3.1"
             mock_settings.dia_chunk_threshold_minutes = 15
+            mock_settings.dia_chunk_duration_minutes = 10
+            mock_settings.dia_chunk_overlap_seconds = 5
+            mock_settings.dia_target_sample_rate = 0
             mock_settings.cache_ttl_seconds = 604800
 
             diarization_task(task_id=task_id, stt_task_id=stt_task_id)
@@ -498,6 +510,9 @@ class TestDiarizationTaskStatusTransitions:
             mock_settings.huggingface_token = "hf_testtoken"
             mock_settings.diarization_model = "pyannote/speaker-diarization-3.1"
             mock_settings.dia_chunk_threshold_minutes = 15
+            mock_settings.dia_chunk_duration_minutes = 10
+            mock_settings.dia_chunk_overlap_seconds = 5
+            mock_settings.dia_target_sample_rate = 0
             mock_settings.cache_ttl_seconds = 604800
 
             result = diarization_task(task_id=task_id, stt_task_id=stt_task_id)
@@ -530,6 +545,9 @@ class TestDiarizationTaskStatusTransitions:
             mock_settings.huggingface_token = "hf_testtoken"
             mock_settings.diarization_model = "pyannote/speaker-diarization-3.1"
             mock_settings.dia_chunk_threshold_minutes = 15
+            mock_settings.dia_chunk_duration_minutes = 10
+            mock_settings.dia_chunk_overlap_seconds = 5
+            mock_settings.dia_target_sample_rate = 0
             mock_settings.cache_ttl_seconds = 604800
 
             result = diarization_task(task_id=task_id, stt_task_id=stt_task_id)

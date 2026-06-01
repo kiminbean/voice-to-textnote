@@ -129,6 +129,7 @@ def transcription_task(
     model_name: str = "mlx-community/whisper-small-mlx",
     original_filename: str = "",
     file_size_bytes: int = 0,
+    initial_prompt: str | None = None,
 ) -> dict:
     """
     메인 STT 처리 Celery 작업
@@ -195,11 +196,11 @@ def transcription_task(
         if chunks:
             # 30분 초과 → 청크 분할 처리 (REQ-STT-018)
             temp_dir = chunks[0].file_path.parent
-            all_segments = _process_chunks(engine, chunks, task_id, language)
+            all_segments = _process_chunks(engine, chunks, task_id, language, initial_prompt)
         else:
             # 30분 이하 → 단일 파일 처리
             _update_task_status(task_id, TaskStatus.processing, 0.30, "STT 처리 중...")
-            raw_result = engine.transcribe(str(processed_path), language=language)
+            raw_result = engine.transcribe(str(processed_path), language=language, initial_prompt=initial_prompt)
             logger.info("STT 원시 결과 키", keys=list(raw_result.keys()), text_preview=raw_result.get("text", "")[:200])
             all_segments = _extract_segments(raw_result.get("segments", []))
             _update_task_status(task_id, TaskStatus.processing, 0.90, "결과 정리 중...")
@@ -339,6 +340,7 @@ def _process_chunks(
     chunks,
     task_id: str,
     language: str,
+    initial_prompt: str | None = None,
 ) -> list[SegmentResult]:
     """청크별 순차 처리 후 결과 병합"""
     total_chunks = len(chunks)
@@ -350,7 +352,9 @@ def _process_chunks(
         _update_task_status(task_id, TaskStatus.processing, progress, msg)
 
         logger.info("청크 처리", chunk_index=i, path=str(chunk.file_path))
-        raw_result = engine.transcribe(str(chunk.file_path), language=language)
+        raw_result = engine.transcribe(
+            str(chunk.file_path), language=language, initial_prompt=initial_prompt,
+        )
         chunk_results.append((chunk, raw_result.get("segments", [])))
 
     return merge_segments(chunk_results)

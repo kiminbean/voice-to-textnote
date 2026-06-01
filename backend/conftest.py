@@ -131,15 +131,68 @@ def mock_whisper_engine():
 # ---------------------------------------------------------------------------
 
 
+class _MockRedisPipeline:
+    """Synchronous pipeline object — mirrors real redis-py Pipeline API."""
+
+    def __init__(self, redis_mock: AsyncMock) -> None:
+        self._redis = redis_mock
+        self._ops: list[str] = []
+
+    def get(self, _key: str) -> "_MockRedisPipeline":
+        self._ops.append("get")
+        return self
+
+    def set(self, _key: str, _value: str, **_kw: object) -> "_MockRedisPipeline":
+        self._ops.append("set")
+        return self
+
+    def zremrangebyscore(self, *_a: object, **_kw: object) -> "_MockRedisPipeline":
+        self._ops.append("zremrangebyscore")
+        return self
+
+    def zcard(self, _key: str) -> "_MockRedisPipeline":
+        self._ops.append("zcard")
+        return self
+
+    async def execute(self) -> list:
+        get_fn = self._redis._get_pipeline_results
+        override = get_fn()
+        if override is not None:
+            return override
+        if "zcard" in self._ops:
+            return [0, 0]
+        return [self._redis.get.return_value, self._redis.get.return_value]
+
+
+_SENTINEL = object()
+
+
 @pytest.fixture
 def mock_redis_client():
-    """Redis 비동기 클라이언트 mock"""
     redis_mock = AsyncMock()
     redis_mock.get.return_value = None
     redis_mock.set.return_value = True
     redis_mock.setex.return_value = True
     redis_mock.delete.return_value = 1
     redis_mock.ping.return_value = True
+
+    # Store pipeline override on a plain dict to avoid AsyncMock auto-attr creation
+    _state: dict = {}
+
+    class _PipelineFactory:
+        def __call__(self, *_a: object, **_kw: object) -> _MockRedisPipeline:
+            return _MockRedisPipeline(redis_mock)
+
+    def set_pipeline_results(results: list | None) -> None:
+        _state["pipeline_results"] = results
+
+    def get_pipeline_results() -> list | None:
+        return _state.get("pipeline_results")
+
+    redis_mock.pipeline = MagicMock(side_effect=_PipelineFactory())
+    redis_mock._set_pipeline_results = set_pipeline_results
+    redis_mock._get_pipeline_results = get_pipeline_results
+
     return redis_mock
 
 
@@ -190,6 +243,9 @@ def client(mock_redis_client, tmp_path):
     test_settings.temp_dir = tmp_path / "temp"
     test_settings.results_dir = tmp_path / "results"
     test_settings.cache_ttl_seconds = 604800
+    test_settings.diarization_result_ttl = 604800
+    test_settings.minutes_result_ttl = 604800
+    test_settings.summary_result_ttl = 604800
     test_settings.whisper_model = "mlx-community/whisper-large-v3-turbo"
     test_settings.whisper_language = "ko"
     test_settings.chunk_duration_ms = 30 * 60 * 1000
@@ -229,7 +285,14 @@ def client(mock_redis_client, tmp_path):
                     mock_task_result.id = "mock-task-id"
                     mock_delay.return_value = mock_task_result
 
-                    yield TestClient(app, raise_server_exceptions=True)
+                    with patch(
+                        "backend.workers.tasks.diarization_task.diarization_celery_task.apply_async"
+                    ) as mock_dia_delay:
+                        mock_dia_result = MagicMock()
+                        mock_dia_result.id = "mock-dia-task-id"
+                        mock_dia_delay.return_value = mock_dia_result
+
+                        yield TestClient(app, raise_server_exceptions=True)
 
     app.dependency_overrides.clear()
 
