@@ -1,9 +1,7 @@
 // 녹음 상태 관리 프로바이더
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:record/record.dart';
 import 'package:voice_to_textnote/services/background_recording_service.dart';
-import 'package:voice_to_textnote/services/permission_service.dart';
 
 // 녹음 상태 열거형
 enum RecordingStatus {

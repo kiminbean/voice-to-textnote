@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:voice_to_textnote/config/firebase_config.dart';
 import 'package:voice_to_textnote/providers/auth_provider.dart';
+import 'package:voice_to_textnote/providers/notification_provider.dart';
 import 'package:voice_to_textnote/router/app_router.dart';
 
 void main() async {

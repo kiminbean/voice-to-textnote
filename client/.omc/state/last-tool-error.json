@@ -1,0 +1,7 @@
+{
+  "tool_name": "Bash",
+  "tool_input_preview": "{\"command\":\"cd /Users/ibkim/Projects/voice-to-textnote && git add \\\\n  client/lib/providers/recording_provider.dart \\\\n\"}",
+  "error": "Exit code 128\nfatal: pathspec 'n' did not match any files",
+  "timestamp": "2026-06-02T20:19:22.274Z",
+  "retry_count": 2
+}

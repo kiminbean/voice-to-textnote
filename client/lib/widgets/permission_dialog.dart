@@ -3,7 +3,6 @@
 // @MX:REASON: recording_screen에서 사용하며, 영구 거부 시 설정 안내 포함
 
 import 'package:flutter/material.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// 권한 타입

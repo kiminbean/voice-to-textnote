@@ -54,8 +54,8 @@ void main() {
         ),
       );
 
-      // 검색 아이콘 버튼 확인
-      expect(find.byIcon(Icons.search), findsOneWidget);
+      // PopupMenuButton 확인 (검색 아이콘은 PopupMenu 내부에 있음)
+      expect(find.byType(PopupMenuButton<String>), findsOneWidget);
     });
 
     // 검색 아이콘과 양식 관리 아이콘 모두 존재하는지 확인
@@ -70,6 +70,14 @@ void main() {
         ),
       );
 
+      // PopupMenuButton 확인 (모든 아이콘이 PopupMenu 내부에 있음)
+      expect(find.byType(PopupMenuButton<String>), findsOneWidget);
+
+      // PopupMenu 열기
+      await tester.tap(find.byType(PopupMenuButton<String>));
+      await tester.pump();
+
+      // 검색 및 양식 관리 아이콘 확인
       expect(find.byIcon(Icons.search), findsOneWidget);
       expect(find.byIcon(Icons.folder_special_outlined), findsOneWidget);
     });
