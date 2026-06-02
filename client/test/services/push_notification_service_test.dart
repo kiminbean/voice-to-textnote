@@ -42,7 +42,18 @@ void main() {
     test('FCM 초기화 성공 시 true를 반환해야 함', () async {
       // Arrange
       when(() => mockMessaging.requestPermission())
-          .thenAnswer((_) async => const AuthorizationStatus(authorized: true));
+          .thenAnswer((_) async => NotificationSettings(
+            authorizationStatus: AuthorizationStatus.authorized,
+            alert: AppleNotificationSetting.enabled,
+            announcement: AppleNotificationSetting.disabled,
+            badge: AppleNotificationSetting.enabled,
+            carPlay: AppleNotificationSetting.disabled,
+            lockScreen: AppleNotificationSetting.enabled,
+            notificationCenter: AppleNotificationSetting.enabled,
+            showPreviews: AppleShowPreviewSetting.always,
+            timeSensitive: AppleNotificationSetting.disabled,
+            criticalAlert: AppleNotificationSetting.disabled,
+          ));
       when(() => mockMessaging.subscribeToTopic('all'))
           .thenAnswer((_) async {});
       when(() => mockLocalNotifications.initialize(any()))

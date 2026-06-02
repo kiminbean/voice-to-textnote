@@ -29,7 +29,7 @@ void main() {
   setUp(() {
     mockRecorder = MockAudioRecorder();
     mockSession = MockAudioSession();
-    mockMethodChannel = MockMethodChannel('com.voicetextnote.app/recording');
+    mockMethodChannel = MockMethodChannel();
     service = BackgroundRecordingService();
   });
 
@@ -84,8 +84,8 @@ void main() {
       when(() => mockRecorder.hasPermission())
           .thenAnswer((_) async => true);
       when(() => mockRecorder.start(
+        any(),
         config: any(),
-        path: any(),
       )).thenAnswer((_) async {});
       when(() => mockRecorder.isRecording())
           .thenAnswer((_) async => true);

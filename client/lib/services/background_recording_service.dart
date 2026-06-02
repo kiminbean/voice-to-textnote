@@ -37,8 +37,7 @@ class BackgroundRecordingService {
         const AudioSessionConfiguration(
           avAudioSessionCategory: AVAudioSessionCategory.playAndRecord,
           avAudioSessionCategoryOptions:
-              AVAudioSessionCategoryOptions.allowBluetooth |
-              AVAudioSessionCategoryOptions.allowBluetoothA2DP,
+              AVAudioSessionCategoryOptions.allowBluetooth,
           avAudioSessionMode: AVAudioSessionMode.defaultMode,
           avAudioSessionRouteSharingPolicy:
               AVAudioSessionRouteSharingPolicy.defaultPolicy,
@@ -46,8 +45,8 @@ class BackgroundRecordingService {
               AVAudioSessionSetActiveOptions.none,
           androidAudioAttributes: AndroidAudioAttributes(
             contentType: AndroidAudioContentType.speech,
-            flags: AndroidAudioAudioFlags.none,
-            usage: AndroidAudioUsage.virtualSource,
+            flags: AndroidAudioFlags.none,
+            usage: AndroidAudioUsage.voiceCommunication,
           ),
           androidAudioFocusGainType: AndroidAudioFocusGainType.gain,
           androidWillPauseWhenDucked: false,
@@ -57,10 +56,10 @@ class BackgroundRecordingService {
       // 인터럽트 핸들러 등록
       session.interruptionEventStream.listen(
         (event) {
-          if (event.type == AudioInterruptionType.begin) {
+          if (event.begin) {
             // 인터럽트 시작 (전화 수신 등)
             _handleInterruptionBegin();
-          } else if (event.type == AudioInterruptionType.end) {
+          } else {
             // 인터럽트 종료
             _handleInterruptionEnd();
           }
@@ -158,7 +157,7 @@ class BackgroundRecordingService {
     try {
       // iOS: audio_session을 통해 현재 세션 갱신
       if (Platform.isIOS) {
-        final session = AudioSession.instance;
+        final session = await AudioSession.instance;
         await session.setActive(true);
         print('iOS 주기적 플러시 완료');
       }

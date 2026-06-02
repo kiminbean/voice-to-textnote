@@ -127,11 +127,6 @@ class PushNotificationService {
     return data['meeting_id'] as String?;
   }
 }
-  String? extractMeetingId(RemoteMessage message) {
-    final data = message.data;
-    return data['meeting_id'] as String?;
-  }
-}
 
 /// 백그라운드 메시지 핸들러 (최상위 함수 필수)
 @pragma('vm:entry-point')

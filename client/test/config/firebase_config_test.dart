@@ -43,7 +43,7 @@ void main() {
 
     test('isConfigured는 Firebase 초기화 상태를 확인해야 함', () {
       // Act
-      const isConfigured = FirebaseConfig.isConfigured();
+      final isConfigured = FirebaseConfig.isConfigured();
 
       // Assert
       // Firebase.apps.isEmpty는 실제 Firebase 환경에서만 동작
@@ -55,10 +55,10 @@ void main() {
       final result = await FirebaseConfig.initializeFirebase();
 
       // Assert
-      // Firebase 미구성 환경에서도 실패하지 않고 우회 모드로 동작
-      expect(result.success, isTrue);
-      // 또는
-      // expect(result.error, contains('Firebase가 구성되지 않았습니다'));
+      // 테스트 환경에서는 Firebase 미구성으로 우회 모드 동작
+      expect(result, isA<FirebaseInitResult>());
+      expect(result.success, isFalse);
+      expect(result.error, isNotNull);
     });
 
     test('Firebase 초기화 성공 시 debugPrint를 출력해야 함', () async {

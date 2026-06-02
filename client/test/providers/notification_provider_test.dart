@@ -148,6 +148,10 @@ void main() {
           .thenAnswer((_) async => true);
       when(() => mockPushService.getFCMToken())
           .thenAnswer((_) async => const FcmTokenResult(error: 'Token error'));
+      when(() => mockPushService.onForegroundMessage(any()))
+          .thenReturn(null);
+      when(() => mockPushService.handleMessageOpenedApp())
+          .thenAnswer((_) async {});
 
       final notifier = NotificationNotifier(
         mockPushService,

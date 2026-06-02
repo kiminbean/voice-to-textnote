@@ -2,6 +2,7 @@
 // @MX:ANCHOR: FCM 토큰 및 알림 수신 상태 관리
 // @MX:REASON: 앱 전역에서 FCM 토큰 필요 시 참조 (auth_provider, api_client)
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:voice_to_textnote/services/push_notification_service.dart';
 import 'package:voice_to_textnote/services/permission_service.dart';
