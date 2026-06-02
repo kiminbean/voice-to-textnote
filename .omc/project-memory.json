@@ -155,21 +155,45 @@
   },
   "hotPaths": [
     {
+      "path": "backend/services/quality_service.py",
+      "accessCount": 27,
+      "lastAccessed": 1780398565832,
+      "type": "file"
+    },
+    {
       "path": "backend/conftest.py",
-      "accessCount": 10,
-      "lastAccessed": 1780374785444,
+      "accessCount": 16,
+      "lastAccessed": 1780394039684,
+      "type": "file"
+    },
+    {
+      "path": "backend/app/api/v1/quality_assessment.py",
+      "accessCount": 12,
+      "lastAccessed": 1780394048821,
       "type": "file"
     },
     {
       "path": "backend/app/api/v1/enhanced_statistics.py",
+      "accessCount": 11,
+      "lastAccessed": 1780396769486,
+      "type": "file"
+    },
+    {
+      "path": "backend/app/api/v1/audio_preprocess.py",
       "accessCount": 9,
-      "lastAccessed": 1780379853318,
+      "lastAccessed": 1780397818361,
       "type": "file"
     },
     {
       "path": "backend/tests/unit/test_qa_service.py",
       "accessCount": 8,
       "lastAccessed": 1780340984603,
+      "type": "file"
+    },
+    {
+      "path": "backend/tests/unit/test_quality_assessment_api.py",
+      "accessCount": 8,
+      "lastAccessed": 1780388781717,
       "type": "file"
     },
     {
@@ -191,9 +215,9 @@
       "type": "file"
     },
     {
-      "path": "backend/tests/unit/test_quality_assessment_api.py",
+      "path": "backend/services/statistics.py",
       "accessCount": 7,
-      "lastAccessed": 1780381101907,
+      "lastAccessed": 1780394856568,
       "type": "file"
     },
     {
@@ -206,12 +230,6 @@
       "path": "backend/tests/unit/test_audio_analysis_api.py",
       "accessCount": 6,
       "lastAccessed": 1780341037815,
-      "type": "file"
-    },
-    {
-      "path": "backend/services/quality_service.py",
-      "accessCount": 6,
-      "lastAccessed": 1780373378901,
       "type": "file"
     },
     {
@@ -239,6 +257,12 @@
       "type": "file"
     },
     {
+      "path": "backend/services/retention.py",
+      "accessCount": 5,
+      "lastAccessed": 1780394276218,
+      "type": "file"
+    },
+    {
       "path": "backend/services/qa_service.py",
       "accessCount": 4,
       "lastAccessed": 1780340731349,
@@ -257,21 +281,21 @@
       "type": "file"
     },
     {
-      "path": "backend/app/api/v1/quality_assessment.py",
+      "path": "backend/app/api/v1/audio_analysis.py",
       "accessCount": 4,
-      "lastAccessed": 1780381083021,
+      "lastAccessed": 1780394039347,
+      "type": "file"
+    },
+    {
+      "path": "backend/services/oauth_service.py",
+      "accessCount": 4,
+      "lastAccessed": 1780394765673,
       "type": "file"
     },
     {
       "path": "backend/tests/unit/test_speaker_voice_service.py",
       "accessCount": 3,
       "lastAccessed": 1780340837060,
-      "type": "file"
-    },
-    {
-      "path": "backend/app/api/v1/audio_analysis.py",
-      "accessCount": 3,
-      "lastAccessed": 1780340880948,
       "type": "file"
     },
     {
@@ -287,21 +311,9 @@
       "type": "file"
     },
     {
-      "path": "backend/services/statistics.py",
-      "accessCount": 3,
-      "lastAccessed": 1780379648862,
-      "type": "file"
-    },
-    {
       "path": "backend/app/api/v1/audio.py",
       "accessCount": 2,
       "lastAccessed": 1780339677640,
-      "type": "file"
-    },
-    {
-      "path": "backend/services/retention.py",
-      "accessCount": 2,
-      "lastAccessed": 1780339677698,
       "type": "file"
     },
     {
@@ -332,12 +344,6 @@
       "path": "backend/tests/unit/test_webhook_security.py",
       "accessCount": 2,
       "lastAccessed": 1780376116679,
-      "type": "file"
-    },
-    {
-      "path": "backend/app/api/v1/audio_preprocess.py",
-      "accessCount": 2,
-      "lastAccessed": 1780376996889,
       "type": "file"
     },
     {
@@ -386,12 +392,6 @@
       "path": "backend/db/auth_models.py",
       "accessCount": 1,
       "lastAccessed": 1780336979354,
-      "type": "file"
-    },
-    {
-      "path": "backend/services/oauth_service.py",
-      "accessCount": 1,
-      "lastAccessed": 1780338097514,
       "type": "file"
     },
     {
