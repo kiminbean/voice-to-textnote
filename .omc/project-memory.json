@@ -186,8 +186,8 @@
     },
     {
       "path": "backend/services/quality_service.py",
-      "accessCount": 5,
-      "lastAccessed": 1780337176110,
+      "accessCount": 6,
+      "lastAccessed": 1780373378901,
       "type": "file"
     },
     {
@@ -206,6 +206,12 @@
       "path": "backend/app/api/v1/enhanced_statistics.py",
       "accessCount": 5,
       "lastAccessed": 1780341989985,
+      "type": "file"
+    },
+    {
+      "path": "backend/tests/unit/test_quality_service_monitoring.py",
+      "accessCount": 5,
+      "lastAccessed": 1780373378842,
       "type": "file"
     },
     {
@@ -233,9 +239,9 @@
       "type": "file"
     },
     {
-      "path": "backend/tests/unit/test_quality_service_monitoring.py",
+      "path": "backend/conftest.py",
       "accessCount": 4,
-      "lastAccessed": 1780341997526,
+      "lastAccessed": 1780373388266,
       "type": "file"
     },
     {
@@ -314,12 +320,6 @@
       "path": "backend/app/api/v1/quality_assessment.py",
       "accessCount": 1,
       "lastAccessed": 1780336870428,
-      "type": "file"
-    },
-    {
-      "path": "backend/conftest.py",
-      "accessCount": 1,
-      "lastAccessed": 1780336870485,
       "type": "file"
     },
     {
