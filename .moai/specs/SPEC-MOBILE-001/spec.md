@@ -1,9 +1,9 @@
 ---
 id: SPEC-MOBILE-001
 version: "1.0.0"
-status: in-progress
+status: completed
 created: "2026-03-22"
-updated: "2026-06-02"
+updated: "2026-06-03"
 author: kisoo
 priority: medium
 issue_number: 0
@@ -16,6 +16,7 @@ issue_number: 0
 | 버전 | 날짜 | 변경 내용 | 작성자 |
 |------|------|----------|--------|
 | 1.0.0 | 2026-03-22 | 초안 작성 | kisoo |
+| 1.0.1 | 2026-06-03 | 구현 완료 및 Sync | kisoo |
 
 ---
 

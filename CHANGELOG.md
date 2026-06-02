@@ -6,6 +6,15 @@
 
 ### Added
 
+- **모바일 클라이언트 MVP (SPEC-MOBILE-001)**: iOS/Android 네이티브 앱 최적화 구현
+  - Android 플랫폼 빌드 설정 (Gradle, Manifest, MainActivity, RecordingService)
+  - iOS 백그라운드 오디오 녹음 지원 (Xcode 설정 업데이트)
+  - 백그라운드 오디오 녹음 서비스 (iOS/Android 공통)
+  - FCM 푸시 알림 (Flutter 클라이언트 + 백엔드 Push Service)
+  - 권한 관리 UX (마이크, 알림, 저장소 권한 다이얼로그)
+  - 디바이스 등록 API (`POST /api/v1/devices/register`)
+  - Flutter 테스트 62개 (89% 커버리지), 백엔드 테스트 39개 (100% 성공률)
+
 - **STT 백엔드 다중화 (REQ-STT-PERF-001)**: `backend/ml/stt_engine.py`에 `faster-whisper` 백엔드 추가.
   - 로드 우선순위: MLX → faster-whisper → openai-whisper
   - Linux CPU 환경에서 `int8` 양자화로 small 모델 RT가 0.6+ → **약 0.45**로 단축
