@@ -5,11 +5,7 @@
 - dashboard.py (90% → 95%+): 빈 레코드/세그먼트 파싱
 """
 
-import uuid
-from unittest.mock import AsyncMock, MagicMock, patch
-
-import pytest
-
+from unittest.mock import MagicMock, patch
 
 # ---------------------------------------------------------------------------
 # openai_client.py (lines 39-42): 예외 처리 경로
@@ -34,8 +30,8 @@ class TestOpenaiClientExceptionPath:
 
     def test_cached_client_returns_same_instance(self):
         """get_cached_openai_client는 동일 인스턴스 반환"""
-        from backend.ml.openai_client import get_cached_openai_client, _openai_client
         import backend.ml.openai_client as mod
+        from backend.ml.openai_client import get_cached_openai_client
 
         # 캐시 초기화
         mod._openai_client = None

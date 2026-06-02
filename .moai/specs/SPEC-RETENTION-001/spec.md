@@ -94,4 +94,46 @@ backend/
 ├── tests/unit/
 │   ├── test_retention.py
 │   └── test_cleanup_task.py
+
+---
+
+## Implementation Notes
+
+### 구현 현황
+
+**구현 날짜**: 2026-06-02
+
+**진행 상태**: partially completed
+
+### 구현된 기능
+
+**완료됨**:
+- Celery Beat 스케줄러 (매일 새벽 자동 실행)
+- cleanup_task (임시 파일, 만료 캐시 정리)
+- RetentionService (보존 정책 비즈니스 로직)
+- 관리자 API (수동 정리 트리거)
+
+**부분 구현 (검증 필요)**:
+- Celery Beat 스케줄 등록 (cleanup_task 매일 3AM)
+- 임시 파일 정리 동작 (temp/, uploads/ 디렉토리)
+- Redis 캐시 만료 항목 정리
+
+**미구현 (고급 기능)**:
+- 다계층 보존 정책 (7일/30일/90일 단계)
+- 데이터 아카이빙 (Cold Storage 이관)
+- 보존 정책 관리 UI
+- 정리 로그 및 감사 추적
+
+### 추가 작업 필요
+
+**검증 대상**:
+- [ ] Celery Beat worker 실행 중인지 확인
+- [ ] cleanup_task가 매일 3AM에 실행되는지 확인
+- [ ] 임시 파일 정리 시 실제 파일 삭제 확인
+
+---
+
+*SPEC ID: SPEC-RETENTION-001*
+*생성일: 2026-03-21*
+*상태: completed*
 ```

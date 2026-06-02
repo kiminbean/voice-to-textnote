@@ -19,7 +19,6 @@ from fastapi import status
 from fastapi.testclient import TestClient
 
 from backend.db.auth_models import User
-from backend.schemas.tag import TagResponse, AutoTagResponse, TagListResponse
 
 # ---------------------------------------------------------------------------
 # 테스트 픽스처

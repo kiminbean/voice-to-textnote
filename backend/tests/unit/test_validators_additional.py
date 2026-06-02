@@ -11,19 +11,19 @@ import ipaddress
 from unittest.mock import patch
 
 import pytest
+
 from backend.utils.validators import (
     _assert_public_webhook_host,
     _is_forbidden_webhook_ip,
     validate_webhook_url,
 )
 
-
 # ---------------------------------------------------------------------------
 # _is_forbidden_webhook_ip (Line 103)
 # ---------------------------------------------------------------------------
 
 
-class TestIsForbiddenWebhookIp_EdgeCases:
+class TestIsforbiddenwebhookipEdgecases:
     """IP 금지 여부 확인 엣지 케이스"""
 
     def test_ipv6_localhost_is_forbidden(self):
@@ -63,7 +63,7 @@ class TestIsForbiddenWebhookIp_EdgeCases:
 # ---------------------------------------------------------------------------
 
 
-class TestAssertPublicWebhookHost_ResolvedIpException:
+class TestassertpublicwebhookhostResolvedipexception:
     """DNS 해석 결과 예외 처리"""
 
     def test_raises_on_multiple_resolved_ips(self):
@@ -84,7 +84,7 @@ class TestAssertPublicWebhookHost_ResolvedIpException:
 # ---------------------------------------------------------------------------
 
 
-class TestValidateWebhookUrl_UserInfo:
+class TestvalidatewebhookUrlUserinfo:
     """URL 사용자 정보 검증"""
 
     def test_rejects_url_with_username(self):
@@ -119,7 +119,7 @@ class TestValidateWebhookUrl_UserInfo:
 # ---------------------------------------------------------------------------
 
 
-class TestValidateWebhookUrl_Scheme:
+class TestvalidatewebhookUrlScheme:
     """URL scheme 검증"""
 
     def test_rejects_ftp_scheme(self):
@@ -143,7 +143,7 @@ class TestValidateWebhookUrl_Scheme:
 # ---------------------------------------------------------------------------
 
 
-class TestValidateWebhookUrl_HostValidation:
+class TestvalidatewebhookUrlHostvalidation:
     """호스트명 검증"""
 
     def test_calls_assert_public_with_hostname(self):

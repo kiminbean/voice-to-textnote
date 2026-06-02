@@ -7,8 +7,6 @@ import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from backend.schemas.transcription import SegmentResult
-
 
 def _make_mock_redis():
     """Redis 동기 클라이언트 mock"""
@@ -185,7 +183,6 @@ class TestTranscriptionTaskCoverage:
 
     def test_max_retries_exceeded_behavior(self):
         """Lines 314-316: 최대 재시도 초과 시 동작"""
-        from backend.workers.tasks.transcription_task import transcription_task
 
         # Celery task의 MaxRetriesExceededError 테스트를 위한 mock
         mock_task = MagicMock()

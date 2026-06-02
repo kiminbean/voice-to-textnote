@@ -107,7 +107,7 @@ class TestWebhooksCrudReturns:
     async def test_update_webhook_return(self, mock_endpoint_obj):
         """Line 88: return from update_webhook"""
         from backend.app.api.v1.webhooks import update_webhook
-        from backend.schemas.webhook import WebhookEndpointUpdate, WebhookEndpointResponse
+        from backend.schemas.webhook import WebhookEndpointResponse, WebhookEndpointUpdate
 
         payload = WebhookEndpointUpdate(is_active=False)
         db = AsyncMock()
@@ -138,7 +138,7 @@ class TestAudioPreprocessRemaining:
         mock_file = MagicMock()
         mock_file.filename = "test.wav"
         # read raises IOError -> caught by except Exception at line 149
-        mock_file.read = AsyncMock(side_effect=IOError("disk full"))
+        mock_file.read = AsyncMock(side_effect=OSError("disk full"))
 
         with patch("backend.app.api.v1.audio_preprocess.settings") as mock_settings:
             mock_settings.audio_preprocess_enabled = True
@@ -166,9 +166,10 @@ class TestAudioPreprocessRemaining:
     @pytest.mark.asyncio
     async def test_oserror_during_wave_metadata(self):
         """Lines 188-192: OSError during wave.open triggers HTTPException(500)"""
-        from backend.app.api.v1.audio_preprocess import preprocess_endpoint
-        from pathlib import Path as P
+        from pathlib import Path as P  # noqa: N817
         from unittest.mock import mock_open
+
+        from backend.app.api.v1.audio_preprocess import preprocess_endpoint
 
         mock_file = MagicMock()
         mock_file.filename = "test.wav"
@@ -220,7 +221,7 @@ class TestDashboardRemaining:
     @pytest.mark.asyncio
     async def test_empty_records_returns_zero_overview(self):
         """Line 65: return DashboardOverview with zeros when no records"""
-        from backend.app.api.v1.dashboard import get_dashboard_overview, DashboardOverview
+        from backend.app.api.v1.dashboard import DashboardOverview, get_dashboard_overview
 
         db = AsyncMock()
         mock_result = MagicMock()
@@ -239,7 +240,7 @@ class TestDashboardRemaining:
     @pytest.mark.asyncio
     async def test_non_dict_data_and_segments_skipped(self):
         """Lines 82, 87, 91-92: skip non-dict data, segments, invalid timestamps"""
-        from backend.app.api.v1.dashboard import get_dashboard_overview, DashboardOverview
+        from backend.app.api.v1.dashboard import DashboardOverview, get_dashboard_overview
 
         # Record with non-dict result_data -> line 82 continue
         rec1 = MagicMock()

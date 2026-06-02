@@ -41,7 +41,6 @@ def _make_mock_redis():
 
 def _make_mock_dia_result(matched=True):
     """화자 분리 결과 mock"""
-    from backend.pipeline.speaker_matcher import SpeakerSegment
 
     return {
         "task_id": str(uuid.uuid4()),

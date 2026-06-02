@@ -115,3 +115,44 @@ backend/
 │       ├── test_request_id.py
 │       └── test_health_ready.py
 ```
+
+---
+
+## Implementation Notes
+
+### 구현 현황
+
+**구현 날짜**: 2026-06-02
+
+**진행 상태**: partially completed
+
+### 구현된 기능
+
+**완료됨**:
+- Prometheus 메트릭 (prometheus-fastapi-instrumentator)
+- 구조화된 JSON 로깅 (structlog 기존)
+- 요청 ID 추적 (request_id.py 미들웨어)
+- HTTP 요청/응답 시간, 상태 코드, 예외 수집
+
+**부분 구현 (검증 필요)**:
+- /metrics 엔드포인트 (Prometheus 형식)
+- 커스텀 비즈니스 메트릭 (STT 처리 시간, 큐 길이 등)
+- 로그 집중 시스템 (ELK, Loki 등)
+
+**미구현**:
+- Grafana 대시보드 설정
+- 알림 규칙 (Prometheus AlertManager)
+- 로그 보존 정책 및 자동 삭제
+
+### 추가 작업 필요
+
+**검증 대상**:
+- [ ] Prometheus /metrics 엔드포인트 접근 확인
+- [ ] structlog JSON 로그 포맷 검증
+- [ ] 요청 ID 헤더 (X-Request-ID) 생성 및 추적 확인
+
+---
+
+*SPEC ID: SPEC-OPS-001*
+*생성일: 2026-03-16*
+*상태: completed*

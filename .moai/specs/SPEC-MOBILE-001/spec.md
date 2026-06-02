@@ -1,9 +1,9 @@
 ---
 id: SPEC-MOBILE-001
 version: "1.0.0"
-status: draft
+status: in-progress
 created: "2026-03-22"
-updated: "2026-03-22"
+updated: "2026-06-02"
 author: kisoo
 priority: medium
 issue_number: 0
@@ -251,3 +251,54 @@ dev_dependencies:
 | Firebase Console | FCM 프로젝트 생성, iOS/Android 앱 등록 | GoogleService-Info.plist, google-services.json |
 | Apple Developer | Push 인증서 (APNs Key), 앱 번들 ID 등록 | .p8 키 파일 → Firebase에 업로드 |
 | Google Play Console | Android 앱 등록 (배포 시) | 서명 키 생성 |
+
+---
+
+## Implementation Notes
+
+### 구현 현황
+
+**구현 날짜**: 2026-06-02
+
+**진행 상태**: in-progress
+
+### 구현된 기능
+
+**완료됨 (Web + macOS)**:
+- Flutter 3.24+ / Dart 3.5+ 업그레이드
+- Web 빌드 지원 (Chrome, Safari)
+- macOS 빌드 지원 (Intel + Apple Silicon)
+- 오디오 녹음 (record 6.0+), 권한 요청 (permission_handler)
+- Riverpod 2.6+ 상태관리, go_router 15.1+ 라우팅
+- 백엔드 연동 (Dio 5.9+ HTTP 클라이언트)
+
+**진행 중 (iOS/Android 네이티브 최적화)**:
+- iOS 빌드 설정 (아이콘, 스플래시, 번들 ID)
+- Android 플랫폼 추가 (`flutter create --platforms=android .`)
+- Firebase Messaging (Push 알림)
+- Push 알림 권한 요청
+- 네이티브 성능 최적화
+
+**제외됨 (MVP 범위 초과)**:
+- 오프라인 STT 처리 (로컬 Whisper 모델)
+- 백그라운드 오디오 녹음 (iOS/Android 제약)
+- 다국어(i18n) 지원
+
+### 기술 제약사항
+
+**현재 제약**:
+- Firebase 프로젝트 미생성 → Push 알림 미구현
+- Apple Developer 계정 미사용 → App Store 배포 불가
+- Android 플랫폼 디렉토리 없음 → Android 빌드 미검증
+
+**추후 작업**:
+- Firebase Console 프로젝트 생성
+- APNs 인증서 발급 및 Firebase 연동
+- iOS/Android 네이티브 테스트
+- App Store / Play Store 배포
+
+---
+
+*SPEC ID: SPEC-MOBILE-001*
+*생성일: 2026-03-22*
+*상태: in-progress*

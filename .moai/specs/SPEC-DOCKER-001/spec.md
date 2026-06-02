@@ -103,4 +103,47 @@ project-root/
 │   └── ssl/                      # SSL 인증서 디렉토리 (빈 폴더)
 ├── .env.example                  # 개발용 환경 변수 (업데이트)
 ├── .env.production.example       # 프로덕션용 환경 변수
+
+---
+
+## Implementation Notes
+
+### 구현 현황
+
+**구현 날짜**: 2026-06-02
+
+**진행 상태**: partially completed
+
+### 구현된 기능
+
+**완료됨**:
+- Dockerfile (FastAPI multi-stage build)
+- docker-compose.yml (개발 환경: Redis, Celery Worker, PostgreSQL optional)
+- Nginx 설정 파일 (리버스 프록시, SSL 준비)
+- .env.example, .env.production.example 환경 변수 템플릿
+
+**부분 구현**:
+- PostgreSQL 16 alpine 컨테이너 설정
+- Nginx SSL/TLS 지원 (인증서 디렉토리 구조만 생성)
+- 프로덕션 docker-compose.prod.yml 기본 구조
+
+**미구현 (검증 필요)**:
+- 프로덕션 환경에서 Nginx + PostgreSQL 통합 테스트
+- SSL 인증서 발급 및 Nginx 적용
+- PostgreSQL 영구 저장 볼륨 마운트
+- 백업 및 복구 절차
+
+### 추가 작업 필요
+
+**검증 대상**:
+- [ ] Docker Compose로 전체 스택 (Nginx + FastAPI + PostgreSQL + Redis + Celery) 시작
+- [ ] PostgreSQL 데이터 지속성 확인 (컨테이너 재시작 후 데이터 보존)
+- [ ] Nginx 리버스 프록시 경로 설정 (/api/v1/* → FastAPI)
+- [ ] Health check 동작 (/api/v1/health, /api/v1/health/model)
+
+---
+
+*SPEC ID: SPEC-DOCKER-001*
+*생성일: 2026-03-21*
+*상태: completed*
 ```

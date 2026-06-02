@@ -40,7 +40,7 @@ def make_app(mock_redis):
 # ---------------------------------------------------------------------------
 
 
-class TestGetSentiment_StatusHandling:
+class TestGetSentimentStatushandling:
     """다양한 task status에 대한 응답 테스트"""
 
     def test_returns_pending_status_when_no_result(self, mock_redis):

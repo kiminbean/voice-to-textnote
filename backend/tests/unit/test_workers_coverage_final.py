@@ -15,10 +15,7 @@ Worker Tasks 최종 커버리지 테스트
 
 import json
 import uuid
-from pathlib import Path
 from unittest.mock import MagicMock, patch
-import pytest
-
 
 # =============================================================================
 # Helper Functions
@@ -60,6 +57,7 @@ class TestTranscriptionTaskFinalCoverage:
     def test_timeout_exception_handling(self, tmp_path):
         """Lines 260-269: SoftTimeLimitExceeded 예외 처리"""
         from celery.exceptions import SoftTimeLimitExceeded
+
         from backend.workers.tasks.transcription_task import transcription_task
 
         task_id = "timeout-task"
@@ -75,8 +73,8 @@ class TestTranscriptionTaskFinalCoverage:
         with patch("backend.workers.tasks.transcription_task._get_redis", return_value=mock_redis), \
              patch("backend.workers.tasks.transcription_task._increment_active_jobs"), \
              patch("backend.workers.tasks.transcription_task._decrement_active_jobs"), \
-             patch("backend.workers.tasks.transcription_task._update_task_status") as mock_update, \
-             patch("backend.workers.tasks.transcription_task._cache_result") as mock_cache, \
+             patch("backend.workers.tasks.transcription_task._update_task_status"), \
+             patch("backend.workers.tasks.transcription_task._cache_result"), \
              patch("backend.workers.tasks.transcription_task.get_audio_duration_seconds", return_value=30.0), \
              patch("backend.workers.tasks.transcription_task.convert_and_normalize", return_value=audio_file), \
              patch("backend.workers.tasks.transcription_task.split_audio", side_effect=raise_timeout), \
@@ -147,7 +145,7 @@ class TestTranscriptionTaskFinalCoverage:
     def test_max_retries_exceeded_error_handling(self):
         """Lines 314-316: MaxRetriesExceededError 및 재시도 로직 검증"""
         from celery.exceptions import MaxRetriesExceededError
-        from backend.workers.tasks.transcription_task import transcription_task
+
 
         # Celery task의 재시도 메커니즘 테스트
         # 실제 환경에서는 self.retry()가 호출되고, 최대 재시도 초과 시 MaxRetriesExceededError 발생
@@ -211,7 +209,7 @@ class TestTranscriptionTaskFinalCoverage:
                         "language": "ko",
                     },
                 ).result
-            except:
+            except Exception:
                 pass
 
         # 실패 시 diarization_wav 정리 확인 (실제 정리는 finally에서 수행)

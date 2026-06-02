@@ -13,17 +13,15 @@ Uncovered lines:
 - quality_service.py line 1028: trend direction "up"
 """
 
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from backend.services.quality_service import (
     IssueSeverity,
-    QualityIssue,
     QualityScore,
     QualityService,
-    QualityTrendsResponse,
 )
 
 
@@ -50,8 +48,9 @@ class TestMainFullCoverage:
                         mock_settings.diarization_model = "test-model"
                         with patch("backend.app.main.logger") as mock_logger:
                             # Import and call lifespan
-                            from backend.app.main import lifespan
                             from fastapi import FastAPI
+
+                            from backend.app.main import lifespan
 
                             app = FastAPI()
                             async with lifespan(app):
@@ -72,10 +71,9 @@ class TestAuditLogFullCoverage:
 
     def test_get_or_create_counter_returns_existing(self):
         """Line 57: _get_or_create_counter returns existing counter when already registered"""
-        from backend.app.middleware.audit_log import _get_or_create_counter
-
         # Call once to create, then call again — second call should hit line 57
-        from prometheus_client import Counter, CollectorRegistry, REGISTRY
+
+        from backend.app.middleware.audit_log import _get_or_create_counter
 
         # Create a counter with a unique test name
         test_name = "test_audit_log_coverage_counter"

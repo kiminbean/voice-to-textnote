@@ -11,17 +11,15 @@ Files covered:
 - backend/services/statistics.py (96% -> target 95%+)
 """
 
-import json
-import sys
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from backend.services.enhanced_statistics import (
-    EnhancedStatisticsService,
     EfficiencyMetrics,
+    EnhancedStatisticsService,
     KeywordTrend,
     SpeakerParticipationPattern,
     TimeSeriesDataPoint,
@@ -29,17 +27,16 @@ from backend.services.enhanced_statistics import (
 from backend.services.keyword_service import (
     KeywordResponse,
     KeywordService,
+    _detect_language,
     _normalize_token,
     _normalize_values,
-    _detect_language,
-)
-from backend.services.quality_service import (
-    QualityIssue,
-    QualityService,
-    QualityTrendsResponse,
-    IssueSeverity,
 )
 from backend.services.oauth_service import verify_apple_token
+from backend.services.quality_service import (
+    IssueSeverity,
+    QualityService,
+    QualityTrendsResponse,
+)
 from backend.services.retention import cleanup_temp_files
 from backend.services.statistics import StatisticsService
 

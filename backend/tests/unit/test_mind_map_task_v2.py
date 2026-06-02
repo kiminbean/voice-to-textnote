@@ -95,8 +95,8 @@ class TestMindMapTaskStatusPreservation:
 
     def test_preserves_created_at_on_status_update(self):
         """상태 업데이트 시 기존 created_at 보존됨"""
-        from backend.workers.tasks.mind_map_task import _update_mind_map_status
         from backend.schemas.transcription import TaskStatus
+        from backend.workers.tasks.mind_map_task import _update_mind_map_status
 
         task_id = str(uuid.uuid4())
         summary_task_id = str(uuid.uuid4())

@@ -11,10 +11,8 @@ import pytest
 from pydantic import ValidationError
 
 from backend.schemas.bookmark import (
-    BookmarkCreate,
     BookmarkUpdate,
 )
-
 
 # ---------------------------------------------------------------------------
 # validate_color 테스트

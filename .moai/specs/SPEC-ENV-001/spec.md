@@ -84,3 +84,50 @@ The system shall NOT require `const` qualifier for `apiBaseUrl` (getter is accep
 - `client/lib/screens/processing_screen.dart:55` — `baseUrl: AppConfig.apiBaseUrl`
 
 모두 런타임 값 할당이므로 getter 변환 후에도 동작에 영향 없음.
+
+---
+
+## Implementation Notes
+
+### 구현 완료 정보
+
+**구현 날짜**: 2026-06-02
+
+**진행 상태**: completed
+
+### 구현된 요구사항
+
+모든 6개 EARS 요구사항 구현 완료:
+- **REQ-ENV-001**: `--dart-define=API_BASE_URL` 컴파일 타임 변수 지원
+- **REQ-ENV-002**: Environment enum (dev, staging, production)
+- **REQ-ENV-003**: isDebugMode 플래그 (비프로덕션 환경에서 true)
+- **REQ-ENV-004**: 실행 스크립트 3개 (run_dev.sh, run_staging.sh, run_production.sh)
+- **REQ-ENV-005**: 기존 동작 유지 (staging 기본값)
+- **REQ-ENV-006**: getter 기반 apiBaseUrl (const 불필요)
+
+### 주요 구현 결정사항
+
+1. **Dart 컴파일 타임 환경 변수**
+   - `String.fromEnvironment('API_BASE_URL')`로 API URL 읽기
+   - `const String.fromEnvironment('ENV')`로 환경 식별
+   - 기본값: staging 환경 `http://100.110.255.105:8000/api/v1`
+
+2. **환경별 API URL**
+   - dev: `http://localhost:8000/api/v1`
+   - staging: `http://100.110.255.105:8000/api/v1` (기존값 유지)
+   - production: `https://api.voicetextnote.com/api/v1` (플레이스홀더)
+
+3. **실행 스크립트**
+   - `run_dev.sh`: `flutter run --dart-define=ENV=dev --dart-define=API_BASE_URL=http://localhost:8000/api/v1`
+   - `run_staging.sh`: `flutter run --dart-define=ENV=staging`
+   - `run_production.sh`: `flutter run --dart-define=ENV=production --dart-define=API_BASE_URL=https://api.voicetextnote.com/api/v1`
+
+4. **기존 코드 영향 최소화**
+   - `AppConfig.apiBaseUrl`를 getter로 변경 (const 제거)
+   - 사용처 3곳 (api_client.dart, auth_api.dart, processing_screen.dart) 모두 런타임 할당이므로 영향 없음
+
+---
+
+*SPEC ID: SPEC-ENV-001*
+*생성일: 2026-03-29*
+*상태: completed*

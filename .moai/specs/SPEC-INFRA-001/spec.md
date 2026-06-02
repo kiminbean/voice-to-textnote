@@ -100,3 +100,45 @@ issue_number: 0
 │   └── build.yml           # 메인 브랜치 빌드 + Docker push
 ├── dependabot.yml          # 의존성 보안 스캔
 ```
+
+---
+
+## Implementation Notes
+
+### 구현 현황
+
+**구현 날짜**: 2026-06-02
+
+**진행 상태**: partially completed
+
+### 구현된 기능
+
+**완료됨**:
+- GitHub Actions 워크플로우 (.github/workflows/ci.yml, build.yml)
+- CI 파이프라인: pytest, ruff lint, coverage report
+- Dependabot 설정 (의존성 보안 스캔)
+- Docker 이미지 빌드 및 push (build.yml)
+
+**부분 구현 (검증 필요)**:
+- PR 머지 시 자동 테스트 실행
+- 커버리지 리포트 Codecov/Codecov 연동
+- Docker Hub/GitHub Container Registry 배포
+- 환경 변수 주입 및 관리
+
+**미구현**:
+- 스테이징/프로덕션 환경 분리 배포
+- 롤백 절차 (자동/수동)
+- 알림 시스템 (Slack, 이메일)
+
+### 추가 작업 필요
+
+**검증 대상**:
+- [ ] PR 생성 시 CI 워크플로우 자동 트리거 확인
+- [ ] 테스트 실패 시 PR 블록 동작 확인
+- [ ] Docker 이미지 빌드 성공 및 Container Registry push 확인
+
+---
+
+*SPEC ID: SPEC-INFRA-001*
+*생성일: 2026-03-16*
+*상태: completed*

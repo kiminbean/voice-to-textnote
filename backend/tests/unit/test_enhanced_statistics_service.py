@@ -43,8 +43,8 @@ class TestFetchMinutesResult:
         mock_record.result_data = {"segments": [{"text": "db fallback"}]}
 
         # MockResult 클래스
-        mock_result = MagicMock()
-        mock_scalars = MagicMock()
+        MagicMock()
+        MagicMock()
 
         # first() 메서드가 코루틴이 아닌 MagicMock 객체 반환하도록 설정
         first_result = MagicMock()
@@ -250,11 +250,6 @@ class TestEnhancedStatisticsService:
         """요청 시 효율성 지표 포함."""
         service = EnhancedStatisticsService()
         redis_client = AsyncMock()
-        test_data = {
-            "segments": [
-                {"start": 0.0, "end": 30.0, "speaker": "A", "text": "test segment"},
-            ]
-        }
         redis_client.get.return_value = b'{"segments": [{"start": 0.0, "end": 30.0, "speaker": "A", "text": "test segment"}]}'
         db = AsyncMock()
 
@@ -276,11 +271,6 @@ class TestEnhancedStatisticsService:
         """요청하지 않을 때 효율성 지표 제외."""
         service = EnhancedStatisticsService()
         redis_client = AsyncMock()
-        test_data = {
-            "segments": [
-                {"start": 0.0, "end": 30.0, "speaker": "A", "text": "test segment"},
-            ]
-        }
         redis_client.get.return_value = b'{"segments": [{"start": 0.0, "end": 30.0, "speaker": "A", "text": "test segment"}]}'
         db = AsyncMock()
 

@@ -16,24 +16,13 @@ API 커버리지 보완 테스트
 """
 
 import json
-import uuid
-from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 from fastapi import status
 
 # 커버리지 측정을 위한 모듈 import
-import backend.app.api.v1.audio_preprocess as audio_preprocess_module
-import backend.app.api.v1.webhooks as webhooks_module
-import backend.app.api.v1.dashboard as dashboard_module
-import backend.app.api.v1.enhanced_statistics as stats_module
-import backend.app.api.v1.action_items as action_items_module
-import backend.app.api.v1.audio_analysis as audio_analysis_module
-import backend.app.api.v1.quality_assessment as qa_module
-import backend.app.api.v1.teams as teams_module
-import backend.app.api.v1.transcription as transcription_module
-import backend.app.api.v1.templates as templates_module
 
 
 class TestAudioPreprocessCoverage:
@@ -46,9 +35,9 @@ class TestAudioPreprocessCoverage:
         When: _safe_unlink 호출
         Then: 예외 없이 완료
         """
-        from backend.app.api.v1.audio_preprocess import _safe_unlink, cleanup_temp_file
-        from pathlib import Path
         from unittest.mock import patch
+
+        from backend.app.api.v1.audio_preprocess import _safe_unlink
 
         # 실제 cleanup_temp_file 호출을 모의하면서 _safe_unlink 검증
         fake_path = Path("/nonexistent/path/file.wav")
@@ -94,7 +83,7 @@ class TestAudioPreprocessCoverage:
                 opts = _resolve_options(payload)
                 # high_pass가 80으로 설정되어야 함
                 assert opts.high_pass_hz == 80
-            except:  # 검증 로직만 확인하면 됨
+            except Exception:  # 검증 로직만 확인하면 됨
                 pass
 
     def test_http_exception_size_limit(self):
@@ -205,8 +194,8 @@ class TestDashboardCoverage:
         processed = 0
         for seg in bad_segments:
             try:
-                start = float(seg.get("start", 0) or 0)
-                end = float(seg.get("end", 0) or 0)
+                float(seg.get("start", 0) or 0)
+                float(seg.get("end", 0) or 0)
                 processed += 1
             except (TypeError, ValueError):
                 continue
@@ -225,7 +214,6 @@ class TestEnhancedStatisticsCoverage:
         When: 서비스 호출
         Then: 올바른 인자 전달
         """
-        from unittest.mock import AsyncMock
 
         mock_service = MagicMock()
         mock_service.get_project_overview = AsyncMock(return_value={})
@@ -312,8 +300,9 @@ class TestQualityAssessmentCoverage:
         When: _extract_minutes_text 호출
         Then: 404 에러 발생
         """
-        from backend.app.api.v1.quality_assessment import _extract_minutes_text
         from fastapi import HTTPException
+
+        from backend.app.api.v1.quality_assessment import _extract_minutes_text
 
         empty_data = {"segments": []}
 
@@ -445,7 +434,6 @@ class TestTemplatesCoverage:
         When: JSON 파싱 시도
         Then: JSONDecodeError 발생
         """
-        import json
 
         corrupted = b'{"invalid": json}'
         try:
@@ -460,7 +448,6 @@ class TestTemplatesCoverage:
         When: 딕셔너리 접근
         Then: KeyError 발생
         """
-        import json
 
         incomplete = b'{"name": "test"}'  # template_id 누락
         try:
