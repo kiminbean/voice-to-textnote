@@ -578,6 +578,6 @@ class TestTranscriptionTaskMain:
         assert result["status"] == "completed"
         assert result["segments"][0]["text"] == "청크 결과"
         mock_engine.load.assert_called_once_with("test-model")
-        mock_process_chunks.assert_called_once_with(mock_engine, [chunk], "chunked-task", "ko")
+        mock_process_chunks.assert_called_once_with(mock_engine, [chunk], "chunked-task", "ko", None)
         mock_incr.assert_called_once_with("chunked-task")
         mock_decr.assert_called_once_with("chunked-task")

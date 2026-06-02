@@ -67,6 +67,12 @@ asyncio_mode = "auto"
 testpaths = ["backend"]
 addopts = "--cov=backend --cov-report=term-missing --cov-fail-under=85"
 
+[tool.coverage.run]
+omit = [
+    "backend/tests/integration/*",
+    "backend/tests/e2e/*",
+]
+
 [tool.mypy]
 ignore_missing_imports = true
 disable_error_code = [

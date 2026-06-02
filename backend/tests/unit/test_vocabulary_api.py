@@ -205,8 +205,11 @@ class TestVocabularyInitialPrompt:
 
 
 class TestSTTInitialPromptPassthrough:
+    """mlx_whisper 실제 import 대신 sys.modules mock으로 coverage 간섭 회피"""
+
     def test_transcribe_passes_initial_prompt_to_mlx(self, monkeypatch):
-        import mlx_whisper
+        import sys
+        from unittest.mock import MagicMock
 
         captured: dict = {}
 
@@ -214,7 +217,9 @@ class TestSTTInitialPromptPassthrough:
             captured.update(kwargs)
             return {"text": "테스트", "segments": [], "language": "ko"}
 
-        monkeypatch.setattr(mlx_whisper, "transcribe", fake_transcribe)
+        fake_mlx = MagicMock()
+        fake_mlx.transcribe = fake_transcribe
+        monkeypatch.setitem(sys.modules, "mlx_whisper", fake_mlx)
 
         from backend.ml.stt_engine import WhisperEngine
 
@@ -228,7 +233,8 @@ class TestSTTInitialPromptPassthrough:
         assert captured.get("initial_prompt") == "ROS2 MLX"
 
     def test_transcribe_omits_initial_prompt_when_none(self, monkeypatch):
-        import mlx_whisper
+        import sys
+        from unittest.mock import MagicMock
 
         captured: dict = {}
 
@@ -236,7 +242,9 @@ class TestSTTInitialPromptPassthrough:
             captured.update(kwargs)
             return {"text": "테스트", "segments": [], "language": "ko"}
 
-        monkeypatch.setattr(mlx_whisper, "transcribe", fake_transcribe)
+        fake_mlx = MagicMock()
+        fake_mlx.transcribe = fake_transcribe
+        monkeypatch.setitem(sys.modules, "mlx_whisper", fake_mlx)
 
         from backend.ml.stt_engine import WhisperEngine
 
