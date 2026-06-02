@@ -344,3 +344,200 @@ def test_password_validation_letter_and_digit():
     # 영문자 없음
     with pytest.raises(ValidationError):
         RegisterRequest(email="test@test.com", password="12345678", display_name="테스트")
+
+
+# ---------------------------------------------------------------------------
+# 소셜 로그인/연동 테스트
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_social_login_existing_user(auth_service, mock_session):
+    """기존 소셜 계정으로 로그인"""
+    user = User()
+    user.id = uuid.uuid4()
+    user.email = "user@example.com"
+    user.provider = "google"
+    user.provider_id = "google_123"
+    user.is_active = True
+
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none.return_value = user
+    mock_session.execute.return_value = mock_result
+
+    result_user, access_token, refresh_token = await auth_service.social_login_or_register(
+        session=mock_session,
+        provider="google",
+        provider_id="google_123",
+        email="user@example.com",
+        display_name="테스트 사용자",
+    )
+
+    assert result_user == user
+    assert isinstance(access_token, str)
+    assert isinstance(refresh_token, str)
+
+
+@pytest.mark.asyncio
+async def test_social_register_new_user(auth_service, mock_session):
+    """새로운 소셜 계정 자동 가입"""
+    # 소셜 계정 없음, 이메일도 없음
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none.return_value = None
+    mock_session.execute.return_value = mock_result
+
+    user, access_token, refresh_token = await auth_service.social_login_or_register(
+        session=mock_session,
+        provider="google",
+        provider_id="google_123",
+        email="new@example.com",
+        display_name="새 사용자",
+    )
+
+    assert user.email == "new@example.com"
+    assert user.provider == "google"
+    assert user.provider_id == "google_123"
+    assert user.is_active is True
+    assert isinstance(access_token, str)
+    assert isinstance(refresh_token, str)
+    assert mock_session.add.call_count == 2  # User + RefreshToken
+    mock_session.commit.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_social_login_inactive_user(auth_service, mock_session):
+    """비활성 소셜 계정 로그인 실패"""
+    from fastapi import HTTPException
+
+    user = User()
+    user.id = uuid.uuid4()
+    user.email = "user@example.com"
+    user.provider = "google"
+    user.provider_id = "google_123"
+    user.is_active = False
+
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none.return_value = user
+    mock_session.execute.return_value = mock_result
+
+    with pytest.raises(HTTPException) as exc_info:
+        await auth_service.social_login_or_register(
+            session=mock_session,
+            provider="google",
+            provider_id="google_123",
+            email="user@example.com",
+            display_name="테스트 사용자",
+        )
+
+    assert exc_info.value.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_link_provider_success(auth_service, mock_session):
+    """소셜 제공자 연동 성공"""
+    user = User()
+    user.id = uuid.uuid4()
+    user.email = "user@example.com"
+    user.password_hash = "hashed_password"
+    user.provider = "email"
+    user.provider_id = None
+
+    # 제공자 중복 없음
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none.return_value = None
+    mock_session.execute.return_value = mock_result
+
+    result = await auth_service.link_provider(
+        session=mock_session,
+        user=user,
+        provider="google",
+        provider_id="google_123",
+    )
+
+    assert result.provider == "google"
+    assert result.provider_id == "google_123"
+    mock_session.commit.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_link_provider_already_linked(auth_service, mock_session):
+    """이미 연동된 제공자"""
+    from fastapi import HTTPException
+
+    user = User()
+    user.id = uuid.uuid4()
+    user.provider = "google"
+    user.provider_id = "google_123"
+
+    with pytest.raises(HTTPException) as exc_info:
+        await auth_service.link_provider(
+            session=mock_session,
+            user=user,
+            provider="google",
+            provider_id="google_123",
+        )
+
+    assert exc_info.value.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_unlink_provider_success(auth_service, mock_session):
+    """소셜 제공자 연동 해제 성공"""
+    user = User()
+    user.id = uuid.uuid4()
+    user.email = "user@example.com"
+    user.password_hash = "hashed_password"
+    user.provider = "google"
+    user.provider_id = "google_123"
+
+    result = await auth_service.unlink_provider(
+        session=mock_session,
+        user=user,
+        provider="google",
+    )
+
+    assert result.provider == "email"
+    assert result.provider_id is None
+    mock_session.commit.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_unlink_provider_not_linked(auth_service, mock_session):
+    """연동되지 않은 제공자 해제 시도"""
+    from fastapi import HTTPException
+
+    user = User()
+    user.id = uuid.uuid4()
+    user.provider = "email"
+    user.provider_id = None
+
+    with pytest.raises(HTTPException) as exc_info:
+        await auth_service.unlink_provider(
+            session=mock_session,
+            user=user,
+            provider="google",
+        )
+
+    assert exc_info.value.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_unlink_provider_no_password(auth_service, mock_session):
+    """비밀번호 없는 계정은 소셜 연동 해제 불가"""
+    from fastapi import HTTPException
+
+    user = User()
+    user.id = uuid.uuid4()
+    user.provider = "google"
+    user.provider_id = "google_123"
+    user.password_hash = None
+
+    with pytest.raises(HTTPException) as exc_info:
+        await auth_service.unlink_provider(
+            session=mock_session,
+            user=user,
+            provider="google",
+        )
+
+    assert exc_info.value.status_code == 400
+    assert "비밀번호 설정 후" in exc_info.value.detail

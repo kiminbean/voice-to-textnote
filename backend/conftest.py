@@ -292,7 +292,21 @@ def client(mock_redis_client, tmp_path):
                         mock_dia_result.id = "mock-dia-task-id"
                         mock_dia_delay.return_value = mock_dia_result
 
-                        yield TestClient(app, raise_server_exceptions=True)
+                        with patch(
+                            "backend.workers.tasks.summary_task.summary_celery_task.delay"
+                        ) as mock_summary_delay:
+                            mock_summary_result = MagicMock()
+                            mock_summary_result.id = "mock-summary-task-id"
+                            mock_summary_delay.return_value = mock_summary_result
+
+                            with patch(
+                                "backend.workers.tasks.mind_map_task.mind_map_celery_task.delay"
+                            ) as mock_mind_map_delay:
+                                mock_mind_map_result = MagicMock()
+                                mock_mind_map_result.id = "mock-mind-map-task-id"
+                                mock_mind_map_delay.return_value = mock_mind_map_result
+
+                                yield TestClient(app, raise_server_exceptions=True)
 
     app.dependency_overrides.clear()
 
