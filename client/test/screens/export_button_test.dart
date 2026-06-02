@@ -101,52 +101,51 @@ void main() {
     );
   }
 
-  group('ResultScreen AppBar - PDF 내보내기 버튼', () {
-    // AppBar에 PDF 내보내기 아이콘 버튼이 존재하는지 테스트
-    testWidgets('AppBar에 PDF 내보내기 아이콘 버튼이 표시되어야 함',
+  group('ResultScreen AppBar - 내보내기 버튼', () {
+    // AppBar에 PopupMenuButton (ios_share 아이콘) 존재 확인
+    testWidgets('AppBar에 내보내기 버튼이 표시되어야 함',
         (WidgetTester tester) async {
       // Act
       await tester.pumpWidget(buildTestWidget(completedMeeting));
       await tester.pumpAndSettle();
 
-      // Assert: picture_as_pdf_outlined 아이콘 존재 확인
+      // Assert: ios_share 아이콘 (PopupMenuButton 트리거) 존재 확인
       expect(
-        find.byIcon(Icons.picture_as_pdf_outlined),
+        find.byIcon(Icons.ios_share),
         findsOneWidget,
       );
     });
 
     // 버튼이 AppBar actions 영역에 위치하는지 테스트
-    testWidgets('PDF 내보내기 버튼이 AppBar의 actions 영역에 있어야 함',
+    testWidgets('내보내기 버튼이 AppBar의 actions 영역에 있어야 함',
         (WidgetTester tester) async {
       // Act
       await tester.pumpWidget(buildTestWidget(completedMeeting));
       await tester.pumpAndSettle();
 
-      // Assert: IconButton이 AppBar 내에 존재
+      // Assert: AppBar 내에 ios_share 아이콘 존재
       final appBar = find.byType(AppBar);
       expect(appBar, findsOneWidget);
 
-      // AppBar 내에 PDF 아이콘 버튼이 있어야 함
       expect(
         find.descendant(
           of: appBar,
-          matching: find.byIcon(Icons.picture_as_pdf_outlined),
+          matching: find.byIcon(Icons.ios_share),
         ),
         findsOneWidget,
       );
     });
 
     // minutesTaskId가 없을 때도 버튼이 표시되는지 테스트
-    testWidgets('minutesTaskId가 없어도 PDF 내보내기 버튼이 표시되어야 함',
+    testWidgets('minutesTaskId가 없어도 내보내기 버튼이 표시되어야 함',
         (WidgetTester tester) async {
       // Act
       await tester.pumpWidget(buildTestWidget(incompleteMeeting));
       await tester.pumpAndSettle();
 
-      // Assert: 버튼은 표시되지만 탭 시 SnackBar 표시 (별도 테스트)
+      // Assert: ios_share 버튼은 항상 표시됨
       expect(
-        find.byIcon(Icons.picture_as_pdf_outlined),
+        find.byIcon(Icons.ios_share),
         findsOneWidget,
       );
     });
@@ -170,8 +169,7 @@ void main() {
       await tester.pumpWidget(buildTestWidget(completedMeeting));
       await tester.pumpAndSettle();
 
-      // Assert: 탭 레이블 확인 (TabBar 내에 Tab 위젯 존재 여부로 확인)
-      // "회의록" 텍스트는 TabBar와 SpeakerSegment 헤더에 중복될 수 있어 findsWidgets 사용
+      // Assert: 탭 레이블 확인
       expect(find.text('회의록'), findsWidgets);
       expect(find.text('AI 요약'), findsOneWidget);
       expect(find.text('마인드맵'), findsOneWidget);

@@ -21,7 +21,7 @@ class MockSummaryApi extends Mock implements SummaryApi {}
 
 class MockExportApi extends Mock implements ExportApi {}
 
-// 테스트용 MeetingListNotifier - AsyncNotifier이므로 Future 반환
+// 테스트용 MeetingListNotifier
 class _FakeMeetingListNotifier extends MeetingListNotifier {
   final List<Meeting> _meetings;
   _FakeMeetingListNotifier(this._meetings);
@@ -45,7 +45,7 @@ void main() {
     summaryTaskId: 'sum-task-loading-001',
   );
 
-  // minutesTaskId가 없는 미팅 (내보내기 불가)
+  // minutesTaskId가 없는 미팅
   final incompleteMeeting = Meeting(
     id: 'meeting-no-task-001',
     title: '미완료 회의',
@@ -92,7 +92,6 @@ void main() {
   }
 
   group('ResultScreen - PDF 내보내기 로딩 상태', () {
-    // test_export_button_shows_loading:
     // 다운로드 진행 중에 CircularProgressIndicator가 표시되어야 함
     testWidgets('PDF 다운로드 중 CircularProgressIndicator가 표시되어야 함',
         (WidgetTester tester) async {
@@ -103,12 +102,16 @@ void main() {
             summaryTaskId: any(named: 'summaryTaskId'),
           )).thenAnswer((_) => completer.future);
 
-      // Act: 위젯 렌더링 후 버튼 탭
+      // Act: 위젯 렌더링 후 팝업 열고 PDF 선택
       await tester.pumpWidget(buildTestWidget(completedMeeting));
       await tester.pumpAndSettle();
 
-      // PDF 아이콘 버튼 탭
-      await tester.tap(find.byIcon(Icons.picture_as_pdf_outlined));
+      // PopupMenuButton 트리거 탭 → 팝업 열기
+      await tester.tap(find.byIcon(Icons.ios_share));
+      await tester.pumpAndSettle();
+
+      // 팝업에서 PDF 선택
+      await tester.tap(find.text('PDF'));
       await tester.pump(); // setState 후 1 프레임 처리
 
       // Assert: CircularProgressIndicator가 표시되어야 함
@@ -119,8 +122,8 @@ void main() {
       await tester.pumpAndSettle();
     });
 
-    // 로딩 중에는 PDF 아이콘 버튼이 숨겨져야 함
-    testWidgets('PDF 다운로드 중 PDF 아이콘 버튼이 숨겨져야 함',
+    // 로딩 중에는 내보내기 버튼이 로딩 인디케이터로 교체되어야 함
+    testWidgets('PDF 다운로드 중 ios_share 아이콘이 숨겨져야 함',
         (WidgetTester tester) async {
       // Arrange: 완료되지 않는 Future
       final completer = Completer<File>();
@@ -132,11 +135,15 @@ void main() {
       // Act
       await tester.pumpWidget(buildTestWidget(completedMeeting));
       await tester.pumpAndSettle();
-      await tester.tap(find.byIcon(Icons.picture_as_pdf_outlined));
+
+      await tester.tap(find.byIcon(Icons.ios_share));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('PDF'));
       await tester.pump();
 
-      // Assert: 로딩 중에는 아이콘 버튼이 없어야 함
-      expect(find.byIcon(Icons.picture_as_pdf_outlined), findsNothing);
+      // Assert: 로딩 중에는 ios_share 아이콘이 없어야 함
+      expect(find.byIcon(Icons.ios_share), findsNothing);
 
       // 정리
       completer.completeError(Exception('테스트 종료'));
@@ -145,7 +152,6 @@ void main() {
   });
 
   group('ResultScreen - PDF 내보내기 에러 처리', () {
-    // test_export_error_shows_snackbar:
     // 내보내기 실패 시 SnackBar에 에러 메시지가 표시되어야 함
     testWidgets('ExportApi 실패 시 에러 SnackBar가 표시되어야 함',
         (WidgetTester tester) async {
@@ -164,22 +170,30 @@ void main() {
       // Act
       await tester.pumpWidget(buildTestWidget(completedMeeting));
       await tester.pumpAndSettle();
-      await tester.tap(find.byIcon(Icons.picture_as_pdf_outlined));
+
+      await tester.tap(find.byIcon(Icons.ios_share));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('PDF'));
       await tester.pumpAndSettle();
 
       // Assert: SnackBar가 표시되어야 함
       expect(find.byType(SnackBar), findsOneWidget);
     });
 
-    // minutesTaskId 없을 때 SnackBar 표시 확인
-    testWidgets('minutesTaskId 없을 때 탭하면 SnackBar가 표시되어야 함',
+    // minutesTaskId 없을 때 PDF 선택 시 SnackBar 표시 확인
+    testWidgets('minutesTaskId 없을 때 PDF 선택하면 SnackBar가 표시되어야 함',
         (WidgetTester tester) async {
       // Act: minutesTaskId 없는 미팅으로 렌더링
       await tester.pumpWidget(buildTestWidget(incompleteMeeting));
       await tester.pumpAndSettle();
 
-      // PDF 버튼 탭
-      await tester.tap(find.byIcon(Icons.picture_as_pdf_outlined));
+      // 팝업 열기
+      await tester.tap(find.byIcon(Icons.ios_share));
+      await tester.pumpAndSettle();
+
+      // PDF 선택
+      await tester.tap(find.text('PDF'));
       await tester.pumpAndSettle();
 
       // Assert: SnackBar가 표시되어야 함 (ExportApi 호출 없이)
@@ -192,8 +206,8 @@ void main() {
           ));
     });
 
-    // 에러 후 버튼이 다시 활성화되어야 함 (중복 방지 상태 해제)
-    testWidgets('다운로드 실패 후 PDF 아이콘 버튼이 다시 표시되어야 함',
+    // 에러 후 버튼이 다시 활성화되어야 함
+    testWidgets('다운로드 실패 후 내보내기 버튼이 다시 표시되어야 함',
         (WidgetTester tester) async {
       // Arrange
       when(() => mockExportApi.downloadPdf(
@@ -209,11 +223,15 @@ void main() {
       // Act
       await tester.pumpWidget(buildTestWidget(completedMeeting));
       await tester.pumpAndSettle();
-      await tester.tap(find.byIcon(Icons.picture_as_pdf_outlined));
+
+      await tester.tap(find.byIcon(Icons.ios_share));
       await tester.pumpAndSettle();
 
-      // Assert: 에러 후 버튼이 다시 표시되어야 함
-      expect(find.byIcon(Icons.picture_as_pdf_outlined), findsOneWidget);
+      await tester.tap(find.text('PDF'));
+      await tester.pumpAndSettle();
+
+      // Assert: 에러 후 ios_share 버튼이 다시 표시되어야 함
+      expect(find.byIcon(Icons.ios_share), findsOneWidget);
     });
   });
 }
