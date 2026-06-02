@@ -23,6 +23,7 @@ from backend.app.api.v1 import (
     batch,
     bookmarks,
     dashboard,
+    devices,
     diarization,
     enhanced_statistics,
     export,
@@ -81,6 +82,7 @@ TAGS_METADATA = [
     {"name": "statistics", "description": "Meeting statistics and dashboard views."},
     {"name": "quality", "description": "Meeting minutes quality assessment and improvement suggestions."},
     {"name": "auth", "description": "User authentication and session APIs."},
+    {"name": "devices", "description": "FCM device registration and push notification management."},
     {"name": "teams", "description": "Team workspace management."},
     {"name": "meetings", "description": "Shared meeting records and permissions."},
     {"name": "bookmarks", "description": "Meeting bookmarks and highlights."},
@@ -216,6 +218,9 @@ def create_app() -> FastAPI:
 
     # SPEC-TEAM-001: 인증 API (공개 엔드포인트 - API Key 불필요)
     app.include_router(auth.router, prefix=api_prefix)
+
+    # SPEC-MOBILE-001: FCM 디바이스 등록 API (공개 엔드포인트 - API Key 불필요, JWT 인증은 각 엔드포인트에서 처리)
+    app.include_router(devices.router, prefix=api_prefix)
 
     # SPEC-TEAM-001: 팀 관리 API (JWT 인증은 각 엔드포인트에서 처리)
     app.include_router(teams.router, prefix=api_prefix)

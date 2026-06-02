@@ -51,6 +51,12 @@ dependencies:
   just_audio: ^0.9.42
   google_sign_in: ^6.2.0
   sign_in_with_apple: ^6.1.0
+  firebase_core: ^3.8.0
+  firebase_messaging: ^15.1.0
+  flutter_local_notifications: ^18.0.0
+  audio_session: ^0.1.21
+  permission_handler: ^11.3.0
+  url_launcher: ^6.3.0
 
 dev_dependencies:
   flutter_test:
@@ -63,6 +69,8 @@ dev_dependencies:
   # rules and activating additional ones.
   flutter_lints: ^3.0.0
   mocktail: ^1.0.4
+  flutter_launcher_icons: ^0.14.2
+  flutter_native_splash: ^2.4.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -105,3 +113,16 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/custom-fonts/#from-packages
+
+# flutter_launcher_icons 설정
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon/app_icon.png"
+
+# flutter_native_splash 설정
+flutter_native_splash:
+  color: "#1A1A2E"
+  image: assets/icon/splash_logo.png
+  android: true
+  ios: true

@@ -44,6 +44,8 @@ dependencies = [
     "passlib[bcrypt]>=1.7.4",
     "bcrypt>=4.0.0,<5.0.0",
     "pydantic[email]>=2.9",
+    # SPEC-MOBILE-001: FCM 푸시 알림 의존성
+    "firebase-admin>=6.0",
 ]
 
 [project.optional-dependencies]

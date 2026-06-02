@@ -7,7 +7,7 @@ import io
 import math
 import struct
 import wave
-from datetime import UTC
+from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -229,7 +229,7 @@ def client(mock_redis_client, tmp_path):
     from fastapi.testclient import TestClient
 
     from backend.app.config import Settings
-    from backend.app.dependencies import get_redis_client
+    from backend.app.dependencies import get_current_user, get_redis_client
     from backend.app.main import app
     from backend.app.middleware.auth import verify_api_key
 
@@ -264,8 +264,21 @@ def client(mock_redis_client, tmp_path):
     async def override_verify_api_key():
         return "test-bypass"
 
+    # SPEC-MOBILE-001: 테스트에서 JWT 인증 건너뜀 (mock 사용자 반환)
+    async def override_get_current_user():
+        mock_user = MagicMock()
+        mock_user.id = "test-user-id"
+        mock_user.email = "test@example.com"
+        mock_user.display_name = "Test User"
+        mock_user.is_active = True
+        mock_user.provider = "email"
+        mock_user.avatar_url = None
+        mock_user.created_at = datetime.now(UTC)
+        return mock_user
+
     app.dependency_overrides[get_redis_client] = override_redis
     app.dependency_overrides[verify_api_key] = override_verify_api_key
+    app.dependency_overrides[get_current_user] = override_get_current_user
 
     # lifespan 중 모델 로드 방지
     with patch("backend.app.main.WhisperEngine") as mock_engine_cls:

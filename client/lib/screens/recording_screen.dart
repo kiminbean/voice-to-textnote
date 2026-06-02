@@ -7,6 +7,9 @@ import 'package:voice_to_textnote/models/meeting.dart';
 import 'package:voice_to_textnote/providers/meeting_list_provider.dart';
 import 'package:voice_to_textnote/providers/recording_provider.dart';
 import 'package:voice_to_textnote/providers/vocabulary_provider.dart';
+import 'package:voice_to_textnote/providers/notification_provider.dart';
+import 'package:voice_to_textnote/services/permission_service.dart';
+import 'package:voice_to_textnote/widgets/permission_dialog.dart';
 
 class RecordingScreen extends ConsumerStatefulWidget {
   const RecordingScreen({super.key});
@@ -21,6 +24,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
   late AnimationController _scaleController;
   late Animation<double> _scaleAnimation;
   String? _selectedVocabularyId;
+  bool _isPermissionChecked = false;
 
   @override
   void initState() {
@@ -36,6 +40,8 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
       parent: _scaleController,
       curve: Curves.easeInOut,
     );
+    // 화면 진입 시 권한 체크
+    _checkPermissions();
   }
 
   @override
@@ -43,6 +49,70 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
     _timer?.cancel();
     _scaleController.dispose();
     super.dispose();
+  }
+
+  /// 권한 상태 확인 (화면 진입 시)
+  Future<void> _checkPermissions() async {
+    final permissionService = ref.read(permissionServiceProvider);
+    final micStatus = await permissionService.checkMicrophonePermission();
+
+    if (micStatus != PermissionStatus.granted) {
+      // 권한 요청 다이얼로그 표시
+      if (mounted) {
+        _showPermissionDialog(PermissionType.microphone);
+      }
+    } else {
+      setState(() {
+        _isPermissionChecked = true;
+      });
+    }
+  }
+
+  /// 권한 요청 다이얼로그 표시
+  void _showPermissionDialog(PermissionType type) {
+    showDialog(
+      context: context,
+      builder: (context) => PermissionDialog(
+        permissionType: type,
+        onRequest: () => _requestPermission(type),
+        onOpenSettings: () => _openSettings(),
+      ),
+    );
+  }
+
+  /// 권한 요청
+  Future<void> _requestPermission(PermissionType type) async {
+    final permissionService = ref.read(permissionServiceProvider);
+
+    if (type == PermissionType.microphone) {
+      final status = await permissionService.requestMicrophonePermission();
+      if (status == PermissionStatus.permanentlyDenied) {
+        // 영구 거부 다이얼로그 표시
+        if (mounted) {
+          _showPermanentlyDeniedDialog(type);
+        }
+      } else if (status == PermissionStatus.granted) {
+        setState(() {
+          _isPermissionChecked = true;
+        });
+      }
+    }
+  }
+
+  /// 영구 거부 다이얼로그 표시
+  void _showPermanentlyDeniedDialog(PermissionType type) {
+    showDialog(
+      context: context,
+      builder: (context) => PermanentlyDeniedDialog(
+        permissionType: type,
+        onOpenSettings: () => _openSettings(),
+      ),
+    );
+  }
+
+  /// 설정 열기
+  Future<void> _openSettings() async {
+    await openAppSettings();
   }
 
   // 타이머 시작
@@ -61,6 +131,12 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
 
   // 녹음 토글 - 실제 마이크 녹음 시작/중지 처리
   Future<void> _toggleRecording() async {
+    // 권한 체크를 거치지 않았으면 권한 요청
+    if (!_isPermissionChecked) {
+      await _checkPermissions();
+      return;
+    }
+
     final status = ref.read(recordingProvider).status;
 
     if (status == RecordingStatus.idle || status == RecordingStatus.stopped) {
