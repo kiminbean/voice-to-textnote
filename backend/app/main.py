@@ -24,6 +24,7 @@ from backend.app.api.v1 import (
     bookmarks,
     dashboard,
     diarization,
+    enhanced_statistics,
     export,
     health,
     history,
@@ -208,8 +209,10 @@ def create_app() -> FastAPI:
     app.include_router(export.router, prefix=api_prefix, dependencies=_auth)
     # SPEC-STATS-001: 회의 통계 대시보드 엔드포인트 (읽기 전용)
     app.include_router(statistics.router, prefix=api_prefix, dependencies=_auth)
-       # SPEC-STATS-002: 전체 회의 통계 대시보드 엔드포인트 (읽기 전용)
+    # SPEC-STATS-002: 전체 회의 통계 대시보드 엔드포인트 (읽기 전용)
     app.include_router(dashboard.router, prefix=api_prefix, dependencies=_auth)
+    # SPEC-ENHANCED-STATS-001: 고급 통계 대시보드 엔드포인트 (읽기 전용)
+    app.include_router(enhanced_statistics.router, prefix=api_prefix, dependencies=_auth)
 
     # SPEC-TEAM-001: 인증 API (공개 엔드포인트 - API Key 불필요)
     app.include_router(auth.router, prefix=api_prefix)

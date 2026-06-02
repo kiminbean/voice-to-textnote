@@ -28,7 +28,7 @@ _service = EnhancedStatisticsService()
 @router.get("/{task_id}", response_model=EnhancedStatisticsResponse)
 async def get_enhanced_statistics(
     task_id: str,
-    time_range: str = Query(default="7d", regex="^(1d|7d|30d|90d)$", description="시간 범위 (1d, 7d, 30d, 90d)"),
+    time_range: str = Query(default="7d", pattern="^(1d|7d|30d|90d)$", description="시간 범위 (1d, 7d, 30d, 90d)"),
     top_n_keywords: int = Query(default=10, ge=1, le=50, description="상위 키워드 수"),
     include_speaker_analysis: bool = Query(default=True, description="화자별 분석 포함"),
     include_efficiency_metrics: bool = Query(default=True, description="효율성 지표 포함"),
@@ -60,7 +60,7 @@ async def get_enhanced_statistics(
 
 @router.get("/overview", response_model=OverviewResponse)
 async def get_project_overview(
-    period: str = Query(default="30d", regex="^(7d|30d|90d|180d)$", description="기간 범위"),
+    period: str = Query(default="30d", pattern="^(7d|30d|90d|180d)$", description="기간 범위"),
     top_meetings: int = Query(default=5, ge=1, le=20, description="상위 회의 수"),
     db: AsyncSession = Depends(get_db_session),
     redis_client: aioredis.Redis = Depends(get_redis_client),

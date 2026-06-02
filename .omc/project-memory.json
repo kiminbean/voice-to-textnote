@@ -161,6 +161,12 @@
       "type": "file"
     },
     {
+      "path": "backend/app/api/v1/enhanced_statistics.py",
+      "accessCount": 9,
+      "lastAccessed": 1780379853318,
+      "type": "file"
+    },
+    {
       "path": "backend/tests/unit/test_qa_service.py",
       "accessCount": 8,
       "lastAccessed": 1780340984603,
@@ -173,27 +179,21 @@
       "type": "file"
     },
     {
-      "path": "backend/app/api/v1/enhanced_statistics.py",
-      "accessCount": 7,
-      "lastAccessed": 1780376905334,
-      "type": "file"
-    },
-    {
       "path": "backend/tests/unit/test_auth_api.py",
       "accessCount": 7,
       "lastAccessed": 1780377032529,
       "type": "file"
     },
     {
-      "path": "backend/tests/unit/test_batch_api.py",
-      "accessCount": 6,
-      "lastAccessed": 1780340691683,
+      "path": "backend/tests/unit/test_statistics_api.py",
+      "accessCount": 7,
+      "lastAccessed": 1780379644303,
       "type": "file"
     },
     {
-      "path": "backend/tests/unit/test_statistics_api.py",
+      "path": "backend/tests/unit/test_batch_api.py",
       "accessCount": 6,
-      "lastAccessed": 1780341037531,
+      "lastAccessed": 1780340691683,
       "type": "file"
     },
     {
@@ -281,6 +281,12 @@
       "type": "file"
     },
     {
+      "path": "backend/services/statistics.py",
+      "accessCount": 3,
+      "lastAccessed": 1780379648862,
+      "type": "file"
+    },
+    {
       "path": "backend/app/api/v1/audio.py",
       "accessCount": 2,
       "lastAccessed": 1780339677640,
@@ -308,12 +314,6 @@
       "path": "backend/services/speaker_voice_service.py",
       "accessCount": 2,
       "lastAccessed": 1780340539528,
-      "type": "file"
-    },
-    {
-      "path": "backend/services/statistics.py",
-      "accessCount": 2,
-      "lastAccessed": 1780340539630,
       "type": "file"
     },
     {
