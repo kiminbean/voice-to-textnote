@@ -183,3 +183,57 @@ class TestPingWebhookEndpoint:
         """유효하지 않은 UUID로 422."""
         response = webhooks_client.post("/api/v1/webhooks/invalid-uuid/ping")
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+    def test_ping_webhook_success_response(self, webhooks_client):
+        """ping 요청이 성공하면 WebhookPingResponse 반환."""
+        from backend.db.webhook_service import WebhookService
+
+        webhook_id = uuid.uuid4()
+
+        # WebhookService.ping 메서드 mock
+        with patch.object(
+            WebhookService, "ping", new_callable=AsyncMock, return_value=(200, True, "Success")
+        ):
+            # WebhookService.get_by_id mock
+            mock_endpoint = MagicMock()
+            mock_endpoint.id = webhook_id
+            mock_endpoint.url = "https://example.com/webhook"
+
+            with patch.object(
+                WebhookService, "get_by_id", new_callable=AsyncMock, return_value=mock_endpoint
+            ):
+                response = webhooks_client.post(f"/api/v1/webhooks/{webhook_id}/ping")
+
+                # 성공 응답 확인
+                assert response.status_code == status.HTTP_200_OK
+                data = response.json()
+                assert data["webhook_id"] == str(webhook_id)
+                assert data["url"] == "https://example.com/webhook"
+                assert data["status_code"] == 200
+                assert data["success"] is True
+                assert data["message"] == "Success"
+
+    def test_ping_webhook_failure_response(self, webhooks_client):
+        """ping 요청이 실패하면 실패 메시지 반환."""
+        from backend.db.webhook_service import WebhookService
+
+        webhook_id = uuid.uuid4()
+
+        # WebhookService.ping 메서드 mock (실패 케이스)
+        with patch.object(
+            WebhookService, "ping", new_callable=AsyncMock, return_value=(500, False, "Connection failed")
+        ):
+            mock_endpoint = MagicMock()
+            mock_endpoint.id = webhook_id
+            mock_endpoint.url = "https://example.com/webhook"
+
+            with patch.object(
+                WebhookService, "get_by_id", new_callable=AsyncMock, return_value=mock_endpoint
+            ):
+                response = webhooks_client.post(f"/api/v1/webhooks/{webhook_id}/ping")
+
+                # 실패 응답 확인
+                assert response.status_code == status.HTTP_200_OK
+                data = response.json()
+                assert data["success"] is False
+                assert data["message"] == "Connection failed"
