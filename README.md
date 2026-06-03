@@ -725,6 +725,7 @@ MIT License - 자유로운 상업적 사용 가능
 ✅ CI/CD: GitHub Actions Pipeline
 ✅ SPEC-TMPL-001: Meeting Templates
 ✅ SPEC-SEARCH-001: Full-text Search
+✅ SPEC-SEARCH-002: Advanced Search (Filters/Sort/Autocomplete)
 ✅ SPEC-EXPORT-001: PDF Export
 ✅ SPEC-TEAM-001: JWT Auth + Team CRUD + Member Management + Meeting Share + Flutter Auth/Team UI
 ✅ SPEC-MOBILE-001: Mobile Optimization

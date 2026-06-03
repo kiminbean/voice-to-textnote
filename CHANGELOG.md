@@ -6,6 +6,27 @@
 
 ### Added
 
+- **고급 검색 기능 (SPEC-SEARCH-002)**: SPEC-SEARCH-001 확장 — 필터/정렬/자동완성
+  - Backend: 동적 WHERE/ORDER BY 빌더, `GET /api/v1/search/suggestions` 자동완성 엔드포인트
+  - 날짜 범위 필터 (date_from, date_to), 정렬 (relevance/newest/oldest)
+  - 화자 이름 필터, 액션아이템/핵심결정 필터
+  - Flutter: 정렬 드롭다운, 필터 바텀시트, 자동완성 오버레이, 최근 검색어 (SharedPreferences)
+  - 테스트: Backend 107 passed, Flutter 269 passed
+
+- **회의록 전문 검색 기능 (SPEC-SEARCH-001)**: SQLite FTS5 기반 전문 검색 시스템 구현
+  - Backend: FTS5 가상 테이블 (`search_index`) 및 자동 인덱싱 시스템
+    - `persist_task_result()` 후 자동 인덱싱 (minutes/summary 작업만 대상)
+    - `unicode61` 토크나이저로 한국어 공백/구두점 기반 분리
+    - 스니펫 생성: FTS5 `snippet()` 함수로 매칭 키워드 주변 100~200자 하이라이트
+    - 검색 API: `GET /api/v1/search` (페이지네이션, task_type 필터링 지원)
+  - Flutter: 검색 UI 및 상태 관리
+    - 홈 화면 AppBar 검색 아이콘
+    - 검색 화면: 디바운스(300ms) + 결과 리스트 + 스니펫 하이라이트
+    - Riverpod `FutureProvider.family` 패턴으로 검색 상태 관리
+    - 검색 결과 탭 시 회의 상세 화면으로 네비게이션
+  - 테스트: 백엔드 검색 API 테스트 10개 + Flutter 위젯 테스트 13개
+  - API 응답 시간: < 200ms (100건 이하 데이터 기준), 전체 테스트 커버리지 90.78%
+
 - **모바일 클라이언트 MVP (SPEC-MOBILE-001)**: iOS/Android 네이티브 앱 최적화 구현
   - Android 플랫폼 빌드 설정 (Gradle, Manifest, MainActivity, RecordingService)
   - iOS 백그라운드 오디오 녹음 지원 (Xcode 설정 업데이트)
