@@ -1,19 +1,20 @@
-# SPEC-PERF-001: 장시간 녹음 안정성 개선
-
 ---
 id: SPEC-PERF-001
-title: Long Recording Stability Improvement
-created: 2026-03-24
-status: Implemented
-priority: High (P1)
-domain: PERF (Performance)
-lifecycle: spec-anchored
+version: "1.0.0"
+status: completed
+created: "2026-03-24"
+updated: "2026-06-03"
+author: MoAI
+priority: high
+issue_number: 0
 related_specs:
-  - SPEC-STT-001 (STT 파이프라인)
-  - SPEC-DIA-001 (화자 분리)
-  - SPEC-APP-001 (Flutter 앱)
-  - SPEC-SSE-001 (실시간 진행률)
+  - SPEC-STT-001
+  - SPEC-DIA-001
+  - SPEC-APP-001
+  - SPEC-SSE-001
 ---
+
+# SPEC-PERF-001: 장시간 녹음 안정성 개선
 
 ## 1. 환경 (Environment)
 

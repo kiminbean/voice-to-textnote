@@ -1,14 +1,15 @@
-# SPEC-UI-001: 동적 회의록 테이블 UI
-
 ---
 id: SPEC-UI-001
-title: Dynamic Minutes Table UI
-created: 2026-03-25
-status: Implemented
-priority: High (P1)
-domain: UI
+version: "1.0.0"
+status: completed
+created: "2026-03-25"
+updated: "2026-06-03"
+author: MoAI
+priority: high
 issue_number: 0
 ---
+
+# SPEC-UI-001: 동적 회의록 테이블 UI
 
 ## 1. 문제 정의
 
