@@ -16,29 +16,23 @@ class SearchApi {
 
   SearchApi(this._dio);
 
-  // 전문 검색 요청
-  // query: 검색어 (2자 이상 필요)
-  // taskType: 필터 ('minutes', 'summary', null = 전체)
-  // page: 페이지 번호 (1부터 시작)
-  // pageSize: 페이지당 결과 수
-  Future<SearchResponse> search(
-    String query, {
-    String? taskType,
-    int page = 1,
-    int pageSize = 20,
-  }) async {
-    final params = <String, dynamic>{
-      'q': query,
-      'page': page,
-      'page_size': pageSize,
-    };
-
-    // 태스크 유형 필터가 있으면 추가
-    if (taskType != null) {
-      params['task_type'] = taskType;
-    }
-
-    final response = await _dio.get('/search', queryParameters: params);
+  // 전문 검색 요청 (SPEC-SEARCH-002 Phase 3 확장)
+  // request: 검색 요청 파라미터 (SearchRequest 모델)
+  Future<SearchResponse> search(SearchRequest request) async {
+    final response = await _dio.get(
+      '/search',
+      queryParameters: request.toQueryParams(),
+    );
     return SearchResponse.fromJson(response.data as Map<String, dynamic>);
+  }
+
+  // 자동완성 제안 요청 (SPEC-SEARCH-002 Phase 3)
+  // prefix: 검색어 접두사
+  Future<SuggestionResponse> getSuggestions(String prefix) async {
+    final response = await _dio.get(
+      '/search/suggestions',
+      queryParameters: {'q': prefix},
+    );
+    return SuggestionResponse.fromJson(response.data as Map<String, dynamic>);
   }
 }

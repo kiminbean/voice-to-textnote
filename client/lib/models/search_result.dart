@@ -1,6 +1,147 @@
 // 검색 결과 데이터 모델 (SPEC-SEARCH-001)
 // @MX:NOTE: 백엔드 SearchResponse 스키마와 1:1 매핑
 
+// 검색 요청 파라미터 모델 (SPEC-SEARCH-002 Phase 3)
+class SearchRequest {
+  // 검색어
+  final String query;
+
+  // 태스크 유형 필터 ('all', 'minutes', 'summary')
+  final String? taskType;
+
+  // 페이지 번호 (1부터 시작)
+  final int page;
+
+  // 페이지당 결과 수
+  final int pageSize;
+
+  // 정렬 순서 ('relevance', 'newest', 'oldest')
+  final String? sort;
+
+  // 시작 날짜 (ISO 8601 형식: yyyy-MM-dd)
+  final String? dateFrom;
+
+  // 종료 날짜 (ISO 8601 형식: yyyy-MM-dd)
+  final String? dateTo;
+
+  // 발언자 이름 필터
+  final String? speaker;
+
+  // 행동 항목 포함 여부 필터
+  final bool? hasActionItems;
+
+  // 핵심 결정 사항 포함 여부 필터
+  final bool? hasKeyDecisions;
+
+  const SearchRequest({
+    required this.query,
+    this.taskType,
+    this.page = 1,
+    this.pageSize = 20,
+    this.sort,
+    this.dateFrom,
+    this.dateTo,
+    this.speaker,
+    this.hasActionItems,
+    this.hasKeyDecisions,
+  });
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is SearchRequest &&
+          query == other.query &&
+          taskType == other.taskType &&
+          page == other.page &&
+          pageSize == other.pageSize &&
+          sort == other.sort &&
+          dateFrom == other.dateFrom &&
+          dateTo == other.dateTo &&
+          speaker == other.speaker &&
+          hasActionItems == other.hasActionItems &&
+          hasKeyDecisions == other.hasKeyDecisions;
+
+  @override
+  int get hashCode => Object.hash(
+        query,
+        taskType,
+        page,
+        pageSize,
+        sort,
+        dateFrom,
+        dateTo,
+        speaker,
+        hasActionItems,
+        hasKeyDecisions,
+      );
+
+  /// null이 아닌 파라미터만 쿼리 파라미터 Map으로 변환
+  Map<String, String> toQueryParams() {
+    final params = <String, String>{
+      'q': query,
+      'page': page.toString(),
+      'page_size': pageSize.toString(),
+    };
+
+    if (taskType != null && taskType != 'all') {
+      params['task_type'] = taskType!;
+    }
+
+    if (sort != null) {
+      params['sort'] = sort!;
+    }
+
+    if (dateFrom != null) {
+      params['date_from'] = dateFrom!;
+    }
+
+    if (dateTo != null) {
+      params['date_to'] = dateTo!;
+    }
+
+    if (speaker != null && speaker!.isNotEmpty) {
+      params['speaker'] = speaker!;
+    }
+
+    if (hasActionItems != null) {
+      params['has_action_items'] = hasActionItems.toString();
+    }
+
+    if (hasKeyDecisions != null) {
+      params['has_key_decisions'] = hasKeyDecisions.toString();
+    }
+
+    return params;
+  }
+
+  /// SearchRequest 복사 (일부 필드만 변경)
+  SearchRequest copyWith({
+    String? query,
+    String? taskType,
+    int? page,
+    int? pageSize,
+    String? sort,
+    String? dateFrom,
+    String? dateTo,
+    String? speaker,
+    bool? hasActionItems,
+    bool? hasKeyDecisions,
+  }) {
+    return SearchRequest(
+      query: query ?? this.query,
+      taskType: taskType ?? this.taskType,
+      page: page ?? this.page,
+      pageSize: pageSize ?? this.pageSize,
+      sort: sort ?? this.sort,
+      dateFrom: dateFrom ?? this.dateFrom,
+      dateTo: dateTo ?? this.dateTo,
+      speaker: speaker ?? this.speaker,
+      hasActionItems: hasActionItems ?? this.hasActionItems,
+      hasKeyDecisions: hasKeyDecisions ?? this.hasKeyDecisions,
+    );
+  }
+}
+
 // 개별 검색 결과 항목
 class SearchResultItem {
   // 태스크 고유 식별자
@@ -109,4 +250,36 @@ class SearchResponse {
 
   /// 마지막 페이지인지 확인
   bool get isLastPage => page >= totalPages;
+}
+
+// 자동완성 제안 응답 모델 (SPEC-SEARCH-002 Phase 3)
+class SuggestionResponse {
+  // 제안 목록
+  final List<String> suggestions;
+
+  // 원본 검색어 접두사
+  final String query;
+
+  const SuggestionResponse({
+    required this.suggestions,
+    required this.query,
+  });
+
+  factory SuggestionResponse.fromJson(Map<String, dynamic> json) {
+    return SuggestionResponse(
+      suggestions: (json['suggestions'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          [],
+      query: json['query'] as String? ?? '',
+    );
+  }
+
+  /// SuggestionResponse를 JSON으로 변환
+  Map<String, dynamic> toJson() {
+    return {
+      'suggestions': suggestions,
+      'query': query,
+    };
+  }
 }

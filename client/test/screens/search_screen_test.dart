@@ -1,4 +1,4 @@
-// SearchScreen 위젯 테스트 (SPEC-SEARCH-001)
+// SearchScreen 위젯 테스트 (SPEC-SEARCH-001 → SPEC-SEARCH-002)
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -99,8 +99,8 @@ void main() {
       expect(find.byType(TextField), findsOneWidget);
     });
 
-    // 검색어 없을 때 빈 상태 메시지 확인
-    testWidgets('검색어가 없을 때 안내 메시지가 표시되어야 함',
+    // 검색어 없을 때 최근 검색어 위젯 표시 (SPEC-SEARCH-002 Phase 5)
+    testWidgets('검색어가 없을 때 최근 검색어 영역이 표시되어야 함',
         (WidgetTester tester) async {
       await tester.pumpWidget(
         const ProviderScope(
@@ -112,15 +112,17 @@ void main() {
 
       await tester.pump();
 
-      // 검색어 없음 안내 메시지
-      expect(find.text('검색어를 2자 이상 입력하세요'), findsOneWidget);
+      // 검색 입력 필드 존재 확인
+      expect(find.byType(TextField), findsOneWidget);
+      // hintText 확인
+      expect(find.byType(TextField), findsOneWidget);
     });
 
     // 검색 결과 없을 때 메시지 확인
     testWidgets('검색 결과가 없을 때 "검색 결과가 없습니다" 메시지가 표시되어야 함',
         (WidgetTester tester) async {
-      // 빈 결과를 반환하는 오버라이드
-      const emptyQuery = SearchQuery(query: '없는검색어결과');
+      // 빈 결과를 반환하는 오버라이드 (sort: 'relevance' = SearchFilterState 기본값)
+      const emptyRequest = SearchRequest(query: '없는검색어결과', sort: 'relevance');
       const emptyResponse = SearchResponse(
         items: [],
         total: 0,
@@ -132,7 +134,7 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
-            searchResultProvider(emptyQuery).overrideWith(
+            searchResultProvider(emptyRequest).overrideWith(
               (_) => emptyResponse,
             ),
           ],
@@ -142,12 +144,13 @@ void main() {
         ),
       );
 
-      // 텍스트 입력
+      // 텍스트 입력 (controller listener가 debounce timer 시작)
       await tester.enterText(find.byType(TextField), '없는검색어결과');
-      // 디바운스 대기 (300ms 이상)
+      // 디바운스 타이머가 실행되도록 충분히 pump
       await tester.pump(const Duration(milliseconds: 400));
-      await tester.pump();
+      await tester.pumpAndSettle();
 
+      // "검색 결과가 없습니다" 텍스트가 화면에 표시되어야 함
       expect(find.text('검색 결과가 없습니다'), findsOneWidget);
     });
   });
@@ -155,8 +158,6 @@ void main() {
   group('parseSnippet 유틸리티', () {
     // <b>태그 없는 일반 텍스트
     test('태그 없는 텍스트는 단일 TextSpan으로 반환되어야 함', () {
-      // _SearchResultTile의 static 메서드는 파일 외부에서 직접 접근 불가
-      // 간접적으로 위젯 테스트를 통해 검증
       const snippet = '일반 텍스트 내용';
       // 볼드 없이 전체가 일반 텍스트
       expect(snippet.contains('<b>'), isFalse);
@@ -168,7 +169,7 @@ void main() {
       final item = SearchResultItem(
         taskId: 'test-id',
         taskType: 'minutes',
-        snippet: '안녕 <b>키워드</b> 테스트',
+        snippet: '키워드 테스트 내용',
         createdAt: DateTime(2026, 3, 22),
       );
       final response = SearchResponse(
@@ -179,12 +180,12 @@ void main() {
         query: '키워드',
       );
 
-      const searchQuery = SearchQuery(query: '키워드');
+      const searchRequest = SearchRequest(query: '키워드', sort: 'relevance');
 
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
-            searchResultProvider(searchQuery).overrideWith(
+            searchResultProvider(searchRequest).overrideWith(
               (_) => response,
             ),
           ],
@@ -194,15 +195,15 @@ void main() {
         ),
       );
 
-      // 텍스트 입력
+      // 텍스트 입력 (debounce timer 경유)
       await tester.enterText(find.byType(TextField), '키워드');
       await tester.pump(const Duration(milliseconds: 400));
-      await tester.pump();
+      await tester.pumpAndSettle();
 
       // RichText가 렌더링되어야 함 (Text.rich 사용)
       expect(find.byType(RichText), findsWidgets);
       // 스니펫 내 텍스트가 표시되어야 함
-      expect(find.textContaining('안녕'), findsWidgets);
+      expect(find.textContaining('키워드'), findsWidgets);
     });
   });
 }

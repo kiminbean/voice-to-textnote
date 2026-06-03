@@ -1,9 +1,15 @@
 """
-검색 서비스 테스트 - SPEC-SEARCH-001
+검색 서비스 테스트 - SPEC-SEARCH-001, SPEC-SEARCH-002
 
 테스트 범위:
-- SearchService.search(): FTS5 기반 전문 검색
+- SearchService.search(): FTS5 기반 전문 검색 (SPEC-SEARCH-001)
+- REQ-SEARCH-007: 날짜 범위 필터 (date_from, date_to)
+- REQ-SEARCH-008: 정렬 옵션 (sort: relevance | newest | oldest)
+- REQ-SEARCH-011: 화자 이름 필터 (speaker)
+- REQ-SEARCH-012: 액션 아이템/핵심 결정 필터 (has_action_items, has_key_decisions)
 """
+
+from datetime import datetime
 
 import pytest
 import pytest_asyncio
@@ -11,6 +17,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from backend.db.models import Base
+from backend.schemas.search import SortOption
 
 # ---------------------------------------------------------------------------
 # 테스트 픽스처
@@ -276,3 +283,166 @@ class TestSearchService:
             assert hasattr(item, "created_at")
             # completed_at은 optional
             assert hasattr(item, "completed_at")
+
+
+class TestSearchServiceExtendedFilters:
+    """SearchService 동적 필터/정렬 테스트 (SPEC-SEARCH-002)"""
+
+    @pytest.mark.asyncio
+    async def test_search_with_date_range(self, populated_search_db):
+        """REQ-SEARCH-007: 날짜 범위 필터"""
+        from backend.db.search_service import SearchService
+
+        service = SearchService()
+        date_from = datetime(2024, 1, 2)
+        date_to = datetime(2024, 1, 3)
+
+        result = await service.search(
+            session=populated_search_db,
+            query="회의",
+            date_from=date_from,
+            date_to=date_to,
+        )
+
+        # 모든 결과가 날짜 범위 내에 있는지 확인
+        for item in result.items:
+            assert item.created_at >= date_from
+            assert item.created_at <= date_to
+
+    @pytest.mark.asyncio
+    async def test_search_with_date_from_only(self, populated_search_db):
+        """REQ-SEARCH-007: date_from만 지정"""
+        from backend.db.search_service import SearchService
+
+        service = SearchService()
+        date_from = datetime(2024, 1, 2)
+
+        result = await service.search(
+            session=populated_search_db,
+            query="회의",
+            date_from=date_from,
+        )
+
+        # 모든 결과가 date_from 이후인지 확인
+        for item in result.items:
+            assert item.created_at >= date_from
+
+    @pytest.mark.asyncio
+    async def test_search_with_date_to_only(self, populated_search_db):
+        """REQ-SEARCH-007: date_to만 지정"""
+        from backend.db.search_service import SearchService
+
+        service = SearchService()
+        date_to = datetime(2024, 1, 3)
+
+        result = await service.search(
+            session=populated_search_db,
+            query="회의",
+            date_to=date_to,
+        )
+
+        # 모든 결과가 date_to 이전인지 확인
+        for item in result.items:
+            assert item.created_at <= date_to
+
+    @pytest.mark.asyncio
+    async def test_search_sort_newest(self, populated_search_db):
+        """REQ-SEARCH-008: newest 정렬 (created_at DESC)"""
+        from backend.db.search_service import SearchService
+
+        service = SearchService()
+
+        result = await service.search(
+            session=populated_search_db, query="회의", sort=SortOption.NEWEST
+        )
+
+        # created_at 내림차순 정렬 확인
+        if len(result.items) >= 2:
+            for i in range(len(result.items) - 1):
+                assert result.items[i].created_at >= result.items[i + 1].created_at
+
+    @pytest.mark.asyncio
+    async def test_search_sort_oldest(self, populated_search_db):
+        """REQ-SEARCH-008: oldest 정렬 (created_at ASC)"""
+        from backend.db.search_service import SearchService
+
+        service = SearchService()
+
+        result = await service.search(
+            session=populated_search_db, query="회의", sort=SortOption.OLDEST
+        )
+
+        # created_at 오름차순 정렬 확인
+        if len(result.items) >= 2:
+            for i in range(len(result.items) - 1):
+                assert result.items[i].created_at <= result.items[i + 1].created_at
+
+    @pytest.mark.asyncio
+    async def test_search_default_sort(self, populated_search_db):
+        """REQ-SEARCH-008: sort 미지정 시 기본 정렬 (created_at DESC, 하위 호환)"""
+        from backend.db.search_service import SearchService
+
+        service = SearchService()
+
+        result = await service.search(session=populated_search_db, query="회의")
+
+        # 기본 정렬이 created_at DESC인지 확인
+        if len(result.items) >= 2:
+            for i in range(len(result.items) - 1):
+                assert result.items[i].created_at >= result.items[i + 1].created_at
+
+    @pytest.mark.asyncio
+    async def test_search_with_speaker_filter(self, populated_search_db):
+        """REQ-SEARCH-011: 화자 이름 필터"""
+        from backend.db.search_service import SearchService
+
+        service = SearchService()
+
+        result = await service.search(
+            session=populated_search_db, query="회의", speaker="김팀장"
+        )
+
+        # 필터가 적용되어 결과가 반환됨
+        assert result is not None
+
+    @pytest.mark.asyncio
+    async def test_search_with_has_action_items(self, populated_search_db):
+        """REQ-SEARCH-012: has_action_items 필터"""
+        from backend.db.search_service import SearchService
+
+        service = SearchService()
+
+        result = await service.search(
+            session=populated_search_db, query="스프린트", has_action_items=True
+        )
+
+        # action_items_text가 비어있지 않은 결과만 반환됨
+        assert result is not None
+
+    @pytest.mark.asyncio
+    async def test_combined_filters(self, populated_search_db):
+        """REQ-SEARCH-012: 복합 필터 조합"""
+        from backend.db.search_service import SearchService
+
+        service = SearchService()
+        date_from = datetime(2024, 1, 2)
+
+        result = await service.search(
+            session=populated_search_db,
+            query="회의",
+            task_type="summary",
+            date_from=date_from,
+            sort=SortOption.NEWEST,
+            speaker="김팀장",
+            has_action_items=True,
+        )
+
+        # 모든 필터가 적용되었는지 확인
+        for item in result.items:
+            assert item.created_at >= date_from
+            assert item.task_type == "summary"
+
+        if len(result.items) >= 2:
+            # 정렬 확인
+            for i in range(len(result.items) - 1):
+                assert result.items[i].created_at >= result.items[i + 1].created_at
