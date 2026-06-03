@@ -93,3 +93,113 @@ class PipelineError(VoiceNoteError):
             message=message,
             status_code=status_code,
         )
+
+
+class NotFoundError(VoiceNoteError):
+    """
+    리소스를 찾을 수 없음 (404)
+
+    요청한 리소스가 존재하지 않을 때 발생하는 예외
+    기본 상태 코드: 404 (Not Found)
+    """
+
+    def __init__(
+        self,
+        *,
+        message: str = "리소스를 찾을 수 없습니다",
+        error_code: str = "NOT_FOUND",
+        status_code: int = 404,
+    ) -> None:
+        super().__init__(
+            error_code=error_code,
+            message=message,
+            status_code=status_code,
+        )
+
+
+class UnauthorizedError(VoiceNoteError):
+    """
+    인증 필요 (401)
+
+    인증 정보가 없거나 유효하지 않을 때 발생하는 예외
+    기본 상태 코드: 401 (Unauthorized)
+    """
+
+    def __init__(
+        self,
+        *,
+        message: str = "인증이 필요합니다",
+        error_code: str = "UNAUTHORIZED",
+        status_code: int = 401,
+    ) -> None:
+        super().__init__(
+            error_code=error_code,
+            message=message,
+            status_code=status_code,
+        )
+
+
+class ForbiddenError(VoiceNoteError):
+    """
+    접근 권한 없음 (403)
+
+    인증되었지만 요청한 리소스에 접근할 권한이 없을 때 발생하는 예외
+    기본 상태 코드: 403 (Forbidden)
+    """
+
+    def __init__(
+        self,
+        *,
+        message: str = "접근 권한이 없습니다",
+        error_code: str = "FORBIDDEN",
+        status_code: int = 403,
+    ) -> None:
+        super().__init__(
+            error_code=error_code,
+            message=message,
+            status_code=status_code,
+        )
+
+
+class ConflictError(VoiceNoteError):
+    """
+    리소스 충돌 (409)
+
+    요청이 현재 서버 상태와 충돌할 때 발생하는 예외
+    기본 상태 코드: 409 (Conflict)
+    """
+
+    def __init__(
+        self,
+        *,
+        message: str,
+        error_code: str = "CONFLICT",
+        status_code: int = 409,
+    ) -> None:
+        super().__init__(
+            error_code=error_code,
+            message=message,
+            status_code=status_code,
+        )
+
+
+class RateLimitError(VoiceNoteError):
+    """
+    요청 제한 초과 (429)
+
+    요청 속도 제한을 초과했을 때 발생하는 예외
+    기본 상태 코드: 429 (Too Many Requests)
+    """
+
+    def __init__(
+        self,
+        *,
+        message: str = "요청 제한을 초과했습니다",
+        error_code: str = "RATE_LIMIT",
+        status_code: int = 429,
+    ) -> None:
+        super().__init__(
+            error_code=error_code,
+            message=message,
+            status_code=status_code,
+        )
