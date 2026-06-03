@@ -30,12 +30,23 @@ class SearchResultItem {
     return SearchResultItem(
       taskId: json['task_id'] as String,
       taskType: json['task_type'] as String,
-      snippet: json['snippet'] as String,
+      snippet: json['snippet'] as String? ?? '',
       createdAt: DateTime.parse(json['created_at'] as String),
       completedAt: json['completed_at'] != null
           ? DateTime.parse(json['completed_at'] as String)
           : null,
     );
+  }
+
+  /// SearchResultItem을 JSON으로 변환
+  Map<String, dynamic> toJson() {
+    return {
+      'task_id': taskId,
+      'task_type': taskType,
+      'snippet': snippet,
+      'created_at': createdAt.toIso8601String(),
+      'completed_at': completedAt?.toIso8601String(),
+    };
   }
 }
 
@@ -72,10 +83,30 @@ class SearchResponse {
                 SearchResultItem.fromJson(item as Map<String, dynamic>),
           )
           .toList(),
-      total: json['total'] as int,
-      page: json['page'] as int,
-      pageSize: json['page_size'] as int,
-      query: json['query'] as String,
+      total: json['total'] as int? ?? 0,
+      page: json['page'] as int? ?? 1,
+      pageSize: json['page_size'] as int? ?? 20,
+      query: json['query'] as String? ?? '',
     );
   }
+
+  /// SearchResponse를 JSON으로 변환
+  Map<String, dynamic> toJson() {
+    return {
+      'items': items.map((e) => e.toJson()).toList(),
+      'total': total,
+      'page': page,
+      'page_size': pageSize,
+      'query': query,
+    };
+  }
+
+  /// 전체 페이지 수 계산
+  int get totalPages => (total / pageSize).ceil();
+
+  /// 첫 페이지인지 확인
+  bool get isFirstPage => page <= 1;
+
+  /// 마지막 페이지인지 확인
+  bool get isLastPage => page >= totalPages;
 }

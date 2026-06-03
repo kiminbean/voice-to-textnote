@@ -1,9 +1,9 @@
 ---
 id: SPEC-SEARCH-001
 version: "1.0.0"
-status: draft
+status: completed
 created: "2026-03-22"
-updated: "2026-03-22"
+updated: "2026-06-03"
 author: kisoo
 priority: high
 issue_number: 0
@@ -14,6 +14,7 @@ issue_number: 0
 | 버전 | 날짜 | 작성자 | 변경 내용 |
 |------|------|--------|-----------|
 | 1.0.0 | 2026-03-22 | kisoo | 초기 SPEC 작성 |
+| 1.0.0 | 2026-06-03 | MoAI | 구현 완료 확인, status → completed |
 
 ---
 
