@@ -16,12 +16,14 @@ import backend.db.speaker_voice_models  # noqa: F401
 from backend.app.api.v1 import (
     action_items,
     admin,
+    advanced_search,
     audio,
     audio_analysis,
     audio_preprocess,
     auth,
     batch,
     bookmarks,
+    calendar,
     dashboard,
     devices,
     diarization,
@@ -81,6 +83,7 @@ TAGS_METADATA = [
     {"name": "export", "description": "Meeting export endpoints."},
     {"name": "statistics", "description": "Meeting statistics and dashboard views."},
     {"name": "quality", "description": "Meeting minutes quality assessment and improvement suggestions."},
+    {"name": "calendar", "description": "Calendar integration for meeting events and action items."},
     {"name": "auth", "description": "User authentication and session APIs."},
     {"name": "devices", "description": "FCM device registration and push notification management."},
     {"name": "teams", "description": "Team workspace management."},
@@ -95,6 +98,7 @@ TAGS_METADATA = [
     {"name": "action-items", "description": "Action item extraction from meeting text."},
     {"name": "audio-analysis", "description": "Audio quality analysis."},
     {"name": "audio-preprocess", "description": "Audio cleanup and normalization."},
+    {"name": "advanced-search", "description": "Advanced search with filters, analytics, and history."},
 ]
 
 
@@ -215,6 +219,8 @@ def create_app() -> FastAPI:
     app.include_router(dashboard.router, prefix=api_prefix, dependencies=_auth)
     # SPEC-ENHANCED-STATS-001: 고급 통계 대시보드 엔드포인트 (읽기 전용)
     app.include_router(enhanced_statistics.router, prefix=api_prefix, dependencies=_auth)
+    # SPEC-ADVANCED-SEARCH-001: 고급 검색 API (필터, 분석, 기록)
+    app.include_router(advanced_search.router, prefix=api_prefix, dependencies=_auth)
 
     # SPEC-TEAM-001: 인증 API (공개 엔드포인트 - API Key 불필요)
     app.include_router(auth.router, prefix=api_prefix)
@@ -259,6 +265,9 @@ def create_app() -> FastAPI:
 
     # SPEC-QUALITY-001: 회의록 품질 평가 및 개선 제안 API
     app.include_router(quality_assessment.router, prefix=api_prefix, dependencies=_auth)
+
+    # SPEC-CAL-001: 캘린더 통합 API
+    app.include_router(calendar.router, prefix=api_prefix, dependencies=_auth)
 
     # REQ-VOCAB-001: 커스텀 어휘 관리 API
     app.include_router(vocabulary.router, prefix=api_prefix, dependencies=_auth)
