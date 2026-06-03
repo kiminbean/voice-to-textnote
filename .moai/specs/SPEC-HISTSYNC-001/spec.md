@@ -1,4 +1,23 @@
+---
+id: SPEC-HISTSYNC-001
+version: "1.0.0"
+status: completed
+created: "2026-03-29"
+updated: "2026-06-03"
+author: MoAI
+priority: high
+issue_number: 0
+---
+
 # SPEC-HISTSYNC-001: Home Screen Meeting History Sync
+
+## HISTORY
+
+| Date | Version | Change | Author |
+|------|---------|--------|--------|
+| 2026-03-29 | 0.1.0 | Initial SPEC creation | MoAI |
+| 2026-06-02 | 1.0.0 | Implementation completed | MoAI |
+| 2026-06-03 | 1.0.0 | Standard format restoration (frontmatter, plan, acceptance) | MoAI |
 
 ## Summary
 

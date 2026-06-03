@@ -1,14 +1,23 @@
+---
+id: SPEC-ENV-001
+version: "1.0.0"
+status: completed
+created: "2026-03-29"
+updated: "2026-06-03"
+author: MoAI
+priority: medium
+issue_number: 0
+---
+
 # SPEC-ENV-001: Flutter 환경 설정 분리
 
-## 메타데이터
+## HISTORY
 
-| 항목 | 내용 |
-|------|------|
-| SPEC ID | SPEC-ENV-001 |
-| 상태 | IN_PROGRESS |
-| 생성일 | 2026-03-29 |
-| 담당 | kisoo |
-| 우선순위 | MEDIUM |
+| Date | Version | Change | Author |
+|------|---------|--------|--------|
+| 2026-03-29 | 0.1.0 | Initial SPEC creation | kisoo |
+| 2026-06-02 | 1.0.0 | Implementation completed | MoAI |
+| 2026-06-03 | 1.0.0 | Standard format restoration | MoAI |
 
 ## 문제 정의
 

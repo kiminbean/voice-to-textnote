@@ -1,4 +1,22 @@
+---
+id: SPEC-BUGFIX-001
+version: "1.0.0"
+status: completed
+created: "2026-06-02"
+updated: "2026-06-03"
+author: MoAI
+priority: high
+issue_number: 0
+---
+
 # SPEC-BUGFIX-001: 테스트 불일치 및 린트 오류 수정
+
+## HISTORY
+
+| Date | Version | Change | Author |
+|------|---------|--------|--------|
+| 2026-06-02 | 1.0.0 | Initial SPEC and implementation | MoAI |
+| 2026-06-03 | 1.0.0 | Standard format restoration | MoAI |
 
 ## 개요
 
