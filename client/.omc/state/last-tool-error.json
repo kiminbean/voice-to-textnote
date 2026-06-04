@@ -1,7 +1,0 @@
-{
-  "tool_name": "Bash",
-  "tool_input_preview": "{\"command\":\"grep -n \\\"onSubmit\\\" client/lib/screens/search_screen.dart\",\"description\":\"Find onSubmit in search_screen.dart\"}",
-  "error": "Exit code 2\nugrep: warning: client/lib/screens/search_screen.dart: No such file or directory",
-  "timestamp": "2026-06-03T12:23:39.785Z",
-  "retry_count": 2
-}

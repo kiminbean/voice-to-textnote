@@ -1,3 +1,0 @@
-{"t":0,"agent":"ada5a66","agent_type":"expert-backend","event":"agent_start","parent_mode":"none"}
-{"t":0,"agent":"ada5a66","agent_type":"expert-backend","event":"agent_stop","success":true,"duration_ms":145725}
-{"t":0,"agent":"system","event":"skill_invoked","skill_name":"moai"}

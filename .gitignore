@@ -226,7 +226,9 @@ storage/temp/**
 # ===========================================
 # OMC Runtime Session State
 # ===========================================
-# Only mission-state.json is tracked; all other state files are runtime-only
-.omc/state/*
-!.omc/state/mission-state.json
+# Ignore all OMC runtime artifacts (sessions, state, replay) anywhere in the tree.
+# Only mission-state.json is tracked; everything else is runtime-only.
+**/.omc/**
+!**/.omc/state/
+!**/.omc/state/mission-state.json
 .omx/
