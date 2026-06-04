@@ -302,3 +302,136 @@ backend/                             backend/
 - Modified: 32 backend app files, 50 test files
 - Deleted: 11 backend db service files
 - Total: 103 files, +981 / -3577 lines
+
+---
+
+## 7. Remaining Scope (Plan Iteration 2)
+
+이번 반복(Iteration 2)에서 처리할 범위는 **두 가지**다. Phase 4(라우터 도메인 그룹핑)는 이번 반복의 범위에서 **제외**한다(다음 반복으로 연기).
+
+- **Scope A**: 알려진 테스트 회귀(regression) 수정 → 백엔드 테스트 그린(green) 달성
+- **Scope B**: Phase 3(의존성 주입) 완료 → 모듈 레벨 서비스 싱글톤 제거 (REQ-DEP-001 잔여분)
+
+### 7.1 검증 환경 (Verification Environment)
+
+- venv Python 경로: `backend/../venv/bin/python` (예: `cd backend && ../venv/bin/python -m pytest ...`)
+- 커버리지 게이트가 회귀 식별을 방해하면 `-o addopts=""`로 비활성화하여 실패 목록만 확인한다.
+- import 접두사는 `backend.` (예: `from backend.app.exceptions import VoiceNoteError`)
+
+### 7.2 Scope A — 테스트 회귀 수정 (Priority High)
+
+#### 회귀 분류 (2026-06-04 전체 스위트 재검증 기준)
+
+전체 스위트 실행 결과 **27건 실패**가 관측되었다. 이 중 **9건은 `tests/e2e/test_pipeline_e2e.py`의 `RuntimeError: There is no current event loop` 오류로, 리팩토링과 무관한 Python 3.14 환경(asyncio 이벤트 루프) 이슈**이므로 이번 Scope에서 **제외**한다(7.4 Ambiguity 참조). 리팩토링 관련 회귀는 다음 3개 근본 원인 카테고리로 분류된다.
+
+| 카테고리 | 근본 원인 (검증됨) | 대표 테스트 | 수정 방향 |
+|----------|-------------------|------------|-----------|
+| **A-1: 광역 except가 VoiceNoteError를 삼킴** | `audio_preprocess.py`의 업로드 루프에서 `request_entity_too_large()`(413)가 `try` 블록 내부에서 raise되나, 직후 `except Exception`(line 139)이 이를 잡아 `bad_request()`(400)로 재포장. 로그 증거: `message='업로드 처리 실패: ...초과합니다.' status_code=400` | `test_file_too_large_returns_413`, `test_upload_read_failure_returns_400`(413 기대), `test_remaining_coverage.py::TestAudioPreprocessRemaining` 2건 | `except Exception` 블록 이전에 `except VoiceNoteError: raise`를 추가하여 도메인 예외를 그대로 전파 |
+| **A-2: 응답 형식/핸들러 불일치 (404/409/429)** | summary 통합 테스트(`test_summary_api.py`)의 `sum_client` 픽스처(line 107 `app = FastAPI()`, line 146 `TestClient`)가 `register_exception_handlers(app)`를 호출하지 않아 `VoiceNoteError`가 처리되지 않음. sentiment 단위 테스트는 production app을 사용하므로 라우터/테스트 측 개별 재확인 필요 | summary 6건(429 1, 404 4, 409 1), sentiment 1건(404), `test_rate_limit.py::test_rate_limit_response_body_format` 1건 | 테스트 픽스처에 `register_exception_handlers(app)` 등록. production app 사용 케이스는 라우터의 not_found/conflict/rate-limit 경로를 개별 재확인 |
+| **A-3: import 누락 (NameError)** | `transcription.py:150`에서 `except VoiceNoteError:`를 참조하나 import 없음 → `NameError`. 손상 파일 업로드 시 422 대신 500 발생 | `test_upload_corrupted_audio`, `test_corrupted_file_upload_returns_422`, `test_batch_api.py::test_audio_read_error_marked_failed` | `from backend.app.exceptions import VoiceNoteError` 추가 |
+
+> **주의**: Section 6의 근본 원인 서술(예: "size==0 케이스")은 라이브 재검증과 일부 불일치한다. 구현 시 각 테스트의 근본 원인을 **개별 재확인**한 뒤 수정한다. 위 표는 검증된 메커니즘으로 Section 6을 보완(supersede)한다.
+
+#### REQ-RM-A1: 도메인 예외 전파 보장
+
+**Unwanted**: 라우터의 광역 `except Exception` 핸들러는 `VoiceNoteError` 서브클래스를 **삼키지 않아야 한다**.
+
+**State-Driven**: **IF** `try` 블록 내부에서 `VoiceNoteError`가 raise되면, **THEN** 시스템은 해당 예외를 원래 상태 코드로 전파해야 한다.
+
+- 수용 검증: `cd backend && ../venv/bin/python -m pytest -o addopts="" tests/unit/test_audio_preprocess_api.py::TestPreprocessEndpoint::test_file_too_large_returns_413 tests/unit/test_audio_preprocess_v2.py::TestUploadFailure::test_upload_read_failure_returns_400` → **통과(passed)**
+
+#### REQ-RM-A2: 에러 응답 형식 통일 검증
+
+**Event-Driven**: **WHEN** 도메인 에러(404/409/429)가 발생하면, **THEN** 응답 본문은 `{"error_code", "message", "request_id"}` 형식이어야 한다.
+
+- 수용 검증: `cd backend && ../venv/bin/python -m pytest -o addopts="" tests/integration/test_summary_api.py tests/unit/test_sentiment_api_extra.py::TestSentimentAPI::test_get_sentiment_result_not_found` → **0 failed**
+
+#### REQ-RM-A3: import 누락 해소
+
+**Ubiquitous**: 시스템은 **항상** 참조하는 모든 예외 타입을 import해야 한다 (NameError 0건).
+
+- 수용 검증: `cd backend && ../venv/bin/python -m pytest -o addopts="" tests/unit/test_transcription_api.py::TestUploadTranscription::test_upload_corrupted_audio tests/integration/test_api.py::TestScenario7CorruptedFile::test_corrupted_file_upload_returns_422` → **통과(passed)**
+
+#### REQ-RM-A4: 전체 스위트 그린 (글로벌 게이트)
+
+**Ubiquitous**: 시스템은 **항상** 백엔드 테스트 스위트를 통과해야 한다 (e2e 이벤트 루프 환경 이슈 9건 제외).
+
+- 수용 검증: `cd backend && ../venv/bin/python -m pytest tests/ --ignore=tests/e2e/test_pipeline_e2e.py` → **0 failed** (skipped 허용), 커버리지 게이트는 프로젝트 quality 설정 기준 충족
+
+### 7.3 Scope B — Phase 3 의존성 주입 완료 (Priority High)
+
+REQ-DEP-001의 잔여분. `backend/app/api/v1/*.py`의 모듈 레벨 서비스 싱글톤 21건을 FastAPI `Depends()` 주입으로 전환한다.
+
+#### REQ-RM-B1: 모듈 레벨 서비스 싱글톤 제거
+
+**Unwanted**: 시스템은 라우터 모듈 레벨에서 서비스를 직접 인스턴스화 **하지 않아야 한다**.
+
+**Event-Driven**: **WHEN** 라우터가 서비스를 필요로 하면, **THEN** `get_<name>_service()` provider를 통해 `Depends()`로 주입받아야 한다.
+
+전환 대상(검증된 21건, `grep -rn "_service = .*Service()" backend/app/api/v1/`):
+
+| 파일 | 인스턴스 | 비고 |
+|------|----------|------|
+| `tags.py` | `_service = TagService()` | |
+| `meetings.py` | `_meeting_service = MeetingShareService()` | |
+| `transcription.py` | `vocab_service = VocabularyService()` (line 67) | **함수 스코프** — upload 핸들러 내부, `get_vocabulary_service` provider로 전환 |
+| `auth.py` | `_auth_service = AuthService()` | |
+| `dashboard.py` | `_service = StatisticsService()` | |
+| `advanced_search.py` | `_service = AdvancedSearchService()` | |
+| `keywords.py` | `_service = KeywordService()` | |
+| `speakers.py` | `_service = SpeakerService()`, `_voice_service = SpeakerVoiceService()` | 2건 |
+| `webhooks.py` | `_service = WebhookService()` | |
+| `teams.py` | `_team_service = TeamService()`, `_meeting_service = MeetingShareService()` | 2건 |
+| `statistics.py` | `_service = StatisticsService()` | |
+| `enhanced_statistics.py` | `_service = EnhancedStatisticsService()` | |
+| `quality_assessment.py` | `_service = QualityService()` | |
+| `vocabulary.py` | `_service = VocabularyService()` | |
+| `history.py` | `_service = ResultService()` | |
+| `search.py` | `_service = SearchService()` | |
+| `bookmarks.py` | `_service = BookmarkService()` | |
+| `versions.py` | `_service = VersionService()` | |
+| `qa.py` | `_service = QAService()` | |
+
+각 파일에 대해:
+- `def get_<name>_service() -> XxxService: return XxxService()` provider 추가
+- 엔드포인트 시그니처에 `svc: XxxService = Depends(get_<name>_service)` 주입
+- 모듈 레벨 싱글톤 라인 삭제
+- 참조 패턴: 기존 `calendar.py:30 get_calendar_service()`
+
+#### REQ-RM-B2: 서비스 메서드 시그니처 불변
+
+**State-Driven**: **IF** 서비스가 DB 접근이 필요하면, **THEN** 첫 번째 파라미터로 `session: AsyncSession`을 유지한다 (REQ-DEP-002 준수).
+
+- 서비스 메서드 시그니처는 변경하지 않는다 (호출부의 주입 방식만 변경)
+
+#### REQ-RM-B3: grep 게이트 (글로벌)
+
+**Unwanted**: `grep -rn "_service = .*Service()" backend/app/api/v1/` 결과는 **0건**이어야 한다.
+
+- 수용 검증: `grep -rn "_service = .*Service()" backend/app/api/v1/ | wc -l` → **0**
+
+### 7.4 Acceptance Checks (수용 기준 요약)
+
+이번 반복의 완료 조건:
+
+| ID | 검증 명령 | 통과 조건 |
+|----|-----------|-----------|
+| AC-1 | `pytest -o addopts="" tests/unit/test_audio_preprocess_api.py::...::test_file_too_large_returns_413` | passed |
+| AC-2 | `pytest -o addopts="" tests/unit/test_transcription_api.py::...::test_upload_corrupted_audio` | passed |
+| AC-3 | `pytest -o addopts="" tests/integration/test_api.py::TestScenario7CorruptedFile::test_corrupted_file_upload_returns_422` | passed |
+| AC-4 | `pytest -o addopts="" tests/integration/test_summary_api.py tests/unit/test_sentiment_api_extra.py` | 0 failed |
+| AC-5 | `pytest tests/ --ignore=tests/e2e/test_pipeline_e2e.py` | 0 failed (e2e 이벤트 루프 이슈 제외) |
+| AC-6 | `grep -rn "_service = .*Service()" backend/app/api/v1/ \| wc -l` | 0 |
+
+### 7.5 Ambiguity / Out-of-Scope (해소 못한 모호성)
+
+- **회귀 건수 불일치 (14 vs 27)**: Section 6은 14건으로 기록하나, 2026-06-04 전체 스위트 재검증에서는 27건 실패. 차이의 핵심은 (a) e2e 9건(Python 3.14 이벤트 루프 환경 이슈, 리팩토링 무관), (b) Section 6 스냅샷이 좁은 범위 실행이었던 점. 리팩토링 관련 회귀는 약 18건으로 추정. **구현 시 각 카테고리별 대표 테스트로 재확인 후 전체 게이트(AC-5)로 마감**한다.
+- **e2e 9건 (`test_pipeline_e2e.py`)**: `RuntimeError: There is no current event loop`. 별도 환경/인프라 이슈로 **이번 Scope 제외**. 별도 SPEC 또는 테스트 픽스처 수정으로 후속 처리 권장.
+- **sentiment 404 단위 테스트**: production app을 사용하므로 핸들러 미등록이 원인이 아닐 수 있음. 라우터 not_found 경로 또는 테스트 mock 설정을 개별 재확인 필요.
+
+### 7.6 Traceability (Iteration 2)
+
+| TAG | Scope | Requirement IDs |
+|-----|-------|-----------------|
+| SPEC-REFACTOR-001-RM-A | Scope A (회귀 수정) | REQ-RM-A1 ~ REQ-RM-A4 |
+| SPEC-REFACTOR-001-RM-B | Scope B (DI 완료) | REQ-RM-B1 ~ REQ-RM-B3 |
