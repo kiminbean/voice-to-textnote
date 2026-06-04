@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock
 import pytest
 from pydantic import ValidationError
 
-from backend.db.webhook_service import WebhookService
+from backend.services.webhook_service import WebhookService
 from backend.schemas.webhook import WebhookEndpointCreate, WebhookEndpointUpdate
 from backend.utils.validators import validate_webhook_url
 

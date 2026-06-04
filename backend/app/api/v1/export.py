@@ -12,8 +12,10 @@ import json
 import re
 
 import redis.asyncio as aioredis
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Query, status
 from fastapi.responses import StreamingResponse
+
+from backend.app.errors import internal_server_error, not_found, unprocessable
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -133,18 +135,12 @@ async def export_pdf(
     minutes_data = await _get_task_result(redis_client, db, "min", minutes_task_id)
     if minutes_data is None:
         logger.warning("회의록 데이터 없음", task_id=minutes_task_id)
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"회의록 데이터를 찾을 수 없습니다. (task_id: {minutes_task_id})",
-        )
+        not_found(f"회의록 데이터를 찾을 수 없습니다. (task_id: {minutes_task_id})")
 
     # 2. 데이터 유효성 검증 (segments 필수)
     if not minutes_data.get("segments"):
         logger.warning("회의록 데이터 불완전 - segments 없음", task_id=minutes_task_id)
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="회의록 데이터가 불완전합니다. segments가 없습니다.",
-        )
+        unprocessable("회의록 데이터가 불완전합니다. segments가 없습니다.")
 
     # 3. 요약 데이터 조회 (선택)
     summary_data: dict | None = None
@@ -163,16 +159,13 @@ async def export_pdf(
         pdf_bytes = generator.generate(minutes_data, summary_data)
     except ValueError as e:
         logger.error("PDF 생성 실패 - 유효하지 않은 데이터", error=str(e))
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(e),
-        ) from e
+        unprocessable(str(e))
+    except VoiceNoteError:
+        raise
     except Exception as e:
         logger.error("PDF 생성 중 예기치 않은 오류", error=str(e))
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="PDF 생성 중 오류가 발생했습니다.",
-        ) from e
+        from backend.app.errors import internal_server_error
+        internal_server_error("PDF 생성 중 오류가 발생했습니다.")
 
     # 5. StreamingResponse 반환
     filename = _safe_export_filename(minutes_task_id, "pdf")
@@ -228,16 +221,10 @@ async def export_docx(
     # 1. 회의록 데이터 조회 (PDF 엔드포인트와 동일 로직)
     minutes_data = await _get_task_result(redis_client, db, "min", minutes_task_id)
     if minutes_data is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"회의록 데이터를 찾을 수 없습니다. (task_id: {minutes_task_id})",
-        )
+        not_found(f"회의록 데이터를 찾을 수 없습니다. (task_id: {minutes_task_id})")
 
     if not minutes_data.get("segments"):
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="회의록 데이터가 불완전합니다. segments가 없습니다.",
-        )
+        unprocessable("회의록 데이터가 불완전합니다. segments가 없습니다.")
 
     # 2. 요약 데이터 조회 (선택)
     summary_data: dict | None = None
@@ -249,16 +236,12 @@ async def export_docx(
         generator = MinutesDOCXGenerator()
         docx_bytes = generator.generate(minutes_data, summary_data)
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(e),
-        ) from e
+        unprocessable(str(e))
+    except VoiceNoteError:
+        raise
     except Exception as e:
         logger.error("DOCX 생성 중 오류", error=str(e))
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="DOCX 생성 중 오류가 발생했습니다.",
-        ) from e
+        internal_server_error("DOCX 생성 중 오류가 발생했습니다.")
 
     # 4. 응답
     filename = _safe_export_filename(minutes_task_id, "docx")
@@ -303,16 +286,10 @@ async def export_markdown(
     """회의록 Markdown 내보내기."""
     minutes_data = await _get_task_result(redis_client, db, "min", minutes_task_id)
     if minutes_data is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"회의록 데이터를 찾을 수 없습니다. (task_id: {minutes_task_id})",
-        )
+        not_found(f"회의록 데이터를 찾을 수 없습니다. (task_id: {minutes_task_id})")
 
     if not minutes_data.get("segments"):
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="회의록 데이터가 불완전합니다. segments가 없습니다.",
-        )
+        unprocessable("회의록 데이터가 불완전합니다. segments가 없습니다.")
 
     summary_data: dict | None = None
     if summary_task_id:

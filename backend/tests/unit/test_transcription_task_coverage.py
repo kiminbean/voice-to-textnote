@@ -156,7 +156,7 @@ class TestTranscriptionTaskCoverage:
              patch("backend.workers.tasks.transcription_task.split_audio", return_value=[]), \
              patch("backend.workers.tasks.transcription_task.WhisperEngine") as mock_engine_cls, \
              patch("backend.workers.tasks.transcription_task.settings") as mock_settings, \
-             patch("backend.db.sync_service.persist_task_result", side_effect=persist_failure):
+             patch("backend.services.sync_service.persist_task_result", side_effect=persist_failure):
             mock_settings.results_dir = tmp_path
             mock_settings.cache_ttl_seconds = 604800
             mock_settings.chunk_duration_ms = 1800000

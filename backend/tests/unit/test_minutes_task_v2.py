@@ -115,7 +115,7 @@ class TestMinutesTaskDBPersistence:
 
         with patch("backend.workers.tasks.minutes_task._get_redis", return_value=mock_redis), \
              patch("backend.workers.tasks.minutes_task.settings") as mock_settings, \
-             patch("backend.db.sync_service.persist_task_result", side_effect=mock_persist):
+             patch("backend.services.sync_service.persist_task_result", side_effect=mock_persist):
             mock_settings.minutes_result_ttl = 86400
             mock_settings.max_concurrent_minutes = 3
 
@@ -144,7 +144,7 @@ class TestMinutesTaskDBPersistence:
 
         with patch("backend.workers.tasks.minutes_task._get_redis", return_value=mock_redis), \
              patch("backend.workers.tasks.minutes_task.settings") as mock_settings, \
-             patch("backend.db.sync_service.persist_task_result", side_effect=Exception("DB 연결 실패")):
+             patch("backend.services.sync_service.persist_task_result", side_effect=Exception("DB 연결 실패")):
             mock_settings.minutes_result_ttl = 86400
             mock_settings.max_concurrent_minutes = 3
 
@@ -174,7 +174,7 @@ class TestMinutesTaskDBPersistence:
 
         with patch("backend.workers.tasks.minutes_task._get_redis", return_value=mock_redis), \
              patch("backend.workers.tasks.minutes_task.settings") as mock_settings, \
-             patch("backend.db.sync_service.persist_task_result", side_effect=mock_persist):
+             patch("backend.services.sync_service.persist_task_result", side_effect=mock_persist):
             mock_settings.minutes_result_ttl = 86400
             mock_settings.max_concurrent_minutes = 3
 
@@ -208,7 +208,7 @@ class TestMinutesTaskDBPersistence:
 
         with patch("backend.workers.tasks.minutes_task._get_redis", return_value=mock_redis), \
              patch("backend.workers.tasks.minutes_task.settings") as mock_settings, \
-             patch("backend.db.sync_service.persist_task_result", side_effect=mock_persist):
+             patch("backend.services.sync_service.persist_task_result", side_effect=mock_persist):
             mock_settings.minutes_result_ttl = 86400
             mock_settings.max_concurrent_minutes = 3
 

@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi import FastAPI
+from backend.app.error_handlers import register_exception_handlers
 from fastapi.testclient import TestClient
 
 from backend.app.middleware.auth import verify_api_key
@@ -97,6 +98,7 @@ def _make_export_app(mock_redis: AsyncMock) -> FastAPI:
     from backend.app.dependencies import get_db_session, get_redis_client
 
     app = FastAPI()
+    register_exception_handlers(app)
     app.include_router(export.router, prefix="/api/v1")
 
     # Redis mock 주입
@@ -276,6 +278,7 @@ class TestExportPdfApi:
         from backend.db.models import TaskResult
 
         app = FastAPI()
+        register_exception_handlers(app)
         app.include_router(export.router, prefix="/api/v1")
 
         # Redis: 항상 None 반환 (미스)

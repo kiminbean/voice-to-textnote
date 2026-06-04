@@ -24,7 +24,7 @@ from backend.db.auth_models import RefreshToken, User
 @pytest.fixture
 def auth_service():
     """AuthService 인스턴스"""
-    from backend.db.auth_service import AuthService
+    from backend.services.auth_service import AuthService
     return AuthService()
 
 

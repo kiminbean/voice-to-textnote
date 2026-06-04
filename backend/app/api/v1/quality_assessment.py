@@ -13,8 +13,11 @@ SPEC-QUALITY-MONITOR-001: 실시간 품질 점수/피드백/추세 분석 확장
 """
 
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy import select
+
+from backend.app.errors import internal_server_error, not_found
+from backend.app.exceptions import VoiceNoteError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.dependencies import get_db_session
@@ -120,17 +123,11 @@ async def get_quality_assessment(
         task = (await db.execute(task_stmt)).scalar_one_or_none()
 
         if not task:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Task not found: {task_id}",
-            )
+            not_found(f"Task not found: {task_id}")
 
         content = _extract_minutes_text(task.result_data)
         if not content:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Meeting minutes not found for task: {task_id}",
-            )
+            not_found(f"Meeting minutes not found for task: {task_id}")
 
         # 품질 평가 수행
         assessment = await _service.assess_minutes(
@@ -143,14 +140,11 @@ async def get_quality_assessment(
 
         return assessment
 
-    except HTTPException:
+    except VoiceNoteError:
         raise
     except Exception as e:
         logger.error(f"Quality assessment failed for task {task_id}", error=str(e))
-        raise HTTPException(
-            status_code=500,
-            detail=f"품질 평가 중 오류가 발생했습니다: {str(e)}",
-        )
+        internal_server_error(f"품질 평가 중 오류가 발생했습니다: {str(e)}")
 
 
 @router.post(
@@ -174,17 +168,11 @@ async def request_quality_assessment(
         task = (await db.execute(task_stmt)).scalar_one_or_none()
 
         if not task:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Task not found: {task_id}",
-            )
+            not_found(f"Task not found: {task_id}")
 
         content = _extract_minutes_text(task.result_data)
         if not content:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Meeting minutes not found for task: {task_id}",
-            )
+            not_found(f"Meeting minutes not found for task: {task_id}")
 
         assessment = await _service.assess_minutes(
             task_id=task_id,
@@ -197,14 +185,11 @@ async def request_quality_assessment(
 
         return assessment
 
-    except HTTPException:
+    except VoiceNoteError:
         raise
     except Exception as e:
         logger.error(f"Custom quality assessment failed for task {task_id}", error=str(e))
-        raise HTTPException(
-            status_code=500,
-            detail=f"품질 평가 중 오류가 발생했습니다: {str(e)}",
-        )
+        internal_server_error(f"품질 평가 중 오류가 발생했습니다: {str(e)}")
 
 
 @router.get(
@@ -234,10 +219,7 @@ async def get_improvement_suggestions(
         task = (await db.execute(task_stmt)).scalar_one_or_none()
 
         if not task:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Task not found: {task_id}",
-            )
+            not_found(f"Task not found: {task_id}")
 
         # 개선 제안 가져오기
         improvements = await _service.get_improvement_suggestions(
@@ -254,14 +236,11 @@ async def get_improvement_suggestions(
             total_improvements=len(improvements)
         )
 
-    except HTTPException:
+    except VoiceNoteError:
         raise
     except Exception as e:
         logger.error(f"Improvement suggestions failed for task {task_id}", error=str(e))
-        raise HTTPException(
-            status_code=500,
-            detail=f"개선 제안 생성 중 오류가 발생했습니다: {str(e)}"
-        )
+        internal_server_error(f"개선 제안 생성 중 오류가 발생했습니다: {str(e)}")
 
 
 @router.get("/health")
@@ -284,16 +263,10 @@ async def _load_minutes_text_or_404(db: AsyncSession, task_id: str) -> str:
     task_stmt = select(TaskResult).where(TaskResult.task_id == task_id)
     task = (await db.execute(task_stmt)).scalar_one_or_none()
     if task is None:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Task not found: {task_id}",
-        )
+        not_found(f"Task not found: {task_id}")
     content = _extract_minutes_text(task.result_data)
     if not content:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Meeting minutes not found for task: {task_id}",
-        )
+        not_found(f"Meeting minutes not found for task: {task_id}")
     return content
 
 
@@ -324,14 +297,11 @@ async def get_live_quality_score(
             db=db,
             persist_snapshot=persist,
         )
-    except HTTPException:
+    except VoiceNoteError:
         raise
     except Exception as e:
         logger.error("실시간 품질 점수 계산 실패", task_id=task_id, error=str(e))
-        raise HTTPException(
-            status_code=500,
-            detail=f"실시간 품질 점수 계산 실패: {e}",
-        ) from e
+        internal_server_error(f"실시간 품질 점수 계산 실패: {e}")
 
 
 @router.post(
@@ -350,7 +320,7 @@ async def submit_quality_feedback(
         await db.execute(select(TaskResult).where(TaskResult.task_id == task_id))
     ).scalar_one_or_none()
     if task is None:
-        raise HTTPException(status_code=404, detail=f"Task not found: {task_id}")
+        not_found(f"Task not found: {task_id}")
 
     try:
         return await _service.submit_feedback(
@@ -359,14 +329,11 @@ async def submit_quality_feedback(
             user_id=None,
             payload=payload,
         )
-    except HTTPException:
+    except VoiceNoteError:
         raise
     except Exception as e:
         logger.error("품질 피드백 저장 실패", task_id=task_id, error=str(e))
-        raise HTTPException(
-            status_code=500,
-            detail=f"품질 피드백 저장 실패: {e}",
-        ) from e
+        internal_server_error(f"품질 피드백 저장 실패: {e}")
 
 
 @router.get(
@@ -385,12 +352,11 @@ async def list_quality_feedback(
             task_id=task_id,
             recent_limit=recent_limit,
         )
+    except VoiceNoteError:
+        raise
     except Exception as e:
         logger.error("피드백 요약 조회 실패", task_id=task_id, error=str(e))
-        raise HTTPException(
-            status_code=500,
-            detail=f"피드백 요약 조회 실패: {e}",
-        ) from e
+        internal_server_error(f"피드백 요약 조회 실패: {e}")
 
 
 @router.get(
@@ -420,9 +386,8 @@ async def get_quality_trends(
             limit=limit,
             warning_drop_threshold=warning_drop_threshold,
         )
+    except VoiceNoteError:
+        raise
     except Exception as e:
         logger.error("품질 추세 분석 실패", task_id=task_id, error=str(e))
-        raise HTTPException(
-            status_code=500,
-            detail=f"품질 추세 분석 실패: {e}",
-        ) from e
+        internal_server_error(f"품질 추세 분석 실패: {e}")

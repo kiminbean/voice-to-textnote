@@ -186,7 +186,7 @@ class TestPingWebhookEndpoint:
 
     def test_ping_webhook_success_response(self, webhooks_client):
         """ping 요청이 성공하면 WebhookPingResponse 반환."""
-        from backend.db.webhook_service import WebhookService
+        from backend.services.webhook_service import WebhookService
 
         webhook_id = uuid.uuid4()
 
@@ -215,7 +215,7 @@ class TestPingWebhookEndpoint:
 
     def test_ping_webhook_failure_response(self, webhooks_client):
         """ping 요청이 실패하면 실패 메시지 반환."""
-        from backend.db.webhook_service import WebhookService
+        from backend.services.webhook_service import WebhookService
 
         webhook_id = uuid.uuid4()
 

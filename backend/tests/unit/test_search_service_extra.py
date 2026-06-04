@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from backend.db.search_service import _QUERY_TOKEN_PATTERN, SearchService
+from backend.services.search_service import _QUERY_TOKEN_PATTERN, SearchService
 
 
 class TestQueryTokenPattern:

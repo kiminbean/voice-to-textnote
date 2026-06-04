@@ -113,8 +113,8 @@ class TestCreateDiarizationAPI:
 
         assert response.status_code == 429
         data = response.json()
-        assert "detail" in data
-        assert "한도" in data["detail"] or "초과" in data["detail"]
+        assert "message" in data
+        assert "한도" in data["message"] or "초과" in data["message"]
 
     def test_create_diarization_default_params(self, diarization_client):
         """기본 파라미터로 화자 분리 생성"""
@@ -227,8 +227,8 @@ class TestGetDiarizationStatusAPI:
 
         assert response.status_code == 404
         data = response.json()
-        assert "detail" in data
-        assert "찾을 수 없습니다" in data["detail"]
+        assert "message" in data
+        assert "찾을 수 없습니다" in data["message"]
 
     def test_get_diarization_status_with_error(self, diarization_client):
         """에러 상태 조회"""
@@ -335,8 +335,8 @@ class TestGetDiarizationResultAPI:
 
         assert response.status_code == 404
         data = response.json()
-        assert "detail" in data
-        assert "찾을 수 없습니다" in data["detail"]
+        assert "message" in data
+        assert "찾을 수 없습니다" in data["message"]
 
     def test_get_diarization_result_still_processing(self, diarization_client):
         """아직 처리 중인 화자 분리 (빈 결과 반환)"""

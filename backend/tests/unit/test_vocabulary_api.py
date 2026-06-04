@@ -166,7 +166,7 @@ class TestVocabularyDelete:
 class TestVocabularyInitialPrompt:
     @pytest.mark.asyncio
     async def test_get_initial_prompt_joins_words(self, db_session):
-        from backend.db.vocabulary_service import VocabularyService
+        from backend.services.vocabulary_service import VocabularyService
 
         vocab = CustomVocabulary(name="테스트", words=["ROS2", "MLX", "PyTorch"])
         db_session.add(vocab)
@@ -179,7 +179,7 @@ class TestVocabularyInitialPrompt:
 
     @pytest.mark.asyncio
     async def test_get_initial_prompt_nonexistent_returns_none(self, db_session):
-        from backend.db.vocabulary_service import VocabularyService
+        from backend.services.vocabulary_service import VocabularyService
 
         service = VocabularyService()
         prompt = await service.get_initial_prompt(db_session, uuid.uuid4())
@@ -187,7 +187,7 @@ class TestVocabularyInitialPrompt:
 
     @pytest.mark.asyncio
     async def test_get_initial_prompt_empty_words_returns_none(self, db_session):
-        from backend.db.vocabulary_service import VocabularyService
+        from backend.services.vocabulary_service import VocabularyService
 
         vocab = CustomVocabulary(name="빈 리스트", words=[])
         db_session.add(vocab)

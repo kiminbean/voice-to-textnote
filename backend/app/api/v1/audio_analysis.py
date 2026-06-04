@@ -9,9 +9,11 @@ import os
 import tempfile
 from pathlib import Path
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, File, Form, UploadFile, status
 
 from backend.app.config import settings
+from backend.app.errors import bad_request, internal_server_error, request_entity_too_large, unprocessable
+from backend.app.exceptions import VoiceNoteError
 from backend.ml.audio_analysis_engine import analyze_audio
 from backend.schemas.audio_analysis import (
     AudioAnalysisResponse,
@@ -51,10 +53,7 @@ async def analyze_audio_file(
     filename = file.filename or "unknown"
     ext = os.path.splitext(filename)[1].lower()
     if ext not in _ALLOWED_EXTENSIONS:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"지원하지 않는 파일 포맷: {ext}. 지원 포맷: {', '.join(sorted(_ALLOWED_EXTENSIONS))}",
-        )
+        bad_request(f"지원하지 않는 파일 포맷: {ext}. 지원 포맷: {', '.join(sorted(_ALLOWED_EXTENSIONS))}")
 
     # 임시 파일로 스트리밍 저장하며 크기 검증
     max_bytes = settings.max_file_size_mb * 1024 * 1024
@@ -66,13 +65,7 @@ async def analyze_audio_file(
             while chunk := await file.read(1024 * 1024):
                 bytes_read += len(chunk)
                 if bytes_read > max_bytes:
-                    raise HTTPException(
-                        status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                        detail=(
-                            f"파일 크기 초과: {bytes_read} bytes "
-                            f"(최대 {settings.max_file_size_mb}MB)"
-                        ),
-                    )
+                    request_entity_too_large(f"파일 크기 초과: {bytes_read} bytes (최대 {settings.max_file_size_mb}MB)")
                 tmp.write(chunk)
 
         result = analyze_audio(
@@ -81,25 +74,20 @@ async def analyze_audio_file(
             silence_threshold_db=silence_threshold_db,
             min_silence_duration_ms=min_silence_duration_ms,
         )
-    except HTTPException:
-        raise
     except OSError as e:
         logger.error("오디오 분석 업로드 저장 실패", error=str(e), filename=filename)
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"파일 저장 실패: {e}",
-        ) from e
+        unprocessable(f"파일 저장 실패: {e}")
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(e),
-        ) from e
+        err_msg = str(e)
+        # 파일 크기 초과는 413, 그 외 ValueError는 422
+        if "크기" in err_msg or "size" in err_msg.lower():
+            request_entity_too_large(err_msg)
+        unprocessable(err_msg)
+    except VoiceNoteError:
+        raise
     except Exception as e:
         logger.error("오디오 분석 실패", error=str(e), filename=filename)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"오디오 분석 중 오류 발생: {e}",
-        ) from e
+        internal_server_error(f"오디오 분석 중 오류 발생: {e}")
     finally:
         if tmp_path:
             Path(tmp_path).unlink(missing_ok=True)

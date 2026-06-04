@@ -8,11 +8,12 @@ import uuid
 from datetime import UTC, datetime
 
 import redis.asyncio as aioredis
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.config import settings
 from backend.app.dependencies import get_db_session, get_redis_client
+from backend.app.errors import not_found, too_many_requests
 from backend.app.result_fallback import get_result_with_fallback
 from backend.schemas.diarization import (
     DiarizationCreateRequest,
@@ -46,12 +47,9 @@ async def create_diarization(
     # --- 동시 처리 제한 확인 (REQ-DIA-014: 최대 2개) ---
     active_count = await redis_client.scard("active_dia_jobs") or 0
     if active_count >= settings.max_concurrent_diarizations:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=(
-                f"동시 화자 분리 작업 한도({settings.max_concurrent_diarizations}개)를 "
-                "초과했습니다. 잠시 후 재시도하세요."
-            ),
+        too_many_requests(
+            f"동시 화자 분리 작업 한도({settings.max_concurrent_diarizations}개)를 "
+            "초과했습니다. 잠시 후 재시도하세요."
         )
 
     # --- 작업 ID 생성 및 초기 상태 저장 ---
@@ -116,7 +114,7 @@ async def get_diarization_status(
     raw = await redis_client.get(status_key)
 
     if raw is None:
-        raise HTTPException(status_code=404, detail="화자 분리 작업을 찾을 수 없습니다.")
+        not_found("화자 분리 작업을 찾을 수 없습니다.")
 
     data = json.loads(raw)
 
@@ -165,7 +163,7 @@ async def get_diarization_result(
         status_key = f"task:dia:status:{task_id}"
         status_raw = await redis_client.get(status_key)
         if status_raw is None:
-            raise HTTPException(status_code=404, detail="화자 분리 작업을 찾을 수 없습니다.")
+            not_found("화자 분리 작업을 찾을 수 없습니다.")
 
         status_data = json.loads(status_raw)
         task_status = TaskStatus(status_data["status"])

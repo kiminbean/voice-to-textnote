@@ -25,7 +25,7 @@ from backend.db.auth_models import Team, TeamMember, User
 @pytest.fixture
 def team_service():
     """TeamService 인스턴스"""
-    from backend.db.team_service import TeamService
+    from backend.services.team_service import TeamService
     return TeamService()
 
 

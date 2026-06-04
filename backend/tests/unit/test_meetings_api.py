@@ -12,6 +12,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import FastAPI
+from backend.app.error_handlers import register_exception_handlers
 from fastapi.testclient import TestClient
 
 from backend.app.dependencies import get_current_user, get_db_session
@@ -33,6 +34,7 @@ def app_client(mock_user):
     from backend.app.api.v1.meetings import router
 
     app = FastAPI()
+    register_exception_handlers(app)
     app.include_router(router, prefix="/api/v1")
 
     async def override_user():
@@ -66,7 +68,7 @@ class TestShareMeetingValidation:
             json={"team_id": "not-a-uuid"},
         )
         assert resp.status_code == 422
-        assert "팀 ID" in resp.json()["detail"]
+        assert "팀 ID" in resp.json()["message"]
 
 
 # ---------------------------------------------------------------------------
@@ -82,7 +84,7 @@ class TestUnshareMeetingValidation:
         client, _ = app_client
         resp = client.delete("/api/v1/meetings/task-1/share/not-a-uuid")
         assert resp.status_code == 422
-        assert "팀 ID" in resp.json()["detail"]
+        assert "팀 ID" in resp.json()["message"]
 
     @patch("backend.app.api.v1.meetings._meeting_service")
     def test_permission_denied_returns_403(self, mock_service, app_client):
@@ -96,4 +98,4 @@ class TestUnshareMeetingValidation:
         resp = client.delete(f"/api/v1/meetings/task-1/share/{team_id}")
 
         assert resp.status_code == 403
-        assert "admin" in resp.json()["detail"]
+        assert "admin" in resp.json()["message"]

@@ -10,9 +10,11 @@ import uuid
 from datetime import UTC, datetime
 
 import redis.asyncio as aioredis
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 
 from backend.app.dependencies import get_redis_client
+from backend.app.errors import internal_server_error, not_found, unprocessable
+from backend.app.exceptions import VoiceNoteError
 from backend.ml.action_items_engine import extract_action_items
 from backend.schemas.action_items import (
     ActionItem,
@@ -48,12 +50,11 @@ async def extract_action_items_api(
             include_deadlines=request.include_deadlines,
             include_assignees=request.include_assignees,
         )
+    except VoiceNoteError:
+        raise
     except Exception as e:
         logger.error("액션 아이템 추출 실패", error=str(e))
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"액션 아이템 추출 중 오류 발생: {e}",
-        ) from e
+        internal_server_error(f"액션 아이템 추출 중 오류 발생: {e}")
 
     action_items = [
         ActionItem(
@@ -102,20 +103,14 @@ async def extract_from_meeting(
     result_data = await redis_client.get(cache_key)
 
     if not result_data:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"회의록 결과를 찾을 수 없습니다: {request.minutes_task_id}",
-        )
+        not_found(f"회의록 결과를 찾을 수 없습니다: {request.minutes_task_id}")
 
     import json
 
     try:
         minutes_data = json.loads(result_data)
     except json.JSONDecodeError as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="회의록 데이터 파싱 실패",
-        ) from e
+        internal_server_error("회의록 데이터 파싱 실패")
 
     # 회의록 텍스트 추출 (결과 구조에 맞게)
     text_parts = []
@@ -142,10 +137,7 @@ async def extract_from_meeting(
     full_text = "\n".join(text_parts)
 
     if len(full_text.strip()) < 10:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="회의록 내용이 너무 짧아 액션 아이템을 추출할 수 없습니다",
-        )
+        unprocessable("회의록 내용이 너무 짧아 액션 아이템을 추출할 수 없습니다")
 
     # 언어 감지 (간단히 한국어 비율 확인)
     ko_chars = sum(1 for c in full_text if "\uac00" <= c <= "\ud7af")

@@ -10,10 +10,11 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import redis.asyncio as aioredis
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 
 from backend.app.config import settings
 from backend.app.dependencies import get_redis_client
+from backend.app.errors import not_found, unprocessable
 from backend.pipeline.audio_processor import get_audio_duration_seconds
 from backend.schemas.batch import (
     BatchItemResult,
@@ -56,10 +57,7 @@ async def upload_batch_transcription(
     이 함수에 도달할 때 files는 항상 최소 1개 이상임.
     """
     if len(files) > _BATCH_MAX_FILES:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"최대 {_BATCH_MAX_FILES}개 파일까지 한 번에 업로드할 수 있습니다.",
-        )
+        unprocessable(f"최대 {_BATCH_MAX_FILES}개 파일까지 한 번에 업로드할 수 있습니다.")
 
     batch_id = uuid.uuid4()
     now = datetime.now(UTC)
@@ -110,6 +108,8 @@ async def upload_batch_transcription(
                     )
                 )
                 continue
+        except VoiceNoteError:
+            raise
         except Exception as e:
             temp_path.unlink(missing_ok=True)
             items.append(
@@ -205,11 +205,11 @@ async def get_batch_status(
     try:
         batch_uuid = uuid.UUID(batch_id)
     except ValueError:
-        raise HTTPException(status_code=422, detail="올바른 batch_id 형식이 아닙니다.")
+        unprocessable("올바른 batch_id 형식이 아닙니다.")
 
     batch_raw = await redis_client.get(f"batch:{batch_id}")
     if batch_raw is None:
-        raise HTTPException(status_code=404, detail="배치를 찾을 수 없습니다.")
+        not_found("배치를 찾을 수 없습니다.")
 
     batch_data = json.loads(batch_raw)
     task_ids: list[str] = batch_data.get("task_ids", [])

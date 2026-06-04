@@ -7,10 +7,11 @@ SPEC-HISTORY-001: 작업 이력 조회/삭제 API
 - DELETE /history/{task_id} - 삭제 (REQ-HIST-007)
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.dependencies import get_db_session
+from backend.app.errors import not_found
 from backend.db.service import ResultService
 from backend.schemas.history import HistoryDetailItem, HistoryItem, HistoryListResponse
 
@@ -82,10 +83,7 @@ async def get_history(
     record = await _service.get_result(session=db, task_id=task_id)
 
     if record is None:
-        raise HTTPException(
-            status_code=404,
-            detail=f"작업 이력을 찾을 수 없습니다: task_id={task_id}",
-        )
+        not_found(f"작업 이력을 찾을 수 없습니다: task_id={task_id}")
 
     return HistoryDetailItem.model_validate(record)
 
@@ -104,7 +102,4 @@ async def delete_history(
     deleted = await _service.delete_result(session=db, task_id=task_id)
 
     if not deleted:
-        raise HTTPException(
-            status_code=404,
-            detail=f"작업 이력을 찾을 수 없습니다: task_id={task_id}",
-        )
+        not_found(f"작업 이력을 찾을 수 없습니다: task_id={task_id}")

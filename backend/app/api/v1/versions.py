@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.dependencies import get_current_user, get_db_session
 from backend.db.auth_models import User
 from backend.db.version_models import MinutesVersion
-from backend.db.version_service import VersionService
+from backend.services.version_service import VersionService
 from backend.schemas.version import (
     StructuredDiffResponse,
     VersionCreate,

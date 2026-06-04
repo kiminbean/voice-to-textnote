@@ -23,13 +23,14 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 import redis.asyncio as aioredis
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from jose import jwt
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.config import settings
 from backend.app.dependencies import get_current_user, get_db_session, get_redis_client
-from backend.db.auth_service import AuthService
+from backend.app.errors import bad_request, unauthorized
+from backend.services.auth_service import AuthService
 from backend.schemas.auth import (
     AppleLoginRequest,
     GoogleLoginRequest,
@@ -214,7 +215,7 @@ async def google_login(
     try:
         user_info = await verify_google_token(req.id_token)
     except ValueError as e:
-        raise HTTPException(status_code=401, detail=str(e))
+        unauthorized(str(e))
 
     _, access_token, refresh_token = await _auth_service.social_login_or_register(
         session=db,
@@ -240,7 +241,7 @@ async def apple_login(
     try:
         user_info = await verify_apple_token(req.id_token)
     except ValueError as e:
-        raise HTTPException(status_code=401, detail=str(e))
+        unauthorized(str(e))
 
     display_name = req.display_name or user_info.display_name
 
@@ -268,13 +269,13 @@ async def link_provider(
 ) -> UserResponse:
     """REQ-OAUTH-001: 기존 계정에 소셜 제공자 연동."""
     if provider not in ("google", "apple"):
-        raise HTTPException(status_code=400, detail="지원하지 않는 제공자입니다")
+        bad_request("지원하지 않는 제공자입니다")
 
     verify_fn = verify_google_token if provider == "google" else verify_apple_token
     try:
         user_info = await verify_fn(req.id_token)
     except ValueError as e:
-        raise HTTPException(status_code=401, detail=str(e))
+        unauthorized(str(e))
 
     updated_user = await _auth_service.link_provider(
         session=db,
@@ -306,7 +307,7 @@ async def unlink_provider(
 ) -> UserResponse:
     """REQ-OAUTH-001: 소셜 제공자 연동 해제."""
     if provider not in ("google", "apple"):
-        raise HTTPException(status_code=400, detail="지원하지 않는 제공자입니다")
+        bad_request("지원하지 않는 제공자입니다")
 
     updated_user = await _auth_service.unlink_provider(
         session=db,

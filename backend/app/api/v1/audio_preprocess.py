@@ -18,8 +18,10 @@ import tempfile
 import wave
 from pathlib import Path
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, File, Form, UploadFile, status
 from fastapi.responses import FileResponse
+
+from backend.app.errors import bad_request, internal_server_error, request_entity_too_large, service_unavailable, unprocessable
 from starlette.background import BackgroundTask
 
 from backend.app.config import settings
@@ -64,9 +66,7 @@ def _resolve_options(payload: PreprocessOptionsPayload) -> PreprocessOptions:
     try:
         opts.validate()
     except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
-        ) from exc
+        unprocessable(str(exc))
     return opts
 
 
@@ -101,16 +101,13 @@ async def preprocess_endpoint(
 ) -> FileResponse:
     """오디오 파일에 사용자 선택형 전처리를 적용하여 WAV로 반환."""
     if not settings.audio_preprocess_enabled:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="오디오 전처리 기능이 비활성화되어 있습니다.",
-        )
+        service_unavailable("오디오 전처리 기능이 비활성화되어 있습니다.")
 
     # 파일명/포맷 검증 (기존 검증기 재사용)
     filename = file.filename or "audio"
     is_valid, msg = validate_audio_format(filename)
     if not is_valid:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=msg)
+        bad_request(msg)
 
     # 옵션 파싱 + 검증
     payload = PreprocessOptionsPayload(
@@ -136,23 +133,13 @@ async def preprocess_endpoint(
             while chunk := await file.read(1024 * 1024):
                 bytes_read += len(chunk)
                 if bytes_read > max_bytes:
-                    raise HTTPException(
-                        status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                        detail=(
-                            f"파일 크기가 {settings.audio_preprocess_max_file_mb}MB를 초과합니다."
-                        ),
-                    )
+                    from backend.app.errors import request_entity_too_large
+                    request_entity_too_large(f"파일 크기가 {settings.audio_preprocess_max_file_mb}MB를 초과합니다.")
                 fp.write(chunk)
-    except HTTPException:
-        _safe_unlink(src_path)
-        raise
     except Exception as exc:  # noqa: BLE001 - 업로드 실패는 다양함
         _safe_unlink(src_path)
         logger.error("업로드 저장 실패", error=str(exc))
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"업로드 처리 실패: {exc}",
-        ) from exc
+        bad_request(f"업로드 처리 실패: {exc}")
 
     # 실제 전처리 (CPU 바운드 → threadpool + 세마포어)
     async with _preprocess_semaphore:
@@ -160,16 +147,11 @@ async def preprocess_endpoint(
             out_path = await asyncio.to_thread(preprocess_audio, src_path, options)
         except ValueError as exc:
             _safe_unlink(src_path)
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
-            ) from exc
+            bad_request(str(exc))
         except Exception as exc:  # noqa: BLE001 - pydub/ffmpeg failure modes vary
             _safe_unlink(src_path)
             logger.error("오디오 전처리 실패", error=str(exc))
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="오디오 전처리 중 오류가 발생했습니다",
-            ) from exc
+            internal_server_error("오디오 전처리 중 오류가 발생했습니다")
 
     # 메타데이터 헤더 구성
     try:
@@ -181,18 +163,12 @@ async def preprocess_endpoint(
         _safe_unlink(src_path)
         _safe_unlink(out_path)
         logger.error("전처리 결과 메타데이터 읽기 실패", error=str(exc))
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="전처리 결과 검증 실패",
-        ) from exc
+        internal_server_error("전처리 결과 검증 실패")
     except OSError as exc:
         _safe_unlink(src_path)
         _safe_unlink(out_path)
         logger.error("전처리 결과 파일 접근 실패", error=str(exc))
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="전처리 결과 파일 접근 실패",
-        ) from exc
+        internal_server_error("전처리 결과 파일 접근 실패")
 
     meta = PreprocessResultMetadata(
         original_filename=filename,

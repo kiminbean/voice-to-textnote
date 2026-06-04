@@ -323,8 +323,8 @@ class TestExtractFromMeetingAPI:
 
         assert response.status_code == 404
         data = response.json()
-        assert "detail" in data
-        assert "찾을 수 없습니다" in data["detail"]
+        assert "message" in data
+        assert "찾을 수 없습니다" in data["message"]
 
     def test_extract_from_meeting_invalid_json(self, meeting_client_with_redis):
         """회의록 데이터 JSON 파싱 실패"""
@@ -358,8 +358,8 @@ class TestExtractFromMeetingAPI:
 
         assert response.status_code == 422
         data = response.json()
-        assert "detail" in data
-        assert "너무 짧아" in data["detail"]
+        assert "message" in data
+        assert "너무 짧아" in data["message"]
 
     def test_extract_from_meeting_transcription_field(self, meeting_client_with_redis):
         """transcription 필드에서 텍스트 추출"""

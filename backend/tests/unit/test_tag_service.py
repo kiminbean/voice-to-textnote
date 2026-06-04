@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from backend.db.tag_models import MeetingTag
-from backend.db.tag_service import TagService
+from backend.services.tag_service import TagService
 from backend.schemas.tag import TagCreate, TagUpdate
 
 

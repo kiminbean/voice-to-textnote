@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.dependencies import get_current_user, get_db_session
 from backend.db.auth_models import User
-from backend.db.webhook_service import WebhookService
+from backend.services.webhook_service import WebhookService
 from backend.schemas.webhook import (
     WebhookEndpointCreate,
     WebhookEndpointListResponse,

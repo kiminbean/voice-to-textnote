@@ -13,6 +13,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi import FastAPI
+from backend.app.error_handlers import register_exception_handlers
 from fastapi.testclient import TestClient
 
 
@@ -63,6 +64,7 @@ def app_client():
     from backend.app.api.v1.audio_analysis import router
 
     app = FastAPI()
+    register_exception_handlers(app)
     app.include_router(router, prefix="/api/v1")
 
     with TestClient(app, raise_server_exceptions=True) as client:

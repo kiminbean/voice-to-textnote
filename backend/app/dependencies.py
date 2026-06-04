@@ -90,7 +90,7 @@ async def get_current_user(
     """
     # 지연 임포트로 순환 참조 방지
     from backend.db.auth_models import User
-    from backend.db.auth_service import AuthService
+    from backend.services.auth_service import AuthService
 
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.startswith("Bearer "):

@@ -11,10 +11,11 @@ import json
 from collections.abc import AsyncGenerator, Callable
 
 import redis.asyncio as aioredis
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sse_starlette.sse import EventSourceResponse
 
 from backend.app.dependencies import get_redis_client
+from backend.app.errors import not_found
 from backend.events.subscriber import subscribe_task_events
 from backend.utils.logger import get_logger
 
@@ -95,7 +96,7 @@ async def stream_task_status(
             break
 
     if not task_exists:
-        raise HTTPException(status_code=404, detail=f"태스크를 찾을 수 없습니다: {task_id}")
+        not_found(f"태스크를 찾을 수 없습니다: {task_id}")
 
     logger.info("SSE 스트림 시작", task_id=task_id)
 

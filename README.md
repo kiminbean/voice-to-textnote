@@ -34,7 +34,7 @@
 ✅ **API 보안**: API Key 인증, 레이트 리미팅, CORS, Security Headers
 ✅ **모니터링**: Prometheus 메트릭, 요청 ID 추적, 구조화된 로깅
 ✅ **프로덕션 배포**: Ubuntu systemd + Redis + Tailscale 원격 접속
-✅ **완전한 테스트**: 767개 테스트 (백엔드 700 + Flutter 67), 96.94% 커버리지
+✅ **완전한 테스트**: 2400+ 백엔드 테스트 (단위/통합/E2E) + Flutter 67, 98%+ 커버리지
 
 ## 주요 기능
 
@@ -332,7 +332,7 @@ GET /api/v1/health/model
 # 백엔드 전체 테스트 (700개)
 pytest backend/
 
-# 커버리지 리포트 생성 (목표: 96.94%)
+# 커버리지 리포트 생성 (목표: 98%+)
 pytest backend/ --cov=backend --cov-report=html --cov-report=term-missing
 
 # 특정 테스트 실행
@@ -401,39 +401,47 @@ backend/
 ├── app/
 │   ├── main.py              # FastAPI 앱 초기화
 │   ├── config.py            # 설정 (환경 변수)
-│   ├── dependencies.py      # 의존성 주입 (Redis, 모델)
-│   └── api/v1/
-│       ├── transcription.py # 전사 API 엔드포인트
-│       └── health.py        # 헬스체크 엔드포인트
+│   ├── dependencies.py      # 의존성 주입 (DB, Redis, JWT)
+│   ├── errors.py            # 공통 에러 헬퍼 (not_found, bad_request 등)
+│   ├── exceptions.py        # 도메인 예외 계층 (VoiceNoteError + 14 서브클래스)
+│   ├── error_handlers.py    # 전역 예외 핸들러 (JSON 통일 응답)
+│   ├── lifecycle.py         # 앱 lifespan 관리
+│   ├── middleware/           # 인증, 감사로깅, 보안헤더, Rate Limit
+│   └── api/v1/              # 35개 라우터 (에러 헬퍼 기반)
+│       ├── transcription.py
+│       ├── summary.py
+│       ├── search.py
+│       └── ...
 │
-├── schemas/
-│   ├── transcription.py     # Pydantic 요청/응답 스키마
-│   └── health.py            # 헬스 스키마
+├── db/                      # 모델 전용 (서비스는 services/로 이동 완료)
+│   ├── models.py            # SQLAlchemy 베이스 모델
+│   ├── engine.py            # DB 엔진 관리
+│   ├── *_models.py          # 도메인별 모델 (auth, bookmark, search 등)
+│   └── service.py           # 공통 DB 서비스 유틸
+│
+├── services/                # 비즈니스 로직 (26개 서비스 통합)
+│   ├── auth_service.py
+│   ├── search_service.py
+│   ├── summary_service.py
+│   └── ...
+│
+├── schemas/                 # Pydantic 요청/응답 스키마 (20+)
 │
 ├── workers/
 │   ├── celery_app.py        # Celery 설정
-│   └── tasks/
-│       └── transcription_task.py # STT 처리 작업
+│   └── tasks/               # 비동기 처리 태스크
 │
 ├── ml/
 │   └── stt_engine.py        # mlx-whisper 래퍼 (싱글톤)
 │
-├── pipeline/
-│   ├── audio_processor.py   # 오디오 전처리 (16kHz 모노, 정규화)
-│   └── chunk_manager.py     # 청크 분할 및 병합
+├── pipeline/                # 오디오 처리 파이프라인
 │
-├── utils/
-│   ├── logger.py            # 구조화된 로깅
-│   └── validators.py        # 입력 검증 (형식, 크기)
+├── utils/                   # 로깅, 검증 유틸리티
 │
 ├── tests/
-│   ├── unit/                # 단위 테스트
-│   │   ├── test_stt_engine.py
-│   │   ├── test_transcription_task.py
-│   │   ├── test_audio_processor.py
-│   │   └── test_schemas.py
-│   └── integration/         # 통합 테스트
-│       └── test_api.py
+│   ├── unit/                # 단위 테스트 (50+ 파일)
+│   ├── integration/         # 통합 테스트
+│   └── e2e/                 # E2E 테스트
 │
 └── conftest.py              # pytest 설정
 ```
@@ -495,10 +503,10 @@ backend/
 
 | 항목 | 개수 | 커버리지 |
 |------|------|---------|
-| 백엔드 테스트 | 700개 | 96.94% |
+| 백엔드 단위/통합 | 2400+개 | 98%+ |
 | Flutter 테스트 | 67개 | - |
 | E2E 테스트 | 16개 | 전체 파이프라인 |
-| 총합 | 767개 | - |
+| 총합 | 2480+개 | - |
 
 ## 모니터링 및 로깅
 

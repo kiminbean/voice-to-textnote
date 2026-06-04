@@ -8,11 +8,12 @@ SPEC-TEAM-001 REQ-TEAM-005: 회의록 공유 API 엔드포인트
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.dependencies import get_current_user, get_db_session
-from backend.db.meeting_share_service import MeetingShareService
+from backend.app.errors import forbidden, not_found, unprocessable
+from backend.services.meeting_share_service import MeetingShareService
 from backend.schemas.meeting_share import (
     MeetingListResponse,
     MeetingOwnershipResponse,
@@ -78,7 +79,7 @@ async def share_meeting(
     try:
         team_uuid = uuid.UUID(req.team_id)
     except ValueError:
-        raise HTTPException(status_code=422, detail="유효하지 않은 팀 ID 형식입니다")
+        unprocessable("유효하지 않은 팀 ID 형식입니다")
 
     # 요청자가 대상 팀 멤버인지 확인 (admin/member만 허용, viewer 제외)
     role = await _meeting_service.get_team_member_role(
@@ -87,10 +88,7 @@ async def share_meeting(
         user_id=current_user.id,
     )
     if role is None or role == "viewer":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="팀 멤버(admin 또는 member)만 회의록을 공유할 수 있습니다",
-        )
+        forbidden("팀 멤버(admin 또는 member)만 회의록을 공유할 수 있습니다")
 
     # 공유 수행
     ownership = await _meeting_service.share_meeting(
@@ -127,7 +125,7 @@ async def unshare_meeting(
     try:
         team_uuid = uuid.UUID(team_id)
     except ValueError:
-        raise HTTPException(status_code=422, detail="유효하지 않은 팀 ID 형식입니다")
+        unprocessable("유효하지 않은 팀 ID 형식입니다")
 
     # 소유자 또는 팀 admin 권한 확인
     is_owner = await _meeting_service.is_meeting_owner(
@@ -142,10 +140,7 @@ async def unshare_meeting(
     )
 
     if not is_owner and role != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="회의록 소유자 또는 팀 admin만 공유 해제할 수 있습니다",
-        )
+        forbidden("회의록 소유자 또는 팀 admin만 공유 해제할 수 있습니다")
 
     deleted = await _meeting_service.unshare_meeting(
         session=db,
@@ -153,4 +148,4 @@ async def unshare_meeting(
         team_id=team_uuid,
     )
     if not deleted:
-        raise HTTPException(status_code=404, detail="공유 정보를 찾을 수 없습니다")
+        not_found("공유 정보를 찾을 수 없습니다")

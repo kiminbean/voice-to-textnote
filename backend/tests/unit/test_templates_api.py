@@ -139,7 +139,7 @@ class TestUploadTemplate:
 
         # HTTPException 확인
         assert exc_info.value.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
-        assert "지원하지 않는 파일 형식" in exc_info.value.detail
+        assert "지원하지 않는 파일 형식" in exc_info.value.message
 
     @pytest.mark.asyncio
     async def test_upload_file_too_large(self, mock_redis_client):
@@ -158,7 +158,7 @@ class TestUploadTemplate:
             await upload_template(file=mock_file, redis_client=mock_redis_client)
 
         assert exc_info.value.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
-        assert "파일 크기 초과" in exc_info.value.detail
+        assert "파일 크기 초과" in exc_info.value.message
 
     @pytest.mark.asyncio
     async def test_upload_default_name_from_filename(
@@ -374,7 +374,7 @@ class TestGetTemplate:
             await get_template(template_id="nonexistent", redis_client=mock_redis_client)
 
         assert exc_info.value.status_code == status.HTTP_404_NOT_FOUND
-        assert "양식을 찾을 수 없습니다" in exc_info.value.detail
+        assert "양식을 찾을 수 없습니다" in exc_info.value.message
 
     @pytest.mark.asyncio
     async def test_get_template_invalid_json(self, mock_redis_client):
@@ -385,7 +385,7 @@ class TestGetTemplate:
             await get_template(template_id="bad-json", redis_client=mock_redis_client)
 
         assert exc_info.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
-        assert "파싱 오류" in exc_info.value.detail
+        assert "파싱 오류" in exc_info.value.message
 
 
 # ---------------------------------------------------------------------------
@@ -437,7 +437,7 @@ class TestDeleteTemplate:
             )
 
         assert exc_info.value.status_code == status.HTTP_404_NOT_FOUND
-        assert "양식을 찾을 수 없습니다" in exc_info.value.detail
+        assert "양식을 찾을 수 없습니다" in exc_info.value.message
         mock_redis_client.delete.assert_not_called()
 
     @pytest.mark.asyncio

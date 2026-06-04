@@ -107,7 +107,7 @@ class TestPersistTaskResult:
 
         from backend.db.models import TaskResult
         from backend.db.sync_engine import get_sync_session
-        from backend.db.sync_service import persist_task_result
+        from backend.services.sync_service import persist_task_result
 
         task_id = "persist-test-001"
         result_data = {"segments": [{"text": "안녕하세요", "start": 0.0, "end": 2.0}]}
@@ -136,7 +136,7 @@ class TestPersistTaskResult:
 
         from backend.db.models import TaskResult
         from backend.db.sync_engine import get_sync_session
-        from backend.db.sync_service import persist_task_result
+        from backend.services.sync_service import persist_task_result
 
         task_id = "persist-test-002"
         error_msg = "오디오 파일 없음"
@@ -163,7 +163,7 @@ class TestPersistTaskResult:
 
         from backend.db.models import TaskResult
         from backend.db.sync_engine import get_sync_session
-        from backend.db.sync_service import persist_task_result
+        from backend.services.sync_service import persist_task_result
 
         task_id = "persist-test-003"
 
@@ -197,7 +197,7 @@ class TestPersistTaskResult:
 
         from backend.db.models import TaskResult
         from backend.db.sync_engine import get_sync_session
-        from backend.db.sync_service import persist_task_result
+        from backend.services.sync_service import persist_task_result
 
         task_types = ["transcription", "diarization", "minutes", "summary"]
 
@@ -223,10 +223,10 @@ class TestPersistTaskResultErrorHandling:
 
     def test_db_failure_does_not_raise_exception(self):
         """DB 연결 실패 시 예외가 발생하지 않아야 함 (best-effort)"""
-        from backend.db.sync_service import persist_task_result
+        from backend.services.sync_service import persist_task_result
 
         # get_sync_session을 실패하도록 모킹
-        with patch("backend.db.sync_service.get_sync_session") as mock_session:
+        with patch("backend.services.sync_service.get_sync_session") as mock_session:
             mock_session.side_effect = Exception("DB 연결 실패")
 
             # 예외가 전파되지 않아야 함
@@ -240,7 +240,7 @@ class TestPersistTaskResultErrorHandling:
 
     def test_session_commit_failure_does_not_raise(self):
         """세션 커밋 실패 시 예외가 발생하지 않아야 함"""
-        from backend.db.sync_service import persist_task_result
+        from backend.services.sync_service import persist_task_result
 
         mock_session = MagicMock()
         mock_session.__enter__ = MagicMock(return_value=mock_session)
@@ -248,7 +248,7 @@ class TestPersistTaskResultErrorHandling:
         mock_session.commit.side_effect = Exception("커밋 실패")
         mock_session.execute.return_value.scalar_one_or_none.return_value = None
 
-        with patch("backend.db.sync_service.get_sync_session", return_value=mock_session):
+        with patch("backend.services.sync_service.get_sync_session", return_value=mock_session):
             # 예외가 전파되지 않아야 함
             persist_task_result(
                 task_id="commit-error-test",
@@ -264,7 +264,7 @@ class TestPersistTaskResultErrorHandling:
 
         import backend.db.sync_engine as sync_engine_module
         from backend.db.models import Base
-        from backend.db.sync_service import persist_task_result
+        from backend.services.sync_service import persist_task_result
 
         engine = sa_create_engine("sqlite:///:memory:", echo=False)
         Base.metadata.create_all(engine)

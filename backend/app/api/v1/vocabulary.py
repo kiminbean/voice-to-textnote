@@ -15,7 +15,7 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.dependencies import get_db_session
-from backend.db.vocabulary_service import VocabularyService
+from backend.services.vocabulary_service import VocabularyService
 from backend.schemas.vocabulary import (
     VocabularyCreate,
     VocabularyListResponse,

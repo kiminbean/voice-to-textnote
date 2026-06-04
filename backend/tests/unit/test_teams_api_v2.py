@@ -67,7 +67,7 @@ class TestGetTeamEndpointEdgeCases:
         """잘못된 UUID 형식 (라인 116-117 커버)"""
         response = teams_client.get("/api/v1/teams/invalid-uuid")
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
-        assert "유효하지 않은 팀 ID 형식입니다" in response.json()["detail"]
+        assert "유효하지 않은 팀 ID 형식입니다" in response.json()["message"]
 
     def test_get_team_not_member(self, teams_client) -> None:
         """팀 멤버가 아님 (라인 124 커버)"""
@@ -78,7 +78,7 @@ class TestGetTeamEndpointEdgeCases:
             response = teams_client.get(f"/api/v1/teams/{team_id}")
 
         assert response.status_code == status.HTTP_403_FORBIDDEN
-        assert "팀에 접근할 권한이 없습니다" in response.json()["detail"]
+        assert "팀에 접근할 권한이 없습니다" in response.json()["message"]
 
     def test_get_team_not_found(self, teams_client) -> None:
         """팀을 찾을 수 없음 (라인 128 커버)"""
@@ -90,7 +90,7 @@ class TestGetTeamEndpointEdgeCases:
                 response = teams_client.get(f"/api/v1/teams/{team_id}")
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
-        assert "팀을 찾을 수 없습니다" in response.json()["detail"]
+        assert "팀을 찾을 수 없습니다" in response.json()["message"]
 
 
 # ---------------------------------------------------------------------------
@@ -108,7 +108,7 @@ class TestUpdateTeamEndpointEdgeCases:
             json={"name": "Updated Name"}
         )
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
-        assert "유효하지 않은 팀 ID 형식입니다" in response.json()["detail"]
+        assert "유효하지 않은 팀 ID 형식입니다" in response.json()["message"]
 
 
 # ---------------------------------------------------------------------------
@@ -123,7 +123,7 @@ class TestDeleteTeamEndpointEdgeCases:
         """잘못된 UUID 형식 (라인 202-203 커버)"""
         response = teams_client.delete("/api/v1/teams/invalid-uuid")
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
-        assert "유효하지 않은 팀 ID 형식입니다" in response.json()["detail"]
+        assert "유효하지 않은 팀 ID 형식입니다" in response.json()["message"]
 
     def test_delete_team_not_found(self, teams_client) -> None:
         """팀을 찾을 수 없음 (라인 214 커버)"""
@@ -135,7 +135,7 @@ class TestDeleteTeamEndpointEdgeCases:
                 response = teams_client.delete(f"/api/v1/teams/{team_id}")
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
-        assert "팀을 찾을 수 없습니다" in response.json()["detail"]
+        assert "팀을 찾을 수 없습니다" in response.json()["message"]
 
 
 # ---------------------------------------------------------------------------
@@ -150,7 +150,7 @@ class TestListTeamMembersEndpointEdgeCases:
         """잘못된 UUID 형식 (라인 238-239 커버)"""
         response = teams_client.get("/api/v1/teams/invalid-uuid/members")
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
-        assert "유효하지 않은 팀 ID 형식입니다" in response.json()["detail"]
+        assert "유효하지 않은 팀 ID 형식입니다" in response.json()["message"]
 
 
 # ---------------------------------------------------------------------------
@@ -168,7 +168,7 @@ class TestAddTeamMemberEndpointEdgeCases:
             json={"email": "new@example.com", "role": "member"}
         )
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
-        assert "유효하지 않은 팀 ID 형식입니다" in response.json()["detail"]
+        assert "유효하지 않은 팀 ID 형식입니다" in response.json()["message"]
 
     def test_add_team_member_already_exists(self, teams_client) -> None:
         """이미 멤버인 경우 (라인 296 커버)"""
@@ -189,7 +189,7 @@ class TestAddTeamMemberEndpointEdgeCases:
                 )
 
         assert response.status_code == status.HTTP_409_CONFLICT
-        assert "이미 팀 멤버" in response.json()["detail"]
+        assert "이미 팀 멤버" in response.json()["message"]
 
     def test_add_team_member_fallback_response(self, teams_client) -> None:
         """폴백 응답 (라인 305 커버)"""
@@ -232,7 +232,7 @@ class TestUpdateMemberRoleEndpointEdgeCases:
             json={"role": "admin"}
         )
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
-        assert "유효하지 않은 ID 형식입니다" in response.json()["detail"]
+        assert "유효하지 않은 ID 형식입니다" in response.json()["message"]
 
     def test_update_member_role_non_admin(self, teams_client) -> None:
         """권한 없음 (라인 342 커버)"""
@@ -248,7 +248,7 @@ class TestUpdateMemberRoleEndpointEdgeCases:
             )
 
         assert response.status_code == status.HTTP_403_FORBIDDEN
-        assert "역할 변경은 admin만 가능합니다" in response.json()["detail"]
+        assert "역할 변경은 admin만 가능합니다" in response.json()["message"]
 
     def test_update_member_role_user_not_found(self, teams_client) -> None:
         """사용자를 찾을 수 없음 (라인 353 커버)"""
@@ -268,7 +268,7 @@ class TestUpdateMemberRoleEndpointEdgeCases:
                 )
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
-        assert "사용자를 찾을 수 없습니다" in response.json()["detail"]
+        assert "사용자를 찾을 수 없습니다" in response.json()["message"]
 
     def test_update_member_role_fallback_response(self, teams_client) -> None:
         """폴백 응답 (라인 363 커버)"""
@@ -309,7 +309,7 @@ class TestRemoveTeamMemberEndpointEdgeCases:
         team_id = str(uuid.uuid4())
         response = teams_client.delete(f"/api/v1/teams/{team_id}/members/invalid-uuid")
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
-        assert "유효하지 않은 ID 형식입니다" in response.json()["detail"]
+        assert "유효하지 않은 ID 형식입니다" in response.json()["message"]
 
     def test_remove_team_member_no_permission(self, teams_client) -> None:
         """권한 없음 - 멤버가 다른 멤버 제거 시도 (라인 407 커버)"""
@@ -323,7 +323,7 @@ class TestRemoveTeamMemberEndpointEdgeCases:
             response = teams_client.delete(f"/api/v1/teams/{team_id}/members/{user_id}")
 
         assert response.status_code == status.HTTP_403_FORBIDDEN
-        assert "멤버 제거는 admin만 가능합니다" in response.json()["detail"]
+        assert "멤버 제거는 admin만 가능합니다" in response.json()["message"]
 
     def test_remove_team_member_value_error(self, teams_client) -> None:
         """값 오류 (라인 417 커버)"""
@@ -340,7 +340,7 @@ class TestRemoveTeamMemberEndpointEdgeCases:
                 response = teams_client.delete(f"/api/v1/teams/{team_id}/members/{user_id}")
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert "마지막 admin은 제거할 수 없습니다" in response.json()["detail"]
+        assert "마지막 admin은 제거할 수 없습니다" in response.json()["message"]
 
 
 # ---------------------------------------------------------------------------
@@ -389,7 +389,7 @@ class TestListTeamMeetingsEndpoint:
         """잘못된 UUID 형식"""
         response = teams_client.get("/api/v1/teams/invalid-uuid/meetings")
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
-        assert "유효하지 않은 팀 ID 형식입니다" in response.json()["detail"]
+        assert "유효하지 않은 팀 ID 형식입니다" in response.json()["message"]
 
     def test_list_team_meetings_not_member(self, teams_client) -> None:
         """팀 멤버가 아님"""
@@ -400,4 +400,4 @@ class TestListTeamMeetingsEndpoint:
             response = teams_client.get(f"/api/v1/teams/{team_id}/meetings")
 
         assert response.status_code == status.HTTP_403_FORBIDDEN
-        assert "팀에 접근할 권한이 없습니다" in response.json()["detail"]
+        assert "팀에 접근할 권한이 없습니다" in response.json()["message"]

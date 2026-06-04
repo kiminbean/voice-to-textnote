@@ -46,7 +46,7 @@ class TestPersistTaskResultIndexing:
         from sqlalchemy import text
 
         from backend.db.search_models import ensure_search_index_table
-        from backend.db.sync_service import persist_task_result
+        from backend.services.sync_service import persist_task_result
 
         # FTS5 테이블 생성
         ensure_search_index_table(self.engine)
@@ -93,7 +93,7 @@ class TestPersistTaskResultIndexing:
         from sqlalchemy import text
 
         from backend.db.search_models import ensure_search_index_table
-        from backend.db.sync_service import persist_task_result
+        from backend.services.sync_service import persist_task_result
 
         ensure_search_index_table(self.engine)
 
@@ -136,7 +136,7 @@ class TestPersistTaskResultIndexing:
         from sqlalchemy import text
 
         from backend.db.search_models import ensure_search_index_table
-        from backend.db.sync_service import persist_task_result
+        from backend.services.sync_service import persist_task_result
 
         ensure_search_index_table(self.engine)
 
@@ -160,7 +160,7 @@ class TestPersistTaskResultIndexing:
         from sqlalchemy import text
 
         from backend.db.search_models import ensure_search_index_table
-        from backend.db.sync_service import persist_task_result
+        from backend.services.sync_service import persist_task_result
 
         ensure_search_index_table(self.engine)
 
@@ -185,10 +185,10 @@ class TestPersistTaskResultIndexing:
 
         from backend.db.models import TaskResult
         from backend.db.sync_engine import get_sync_session
-        from backend.db.sync_service import persist_task_result
+        from backend.services.sync_service import persist_task_result
 
         # _try_index_search_entry를 실패하도록 패치
-        with patch("backend.db.sync_service._try_index_search_entry") as mock_idx:
+        with patch("backend.services.sync_service._try_index_search_entry") as mock_idx:
             mock_idx.side_effect = Exception("인덱싱 실패")
 
             # persist는 정상 동작해야 함
@@ -209,10 +209,10 @@ class TestPersistTaskResultIndexing:
 
     def test_persist_indexing_failure_is_silent(self):
         """인덱싱 실패는 예외를 전파하지 않고 경고만 로그해야 함"""
-        from backend.db.sync_service import persist_task_result
+        from backend.services.sync_service import persist_task_result
 
         # _try_index_search_entry가 예외를 throw해도 persist는 성공해야 함
-        with patch("backend.db.sync_service._try_index_search_entry") as mock_idx:
+        with patch("backend.services.sync_service._try_index_search_entry") as mock_idx:
             mock_idx.side_effect = RuntimeError("알 수 없는 오류")
 
             # 예외가 전파되지 않아야 함

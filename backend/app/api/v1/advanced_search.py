@@ -7,8 +7,11 @@ from datetime import datetime, timedelta
 from typing import Any
 
 import redis.asyncio as aioredis
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from backend.app.errors import internal_server_error
+from backend.app.exceptions import VoiceNoteError
 
 from backend.app.dependencies import get_db_session, get_redis_client
 from backend.schemas.advanced_search import (
@@ -68,11 +71,10 @@ async def advanced_search(
             query_info=query_info
         )
 
+    except VoiceNoteError:
+        raise
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"고급 검색 중 오류가 발생했습니다: {str(e)}"
-        )
+        internal_server_error(f"고급 검색 중 오류가 발생했습니다: {str(e)}")
 
 
 @router.get("/history", response_model=SearchHistoryResponse)
@@ -142,11 +144,10 @@ async def get_search_history(
             saved_searches=saved_searches
         )
 
+    except VoiceNoteError:
+        raise
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"검색 기록 조회 중 오류가 발생했습니다: {str(e)}"
-        )
+        internal_server_error(f"검색 기록 조회 중 오류가 발생했습니다: {str(e)}")
 
 
 @router.post("/save-search")
@@ -183,11 +184,10 @@ async def save_search(
             "saved_search": saved_data
         }
 
+    except VoiceNoteError:
+        raise
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"검색 저장 중 오류가 발생했습니다: {str(e)}"
-        )
+        internal_server_error(f"검색 저장 중 오류가 발생했습니다: {str(e)}")
 
 
 @router.delete("/history/{history_id}")
@@ -211,8 +211,7 @@ async def delete_search_history(
             "message": "검색 기록이 삭제되었습니다"
         }
 
+    except VoiceNoteError:
+        raise
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"검색 기록 삭제 중 오류가 발생했습니다: {str(e)}"
-        )
+        internal_server_error(f"검색 기록 삭제 중 오류가 발생했습니다: {str(e)}")

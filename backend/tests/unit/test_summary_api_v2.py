@@ -110,8 +110,8 @@ class TestCreateSummaryAPI:
 
         assert response.status_code == 429
         data = response.json()
-        assert "detail" in data
-        assert "한도" in data["detail"] or "초과" in data["detail"]
+        assert "message" in data
+        assert "한도" in data["message"] or "초과" in data["message"]
 
     def test_create_summary_default_params(self, summary_client):
         """기본 파라미터로 요약 생성"""
@@ -203,8 +203,8 @@ class TestCreateMindMapAPI:
 
         assert response.status_code == 404
         data = response.json()
-        assert "detail" in data
-        assert "찾을 수 없습니다" in data["detail"]
+        assert "message" in data
+        assert "찾을 수 없습니다" in data["message"]
 
     def test_create_mind_map_summary_not_completed(self, summary_client):
         """요약이 완료되지 않음 (409)"""
@@ -225,8 +225,8 @@ class TestCreateMindMapAPI:
 
         assert response.status_code == 409
         data = response.json()
-        assert "detail" in data
-        assert "완료된 요약" in data["detail"] or "completed" in data["detail"]
+        assert "message" in data
+        assert "완료된 요약" in data["message"] or "completed" in data["message"]
 
     def test_create_mind_map_default_request(self, summary_client):
         """기본 요청 본문 (None)로 마인드맵 생성"""
@@ -292,8 +292,8 @@ class TestGetSummaryStatusAPI:
 
         assert response.status_code == 404
         data = response.json()
-        assert "detail" in data
-        assert "찾을 수 없습니다" in data["detail"]
+        assert "message" in data
+        assert "찾을 수 없습니다" in data["message"]
 
     def test_get_summary_status_with_error(self, summary_client):
         """에러 상태 조회"""
@@ -373,8 +373,8 @@ class TestGetSummaryResultAPI:
 
         assert response.status_code == 404
         data = response.json()
-        assert "detail" in data
-        assert "찾을 수 없습니다" in data["detail"]
+        assert "message" in data
+        assert "찾을 수 없습니다" in data["message"]
 
     def test_get_summary_result_still_processing(self, summary_client):
         """아직 처리 중인 경우 (빈 결과 반환)"""
@@ -487,8 +487,8 @@ class TestGetMindMapStatusAPI:
 
         assert response.status_code == 404
         data = response.json()
-        assert "detail" in data
-        assert "찾을 수 없습니다" in data["detail"]
+        assert "message" in data
+        assert "찾을 수 없습니다" in data["message"]
 
 
 # ---------------------------------------------------------------------------
@@ -548,8 +548,8 @@ class TestGetMindMapResultAPI:
 
         assert response.status_code == 404
         data = response.json()
-        assert "detail" in data
-        assert "찾을 수 없습니다" in data["detail"]
+        assert "message" in data
+        assert "찾을 수 없습니다" in data["message"]
 
     def test_get_mind_map_result_still_processing(self, summary_client):
         """아직 처리 중인 마인드맵 (빈 결과 반환)"""

@@ -1,3 +1,4 @@
+from backend.app.error_handlers import register_exception_handlers
 """
 감정 분석 API 엔드포인트 테스트
 SPEC-SENTIMENT-001:
@@ -135,7 +136,7 @@ class TestSentimentAPI:
 
         # Then
         assert response.status_code == 404
-        assert "Not Found" in response.json()["detail"] or "찾을 수 없습니다" in response.json()["detail"]
+        assert "Not Found" in response.json()["message"] or "찾을 수 없습니다" in response.json()["message"]
 
     def test_get_sentiment_result_success(self, client, mock_redis_client):
         """
@@ -235,7 +236,7 @@ class TestSentimentAPI:
 
         # Then
         assert response.status_code == 404
-        assert "Not Found" in response.json()["detail"] or "찾을 수 없습니다" in response.json()["detail"]
+        assert "Not Found" in response.json()["message"] or "찾을 수 없습니다" in response.json()["message"]
 
     def test_delete_sentiment_success(self, client, mock_redis_client):
         """

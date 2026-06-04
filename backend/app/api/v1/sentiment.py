@@ -13,9 +13,10 @@ import uuid
 from datetime import UTC, datetime
 
 import redis.asyncio as aioredis
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 
 from backend.app.dependencies import get_redis_client
+from backend.app.errors import not_found
 from backend.schemas.sentiment import (
     SentimentCreateRequest,
     SentimentResponse,
@@ -87,7 +88,7 @@ async def get_sentiment_status(
     raw = await redis_client.get(status_key)
 
     if raw is None:
-        raise HTTPException(status_code=404, detail="감정 분석 작업을 찾을 수 없습니다.")
+        not_found("감정 분석 작업을 찾을 수 없습니다.")
 
     data = json.loads(raw)
     return SentimentStatusResponse(
@@ -116,7 +117,7 @@ async def get_sentiment_result(
         status_key = f"task:sentiment:status:{task_id}"
         status_raw = await redis_client.get(status_key)
         if status_raw is None:
-            raise HTTPException(status_code=404, detail="감정 분석 작업을 찾을 수 없습니다.")
+            not_found("감정 분석 작업을 찾을 수 없습니다.")
         status_data = json.loads(status_raw)
         return SentimentResponse(
             task_id=task_id,

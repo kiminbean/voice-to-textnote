@@ -13,6 +13,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import HTTPException
+from backend.app.error_handlers import register_exception_handlers
 
 
 # ---------------------------------------------------------------------------

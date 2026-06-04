@@ -12,10 +12,11 @@ REQ-MOBILE-003: GET /api/v1/devices/ - 등록된 디바이스 목록 조회
 import uuid
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.dependencies import get_current_user, get_db_session
+from backend.app.errors import not_found
 from backend.schemas.device import (
     DeviceListResponse,
     DeviceRegisterRequest,
@@ -96,10 +97,7 @@ async def unregister_device(
     deleted = _push_service.unregister_device(device_id)
 
     if not deleted:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"디바이스를 찾을 수 없습니다: device_id={device_id}",
-        )
+        not_found(f"디바이스를 찾을 수 없습니다: device_id={device_id}")
 
     logger.info(f"디바이스 해제: user_id={current_user.id}, device_id={device_id}")
 

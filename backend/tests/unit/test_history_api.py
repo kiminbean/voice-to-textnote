@@ -10,6 +10,7 @@ History API 테스트 - SPEC-HISTORY-001
 import pytest
 import pytest_asyncio
 from fastapi import FastAPI
+from backend.app.error_handlers import register_exception_handlers
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
@@ -137,6 +138,7 @@ def test_app(db_engine):
     from backend.app.dependencies import get_db_session
 
     app = FastAPI()
+    register_exception_handlers(app)
     app.include_router(router, prefix="/api/v1")
 
     # DB 세션 의존성 오버라이드
@@ -375,7 +377,7 @@ class TestHistoryDetail:
         """404 응답에 적절한 오류 메시지 포함"""
         resp = client.get("/api/v1/history/nonexistent-task-id")
         data = resp.json()
-        assert "detail" in data
+        assert "message" in data
 
     def test_detail_with_error_message(self, client):
         """실패한 작업의 error_message 포함"""

@@ -7,9 +7,11 @@ SPEC-QA-001: 회의 Q&A API 엔드포인트
 """
 
 import redis.asyncio as aioredis
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 
 from backend.app.dependencies import get_redis_client
+from backend.app.errors import internal_error, not_found
+from backend.app.exceptions import VoiceNoteError
 from backend.schemas.qa import MeetingAskRequest, MeetingAskResponse, QAHistoryResponse
 from backend.services.qa_service import QAService
 
@@ -36,15 +38,11 @@ async def ask_question(
             thread_id=payload.thread_id,
         )
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
-        )
+        not_found(str(e))
+    except VoiceNoteError:
+        raise
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Q&A 처리 중 오류가 발생했습니다: {e}",
-        )
+        internal_error(f"Q&A 처리 중 오류가 발생했습니다: {e}")
 
 
 @router.get(

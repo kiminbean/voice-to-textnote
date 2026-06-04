@@ -156,7 +156,7 @@ class TestSearchService:
     @pytest.mark.asyncio
     async def test_search_basic_query(self, populated_search_db):
         """기본 검색 쿼리로 결과를 반환해야 함"""
-        from backend.db.search_service import SearchService
+        from backend.services.search_service import SearchService
 
         service = SearchService()
         result = await service.search(session=populated_search_db, query="회의")
@@ -168,7 +168,7 @@ class TestSearchService:
     @pytest.mark.asyncio
     async def test_search_with_task_type_filter_summary(self, populated_search_db):
         """task_type='summary' 필터로 summary만 반환해야 함"""
-        from backend.db.search_service import SearchService
+        from backend.services.search_service import SearchService
 
         service = SearchService()
         result = await service.search(
@@ -182,7 +182,7 @@ class TestSearchService:
     @pytest.mark.asyncio
     async def test_search_with_task_type_filter_minutes(self, populated_search_db):
         """task_type='minutes' 필터로 minutes만 반환해야 함"""
-        from backend.db.search_service import SearchService
+        from backend.services.search_service import SearchService
 
         service = SearchService()
         result = await service.search(
@@ -196,7 +196,7 @@ class TestSearchService:
     @pytest.mark.asyncio
     async def test_search_pagination(self, populated_search_db):
         """페이지네이션이 올바르게 동작해야 함"""
-        from backend.db.search_service import SearchService
+        from backend.services.search_service import SearchService
 
         service = SearchService()
 
@@ -224,7 +224,7 @@ class TestSearchService:
     @pytest.mark.asyncio
     async def test_search_empty_results(self, populated_search_db):
         """매칭되지 않는 쿼리는 빈 결과를 반환해야 함"""
-        from backend.db.search_service import SearchService
+        from backend.services.search_service import SearchService
 
         service = SearchService()
         result = await service.search(
@@ -238,7 +238,7 @@ class TestSearchService:
     @pytest.mark.asyncio
     async def test_search_snippet_contains_match(self, populated_search_db):
         """스니펫에 매칭 키워드가 포함되어야 함"""
-        from backend.db.search_service import SearchService
+        from backend.services.search_service import SearchService
 
         service = SearchService()
         result = await service.search(
@@ -253,7 +253,7 @@ class TestSearchService:
     @pytest.mark.asyncio
     async def test_search_result_schema(self, populated_search_db):
         """SearchResponse 스키마가 올바르게 반환되어야 함"""
-        from backend.db.search_service import SearchService
+        from backend.services.search_service import SearchService
 
         service = SearchService()
         result = await service.search(session=populated_search_db, query="회의")
@@ -270,7 +270,7 @@ class TestSearchService:
     @pytest.mark.asyncio
     async def test_search_result_item_schema(self, populated_search_db):
         """SearchResultItem 스키마가 올바른 필드를 포함해야 함"""
-        from backend.db.search_service import SearchService
+        from backend.services.search_service import SearchService
 
         service = SearchService()
         result = await service.search(session=populated_search_db, query="회의")
@@ -291,7 +291,7 @@ class TestSearchServiceExtendedFilters:
     @pytest.mark.asyncio
     async def test_search_with_date_range(self, populated_search_db):
         """REQ-SEARCH-007: 날짜 범위 필터"""
-        from backend.db.search_service import SearchService
+        from backend.services.search_service import SearchService
 
         service = SearchService()
         date_from = datetime(2024, 1, 2)
@@ -312,7 +312,7 @@ class TestSearchServiceExtendedFilters:
     @pytest.mark.asyncio
     async def test_search_with_date_from_only(self, populated_search_db):
         """REQ-SEARCH-007: date_from만 지정"""
-        from backend.db.search_service import SearchService
+        from backend.services.search_service import SearchService
 
         service = SearchService()
         date_from = datetime(2024, 1, 2)
@@ -330,7 +330,7 @@ class TestSearchServiceExtendedFilters:
     @pytest.mark.asyncio
     async def test_search_with_date_to_only(self, populated_search_db):
         """REQ-SEARCH-007: date_to만 지정"""
-        from backend.db.search_service import SearchService
+        from backend.services.search_service import SearchService
 
         service = SearchService()
         date_to = datetime(2024, 1, 3)
@@ -348,7 +348,7 @@ class TestSearchServiceExtendedFilters:
     @pytest.mark.asyncio
     async def test_search_sort_newest(self, populated_search_db):
         """REQ-SEARCH-008: newest 정렬 (created_at DESC)"""
-        from backend.db.search_service import SearchService
+        from backend.services.search_service import SearchService
 
         service = SearchService()
 
@@ -364,7 +364,7 @@ class TestSearchServiceExtendedFilters:
     @pytest.mark.asyncio
     async def test_search_sort_oldest(self, populated_search_db):
         """REQ-SEARCH-008: oldest 정렬 (created_at ASC)"""
-        from backend.db.search_service import SearchService
+        from backend.services.search_service import SearchService
 
         service = SearchService()
 
@@ -380,7 +380,7 @@ class TestSearchServiceExtendedFilters:
     @pytest.mark.asyncio
     async def test_search_default_sort(self, populated_search_db):
         """REQ-SEARCH-008: sort 미지정 시 기본 정렬 (created_at DESC, 하위 호환)"""
-        from backend.db.search_service import SearchService
+        from backend.services.search_service import SearchService
 
         service = SearchService()
 
@@ -394,7 +394,7 @@ class TestSearchServiceExtendedFilters:
     @pytest.mark.asyncio
     async def test_search_with_speaker_filter(self, populated_search_db):
         """REQ-SEARCH-011: 화자 이름 필터"""
-        from backend.db.search_service import SearchService
+        from backend.services.search_service import SearchService
 
         service = SearchService()
 
@@ -408,7 +408,7 @@ class TestSearchServiceExtendedFilters:
     @pytest.mark.asyncio
     async def test_search_with_has_action_items(self, populated_search_db):
         """REQ-SEARCH-012: has_action_items 필터"""
-        from backend.db.search_service import SearchService
+        from backend.services.search_service import SearchService
 
         service = SearchService()
 
@@ -422,7 +422,7 @@ class TestSearchServiceExtendedFilters:
     @pytest.mark.asyncio
     async def test_combined_filters(self, populated_search_db):
         """REQ-SEARCH-012: 복합 필터 조합"""
-        from backend.db.search_service import SearchService
+        from backend.services.search_service import SearchService
 
         service = SearchService()
         date_from = datetime(2024, 1, 2)

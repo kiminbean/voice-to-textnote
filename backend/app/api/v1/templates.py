@@ -13,9 +13,10 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import redis.asyncio as aioredis
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 
 from backend.app.config import settings
+from backend.app.errors import internal_server_error, not_found, unprocessable
 from backend.app.dependencies import get_redis_client
 from backend.pipeline.template_parser import TemplateParser
 from backend.schemas.template import TemplateDetail, TemplateListItem, TemplateUploadResponse
@@ -85,10 +86,7 @@ async def upload_template(
     # --- 파일 검증 (형식 + 크기) ---
     is_valid, error_msg = _validate_file(filename, file_size)
     if not is_valid:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=error_msg,
-        )
+        unprocessable(error_msg)
 
     # --- 이름 결정 (없으면 파일명 사용) ---
     template_name = name or Path(filename).stem
@@ -199,19 +197,13 @@ async def get_template(
     raw = await redis_client.get(redis_key)
 
     if raw is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"양식을 찾을 수 없습니다: template_id={template_id}",
-        )
+        not_found(f"양식을 찾을 수 없습니다: template_id={template_id}")
 
     try:
         meta = json.loads(raw)
     except json.JSONDecodeError as exc:
         logger.error("양식 메타데이터 파싱 실패", template_id=template_id, error=str(exc))
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="양식 데이터 파싱 오류",
-        )
+        internal_server_error("양식 데이터 파싱 오류")
 
     return TemplateDetail(
         template_id=meta["template_id"],
@@ -239,10 +231,7 @@ async def delete_template(
     raw = await redis_client.get(redis_key)
 
     if raw is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"양식을 찾을 수 없습니다: template_id={template_id}",
-        )
+        not_found(f"양식을 찾을 수 없습니다: template_id={template_id}")
 
     # Redis 키 삭제
     await redis_client.delete(redis_key)

@@ -13,10 +13,11 @@ import uuid
 from datetime import UTC, datetime
 
 import redis.asyncio as aioredis
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 
 from backend.app.config import settings
 from backend.app.dependencies import get_redis_client
+from backend.app.errors import conflict, not_found, too_many_requests
 from backend.schemas.summary import (
     ActionItem,
     MindMapCreateRequest,
@@ -53,12 +54,9 @@ async def create_summary(
     # --- 동시 처리 제한 확인 (REQ-SUM-008: 최대 2개) ---
     active_count = await redis_client.scard("active_sum_jobs") or 0
     if active_count >= settings.max_concurrent_summaries:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=(
-                f"동시 요약 작업 한도({settings.max_concurrent_summaries}개)를 "
-                "초과했습니다. 잠시 후 재시도하세요."
-            ),
+        too_many_requests(
+            f"동시 요약 작업 한도({settings.max_concurrent_summaries}개)를 "
+            "초과했습니다. 잠시 후 재시도하세요."
         )
 
     # --- 작업 ID 생성 및 초기 상태 저장 ---
@@ -118,17 +116,11 @@ async def create_mind_map(
     """
     summary_raw = await redis_client.get(f"task:sum:result:{summary_task_id}")
     if summary_raw is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="요약 결과를 찾을 수 없습니다.",
-        )
+        not_found("요약 결과를 찾을 수 없습니다.")
 
     summary_data = json.loads(summary_raw)
     if summary_data.get("status") != TaskStatus.completed.value:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="완료된 요약 결과에서만 마인드맵을 생성할 수 있습니다.",
-        )
+        conflict("완료된 요약 결과에서만 마인드맵을 생성할 수 있습니다.")
 
     task_id = str(uuid.uuid4())
     now = datetime.now(UTC)
@@ -183,10 +175,7 @@ async def get_mind_map_status(
     """
     raw = await redis_client.get(f"task:mind:status:{task_id}")
     if raw is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="마인드맵 작업을 찾을 수 없습니다.",
-        )
+        not_found("마인드맵 작업을 찾을 수 없습니다.")
 
     data = json.loads(raw)
     return SummaryStatusResponse(
@@ -216,10 +205,7 @@ async def get_mind_map_result(
     if raw is None:
         status_raw = await redis_client.get(f"task:mind:status:{task_id}")
         if status_raw is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="마인드맵 작업을 찾을 수 없습니다.",
-            )
+            not_found("마인드맵 작업을 찾을 수 없습니다.")
 
         status_data = json.loads(status_raw)
         return MindMapResponse(
@@ -267,10 +253,7 @@ async def get_summary_status(
     raw = await redis_client.get(status_key)
 
     if raw is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="요약 작업을 찾을 수 없습니다.",
-        )
+        not_found("요약 작업을 찾을 수 없습니다.")
 
     data = json.loads(raw)
 
@@ -305,10 +288,7 @@ async def get_summary_result(
         status_raw = await redis_client.get(status_key)
 
         if status_raw is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="요약 작업을 찾을 수 없습니다.",
-            )
+            not_found("요약 작업을 찾을 수 없습니다.")
 
         status_data = json.loads(status_raw)
         task_status = TaskStatus(status_data["status"])

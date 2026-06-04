@@ -203,3 +203,115 @@ class RateLimitError(VoiceNoteError):
             message=message,
             status_code=status_code,
         )
+
+
+class UnprocessableEntityError(VoiceNoteError):
+    """
+    처리 불가능한 엔티티 (422)
+
+    요청은 유효하나 비즈니스 규칙상 처리할 수 없을 때 발생하는 예외
+    (예: 지원하지 않는 타입, 필수 데이터 누락)
+    기본 상태 코드: 422 (Unprocessable Entity)
+    """
+
+    def __init__(
+        self,
+        *,
+        message: str = "요청을 처리할 수 없습니다",
+        error_code: str = "UNPROCESSABLE_ENTITY",
+        status_code: int = 422,
+    ) -> None:
+        super().__init__(
+            error_code=error_code,
+            message=message,
+            status_code=status_code,
+        )
+
+
+class BadRequestError(VoiceNoteError):
+    """
+    잘못된 요청 (400)
+
+    클라이언트가 잘못된 요청을 보냈을 때 발생하는 예외
+    기본 상태 코드: 400 (Bad Request)
+    """
+
+    def __init__(
+        self,
+        *,
+        message: str = "잘못된 요청입니다",
+        error_code: str = "BAD_REQUEST",
+        status_code: int = 400,
+    ) -> None:
+        super().__init__(
+            error_code=error_code,
+            message=message,
+            status_code=status_code,
+        )
+
+
+class InternalServerError(VoiceNoteError):
+    """
+    서버 내부 오류 (500)
+
+    처리 중 예상치 못한 오류가 발생했을 때 사용하는 예외
+    기본 상태 코드: 500 (Internal Server Error)
+    """
+
+    def __init__(
+        self,
+        *,
+        message: str = "서버 내부 오류가 발생했습니다",
+        error_code: str = "INTERNAL_SERVER_ERROR",
+        status_code: int = 500,
+    ) -> None:
+        super().__init__(
+            error_code=error_code,
+            message=message,
+            status_code=status_code,
+        )
+
+
+class RequestEntityTooLargeError(VoiceNoteError):
+    """
+    요청 엔티티过大 (413)
+
+    업로드 파일 등 요청 본문이 서버 허용 한도를 초과했을 때 발생하는 예외
+    기본 상태 코드: 413 (Request Entity Too Large)
+    """
+
+    def __init__(
+        self,
+        *,
+        message: str = "요청 크기가 허용 한도를 초과했습니다",
+        error_code: str = "REQUEST_ENTITY_TOO_LARGE",
+        status_code: int = 413,
+    ) -> None:
+        super().__init__(
+            error_code=error_code,
+            message=message,
+            status_code=status_code,
+        )
+
+
+class ServiceUnavailableError(VoiceNoteError):
+    """
+    서비스 이용 불가 (503)
+
+    외부 서비스 의존성 장애 등으로 일시적으로 서비스를 제공할 수 없을 때
+    발생하는 예외
+    기본 상태 코드: 503 (Service Unavailable)
+    """
+
+    def __init__(
+        self,
+        *,
+        message: str = "서비스를 일시적으로 사용할 수 없습니다",
+        error_code: str = "SERVICE_UNAVAILABLE",
+        status_code: int = 503,
+    ) -> None:
+        super().__init__(
+            error_code=error_code,
+            message=message,
+            status_code=status_code,
+        )

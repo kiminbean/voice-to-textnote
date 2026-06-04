@@ -311,7 +311,7 @@ class TestDiarizationDbPersistErrors:
              patch("backend.workers.tasks.diarization_task.settings", mock_settings), \
              patch("backend.workers.tasks.diarization_task.publish_task_event_sync"), \
              patch("backend.pipeline.audio_processor.get_audio_duration_seconds", return_value=10.0), \
-             patch("backend.db.sync_service.persist_task_result", side_effect=Exception("DB 연결 실패")):
+             patch("backend.services.sync_service.persist_task_result", side_effect=Exception("DB 연결 실패")):
             result = diarization_task(task_id=task_id, stt_task_id=stt_task_id)
 
         # DB 저장 실패해도 완료 결과 반환됨 (line 351-352)
@@ -338,7 +338,7 @@ class TestDiarizationDbPersistErrors:
         with patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis), \
              patch("backend.workers.tasks.diarization_task.settings", mock_settings), \
              patch("backend.workers.tasks.diarization_task.publish_task_event_sync"), \
-             patch("backend.db.sync_service.persist_task_result", side_effect=Exception("DB 오류")):
+             patch("backend.services.sync_service.persist_task_result", side_effect=Exception("DB 오류")):
             result = diarization_task(task_id=task_id, stt_task_id=stt_task_id)
 
         # FileNotFoundError 경로의 DB 저장 실패 무시됨 (line 407-408)
@@ -371,7 +371,7 @@ class TestDiarizationDbPersistErrors:
              patch("backend.workers.tasks.diarization_task.settings", mock_settings), \
              patch("backend.workers.tasks.diarization_task.publish_task_event_sync"), \
              patch("backend.pipeline.audio_processor.get_audio_duration_seconds", return_value=10.0), \
-             patch("backend.db.sync_service.persist_task_result", side_effect=Exception("DB 오류")):
+             patch("backend.services.sync_service.persist_task_result", side_effect=Exception("DB 오류")):
             result = diarization_task(task_id=task_id, stt_task_id=stt_task_id)
 
         # 일반 예외 경로의 DB 저장 실패 무시됨 (line 435-436)

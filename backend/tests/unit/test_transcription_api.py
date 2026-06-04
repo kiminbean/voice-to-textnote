@@ -43,7 +43,7 @@ class TestUploadTranscription:
         When: 파일 업로드
         Then: vocabulary_id로 initial_prompt 변환 후 작업 생성
         """
-        from backend.db.vocabulary_service import VocabularyService
+        from backend.services.vocabulary_service import VocabularyService
 
         vocab_id = str(uuid.uuid4())
 
@@ -81,8 +81,8 @@ class TestUploadTranscription:
 
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
         data = response.json()
-        assert "detail" in data
-        assert any(e.get("field") == "vocabulary_id" for e in data["detail"])
+        assert "message" in data
+        assert any(e.get("field") == "vocabulary_id" for e in data["message"])
 
     def test_upload_unsupported_format(self, client, tmp_path):
         """
@@ -102,11 +102,11 @@ class TestUploadTranscription:
 
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
         data = response.json()
-        assert "detail" in data
+        assert "message" in data
         # message 텍스트 확인 (한국어 또는 영어 메시지)
         assert any(
             "format" in e.get("type", "").lower() or "지원" in e.get("message", "")
-            for e in data["detail"]
+            for e in data["message"]
         )
 
     @pytest.mark.skip(reason="대용량 파일 생성으로 인한 테스트 시간 초과")
@@ -133,7 +133,7 @@ class TestUploadTranscription:
 
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
         data = response.json()
-        assert any("file_too_large" in e.get("type", "") for e in data["detail"])
+        assert any("file_too_large" in e.get("type", "") for e in data["message"])
 
     @pytest.mark.skip(reason="Duration check uses mocked settings - needs conftest adjustment")
     def test_upload_duration_exceeded(self, client, test_audio_file, monkeypatch):
@@ -159,7 +159,7 @@ class TestUploadTranscription:
 
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
         data = response.json()
-        assert any("duration_exceeded" in e.get("type", "") for e in data["detail"])
+        assert any("duration_exceeded" in e.get("type", "") for e in data["message"])
 
     def test_upload_corrupted_audio(self, client, corrupted_audio_file):
         """
@@ -176,7 +176,7 @@ class TestUploadTranscription:
 
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
         data = response.json()
-        assert any("invalid_audio" in e.get("type", "") for e in data["detail"])
+        assert any("invalid_audio" in e.get("type", "") for e in data["message"])
 
     def test_upload_concurrent_limit_exceeded(self, client, test_audio_file, mock_redis_client):
         """
@@ -609,4 +609,4 @@ class TestEdgeCases:
 
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
         data = response.json()
-        assert len(data["detail"]) >= 2  # 형식 오류 + 크기 오류
+        assert len(data["message"]) >= 2  # 형식 오류 + 크기 오류

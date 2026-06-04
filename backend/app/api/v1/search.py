@@ -7,11 +7,12 @@ SPEC-SEARCH-001/002: 회의록 전문 검색 API
 
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.dependencies import get_db_session
-from backend.db.search_service import SearchService
+from backend.app.errors import unprocessable
+from backend.services.search_service import SearchService
 from backend.schemas.search import SearchResponse, SortOption
 
 router = APIRouter(tags=["search"])
@@ -68,16 +69,12 @@ async def search(
     # 공백 제거 후 빈 쿼리 검증
     q = q.strip()
     if not q:
-        raise HTTPException(
-            status_code=422,
-            detail="검색 쿼리는 공백 이외의 문자를 포함해야 합니다.",
-        )
+        unprocessable("검색 쿼리는 공백 이외의 문자를 포함해야 합니다.")
 
     # task_type 유효성 검증
     if task_type not in _VALID_TASK_TYPES:
-        raise HTTPException(
-            status_code=422,
-            detail=f"유효하지 않은 task_type입니다. 허용 값: {', '.join(sorted(_VALID_TASK_TYPES))}",
+        unprocessable(
+            f"유효하지 않은 task_type입니다. 허용 값: {', '.join(sorted(_VALID_TASK_TYPES))}"
         )
 
     return await _service.search(

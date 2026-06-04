@@ -211,7 +211,7 @@ class TestGetCurrentUser:
         mock_user.is_active = True
 
         # AuthService mock - 지연 임포트되므로 경로 주의
-        with patch("backend.db.auth_service.AuthService") as mock_auth_service_class:
+        with patch("backend.services.auth_service.AuthService") as mock_auth_service_class:
             mock_auth_service = MagicMock()
             mock_auth_service.decode_access_token = MagicMock(return_value={"sub": str(mock_user.id)})
             mock_auth_service_class.return_value = mock_auth_service
@@ -233,7 +233,7 @@ class TestGetCurrentUser:
 
         mock_request.headers.get = MagicMock(return_value="Bearer token")
 
-        with patch("backend.db.auth_service.AuthService") as mock_auth_service_class:
+        with patch("backend.services.auth_service.AuthService") as mock_auth_service_class:
             mock_auth_service = MagicMock()
             mock_auth_service.decode_access_token = MagicMock(return_value={})
             mock_auth_service_class.return_value = mock_auth_service
@@ -251,7 +251,7 @@ class TestGetCurrentUser:
 
         mock_request.headers.get = MagicMock(return_value="Bearer token")
 
-        with patch("backend.db.auth_service.AuthService") as mock_auth_service_class:
+        with patch("backend.services.auth_service.AuthService") as mock_auth_service_class:
             mock_auth_service = MagicMock()
             mock_auth_service.decode_access_token = MagicMock(return_value={"sub": "invalid-uuid"})
             mock_auth_service_class.return_value = mock_auth_service
@@ -271,7 +271,7 @@ class TestGetCurrentUser:
 
         mock_request.headers.get = MagicMock(return_value="Bearer token")
 
-        with patch("backend.db.auth_service.AuthService") as mock_auth_service_class:
+        with patch("backend.services.auth_service.AuthService") as mock_auth_service_class:
             mock_auth_service = MagicMock()
             user_id = uuid.uuid4()
             mock_auth_service.decode_access_token = MagicMock(return_value={"sub": str(user_id)})
@@ -298,7 +298,7 @@ class TestGetCurrentUser:
 
         mock_request.headers.get = MagicMock(return_value="Bearer token")
 
-        with patch("backend.db.auth_service.AuthService") as mock_auth_service_class:
+        with patch("backend.services.auth_service.AuthService") as mock_auth_service_class:
             mock_auth_service = MagicMock()
             user_id = uuid.uuid4()
             mock_auth_service.decode_access_token = MagicMock(return_value={"sub": str(user_id)})

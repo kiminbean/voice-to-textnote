@@ -150,7 +150,7 @@ class TestScenario2InvalidFormat:
         )
         assert response.status_code == 422
         data = response.json()
-        assert "detail" in data
+        assert "message" in data
 
     def test_invalid_format_error_message_describes_issue(self, client: TestClient):
         """422 응답의 오류 메시지에 '지원하지 않는' 포함"""

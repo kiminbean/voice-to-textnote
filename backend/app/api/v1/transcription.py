@@ -12,12 +12,13 @@ from pathlib import Path
 from uuid import UUID
 
 import redis.asyncio as aioredis
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.config import settings
+from backend.app.errors import bad_request, not_found, too_many_requests, unprocessable
 from backend.app.dependencies import get_db_session, get_redis_client
-from backend.db.vocabulary_service import VocabularyService
+from backend.services.vocabulary_service import VocabularyService
 from backend.pipeline.audio_processor import get_audio_duration_seconds
 from backend.schemas.transcription import (
     TaskStatus,
@@ -62,10 +63,7 @@ async def upload_transcription(
         try:
             vocab_uuid = UUID(vocabulary_id)
         except ValueError:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=[{"field": "vocabulary_id", "message": "유효하지 않은 UUID 형식입니다", "type": "invalid_uuid"}],
-            )
+            unprocessable([{"field": "vocabulary_id", "message": "유효하지 않은 UUID 형식입니다", "type": "invalid_uuid"}])
         vocab_service = VocabularyService()
         initial_prompt = await vocab_service.get_initial_prompt(db, vocab_uuid)
 
@@ -100,10 +98,7 @@ async def upload_transcription(
                 f.write(chunk)
     except OSError as e:
         temp_path.unlink(missing_ok=True)
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=[{"field": "file", "message": f"파일 저장 실패: {e}", "type": "write_error"}],
-        )
+        unprocessable([{"field": "file", "message": f"파일 저장 실패: {e}", "type": "write_error"}])
 
     file_size = temp_path.stat().st_size
     is_valid_size, size_error = validate_file_size(file_size, settings.max_file_size_bytes)
@@ -119,10 +114,7 @@ async def upload_transcription(
 
     if errors:
         # REQ-STT-004: 검증 실패 시 파일 저장 안 함
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=[e.model_dump() for e in errors],
-        )
+        unprocessable([e.model_dump() for e in errors])
 
     # --- 동시 처리 제한 확인 (REQ: 최대 N개) ---
     # Soft check: 워커의 ZSET 기반 카운트와 다를 수 있지만 과도한 큐잉은 방지합니다.
@@ -135,10 +127,8 @@ async def upload_transcription(
     except Exception:
         active_count = 0
     if active_count >= settings.max_concurrent_jobs:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=f"동시 처리 한도({settings.max_concurrent_jobs}개)를 초과했습니다. 잠시 후 재시도하세요.",
-        )
+        from backend.app.errors import too_many_requests
+        too_many_requests(f"동시 처리 한도({settings.max_concurrent_jobs}개)를 초과했습니다. 잠시 후 재시도하세요.")
 
     # temp_path, task_id_str already set above during streaming upload
 
@@ -147,33 +137,27 @@ async def upload_transcription(
         duration_seconds = get_audio_duration_seconds(temp_path)
         if duration_seconds > settings.max_duration_seconds:
             temp_path.unlink(missing_ok=True)  # REQ-STT-004
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=[
-                    {
-                        "field": "file",
-                        "message": (
-                            f"재생 시간이 제한({settings.max_duration_hours}시간)을 초과합니다. "
-                            f"실제 재생 시간: {duration_seconds / 3600:.1f}시간"
-                        ),
-                        "type": "duration_exceeded",
-                    }
-                ],
-            )
-    except HTTPException:
+            unprocessable([
+                {
+                    "field": "file",
+                    "message": (
+                        f"재생 시간이 제한({settings.max_duration_hours}시간)을 초과합니다. "
+                        f"실제 재생 시간: {duration_seconds / 3600:.1f}시간"
+                    ),
+                    "type": "duration_exceeded",
+                }
+            ])
+    except VoiceNoteError:
         raise
     except Exception as e:
         temp_path.unlink(missing_ok=True)
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=[
-                {
-                    "field": "file",
-                    "message": f"오디오 파일을 읽을 수 없습니다: {e}",
-                    "type": "invalid_audio",
-                }
-            ],
-        )
+        unprocessable([
+            {
+                "field": "file",
+                "message": f"오디오 파일을 읽을 수 없습니다: {e}",
+                "type": "invalid_audio",
+            }
+        ])
 
     # --- 초기 상태 Redis 저장 ---
     now = datetime.now(UTC)
@@ -283,7 +267,7 @@ async def get_task_status(
     raw = await redis_client.get(status_key)
 
     if raw is None:
-        raise HTTPException(status_code=404, detail="작업을 찾을 수 없습니다.")
+        not_found("작업을 찾을 수 없습니다.")
 
     data = json.loads(raw)
 
@@ -327,7 +311,7 @@ async def get_transcription_result(
         if not result_file.exists():
             # 상태만 확인해서 적절한 응답
             if status_raw is None:
-                raise HTTPException(status_code=404, detail="작업을 찾을 수 없습니다.")
+                not_found("작업을 찾을 수 없습니다.")
 
             status_data = json.loads(status_raw)
             task_status = TaskStatus(status_data["status"])

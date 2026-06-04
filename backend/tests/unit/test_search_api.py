@@ -8,6 +8,7 @@
 import pytest
 import pytest_asyncio
 from fastapi import FastAPI
+from backend.app.error_handlers import register_exception_handlers
 from fastapi.testclient import TestClient
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -114,6 +115,7 @@ def test_app(db_engine):
     from backend.app.dependencies import get_db_session
 
     app = FastAPI()
+    register_exception_handlers(app)
     app.include_router(router, prefix="/api/v1")
 
     session_factory = async_sessionmaker(db_engine, expire_on_commit=False)

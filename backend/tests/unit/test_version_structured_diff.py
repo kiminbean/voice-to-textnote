@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import pytest
 
-from backend.db.version_service import VersionService
+from backend.services.version_service import VersionService
 
 
 @pytest.fixture

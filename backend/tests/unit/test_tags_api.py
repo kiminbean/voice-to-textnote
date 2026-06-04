@@ -36,7 +36,7 @@ class TestTagService:
 
     async def test_create_tag(self, mock_db, user_id, task_id):
         """태그 생성 테스트."""
-        from backend.db.tag_service import TagService
+        from backend.services.tag_service import TagService
 
         service = TagService()
 
@@ -60,7 +60,7 @@ class TestTagService:
         """유효하지 않은 태그 타입 테스트."""
         from fastapi import HTTPException
 
-        from backend.db.tag_service import TagService
+        from backend.services.tag_service import TagService
 
         service = TagService()
 
@@ -76,7 +76,7 @@ class TestTagService:
 
     async def test_list_tags_for_meeting(self, mock_db, user_id, task_id):
         """회의록 태그 목록 조회 테스트."""
-        from backend.db.tag_service import TagService
+        from backend.services.tag_service import TagService
 
         service = TagService()
 

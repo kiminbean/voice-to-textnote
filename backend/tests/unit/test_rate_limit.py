@@ -9,6 +9,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi import FastAPI
+from backend.app.error_handlers import register_exception_handlers
 
 # ---------------------------------------------------------------------------
 # 테스트 픽스처
@@ -21,6 +22,7 @@ def rate_limited_app():
     from backend.app.middleware.rate_limit import setup_rate_limiting
 
     app = FastAPI()
+    register_exception_handlers(app)
 
     @app.get("/api/test")
     async def test_route():
@@ -86,8 +88,8 @@ class TestRateLimitExceeded:
         import json
 
         body = json.loads(response.body)
-        assert "detail" in body
-        assert "error" in body or "message" in body or "detail" in body
+        assert "message" in body
+        assert "error" in body or "message" in body or "message" in body
 
 
 # ---------------------------------------------------------------------------
@@ -103,6 +105,7 @@ class TestInMemoryFallback:
         from backend.app.middleware.rate_limit import setup_rate_limiting
 
         app = FastAPI()
+        register_exception_handlers(app)
 
         @app.get("/test")
         async def test_route():
@@ -144,6 +147,7 @@ class TestRateLimitSetup:
         from backend.app.middleware.rate_limit import setup_rate_limiting
 
         app = FastAPI()
+        register_exception_handlers(app)
         limiter = setup_rate_limiting(app)
 
         # limiter가 반환되어야 함
@@ -154,6 +158,7 @@ class TestRateLimitSetup:
         from backend.app.middleware.rate_limit import setup_rate_limiting
 
         app = FastAPI()
+        register_exception_handlers(app)
         setup_rate_limiting(app)
 
         # app.state.limiter가 설정되어야 함

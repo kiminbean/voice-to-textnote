@@ -17,6 +17,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest_asyncio
 from fastapi import FastAPI
+from backend.app.error_handlers import register_exception_handlers
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
@@ -139,6 +140,7 @@ async def seeded_db(db_engine):
 def _make_app(db_engine):
     from backend.app.api.v1.quality_assessment import router
     app = FastAPI()
+    register_exception_handlers(app)
     app.include_router(router, prefix="/api/v1")
     factory = async_sessionmaker(db_engine, expire_on_commit=False)
     async def override_db():
@@ -238,7 +240,7 @@ class TestGetLiveQualityScore:
             with TestClient(app) as client:
                 resp = client.get(f"/api/v1/quality/{seeded_db['task_id']}/quality-score")
         assert resp.status_code == 500
-        assert "계산 실패" in resp.json()["detail"]
+        assert "계산 실패" in resp.json()["message"]
 
 
 # ---------------------------------------------------------------------------
@@ -303,7 +305,7 @@ class TestSubmitQualityFeedback:
                     json={"rating": 3, "category": "clarity"},
                 )
         assert resp.status_code == 500
-        assert "저장 실패" in resp.json()["detail"]
+        assert "저장 실패" in resp.json()["message"]
 
 
 # ---------------------------------------------------------------------------
@@ -389,7 +391,7 @@ class TestListQualityFeedback:
                     f"/api/v1/quality/{seeded_db['task_id']}/quality-feedback"
                 )
         assert resp.status_code == 500
-        assert "조회 실패" in resp.json()["detail"]
+        assert "조회 실패" in resp.json()["message"]
 
 
 # ---------------------------------------------------------------------------
@@ -494,7 +496,7 @@ class TestGetQualityTrends:
                     f"/api/v1/quality/{seeded_db['task_id']}/quality-trends"
                 )
         assert resp.status_code == 500
-        assert "분석 실패" in resp.json()["detail"]
+        assert "분석 실패" in resp.json()["message"]
 
 
 # ---------------------------------------------------------------------------

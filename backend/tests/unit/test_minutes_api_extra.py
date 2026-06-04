@@ -95,7 +95,7 @@ class TestMinutesAPI:
 
         # Then
         assert response.status_code == 429
-        assert "한도" in response.json()["detail"]
+        assert "한도" in response.json()["message"]
 
     def test_create_minutes_minimal_request(self, client, mock_redis_client):
         """

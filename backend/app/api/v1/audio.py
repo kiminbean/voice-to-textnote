@@ -5,10 +5,11 @@ Phase 2 (REQ-AUDIO-001): 인앱 오디오 재생을 위한 엔드포인트
 
 import mimetypes
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, status
 from fastapi.responses import FileResponse
 
 from backend.app.config import settings
+from backend.app.errors import not_found
 
 router = APIRouter()
 
@@ -27,10 +28,7 @@ async def get_meeting_audio(task_id: str) -> FileResponse:
     # task_id 기반 파일 검색 (업로드 시 {task_id}{ext} 형식으로 저장됨)
     temp_dir = settings.temp_dir
     if not temp_dir.exists():
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="오디오 파일을 찾을 수 없습니다",
-        )
+        not_found("오디오 파일을 찾을 수 없습니다")
 
     # 지원 포맷 순서대로 검색
     for ext in (".wav", ".mp3", ".m4a", ".ogg", ".flac", ".webm"):
@@ -43,7 +41,4 @@ async def get_meeting_audio(task_id: str) -> FileResponse:
                 filename=candidate.name,
             )
 
-    raise HTTPException(
-        status_code=status.HTTP_404_NOT_FOUND,
-        detail="오디오 파일이 만료되었거나 존재하지 않습니다",
-    )
+    not_found("오디오 파일이 만료되었거나 존재하지 않습니다")

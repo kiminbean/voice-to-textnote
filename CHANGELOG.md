@@ -4,6 +4,15 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **백엔드 구조 리팩토링 (SPEC-REFACTOR-001)**: 에러 처리 표준화 및 서비스 계층 통합
+  - `backend/app/errors.py` 추가: 도메인 에러 헬퍼 10종 (`not_found`, `bad_request`, `unauthorized`, `forbidden`, `conflict`, `rate_limit`, `unprocessable`, `request_entity_too_large`, `internal_error`, `service_unavailable`)
+  - `backend/app/exceptions.py` 확장: 기존 3종 → 14종 서브클래스 (`NotFoundError`, `UnauthorizedError`, `ForbiddenError`, `ConflictError`, `RateLimitError` 등)
+  - 29개 API 라우터에서 raw `HTTPException` 제거 → 에러 헬퍼로 전환
+  - `backend/db/`에서 11개 서비스 파일(`*_service.py`) 삭제 → `backend/services/`(26개)로 통합
+  - `backend/db/`는 모델(`*_models.py`)만 유지
+
 ### Added
 
 - **고급 검색 기능 (SPEC-SEARCH-002)**: SPEC-SEARCH-001 확장 — 필터/정렬/자동완성

@@ -20,7 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.dependencies import get_current_user, get_db_session
 from backend.db.auth_models import User
-from backend.db.speaker_service import SpeakerService
+from backend.services.speaker_service import SpeakerService
 from backend.schemas.speaker import (
     SpeakerProfileCreate,
     SpeakerProfileListResponse,

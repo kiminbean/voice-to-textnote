@@ -26,10 +26,19 @@
       "status": "completed",
       "completed_at": "2026-06-02T16:19:13.851Z",
       "duration_ms": 1006515
+    },
+    {
+      "agent_id": "ae33436a7e26cc9ec",
+      "agent_type": "expert-frontend",
+      "started_at": "2026-06-03T10:43:28.538Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-06-03T10:48:58.140Z",
+      "duration_ms": 329602
     }
   ],
-  "total_spawned": 3,
-  "total_completed": 3,
+  "total_spawned": 4,
+  "total_completed": 4,
   "total_failed": 0,
-  "last_updated": "2026-06-02T16:19:13.955Z"
+  "last_updated": "2026-06-03T10:48:58.243Z"
 }

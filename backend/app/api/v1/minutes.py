@@ -13,10 +13,11 @@ import uuid
 from datetime import UTC, datetime
 
 import redis.asyncio as aioredis
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 
 from backend.app.config import settings
 from backend.app.dependencies import get_redis_client
+from backend.app.errors import not_found, too_many_requests
 from backend.schemas.minutes import (
     MinutesCreateRequest,
     MinutesResponse,
@@ -50,12 +51,9 @@ async def create_minutes(
     # --- 동시 처리 제한 확인 (REQ-MIN-008: 최대 3개) ---
     active_count = await redis_client.scard("active_min_jobs") or 0
     if active_count >= settings.max_concurrent_minutes:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=(
-                f"동시 회의록 생성 작업 한도({settings.max_concurrent_minutes}개)를 "
-                "초과했습니다. 잠시 후 재시도하세요."
-            ),
+        too_many_requests(
+            f"동시 회의록 생성 작업 한도({settings.max_concurrent_minutes}개)를 "
+            "초과했습니다. 잠시 후 재시도하세요."
         )
 
     # --- 작업 ID 생성 및 초기 상태 저장 ---
@@ -118,10 +116,7 @@ async def get_minutes_status(
     raw = await redis_client.get(status_key)
 
     if raw is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="회의록 작업을 찾을 수 없습니다.",
-        )
+        not_found("회의록 작업을 찾을 수 없습니다.")
 
     data = json.loads(raw)
 
@@ -156,10 +151,7 @@ async def get_minutes_result(
         status_raw = await redis_client.get(status_key)
 
         if status_raw is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="회의록 작업을 찾을 수 없습니다.",
-            )
+            not_found("회의록 작업을 찾을 수 없습니다.")
 
         status_data = json.loads(status_raw)
         task_status = TaskStatus(status_data["status"])

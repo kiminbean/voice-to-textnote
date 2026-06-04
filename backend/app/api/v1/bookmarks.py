@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.dependencies import get_current_user, get_db_session
 from backend.db.auth_models import User
-from backend.db.bookmark_service import BookmarkService
+from backend.services.bookmark_service import BookmarkService
 from backend.schemas.bookmark import (
     BookmarkCreate,
     BookmarkListResponse,

@@ -28,7 +28,7 @@ from backend.db.models import TaskResult
 @pytest.fixture
 def meeting_service():
     """MeetingShareService 인스턴스"""
-    from backend.db.meeting_share_service import MeetingShareService
+    from backend.services.meeting_share_service import MeetingShareService
     return MeetingShareService()
 
 

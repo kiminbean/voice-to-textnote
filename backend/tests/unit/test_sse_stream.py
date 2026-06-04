@@ -11,6 +11,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 from fastapi import FastAPI
+from backend.app.error_handlers import register_exception_handlers
 from fastapi.testclient import TestClient
 
 # ---------------------------------------------------------------------------
@@ -23,6 +24,7 @@ def make_test_app():
     from backend.app.api.v1.stream import router
 
     app = FastAPI()
+    register_exception_handlers(app)
     app.include_router(router, prefix="/api/v1")
     return app
 
@@ -130,6 +132,7 @@ class TestSSEEndpoint:
         from backend.app.dependencies import get_redis_client
 
         app = FastAPI()
+        register_exception_handlers(app)
         app.include_router(router, prefix="/api/v1")
 
         # Redis에 태스크 없음 mock
@@ -152,6 +155,7 @@ class TestSSEEndpoint:
         from backend.app.dependencies import get_redis_client
 
         app = FastAPI()
+        register_exception_handlers(app)
         app.include_router(router, prefix="/api/v1")
 
         # Redis에 태스크 존재 + 즉시 completed 이벤트

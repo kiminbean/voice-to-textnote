@@ -14,6 +14,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi import FastAPI
+from backend.app.error_handlers import register_exception_handlers
 from fastapi.testclient import TestClient
 
 from backend.app.dependencies import get_redis_client
@@ -41,6 +42,7 @@ def app_client():
     from backend.app.api.v1.audio_preprocess import router
 
     app = FastAPI()
+    register_exception_handlers(app)
     app.include_router(router, prefix="/api/v1")
 
     # Redis override (미사용이지만 의존성 해결용)

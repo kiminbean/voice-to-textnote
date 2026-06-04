@@ -259,7 +259,7 @@ def summary_task(
 
         # DB 영속 저장 (best-effort, REQ-PERSIST-008)
         try:
-            from backend.db.sync_service import persist_task_result
+            from backend.services.sync_service import persist_task_result
             persist_task_result(
                 task_id=task_id,
                 task_type="summary",
@@ -295,7 +295,7 @@ def summary_task(
 
         # DB 영속 저장 - 실패 상태 (best-effort, REQ-PERSIST-008)
         try:
-            from backend.db.sync_service import persist_task_result
+            from backend.services.sync_service import persist_task_result
             persist_task_result(
                 task_id=task_id,
                 task_type="summary",
@@ -323,7 +323,7 @@ def summary_task(
 
         # DB 영속 저장 - 실패 상태 (best-effort, REQ-PERSIST-008)
         try:
-            from backend.db.sync_service import persist_task_result
+            from backend.services.sync_service import persist_task_result
             persist_task_result(
                 task_id=task_id,
                 task_type="summary",

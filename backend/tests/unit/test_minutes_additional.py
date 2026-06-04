@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 from fastapi import FastAPI
+from backend.app.error_handlers import register_exception_handlers
 from fastapi.testclient import TestClient
 
 from backend.app.api.v1.minutes import router
@@ -24,6 +25,7 @@ def mock_redis():
 def make_app(mock_redis):
     """테스트용 FastAPI 앱 생성"""
     app = FastAPI()
+    register_exception_handlers(app)
     app.include_router(router, prefix="/api/v1")
 
     from backend.app.dependencies import get_redis_client
@@ -125,4 +127,4 @@ class TestGetMinutesResultStatushandling:
         resp = client.get("/api/v1/minutes/nonexistent-task")
 
         assert resp.status_code == 404
-        assert "회의록 작업을 찾을 수 없습니다" in resp.json()["detail"]
+        assert "회의록 작업을 찾을 수 없습니다" in resp.json()["message"]

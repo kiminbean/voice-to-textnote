@@ -11,12 +11,19 @@ SPEC-TEAM-001: 팀 관리 API 엔드포인트
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.dependencies import get_current_user, get_db_session
-from backend.db.meeting_share_service import MeetingShareService
-from backend.db.team_service import TeamService
+from backend.app.errors import (
+    bad_request,
+    conflict,
+    forbidden,
+    not_found,
+    unprocessable,
+)
+from backend.services.meeting_share_service import MeetingShareService
+from backend.services.team_service import TeamService
 from backend.schemas.meeting_share import MeetingListResponse, MeetingOwnershipResponse
 from backend.schemas.team import (
     MemberInviteRequest,
@@ -114,18 +121,18 @@ async def get_team(
     try:
         team_uuid = uuid.UUID(team_id)
     except ValueError:
-        raise HTTPException(status_code=422, detail="유효하지 않은 팀 ID 형식입니다")
+        unprocessable("유효하지 않은 팀 ID 형식입니다")
 
     # 멤버십 확인
     role = await _team_service.get_user_role(
         session=db, team_id=team_uuid, user_id=current_user.id
     )
     if role is None:
-        raise HTTPException(status_code=403, detail="팀에 접근할 권한이 없습니다")
+        forbidden("팀에 접근할 권한이 없습니다")
 
     detail = await _team_service.get_team_with_members(session=db, team_id=team_uuid)
     if detail is None:
-        raise HTTPException(status_code=404, detail="팀을 찾을 수 없습니다")
+        not_found("팀을 찾을 수 없습니다")
 
     return TeamDetailResponse(
         id=str(detail["id"]),
@@ -158,14 +165,14 @@ async def update_team(
     try:
         team_uuid = uuid.UUID(team_id)
     except ValueError:
-        raise HTTPException(status_code=422, detail="유효하지 않은 팀 ID 형식입니다")
+        unprocessable("유효하지 않은 팀 ID 형식입니다")
 
     # admin 권한 확인
     role = await _team_service.get_user_role(
         session=db, team_id=team_uuid, user_id=current_user.id
     )
     if role != "admin":
-        raise HTTPException(status_code=403, detail="팀 수정은 admin만 가능합니다")
+        forbidden("팀 수정은 admin만 가능합니다")
 
     team = await _team_service.update_team(
         session=db,
@@ -200,18 +207,18 @@ async def delete_team(
     try:
         team_uuid = uuid.UUID(team_id)
     except ValueError:
-        raise HTTPException(status_code=422, detail="유효하지 않은 팀 ID 형식입니다")
+        unprocessable("유효하지 않은 팀 ID 형식입니다")
 
     # admin 권한 확인
     role = await _team_service.get_user_role(
         session=db, team_id=team_uuid, user_id=current_user.id
     )
     if role != "admin":
-        raise HTTPException(status_code=403, detail="팀 삭제는 admin만 가능합니다")
+        forbidden("팀 삭제는 admin만 가능합니다")
 
     deleted = await _team_service.delete_team(session=db, team_id=team_uuid)
     if not deleted:
-        raise HTTPException(status_code=404, detail="팀을 찾을 수 없습니다")
+        not_found("팀을 찾을 수 없습니다")
 
 
 # ---------------------------------------------------------------------------
@@ -236,14 +243,14 @@ async def list_team_members(
     try:
         team_uuid = uuid.UUID(team_id)
     except ValueError:
-        raise HTTPException(status_code=422, detail="유효하지 않은 팀 ID 형식입니다")
+        unprocessable("유효하지 않은 팀 ID 형식입니다")
 
     # 멤버십 확인
     role = await _team_service.get_user_role(
         session=db, team_id=team_uuid, user_id=current_user.id
     )
     if role is None:
-        raise HTTPException(status_code=403, detail="팀에 접근할 권한이 없습니다")
+        forbidden("팀에 접근할 권한이 없습니다")
 
     members = await _team_service.list_members(session=db, team_id=team_uuid)
     items = [TeamMemberResponse(**m) for m in members]
@@ -269,14 +276,14 @@ async def add_team_member(
     try:
         team_uuid = uuid.UUID(team_id)
     except ValueError:
-        raise HTTPException(status_code=422, detail="유효하지 않은 팀 ID 형식입니다")
+        unprocessable("유효하지 않은 팀 ID 형식입니다")
 
     # admin 권한 확인
     role = await _team_service.get_user_role(
         session=db, team_id=team_uuid, user_id=current_user.id
     )
     if role != "admin":
-        raise HTTPException(status_code=403, detail="멤버 초대는 admin만 가능합니다")
+        forbidden("멤버 초대는 admin만 가능합니다")
 
     try:
         member = await _team_service.add_member(
@@ -287,13 +294,13 @@ async def add_team_member(
             invited_by=current_user.id,
         )
     except LookupError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        not_found(str(e))
     except ValueError as e:
         # 이미 멤버이거나 유효하지 않은 역할
         error_msg = str(e)
         if "이미 팀 멤버" in error_msg:
-            raise HTTPException(status_code=409, detail=error_msg)
-        raise HTTPException(status_code=400, detail=error_msg)
+            conflict(error_msg)
+        bad_request(error_msg)
 
     # 멤버 상세 조회 (email, display_name 포함 반환)
     members = await _team_service.list_members(session=db, team_id=team_uuid)
@@ -332,14 +339,14 @@ async def update_member_role(
         team_uuid = uuid.UUID(team_id)
         user_uuid = uuid.UUID(user_id)
     except ValueError:
-        raise HTTPException(status_code=422, detail="유효하지 않은 ID 형식입니다")
+        unprocessable("유효하지 않은 ID 형식입니다")
 
     # admin 권한 확인
     role = await _team_service.get_user_role(
         session=db, team_id=team_uuid, user_id=current_user.id
     )
     if role != "admin":
-        raise HTTPException(status_code=403, detail="역할 변경은 admin만 가능합니다")
+        forbidden("역할 변경은 admin만 가능합니다")
 
     try:
         member = await _team_service.update_member_role(
@@ -350,9 +357,9 @@ async def update_member_role(
             requester_id=current_user.id,
         )
     except LookupError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        not_found(str(e))
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        bad_request(str(e))
 
     # 업데이트된 멤버 상세 조회
     members = await _team_service.list_members(session=db, team_id=team_uuid)
@@ -390,7 +397,7 @@ async def remove_team_member(
         team_uuid = uuid.UUID(team_id)
         user_uuid = uuid.UUID(user_id)
     except ValueError:
-        raise HTTPException(status_code=422, detail="유효하지 않은 ID 형식입니다")
+        unprocessable("유효하지 않은 ID 형식입니다")
 
     # 요청자의 역할 확인
     requester_role = await _team_service.get_user_role(
@@ -401,10 +408,10 @@ async def remove_team_member(
     is_self_removal = current_user.id == user_uuid
 
     if not is_self_removal and requester_role != "admin":
-        raise HTTPException(status_code=403, detail="멤버 제거는 admin만 가능합니다")
+        forbidden("멤버 제거는 admin만 가능합니다")
 
     if requester_role is None and not is_self_removal:
-        raise HTTPException(status_code=403, detail="팀에 접근할 권한이 없습니다")
+        forbidden("팀에 접근할 권한이 없습니다")
 
     try:
         await _team_service.remove_member(
@@ -414,9 +421,9 @@ async def remove_team_member(
             requester_id=current_user.id,
         )
     except LookupError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        not_found(str(e))
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        bad_request(str(e))
 
 
 # ---------------------------------------------------------------------------
@@ -443,14 +450,14 @@ async def list_team_meetings(
     try:
         team_uuid = uuid.UUID(team_id)
     except ValueError:
-        raise HTTPException(status_code=422, detail="유효하지 않은 팀 ID 형식입니다")
+        unprocessable("유효하지 않은 팀 ID 형식입니다")
 
     # 멤버십 확인 (모든 역할 허용)
     role = await _team_service.get_user_role(
         session=db, team_id=team_uuid, user_id=current_user.id
     )
     if role is None:
-        raise HTTPException(status_code=403, detail="팀에 접근할 권한이 없습니다")
+        forbidden("팀에 접근할 권한이 없습니다")
 
     result = await _meeting_service.list_team_meetings(
         session=db,
