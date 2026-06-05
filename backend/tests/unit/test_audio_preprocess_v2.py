@@ -44,7 +44,7 @@ def _make_wav_bytes(duration: float = 0.5, sr: int = 16000) -> bytes:
 @pytest.fixture
 def app_client():
     """audio_preprocess 라우터 테스트 앱."""
-    from backend.app.api.v1.audio_preprocess import router
+    from backend.app.api.v1.audio.audio_preprocess import router
 
     app = FastAPI()
     register_exception_handlers(app)
@@ -83,11 +83,11 @@ class TestPreprocessSuccess:
             wf.setframerate(16000)
             wf.writeframes(b"\x00\x00" * 8000)
 
-        with patch("backend.app.api.v1.audio_preprocess.settings") as mock_s, \
-             patch("backend.app.api.v1.audio_preprocess.validate_audio_format", return_value=(True, "")), \
-             patch("backend.app.api.v1.audio_preprocess._resolve_options", return_value=MagicMock()), \
-             patch("backend.app.api.v1.audio_preprocess.preprocess_audio", return_value=mock_output_path), \
-             patch("backend.app.api.v1.audio_preprocess._preprocess_semaphore"):
+        with patch("backend.app.api.v1.audio.audio_preprocess.settings") as mock_s, \
+             patch("backend.app.api.v1.audio.audio_preprocess.validate_audio_format", return_value=(True, "")), \
+             patch("backend.app.api.v1.audio.audio_preprocess._resolve_options", return_value=MagicMock()), \
+             patch("backend.app.api.v1.audio.audio_preprocess.preprocess_audio", return_value=mock_output_path), \
+             patch("backend.app.api.v1.audio.audio_preprocess._preprocess_semaphore"):
             mock_s.audio_preprocess_enabled = True
             mock_s.audio_preprocess_max_file_mb = 500
             mock_s.audio_preprocess_default_high_pass_hz = 0
@@ -129,12 +129,12 @@ class TestPreprocessSuccess:
         def mock_cleanup(path):
             cleanup_called.append(path)
 
-        with patch("backend.app.api.v1.audio_preprocess.settings") as mock_s, \
-             patch("backend.app.api.v1.audio_preprocess.validate_audio_format", return_value=(True, "")), \
-             patch("backend.app.api.v1.audio_preprocess._resolve_options", return_value=MagicMock()), \
-             patch("backend.app.api.v1.audio_preprocess.preprocess_audio", return_value=mock_output_path), \
-             patch("backend.app.api.v1.audio_preprocess._safe_unlink", side_effect=mock_cleanup), \
-             patch("backend.app.api.v1.audio_preprocess._preprocess_semaphore"):
+        with patch("backend.app.api.v1.audio.audio_preprocess.settings") as mock_s, \
+             patch("backend.app.api.v1.audio.audio_preprocess.validate_audio_format", return_value=(True, "")), \
+             patch("backend.app.api.v1.audio.audio_preprocess._resolve_options", return_value=MagicMock()), \
+             patch("backend.app.api.v1.audio.audio_preprocess.preprocess_audio", return_value=mock_output_path), \
+             patch("backend.app.api.v1.audio.audio_preprocess._safe_unlink", side_effect=mock_cleanup), \
+             patch("backend.app.api.v1.audio.audio_preprocess._preprocess_semaphore"):
             mock_s.audio_preprocess_enabled = True
             mock_s.audio_preprocess_max_file_mb = 500
             mock_s.audio_preprocess_default_high_pass_hz = 0
@@ -163,13 +163,13 @@ class TestUploadFailure:
 
     def test_upload_read_failure_returns_400(self, app_client):
         """파일 읽기 실패 시 400 반환 - 파일 크기 초과로 테스트"""
-        with patch("backend.app.api.v1.audio_preprocess.settings") as mock_s, \
-             patch("backend.app.api.v1.audio_preprocess.validate_audio_format", return_value=(True, "")):
+        with patch("backend.app.api.v1.audio.audio_preprocess.settings") as mock_s, \
+             patch("backend.app.api.v1.audio.audio_preprocess.validate_audio_format", return_value=(True, "")):
             mock_s.audio_preprocess_enabled = True
             mock_s.audio_preprocess_max_file_mb = 0.000001  # 1바이트로 제한
             mock_s.audio_preprocess_default_high_pass_hz = 0
 
-            with patch("backend.app.api.v1.audio_preprocess._resolve_options", return_value=MagicMock()):
+            with patch("backend.app.api.v1.audio.audio_preprocess._resolve_options", return_value=MagicMock()):
                 resp = app_client.post(
                     "/api/v1/audio/preprocess",
                     files={"file": ("test.wav", _make_wav_bytes(), "audio/wav")},
@@ -195,11 +195,11 @@ class TestMetadataReadFailure:
         with open(mock_output_path, "wb") as f:
             f.write(b"INVALID_WAV_DATA")
 
-        with patch("backend.app.api.v1.audio_preprocess.settings") as mock_s, \
-             patch("backend.app.api.v1.audio_preprocess.validate_audio_format", return_value=(True, "")), \
-             patch("backend.app.api.v1.audio_preprocess._resolve_options", return_value=MagicMock()), \
-             patch("backend.app.api.v1.audio_preprocess.preprocess_audio", return_value=mock_output_path), \
-             patch("backend.app.api.v1.audio_preprocess._preprocess_semaphore"):
+        with patch("backend.app.api.v1.audio.audio_preprocess.settings") as mock_s, \
+             patch("backend.app.api.v1.audio.audio_preprocess.validate_audio_format", return_value=(True, "")), \
+             patch("backend.app.api.v1.audio.audio_preprocess._resolve_options", return_value=MagicMock()), \
+             patch("backend.app.api.v1.audio.audio_preprocess.preprocess_audio", return_value=mock_output_path), \
+             patch("backend.app.api.v1.audio.audio_preprocess._preprocess_semaphore"):
             mock_s.audio_preprocess_enabled = True
             mock_s.audio_preprocess_max_file_mb = 500
             mock_s.audio_preprocess_default_high_pass_hz = 0
@@ -245,11 +245,11 @@ class TestMetadataHeader:
             n_frames = int(16000 * duration_sec)
             wf.writeframes(b"\x00\x00" * n_frames)
 
-        with patch("backend.app.api.v1.audio_preprocess.settings") as mock_s, \
-             patch("backend.app.api.v1.audio_preprocess.validate_audio_format", return_value=(True, "")), \
-             patch("backend.app.api.v1.audio_preprocess._resolve_options", return_value=MagicMock()), \
-             patch("backend.app.api.v1.audio_preprocess.preprocess_audio", return_value=mock_output_path), \
-             patch("backend.app.api.v1.audio_preprocess._preprocess_semaphore"):
+        with patch("backend.app.api.v1.audio.audio_preprocess.settings") as mock_s, \
+             patch("backend.app.api.v1.audio.audio_preprocess.validate_audio_format", return_value=(True, "")), \
+             patch("backend.app.api.v1.audio.audio_preprocess._resolve_options", return_value=MagicMock()), \
+             patch("backend.app.api.v1.audio.audio_preprocess.preprocess_audio", return_value=mock_output_path), \
+             patch("backend.app.api.v1.audio.audio_preprocess._preprocess_semaphore"):
             mock_s.audio_preprocess_enabled = True
             mock_s.audio_preprocess_max_file_mb = 500
             mock_s.audio_preprocess_default_high_pass_hz = 0

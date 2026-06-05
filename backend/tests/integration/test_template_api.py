@@ -127,7 +127,7 @@ def tmpl_client(mock_tmpl_redis_client, tmp_path):
             mock_dia_inst.load.return_value = None
             mock_dia_cls.get_instance.return_value = mock_dia_inst
 
-            with patch("backend.app.api.v1.templates.settings", test_settings):
+            with patch("backend.app.api.v1.admin.templates.settings", test_settings):
                 yield TestClient(app, raise_server_exceptions=True)
 
     app.dependency_overrides.clear()

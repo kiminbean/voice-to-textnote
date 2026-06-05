@@ -67,7 +67,7 @@ async def seeded_db(db_engine):
 
 
 def _make_app(db_engine) -> FastAPI:
-    from backend.app.api.v1.quality_assessment import router
+    from backend.app.api.v1.audio.quality_assessment import router
     from backend.app.dependencies import get_db_session
 
     app = FastAPI()

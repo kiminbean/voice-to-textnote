@@ -39,7 +39,7 @@ def _make_wav_bytes(duration: float = 0.5, sr: int = 16000) -> bytes:
 @pytest.fixture
 def app_client():
     """audio_preprocess 라우터 테스트 앱."""
-    from backend.app.api.v1.audio_preprocess import router
+    from backend.app.api.v1.audio.audio_preprocess import router
 
     app = FastAPI()
     register_exception_handlers(app)
@@ -67,7 +67,7 @@ class TestPreprocessEndpoint:
 
     def test_disabled_returns_503(self, app_client):
         """전처리 비활성화 시 503."""
-        with patch("backend.app.api.v1.audio_preprocess.settings") as mock_s:
+        with patch("backend.app.api.v1.audio.audio_preprocess.settings") as mock_s:
             mock_s.audio_preprocess_enabled = False
             resp = app_client.post(
                 "/api/v1/audio/preprocess",
@@ -77,8 +77,8 @@ class TestPreprocessEndpoint:
 
     def test_invalid_format_returns_400(self, app_client):
         """지원하지 않는 포맷 → 400."""
-        with patch("backend.app.api.v1.audio_preprocess.settings") as mock_s, \
-             patch("backend.app.api.v1.audio_preprocess.validate_audio_format", return_value=(False, "지원하지 않는 포맷")):
+        with patch("backend.app.api.v1.audio.audio_preprocess.settings") as mock_s, \
+             patch("backend.app.api.v1.audio.audio_preprocess.validate_audio_format", return_value=(False, "지원하지 않는 포맷")):
             mock_s.audio_preprocess_enabled = True
             resp = app_client.post(
                 "/api/v1/audio/preprocess",
@@ -88,17 +88,17 @@ class TestPreprocessEndpoint:
 
     def test_invalid_options_returns_422(self, app_client):
         """옵션 검증 실패 → 422."""
-        with patch("backend.app.api.v1.audio_preprocess.settings") as mock_s, \
-             patch("backend.app.api.v1.audio_preprocess.validate_audio_format", return_value=(True, "")):
+        with patch("backend.app.api.v1.audio.audio_preprocess.settings") as mock_s, \
+             patch("backend.app.api.v1.audio.audio_preprocess.validate_audio_format", return_value=(True, "")):
             mock_s.audio_preprocess_enabled = True
             mock_s.audio_preprocess_default_high_pass_hz = 0
             # PreprocessOptions.validate()가 ValueError 발생하도록 mock
-            with patch("backend.app.api.v1.audio_preprocess.PreprocessOptions") as mock_opts_cls:
+            with patch("backend.app.api.v1.audio.audio_preprocess.PreprocessOptions") as mock_opts_cls:
                 mock_opts = MagicMock()
                 mock_opts.validate.side_effect = ValueError("잘못된 옵션")
                 mock_opts_cls.return_value = mock_opts
 
-                with patch("backend.app.api.v1.audio_preprocess.PreprocessOptionsPayload") as mock_payload:
+                with patch("backend.app.api.v1.audio.audio_preprocess.PreprocessOptionsPayload") as mock_payload:
                     mock_payload.return_value = MagicMock()
 
                     resp = app_client.post(
@@ -110,13 +110,13 @@ class TestPreprocessEndpoint:
 
     def test_file_too_large_returns_413(self, app_client):
         """파일 크기 초과 → 413."""
-        with patch("backend.app.api.v1.audio_preprocess.settings") as mock_s, \
-             patch("backend.app.api.v1.audio_preprocess.validate_audio_format", return_value=(True, "")):
+        with patch("backend.app.api.v1.audio.audio_preprocess.settings") as mock_s, \
+             patch("backend.app.api.v1.audio.audio_preprocess.validate_audio_format", return_value=(True, "")):
             mock_s.audio_preprocess_enabled = True
             mock_s.audio_preprocess_max_file_mb = 0  # 0MB 제한
             mock_s.audio_preprocess_default_high_pass_hz = 0
 
-            with patch("backend.app.api.v1.audio_preprocess._resolve_options") as mock_resolve:
+            with patch("backend.app.api.v1.audio.audio_preprocess._resolve_options") as mock_resolve:
                 mock_resolve.return_value = MagicMock()
 
                 resp = app_client.post(
@@ -127,11 +127,11 @@ class TestPreprocessEndpoint:
 
     def test_preprocess_failure_returns_500(self, app_client):
         """preprocess_audio 예외 → 500."""
-        with patch("backend.app.api.v1.audio_preprocess.settings") as mock_s, \
-             patch("backend.app.api.v1.audio_preprocess.validate_audio_format", return_value=(True, "")), \
-             patch("backend.app.api.v1.audio_preprocess._resolve_options", return_value=MagicMock()), \
-             patch("backend.app.api.v1.audio_preprocess.preprocess_audio", side_effect=RuntimeError("ffmpeg 실패")), \
-             patch("backend.app.api.v1.audio_preprocess._preprocess_semaphore"):
+        with patch("backend.app.api.v1.audio.audio_preprocess.settings") as mock_s, \
+             patch("backend.app.api.v1.audio.audio_preprocess.validate_audio_format", return_value=(True, "")), \
+             patch("backend.app.api.v1.audio.audio_preprocess._resolve_options", return_value=MagicMock()), \
+             patch("backend.app.api.v1.audio.audio_preprocess.preprocess_audio", side_effect=RuntimeError("ffmpeg 실패")), \
+             patch("backend.app.api.v1.audio.audio_preprocess._preprocess_semaphore"):
             mock_s.audio_preprocess_enabled = True
             mock_s.audio_preprocess_max_file_mb = 500
 
@@ -143,11 +143,11 @@ class TestPreprocessEndpoint:
 
     def test_preprocess_value_error_returns_400(self, app_client):
         """preprocess_audio ValueError → 400."""
-        with patch("backend.app.api.v1.audio_preprocess.settings") as mock_s, \
-             patch("backend.app.api.v1.audio_preprocess.validate_audio_format", return_value=(True, "")), \
-             patch("backend.app.api.v1.audio_preprocess._resolve_options", return_value=MagicMock()), \
-             patch("backend.app.api.v1.audio_preprocess.preprocess_audio", side_effect=ValueError("잘못된 오디오")), \
-             patch("backend.app.api.v1.audio_preprocess._preprocess_semaphore"):
+        with patch("backend.app.api.v1.audio.audio_preprocess.settings") as mock_s, \
+             patch("backend.app.api.v1.audio.audio_preprocess.validate_audio_format", return_value=(True, "")), \
+             patch("backend.app.api.v1.audio.audio_preprocess._resolve_options", return_value=MagicMock()), \
+             patch("backend.app.api.v1.audio.audio_preprocess.preprocess_audio", side_effect=ValueError("잘못된 오디오")), \
+             patch("backend.app.api.v1.audio.audio_preprocess._preprocess_semaphore"):
             mock_s.audio_preprocess_enabled = True
             mock_s.audio_preprocess_max_file_mb = 500
 

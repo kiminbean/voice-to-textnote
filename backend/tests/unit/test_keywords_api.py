@@ -71,7 +71,7 @@ async def seeded_engine(db_engine):
 
 
 def _make_app(db_engine) -> TestClient:
-    from backend.app.api.v1.keywords import router
+    from backend.app.api.v1.minutes.keywords import router
     from backend.app.dependencies import get_db_session, get_redis_client
 
     app = FastAPI()

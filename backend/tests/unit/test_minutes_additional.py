@@ -11,7 +11,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from backend.app.api.v1.minutes import router
+from backend.app.api.v1.minutes.minutes import router
 from backend.app.error_handlers import register_exception_handlers
 
 

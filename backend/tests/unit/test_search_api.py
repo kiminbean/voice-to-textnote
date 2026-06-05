@@ -111,7 +111,7 @@ async def populated_db(db_session: AsyncSession):
 @pytest.fixture
 def test_app(db_engine):
     """테스트용 FastAPI 앱 픽스처 (search 라우터만 포함)"""
-    from backend.app.api.v1.search import router
+    from backend.app.api.v1.analytics.search import router
     from backend.app.dependencies import get_db_session
 
     app = FastAPI()

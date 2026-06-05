@@ -22,7 +22,7 @@ from backend.app.error_handlers import register_exception_handlers
 
 def make_test_app():
     """스트림 라우터만 포함한 최소 테스트 앱 생성"""
-    from backend.app.api.v1.stream import router
+    from backend.app.api.v1.transcription.stream import router
 
     app = FastAPI()
     register_exception_handlers(app)
@@ -41,7 +41,7 @@ class TestSSEEventGenerator:
     @pytest.mark.asyncio
     async def test_generator_yields_sse_events(self):
         """이벤트 제너레이터가 올바른 SSE 형식으로 yield하는지 확인"""
-        from backend.app.api.v1.stream import create_sse_event_generator
+        from backend.app.api.v1.transcription.stream import create_sse_event_generator
 
         # Arrange - 완료 이벤트 하나만 있는 구독자 mock
         async def mock_subscriber(redis_client, task_id):
@@ -60,7 +60,7 @@ class TestSSEEventGenerator:
     @pytest.mark.asyncio
     async def test_generator_stops_on_completed_event(self):
         """completed 이벤트 수신 후 제너레이터가 종료되는지 확인"""
-        from backend.app.api.v1.stream import create_sse_event_generator
+        from backend.app.api.v1.transcription.stream import create_sse_event_generator
 
         # Arrange
         async def mock_subscriber(redis_client, task_id):
@@ -81,7 +81,7 @@ class TestSSEEventGenerator:
     @pytest.mark.asyncio
     async def test_generator_stops_on_failed_event(self):
         """failed 이벤트 수신 후 제너레이터가 종료되는지 확인"""
-        from backend.app.api.v1.stream import create_sse_event_generator
+        from backend.app.api.v1.transcription.stream import create_sse_event_generator
 
         # Arrange
         async def mock_subscriber(redis_client, task_id):
@@ -101,7 +101,7 @@ class TestSSEEventGenerator:
     @pytest.mark.asyncio
     async def test_generator_event_has_id(self):
         """이벤트에 id 필드가 포함되는지 확인 (REQ-SSE-002)"""
-        from backend.app.api.v1.stream import create_sse_event_generator
+        from backend.app.api.v1.transcription.stream import create_sse_event_generator
 
         # Arrange
         async def mock_subscriber(redis_client, task_id):
@@ -129,7 +129,7 @@ class TestSSEEndpoint:
 
     def test_stream_endpoint_returns_404_when_task_not_found(self):
         """존재하지 않는 태스크 조회 시 404 반환 (REQ-SSE-001)"""
-        from backend.app.api.v1.stream import router
+        from backend.app.api.v1.transcription.stream import router
         from backend.app.dependencies import get_redis_client
 
         app = FastAPI()
@@ -152,7 +152,7 @@ class TestSSEEndpoint:
 
     def test_stream_endpoint_content_type(self):
         """스트림 엔드포인트의 Content-Type이 text/event-stream인지 확인 (REQ-SSE-001)"""
-        from backend.app.api.v1.stream import router
+        from backend.app.api.v1.transcription.stream import router
         from backend.app.dependencies import get_redis_client
 
         app = FastAPI()

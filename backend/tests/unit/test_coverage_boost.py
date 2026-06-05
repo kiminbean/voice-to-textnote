@@ -55,7 +55,7 @@ class TestQualityAssessmentTextExtraction:
 
     def test_extract_text_with_sections_dict(self):
         """sections이 dict이면 values를 텍스트로 추출"""
-        from backend.app.api.v1.quality_assessment import _extract_minutes_text
+        from backend.app.api.v1.audio.quality_assessment import _extract_minutes_text
 
         data = {
             "sections": {"결정": "베타 출시", "후속": "QA 일정"},
@@ -67,7 +67,7 @@ class TestQualityAssessmentTextExtraction:
 
     def test_extract_text_with_segments(self):
         """segments에서 text 필드 추출"""
-        from backend.app.api.v1.quality_assessment import _extract_minutes_text
+        from backend.app.api.v1.audio.quality_assessment import _extract_minutes_text
 
         data = {
             "segments": [
@@ -81,7 +81,7 @@ class TestQualityAssessmentTextExtraction:
 
     def test_extract_text_skips_empty_values(self):
         """빈 문자열/None 값은 건너뜀"""
-        from backend.app.api.v1.quality_assessment import _extract_minutes_text
+        from backend.app.api.v1.audio.quality_assessment import _extract_minutes_text
 
         data = {
             "summary_text": "  ",  # 공백만 → skip
@@ -92,7 +92,7 @@ class TestQualityAssessmentTextExtraction:
 
     def test_extract_minutes_title_with_value(self):
         """title이 있으면 그대로 반환 (line 68)"""
-        from backend.app.api.v1.quality_assessment import _extract_minutes_title
+        from backend.app.api.v1.audio.quality_assessment import _extract_minutes_title
 
         assert _extract_minutes_title({"title": "회의록"}) == "회의록"
         assert _extract_minutes_title({"title": 123}) == ""
@@ -100,7 +100,7 @@ class TestQualityAssessmentTextExtraction:
 
     def test_extract_minutes_content_from_markdown(self):
         """result_data에 markdown이 있으면 마크다운 반환 (line 79-80)"""
-        from backend.app.api.v1.quality_assessment import _extract_minutes_content
+        from backend.app.api.v1.audio.quality_assessment import _extract_minutes_content
 
         task = MagicMock()
         task.result_data = {
@@ -113,7 +113,7 @@ class TestQualityAssessmentTextExtraction:
 
     def test_extract_minutes_content_from_segments(self):
         """markdown 없으면 segments에서 text 추출 (lines 82-90)"""
-        from backend.app.api.v1.quality_assessment import _extract_minutes_content
+        from backend.app.api.v1.audio.quality_assessment import _extract_minutes_content
 
         task = MagicMock()
         task.result_data = {
@@ -129,7 +129,7 @@ class TestQualityAssessmentTextExtraction:
 
     def test_extract_minutes_content_fallback_to_summary(self):
         """segments도 없으면 summary_text 사용 (lines 92-94)"""
-        from backend.app.api.v1.quality_assessment import _extract_minutes_content
+        from backend.app.api.v1.audio.quality_assessment import _extract_minutes_content
 
         task = MagicMock()
         task.result_data = {
@@ -141,7 +141,7 @@ class TestQualityAssessmentTextExtraction:
 
     def test_extract_minutes_content_empty_result(self):
         """result_data가 비어있으면 빈 문자열 반환 (line 96)"""
-        from backend.app.api.v1.quality_assessment import _extract_minutes_content
+        from backend.app.api.v1.audio.quality_assessment import _extract_minutes_content
 
         task = MagicMock()
         task.result_data = {}

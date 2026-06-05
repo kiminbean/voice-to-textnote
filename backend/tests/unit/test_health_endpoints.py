@@ -85,7 +85,7 @@ def client_full_deps(
         mock_inst.load.return_value = None
         mock_engine_cls.get_instance.return_value = mock_inst
 
-        with patch("backend.app.api.v1.health.celery_app"):
+        with patch("backend.app.api.v1.admin.health.celery_app"):
             yield TestClient(app, raise_server_exceptions=True)
 
     app.dependency_overrides.clear()
@@ -203,7 +203,7 @@ class TestHealthCheckDegraded:
             mock_inst.load.return_value = None
             mock_engine_cls.get_instance.return_value = mock_inst
 
-            with patch("backend.app.api.v1.health.celery_app"):
+            with patch("backend.app.api.v1.admin.health.celery_app"):
                 client = TestClient(app, raise_server_exceptions=True)
                 response = client.get("/api/v1/health")
 
@@ -240,8 +240,8 @@ class TestHealthCheckDegraded:
             mock_inst.load.return_value = None
             mock_engine_cls.get_instance.return_value = mock_inst
 
-            with patch("backend.app.api.v1.health.shutil.which", return_value=None):
-                with patch("backend.app.api.v1.health.celery_app"):
+            with patch("backend.app.api.v1.admin.health.shutil.which", return_value=None):
+                with patch("backend.app.api.v1.admin.health.celery_app"):
                     client = TestClient(app, raise_server_exceptions=True)
                     response = client.get("/api/v1/health")
 
@@ -255,7 +255,7 @@ class TestHealthCheckDegraded:
     def test_celery_status_unknown_on_exception(self, client_full_deps):
         """Celery 상태 조회 실패 시 unknown 반환"""
         with patch(
-            "backend.app.api.v1.health.celery_app.control.inspect"
+            "backend.app.api.v1.admin.health.celery_app.control.inspect"
         ) as mock_inspect:
             mock_inspect.side_effect = Exception("broker error")
 

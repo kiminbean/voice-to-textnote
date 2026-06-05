@@ -94,7 +94,7 @@ def _make_export_app(mock_redis: AsyncMock) -> FastAPI:
 
     인증 미들웨어를 우회하고 Redis를 mock으로 교체합니다.
     """
-    from backend.app.api.v1 import export
+    from backend.app.api.v1.admin import export
     from backend.app.dependencies import get_db_session, get_redis_client
 
     app = FastAPI()
@@ -272,7 +272,7 @@ class TestExportPdfApi:
         """
         Redis 미스 후 DB 폴백에서 데이터를 찾으면 200 반환
         """
-        from backend.app.api.v1 import export
+        from backend.app.api.v1.admin import export
         from backend.app.dependencies import get_db_session, get_redis_client
         from backend.app.middleware.auth import verify_api_key
         from backend.db.models import TaskResult

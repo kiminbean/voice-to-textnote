@@ -19,7 +19,7 @@ from fastapi.testclient import TestClient
 
 @pytest.fixture
 def auth_client():
-    from backend.app.api.v1.auth import get_auth_service
+    from backend.app.api.v1.auth.auth import get_auth_service
     from backend.app.dependencies import get_db_session, get_redis_client
     from backend.app.main import app
 
@@ -61,16 +61,16 @@ class TestGuestSession:
         app.dependency_overrides[get_redis_client] = lambda: mock_redis
 
         with (
-            patch("backend.app.api.v1.auth.settings") as mock_s,
+            patch("backend.app.api.v1.auth.auth.settings") as mock_s,
             patch(
-                "backend.app.api.v1.auth.uuid.uuid4",
+                "backend.app.api.v1.auth.auth.uuid.uuid4",
                 return_value=uuid.UUID("12345678-1234-5678-1234-567712345678"),
             ),
         ):
             mock_s.guest_session_ttl_hours = 24
             mock_s.jwt_secret = "test-secret"
 
-            with patch("backend.app.api.v1.auth.jwt.encode") as mock_encode:
+            with patch("backend.app.api.v1.auth.auth.jwt.encode") as mock_encode:
                 mock_encode.return_value = "mock-guest-token"
 
                 response = client.post("/api/v1/auth/guest")
@@ -94,7 +94,7 @@ class TestGoogleLogin:
         mock_user_info.display_name = "Google User"
         mock_user_info.avatar_url = "https://example.com/avatar.jpg"
 
-        with patch("backend.app.api.v1.auth.verify_google_token") as mock_verify:
+        with patch("backend.app.api.v1.auth.auth.verify_google_token") as mock_verify:
             mock_verify.return_value = mock_user_info
             mock_svc.social_login_or_register = AsyncMock(
                 return_value=(MagicMock(), "access-token", "refresh-token")
@@ -112,7 +112,7 @@ class TestGoogleLogin:
 
     def test_google_login_invalid_token_401(self, auth_client):
         client, _ = auth_client
-        with patch("backend.app.api.v1.auth.verify_google_token") as mock_verify:
+        with patch("backend.app.api.v1.auth.auth.verify_google_token") as mock_verify:
             mock_verify.side_effect = ValueError("Invalid Google token")
 
             response = client.post(
@@ -133,7 +133,7 @@ class TestAppleLogin:
         mock_user_info.display_name = "Apple User"
         mock_user_info.avatar_url = None
 
-        with patch("backend.app.api.v1.auth.verify_apple_token") as mock_verify:
+        with patch("backend.app.api.v1.auth.auth.verify_apple_token") as mock_verify:
             mock_verify.return_value = mock_user_info
             mock_svc.social_login_or_register = AsyncMock(
                 return_value=(MagicMock(), "access-token", "refresh-token")
@@ -158,7 +158,7 @@ class TestAppleLogin:
         mock_user_info.display_name = "Default Name"
         mock_user_info.avatar_url = None
 
-        with patch("backend.app.api.v1.auth.verify_apple_token") as mock_verify:
+        with patch("backend.app.api.v1.auth.auth.verify_apple_token") as mock_verify:
             mock_verify.return_value = mock_user_info
             mock_svc.social_login_or_register = AsyncMock(
                 return_value=(MagicMock(), "access-token", "refresh-token")
@@ -176,7 +176,7 @@ class TestAppleLogin:
 
     def test_apple_login_invalid_token_401(self, auth_client):
         client, _ = auth_client
-        with patch("backend.app.api.v1.auth.verify_apple_token") as mock_verify:
+        with patch("backend.app.api.v1.auth.auth.verify_apple_token") as mock_verify:
             mock_verify.side_effect = ValueError("Invalid Apple token")
 
             response = client.post(
@@ -212,7 +212,7 @@ class TestLinkProvider:
 
         app.dependency_overrides[get_current_user] = mock_get_user
 
-        with patch("backend.app.api.v1.auth.verify_google_token") as mock_verify:
+        with patch("backend.app.api.v1.auth.auth.verify_google_token") as mock_verify:
             mock_verify.return_value = mock_user_info
             mock_svc.link_provider = AsyncMock(return_value=mock_user)
 
@@ -264,7 +264,7 @@ class TestLinkProvider:
 
         app.dependency_overrides[get_current_user] = mock_get_user
 
-        with patch("backend.app.api.v1.auth.verify_google_token") as mock_verify:
+        with patch("backend.app.api.v1.auth.auth.verify_google_token") as mock_verify:
             mock_verify.side_effect = ValueError("Invalid token")
 
             response = client.post(

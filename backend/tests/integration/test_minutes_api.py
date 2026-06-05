@@ -125,7 +125,7 @@ def min_client(mock_min_redis_client, tmp_path):
             mock_dia_inst.load.return_value = None
             mock_dia_cls.get_instance.return_value = mock_dia_inst
 
-            with patch("backend.app.api.v1.minutes.settings", test_settings):
+            with patch("backend.app.api.v1.minutes.minutes.settings", test_settings):
                 with patch("backend.workers.tasks.minutes_task.minutes_celery_task") as mock_celery:
                     mock_task_result = MagicMock()
                     mock_task_result.id = "mock-minutes-task-id"
@@ -226,7 +226,7 @@ class TestPostMinutes:
                 mock_dia_inst.is_loaded = True
                 mock_dia_cls.get_instance.return_value = mock_dia_inst
 
-                with patch("backend.app.api.v1.minutes.settings", test_settings):
+                with patch("backend.app.api.v1.minutes.minutes.settings", test_settings):
                     client = TestClient(app, raise_server_exceptions=True)
                     response = client.post(
                         "/api/v1/minutes",

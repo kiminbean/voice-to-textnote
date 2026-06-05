@@ -134,7 +134,7 @@ def test_app(db_engine):
     get_db_session 의존성을 인메모리 SQLite로 오버라이드합니다.
     """
 
-    from backend.app.api.v1.history import router
+    from backend.app.api.v1.admin.history import router
     from backend.app.dependencies import get_db_session
 
     app = FastAPI()

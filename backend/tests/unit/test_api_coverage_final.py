@@ -37,13 +37,13 @@ class TestAudioPreprocessCoverage:
         """
         from unittest.mock import patch
 
-        from backend.app.api.v1.audio_preprocess import _safe_unlink
+        from backend.app.api.v1.audio.audio_preprocess import _safe_unlink
 
         # 실제 cleanup_temp_file 호출을 모의하면서 _safe_unlink 검증
         fake_path = Path("/nonexistent/path/file.wav")
 
         # cleanup_temp_file가 실제로 호출되도록 모의
-        with patch("backend.app.api.v1.audio_preprocess.cleanup_temp_file", side_effect=OSError("Disk error")):
+        with patch("backend.app.api.v1.audio.audio_preprocess.cleanup_temp_file", side_effect=OSError("Disk error")):
             # _safe_unlink는 예외를 삼키므로 호출해도 안전
             _safe_unlink(fake_path)  # 예외 없이 완료되어야 함
 
@@ -52,7 +52,7 @@ class TestAudioPreprocessCoverage:
         with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
             tmp_path = Path(tmp.name)
             # 파일이 존재하면 cleanup_temp_file 호출됨
-            with patch("backend.app.api.v1.audio_preprocess.cleanup_temp_file") as mock_cleanup:
+            with patch("backend.app.api.v1.audio.audio_preprocess.cleanup_temp_file") as mock_cleanup:
                 _safe_unlink(tmp_path)
                 # cleanup_temp_file가 호출되었는지 확인
                 mock_cleanup.assert_called_once_with(tmp_path)
@@ -64,7 +64,7 @@ class TestAudioPreprocessCoverage:
         When: _resolve_options 호출
         Then: 기본값이 적용됨
         """
-        from backend.app.api.v1.audio_preprocess import _resolve_options
+        from backend.app.api.v1.audio.audio_preprocess import _resolve_options
         from backend.app.config import settings
         from backend.schemas.audio_preprocess import PreprocessOptionsPayload
 
@@ -133,7 +133,7 @@ class TestWebhooksCoverage:
         When: from_orm_masked 메서드 확인
         Then: 메서드가 존재함
         """
-        from backend.app.api.v1.webhooks import WebhookEndpointResponse
+        from backend.app.api.v1.collaboration.webhooks import WebhookEndpointResponse
 
         # from_orm_masked 메서드 존재 확인
         assert hasattr(WebhookEndpointResponse, "from_orm_masked")
@@ -163,7 +163,7 @@ class TestDashboardCoverage:
         When: DashboardOverview 생성
         Then: 모든 값이 0
         """
-        from backend.app.api.v1.dashboard import DashboardOverview
+        from backend.app.api.v1.analytics.dashboard import DashboardOverview
 
         overview = DashboardOverview(
             total_meetings=0,
@@ -287,7 +287,7 @@ class TestQualityAssessmentCoverage:
         When: health_check 호출
         Then: healthy 상태 반환
         """
-        from backend.app.api.v1.quality_assessment import health_check
+        from backend.app.api.v1.audio.quality_assessment import health_check
 
         result = await health_check()
         assert result["status"] == "healthy"
@@ -302,7 +302,7 @@ class TestQualityAssessmentCoverage:
         """
         from fastapi import HTTPException
 
-        from backend.app.api.v1.quality_assessment import _extract_minutes_text
+        from backend.app.api.v1.audio.quality_assessment import _extract_minutes_text
 
         empty_data = {"segments": []}
 

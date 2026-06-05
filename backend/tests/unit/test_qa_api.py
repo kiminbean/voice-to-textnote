@@ -19,7 +19,7 @@ from backend.schemas.qa import MeetingAskResponse, QAHistoryItem, QAHistoryRespo
 
 @pytest.fixture
 def app_client():
-    from backend.app.api.v1.qa import get_qa_service, router
+    from backend.app.api.v1.audio.qa import get_qa_service, router
 
     app = FastAPI()
     register_exception_handlers(app)

@@ -23,7 +23,7 @@ from backend.db.auth_models import User
 
 @pytest.fixture
 def tags_client():
-    from backend.app.api.v1.tags import get_tag_service
+    from backend.app.api.v1.minutes.tags import get_tag_service
     from backend.app.dependencies import get_current_user, get_db_session
     from backend.app.main import app
 
@@ -87,7 +87,7 @@ class TestAutoTagMeetingEndpoint:
             ),
         ]
 
-        from backend.app.api.v1 import tags as tags_mod
+        from backend.app.api.v1.minutes import tags as tags_mod
 
         with patch.object(tags_mod, "generate_auto_tags", return_value=mock_tags):
             mock_svc.bulk_create = AsyncMock(return_value=mock_created_tags)
@@ -109,7 +109,7 @@ class TestAutoTagMeetingEndpoint:
     def test_auto_tag_meeting_empty_tags(self, tags_client) -> None:
         client, mock_svc = tags_client
 
-        from backend.app.api.v1 import tags as tags_mod
+        from backend.app.api.v1.minutes import tags as tags_mod
 
         with patch.object(tags_mod, "generate_auto_tags", return_value=[]):
             mock_svc.bulk_create = AsyncMock(return_value=[])

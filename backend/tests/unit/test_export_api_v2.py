@@ -50,14 +50,14 @@ class TestSafeExportFilename:
 
     def test_normal_task_id(self):
         """정상적인 task_id로 파일명 생성."""
-        from backend.app.api.v1.export import _safe_export_filename
+        from backend.app.api.v1.admin.export import _safe_export_filename
 
         result = _safe_export_filename("task-123", "pdf")
         assert result == "minutes_task-123.pdf"
 
     def test_special_characters_removed(self):
         """특수문자가 제거되는지 확인."""
-        from backend.app.api.v1.export import _safe_export_filename
+        from backend.app.api.v1.admin.export import _safe_export_filename
 
         result = _safe_export_filename("task/123\\test:file", "pdf")
         assert "task123testfile" in result
@@ -65,7 +65,7 @@ class TestSafeExportFilename:
 
     def test_long_task_id_truncated(self):
         """긴 task_id가 64자로 제한되는지 확인."""
-        from backend.app.api.v1.export import _safe_export_filename
+        from backend.app.api.v1.admin.export import _safe_export_filename
 
         long_id = "a" * 100
         result = _safe_export_filename(long_id, "pdf")
@@ -74,7 +74,7 @@ class TestSafeExportFilename:
 
     def test_empty_task_id_uses_default(self):
         """빈 task_id가 'minutes'를 사용하는지 확인."""
-        from backend.app.api.v1.export import _safe_export_filename
+        from backend.app.api.v1.admin.export import _safe_export_filename
 
         result = _safe_export_filename("", "pdf")
         # 빈 문자열은 "minutes"로 대체되고, "minutes_" 접두사가 붙음
@@ -82,7 +82,7 @@ class TestSafeExportFilename:
 
     def test_special_only_uses_default(self):
         """특수문자만 있는 경우 기본값을 사용."""
-        from backend.app.api.v1.export import _safe_export_filename
+        from backend.app.api.v1.admin.export import _safe_export_filename
 
         result = _safe_export_filename("!!!@###", "pdf")
         assert result == "minutes_minutes.pdf"

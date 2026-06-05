@@ -45,7 +45,7 @@ def mock_db():
 
 @pytest.fixture
 def client_with_versions(mock_user, mock_db):
-    from backend.app.api.v1.versions import get_version_service
+    from backend.app.api.v1.collaboration.versions import get_version_service
     from backend.app.dependencies import get_current_user, get_db_session
     from backend.app.main import app
 

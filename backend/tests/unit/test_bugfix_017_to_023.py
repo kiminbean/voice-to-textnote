@@ -22,14 +22,14 @@ class TestExportFilenameSanitization:
     """`_safe_export_filename`가 헤더 인젝션 위험 문자를 제거하는지 확인."""
 
     def test_clean_uuid_is_preserved(self):
-        from backend.app.api.v1.export import _safe_export_filename
+        from backend.app.api.v1.admin.export import _safe_export_filename
 
         clean = "abc123-def4-5678-90ab-cdef01234567"
         result = _safe_export_filename(clean, "pdf")
         assert result == f"minutes_{clean}.pdf"
 
     def test_crlf_injection_is_stripped(self):
-        from backend.app.api.v1.export import _safe_export_filename
+        from backend.app.api.v1.admin.export import _safe_export_filename
 
         # CRLF + 추가 헤더 주입 시도. 핵심 보안 속성은 CRLF와 콜론이
         # 헤더에 포함되지 않는 것 — 알파벳/대시는 합법적 파일명 문자.
@@ -45,7 +45,7 @@ class TestExportFilenameSanitization:
         assert "\n" not in header_value
 
     def test_quote_injection_is_stripped(self):
-        from backend.app.api.v1.export import _safe_export_filename
+        from backend.app.api.v1.admin.export import _safe_export_filename
 
         evil = 'abc"; filename="evil.exe'
         result = _safe_export_filename(evil, "docx")
@@ -56,7 +56,7 @@ class TestExportFilenameSanitization:
         assert result.endswith(".docx")
 
     def test_empty_after_sanitization_falls_back_to_default(self):
-        from backend.app.api.v1.export import _safe_export_filename
+        from backend.app.api.v1.admin.export import _safe_export_filename
 
         # 모든 문자가 금지 문자
         result = _safe_export_filename('"\r\n;', "pdf")

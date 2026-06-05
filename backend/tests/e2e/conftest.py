@@ -380,7 +380,7 @@ def e2e_client(e2e_redis: InMemoryRedis, tmp_path):
 
         # DiarizationEngine mock (API 핸들러 내 모델 로드 방지)
         with patch(
-            "backend.app.api.v1.transcription.settings",
+            "backend.app.api.v1.transcription.transcription.settings",
             test_settings,
         ):
             with patch(

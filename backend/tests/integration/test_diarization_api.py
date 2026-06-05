@@ -88,7 +88,7 @@ def dia_client(mock_dia_redis_client, tmp_path):
             mock_dia_inst.load.return_value = None
             mock_dia_cls.get_instance.return_value = mock_dia_inst
 
-            with patch("backend.app.api.v1.diarization.settings", test_settings):
+            with patch("backend.app.api.v1.transcription.diarization_settings", test_settings):
                 with patch(
                     "backend.app.result_fallback.ResultService.get_result",
                     return_value=None,

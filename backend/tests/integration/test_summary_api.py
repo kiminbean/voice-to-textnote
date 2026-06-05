@@ -100,7 +100,7 @@ def sum_client(mock_sum_redis_client, tmp_path):
     - Celery mock
     - 모델 로드 mock
     """
-    from backend.app.api.v1.summary import router as summary_router
+    from backend.app.api.v1.minutes.summary import router as summary_router
     from backend.app.config import Settings
     from backend.app.dependencies import get_redis_client
     from backend.app.error_handlers import register_exception_handlers
@@ -132,7 +132,7 @@ def sum_client(mock_sum_redis_client, tmp_path):
 
     app.dependency_overrides[get_redis_client] = override_redis
 
-    with patch("backend.app.api.v1.summary.settings", test_settings):
+    with patch("backend.app.api.v1.minutes.summary_settings", test_settings):
         with patch("backend.workers.tasks.summary_task.summary_celery_task") as mock_celery:
             mock_task_result = MagicMock()
             mock_task_result.id = "mock-summary-task-id"
@@ -202,7 +202,7 @@ class TestPostSummaries:
 
     def test_create_summary_429_when_limit_exceeded(self, mock_sum_redis_client, tmp_path):
         """동시 작업 한도 초과 → 429 Too Many Requests (REQ-SUM-008)"""
-        from backend.app.api.v1.summary import router as summary_router
+        from backend.app.api.v1.minutes.summary import router as summary_router
         from backend.app.config import Settings
         from backend.app.dependencies import get_redis_client
         from backend.app.error_handlers import register_exception_handlers
@@ -223,7 +223,7 @@ class TestPostSummaries:
 
         app.dependency_overrides[get_redis_client] = override_redis
 
-        with patch("backend.app.api.v1.summary.settings", test_settings):
+        with patch("backend.app.api.v1.minutes.summary_settings", test_settings):
             client = TestClient(app, raise_server_exceptions=False)
             response = client.post(
                 "/api/v1/summaries",

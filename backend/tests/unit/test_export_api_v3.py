@@ -74,7 +74,7 @@ def valid_summary_data() -> dict:
 
 def _make_export_app(mock_redis: AsyncMock) -> FastAPI:
     """테스트용 FastAPI 앱 생성"""
-    from backend.app.api.v1 import export
+    from backend.app.api.v1.admin import export
     from backend.app.dependencies import get_db_session, get_redis_client
 
     app = FastAPI()

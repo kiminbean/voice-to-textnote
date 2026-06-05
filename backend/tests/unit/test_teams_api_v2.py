@@ -25,7 +25,7 @@ from backend.db.auth_models import User
 
 @pytest.fixture
 def teams_client():
-    from backend.app.api.v1.teams import get_meeting_share_service, get_team_service
+    from backend.app.api.v1.collaboration.teams import get_meeting_share_service, get_team_service
     from backend.app.dependencies import get_current_user, get_db_session
     from backend.app.main import app
 

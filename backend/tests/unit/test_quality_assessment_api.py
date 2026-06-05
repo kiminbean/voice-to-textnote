@@ -99,7 +99,7 @@ async def seeded_db(db_engine):
 
 
 def _make_app(db_engine, svc_mock=None):
-    from backend.app.api.v1.quality_assessment import get_quality_service, router
+    from backend.app.api.v1.audio.quality_assessment import get_quality_service, router
     app = FastAPI()
     register_exception_handlers(app)
     app.include_router(router, prefix="/api/v1")

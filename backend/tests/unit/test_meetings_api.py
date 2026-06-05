@@ -31,7 +31,7 @@ def mock_user():
 
 @pytest.fixture
 def app_client(mock_user):
-    from backend.app.api.v1.meetings import get_meeting_share_service, router
+    from backend.app.api.v1.collaboration.meetings import get_meeting_share_service, router
 
     app = FastAPI()
     register_exception_handlers(app)

@@ -72,7 +72,7 @@ def team_client(admin_user):
     app.dependency_overrides[get_db_session] = mock_db_session
     app.dependency_overrides[get_current_user] = mock_admin_user
 
-    from backend.app.api.v1.teams import get_team_service
+    from backend.app.api.v1.collaboration.teams import get_team_service
 
     svc_mock = AsyncMock()
 
@@ -217,7 +217,7 @@ def test_update_team_admin_only(team_client, admin_user):
 
 
 def test_update_team_non_admin_403(admin_user):
-    from backend.app.api.v1.teams import get_team_service
+    from backend.app.api.v1.collaboration.teams import get_team_service
     from backend.app.dependencies import get_current_user, get_db_session
     from backend.app.main import app
 
@@ -273,7 +273,7 @@ def test_delete_team_admin_only(team_client, admin_user):
 
 
 def test_delete_team_non_admin_403(admin_user):
-    from backend.app.api.v1.teams import get_team_service
+    from backend.app.api.v1.collaboration.teams import get_team_service
     from backend.app.dependencies import get_current_user, get_db_session
     from backend.app.main import app
 
@@ -536,7 +536,7 @@ def test_remove_team_member_400_last_admin(team_client, admin_user):
 
 def test_remove_team_member_403_non_admin(team_client, admin_user):
     client, mock_svc = team_client
-    from backend.app.api.v1.teams import get_team_service
+    from backend.app.api.v1.collaboration.teams import get_team_service
     from backend.app.dependencies import get_current_user, get_db_session
     from backend.app.main import app
 

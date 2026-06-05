@@ -11,7 +11,7 @@ from unittest.mock import MagicMock
 import pytest
 from fastapi import status
 
-from backend.app.api.v1.templates import (
+from backend.app.api.v1.admin.templates import (
     _validate_file,
     delete_template,
     get_template,
@@ -105,7 +105,7 @@ class TestUploadTemplate:
         mock_redis_client.setex.return_value = True
 
         # TemplateParser.patch로 주입
-        import backend.app.api.v1.templates as templates_module
+        import backend.app.api.v1.admin.templates as templates_module
         original_parser = templates_module.TemplateParser
         templates_module.TemplateParser = lambda: mock_parser
 
@@ -191,7 +191,7 @@ class TestUploadTemplate:
         }
         mock_parser.extract_structure.return_value = mock_structure
 
-        import backend.app.api.v1.templates as templates_module
+        import backend.app.api.v1.admin.templates as templates_module
         original_parser = templates_module.TemplateParser
         templates_module.TemplateParser = lambda: mock_parser
 

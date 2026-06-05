@@ -368,7 +368,7 @@ class TestGetTranscriptionResult:
         mock_settings.results_dir = results_dir
         mock_settings.cache_ttl_seconds = 604800
 
-        with patch("backend.app.api.v1.transcription.settings", mock_settings):
+        with patch("backend.app.api.v1.transcription.transcription.settings", mock_settings):
             response = client.get(f"/api/v1/transcriptions/{task_id}")
 
         assert response.status_code == status.HTTP_200_OK
@@ -499,7 +499,7 @@ class TestDeleteTranscription:
         mock_settings.temp_dir = temp_dir
         mock_settings.results_dir = results_dir
 
-        with patch("backend.app.api.v1.transcription.settings", mock_settings):
+        with patch("backend.app.api.v1.transcription.transcription.settings", mock_settings):
             response = client.delete(f"/api/v1/transcriptions/{task_id}")
 
         assert response.status_code == status.HTTP_204_NO_CONTENT

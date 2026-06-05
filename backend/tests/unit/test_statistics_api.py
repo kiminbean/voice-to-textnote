@@ -66,7 +66,7 @@ async def seeded_engine(db_engine):
 
 
 def _make_app(db_engine) -> TestClient:
-    from backend.app.api.v1.statistics import router
+    from backend.app.api.v1.analytics.statistics import router
     from backend.app.dependencies import get_db_session, get_redis_client
 
     app = FastAPI()
@@ -204,7 +204,7 @@ class TestStatisticsEmptySegments:
 
 def _make_app_with_redis(db_engine, redis_data: str) -> TestClient:
     """커스텀 Redis 데이터로 TestClient 생성"""
-    from backend.app.api.v1.statistics import router
+    from backend.app.api.v1.analytics.statistics import router
     from backend.app.dependencies import get_db_session, get_redis_client
 
     app = FastAPI()

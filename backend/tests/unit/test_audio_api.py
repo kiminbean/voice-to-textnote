@@ -24,7 +24,7 @@ def client_with_audio(temp_audio_dir):
     """audio API 테스트 클라이언트"""
     from backend.app.main import app
 
-    with patch("backend.app.api.v1.audio.settings") as mock_settings:
+    with patch("backend.app.api.v1.audio.audio.settings") as mock_settings:
         mock_settings.temp_dir = temp_audio_dir
 
         with patch("backend.app.main.WhisperEngine") as mock_engine_cls:
@@ -80,7 +80,7 @@ class TestGetMeetingAudio:
 
         nonexistent = tmp_path / "no_such_dir"
 
-        with patch("backend.app.api.v1.audio.settings") as mock_settings:
+        with patch("backend.app.api.v1.audio.audio.settings") as mock_settings:
             mock_settings.temp_dir = nonexistent
 
             with patch("backend.app.main.WhisperEngine") as mock_engine_cls:

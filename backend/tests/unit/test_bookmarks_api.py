@@ -66,7 +66,7 @@ async def seeded_db(db_engine):
 
 def _make_app(db_engine, acting_user: User) -> FastAPI:
     """엔드포인트와 JWT 의존성을 mock 한 테스트 앱 생성."""
-    from backend.app.api.v1.bookmarks import router
+    from backend.app.api.v1.collaboration.bookmarks import router
     from backend.app.dependencies import get_current_user, get_db_session
 
     app = FastAPI()

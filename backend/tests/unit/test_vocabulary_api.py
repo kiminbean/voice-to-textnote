@@ -29,7 +29,7 @@ async def db_engine():
 
 
 def _make_app(db_engine) -> FastAPI:
-    from backend.app.api.v1.vocabulary import router
+    from backend.app.api.v1.analytics.vocabulary import router
     from backend.app.dependencies import get_db_session
 
     app = FastAPI()

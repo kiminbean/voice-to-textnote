@@ -35,7 +35,7 @@ class TestWebhooksCrudReturns:
     @pytest.mark.asyncio
     async def test_create_webhook_return(self, mock_endpoint_obj):
         """Line 46: return from create_webhook"""
-        from backend.app.api.v1.webhooks import create_webhook
+        from backend.app.api.v1.collaboration.webhooks import create_webhook
         from backend.schemas.webhook import WebhookEndpointCreate, WebhookEndpointResponse
 
         payload = WebhookEndpointCreate(
@@ -63,7 +63,7 @@ class TestWebhooksCrudReturns:
     @pytest.mark.asyncio
     async def test_list_webhooks_return(self, mock_endpoint_obj):
         """Line 64: return from list_webhooks"""
-        from backend.app.api.v1.webhooks import list_webhooks
+        from backend.app.api.v1.collaboration.webhooks import list_webhooks
         from backend.schemas.webhook import WebhookEndpointResponse
 
         db = AsyncMock()
@@ -88,7 +88,7 @@ class TestWebhooksCrudReturns:
     @pytest.mark.asyncio
     async def test_get_webhook_return(self, mock_endpoint_obj):
         """Line 77: return from get_webhook"""
-        from backend.app.api.v1.webhooks import get_webhook
+        from backend.app.api.v1.collaboration.webhooks import get_webhook
         from backend.schemas.webhook import WebhookEndpointResponse
 
         db = AsyncMock()
@@ -107,7 +107,7 @@ class TestWebhooksCrudReturns:
     @pytest.mark.asyncio
     async def test_update_webhook_return(self, mock_endpoint_obj):
         """Line 88: return from update_webhook"""
-        from backend.app.api.v1.webhooks import update_webhook
+        from backend.app.api.v1.collaboration.webhooks import update_webhook
         from backend.schemas.webhook import WebhookEndpointResponse, WebhookEndpointUpdate
 
         payload = WebhookEndpointUpdate(is_active=False)
@@ -134,24 +134,24 @@ class TestAudioPreprocessRemaining:
     @pytest.mark.asyncio
     async def test_upload_generic_exception_returns_400(self):
         """Lines 149-152: generic Exception during file write triggers BadRequestError(400)"""
-        from backend.app.api.v1.audio_preprocess import preprocess_endpoint
+        from backend.app.api.v1.audio.audio_preprocess import preprocess_endpoint
         from backend.app.exceptions import BadRequestError
 
         mock_file = MagicMock()
         mock_file.filename = "test.wav"
         mock_file.read = AsyncMock(side_effect=OSError("disk full"))
 
-        with patch("backend.app.api.v1.audio_preprocess.settings") as mock_settings:
+        with patch("backend.app.api.v1.audio.audio_preprocess.settings") as mock_settings:
             mock_settings.audio_preprocess_enabled = True
             mock_settings.audio_preprocess_max_file_mb = 100
             mock_settings.audio_preprocess_default_high_pass_hz = 0
 
             with patch(
-                "backend.app.api.v1.audio_preprocess.validate_audio_format",
+                "backend.app.api.v1.audio.audio_preprocess.validate_audio_format",
                 return_value=(True, "ok"),
             ):
-                with patch("backend.app.api.v1.audio_preprocess._safe_unlink"):
-                    with patch("backend.app.api.v1.audio_preprocess.logger"):
+                with patch("backend.app.api.v1.audio.audio_preprocess._safe_unlink"):
+                    with patch("backend.app.api.v1.audio.audio_preprocess.logger"):
                         with pytest.raises(BadRequestError) as exc_info:
                             await preprocess_endpoint(
                                 file=mock_file,
@@ -172,40 +172,40 @@ class TestAudioPreprocessRemaining:
         from pathlib import Path as P  # noqa: N817
         from unittest.mock import mock_open
 
-        from backend.app.api.v1.audio_preprocess import preprocess_endpoint
+        from backend.app.api.v1.audio.audio_preprocess import preprocess_endpoint
         from backend.app.exceptions import InternalServerError
 
         mock_file = MagicMock()
         mock_file.filename = "test.wav"
         mock_file.read = AsyncMock(side_effect=[b"fake audio data", b""])
 
-        with patch("backend.app.api.v1.audio_preprocess.settings") as mock_settings:
+        with patch("backend.app.api.v1.audio.audio_preprocess.settings") as mock_settings:
             mock_settings.audio_preprocess_enabled = True
             mock_settings.audio_preprocess_max_file_mb = 100
             mock_settings.audio_preprocess_default_high_pass_hz = 0
 
             with patch(
-                "backend.app.api.v1.audio_preprocess.validate_audio_format",
+                "backend.app.api.v1.audio.audio_preprocess.validate_audio_format",
                 return_value=(True, "ok"),
             ):
-                with patch("backend.app.api.v1.audio_preprocess._safe_unlink"):
-                    with patch("backend.app.api.v1.audio_preprocess.logger"):
+                with patch("backend.app.api.v1.audio.audio_preprocess._safe_unlink"):
+                    with patch("backend.app.api.v1.audio.audio_preprocess.logger"):
                         with patch(
-                            "backend.app.api.v1.audio_preprocess.preprocess_audio",
+                            "backend.app.api.v1.audio.audio_preprocess.preprocess_audio",
                             return_value=P("/fake/out.wav"),
                         ):
                             # wave.open raises OSError (not wave.Error/EOFError)
                             with patch(
-                                "backend.app.api.v1.audio_preprocess.wave.open",
+                                "backend.app.api.v1.audio.audio_preprocess.wave.open",
                                 side_effect=OSError("file access error"),
                             ):
                                 with patch(
-                                    "backend.app.api.v1.audio_preprocess._preprocess_semaphore"
+                                    "backend.app.api.v1.audio.audio_preprocess._preprocess_semaphore"
                                 ) as sema:
                                     sema.__aenter__ = AsyncMock(return_value=None)
                                     sema.__aexit__ = AsyncMock(return_value=None)
                                     with patch(
-                                        "backend.app.api.v1.audio_preprocess.tempfile.mkstemp",
+                                        "backend.app.api.v1.audio.audio_preprocess.tempfile.mkstemp",
                                         return_value=(99, "/tmp/preprocess_in_test.wav"),
                                     ):
                                         with patch("builtins.open", mock_open()):
@@ -233,7 +233,7 @@ class TestDashboardRemaining:
     @pytest.mark.asyncio
     async def test_empty_records_returns_zero_overview(self):
         """Line 65: return DashboardOverview with zeros when no records"""
-        from backend.app.api.v1.dashboard import DashboardOverview, get_dashboard_overview
+        from backend.app.api.v1.analytics.dashboard import DashboardOverview, get_dashboard_overview
 
         db = AsyncMock()
         mock_result = MagicMock()
@@ -250,7 +250,7 @@ class TestDashboardRemaining:
     @pytest.mark.asyncio
     async def test_non_dict_data_and_segments_skipped(self):
         """Lines 82, 87, 91-92: skip non-dict data, segments, invalid timestamps"""
-        from backend.app.api.v1.dashboard import DashboardOverview, get_dashboard_overview
+        from backend.app.api.v1.analytics.dashboard import DashboardOverview, get_dashboard_overview
 
         # Record with non-dict result_data -> line 82 continue
         rec1 = MagicMock()
@@ -293,7 +293,7 @@ class TestEnhancedStatsRemaining:
     @pytest.mark.asyncio
     async def test_project_overview_endpoint(self):
         """Line 77: return await _service.get_project_overview(...)"""
-        from backend.app.api.v1.enhanced_statistics import get_project_overview
+        from backend.app.api.v1.analytics.enhanced_statistics import get_project_overview
 
         mock_response = MagicMock()
 

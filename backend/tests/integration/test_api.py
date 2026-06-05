@@ -351,7 +351,7 @@ class TestScenario5FileSizeLimit:
         # 실제 500MB 파일 생성 대신 파일 크기 체크 로직을 mock
         # validate_file_size가 False를 반환하도록 설정
         with patch(
-            "backend.app.api.v1.transcription.validate_file_size",
+            "backend.app.api.v1.transcription.transcription.validate_file_size",
             return_value=(False, "파일 크기가 제한(500MB)을 초과합니다. 실제 크기: 600.0MB"),
         ):
             response = client.post(
@@ -484,7 +484,7 @@ class TestScenario7CorruptedFile:
     def test_corrupted_file_upload_returns_422(self, client: TestClient):
         """손상된 파일 업로드 시 422 응답 (get_audio_duration_seconds 실패)"""
         with patch(
-            "backend.app.api.v1.transcription.get_audio_duration_seconds",
+            "backend.app.api.v1.transcription.transcription.get_audio_duration_seconds",
             side_effect=ValueError("파일 손상: 디코딩 실패"),
         ):
             response = client.post(

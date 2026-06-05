@@ -77,7 +77,7 @@ async def seeded_engine(db_engine):
 
 def _make_app(db_engine, redis_mock=None) -> TestClient:
     """테스트용 FastAPI 앱 생성."""
-    from backend.app.api.v1.enhanced_statistics import router
+    from backend.app.api.v1.analytics.enhanced_statistics import router
     from backend.app.dependencies import get_db_session, get_redis_client
 
     app = FastAPI()

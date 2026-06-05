@@ -25,7 +25,7 @@ from backend.app.error_handlers import register_exception_handlers
 @pytest_asyncio.fixture
 def app_client(tmp_path):
     """배치 라우터만 포함한 테스트 앱 + Redis mock."""
-    from backend.app.api.v1.batch import router
+    from backend.app.api.v1.transcription.batch import router
 
     app = FastAPI()
     register_exception_handlers(app)
@@ -69,10 +69,10 @@ class TestUploadBatch:
         """정상 파일 1개 → 201 + accepted=1."""
         client, redis_mock, tmp_path = app_client
 
-        with patch("backend.app.api.v1.batch.validate_audio_format", return_value=(True, "")), \
-             patch("backend.app.api.v1.batch.validate_file_size", return_value=(True, "")), \
-             patch("backend.app.api.v1.batch.get_audio_duration_seconds", return_value=60.0), \
-             patch("backend.app.api.v1.batch.settings") as mock_settings, \
+        with patch("backend.app.api.v1.transcription.batch.validate_audio_format", return_value=(True, "")), \
+             patch("backend.app.api.v1.transcription.batch.validate_file_size", return_value=(True, "")), \
+             patch("backend.app.api.v1.transcription.batch.get_audio_duration_seconds", return_value=60.0), \
+             patch("backend.app.api.v1.transcription.batch.settings") as mock_settings, \
              patch("backend.workers.tasks.transcription_task.transcription_task") as mock_task:
 
             mock_settings.temp_dir = tmp_path
@@ -99,10 +99,10 @@ class TestUploadBatch:
         """포맷 검증 실패 파일은 failed로 기록, 나머지는 계속."""
         client, redis_mock, tmp_path = app_client
 
-        with patch("backend.app.api.v1.batch.validate_audio_format") as mock_validate, \
-             patch("backend.app.api.v1.batch.validate_file_size", return_value=(True, "")), \
-             patch("backend.app.api.v1.batch.get_audio_duration_seconds", return_value=60.0), \
-             patch("backend.app.api.v1.batch.settings") as mock_settings, \
+        with patch("backend.app.api.v1.transcription.batch.validate_audio_format") as mock_validate, \
+             patch("backend.app.api.v1.transcription.batch.validate_file_size", return_value=(True, "")), \
+             patch("backend.app.api.v1.transcription.batch.get_audio_duration_seconds", return_value=60.0), \
+             patch("backend.app.api.v1.transcription.batch.settings") as mock_settings, \
              patch("backend.workers.tasks.transcription_task.transcription_task") as mock_task:
 
             mock_settings.temp_dir = tmp_path
@@ -133,9 +133,9 @@ class TestUploadBatch:
         """파일 크기 초과 → failed."""
         client, redis_mock, tmp_path = app_client
 
-        with patch("backend.app.api.v1.batch.validate_audio_format", return_value=(True, "")), \
-             patch("backend.app.api.v1.batch.validate_file_size", return_value=(False, "파일 크기 초과")), \
-             patch("backend.app.api.v1.batch.settings") as mock_settings:
+        with patch("backend.app.api.v1.transcription.batch.validate_audio_format", return_value=(True, "")), \
+             patch("backend.app.api.v1.transcription.batch.validate_file_size", return_value=(False, "파일 크기 초과")), \
+             patch("backend.app.api.v1.transcription.batch.settings") as mock_settings:
 
             mock_settings.temp_dir = tmp_path
             mock_settings.cache_ttl_seconds = 86400
@@ -154,10 +154,10 @@ class TestUploadBatch:
         """재생 시간 초과 → failed."""
         client, redis_mock, tmp_path = app_client
 
-        with patch("backend.app.api.v1.batch.validate_audio_format", return_value=(True, "")), \
-             patch("backend.app.api.v1.batch.validate_file_size", return_value=(True, "")), \
-             patch("backend.app.api.v1.batch.get_audio_duration_seconds", return_value=99999.0), \
-             patch("backend.app.api.v1.batch.settings") as mock_settings:
+        with patch("backend.app.api.v1.transcription.batch.validate_audio_format", return_value=(True, "")), \
+             patch("backend.app.api.v1.transcription.batch.validate_file_size", return_value=(True, "")), \
+             patch("backend.app.api.v1.transcription.batch.get_audio_duration_seconds", return_value=99999.0), \
+             patch("backend.app.api.v1.transcription.batch.settings") as mock_settings:
 
             mock_settings.temp_dir = tmp_path
             mock_settings.cache_ttl_seconds = 86400
@@ -179,10 +179,10 @@ class TestUploadBatch:
         """오디오 읽기 실패 → failed."""
         client, redis_mock, tmp_path = app_client
 
-        with patch("backend.app.api.v1.batch.validate_audio_format", return_value=(True, "")), \
-             patch("backend.app.api.v1.batch.validate_file_size", return_value=(True, "")), \
-             patch("backend.app.api.v1.batch.get_audio_duration_seconds", side_effect=Exception("corrupt")), \
-             patch("backend.app.api.v1.batch.settings") as mock_settings:
+        with patch("backend.app.api.v1.transcription.batch.validate_audio_format", return_value=(True, "")), \
+             patch("backend.app.api.v1.transcription.batch.validate_file_size", return_value=(True, "")), \
+             patch("backend.app.api.v1.transcription.batch.get_audio_duration_seconds", side_effect=Exception("corrupt")), \
+             patch("backend.app.api.v1.transcription.batch.settings") as mock_settings:
 
             mock_settings.temp_dir = tmp_path
             mock_settings.cache_ttl_seconds = 86400

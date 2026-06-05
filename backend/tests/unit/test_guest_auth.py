@@ -33,7 +33,7 @@ def mock_redis_for_guest():
 @pytest.fixture
 def guest_test_app(mock_redis_for_guest):
     """게스트 엔드포인트가 포함된 테스트 앱"""
-    from backend.app.api.v1.auth import router
+    from backend.app.api.v1.auth.auth import router
     from backend.app.dependencies import get_redis_client
 
     app = FastAPI()
