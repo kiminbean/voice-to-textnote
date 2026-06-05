@@ -9,7 +9,7 @@ REQ-BOOKMARK-003: 회의록 삭제 시 연결된 북마크도 CASCADE로 함께 
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, ForeignKey, Index, String, Text
+from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Index, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.db.models import Base, _utcnow
@@ -57,6 +57,18 @@ class Bookmark(Base):
 
     # 색상 (hex #RRGGBB 또는 이름). 선택.
     color: Mapped[str | None] = mapped_column(String(20), nullable=True)
+
+    # 북마크 분류 및 메타데이터
+    category: Mapped[str] = mapped_column(
+        String(20), nullable=False, server_default="note",
+    )
+    priority: Mapped[str] = mapped_column(
+        String(20), nullable=False, server_default="medium",
+    )
+    tags: Mapped[list | None] = mapped_column(JSON, nullable=True, default=list)
+    is_private: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default="true", default=True,
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime,

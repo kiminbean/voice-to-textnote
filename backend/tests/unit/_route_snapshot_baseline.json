@@ -147,6 +147,41 @@
     "api_key": false
   },
   {
+    "path": "/api/v1/bookmarks/bulk",
+    "methods": [
+      "POST"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/bookmarks/cleanup",
+    "methods": [
+      "POST"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/bookmarks/export",
+    "methods": [
+      "POST"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/bookmarks/search",
+    "methods": [
+      "GET"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/bookmarks/summary",
+    "methods": [
+      "GET"
+    ],
+    "api_key": false
+  },
+  {
     "path": "/api/v1/bookmarks/{bookmark_id}",
     "methods": [
       "DELETE"
@@ -246,6 +281,62 @@
   },
   {
     "path": "/api/v1/enhanced-statistics/{task_id}",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/enhanced/batch",
+    "methods": [
+      "POST"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/enhanced/batch",
+    "methods": [
+      "POST"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/enhanced/formats",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/enhanced/formats",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/enhanced/preprocess",
+    "methods": [
+      "POST"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/enhanced/preprocess",
+    "methods": [
+      "POST"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/enhanced/status",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/enhanced/status",
     "methods": [
       "GET"
     ],
@@ -518,28 +609,28 @@
     "api_key": true
   },
   {
-    "path": "/api/v1/sentiment",
-    "methods": [
-      "POST"
-    ],
-    "api_key": true
-  },
-  {
-    "path": "/api/v1/sentiment/{task_id}",
-    "methods": [
-      "DELETE"
-    ],
-    "api_key": true
-  },
-  {
-    "path": "/api/v1/sentiment/{task_id}",
+    "path": "/api/v1/sentiment/dashboard/summary",
     "methods": [
       "GET"
     ],
     "api_key": true
   },
   {
-    "path": "/api/v1/sentiment/{task_id}/status",
+    "path": "/api/v1/sentiment/meeting/{meeting_id}",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/sentiment/speaker/{speaker_id}",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/sentiment/trends",
     "methods": [
       "GET"
     ],

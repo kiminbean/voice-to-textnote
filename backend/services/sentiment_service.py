@@ -7,9 +7,7 @@ from collections import defaultdict
 from typing import Literal
 
 import numpy as np
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.db.models import TaskResult
 from backend.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -58,10 +56,10 @@ class SentimentService:
     def calculate_sentence_sentiment(self, text: str) -> float:
         """
         문장의 감성 점수 계산 (-1.0 ~ 1.0)
-        
+
         Args:
             text: 분할할 텍스트
-            
+
         Returns:
             float: 감성 점수 (-1.0=매우 부정, 1.0=매우 긍정)
         """
@@ -70,7 +68,7 @@ class SentimentService:
 
         # 토큰화 (간단한 한국어 분할)
         words = re.findall(r'\b\w+\b', text.lower())
-        
+
         if not words:
             return 0.0
 
@@ -92,17 +90,17 @@ class SentimentService:
             # 감성 단어 점수 계산
             if word in self.word_sentiment:
                 score = self.word_sentiment[word]
-                
+
                 # 강조어 적용
                 if intensifier_active:
                     score *= 1.5
                     intensifier_active = False
-                
+
                 # 부정 적용
                 if negation_active:
                     score *= -1
                     negation_active = False
-                
+
                 sentiment_score += score
 
         # 정규화 (-1.0 ~ 1.0)
@@ -114,10 +112,10 @@ class SentimentService:
     async def analyze_meeting_sentiment(self, segments: list[dict]) -> dict:
         """
         회의록 전체의 감성 분석
-        
+
         Args:
             segments: 발화 세그먼트 목록
-            
+
         Returns:
             dict: 감성 분석 결과
         """
@@ -183,15 +181,15 @@ class SentimentService:
     async def extract_key_phrases_with_sentiment(self, segments: list[dict]) -> dict[str, float]:
         """
         주요 키워드 추출 및 감성 점수 부여
-        
+
         Args:
             segments: 발화 세그먼트 목록
-            
+
         Returns:
             dict: 키워드별 감성 점수
         """
         key_phrase_scores = defaultdict(list)
-        
+
         # 키워드 추출 패턴 (2-3음절 단어)
         keyword_pattern = re.compile(r'\b\w{2,4}\b')
 
@@ -199,7 +197,7 @@ class SentimentService:
             text = str(segment.get("text", "") or "")
             if text:
                 words = keyword_pattern.findall(text.lower())
-                
+
                 for word in words:
                     if len(word) >= 2:  # 최소 2음절
                         score = self.calculate_sentence_sentiment(text)
@@ -219,10 +217,10 @@ class SentimentService:
     def calculate_trend_direction(self, segments: list[dict]) -> Literal["improving", "declining", "stable"]:
         """
         회의 진행 방향에 따른 감성 추이 계산
-        
+
         Args:
             segments: 시간순 정렬된 발화 세그먼트 목록
-            
+
         Returns:
             Literal["improving", "declining", "stable"]: 추이 방향
         """
@@ -264,10 +262,10 @@ class SentimentService:
     def calculate_overall_trend(self, sentiment_scores: list[float]) -> Literal["improving", "declining", "stable"]:
         """
         전체 감성 추이 계산
-        
+
         Args:
             sentiment_scores: 각 회의의 감성 점수 목록
-            
+
         Returns:
             Literal["improving", "declining", "stable"]: 추이 방향
         """
@@ -277,7 +275,7 @@ class SentimentService:
         # 선형 회귀 기울기 계산
         x = list(range(len(sentiment_scores)))
         n = len(sentiment_scores)
-        
+
         sum_x = sum(x)
         sum_y = sum(sentiment_scores)
         sum_xy = sum(xi * yi for xi, yi in zip(x, sentiment_scores))
@@ -286,12 +284,12 @@ class SentimentService:
         # 기울기 계산: slope = (n*Σxy - Σx*Σy) / (n*Σx2 - (Σx)²)
         numerator = n * sum_xy - sum_x * sum_y
         denominator = n * sum_x2 - sum_x * sum_x
-        
+
         if denominator == 0:
             return "stable"
-        
+
         slope = numerator / denominator
-        
+
         # 기울기에 따른 추이 판별
         if slope > 0.05:
             return "improving"
@@ -303,22 +301,22 @@ class SentimentService:
     async def analyze_historical_trends(self, meeting_data_list: list[dict]) -> list[dict]:
         """
         역사적 감성 추이 분석
-        
+
         Args:
             meeting_data_list: 회의 데이터 목록
-            
+
         Returns:
             list[dict]: 감성 추이 데이터
         """
         trends = []
-        
+
         for meeting_data in meeting_data_list:
             segments = meeting_data.get("segments", [])
             if segments:
                 analysis = await self.analyze_meeting_sentiment(segments)
                 meeting_id = meeting_data.get("meeting_id", meeting_data.get("task_id", "unknown"))
                 created_at = meeting_data.get("created_at", meeting_data.get("timestamp", ""))
-                
+
                 trends.append({
                     "meeting_id": meeting_id,
                     "created_at": created_at,
@@ -336,11 +334,11 @@ class SentimentService:
     async def get_speaker_segments(self, speaker_id: str, meeting_ids: list[str] | None = None) -> list[dict]:
         """
         특정 화자의 세그먼트 조회
-        
+
         Args:
             speaker_id: 화자 ID
             meeting_ids: 특정 회의 ID 목록 (None이면 전체)
-            
+
         Returns:
             list[dict]: 화자 세그먼트 목록
         """
@@ -352,10 +350,10 @@ class SentimentService:
     async def analyze_speaker_sentiment(self, segments: list[dict]) -> dict:
         """
         화자별 감성 분석
-        
+
         Args:
             segments: 화자 세그먼트 목록
-            
+
         Returns:
             dict: 화자 감성 분석 결과
         """

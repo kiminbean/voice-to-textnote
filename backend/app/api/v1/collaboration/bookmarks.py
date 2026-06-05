@@ -15,6 +15,7 @@ SPEC-BOOKMARK-001: 회의록 북마크/하이라이트 API (확장)
 """
 
 import uuid
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,11 +24,13 @@ from backend.app.dependencies import get_current_user, get_db_session
 from backend.db.auth_models import User
 from backend.schemas.bookmark import (
     BookmarkBulkOperation,
+    BookmarkCategory,
     BookmarkBulkResponse,
     BookmarkCleanupRequest,
     BookmarkCleanupResponse,
     BookmarkCreate,
     BookmarkListResponse,
+    BookmarkPriority,
     BookmarkResponse,
     BookmarkSearchRequest,
     BookmarkSearchResponse,
@@ -201,15 +204,15 @@ async def search_bookmarks(
     tags_list = None
     if tags:
         tags_list = [tag.strip() for tag in tags.split(",") if tag.strip()]
-    
+
     date_from_obj = None
     if date_from:
         date_from_obj = datetime.fromisoformat(date_from.replace('Z', '+00:00'))
-    
+
     date_to_obj = None
     if date_to:
         date_to_obj = datetime.fromisoformat(date_to.replace('Z', '+00:00'))
-    
+
     # SearchRequest 생성
     search_request = BookmarkSearchRequest(
         query=query,
@@ -225,7 +228,7 @@ async def search_bookmarks(
         sort_by=sort_by,
         sort_order=sort_order,
     )
-    
+
     return await svc.search_bookmarks(db, user.id, search_request)
 
 

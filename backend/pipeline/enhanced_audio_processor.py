@@ -13,13 +13,11 @@ import uuid
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 import numpy as np
 from pydub import AudioSegment
-from pydub.exceptions import CouldntDecodeError
 from pydub.silence import detect_nonsilent
-from pydub.utils import mediainfo
 
 from backend.utils.logger import get_logger
 
@@ -52,8 +50,8 @@ class BatchPreprocessOptions:
     convert_to_16k_mono: bool = True
     normalize: bool = True
     target_dbfs: float = TARGET_DBFS
-    high_pass_hz: Optional[int] = None
-    low_pass_hz: Optional[int] = None
+    high_pass_hz: int | None = None
+    low_pass_hz: int | None = None
     trim_silence: bool = False
     silence_threshold_db: float = -40.0
     silence_min_len_ms: int = 700
@@ -73,7 +71,7 @@ class AudioFileInfo:
     duration_seconds: float
     sample_rate: int
     channels: int
-    metadata: Dict[str, Any]
+    metadata: dict[str, Any]
 
 
 @dataclass
@@ -84,23 +82,23 @@ class BatchPreprocessResult:
     processed_files: int
     failed_files: int
     processing_time_seconds: float
-    results: List[AudioFileInfo]
-    errors: List[Dict[str, Any]]
-    summary: Dict[str, Any]
+    results: list[AudioFileInfo]
+    errors: list[dict[str, Any]]
+    summary: dict[str, Any]
 
 
 class AIModelManager:
     """AI 노이즈 제거 모델 관리"""
-    
+
     def __init__(self):
         self.model = None
         self.model_loaded = False
-    
+
     async def load_model(self) -> bool:
         """AI 노이즈 제거 모델 로드"""
         if not AI_NOISE_REMOVAL_ENABLED:
             return False
-        
+
         try:
             # 실제 AI 모델 로드 (예: RNNoise, SpeechBrain 등)
             # 여기서는 가상 구현
@@ -111,12 +109,12 @@ class AIModelManager:
         except Exception as e:
             logger.error("AI 노이즈 제거 모델 로드 실패", error=str(e))
             return False
-    
+
     def remove_noise(self, audio: np.ndarray) -> np.ndarray:
         """AI 기반 노이즈 제거"""
         if not self.model_loaded:
             return audio
-        
+
         try:
             # 실제 노이즈 제거 처리
             # processed_audio = self.model(audio)
@@ -126,59 +124,59 @@ class AIModelManager:
         except Exception as e:
             logger.error("노이즈 제거 실패", error=str(e))
             return audio
-    
+
     def _simple_noise_reduction(self, audio: np.ndarray) -> np.ndarray:
         """간단한 노이즈 제거 (실제로는 AI 모델로 교체)"""
         # 스펙트럼 감쇠 기반 간단한 노이즈 제거
         if len(audio) == 0:
             return audio
-        
+
         # 기본 노이즈 감쇠 (실제 AI 모델과 교체 필요)
         noise_factor = 0.1  # 노이즈 감쇠 정도
         reduced = audio * (1 - noise_factor)
-        
+
         # 크기 유지
         if np.max(np.abs(reduced)) > 0:
             reduced = reduced / np.max(np.abs(reduced))
-        
+
         return reduced.astype(np.float32)
 
 
 class EnhancedAudioProcessor:
     """고급 오디오 전처리기"""
-    
+
     def __init__(self):
         self.ai_model = AIModelManager()
         self.batch_executor = ThreadPoolExecutor(max_workers=BATCH_MAX_CONCURRENT)
-    
+
     async def initialize(self) -> None:
         """초기화"""
         await self.ai_model.load_model()
-    
+
     async def preprocess_batch(
         self,
-        input_files: List[Union[str, Path]],
+        input_files: list[str | Path],
         options: BatchPreprocessOptions,
-        output_dir: Optional[Union[str, Path]] = None
+        output_dir: str | Path | None = None
     ) -> BatchPreprocessResult:
         """배치 전처리"""
         start_time = asyncio.get_event_loop().time()
         task_id = str(uuid.uuid4())
-        
+
         if len(input_files) > BATCH_MAX_FILES:
             raise ValueError(f"최대 {BATCH_MAX_FILES}개 파일까지 처리 가능")
-        
+
         # 출력 디렉토리 생성
         if output_dir is None:
             output_dir = Path(tempfile.mkdtemp(prefix="batch_audio_"))
         else:
             output_dir = Path(output_dir)
             output_dir.mkdir(parents=True, exist_ok=True)
-        
+
         results = []
         errors = []
         processed_count = 0
-        
+
         # 비동기 배치 처리
         tasks = []
         for input_file in input_files:
@@ -189,14 +187,14 @@ class EnhancedAudioProcessor:
                 task_id
             )
             tasks.append(task)
-        
+
         # 병렬 실행
         try:
             completed_tasks = await asyncio.wait_for(
                 asyncio.gather(*tasks, return_exceptions=True),
                 timeout=BATCH_TIMEOUT_SECONDS
             )
-            
+
             for task_result in completed_tasks:
                 if isinstance(task_result, Exception):
                     errors.append({
@@ -206,18 +204,18 @@ class EnhancedAudioProcessor:
                 else:
                     results.append(task_result)
                     processed_count += 1
-        
-        except asyncio.TimeoutError:
+
+        except TimeoutError:
             errors.append({
                 "error": f"배치 처리 시간 초과 ({BATCH_TIMEOUT_SECONDS}초)",
                 "type": "TimeoutError"
             })
-        
+
         # 결과 생성
         processing_time = asyncio.get_event_loop().time() - start_time
-        
+
         summary = self._generate_batch_summary(results)
-        
+
         return BatchPreprocessResult(
             task_id=task_id,
             total_files=len(input_files),
@@ -228,7 +226,7 @@ class EnhancedAudioProcessor:
             errors=errors,
             summary=summary
         )
-    
+
     async def _process_single_file(
         self,
         input_path: Path,
@@ -241,20 +239,20 @@ class EnhancedAudioProcessor:
             # 파일 유효성 검증
             if not input_path.exists():
                 raise FileNotFoundError(f"입력 파일 없음: {input_path}")
-            
+
             if input_path.suffix.lower()[1:] not in SUPPORTED_FORMATS:
                 raise ValueError(f"지원하지 않는 포맷: {input_path.suffix}")
-            
+
             # 오디오 로드
             audio = await asyncio.to_thread(AudioSegment.from_file, str(input_path))
-            
+
             # 전처리 파이프라인
             processed_audio = await asyncio.to_thread(
                 self._apply_preprocessing_pipeline,
                 audio,
                 options
             )
-            
+
             # AI 노이즈 제거 (비동기)
             if options.ai_noise_removal:
                 audio_array = await asyncio.to_thread(
@@ -269,10 +267,10 @@ class EnhancedAudioProcessor:
                     self._numpy_to_audio,
                     denoised_array
                 )
-            
+
             # 파일 저장
             await asyncio.to_thread(processed_audio.export, str(output_path), format="wav")
-            
+
             # 메타데이터 수집
             file_info = await asyncio.to_thread(
                 self._collect_file_info,
@@ -280,7 +278,7 @@ class EnhancedAudioProcessor:
                 output_path,
                 processed_audio
             )
-            
+
             logger.info(
                 "오디오 처리 완료",
                 task_id=task_id,
@@ -288,9 +286,9 @@ class EnhancedAudioProcessor:
                 output=str(output_path),
                 duration_ms=len(processed_audio)
             )
-            
+
             return file_info
-        
+
         except Exception as e:
             logger.error(
                 "오디오 처리 실패",
@@ -299,7 +297,7 @@ class EnhancedAudioProcessor:
                 error=str(e)
             )
             raise
-    
+
     def _apply_preprocessing_pipeline(
         self,
         audio: AudioSegment,
@@ -312,14 +310,14 @@ class EnhancedAudioProcessor:
                 audio = audio.set_channels(TARGET_CHANNELS)
             if audio.frame_rate != TARGET_SAMPLE_RATE:
                 audio = audio.set_frame_rate(TARGET_SAMPLE_RATE)
-        
+
         # 필터링
         if options.high_pass_hz is not None:
             audio = audio.high_pass_filter(options.high_pass_hz)
-        
+
         if options.low_pass_hz is not None:
             audio = audio.low_pass_filter(options.low_pass_hz)
-        
+
         # 무음 제거
         if options.trim_silence:
             audio = self._trim_leading_trailing_silence(
@@ -327,17 +325,17 @@ class EnhancedAudioProcessor:
                 options.silence_threshold_db,
                 options.silence_min_len_ms
             )
-        
+
         # 정규화
         if options.normalize:
             audio = self._normalize_audio(audio, options.target_dbfs)
-        
+
         return audio
-    
+
     def _audio_to_numpy(self, audio: AudioSegment) -> np.ndarray:
         """AudioSegment를 NumPy 배열로 변환"""
         return np.array(audio.get_array_of_samples()).astype(np.float32)
-    
+
     def _numpy_to_audio(self, audio_array: np.ndarray) -> AudioSegment:
         """NumPy 배열을 AudioSegment로 변환"""
         return AudioSegment(
@@ -346,7 +344,7 @@ class EnhancedAudioProcessor:
             channels=TARGET_CHANNELS,
             sample_width=2
         )
-    
+
     def _trim_leading_trailing_silence(
         self,
         audio: AudioSegment,
@@ -356,20 +354,20 @@ class EnhancedAudioProcessor:
         """앞뒤 무음 제거"""
         if len(audio) == 0:
             return audio
-        
+
         nonsilent_ranges = detect_nonsilent(
             audio,
             min_silence_len=min_silence_len_ms,
             silence_thresh=silence_threshold_db,
         )
-        
+
         if not nonsilent_ranges:
             return audio
-        
+
         start_ms = nonsilent_ranges[0][0]
         end_ms = nonsilent_ranges[-1][1]
         return audio[start_ms:end_ms]
-    
+
     def _normalize_audio(
         self,
         audio: AudioSegment,
@@ -378,10 +376,10 @@ class EnhancedAudioProcessor:
         """오디오 정규화"""
         if audio.dBFS == float("-inf"):
             return audio
-        
+
         change_db = target_dbfs - audio.dBFS
         return audio.apply_gain(change_db)
-    
+
     def _collect_file_info(
         self,
         input_path: Path,
@@ -399,25 +397,25 @@ class EnhancedAudioProcessor:
             sample_rate=audio.frame_rate,
             channels=audio.channels,
             metadata={
-                "format": audio.format,
+                "format": input_path.suffix.lower().lstrip("."),
                 "frame_rate": audio.frame_rate,
                 "channels": audio.channels,
                 "sample_width": audio.sample_width
             }
         )
-    
+
     def _generate_batch_summary(
         self,
-        results: List[AudioFileInfo]
-    ) -> Dict[str, Any]:
+        results: list[AudioFileInfo]
+    ) -> dict[str, Any]:
         """배치 처리 요약 생성"""
         if not results:
             return {}
-        
+
         total_input_size = sum(f.original_size for f in results)
         total_output_size = sum(f.processed_size for f in results)
         total_duration = sum(f.duration_seconds for f in results)
-        
+
         return {
             "total_input_size_bytes": total_input_size,
             "total_output_size_bytes": total_output_size,
@@ -430,7 +428,7 @@ class EnhancedAudioProcessor:
                 for fmt in set(f.original_format for f in results)
             }
         }
-    
+
     async def create_processing_report(
         self,
         result: BatchPreprocessResult
@@ -448,7 +446,7 @@ class EnhancedAudioProcessor:
             "details": result.summary,
             "errors": result.errors
         }
-        
+
         return json.dumps(report, indent=2, ensure_ascii=False)
 
 

@@ -5,7 +5,7 @@ SPEC-BOOKMARK-001: 북마크/하이라이트 Pydantic 스키마
 import re
 import uuid
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -14,7 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 _COLOR_PATTERN = re.compile(r"^#[0-9A-Fa-f]{3,8}$|^[a-zA-Z]{3,20}$")
 
 
-class BookmarkCategory(str, Enum):
+class BookmarkCategory(StrEnum):
     """북마크 카테고리"""
     IMPORTANT = "important"  # 중요
     ACTION = "action"        # 액션 아이템
@@ -26,7 +26,7 @@ class BookmarkCategory(str, Enum):
     CUSTOM = "custom"       # 사용자 정의
 
 
-class BookmarkPriority(str, Enum):
+class BookmarkPriority(StrEnum):
     """북마크 우선순위"""
     LOW = "low"
     MEDIUM = "medium"
@@ -81,7 +81,7 @@ class BookmarkBase(BaseModel):
 
 class BookmarkCreate(BookmarkBase):
     """북마크 생성 요청."""
-    
+
     task_id: str = Field(..., min_length=1, max_length=255)
 
 
@@ -159,15 +159,15 @@ class BookmarkListResponse(BaseModel):
 
 class BookmarkBulkOperation(BaseModel):
     """북마크 대량 작업."""
-    
+
     operation: str = Field(..., description="수행할 작업: 'delete', 'update_category', 'update_priority'")
-    bookmark_ids: list[uuid.UUID] = Field(..., min_items=1, max_items=100)
+    bookmark_ids: list[uuid.UUID] = Field(..., min_length=1, max_length=100)
     data: dict[str, Any] | None = Field(default=None, description="작업 데이터 (예: {'category': 'important'})")
 
 
 class BookmarkBulkResponse(BaseModel):
     """대량 작업 응답."""
-    
+
     processed_count: int
     failed_count: int
     errors: list[dict[str, Any]] = Field(default_factory=list)
@@ -175,7 +175,7 @@ class BookmarkBulkResponse(BaseModel):
 
 class BookmarkSummaryResponse(BaseModel):
     """북마크 요약 정보."""
-    
+
     total_count: int
     category_counts: dict[BookmarkCategory, int] = Field(default_factory=dict)
     priority_counts: dict[BookmarkPriority, int] = Field(default_factory=dict)
@@ -185,7 +185,7 @@ class BookmarkSummaryResponse(BaseModel):
 
 class BookmarkSearchRequest(BaseModel):
     """북마크 검색 요청."""
-    
+
     query: str | None = Field(default=None, max_length=100, description="검색어")
     category: BookmarkCategory | None = Field(default=None)
     priority: BookmarkPriority | None = Field(default=None)
@@ -195,11 +195,11 @@ class BookmarkSearchRequest(BaseModel):
     date_to: datetime | None = Field(default=None)
     has_tags: bool | None = Field(default=None, description="태그가 있는 북마크만")
     is_private: bool | None = Field(default=None)
-    
+
     # 페이징 정보
     page: int = Field(default=1, ge=1)
     page_size: int = Field(default=50, ge=1, le=200)
-    
+
     # 정렬 옵션
     sort_by: str = Field(default="created_at", description="정렬 기준: created_at, priority, category")
     sort_order: str = Field(default="desc", description="정렬 순서: asc, desc")
@@ -207,7 +207,7 @@ class BookmarkSearchRequest(BaseModel):
 
 class BookmarkSearchResponse(BaseModel):
     """북마크 검색 응답."""
-    
+
     items: list[BookmarkResponse]
     total: int
     page: int
@@ -217,13 +217,13 @@ class BookmarkSearchResponse(BaseModel):
 
 class BookmarkCleanupRequest(BaseModel):
     """북마크 정리 요청."""
-    
+
     older_than_days: int = Field(default=30, ge=1, le=365, description="지정일 이전 북마크 정리")
     category: BookmarkCategory | None = Field(default=None, description="특정 카테고리만 정리")
     priority: BookmarkPriority | None = Field(default=None, description="특정 우선순위만 정리")
     tags: list[str] | None = Field(default=None, description="특정 태그를 가진 북마크만 정리")
     dry_run: bool = Field(default=True, description="실제 삭제 없이 예제 표시")
-    
+
     # 조건 추가
     duplicates_only: bool = Field(default=False, description="중복된 북마크만 정리")
     empty_only: bool = Field(default=False, description="내용이 없는 북마크만 정리")
@@ -231,7 +231,7 @@ class BookmarkCleanupRequest(BaseModel):
 
 class BookmarkCleanupResponse(BaseModel):
     """북마크 정리 응답."""
-    
+
     total_count: int
     deleted_count: int = 0
     archived_count: int = 0  # 삭제 대신 아카이빙

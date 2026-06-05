@@ -3,19 +3,19 @@
 """
 
 from datetime import datetime
-from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from enum import StrEnum
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
-class OutputFormat(str, Enum):
+class OutputFormat(StrEnum):
     """출력 형식"""
     ZIP = "zip"
     INDIVIDUAL = "individual"
 
 
-class AIProcessingStatus(str, Enum):
+class AIProcessingStatus(StrEnum):
     """AI 처리 상태"""
     ENABLED = "enabled"
     DISABLED = "disabled"
@@ -27,7 +27,7 @@ class FormatInfo(BaseModel):
     """오디오 포맷 정보"""
     extension: str = Field(..., description="파일 확장자")
     description: str = Field(..., description="포맷 설명")
-    supported_codecs: List[str] = Field(..., description="지원 코덱 목록")
+    supported_codecs: list[str] = Field(..., description="지원 코덱 목록")
 
 
 class ModelStatusResponse(BaseModel):
@@ -37,8 +37,8 @@ class ModelStatusResponse(BaseModel):
     supported_formats: int = Field(..., description="지원 오디오 포맷 수")
     batch_max_files: int = Field(..., description="배치 처리 최대 파일 수")
     batch_max_concurrent: int = Field(..., description="동시 처리 수")
-    supported_ai_features: List[str] = Field(..., description="지원 AI 기능")
-    processing_limits: Dict[str, Any] = Field(..., description="처리 한계")
+    supported_ai_features: list[str] = Field(..., description="지원 AI 기능")
+    processing_limits: dict[str, Any] = Field(..., description="처리 한계")
 
 
 class EnhancedPreprocessOptions(BaseModel):
@@ -46,8 +46,8 @@ class EnhancedPreprocessOptions(BaseModel):
     convert_to_16k_mono: bool = Field(default=True, description="16kHz 모노로 변환")
     normalize: bool = Field(default=True, description="오디오 레벨 정규화")
     target_dbfs: float = Field(default=-20.0, description="목표 dBFS (선형적)")
-    high_pass_hz: Optional[int] = Field(default=None, description="하이-패스 필터 (Hz)")
-    low_pass_hz: Optional[int] = Field(default=None, description="로우-패스 필터 (Hz)")
+    high_pass_hz: int | None = Field(default=None, description="하이-패스 필터 (Hz)")
+    low_pass_hz: int | None = Field(default=None, description="로우-패스 필터 (Hz)")
     trim_silence: bool = Field(default=False, description="앞뒤 무음 제거")
     silence_threshold_db: float = Field(default=-40.0, description="무음 임계값 (dB)")
     silence_min_len_ms: int = Field(default=700, description="최소 무음 길이 (ms)")
@@ -64,14 +64,14 @@ class EnhancedPreprocessOptions(BaseModel):
 
     @field_validator("high_pass_hz")
     @classmethod
-    def validate_high_pass_hz(cls, v: Optional[int]) -> Optional[int]:
+    def validate_high_pass_hz(cls, v: int | None) -> int | None:
         if v is not None and not (1 <= v <= 500):
             raise ValueError("high_pass_hz는 1~500Hz 사이여야 합니다.")
         return v
 
     @field_validator("low_pass_hz")
     @classmethod
-    def validate_low_pass_hz(cls, v: Optional[int]) -> Optional[int]:
+    def validate_low_pass_hz(cls, v: int | None) -> int | None:
         if v is not None and not (1000 <= v <= 16000):
             raise ValueError("low_pass_hz는 1000~16000Hz 사이여야 합니다.")
         return v
@@ -117,12 +117,12 @@ class AudioFileInfo(BaseModel):
     duration_seconds: float = Field(..., description="오디오 길이 (초)")
     sample_rate: int = Field(..., description="샘플 레이트 (Hz)")
     channels: int = Field(..., description="채널 수")
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="추가 메타데이터")
+    metadata: dict[str, Any] = Field(default_factory=dict, description="추가 메타데이터")
 
 
 class BatchPreprocessRequest(BaseModel):
     """배치 전처리 요청"""
-    files: List[str] = Field(..., min_length=1, max_length=20, description="처리할 파일 경로 목록")
+    files: list[str] = Field(..., min_length=1, max_length=20, description="처리할 파일 경로 목록")
     options: EnhancedPreprocessOptions = Field(default_factory=EnhancedPreprocessOptions, description="전처리 옵션")
     output_format: OutputFormat = Field(default=OutputFormat.ZIP, description="출력 형식")
     return_report: bool = Field(default=True, description="상세 보고서 포함")
@@ -137,7 +137,7 @@ class PreprocessResponse(BaseModel):
     duration_seconds: float = Field(..., description="오디오 길이 (초)")
     sample_rate: int = Field(..., description="샘플 레이트")
     channels: int = Field(..., description="채널 수")
-    applied_options: Dict[str, Any] = Field(..., description="적용된 옵션")
+    applied_options: dict[str, Any] = Field(..., description="적용된 옵션")
     ai_noise_removed: bool = Field(..., description="AI 노이즈 제거 적용 여부")
     processing_time_seconds: float = Field(..., description="처리 시간 (초)")
     compression_ratio: float = Field(..., description="압축률")
@@ -151,7 +151,7 @@ class BatchSummary(BaseModel):
     total_duration_seconds: float = Field(..., description="총 오디오 길이 (초)")
     average_duration_seconds: float = Field(..., description="평균 오디오 길이")
     average_sample_rate: int = Field(..., description="평균 샘플 레이트")
-    format_distribution: Dict[str, int] = Field(..., description="포맷별 파일 수")
+    format_distribution: dict[str, int] = Field(..., description="포맷별 파일 수")
 
 
 class BatchPreprocessResponse(BaseModel):
@@ -162,9 +162,9 @@ class BatchPreprocessResponse(BaseModel):
     failed_files: int = Field(..., description="실패 파일 수")
     processing_time_seconds: float = Field(..., description="총 처리 시간 (초)")
     summary: BatchSummary = Field(..., description="처리 요약")
-    results: List[AudioFileInfo] = Field(default_factory=list, description="개별 처리 결과")
-    report: Optional[str] = Field(default=None, description="상세 보고서 (JSON 문자열)")
-    errors: List[Dict[str, Any]] = Field(default_factory=list, description="오류 목록")
+    results: list[AudioFileInfo] = Field(default_factory=list, description="개별 처리 결과")
+    report: str | None = Field(default=None, description="상세 보고서 (JSON 문자열)")
+    errors: list[dict[str, Any]] = Field(default_factory=list, description="오류 목록")
 
 
 class ProcessingStatus(BaseModel):
@@ -175,9 +175,9 @@ class ProcessingStatus(BaseModel):
     processed_files: int = Field(..., description="처리된 파일 수")
     total_files: int = Field(..., description="총 파일 수")
     elapsed_seconds: float = Field(..., description="경과 시간 (초)")
-    estimated_remaining_seconds: Optional[float] = Field(default=None, description="예상 남은 시간")
-    current_file: Optional[str] = Field(default=None, description="현재 처리 중인 파일")
-    error_message: Optional[str] = Field(default=None, description="오류 메시지")
+    estimated_remaining_seconds: float | None = Field(default=None, description="예상 남은 시간")
+    current_file: str | None = Field(default=None, description="현재 처리 중인 파일")
+    error_message: str | None = Field(default=None, description="오류 메시지")
 
 
 class AudioAnalysisResult(BaseModel):
@@ -187,7 +187,7 @@ class AudioAnalysisResult(BaseModel):
     sample_rate: int = Field(..., description="샘플 레이트")
     channels: int = Field(..., description="채널 수")
     bit_depth: int = Field(..., description="비트 깊이")
-    channels_info: List[Dict[str, Any]] = Field(..., description="채널별 정보")
+    channels_info: list[dict[str, Any]] = Field(..., description="채널별 정보")
     audio_quality_score: float = Field(..., description="오디오 품질 점수 (0.0~1.0)")
     noise_level: float = Field(..., description="노이즈 레벨 (dB)")
     signal_to_noise_ratio: float = Field(..., description="신호 대 잡음비 (dB)")
@@ -195,7 +195,7 @@ class AudioAnalysisResult(BaseModel):
     silence_percentage: float = Field(..., description="무음 비율 (%)")
     peak_amplitude: float = Field(..., description="피크 진폭")
     rms_amplitude: float = Field(..., description="RMS 진폭")
-    recommended_settings: Dict[str, Any] = Field(..., description="권장 설정")
+    recommended_settings: dict[str, Any] = Field(..., description="권장 설정")
 
 
 class ProcessingReport(BaseModel):
@@ -203,6 +203,6 @@ class ProcessingReport(BaseModel):
     task_id: str = Field(..., description="작업 ID")
     created_at: datetime = Field(..., description="보고서 생성 시각")
     summary: BatchSummary = Field(..., description="처리 요약")
-    processing_log: List[Dict[str, Any]] = Field(..., description="처리 로그")
-    recommendations: List[str] = Field(..., description="개선 권장사항")
-    metadata: Dict[str, Any] = Field(..., description="추가 메타데이터")
+    processing_log: list[dict[str, Any]] = Field(..., description="처리 로그")
+    recommendations: list[str] = Field(..., description="개선 권장사항")
+    metadata: dict[str, Any] = Field(..., description="추가 메타데이터")

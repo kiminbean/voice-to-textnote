@@ -8,9 +8,8 @@ import re
 from openai import OpenAI
 from pydantic import ValidationError
 
-from backend.utils.json_helpers import strip_json_comments
-
 from backend.schemas.summary import MindMapEdge, MindMapNode
+from backend.utils.json_helpers import strip_json_comments
 from backend.utils.logger import get_logger
 
 logger = get_logger(__name__)

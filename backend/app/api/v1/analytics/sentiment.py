@@ -9,7 +9,7 @@ SPEC-SENTIMENT-001: 회의 감성 분석 API
 
 import statistics
 from datetime import datetime, timedelta
-from enum import Enum
+from enum import StrEnum
 from typing import Literal
 
 from fastapi import APIRouter, Depends, Query
@@ -27,7 +27,7 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/sentiment", tags=["sentiment"])
 
 
-class SentimentLabel(str, Enum):
+class SentimentLabel(StrEnum):
     """감성 레이블"""
     POSITIVE = "positive"
     NEUTRAL = "neutral"
@@ -126,13 +126,13 @@ async def analyze_sentiment_trends(
     """시간별 감성 추이 분석"""
     # 지정된 기간 내의 완료된 회의록 조회
     since_date = datetime.utcnow() - timedelta(days=days)
-    
+
     stmt = select(TaskResult).where(
         TaskResult.task_type == "minutes",
         TaskResult.status == "completed",
         TaskResult.created_at >= since_date,
     ).order_by(TaskResult.created_at)
-    
+
     result = await db.execute(stmt)
     records = result.scalars().all()
 
@@ -169,7 +169,7 @@ async def analyze_speaker_sentiment(
     """특정 화자의 감성을 분석합니다."""
     # 범위 설정: 전체 또는 특정 회의
     meeting_ids = [meeting_id] if meeting_id else None
-    
+
     segments = await svc.get_speaker_segments(speaker_id, meeting_ids)
 
     if not segments:
@@ -207,7 +207,7 @@ async def get_sentiment_dashboard_summary(
     """감성 분석 대시보드 요약 정보"""
     # 기간 내 완료된 회의록 조회
     since_date = datetime.utcnow() - timedelta(days=days)
-    
+
     stmt = select(TaskResult).where(
         TaskResult.task_type == "minutes",
         TaskResult.status == "completed",
@@ -233,7 +233,7 @@ async def get_sentiment_dashboard_summary(
         if record.result_data and record.result_data.get("segments"):
             segments = record.result_data.get("segments", [])
             all_segments.extend(segments)
-            
+
             meeting_analysis = await svc.analyze_meeting_sentiment(segments)
             meeting_sentiments.append(meeting_analysis.overall_score)
 

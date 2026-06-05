@@ -12,13 +12,11 @@
 - GET /api/v1/audio/enhanced/status - AI 모델 상태 조회
 """
 
-import asyncio
 import tempfile
-import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, File, Form, UploadFile, HTTPException, status
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi.responses import StreamingResponse
 from starlette.background import BackgroundTask
 
 from backend.app.config import settings
@@ -26,16 +24,12 @@ from backend.app.errors import (
     bad_request,
     internal_server_error,
     service_unavailable,
-    unprocessable,
 )
-from backend.app.exceptions import VoiceNoteError
 from backend.pipeline.enhanced_audio_processor import (
     BatchPreprocessOptions,
-    BatchPreprocessResult,
     get_enhanced_processor,
 )
 from backend.schemas.audio_enhanced import (
-    BatchPreprocessRequest,
     BatchPreprocessResponse,
     EnhancedPreprocessOptions,
     FormatInfo,
@@ -136,13 +130,13 @@ async def enhanced_preprocess_endpoint(
                 options,
                 None
             )
-            
+
             if result.failed_files > 0:
                 raise HTTPException(
                     status_code=400,
                     detail="오디오 처리 실패"
                 )
-            
+
             processed_file = result.results[0]
             processed_path = processed_file.processed_path
 
@@ -374,7 +368,7 @@ async def get_supported_formats() -> list[FormatInfo]:
 async def get_model_status() -> ModelStatusResponse:
     """AI 모델 상태 정보"""
     processor = await get_enhanced_processor()
-    
+
     return ModelStatusResponse(
         ai_noise_removal_enabled=True,
         model_loaded=processor.ai_model.model_loaded,

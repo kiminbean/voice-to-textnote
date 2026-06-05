@@ -4,13 +4,13 @@
 
 import uuid
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Literal
 
 from pydantic import BaseModel, Field, validator
 
 
-class ActionItemStatus(str, Enum):
+class ActionItemStatus(StrEnum):
     """액션 아이템 상태"""
     pending = "pending"
     in_progress = "in_progress"
@@ -18,7 +18,7 @@ class ActionItemStatus(str, Enum):
     cancelled = "cancelled"
 
 
-class ActionItemPriority(str, Enum):
+class ActionItemPriority(StrEnum):
     """액션 아이템 우선순위"""
     low = "low"
     medium = "medium"
@@ -39,7 +39,7 @@ class ActionItemCreate(BaseModel):
     category: str | None = Field(default=None, max_length=50, description="카테고리")
 
     @validator('title')
-    def validate_title(cls, v):
+    def validate_title(self, v):
         """제목 공백 제거"""
         return v.strip()
 
@@ -61,21 +61,21 @@ class ActionItemUpdate(BaseModel):
     category: str | None = Field(default=None, max_length=50, description="카테고리")
 
     @validator('title')
-    def validate_title(cls, v):
+    def validate_title(self, v):
         """제목 공백 제거 (None이 아닐 경우)"""
         if v is not None:
             return v.strip()
         return v
 
     @validator('completion_notes')
-    def validate_completion_notes(cls, v):
+    def validate_completion_notes(self, v):
         """완료 메모 공백 제거 (None이 아닐 경우)"""
         if v is not None:
             return v.strip()
         return v
 
     @validator('tags')
-    def validate_tags(cls, v):
+    def validate_tags(self, v):
         """태그 중복 제거"""
         if v is not None:
             # 중복 제거 및 정렬
@@ -160,7 +160,7 @@ class ActionItemOverview(BaseModel):
 
 class ActionItemBulkUpdate(BaseModel):
     """액션 아이템 배치 업데이트 요청"""
-    item_ids: list[uuid.UUID] = Field(..., min_items=1, max_items=100, description="업데이트할 아이템 ID 목록")
+    item_ids: list[uuid.UUID] = Field(..., min_length=1, max_length=100, description="업데이트할 아이템 ID 목록")
     update_data: ActionItemUpdate = Field(..., description="업데이트 데이터")
 
 

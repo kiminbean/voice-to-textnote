@@ -12,8 +12,8 @@ import re
 from openai import OpenAI
 
 from backend.schemas.summary import ActionItem, SummaryResult
-from backend.utils.logger import get_logger
 from backend.utils.json_helpers import strip_json_comments
+from backend.utils.logger import get_logger
 
 logger = get_logger(__name__)
 

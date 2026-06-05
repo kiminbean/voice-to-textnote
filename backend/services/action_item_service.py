@@ -4,22 +4,19 @@
 
 import uuid
 from datetime import datetime, timedelta
-from typing import Literal
 
-from sqlalchemy import select, update, delete
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from backend.app.schemas.action_item import (
     ActionItemCreate,
-    ActionItemUpdate,
-    ActionItemStatus,
-    ActionItemPriority,
     ActionItemOverview,
-    ActionItemBulkUpdate,
-    ActionItemListResponse,
+    ActionItemPriority,
+    ActionItemStatus,
+    ActionItemUpdate,
 )
-from backend.db.models import User, TaskResult, ActionItem as ActionItemModel
+from backend.db.models import ActionItem as ActionItemModel
+from backend.db.models import TaskResult
 from backend.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -40,12 +37,12 @@ class ActionItemService:
     ) -> ActionItemModel:
         """
         새 액션 아이템 생성
-        
+
         Args:
             session: 데이터베이스 세션
             user_id: 생성자 ID
             payload: 생성 데이터
-            
+
         Returns:
             ActionItemModel: 생성된 액션 아이템
         """
@@ -97,7 +94,7 @@ class ActionItemService:
     ) -> tuple[list[ActionItemModel], int]:
         """
         액션 아이템 목록 조회
-        
+
         Args:
             session: 데이터베이스 세션
             user_id: 사용자 ID
@@ -112,7 +109,7 @@ class ActionItemService:
             tags: 태그 필터
             limit: 제한 개수
             offset: 오프셋
-            
+
         Returns:
             tuple: (액션 아이템 목록, 총 개수)
         """
@@ -200,12 +197,12 @@ class ActionItemService:
     ) -> ActionItemModel | None:
         """
         ID로 액션 아이템 조회
-        
+
         Args:
             session: 데이터베이스 세션
             item_id: 액션 아이템 ID
             user_id: 사용자 ID
-            
+
         Returns:
             ActionItemModel | None: 액션 아이템 또는 None
         """
@@ -226,13 +223,13 @@ class ActionItemService:
     ) -> ActionItemModel | None:
         """
         액션 아이템 수정
-        
+
         Args:
             session: 데이터베이스 세션
             item_id: 액션 아이템 ID
             user_id: 사용자 ID
             payload: 수정 데이터
-            
+
         Returns:
             ActionItemModel | None: 수정된 액션 아이템 또는 None
         """
@@ -297,12 +294,12 @@ class ActionItemService:
     ) -> bool:
         """
         액션 아이템 삭제
-        
+
         Args:
             session: 데이터베이스 세션
             item_id: 액션 아이템 ID
             user_id: 사용자 ID
-            
+
         Returns:
             bool: 삭제 성공 여부
         """
@@ -326,12 +323,12 @@ class ActionItemService:
     ) -> ActionItemOverview:
         """
         액션 아이템 개요 조회
-        
+
         Args:
             session: 데이터베이스 세션
             user_id: 사용자 ID
             days: 분석 기간 (일)
-            
+
         Returns:
             ActionItemOverview: 액션 아이템 개요
         """
@@ -351,11 +348,11 @@ class ActionItemService:
         in_progress_count = sum(1 for item in items if item.status == ActionItemStatus.in_progress)
         completed_count = sum(1 for item in items if item.status == ActionItemStatus.completed)
         cancelled_count = sum(1 for item in items if item.status == ActionItemStatus.cancelled)
-        
+
         # 지연 아이템 계산
         now = datetime.utcnow()
-        overdue_count = sum(1 for item in items 
-                          if item.due_date and item.due_date < now 
+        overdue_count = sum(1 for item in items
+                          if item.due_date and item.due_date < now
                           and item.status != ActionItemStatus.completed)
 
         # 우선순위별 통계
@@ -383,7 +380,7 @@ class ActionItemService:
         # 시간 통계
         estimated_hours = [item.estimated_hours for item in items if item.estimated_hours is not None]
         actual_hours = [item.actual_hours for item in items if item.actual_hours is not None]
-        
+
         avg_estimated = sum(estimated_hours) / len(estimated_hours) if estimated_hours else None
         avg_actual = sum(actual_hours) / len(actual_hours) if actual_hours else None
         efficiency_ratio = (avg_actual / avg_estimated) if avg_estimated and avg_actual else None
@@ -423,13 +420,13 @@ class ActionItemService:
     ) -> dict:
         """
         액션 아이템 배치 업데이트
-        
+
         Args:
             session: 데이터베이스 세션
             user_id: 사용자 ID
             item_ids: 업데이트할 아이템 ID 목록
             update_data: 업데이트 데이터
-            
+
         Returns:
             dict: 처리 결과
         """
@@ -486,11 +483,11 @@ class ActionItemService:
     ) -> list[ActionItemCreate]:
         """
         회의록에서 액션 아이템 추출
-        
+
         Args:
             session: 데이터베이스 세션
             meeting_id: 회의 ID
-            
+
         Returns:
             list[ActionItemCreate]: 추출된 액션 아이템 목록
         """
