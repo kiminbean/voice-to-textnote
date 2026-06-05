@@ -1,0 +1,61 @@
+# Version control
+.git
+.gitignore
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+
+# Test artifacts
+.coverage
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+
+# Mock artifact files from tests
+<MagicMock*
+
+# MoAI / OMC config (not needed in Docker)
+.moai/
+.omc/
+.omx/
+.claude/
+.specs/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Docker files (avoid recursive copy)
+docker-compose*.yml
+Dockerfile
+
+# Documentation
+docs/
+*.md
+!backend/README.md
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Large model/cache files
+storage/
+*.wav
+*.mp3
+*.mp4

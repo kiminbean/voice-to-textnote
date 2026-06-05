@@ -46,7 +46,7 @@ def get_calendar_service() -> CalendarService:
 )
 async def create_calendar_event(
     task_id: str,
-    calendar_type: str = Query(default="google", regex="|".join(SUPPORTED_CALENDARS)),
+    calendar_type: str = Query(default="google", pattern="|".join(SUPPORTED_CALENDARS)),
     redis_client=Depends(get_redis_client),
     db=Depends(get_db_session),
     svc: CalendarService = Depends(get_calendar_service),

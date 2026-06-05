@@ -236,7 +236,11 @@ class TestDiarizationEngineDiarize:
         wav_file.write_bytes(b"\x00" * 100)
 
         mock_waveform = torch.zeros(1, 16000)
-        with ctx, patch("torchaudio.load", return_value=(mock_waveform, 16000)):
+        # torchaudio를 sys.modules에 mock 주입 (함수 내부 import 대응)
+        mock_torchaudio = MagicMock()
+        mock_torchaudio.load.return_value = (mock_waveform, 16000)
+
+        with ctx, patch.dict(sys.modules, {"torchaudio": mock_torchaudio}):
             engine = DiarizationEngine.get_instance()
             engine.load(hf_token="hf_testtoken")
             result = engine.diarize(wav_file)
@@ -254,7 +258,11 @@ class TestDiarizationEngineDiarize:
         wav_file.write_bytes(b"\x00" * 100)
 
         mock_waveform = torch.zeros(1, 16000)
-        with ctx, patch("torchaudio.load", return_value=(mock_waveform, 16000)):
+        # torchaudio를 sys.modules에 mock 주입
+        mock_torchaudio = MagicMock()
+        mock_torchaudio.load.return_value = (mock_waveform, 16000)
+
+        with ctx, patch.dict(sys.modules, {"torchaudio": mock_torchaudio}):
             engine = DiarizationEngine.get_instance()
             engine.load(hf_token="hf_testtoken")
             result = engine.diarize(wav_file)
@@ -272,7 +280,11 @@ class TestDiarizationEngineDiarize:
         wav_file.write_bytes(b"\x00" * 100)
 
         mock_waveform = torch.zeros(1, 16000)
-        with ctx, patch("torchaudio.load", return_value=(mock_waveform, 16000)):
+        # torchaudio를 sys.modules에 mock 주입
+        mock_torchaudio = MagicMock()
+        mock_torchaudio.load.return_value = (mock_waveform, 16000)
+
+        with ctx, patch.dict(sys.modules, {"torchaudio": mock_torchaudio}):
             engine = DiarizationEngine.get_instance()
             engine.load(hf_token="hf_testtoken")
             result = engine.diarize(wav_file)
@@ -303,7 +315,11 @@ class TestDiarizationEngineDiarize:
         wav_file = tmp_path / "test.wav"
         wav_file.write_bytes(b"\x00" * 100)
 
-        with ctx:
+        # torchaudio를 sys.modules에 mock 주입
+        mock_torchaudio = MagicMock()
+        mock_torchaudio.load.return_value = (torch.zeros(1, 16000), 16000)
+
+        with ctx, patch.dict(sys.modules, {"torchaudio": mock_torchaudio}):
             engine = DiarizationEngine.get_instance()
             engine.load(hf_token="hf_testtoken")
             with pytest.raises(RuntimeError):

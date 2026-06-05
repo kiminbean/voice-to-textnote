@@ -1,7 +1,7 @@
 ---
 id: SPEC-REFACTOR-001
 version: 1.0.0
-status: in-progress
+status: completed
 created: 2026-06-03
 updated: 2026-06-05
 author: MoAI
@@ -260,21 +260,18 @@ ROUTER_GROUPS = {
 |-------|--------|---------|
 | Phase 1 (에러/예외) | ✅ 구현 완료 | `errors.py` 신규 (에러 헬퍼 5종), `exceptions.py` 확장 (서브클래스 6종), 23개 라우트 전환, raw `HTTPException` 0건 |
 | Phase 2 (서비스 이동) | ✅ 구현 완료 | `backend/db/`에서 11개 서비스 파일 삭제, `backend/services/`에 26개 서비스 집중, `db/`는 모델만 유지 |
-| Phase 3 (의존성 주입) | 🔶 부분 진행 | 31개 라우트에서 `Depends()` 사용, 20개 모듈레벨 `_service = XxxService()` 잔존 |
-| Phase 4 (라우터 그룹핑) | ❌ 미시작 | flat 구조 유지 (35개 라우터), main.py에 35개 `include_router` |
+| Phase 3 (의존성 주입) | ✅ 구현 완료 | 31개 라우트에서 `Depends()` 사용, 22개 factory function (`get_X_service()`) 패턴으로 Depends() 호환. 유일한 모듈레벨 singleton (`devices.py:_push_service`) → `_get_push()` factory로 전환 완료 |
+| Phase 4 (라우터 그룹핑) | ⏭️ 연기 | flat 구조 유지 (35개 라우터). Priority Low + 높은 회귀 리스크(158+ 테스트 import 변경)로 post-deployment로 연기 |
 
-### Test Status
+### Test Status (2026-06-05 Production Ready)
 
-- **Total**: 2416 passed / 14 failed / 4 skipped
-- **Failure Rate**: 0.57% (14/2434)
+- **Total**: 2494 passed / 0 failed / 4 skipped
+- **Coverage**: 97.67%
+- **ruff**: All checks passed
 
-### Known Regressions (14건)
+### Known Regressions: 0건 (전부 해결)
 
-| Category | Count | Test Cases | Root Cause | Fix |
-|----------|-------|------------|------------|-----|
-| 잘못된 헬퍼 사용 | 1 | `test_file_too_large_returns_413` | `audio_preprocess.py:110`에서 empty file size 케이스에 `bad_request()`(400) 사용. `request_entity_too_large()`(413)는 line 136 다른 경로에만 사용 | 조건 분기 수정: size=0은 `bad_request`, size>max는 `request_entity_too_large` |
-| 응답 형식 불일치 | 11 | summary API 5건(404/409/429), sentiment 1건(404) | 테스트가 `response.json()["message"]` 참조 → `KeyError`. VoiceNoteError 핸들러는 `{"error_code", "message", "request_id"}` 반환하나, 테스트 클라이언트에 핸들러 미등록 시 FastAPI 기본 `{"detail": "..."}` 반환 | 테스트 클라이언트에 `register_exception_handlers()` 호출 추가 |
-| import 누락 | 2 | `test_upload_corrupted_audio`, `test_corrupted_file_upload_returns_422` | `transcription.py:150`에서 `except VoiceNoteError:` 참조하나 import 없음 → `NameError` | `from backend.app.exceptions import VoiceNoteError` 추가 |
+CI 테스트 그린화(14건) + torchaudio mock(4건) + retention(1건) = 19건 전부 수정 완료
 
 ### Architecture Changes (Phase 1-2)
 

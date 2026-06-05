@@ -1,8 +1,9 @@
 FROM python:3.11-slim
 
-# ffmpeg 설치 (REQ-STT-015: 오디오 변환에 필수)
+# ffmpeg: 오디오 변환 (REQ-STT-015)
+# curl: docker-compose healthcheck용
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends ffmpeg && \
+    apt-get install -y --no-install-recommends ffmpeg curl && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

@@ -215,11 +215,17 @@ class TestRetentionCoverage:
         test_file = tmp_path / "test.txt"
         test_file.write_text("test content")
 
-        with patch("pathlib.Path.stat") as mock_stat:
-            # OS별 Path.stat 호출 순서에 무관하게 결정적으로 FileNotFoundError를 유발
-            # (전역 patch이므로 루프의 f.stat()이 항상 FileNotFoundError → except 분기 커버)
-            mock_stat.side_effect = FileNotFoundError()
+        # 전역 Path.stat patch 대신, 실제 파일의 stat()만 mock하여 FileNotFoundError 유발
+        # temp_dir.exists()는 정상 작동해야 하므로 전역 patch는 제거
+        original_stat = Path.stat
 
+        def mock_stat_fn(self, follow_symlinks=True):
+            # test_file에 대해서만 FileNotFoundError, 나머지는 원본 동작
+            if self == test_file:
+                raise FileNotFoundError()
+            return original_stat(self, follow_symlinks=follow_symlinks)
+
+        with patch.object(Path, "stat", mock_stat_fn):
             with patch("backend.services.retention.logger"):
                 deleted_count, freed_bytes = cleanup_temp_files(tmp_path, retention_hours=1)
                 assert deleted_count == 0

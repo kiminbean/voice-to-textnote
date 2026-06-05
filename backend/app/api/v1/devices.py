@@ -22,14 +22,15 @@ from backend.schemas.device import (
     DeviceRegisterRequest,
     DeviceResponse,
 )
-from backend.services.push_service import get_push_service
+from backend.services.push_service import PushService, get_push_service
 from backend.utils.logger import get_logger
 
 router = APIRouter(prefix="/devices", tags=["devices"])
 logger = get_logger(__name__)
 
-# PushService 싱글톤
-_push_service = get_push_service()
+# PushService 의존성 주입 (REQ-DEP-001)
+def _get_push() -> PushService:
+    return get_push_service()
 
 
 @router.post(
@@ -59,7 +60,7 @@ async def register_device(
     device_identifier = req.device_id or device_id_uuid
 
     # PushService에 등록 (인메모리)
-    _push_service.register_device(device_identifier, req.fcm_token)
+    _get_push().register_device(device_identifier, req.fcm_token)
 
     # 응답 생성
     now = datetime.now(UTC)
@@ -94,7 +95,7 @@ async def unregister_device(
     - **device_id**: 디바이스 고유 식별자
     """
     # PushService에서 해제
-    deleted = _push_service.unregister_device(device_id)
+    deleted = _get_push().unregister_device(device_id)
 
     if not deleted:
         not_found(f"디바이스를 찾을 수 없습니다: device_id={device_id}")
@@ -116,7 +117,7 @@ async def list_devices(
     MVP: 인메모리 저장소에서 조회
     """
     # PushService에서 모든 디바이스 조회
-    devices_dict = _push_service.get_all_devices()
+    devices_dict = _get_push().get_all_devices()
 
     # DeviceResponse 리스트로 변환
     devices = []
