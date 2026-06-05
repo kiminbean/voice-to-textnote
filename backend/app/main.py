@@ -13,43 +13,7 @@ import backend.db.quality_feedback_models  # noqa: F401
 
 # SPEC-SPEAKER-VOICE-001 / SPEC-QUALITY-MONITOR-001: 신규 모델을 Base.metadata에 등록
 import backend.db.speaker_voice_models  # noqa: F401
-from backend.app.api.v1 import (
-    action_items,
-    admin,
-    advanced_search,
-    audio,
-    audio_analysis,
-    audio_preprocess,
-    auth,
-    batch,
-    bookmarks,
-    calendar,
-    dashboard,
-    devices,
-    diarization,
-    enhanced_statistics,
-    export,
-    health,
-    history,
-    keywords,
-    meetings,
-    minutes,
-    qa,
-    quality_assessment,
-    search,
-    sentiment,
-    speakers,
-    statistics,
-    stream,
-    summary,
-    tags,
-    teams,
-    templates,
-    transcription,
-    versions,
-    vocabulary,
-    webhooks,
-)
+from backend.app.api.v1.registry import ROUTER_REGISTRY
 from backend.app.config import settings
 from backend.app.error_handlers import register_exception_handlers
 from backend.app.lifecycle import cleanup_shutdown, validate_startup
@@ -190,89 +154,17 @@ def create_app() -> FastAPI:
     setup_rate_limiting(app)
 
     # 라우터 등록
-    # REQ-SEC-001~003: verify_api_key 의존성을 보호 대상 라우터에 적용
-    # health 라우터는 인증 불필요 (헬스체크, /metrics, /docs, /redoc 포함)
+    # REQ-SEC-001~003: verify_api_key 의존성을 보호 대상 라우터에 적용.
+    # 등록 순서와 인증 정책은 registry.py의 ROUTER_REGISTRY가 SSOT.
+    # (배치→transcription 순서, 각 라우터의 requires_api_key 플래그 등)
     api_prefix = "/api/v1"
     _auth = [Depends(verify_api_key)]
-    # 배치 라우터는 /transcriptions/{task_id} 경로 충돌 방지를 위해 transcription보다 먼저 등록
-    app.include_router(batch.router, prefix=api_prefix, dependencies=_auth)
-    app.include_router(transcription.router, prefix=api_prefix, dependencies=_auth)
-    app.include_router(diarization.router, prefix=api_prefix, dependencies=_auth)
-    app.include_router(minutes.router, prefix=api_prefix, dependencies=_auth)
-    app.include_router(summary.router, prefix=api_prefix, dependencies=_auth)
-    app.include_router(health.router, prefix=api_prefix)
-    # REQ-SSE-001: 태스크 상태 실시간 스트리밍 엔드포인트
-    app.include_router(stream.router, prefix=api_prefix, dependencies=_auth)
-    # SPEC-HISTORY-001: 작업 이력 조회/삭제 엔드포인트
-    app.include_router(history.router, prefix=api_prefix, dependencies=_auth)
-    # SPEC-RETENTION-001: 데이터 보존 정책 즉시 실행 엔드포인트
-    app.include_router(admin.router, prefix=api_prefix, dependencies=_auth)
-    # REQ-TMPL-001/003: 회의록 양식 관리 엔드포인트
-    app.include_router(templates.router, prefix=api_prefix, dependencies=_auth)
-    # SPEC-SEARCH-001: 회의록 전문 검색 엔드포인트
-    app.include_router(search.router, prefix=api_prefix, dependencies=_auth)
-    # SPEC-EXPORT-001: 회의록 PDF 내보내기 엔드포인트
-    app.include_router(export.router, prefix=api_prefix, dependencies=_auth)
-    # SPEC-STATS-001: 회의 통계 대시보드 엔드포인트 (읽기 전용)
-    app.include_router(statistics.router, prefix=api_prefix, dependencies=_auth)
-    # SPEC-STATS-002: 전체 회의 통계 대시보드 엔드포인트 (읽기 전용)
-    app.include_router(dashboard.router, prefix=api_prefix, dependencies=_auth)
-    # SPEC-ENHANCED-STATS-001: 고급 통계 대시보드 엔드포인트 (읽기 전용)
-    app.include_router(enhanced_statistics.router, prefix=api_prefix, dependencies=_auth)
-    # SPEC-ADVANCED-SEARCH-001: 고급 검색 API (필터, 분석, 기록)
-    app.include_router(advanced_search.router, prefix=api_prefix, dependencies=_auth)
-
-    # SPEC-TEAM-001: 인증 API (공개 엔드포인트 - API Key 불필요)
-    app.include_router(auth.router, prefix=api_prefix)
-
-    # SPEC-MOBILE-001: FCM 디바이스 등록 API (공개 엔드포인트 - API Key 불필요, JWT 인증은 각 엔드포인트에서 처리)
-    app.include_router(devices.router, prefix=api_prefix)
-
-    # SPEC-TEAM-001: 팀 관리 API (JWT 인증은 각 엔드포인트에서 처리)
-    app.include_router(teams.router, prefix=api_prefix)
-
-    # SPEC-TEAM-001 REQ-TEAM-005: 회의록 공유 API (JWT 인증은 각 엔드포인트에서 처리)
-    app.include_router(meetings.router, prefix=api_prefix)
-
-    # SPEC-BOOKMARK-001: 북마크/하이라이트 API (JWT 인증은 각 엔드포인트에서 처리)
-    app.include_router(bookmarks.router, prefix=api_prefix)
-
-    # SPEC-SPEAKER-001: 화자 프로필 관리 API (JWT 인증은 각 엔드포인트에서 처리)
-    app.include_router(speakers.router, prefix=api_prefix)
-
-    # SPEC-WEBHOOK-001: 웹훅 엔드포인트 관리 API (JWT 인증은 각 엔드포인트에서 처리)
-    app.include_router(webhooks.router, prefix=api_prefix)
-
-    # SPEC-VERSION-001: 회의록 버전 관리 API (JWT 인증은 각 엔드포인트에서 처리)
-    app.include_router(versions.router, prefix=api_prefix)
-
-    app.include_router(sentiment.router, prefix=api_prefix, dependencies=_auth)
-
-    # SPEC-TAG-001: 회의록 자동 태깅
-    app.include_router(tags.router, prefix=api_prefix, dependencies=_auth)
-
-    # SPEC-KEYWORD-001: 자동 키워드 추출/추천
-    app.include_router(keywords.router, prefix=api_prefix, dependencies=_auth)
-
-    # SPEC-ACTION-001: 액션 아이템 추출 API
-    app.include_router(action_items.router, prefix=api_prefix, dependencies=_auth)
-
-    # SPEC-AUDIO-ANALYSIS-001: 오디오 품질 분석 API
-    app.include_router(audio_analysis.router, prefix=api_prefix, dependencies=_auth)
-
-    # SPEC-AUDIO-PREP-001: 오디오 전처리(노이즈/무음 트리밍/정규화) API
-    app.include_router(audio_preprocess.router, prefix=api_prefix, dependencies=_auth)
-
-    # SPEC-QUALITY-001: 회의록 품질 평가 및 개선 제안 API
-    app.include_router(quality_assessment.router, prefix=api_prefix, dependencies=_auth)
-
-    # SPEC-CAL-001: 캘린더 통합 API
-    app.include_router(calendar.router, prefix=api_prefix, dependencies=_auth)
-
-    # REQ-VOCAB-001: 커스텀 어휘 관리 API
-    app.include_router(vocabulary.router, prefix=api_prefix, dependencies=_auth)
-    app.include_router(audio.router, prefix=api_prefix)
-    app.include_router(qa.router, prefix=api_prefix, dependencies=_auth)
+    for router, requires_api_key in ROUTER_REGISTRY:
+        app.include_router(
+            router,
+            prefix=api_prefix,
+            dependencies=_auth if requires_api_key else None,
+        )
 
     return app
 

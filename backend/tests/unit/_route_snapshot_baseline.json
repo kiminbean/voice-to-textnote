@@ -1,0 +1,947 @@
+[
+  {
+    "path": "/api/v1/action-items/extract",
+    "methods": [
+      "POST"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/action-items/meeting",
+    "methods": [
+      "POST"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/admin/cleanup",
+    "methods": [
+      "POST"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/advanced-search/history",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/advanced-search/history/{history_id}",
+    "methods": [
+      "DELETE"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/advanced-search/save-search",
+    "methods": [
+      "POST"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/advanced-search/search",
+    "methods": [
+      "POST"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/audio-analysis",
+    "methods": [
+      "POST"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/audio/preprocess",
+    "methods": [
+      "POST"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/auth/apple",
+    "methods": [
+      "POST"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/auth/google",
+    "methods": [
+      "POST"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/auth/guest",
+    "methods": [
+      "POST"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/auth/link/{provider}",
+    "methods": [
+      "DELETE"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/auth/link/{provider}",
+    "methods": [
+      "POST"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/auth/login",
+    "methods": [
+      "POST"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/auth/logout",
+    "methods": [
+      "POST"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/auth/me",
+    "methods": [
+      "GET"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/auth/refresh",
+    "methods": [
+      "POST"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/auth/register",
+    "methods": [
+      "POST"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/bookmarks",
+    "methods": [
+      "GET"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/bookmarks",
+    "methods": [
+      "POST"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/bookmarks/{bookmark_id}",
+    "methods": [
+      "DELETE"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/bookmarks/{bookmark_id}",
+    "methods": [
+      "GET"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/bookmarks/{bookmark_id}",
+    "methods": [
+      "PATCH"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/calendar/events/{task_id}",
+    "methods": [
+      "DELETE"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/calendar/events/{task_id}",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/calendar/events/{task_id}",
+    "methods": [
+      "POST"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/devices/",
+    "methods": [
+      "GET"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/devices/register",
+    "methods": [
+      "POST"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/devices/{device_id}",
+    "methods": [
+      "DELETE"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/diarizations",
+    "methods": [
+      "POST"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/diarizations/{task_id}",
+    "methods": [
+      "DELETE"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/diarizations/{task_id}",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/diarizations/{task_id}/status",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/enhanced-statistics/overview",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/enhanced-statistics/{task_id}",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/export/docx/{minutes_task_id}",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/export/markdown/{minutes_task_id}",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/export/pdf/{minutes_task_id}",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/health",
+    "methods": [
+      "GET"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/health/diarization",
+    "methods": [
+      "GET"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/health/model",
+    "methods": [
+      "GET"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/health/ready",
+    "methods": [
+      "GET"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/history",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/history/{task_id}",
+    "methods": [
+      "DELETE"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/history/{task_id}",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/keywords/extract",
+    "methods": [
+      "POST"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/keywords/{task_id}",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/keywords/{task_id}/recommend",
+    "methods": [
+      "POST"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/meetings/mine",
+    "methods": [
+      "GET"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/meetings/{task_id}/audio",
+    "methods": [
+      "GET"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/meetings/{task_id}/share",
+    "methods": [
+      "POST"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/meetings/{task_id}/share/{team_id}",
+    "methods": [
+      "DELETE"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/minutes",
+    "methods": [
+      "POST"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/minutes/{task_id}",
+    "methods": [
+      "DELETE"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/minutes/{task_id}",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/minutes/{task_id}/status",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/minutes/{task_id}/versions",
+    "methods": [
+      "GET"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/minutes/{task_id}/versions",
+    "methods": [
+      "POST"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/minutes/{task_id}/versions/{from_version_id}/diff/{to_version_id}",
+    "methods": [
+      "GET"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/minutes/{task_id}/versions/{from_version_id}/structured-diff/{to_version_id}",
+    "methods": [
+      "GET"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/minutes/{task_id}/versions/{version_id}",
+    "methods": [
+      "DELETE"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/minutes/{task_id}/versions/{version_id}",
+    "methods": [
+      "GET"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/qa/ask",
+    "methods": [
+      "POST"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/qa/{task_id}/history",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/quality/health",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/quality/{task_id}",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/quality/{task_id}/assess",
+    "methods": [
+      "POST"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/quality/{task_id}/improvements",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/quality/{task_id}/quality-feedback",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/quality/{task_id}/quality-feedback",
+    "methods": [
+      "POST"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/quality/{task_id}/quality-score",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/quality/{task_id}/quality-trends",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/search",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/sentiment",
+    "methods": [
+      "POST"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/sentiment/{task_id}",
+    "methods": [
+      "DELETE"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/sentiment/{task_id}",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/sentiment/{task_id}/status",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/speakers",
+    "methods": [
+      "GET"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/speakers",
+    "methods": [
+      "POST"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/speakers/{speaker_id}",
+    "methods": [
+      "DELETE"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/speakers/{speaker_id}",
+    "methods": [
+      "GET"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/speakers/{speaker_id}",
+    "methods": [
+      "PATCH"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/speakers/{speaker_id}/analyze-samples",
+    "methods": [
+      "POST"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/speakers/{speaker_id}/voice-characteristics",
+    "methods": [
+      "GET"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/speakers/{speaker_id}/voice-profile",
+    "methods": [
+      "POST"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/statistics/dashboard/overview",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/statistics/{task_id}",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/summaries",
+    "methods": [
+      "POST"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/summaries/mind-map/{task_id}",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/summaries/mind-map/{task_id}/status",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/summaries/{summary_task_id}/mind-map",
+    "methods": [
+      "POST"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/summaries/{task_id}",
+    "methods": [
+      "DELETE"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/summaries/{task_id}",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/summaries/{task_id}/status",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/tags",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/tags",
+    "methods": [
+      "POST"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/tags/auto",
+    "methods": [
+      "POST"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/tags/bulk/delete",
+    "methods": [
+      "DELETE"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/tags/{tag_id}",
+    "methods": [
+      "DELETE"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/tags/{tag_id}",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/tags/{tag_id}",
+    "methods": [
+      "PATCH"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/tasks/{task_id}/stream",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/teams",
+    "methods": [
+      "GET"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/teams",
+    "methods": [
+      "POST"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/teams/{team_id}",
+    "methods": [
+      "DELETE"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/teams/{team_id}",
+    "methods": [
+      "GET"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/teams/{team_id}",
+    "methods": [
+      "PUT"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/teams/{team_id}/meetings",
+    "methods": [
+      "GET"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/teams/{team_id}/members",
+    "methods": [
+      "GET"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/teams/{team_id}/members",
+    "methods": [
+      "POST"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/teams/{team_id}/members/{user_id}",
+    "methods": [
+      "DELETE"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/teams/{team_id}/members/{user_id}",
+    "methods": [
+      "PUT"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/templates",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/templates",
+    "methods": [
+      "POST"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/templates/{template_id}",
+    "methods": [
+      "DELETE"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/templates/{template_id}",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/transcriptions",
+    "methods": [
+      "POST"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/transcriptions/batch",
+    "methods": [
+      "POST"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/transcriptions/batch/{batch_id}",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/transcriptions/{task_id}",
+    "methods": [
+      "DELETE"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/transcriptions/{task_id}",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/transcriptions/{task_id}/status",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/vocabulary",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/vocabulary",
+    "methods": [
+      "POST"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/vocabulary/{vocab_id}",
+    "methods": [
+      "DELETE"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/vocabulary/{vocab_id}",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/vocabulary/{vocab_id}",
+    "methods": [
+      "PUT"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/webhooks",
+    "methods": [
+      "GET"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/webhooks",
+    "methods": [
+      "POST"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/webhooks/{webhook_id}",
+    "methods": [
+      "DELETE"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/webhooks/{webhook_id}",
+    "methods": [
+      "GET"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/webhooks/{webhook_id}",
+    "methods": [
+      "PATCH"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/webhooks/{webhook_id}/ping",
+    "methods": [
+      "POST"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/metrics",
+    "methods": [
+      "GET"
+    ],
+    "api_key": false
+  }
+]
