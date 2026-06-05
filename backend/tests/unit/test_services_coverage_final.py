@@ -216,7 +216,9 @@ class TestRetentionCoverage:
         test_file.write_text("test content")
 
         with patch("pathlib.Path.stat") as mock_stat:
-            mock_stat.side_effect = [FileNotFoundError(), MagicMock(st_mtime=100)]
+            # OS별 Path.stat 호출 순서에 무관하게 결정적으로 FileNotFoundError를 유발
+            # (전역 patch이므로 루프의 f.stat()이 항상 FileNotFoundError → except 분기 커버)
+            mock_stat.side_effect = FileNotFoundError()
 
             with patch("backend.services.retention.logger"):
                 deleted_count, freed_bytes = cleanup_temp_files(tmp_path, retention_hours=1)
