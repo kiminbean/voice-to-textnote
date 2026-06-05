@@ -73,7 +73,7 @@ class TestSTTToDIAPipeline:
         stt_task_id = "11111111-1111-1111-1111-111111111111"
 
         # STT 결과를 Redis에 직접 주입 (Celery 워커 시뮬레이션)
-        asyncio.get_event_loop().run_until_complete(
+        asyncio.run(
             inject_result(
                 e2e_redis,
                 status_key=f"task:status:{stt_task_id}",
@@ -109,7 +109,7 @@ class TestSTTToDIAPipeline:
         stt_task_id = "11111111-1111-1111-1111-111111111111"
 
         # DIA 결과를 Redis에 직접 주입
-        asyncio.get_event_loop().run_until_complete(
+        asyncio.run(
             inject_result(
                 e2e_redis,
                 status_key=f"task:dia:status:{dia_task_id}",
@@ -158,7 +158,7 @@ class TestDIAToMINPipeline:
         dia_task_id = "22222222-2222-2222-2222-222222222222"
 
         # DIA 결과 주입
-        asyncio.get_event_loop().run_until_complete(
+        asyncio.run(
             inject_result(
                 e2e_redis,
                 status_key=f"task:dia:status:{dia_task_id}",
@@ -194,7 +194,7 @@ class TestDIAToMINPipeline:
         dia_task_id = "22222222-2222-2222-2222-222222222222"
 
         # MIN 결과를 Redis에 직접 주입
-        asyncio.get_event_loop().run_until_complete(
+        asyncio.run(
             inject_result(
                 e2e_redis,
                 status_key=f"task:min:status:{min_task_id}",
@@ -246,7 +246,7 @@ class TestMINToSUMPipeline:
         min_task_id = "33333333-3333-3333-3333-333333333333"
 
         # MIN 결과 주입
-        asyncio.get_event_loop().run_until_complete(
+        asyncio.run(
             inject_result(
                 e2e_redis,
                 status_key=f"task:min:status:{min_task_id}",
@@ -282,7 +282,7 @@ class TestMINToSUMPipeline:
         min_task_id = "33333333-3333-3333-3333-333333333333"
 
         # SUM 결과를 Redis에 직접 주입
-        asyncio.get_event_loop().run_until_complete(
+        asyncio.run(
             inject_result(
                 e2e_redis,
                 status_key=f"task:sum:status:{sum_task_id}",
@@ -326,7 +326,6 @@ class TestFullPipeline:
         """
         import asyncio
 
-        loop = asyncio.get_event_loop()
 
         # 단계 1: STT 업로드
         wav_bytes = make_test_wav(duration_seconds=1)
@@ -339,7 +338,7 @@ class TestFullPipeline:
         stt_task_id = stt_response.json()["task_id"]
 
         # STT 결과 시뮬레이션 (Celery 워커가 완료한 것처럼)
-        loop.run_until_complete(
+        asyncio.run(
             inject_result(
                 e2e_redis,
                 status_key=f"task:status:{stt_task_id}",
@@ -358,7 +357,7 @@ class TestFullPipeline:
         dia_task_id = dia_response.json()["task_id"]
 
         # DIA 결과 시뮬레이션
-        loop.run_until_complete(
+        asyncio.run(
             inject_result(
                 e2e_redis,
                 status_key=f"task:dia:status:{dia_task_id}",
@@ -381,7 +380,7 @@ class TestFullPipeline:
         min_task_id = min_response.json()["task_id"]
 
         # MIN 결과 시뮬레이션
-        loop.run_until_complete(
+        asyncio.run(
             inject_result(
                 e2e_redis,
                 status_key=f"task:min:status:{min_task_id}",
@@ -404,7 +403,7 @@ class TestFullPipeline:
         sum_task_id = sum_response.json()["task_id"]
 
         # SUM 결과 시뮬레이션
-        loop.run_until_complete(
+        asyncio.run(
             inject_result(
                 e2e_redis,
                 status_key=f"task:sum:status:{sum_task_id}",
@@ -435,7 +434,6 @@ class TestFullPipeline:
         """
         import asyncio
 
-        loop = asyncio.get_event_loop()
 
         stt_id = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
         dia_id = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
@@ -443,7 +441,7 @@ class TestFullPipeline:
         sum_id = "dddddddd-dddd-dddd-dddd-dddddddddddd"
 
         # 각 단계 상태를 Redis에 주입
-        loop.run_until_complete(
+        asyncio.run(
             inject_result(
                 e2e_redis,
                 status_key=f"task:status:{stt_id}",
@@ -452,7 +450,7 @@ class TestFullPipeline:
                 result_dict={**MOCK_STT_RESULT, "task_id": stt_id},
             )
         )
-        loop.run_until_complete(
+        asyncio.run(
             inject_result(
                 e2e_redis,
                 status_key=f"task:dia:status:{dia_id}",
@@ -465,7 +463,7 @@ class TestFullPipeline:
                 },
             )
         )
-        loop.run_until_complete(
+        asyncio.run(
             inject_result(
                 e2e_redis,
                 status_key=f"task:min:status:{min_id}",
@@ -478,7 +476,7 @@ class TestFullPipeline:
                 },
             )
         )
-        loop.run_until_complete(
+        asyncio.run(
             inject_result(
                 e2e_redis,
                 status_key=f"task:sum:status:{sum_id}",
@@ -522,7 +520,6 @@ class TestFullPipeline:
         """
         import asyncio
 
-        loop = asyncio.get_event_loop()
 
         stt_id = "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"
         dia_id = "ffffffff-ffff-ffff-ffff-ffffffffffff"
@@ -530,7 +527,7 @@ class TestFullPipeline:
         sum_id = "22223333-2222-3333-2222-222233332222"
 
         # 각 단계 데이터를 Redis에 주입
-        loop.run_until_complete(
+        asyncio.run(
             inject_result(
                 e2e_redis,
                 status_key=f"task:status:{stt_id}",
@@ -539,7 +536,7 @@ class TestFullPipeline:
                 result_dict={**MOCK_STT_RESULT, "task_id": stt_id},
             )
         )
-        loop.run_until_complete(
+        asyncio.run(
             inject_result(
                 e2e_redis,
                 status_key=f"task:dia:status:{dia_id}",
@@ -548,7 +545,7 @@ class TestFullPipeline:
                 result_dict={**MOCK_DIA_RESULT, "task_id": dia_id, "stt_task_id": stt_id},
             )
         )
-        loop.run_until_complete(
+        asyncio.run(
             inject_result(
                 e2e_redis,
                 status_key=f"task:min:status:{min_id}",
@@ -561,7 +558,7 @@ class TestFullPipeline:
                 },
             )
         )
-        loop.run_until_complete(
+        asyncio.run(
             inject_result(
                 e2e_redis,
                 status_key=f"task:sum:status:{sum_id}",
@@ -664,10 +661,9 @@ class TestPipelineErrors:
         """
         import asyncio
 
-        loop = asyncio.get_event_loop()
 
         # active_dia_jobs에 2개 작업 등록 (한도=2이므로 이미 가득 찬 상태)
-        loop.run_until_complete(e2e_redis.sadd("active_dia_jobs", "job1", "job2"))
+        asyncio.run(e2e_redis.sadd("active_dia_jobs", "job1", "job2"))
 
         stt_task_id = "55555555-5555-5555-5555-555555555555"
 
@@ -690,10 +686,9 @@ class TestPipelineErrors:
         """
         import asyncio
 
-        loop = asyncio.get_event_loop()
 
         # active_min_jobs에 3개 작업 등록 (한도=3이므로 가득 찬 상태)
-        loop.run_until_complete(
+        asyncio.run(
             e2e_redis.sadd("active_min_jobs", "min_job1", "min_job2", "min_job3")
         )
 
@@ -718,10 +713,9 @@ class TestPipelineErrors:
         """
         import asyncio
 
-        loop = asyncio.get_event_loop()
 
         # active_sum_jobs에 2개 작업 등록 (한도=2이므로 가득 찬 상태)
-        loop.run_until_complete(e2e_redis.sadd("active_sum_jobs", "sum_job1", "sum_job2"))
+        asyncio.run(e2e_redis.sadd("active_sum_jobs", "sum_job1", "sum_job2"))
 
         min_task_id = "77777777-7777-7777-7777-777777777777"
 

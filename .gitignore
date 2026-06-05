@@ -223,6 +223,10 @@ storage/temp/**
 # Mock artifact files from tests
 <MagicMock*
 
+# Runtime artifacts
+fake.wav
+voice_to_textnote.db
+
 # ===========================================
 # OMC Runtime Session State
 # ===========================================
