@@ -14,7 +14,7 @@ SPEC-REFACTOR-001: 서비스 계층 분리 + 에러 헬퍼 마이그레이션
 from fastapi import APIRouter, Depends, Query, status
 
 from backend.app.dependencies import get_db_session, get_redis_client
-from backend.app.errors import not_found, unprocessable
+from backend.app.errors import unprocessable
 from backend.schemas.calendar import CalendarEvent, CalendarEventResponse
 from backend.services.calendar_service import CalendarService
 

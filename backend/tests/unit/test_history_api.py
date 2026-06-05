@@ -10,10 +10,10 @@ History API 테스트 - SPEC-HISTORY-001
 import pytest
 import pytest_asyncio
 from fastapi import FastAPI
-from backend.app.error_handlers import register_exception_handlers
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from backend.app.error_handlers import register_exception_handlers
 from backend.db.models import Base, TaskResult
 
 # ---------------------------------------------------------------------------

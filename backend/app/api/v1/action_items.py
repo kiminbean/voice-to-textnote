@@ -109,7 +109,7 @@ async def extract_from_meeting(
 
     try:
         minutes_data = json.loads(result_data)
-    except json.JSONDecodeError as e:
+    except json.JSONDecodeError:
         internal_server_error("회의록 데이터 파싱 실패")
 
     # 회의록 텍스트 추출 (결과 구조에 맞게)

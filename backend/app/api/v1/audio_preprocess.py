@@ -18,9 +18,11 @@ import tempfile
 import wave
 from pathlib import Path
 
-from fastapi import APIRouter, File, Form, UploadFile, status
+from fastapi import APIRouter, File, Form, UploadFile
 from fastapi.responses import FileResponse
+from starlette.background import BackgroundTask
 
+from backend.app.config import settings
 from backend.app.errors import (
     bad_request,
     internal_server_error,
@@ -28,9 +30,6 @@ from backend.app.errors import (
     unprocessable,
 )
 from backend.app.exceptions import VoiceNoteError
-from starlette.background import BackgroundTask
-
-from backend.app.config import settings
 from backend.pipeline.audio_processor import (
     PreprocessOptions,
     cleanup_temp_file,

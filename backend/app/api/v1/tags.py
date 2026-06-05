@@ -18,7 +18,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.dependencies import get_current_user, get_db_session
 from backend.db.auth_models import User
-from backend.services.tag_service import TagService
 from backend.ml.tagging_engine import generate_auto_tags
 from backend.schemas.tag import (
     AutoTagRequest,
@@ -28,6 +27,7 @@ from backend.schemas.tag import (
     TagResponse,
     TagUpdate,
 )
+from backend.services.tag_service import TagService
 from backend.utils.logger import get_logger
 
 logger = get_logger(__name__)

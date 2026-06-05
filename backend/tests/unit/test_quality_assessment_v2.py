@@ -9,17 +9,17 @@ SPEC-QUALITY-001: 회의록 품질 평가 API 추가 단위 테스트 (커버리
 - GET /{task_id}/quality-trends - 품질 추세 분석
 """
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 
 import pytest_asyncio
 from fastapi import FastAPI
-from backend.app.error_handlers import register_exception_handlers
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 import backend.db.auth_models  # noqa: F401
 import backend.db.quality_feedback_models  # noqa: F401
 from backend.app.dependencies import get_db_session
+from backend.app.error_handlers import register_exception_handlers
 from backend.db.models import Base, TaskResult
 
 _SAMPLE_MINUTES = (
@@ -66,7 +66,7 @@ async def seeded_db(db_engine):
 
 
 def _make_app(db_engine, svc_mock=None):
-    from backend.app.api.v1.quality_assessment import router, get_quality_service
+    from backend.app.api.v1.quality_assessment import get_quality_service, router
 
     app = FastAPI()
     register_exception_handlers(app)

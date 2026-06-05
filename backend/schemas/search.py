@@ -10,12 +10,12 @@ REQ-SEARCH-012: 액션 아이템/핵심 결정 필터 (has_action_items, has_key
 """
 
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, field_validator
 
 
-class SortOption(str, Enum):
+class SortOption(StrEnum):
     """정렬 옵션 (REQ-SEARCH-008)"""
 
     RELEVANCE = "relevance"  # FTS5 rank 기준 (bm25)

@@ -7,7 +7,7 @@ SPEC-QA-001: 회의 Q&A API 엔드포인트
 """
 
 import redis.asyncio as aioredis
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends
 
 from backend.app.dependencies import get_redis_client
 from backend.app.errors import internal_error, not_found

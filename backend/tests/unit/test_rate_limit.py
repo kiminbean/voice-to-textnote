@@ -9,6 +9,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi import FastAPI
+
 from backend.app.error_handlers import register_exception_handlers
 
 # ---------------------------------------------------------------------------

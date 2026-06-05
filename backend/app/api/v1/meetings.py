@@ -13,13 +13,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.dependencies import get_current_user, get_db_session
 from backend.app.errors import forbidden, not_found, unprocessable
-from backend.services.meeting_share_service import MeetingShareService
 from backend.schemas.meeting_share import (
     MeetingListResponse,
     MeetingOwnershipResponse,
     MeetingShareRequest,
     MeetingShareResponse,
 )
+from backend.services.meeting_share_service import MeetingShareService
 
 router = APIRouter(prefix="/meetings", tags=["meetings"])
 

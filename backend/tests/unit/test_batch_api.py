@@ -12,10 +12,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest_asyncio
 from fastapi import FastAPI
-from backend.app.error_handlers import register_exception_handlers
 from fastapi.testclient import TestClient
 
 from backend.app.dependencies import get_redis_client
+from backend.app.error_handlers import register_exception_handlers
 
 # ---------------------------------------------------------------------------
 # Fixture

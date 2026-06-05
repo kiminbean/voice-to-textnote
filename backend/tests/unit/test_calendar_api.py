@@ -12,7 +12,6 @@ from fastapi.testclient import TestClient
 from backend.app.dependencies import get_db_session, get_redis_client
 from backend.app.main import create_app
 
-
 # ---------------------------------------------------------------------------
 # 픽스처: conftest.py client 의존하지 않고 자체 격리 환경 구성
 # ---------------------------------------------------------------------------

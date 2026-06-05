@@ -9,8 +9,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from backend.db.version_models import MinutesVersion
-from backend.services.version_service import VersionService
 from backend.schemas.version import VersionCreate
+from backend.services.version_service import VersionService
 
 
 @pytest.fixture

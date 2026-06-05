@@ -30,7 +30,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.config import settings
 from backend.app.dependencies import get_current_user, get_db_session, get_redis_client
 from backend.app.errors import bad_request, unauthorized
-from backend.services.auth_service import AuthService
 from backend.schemas.auth import (
     AppleLoginRequest,
     GoogleLoginRequest,
@@ -42,6 +41,7 @@ from backend.schemas.auth import (
     TokenResponse,
     UserResponse,
 )
+from backend.services.auth_service import AuthService
 from backend.services.oauth_service import (
     verify_apple_token,
     verify_google_token,

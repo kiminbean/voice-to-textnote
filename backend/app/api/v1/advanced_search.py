@@ -10,10 +10,9 @@ import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.dependencies import get_db_session, get_redis_client
 from backend.app.errors import internal_server_error
 from backend.app.exceptions import VoiceNoteError
-
-from backend.app.dependencies import get_db_session, get_redis_client
 from backend.schemas.advanced_search import (
     AdvancedSearchRequest,
     AdvancedSearchResponse,

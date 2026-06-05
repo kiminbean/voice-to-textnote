@@ -16,8 +16,8 @@ import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 
 from backend.app.config import settings
-from backend.app.errors import internal_server_error, not_found, unprocessable
 from backend.app.dependencies import get_redis_client
+from backend.app.errors import internal_server_error, not_found, unprocessable
 from backend.pipeline.template_parser import TemplateParser
 from backend.schemas.template import TemplateDetail, TemplateListItem, TemplateUploadResponse
 from backend.utils.logger import get_logger

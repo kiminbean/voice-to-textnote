@@ -12,8 +12,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.dependencies import get_db_session
 from backend.app.errors import unprocessable
-from backend.services.search_service import SearchService
 from backend.schemas.search import SearchResponse, SortOption
+from backend.services.search_service import SearchService
 
 router = APIRouter(tags=["search"])
 

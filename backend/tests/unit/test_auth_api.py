@@ -19,8 +19,8 @@ from fastapi.testclient import TestClient
 
 @pytest.fixture
 def auth_client():
-    from backend.app.dependencies import get_db_session
     from backend.app.api.v1.auth import get_auth_service
+    from backend.app.dependencies import get_db_session
     from backend.app.main import app
 
     async def mock_db_session():

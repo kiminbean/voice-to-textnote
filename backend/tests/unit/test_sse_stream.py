@@ -11,8 +11,9 @@ from unittest.mock import AsyncMock
 
 import pytest
 from fastapi import FastAPI
-from backend.app.error_handlers import register_exception_handlers
 from fastapi.testclient import TestClient
+
+from backend.app.error_handlers import register_exception_handlers
 
 # ---------------------------------------------------------------------------
 # 테스트 헬퍼

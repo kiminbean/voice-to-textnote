@@ -11,8 +11,8 @@ import httpx
 import pytest
 
 from backend.db.webhook_models import WebhookEndpoint
-from backend.services.webhook_service import WebhookService
 from backend.schemas.webhook import WebhookEndpointCreate, WebhookEndpointUpdate
+from backend.services.webhook_service import WebhookService
 
 
 @pytest.fixture

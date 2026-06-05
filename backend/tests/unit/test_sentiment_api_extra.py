@@ -1,4 +1,3 @@
-from backend.app.error_handlers import register_exception_handlers
 """
 감정 분석 API 엔드포인트 테스트
 SPEC-SENTIMENT-001:

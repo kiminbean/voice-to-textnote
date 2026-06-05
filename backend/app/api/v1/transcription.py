@@ -16,10 +16,9 @@ from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.config import settings
-from backend.app.errors import bad_request, not_found, too_many_requests, unprocessable
-from backend.app.exceptions import VoiceNoteError
 from backend.app.dependencies import get_db_session, get_redis_client
-from backend.services.vocabulary_service import VocabularyService
+from backend.app.errors import not_found, unprocessable
+from backend.app.exceptions import VoiceNoteError
 from backend.pipeline.audio_processor import get_audio_duration_seconds
 from backend.schemas.transcription import (
     TaskStatus,
@@ -29,6 +28,7 @@ from backend.schemas.transcription import (
     ValidationErrorDetail,
     ValidationErrorResponse,
 )
+from backend.services.vocabulary_service import VocabularyService
 from backend.utils.logger import get_logger
 from backend.utils.validators import validate_audio_format, validate_file_size
 

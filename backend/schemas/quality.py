@@ -3,12 +3,12 @@
 """
 
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
 
-class AssessmentFocus(str, Enum):
+class AssessmentFocus(StrEnum):
     """평가 집중 영역"""
     COMPLETENESS = "completeness"  # 완전성
     CLARITY = "clarity"          # 명확성
@@ -20,7 +20,7 @@ class AssessmentFocus(str, Enum):
     TIMELINE = "timeline"        # 시간 정보
 
 
-class IssueSeverity(str, Enum):
+class IssueSeverity(StrEnum):
     """문제 심각도"""
     LOW = "low"
     MEDIUM = "medium"
@@ -28,7 +28,7 @@ class IssueSeverity(str, Enum):
     CRITICAL = "critical"
 
 
-class ImprovementType(str, Enum):
+class ImprovementType(StrEnum):
     """개선 제안 유형"""
     STRUCTURE = "structure"
     CONTENT = "content"
@@ -37,7 +37,7 @@ class ImprovementType(str, Enum):
     FORMAT = "format"
 
 
-class Priority(str, Enum):
+class Priority(StrEnum):
     """우선순위"""
     LOW = "low"
     MEDIUM = "medium"
@@ -189,7 +189,7 @@ class QualityHistory(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-class FeedbackCategory(str, Enum):
+class FeedbackCategory(StrEnum):
     """피드백 카테고리"""
     ACCURACY = "accuracy"
     COMPLETENESS = "completeness"

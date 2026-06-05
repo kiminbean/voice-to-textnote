@@ -22,8 +22,6 @@ from backend.app.errors import (
     not_found,
     unprocessable,
 )
-from backend.services.meeting_share_service import MeetingShareService
-from backend.services.team_service import TeamService
 from backend.schemas.meeting_share import MeetingListResponse, MeetingOwnershipResponse
 from backend.schemas.team import (
     MemberInviteRequest,
@@ -36,6 +34,8 @@ from backend.schemas.team import (
     TeamResponse,
     TeamUpdateRequest,
 )
+from backend.services.meeting_share_service import MeetingShareService
+from backend.services.team_service import TeamService
 
 router = APIRouter(prefix="/teams", tags=["teams"])
 

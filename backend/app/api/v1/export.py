@@ -12,14 +12,14 @@ import json
 import re
 
 import redis.asyncio as aioredis
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
-
-from backend.app.errors import internal_server_error, not_found, unprocessable
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.dependencies import get_db_session, get_redis_client
+from backend.app.errors import internal_server_error, not_found, unprocessable
+from backend.app.exceptions import VoiceNoteError
 from backend.db.models import TaskResult
 from backend.pipeline.docx_generator import MinutesDOCXGenerator
 from backend.pipeline.pdf_generator import MinutesPDFGenerator

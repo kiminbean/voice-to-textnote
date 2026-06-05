@@ -217,8 +217,8 @@ def test_update_team_admin_only(team_client, admin_user):
 
 
 def test_update_team_non_admin_403(admin_user):
-    from backend.app.dependencies import get_current_user, get_db_session
     from backend.app.api.v1.teams import get_team_service
+    from backend.app.dependencies import get_current_user, get_db_session
     from backend.app.main import app
 
     non_admin = _make_user("member")
@@ -273,8 +273,8 @@ def test_delete_team_admin_only(team_client, admin_user):
 
 
 def test_delete_team_non_admin_403(admin_user):
-    from backend.app.dependencies import get_current_user, get_db_session
     from backend.app.api.v1.teams import get_team_service
+    from backend.app.dependencies import get_current_user, get_db_session
     from backend.app.main import app
 
     non_admin = _make_user("viewer")
@@ -536,8 +536,8 @@ def test_remove_team_member_400_last_admin(team_client, admin_user):
 
 def test_remove_team_member_403_non_admin(team_client, admin_user):
     client, mock_svc = team_client
-    from backend.app.dependencies import get_current_user, get_db_session
     from backend.app.api.v1.teams import get_team_service
+    from backend.app.dependencies import get_current_user, get_db_session
     from backend.app.main import app
 
     non_admin = _make_user("member")

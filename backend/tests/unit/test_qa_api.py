@@ -10,16 +10,16 @@ from unittest.mock import AsyncMock
 
 import pytest
 from fastapi import FastAPI
-from backend.app.error_handlers import register_exception_handlers
 from fastapi.testclient import TestClient
 
 from backend.app.dependencies import get_redis_client
+from backend.app.error_handlers import register_exception_handlers
 from backend.schemas.qa import MeetingAskResponse, QAHistoryItem, QAHistoryResponse, QASource
 
 
 @pytest.fixture
 def app_client():
-    from backend.app.api.v1.qa import router, get_qa_service
+    from backend.app.api.v1.qa import get_qa_service, router
 
     app = FastAPI()
     register_exception_handlers(app)

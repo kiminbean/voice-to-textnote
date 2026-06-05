@@ -20,7 +20,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.dependencies import get_current_user, get_db_session
 from backend.db.auth_models import User
-from backend.services.speaker_service import SpeakerService
 from backend.schemas.speaker import (
     SpeakerProfileCreate,
     SpeakerProfileListResponse,
@@ -30,6 +29,7 @@ from backend.schemas.speaker import (
     VoiceProfileCreateRequest,
     VoiceSampleAnalyzeResponse,
 )
+from backend.services.speaker_service import SpeakerService
 from backend.services.speaker_voice_service import SpeakerVoiceService
 
 router = APIRouter(prefix="/speakers", tags=["speakers"])

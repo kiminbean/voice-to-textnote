@@ -9,10 +9,10 @@ from unittest.mock import AsyncMock
 
 import pytest
 from fastapi import FastAPI
-from backend.app.error_handlers import register_exception_handlers
 from fastapi.testclient import TestClient
 
 from backend.app.api.v1.minutes import router
+from backend.app.error_handlers import register_exception_handlers
 
 
 @pytest.fixture

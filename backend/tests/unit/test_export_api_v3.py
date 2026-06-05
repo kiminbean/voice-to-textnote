@@ -8,9 +8,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import FastAPI
-from backend.app.error_handlers import register_exception_handlers
 from fastapi.testclient import TestClient
 
+from backend.app.error_handlers import register_exception_handlers
 from backend.app.middleware.auth import verify_api_key
 
 # ---------------------------------------------------------------------------

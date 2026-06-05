@@ -44,12 +44,14 @@ def current_user():
 
 @pytest.fixture
 def meeting_client(current_user):
-    from backend.app.dependencies import get_current_user, get_db_session
     from backend.app.api.v1.meetings import get_meeting_share_service
     from backend.app.api.v1.teams import (
-        get_team_service as get_team_svc,
         get_meeting_share_service as get_teams_meeting_svc,
     )
+    from backend.app.api.v1.teams import (
+        get_team_service as get_team_svc,
+    )
+    from backend.app.dependencies import get_current_user, get_db_session
     from backend.app.main import app
 
     async def mock_db_session():

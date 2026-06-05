@@ -5,7 +5,7 @@ Phase 2 (REQ-AUDIO-001): 인앱 오디오 재생을 위한 엔드포인트
 
 import mimetypes
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter
 from fastapi.responses import FileResponse
 
 from backend.app.config import settings

@@ -12,7 +12,12 @@ from pathlib import Path
 from fastapi import APIRouter, File, Form, UploadFile, status
 
 from backend.app.config import settings
-from backend.app.errors import bad_request, internal_server_error, request_entity_too_large, unprocessable
+from backend.app.errors import (
+    bad_request,
+    internal_server_error,
+    request_entity_too_large,
+    unprocessable,
+)
 from backend.app.exceptions import VoiceNoteError
 from backend.ml.audio_analysis_engine import analyze_audio
 from backend.schemas.audio_analysis import (

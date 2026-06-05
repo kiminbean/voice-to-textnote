@@ -6,12 +6,12 @@ SPEC-QUALITY-MONITOR-001: 실시간 품질 모니터링 / 피드백 / 추세 API
 import pytest
 import pytest_asyncio
 from fastapi import FastAPI
-from backend.app.error_handlers import register_exception_handlers
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 import backend.db.auth_models  # noqa: F401
 import backend.db.quality_feedback_models  # noqa: F401
+from backend.app.error_handlers import register_exception_handlers
 from backend.db.models import Base, TaskResult
 
 _SAMPLE_MINUTES_TEXT = (

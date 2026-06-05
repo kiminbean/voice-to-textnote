@@ -8,14 +8,14 @@ SPEC-TEAM-001: 회의록 공유 API 단위 테스트
 """
 
 import uuid
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi import FastAPI
-from backend.app.error_handlers import register_exception_handlers
 from fastapi.testclient import TestClient
 
 from backend.app.dependencies import get_current_user, get_db_session
+from backend.app.error_handlers import register_exception_handlers
 
 # ---------------------------------------------------------------------------
 # 픽스처
@@ -31,7 +31,7 @@ def mock_user():
 
 @pytest.fixture
 def app_client(mock_user):
-    from backend.app.api.v1.meetings import router, get_meeting_share_service
+    from backend.app.api.v1.meetings import get_meeting_share_service, router
 
     app = FastAPI()
     register_exception_handlers(app)

@@ -17,7 +17,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.dependencies import get_current_user, get_db_session
 from backend.db.auth_models import User
-from backend.services.webhook_service import WebhookService
 from backend.schemas.webhook import (
     WebhookEndpointCreate,
     WebhookEndpointListResponse,
@@ -25,6 +24,7 @@ from backend.schemas.webhook import (
     WebhookEndpointUpdate,
     WebhookPingResponse,
 )
+from backend.services.webhook_service import WebhookService
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 

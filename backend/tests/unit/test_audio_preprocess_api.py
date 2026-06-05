@@ -14,10 +14,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi import FastAPI
-from backend.app.error_handlers import register_exception_handlers
 from fastapi.testclient import TestClient
 
 from backend.app.dependencies import get_redis_client
+from backend.app.error_handlers import register_exception_handlers
 
 
 def _make_wav_bytes(duration: float = 0.5, sr: int = 16000) -> bytes:
