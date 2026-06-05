@@ -34,7 +34,10 @@ logger = get_logger(__name__)
 
 router = APIRouter(prefix="/tags", tags=["tags"])
 
-_service = TagService()
+
+def get_tag_service() -> TagService:
+    """TagService 인스턴스 제공 (FastAPI Depends)"""
+    return TagService()
 
 
 @router.post(
@@ -46,6 +49,7 @@ async def auto_tag_meeting(
     payload: AutoTagRequest,
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(get_current_user),
+    svc: TagService = Depends(get_tag_service),
 ) -> AutoTagResponse:
     """REQ-TAG-001: AI 기반 자동 태깅. 회의록 내용 분석 후 태그 자동 생성."""
     # AI 태그 추출
@@ -64,7 +68,7 @@ async def auto_tag_meeting(
             )
         )
 
-    created = await _service.bulk_create(db, user.id, payload.task_id, tag_creates)
+    created = await svc.bulk_create(db, user.id, payload.task_id, tag_creates)
     tag_responses = [TagResponse.model_validate(t) for t in created]
 
     return AutoTagResponse(
@@ -83,9 +87,10 @@ async def create_tag(
     payload: TagCreate,
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(get_current_user),
+    svc: TagService = Depends(get_tag_service),
 ) -> TagResponse:
     """수동 태그 생성."""
-    tag = await _service.create(db, user.id, payload)
+    tag = await svc.create(db, user.id, payload)
     return TagResponse.model_validate(tag)
 
 
@@ -93,18 +98,19 @@ async def create_tag(
 async def list_tags(
     task_id: str = Query(..., max_length=255, description="회의록 task_id (필수)"),
     tag_type: str | None = Query(default=None, max_length=50, description="태그 종류 필터"),
-    source: str | None = Query(default=None, max_length=20, description="생성 방식 필터 (auto/manual)"),
+    source: str | None = Query(
+        default=None, max_length=20, description="생성 방식 필터 (auto/manual)"
+    ),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=100, ge=1, le=200),
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(get_current_user),
+    svc: TagService = Depends(get_tag_service),
 ) -> TagListResponse:
     """회의록 태그 목록 조회."""
     limit = page_size
     offset = (page - 1) * page_size
-    items, total = await _service.list_for_meeting(
-        db, user.id, task_id, tag_type, source, limit, offset
-    )
+    items, total = await svc.list_for_meeting(db, user.id, task_id, tag_type, source, limit, offset)
     return TagListResponse(
         items=[TagResponse.model_validate(t) for t in items],
         total=total,
@@ -117,9 +123,10 @@ async def get_tag(
     tag_id: uuid.UUID,
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(get_current_user),
+    svc: TagService = Depends(get_tag_service),
 ) -> TagResponse:
     """태그 단건 조회."""
-    tag = await _service.get_by_id(db, tag_id, user.id)
+    tag = await svc.get_by_id(db, tag_id, user.id)
     return TagResponse.model_validate(tag)
 
 
@@ -129,9 +136,10 @@ async def update_tag(
     payload: TagUpdate,
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(get_current_user),
+    svc: TagService = Depends(get_tag_service),
 ) -> TagResponse:
     """태그 수정."""
-    tag = await _service.update(db, tag_id, user.id, payload)
+    tag = await svc.update(db, tag_id, user.id, payload)
     return TagResponse.model_validate(tag)
 
 
@@ -140,9 +148,10 @@ async def delete_tag(
     tag_id: uuid.UUID,
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(get_current_user),
+    svc: TagService = Depends(get_tag_service),
 ) -> None:
     """태그 삭제."""
-    await _service.delete(db, tag_id, user.id)
+    await svc.delete(db, tag_id, user.id)
 
 
 @router.delete("/bulk/delete", status_code=status.HTTP_200_OK)
@@ -151,7 +160,8 @@ async def bulk_delete_tags(
     source: str | None = Query(default=None, max_length=20, description="삭제할 태그 소스 필터"),
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(get_current_user),
+    svc: TagService = Depends(get_tag_service),
 ) -> dict:
     """회의록 태그 일괄 삭제."""
-    count = await _service.delete_all_for_meeting(db, user.id, task_id, source)
+    count = await svc.delete_all_for_meeting(db, user.id, task_id, source)
     return {"deleted": count, "task_id": task_id}

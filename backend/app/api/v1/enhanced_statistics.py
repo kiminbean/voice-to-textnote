@@ -8,7 +8,6 @@ SPEC-ENHANCED-STATS-001: 고급 통계 대시보드 API
   전체 프로젝트 통계 개요
 """
 
-
 import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,18 +21,24 @@ from backend.services.enhanced_statistics import EnhancedStatisticsService
 
 router = APIRouter(prefix="/enhanced-statistics", tags=["enhanced_statistics"])
 
-_service = EnhancedStatisticsService()
+
+def get_enhanced_statistics_service() -> EnhancedStatisticsService:
+    """EnhancedStatisticsService 인스턴스 제공 (FastAPI Depends)"""
+    return EnhancedStatisticsService()
 
 
 @router.get("/{task_id}", response_model=EnhancedStatisticsResponse)
 async def get_enhanced_statistics(
     task_id: str,
-    time_range: str = Query(default="7d", pattern="^(1d|7d|30d|90d)$", description="시간 범위 (1d, 7d, 30d, 90d)"),
+    time_range: str = Query(
+        default="7d", pattern="^(1d|7d|30d|90d)$", description="시간 범위 (1d, 7d, 30d, 90d)"
+    ),
     top_n_keywords: int = Query(default=10, ge=1, le=50, description="상위 키워드 수"),
     include_speaker_analysis: bool = Query(default=True, description="화자별 분석 포함"),
     include_efficiency_metrics: bool = Query(default=True, description="효율성 지표 포함"),
     db: AsyncSession = Depends(get_db_session),
     redis_client: aioredis.Redis = Depends(get_redis_client),
+    svc: EnhancedStatisticsService = Depends(get_enhanced_statistics_service),
 ) -> EnhancedStatisticsResponse:
     """
     고급 통계 정보 제공
@@ -47,7 +52,7 @@ async def get_enhanced_statistics(
         db: 데이터베이스 세션
         redis_client: Redis 클라이언트
     """
-    return await _service.get_enhanced_statistics(
+    return await svc.get_enhanced_statistics(
         task_id=task_id,
         time_range=time_range,
         top_n_keywords=top_n_keywords,
@@ -64,6 +69,7 @@ async def get_project_overview(
     top_meetings: int = Query(default=5, ge=1, le=20, description="상위 회의 수"),
     db: AsyncSession = Depends(get_db_session),
     redis_client: aioredis.Redis = Depends(get_redis_client),
+    svc: EnhancedStatisticsService = Depends(get_enhanced_statistics_service),
 ) -> OverviewResponse:
     """
     프로젝트 전체 통계 개요
@@ -74,7 +80,7 @@ async def get_project_overview(
         db: 데이터베이스 세션
         redis_client: Redis 클라이언트
     """
-    return await _service.get_project_overview(
+    return await svc.get_project_overview(
         period=period,
         top_meetings=top_meetings,
         db=db,

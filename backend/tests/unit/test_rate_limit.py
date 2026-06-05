@@ -88,8 +88,8 @@ class TestRateLimitExceeded:
         import json
 
         body = json.loads(response.body)
-        assert "message" in body
-        assert "error" in body or "message" in body or "message" in body
+        assert "detail" in body
+        assert "error" in body
 
 
 # ---------------------------------------------------------------------------

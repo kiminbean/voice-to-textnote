@@ -21,7 +21,11 @@ from backend.schemas.version import (
 )
 
 router = APIRouter(prefix="/minutes", tags=["versions"])
-_service = VersionService()
+
+
+def get_version_service() -> VersionService:
+    """VersionService 인스턴스 제공 (FastAPI Depends)"""
+    return VersionService()
 
 
 def _to_response(version: MinutesVersion) -> VersionResponse:
@@ -47,11 +51,10 @@ async def create_version(
     payload: VersionCreate,
     db: AsyncSession = Depends(get_db_session),
     current_user: User = Depends(get_current_user),
+    svc: VersionService = Depends(get_version_service),
 ) -> VersionResponse:
     """회의록 현재 내용을 버전 스냅샷으로 저장."""
-    version = await _service.create_version(
-        db, task_id, payload, author_id=current_user.id
-    )
+    version = await svc.create_version(db, task_id, payload, author_id=current_user.id)
     return _to_response(version)
 
 
@@ -66,9 +69,10 @@ async def list_versions(
     offset: int = Query(default=0, ge=0, description="페이지 오프셋"),
     db: AsyncSession = Depends(get_db_session),
     current_user: User = Depends(get_current_user),
+    svc: VersionService = Depends(get_version_service),
 ) -> VersionListResponse:
     """회의록 버전 목록 조회 (최신 버전 우선)."""
-    items, total = await _service.list_versions(db, task_id, limit=limit, offset=offset)
+    items, total = await svc.list_versions(db, task_id, limit=limit, offset=offset)
     return VersionListResponse(total=total, items=[_to_response(v) for v in items])
 
 
@@ -82,9 +86,10 @@ async def get_version(
     version_id: uuid.UUID,
     db: AsyncSession = Depends(get_db_session),
     current_user: User = Depends(get_current_user),
+    svc: VersionService = Depends(get_version_service),
 ) -> VersionResponse:
     """특정 버전 단건 조회."""
-    version = await _service.get_version(db, task_id, version_id)
+    version = await svc.get_version(db, task_id, version_id)
     return _to_response(version)
 
 
@@ -99,11 +104,12 @@ async def get_diff(
     to_version_id: uuid.UUID,
     db: AsyncSession = Depends(get_db_session),
     current_user: User = Depends(get_current_user),
+    svc: VersionService = Depends(get_version_service),
 ) -> VersionDiffResponse:
     """두 버전 간 텍스트 diff 조회."""
-    from_ver = await _service.get_version(db, task_id, from_version_id)
-    to_ver = await _service.get_version(db, task_id, to_version_id)
-    diff = _service.compute_diff(from_ver.content, to_ver.content)
+    from_ver = await svc.get_version(db, task_id, from_version_id)
+    to_ver = await svc.get_version(db, task_id, to_version_id)
+    diff = svc.compute_diff(from_ver.content, to_ver.content)
 
     return VersionDiffResponse(
         from_version=from_ver.version_number,
@@ -126,6 +132,7 @@ async def get_structured_diff(
     to_version_id: uuid.UUID,
     db: AsyncSession = Depends(get_db_session),
     current_user: User = Depends(get_current_user),
+    svc: VersionService = Depends(get_version_service),
 ) -> StructuredDiffResponse:
     """JSON 구조 기반 회의록 diff 조회.
 
@@ -133,9 +140,9 @@ async def get_structured_diff(
     added / removed / modified로 분리해 반환한다. 클라이언트는 별도 파싱 없이
     필드 단위 UI 렌더링이 가능하다.
     """
-    from_ver = await _service.get_version(db, task_id, from_version_id)
-    to_ver = await _service.get_version(db, task_id, to_version_id)
-    diff = _service.compute_structured_diff(from_ver.content, to_ver.content)
+    from_ver = await svc.get_version(db, task_id, from_version_id)
+    to_ver = await svc.get_version(db, task_id, to_version_id)
+    diff = svc.compute_structured_diff(from_ver.content, to_ver.content)
 
     return StructuredDiffResponse(
         from_version=from_ver.version_number,
@@ -158,6 +165,7 @@ async def delete_version(
     version_id: uuid.UUID,
     db: AsyncSession = Depends(get_db_session),
     current_user: User = Depends(get_current_user),
+    svc: VersionService = Depends(get_version_service),
 ) -> None:
     """버전 삭제."""
-    await _service.delete_version(db, task_id, version_id)
+    await svc.delete_version(db, task_id, version_id)

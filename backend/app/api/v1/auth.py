@@ -50,8 +50,11 @@ from backend.utils.logger import get_logger
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-# AuthService 인스턴스 (재사용)
-_auth_service = AuthService()
+
+def get_auth_service() -> AuthService:
+    """AuthService 인스턴스 제공 (FastAPI Depends)"""
+    return AuthService()
+
 
 logger = get_logger(__name__)
 
@@ -65,6 +68,7 @@ logger = get_logger(__name__)
 async def register(
     req: RegisterRequest,
     db: AsyncSession = Depends(get_db_session),
+    auth_service: AuthService = Depends(get_auth_service),
 ) -> TokenResponse:
     """
     새 사용자 계정을 생성하고 JWT 토큰을 반환합니다.
@@ -73,7 +77,7 @@ async def register(
     - **password**: 비밀번호 (최소 8자, 영문자+숫자 포함)
     - **display_name**: 표시 이름
     """
-    _, access_token, refresh_token = await _auth_service.register(
+    _, access_token, refresh_token = await auth_service.register(
         session=db,
         email=req.email,
         password=req.password,
@@ -90,11 +94,12 @@ async def register(
 async def login(
     req: LoginRequest,
     db: AsyncSession = Depends(get_db_session),
+    auth_service: AuthService = Depends(get_auth_service),
 ) -> TokenResponse:
     """
     이메일/비밀번호로 로그인하고 JWT 토큰을 반환합니다.
     """
-    _, access_token, refresh_token = await _auth_service.login(
+    _, access_token, refresh_token = await auth_service.login(
         session=db,
         email=req.email,
         password=req.password,
@@ -110,12 +115,13 @@ async def login(
 async def refresh_token(
     req: RefreshRequest,
     db: AsyncSession = Depends(get_db_session),
+    auth_service: AuthService = Depends(get_auth_service),
 ) -> TokenResponse:
     """
     Refresh Token으로 새 Access Token과 Refresh Token을 발급합니다.
     기존 Refresh Token은 폐기됩니다 (rotation).
     """
-    new_access, new_refresh = await _auth_service.refresh(
+    new_access, new_refresh = await auth_service.refresh(
         session=db,
         refresh_token_str=req.refresh_token,
     )
@@ -130,11 +136,12 @@ async def refresh_token(
 async def logout(
     req: RefreshRequest,
     db: AsyncSession = Depends(get_db_session),
+    auth_service: AuthService = Depends(get_auth_service),
 ) -> None:
     """
     Refresh Token을 폐기하여 로그아웃합니다.
     """
-    await _auth_service.logout(session=db, refresh_token_str=req.refresh_token)
+    await auth_service.logout(session=db, refresh_token_str=req.refresh_token)
 
 
 @router.post(
@@ -210,6 +217,7 @@ async def get_me(
 async def google_login(
     req: GoogleLoginRequest,
     db: AsyncSession = Depends(get_db_session),
+    auth_service: AuthService = Depends(get_auth_service),
 ) -> TokenResponse:
     """REQ-OAUTH-001: Google ID token으로 로그인/자동가입."""
     try:
@@ -217,7 +225,7 @@ async def google_login(
     except ValueError as e:
         unauthorized(str(e))
 
-    _, access_token, refresh_token = await _auth_service.social_login_or_register(
+    _, access_token, refresh_token = await auth_service.social_login_or_register(
         session=db,
         provider=user_info.provider,
         provider_id=user_info.provider_id,
@@ -236,6 +244,7 @@ async def google_login(
 async def apple_login(
     req: AppleLoginRequest,
     db: AsyncSession = Depends(get_db_session),
+    auth_service: AuthService = Depends(get_auth_service),
 ) -> TokenResponse:
     """REQ-OAUTH-001: Apple ID token으로 로그인/자동가입."""
     try:
@@ -245,7 +254,7 @@ async def apple_login(
 
     display_name = req.display_name or user_info.display_name
 
-    _, access_token, refresh_token = await _auth_service.social_login_or_register(
+    _, access_token, refresh_token = await auth_service.social_login_or_register(
         session=db,
         provider=user_info.provider,
         provider_id=user_info.provider_id,
@@ -266,6 +275,7 @@ async def link_provider(
     req: LinkProviderRequest,
     current_user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session),
+    auth_service: AuthService = Depends(get_auth_service),
 ) -> UserResponse:
     """REQ-OAUTH-001: 기존 계정에 소셜 제공자 연동."""
     if provider not in ("google", "apple"):
@@ -277,7 +287,7 @@ async def link_provider(
     except ValueError as e:
         unauthorized(str(e))
 
-    updated_user = await _auth_service.link_provider(
+    updated_user = await auth_service.link_provider(
         session=db,
         user=current_user,
         provider=provider,
@@ -304,12 +314,13 @@ async def unlink_provider(
     provider: str,
     current_user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session),
+    auth_service: AuthService = Depends(get_auth_service),
 ) -> UserResponse:
     """REQ-OAUTH-001: 소셜 제공자 연동 해제."""
     if provider not in ("google", "apple"):
         bad_request("지원하지 않는 제공자입니다")
 
-    updated_user = await _auth_service.unlink_provider(
+    updated_user = await auth_service.unlink_provider(
         session=db,
         user=current_user,
         provider=provider,

@@ -17,7 +17,10 @@ from backend.services.qa_service import QAService
 
 router = APIRouter(prefix="/qa", tags=["qa"])
 
-_service = QAService()
+
+def get_qa_service() -> QAService:
+    """QAService 인스턴스 제공 (FastAPI Depends)"""
+    return QAService()
 
 
 @router.post(
@@ -28,10 +31,11 @@ _service = QAService()
 async def ask_question(
     payload: MeetingAskRequest,
     redis_client: aioredis.Redis = Depends(get_redis_client),
+    svc: QAService = Depends(get_qa_service),
 ) -> MeetingAskResponse:
     """회의 내용에 대해 자연어 질문하기."""
     try:
-        return await _service.ask(
+        return await svc.ask(
             task_id=payload.task_id,
             question=payload.question,
             redis_client=redis_client,
@@ -52,6 +56,7 @@ async def ask_question(
 async def get_qa_history(
     task_id: str,
     redis_client: aioredis.Redis = Depends(get_redis_client),
+    svc: QAService = Depends(get_qa_service),
 ) -> QAHistoryResponse:
     """회의 Q&A 이력 조회."""
-    return await _service.get_history(task_id, redis_client)
+    return await svc.get_history(task_id, redis_client)

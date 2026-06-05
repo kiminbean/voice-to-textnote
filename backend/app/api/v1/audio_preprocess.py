@@ -21,7 +21,13 @@ from pathlib import Path
 from fastapi import APIRouter, File, Form, UploadFile, status
 from fastapi.responses import FileResponse
 
-from backend.app.errors import bad_request, internal_server_error, request_entity_too_large, service_unavailable, unprocessable
+from backend.app.errors import (
+    bad_request,
+    internal_server_error,
+    service_unavailable,
+    unprocessable,
+)
+from backend.app.exceptions import VoiceNoteError
 from starlette.background import BackgroundTask
 
 from backend.app.config import settings
@@ -134,8 +140,14 @@ async def preprocess_endpoint(
                 bytes_read += len(chunk)
                 if bytes_read > max_bytes:
                     from backend.app.errors import request_entity_too_large
-                    request_entity_too_large(f"파일 크기가 {settings.audio_preprocess_max_file_mb}MB를 초과합니다.")
+
+                    request_entity_too_large(
+                        f"파일 크기가 {settings.audio_preprocess_max_file_mb}MB를 초과합니다."
+                    )
                 fp.write(chunk)
+    except VoiceNoteError:
+        _safe_unlink(src_path)
+        raise
     except Exception as exc:  # noqa: BLE001 - 업로드 실패는 다양함
         _safe_unlink(src_path)
         logger.error("업로드 저장 실패", error=str(exc))

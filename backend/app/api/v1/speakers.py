@@ -34,8 +34,15 @@ from backend.services.speaker_voice_service import SpeakerVoiceService
 
 router = APIRouter(prefix="/speakers", tags=["speakers"])
 
-_service = SpeakerService()
-_voice_service = SpeakerVoiceService()
+
+def get_speaker_service() -> SpeakerService:
+    """SpeakerService 인스턴스 제공 (FastAPI Depends)"""
+    return SpeakerService()
+
+
+def get_speaker_voice_service() -> SpeakerVoiceService:
+    """SpeakerVoiceService 인스턴스 제공 (FastAPI Depends)"""
+    return SpeakerVoiceService()
 
 
 @router.post(
@@ -47,9 +54,10 @@ async def create_speaker(
     payload: SpeakerProfileCreate,
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(get_current_user),
+    svc: SpeakerService = Depends(get_speaker_service),
 ) -> SpeakerProfileResponse:
     """REQ-SPEAKER-001: 화자 프로필 생성."""
-    profile = await _service.create(db, user.id, payload)
+    profile = await svc.create(db, user.id, payload)
     return SpeakerProfileResponse.model_validate(profile)
 
 
@@ -69,10 +77,11 @@ async def list_speakers(
     page_size: int = Query(default=50, ge=1, le=200),
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(get_current_user),
+    svc: SpeakerService = Depends(get_speaker_service),
 ) -> SpeakerProfileListResponse:
     """REQ-SPEAKER-002: 화자 프로필 목록. task_id 지정 시 해당 회의록 + 전역 프로필 반환."""
     offset = (page - 1) * page_size
-    items, total = await _service.list_for_user(
+    items, total = await svc.list_for_user(
         session=db,
         user_id=user.id,
         task_id=task_id,
@@ -91,8 +100,9 @@ async def get_speaker(
     speaker_id: uuid.UUID,
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(get_current_user),
+    svc: SpeakerService = Depends(get_speaker_service),
 ) -> SpeakerProfileResponse:
-    profile = await _service.get_by_id(db, speaker_id, user.id)
+    profile = await svc.get_by_id(db, speaker_id, user.id)
     return SpeakerProfileResponse.model_validate(profile)
 
 
@@ -102,8 +112,9 @@ async def update_speaker(
     payload: SpeakerProfileUpdate,
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(get_current_user),
+    svc: SpeakerService = Depends(get_speaker_service),
 ) -> SpeakerProfileResponse:
-    profile = await _service.update(db, speaker_id, user.id, payload)
+    profile = await svc.update(db, speaker_id, user.id, payload)
     return SpeakerProfileResponse.model_validate(profile)
 
 
@@ -112,8 +123,9 @@ async def delete_speaker(
     speaker_id: uuid.UUID,
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(get_current_user),
+    svc: SpeakerService = Depends(get_speaker_service),
 ) -> None:
-    await _service.delete(db, speaker_id, user.id)
+    await svc.delete(db, speaker_id, user.id)
 
 
 # ---------------------------------------------------------------------------
@@ -131,9 +143,11 @@ async def analyze_speaker_sample(
     file: UploadFile = File(..., description="화자 음성 샘플 오디오"),
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(get_current_user),
+    svc: SpeakerService = Depends(get_speaker_service),
+    voice_svc: SpeakerVoiceService = Depends(get_speaker_voice_service),
 ) -> VoiceSampleAnalyzeResponse:
     """REQ-SPEAKER-VOICE-003: 오디오 샘플을 분석해 프로파일에 누적한다."""
-    sample, voice = await _voice_service.analyze_upload(
+    sample, voice = await voice_svc.analyze_upload(
         session=db,
         speaker_id=speaker_id,
         user_id=user.id,
@@ -142,7 +156,7 @@ async def analyze_speaker_sample(
     return VoiceSampleAnalyzeResponse(
         speaker_profile_id=speaker_id,
         analyzed=sample,
-        characteristics=_voice_service.to_characteristics_response(voice),
+        characteristics=voice_svc.to_characteristics_response(voice),
     )
 
 
@@ -156,15 +170,17 @@ async def create_or_update_voice_profile(
     payload: VoiceProfileCreateRequest,
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(get_current_user),
+    svc: SpeakerService = Depends(get_speaker_service),
+    voice_svc: SpeakerVoiceService = Depends(get_speaker_voice_service),
 ) -> VoiceCharacteristics:
     """REQ-SPEAKER-VOICE-001: 사전 분석된 샘플 결과로 프로파일을 생성/누적한다."""
-    voice = await _voice_service.create_or_replace_from_samples(
+    voice = await voice_svc.create_or_replace_from_samples(
         session=db,
         speaker_id=speaker_id,
         user_id=user.id,
         payload=payload,
     )
-    return _voice_service.to_characteristics_response(voice)
+    return voice_svc.to_characteristics_response(voice)
 
 
 @router.get(
@@ -175,11 +191,13 @@ async def get_voice_characteristics(
     speaker_id: uuid.UUID,
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(get_current_user),
+    svc: SpeakerService = Depends(get_speaker_service),
+    voice_svc: SpeakerVoiceService = Depends(get_speaker_voice_service),
 ) -> VoiceCharacteristics:
     """REQ-SPEAKER-VOICE-002: 누적된 음성 특성 조회."""
-    voice = await _voice_service.get_characteristics(
+    voice = await voice_svc.get_characteristics(
         session=db,
         speaker_id=speaker_id,
         user_id=user.id,
     )
-    return _voice_service.to_characteristics_response(voice)
+    return voice_svc.to_characteristics_response(voice)

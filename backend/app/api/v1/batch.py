@@ -15,6 +15,7 @@ from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from backend.app.config import settings
 from backend.app.dependencies import get_redis_client
 from backend.app.errors import not_found, unprocessable
+from backend.app.exceptions import VoiceNoteError
 from backend.pipeline.audio_processor import get_audio_duration_seconds
 from backend.schemas.batch import (
     BatchItemResult,
@@ -135,9 +136,7 @@ async def upload_batch_transcription(
             "original_filename": filename,
         }
         status_key = f"task:status:{task_id_str}"
-        await redis_client.setex(
-            status_key, settings.cache_ttl_seconds, json.dumps(initial_status)
-        )
+        await redis_client.setex(status_key, settings.cache_ttl_seconds, json.dumps(initial_status))
 
         # Celery 작업 등록
         from backend.workers.tasks.transcription_task import transcription_task

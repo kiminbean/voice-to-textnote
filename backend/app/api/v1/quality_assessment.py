@@ -12,7 +12,6 @@ SPEC-QUALITY-MONITOR-001: 실시간 품질 점수/피드백/추세 분석 확장
 - GET  /api/v1/quality/{task_id}/quality-trends   - 품질 추세 분석
 """
 
-
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy import select
 
@@ -38,8 +37,10 @@ from backend.utils.logger import get_logger
 logger = get_logger(__name__)
 router = APIRouter(prefix="/quality", tags=["quality"])
 
-# QualityService 인스턴스 (재사용)
-_service = QualityService()
+
+def get_quality_service() -> QualityService:
+    """QualityService 인스턴스 제공 (FastAPI Depends)"""
+    return QualityService()
 
 
 def _extract_minutes_text(result_data: dict | None) -> str:
@@ -106,11 +107,9 @@ def _extract_minutes_content(task: TaskResult) -> tuple[str, str]:
 )
 async def get_quality_assessment(
     task_id: str,
-    include_details: bool = Query(
-        default=True,
-        description="세부 평가 항목 포함 여부"
-    ),
+    include_details: bool = Query(default=True, description="세부 평가 항목 포함 여부"),
     db: AsyncSession = Depends(get_db_session),
+    svc: QualityService = Depends(get_quality_service),
 ) -> QualityAssessmentResponse:
     """
     SPEC-QUALITY-001: 기존 회의록 품질 평가 조회
@@ -130,7 +129,7 @@ async def get_quality_assessment(
             not_found(f"Meeting minutes not found for task: {task_id}")
 
         # 품질 평가 수행
-        assessment = await _service.assess_minutes(
+        assessment = await svc.assess_minutes(
             task_id=task_id,
             meeting_content=content,
             meeting_title=_extract_minutes_title(task.result_data),
@@ -156,6 +155,7 @@ async def request_quality_assessment(
     task_id: str,
     payload: QualityAssessmentRequest,
     db: AsyncSession = Depends(get_db_session),
+    svc: QualityService = Depends(get_quality_service),
 ) -> QualityAssessmentResponse:
     """
     SPEC-QUALITY-002: 새로운 품질 평가 요청
@@ -174,7 +174,7 @@ async def request_quality_assessment(
         if not content:
             not_found(f"Meeting minutes not found for task: {task_id}")
 
-        assessment = await _service.assess_minutes(
+        assessment = await svc.assess_minutes(
             task_id=task_id,
             meeting_content=content,
             meeting_title=_extract_minutes_title(task.result_data),
@@ -200,14 +200,11 @@ async def request_quality_assessment(
 async def get_improvement_suggestions(
     task_id: str,
     improvement_type: str | None = Query(
-        default="all",
-        description="개선 제안 유형 (structure, content, clarity, completeness, all)"
+        default="all", description="개선 제안 유형 (structure, content, clarity, completeness, all)"
     ),
-    priority: str | None = Query(
-        default="high",
-        description="우선순위 (high, medium, low)"
-    ),
+    priority: str | None = Query(default="high", description="우선순위 (high, medium, low)"),
     db: AsyncSession = Depends(get_db_session),
+    svc: QualityService = Depends(get_quality_service),
 ) -> QualityImprovementResponse:
     """
     SPEC-QUALITY-003: 개선 제안 조회
@@ -222,18 +219,15 @@ async def get_improvement_suggestions(
             not_found(f"Task not found: {task_id}")
 
         # 개선 제안 가져오기
-        improvements = await _service.get_improvement_suggestions(
-            task_id=task_id,
-            improvement_type=improvement_type,
-            priority=priority,
-            db=db
+        improvements = await svc.get_improvement_suggestions(
+            task_id=task_id, improvement_type=improvement_type, priority=priority, db=db
         )
 
         return QualityImprovementResponse(
             task_id=task_id,
             improvements=improvements,
-            suggested_actions=await _service.generate_action_plan(improvements),
-            total_improvements=len(improvements)
+            suggested_actions=await svc.generate_action_plan(improvements),
+            total_improvements=len(improvements),
         )
 
     except VoiceNoteError:
@@ -246,11 +240,7 @@ async def get_improvement_suggestions(
 @router.get("/health")
 async def health_check() -> dict[str, str]:
     """품질 평가 시스템 상태 확인"""
-    return {
-        "status": "healthy",
-        "service": "quality_assessment",
-        "version": "1.0.0"
-    }
+    return {"status": "healthy", "service": "quality_assessment", "version": "1.0.0"}
 
 
 # ---------------------------------------------------------------------------
@@ -282,6 +272,7 @@ async def get_live_quality_score(
         description="True면 점수 스냅샷을 저장해 추세 분석에 활용",
     ),
     db: AsyncSession = Depends(get_db_session),
+    svc: QualityService = Depends(get_quality_service),
 ) -> LiveQualityScoreResponse:
     """REQ-QM-003: AI 호출 없는 경량 실시간 품질 점수.
 
@@ -291,7 +282,7 @@ async def get_live_quality_score(
     content = await _load_minutes_text_or_404(db, task_id)
 
     try:
-        return await _service.compute_live_score(
+        return await svc.compute_live_score(
             task_id=task_id,
             meeting_content=content,
             db=db,
@@ -314,6 +305,7 @@ async def submit_quality_feedback(
     task_id: str,
     payload: QualityFeedbackCreate,
     db: AsyncSession = Depends(get_db_session),
+    svc: QualityService = Depends(get_quality_service),
 ) -> QualityFeedbackResponse:
     """REQ-QM-001: 사용자 피드백 제출 (1~5 별점 + 카테고리 + 코멘트)."""
     task = (
@@ -323,7 +315,7 @@ async def submit_quality_feedback(
         not_found(f"Task not found: {task_id}")
 
     try:
-        return await _service.submit_feedback(
+        return await svc.submit_feedback(
             db=db,
             task_id=task_id,
             user_id=None,
@@ -344,10 +336,11 @@ async def list_quality_feedback(
     task_id: str,
     recent_limit: int = Query(default=10, ge=1, le=50),
     db: AsyncSession = Depends(get_db_session),
+    svc: QualityService = Depends(get_quality_service),
 ) -> QualityFeedbackSummary:
     """REQ-QM-001: 누적된 피드백 요약 (평균 별점, 카테고리 분포, 최근 N건)."""
     try:
-        return await _service.get_feedback_summary(
+        return await svc.get_feedback_summary(
             db=db,
             task_id=task_id,
             recent_limit=recent_limit,
@@ -373,6 +366,7 @@ async def get_quality_trends(
         description="이 점수 이상 하락 시 경고 메시지를 포함",
     ),
     db: AsyncSession = Depends(get_db_session),
+    svc: QualityService = Depends(get_quality_service),
 ) -> QualityTrendsResponse:
     """REQ-QM-002: 저장된 스냅샷 기반 품질 추세 분석.
 
@@ -380,7 +374,7 @@ async def get_quality_trends(
     평균/최저/최고/방향(up|down|stable) 및 하락 경고를 제공합니다.
     """
     try:
-        return await _service.get_quality_trends(
+        return await svc.get_quality_trends(
             db=db,
             task_id=task_id,
             limit=limit,

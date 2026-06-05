@@ -25,7 +25,10 @@ from backend.schemas.vocabulary import (
 
 router = APIRouter(prefix="/vocabulary", tags=["vocabulary"])
 
-_service = VocabularyService()
+
+def get_vocabulary_service() -> VocabularyService:
+    """VocabularyService 인스턴스 제공 (FastAPI Depends)"""
+    return VocabularyService()
 
 
 @router.post(
@@ -36,9 +39,10 @@ _service = VocabularyService()
 async def create_vocabulary(
     payload: VocabularyCreate,
     db: AsyncSession = Depends(get_db_session),
+    svc: VocabularyService = Depends(get_vocabulary_service),
 ) -> VocabularyResponse:
     """어휘 리스트 생성"""
-    vocab = await _service.create(db, payload)
+    vocab = await svc.create(db, payload)
     return VocabularyResponse.model_validate(vocab)
 
 
@@ -47,10 +51,11 @@ async def list_vocabularies(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=50, ge=1, le=200),
     db: AsyncSession = Depends(get_db_session),
+    svc: VocabularyService = Depends(get_vocabulary_service),
 ) -> VocabularyListResponse:
     """어휘 리스트 목록 조회"""
     offset = (page - 1) * page_size
-    items, total = await _service.list_all(db, limit=page_size, offset=offset)
+    items, total = await svc.list_all(db, limit=page_size, offset=offset)
     return VocabularyListResponse(
         items=[VocabularyResponse.model_validate(item) for item in items],
         total=total,
@@ -61,9 +66,10 @@ async def list_vocabularies(
 async def get_vocabulary(
     vocab_id: uuid.UUID,
     db: AsyncSession = Depends(get_db_session),
+    svc: VocabularyService = Depends(get_vocabulary_service),
 ) -> VocabularyResponse:
     """어휘 리스트 단건 조회"""
-    vocab = await _service.get_by_id(db, vocab_id)
+    vocab = await svc.get_by_id(db, vocab_id)
     return VocabularyResponse.model_validate(vocab)
 
 
@@ -72,9 +78,10 @@ async def update_vocabulary(
     vocab_id: uuid.UUID,
     payload: VocabularyUpdate,
     db: AsyncSession = Depends(get_db_session),
+    svc: VocabularyService = Depends(get_vocabulary_service),
 ) -> VocabularyResponse:
     """어휘 리스트 수정"""
-    vocab = await _service.update(db, vocab_id, payload)
+    vocab = await svc.update(db, vocab_id, payload)
     return VocabularyResponse.model_validate(vocab)
 
 
@@ -82,6 +89,7 @@ async def update_vocabulary(
 async def delete_vocabulary(
     vocab_id: uuid.UUID,
     db: AsyncSession = Depends(get_db_session),
+    svc: VocabularyService = Depends(get_vocabulary_service),
 ) -> None:
     """어휘 리스트 삭제"""
-    await _service.delete(db, vocab_id)
+    await svc.delete(db, vocab_id)

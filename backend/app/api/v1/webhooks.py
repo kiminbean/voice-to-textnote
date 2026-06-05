@@ -28,7 +28,10 @@ from backend.schemas.webhook import (
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 
-_service = WebhookService()
+
+def get_webhook_service() -> WebhookService:
+    """WebhookService 인스턴스 제공 (FastAPI Depends)"""
+    return WebhookService()
 
 
 @router.post(
@@ -40,9 +43,10 @@ async def create_webhook(
     payload: WebhookEndpointCreate,
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(get_current_user),
+    svc: WebhookService = Depends(get_webhook_service),
 ) -> WebhookEndpointResponse:
     """REQ-WEBHOOK-001: 웹훅 엔드포인트 등록."""
-    endpoint = await _service.create(db, user.id, payload)
+    endpoint = await svc.create(db, user.id, payload)
     return WebhookEndpointResponse.from_orm_masked(endpoint)
 
 
@@ -52,10 +56,11 @@ async def list_webhooks(
     page_size: int = Query(default=50, ge=1, le=100),
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(get_current_user),
+    svc: WebhookService = Depends(get_webhook_service),
 ) -> WebhookEndpointListResponse:
     """REQ-WEBHOOK-002: 등록된 웹훅 목록 조회."""
     offset = (page - 1) * page_size
-    items, total = await _service.list_for_user(
+    items, total = await svc.list_for_user(
         session=db,
         user_id=user.id,
         limit=page_size,
@@ -72,8 +77,9 @@ async def get_webhook(
     webhook_id: uuid.UUID,
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(get_current_user),
+    svc: WebhookService = Depends(get_webhook_service),
 ) -> WebhookEndpointResponse:
-    endpoint = await _service.get_by_id(db, webhook_id, user.id)
+    endpoint = await svc.get_by_id(db, webhook_id, user.id)
     return WebhookEndpointResponse.from_orm_masked(endpoint)
 
 
@@ -83,8 +89,9 @@ async def update_webhook(
     payload: WebhookEndpointUpdate,
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(get_current_user),
+    svc: WebhookService = Depends(get_webhook_service),
 ) -> WebhookEndpointResponse:
-    endpoint = await _service.update(db, webhook_id, user.id, payload)
+    endpoint = await svc.update(db, webhook_id, user.id, payload)
     return WebhookEndpointResponse.from_orm_masked(endpoint)
 
 
@@ -93,8 +100,9 @@ async def delete_webhook(
     webhook_id: uuid.UUID,
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(get_current_user),
+    svc: WebhookService = Depends(get_webhook_service),
 ) -> None:
-    await _service.delete(db, webhook_id, user.id)
+    await svc.delete(db, webhook_id, user.id)
 
 
 @router.post("/{webhook_id}/ping", response_model=WebhookPingResponse)
@@ -102,10 +110,11 @@ async def ping_webhook(
     webhook_id: uuid.UUID,
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(get_current_user),
+    svc: WebhookService = Depends(get_webhook_service),
 ) -> WebhookPingResponse:
     """REQ-WEBHOOK-007: 등록된 URL로 테스트 페이로드 전송."""
-    endpoint = await _service.get_by_id(db, webhook_id, user.id)
-    status_code, success, message = await _service.ping(db, webhook_id, user.id)
+    endpoint = await svc.get_by_id(db, webhook_id, user.id)
+    status_code, success, message = await svc.ping(db, webhook_id, user.id)
     return WebhookPingResponse(
         webhook_id=endpoint.id,
         url=endpoint.url,

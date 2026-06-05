@@ -103,9 +103,11 @@ def sum_client(mock_sum_redis_client, tmp_path):
     from backend.app.api.v1.summary import router as summary_router
     from backend.app.config import Settings
     from backend.app.dependencies import get_redis_client
+    from backend.app.error_handlers import register_exception_handlers
 
     app = FastAPI()
     app.include_router(summary_router, prefix="/api/v1")
+    register_exception_handlers(app)
 
     # 테스트용 Settings mock
     test_settings = MagicMock(spec=Settings)
@@ -203,8 +205,10 @@ class TestPostSummaries:
         from backend.app.api.v1.summary import router as summary_router
         from backend.app.config import Settings
         from backend.app.dependencies import get_redis_client
+        from backend.app.error_handlers import register_exception_handlers
 
         app = FastAPI()
+        register_exception_handlers(app)
         app.include_router(summary_router, prefix="/api/v1")
 
         # 이미 2개 활성 작업
@@ -220,7 +224,7 @@ class TestPostSummaries:
         app.dependency_overrides[get_redis_client] = override_redis
 
         with patch("backend.app.api.v1.summary.settings", test_settings):
-            client = TestClient(app, raise_server_exceptions=True)
+            client = TestClient(app, raise_server_exceptions=False)
             response = client.post(
                 "/api/v1/summaries",
                 json={"minutes_task_id": str(uuid.uuid4())},
@@ -294,9 +298,7 @@ class TestPostSummaryMindMap:
 class TestGetMindMapResult:
     """GET /api/v1/summaries/mind-map/{task_id} - 마인드맵 결과 조회"""
 
-    def test_get_mind_map_result_completed_returns_200(
-        self, sum_client, mock_sum_redis_client
-    ):
+    def test_get_mind_map_result_completed_returns_200(self, sum_client, mock_sum_redis_client):
         """완료된 마인드맵 결과 조회 → 200"""
         task_id = str(uuid.uuid4())
         result_data = {**COMPLETED_MIND_MAP_RESULT, "task_id": task_id}

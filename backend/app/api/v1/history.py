@@ -17,8 +17,10 @@ from backend.schemas.history import HistoryDetailItem, HistoryItem, HistoryListR
 
 router = APIRouter(tags=["history"])
 
-# ResultService 인스턴스 (재사용)
-_service = ResultService()
+
+def get_result_service() -> ResultService:
+    """ResultService 인스턴스 제공 (FastAPI Depends)"""
+    return ResultService()
 
 
 @router.get("/history", response_model=HistoryListResponse)
@@ -34,6 +36,7 @@ async def list_history(
     page: int = Query(default=1, ge=1, description="페이지 번호 (1부터 시작)"),
     page_size: int = Query(default=20, ge=1, le=100, description="페이지당 항목 수"),
     db: AsyncSession = Depends(get_db_session),
+    svc: ResultService = Depends(get_result_service),
 ) -> HistoryListResponse:
     """
     REQ-HIST-001: 작업 이력 페이지네이션 목록 조회
@@ -45,13 +48,13 @@ async def list_history(
     offset = (page - 1) * page_size
 
     # 전체 건수 및 목록 병렬 조회
-    total = await _service.count_results(
+    total = await svc.count_results(
         session=db,
         task_type=task_type,
         status=status,
     )
 
-    records = await _service.list_results(
+    records = await svc.list_results(
         session=db,
         task_type=task_type,
         status=status,
@@ -73,6 +76,7 @@ async def list_history(
 async def get_history(
     task_id: str,
     db: AsyncSession = Depends(get_db_session),
+    svc: ResultService = Depends(get_result_service),
 ) -> HistoryDetailItem:
     """
     REQ-HIST-005: task_id로 작업 이력 상세 조회
@@ -80,7 +84,7 @@ async def get_history(
     result_data, input_metadata를 포함한 전체 정보를 반환합니다.
     REQ-HIST-006: 존재하지 않는 task_id 요청 시 404 반환
     """
-    record = await _service.get_result(session=db, task_id=task_id)
+    record = await svc.get_result(session=db, task_id=task_id)
 
     if record is None:
         not_found(f"작업 이력을 찾을 수 없습니다: task_id={task_id}")
@@ -92,6 +96,7 @@ async def get_history(
 async def delete_history(
     task_id: str,
     db: AsyncSession = Depends(get_db_session),
+    svc: ResultService = Depends(get_result_service),
 ) -> None:
     """
     REQ-HIST-007: task_id로 작업 이력 삭제
@@ -99,7 +104,7 @@ async def delete_history(
     삭제 성공 시 204 No Content를 반환합니다.
     존재하지 않는 task_id 요청 시 404를 반환합니다.
     """
-    deleted = await _service.delete_result(session=db, task_id=task_id)
+    deleted = await svc.delete_result(session=db, task_id=task_id)
 
     if not deleted:
         not_found(f"작업 이력을 찾을 수 없습니다: task_id={task_id}")

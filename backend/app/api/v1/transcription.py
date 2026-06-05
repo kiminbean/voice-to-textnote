@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.config import settings
 from backend.app.errors import bad_request, not_found, too_many_requests, unprocessable
+from backend.app.exceptions import VoiceNoteError
 from backend.app.dependencies import get_db_session, get_redis_client
 from backend.services.vocabulary_service import VocabularyService
 from backend.pipeline.audio_processor import get_audio_duration_seconds
@@ -36,6 +37,11 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/transcriptions", tags=["transcriptions"])
 
 
+def get_vocabulary_service() -> VocabularyService:
+    """VocabularyService 인스턴스 제공 (FastAPI Depends)"""
+    return VocabularyService()
+
+
 @router.post(
     "",
     status_code=status.HTTP_201_CREATED,
@@ -49,9 +55,12 @@ async def upload_transcription(
     file: UploadFile = File(..., description="오디오 파일 (WAV, MP3, M4A, OGG)"),
     language: str = Form(default="ko", description="전사 언어 코드"),
     model: str = Form(default="mlx-community/whisper-small-mlx"),
-    vocabulary_id: str | None = Form(default=None, description="커스텀 어휘 리스트 UUID (REQ-VOCAB-001)"),
+    vocabulary_id: str | None = Form(
+        default=None, description="커스텀 어휘 리스트 UUID (REQ-VOCAB-001)"
+    ),
     redis_client: aioredis.Redis = Depends(get_redis_client),
     db: AsyncSession = Depends(get_db_session),
+    vocab_svc: VocabularyService = Depends(get_vocabulary_service),
 ) -> TranscriptionCreate:
     """
     오디오 파일 업로드 및 전사 작업 생성
@@ -63,9 +72,16 @@ async def upload_transcription(
         try:
             vocab_uuid = UUID(vocabulary_id)
         except ValueError:
-            unprocessable([{"field": "vocabulary_id", "message": "유효하지 않은 UUID 형식입니다", "type": "invalid_uuid"}])
-        vocab_service = VocabularyService()
-        initial_prompt = await vocab_service.get_initial_prompt(db, vocab_uuid)
+            unprocessable(
+                [
+                    {
+                        "field": "vocabulary_id",
+                        "message": "유효하지 않은 UUID 형식입니다",
+                        "type": "invalid_uuid",
+                    }
+                ]
+            )
+        initial_prompt = await vocab_svc.get_initial_prompt(db, vocab_uuid)
 
     errors: list[ValidationErrorDetail] = []
 
@@ -128,7 +144,10 @@ async def upload_transcription(
         active_count = 0
     if active_count >= settings.max_concurrent_jobs:
         from backend.app.errors import too_many_requests
-        too_many_requests(f"동시 처리 한도({settings.max_concurrent_jobs}개)를 초과했습니다. 잠시 후 재시도하세요.")
+
+        too_many_requests(
+            f"동시 처리 한도({settings.max_concurrent_jobs}개)를 초과했습니다. 잠시 후 재시도하세요."
+        )
 
     # temp_path, task_id_str already set above during streaming upload
 
@@ -137,27 +156,31 @@ async def upload_transcription(
         duration_seconds = get_audio_duration_seconds(temp_path)
         if duration_seconds > settings.max_duration_seconds:
             temp_path.unlink(missing_ok=True)  # REQ-STT-004
-            unprocessable([
-                {
-                    "field": "file",
-                    "message": (
-                        f"재생 시간이 제한({settings.max_duration_hours}시간)을 초과합니다. "
-                        f"실제 재생 시간: {duration_seconds / 3600:.1f}시간"
-                    ),
-                    "type": "duration_exceeded",
-                }
-            ])
+            unprocessable(
+                [
+                    {
+                        "field": "file",
+                        "message": (
+                            f"재생 시간이 제한({settings.max_duration_hours}시간)을 초과합니다. "
+                            f"실제 재생 시간: {duration_seconds / 3600:.1f}시간"
+                        ),
+                        "type": "duration_exceeded",
+                    }
+                ]
+            )
     except VoiceNoteError:
         raise
     except Exception as e:
         temp_path.unlink(missing_ok=True)
-        unprocessable([
-            {
-                "field": "file",
-                "message": f"오디오 파일을 읽을 수 없습니다: {e}",
-                "type": "invalid_audio",
-            }
-        ])
+        unprocessable(
+            [
+                {
+                    "field": "file",
+                    "message": f"오디오 파일을 읽을 수 없습니다: {e}",
+                    "type": "invalid_audio",
+                }
+            ]
+        )
 
     # --- 초기 상태 Redis 저장 ---
     now = datetime.now(UTC)
@@ -328,7 +351,9 @@ async def get_transcription_result(
         # 파일에서 읽을 때 메모리 최적화: 스트리밍으로 읽기
         data = json.loads(result_file.read_text(encoding="utf-8"))
         # 파일에서 복원 후 Redis 재캐싱
-        await redis_client.setex(f"task:result:{task_id}", settings.cache_ttl_seconds, json.dumps(data))
+        await redis_client.setex(
+            f"task:result:{task_id}", settings.cache_ttl_seconds, json.dumps(data)
+        )
     else:
         data = json.loads(result_raw)
 

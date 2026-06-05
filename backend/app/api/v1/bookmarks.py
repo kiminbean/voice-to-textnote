@@ -26,7 +26,10 @@ from backend.schemas.bookmark import (
 
 router = APIRouter(prefix="/bookmarks", tags=["bookmarks"])
 
-_service = BookmarkService()
+
+def get_bookmark_service() -> BookmarkService:
+    """BookmarkService 인스턴스 제공 (FastAPI Depends)"""
+    return BookmarkService()
 
 
 @router.post(
@@ -38,9 +41,10 @@ async def create_bookmark(
     payload: BookmarkCreate,
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(get_current_user),
+    svc: BookmarkService = Depends(get_bookmark_service),
 ) -> BookmarkResponse:
     """REQ-BOOKMARK-001: 북마크 생성."""
-    bookmark = await _service.create(db, user.id, payload)
+    bookmark = await svc.create(db, user.id, payload)
     return BookmarkResponse.model_validate(bookmark)
 
 
@@ -55,10 +59,11 @@ async def list_bookmarks(
     page_size: int = Query(default=50, ge=1, le=200),
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(get_current_user),
+    svc: BookmarkService = Depends(get_bookmark_service),
 ) -> BookmarkListResponse:
     """REQ-BOOKMARK-002: 본인 북마크 목록 조회. task_id로 필터 가능."""
     offset = (page - 1) * page_size
-    items, total = await _service.list_for_user(
+    items, total = await svc.list_for_user(
         session=db,
         user_id=user.id,
         task_id=task_id,
@@ -76,8 +81,9 @@ async def get_bookmark(
     bookmark_id: uuid.UUID,
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(get_current_user),
+    svc: BookmarkService = Depends(get_bookmark_service),
 ) -> BookmarkResponse:
-    bookmark = await _service.get_by_id(db, bookmark_id, user.id)
+    bookmark = await svc.get_by_id(db, bookmark_id, user.id)
     return BookmarkResponse.model_validate(bookmark)
 
 
@@ -87,8 +93,9 @@ async def update_bookmark(
     payload: BookmarkUpdate,
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(get_current_user),
+    svc: BookmarkService = Depends(get_bookmark_service),
 ) -> BookmarkResponse:
-    bookmark = await _service.update(db, bookmark_id, user.id, payload)
+    bookmark = await svc.update(db, bookmark_id, user.id, payload)
     return BookmarkResponse.model_validate(bookmark)
 
 
@@ -97,5 +104,6 @@ async def delete_bookmark(
     bookmark_id: uuid.UUID,
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(get_current_user),
+    svc: BookmarkService = Depends(get_bookmark_service),
 ) -> None:
-    await _service.delete(db, bookmark_id, user.id)
+    await svc.delete(db, bookmark_id, user.id)

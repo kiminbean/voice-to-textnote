@@ -21,7 +21,10 @@ from backend.services.keyword_service import KeywordService
 
 router = APIRouter(prefix="/keywords", tags=["keywords"])
 
-_service = KeywordService()
+
+def get_keyword_service() -> KeywordService:
+    """KeywordService 인스턴스 제공 (FastAPI Depends)"""
+    return KeywordService()
 
 
 @router.post(
@@ -31,9 +34,10 @@ _service = KeywordService()
 )
 async def extract_keywords(
     payload: KeywordExtractRequest,
+    svc: KeywordService = Depends(get_keyword_service),
 ) -> KeywordResponse:
     """임의 텍스트에서 TF-IDF + TextRank 하이브리드 키워드를 추출한다."""
-    return _service.extract_from_text(
+    return svc.extract_from_text(
         payload.text,
         language=payload.language,
         max_keywords=payload.max_keywords,
@@ -63,9 +67,10 @@ async def get_meeting_keywords(
     ),
     redis_client: aioredis.Redis = Depends(get_redis_client),
     db: AsyncSession = Depends(get_db_session),
+    svc: KeywordService = Depends(get_keyword_service),
 ) -> KeywordResponse:
     """기존 회의 task_id의 저장된 회의록/전사 결과에서 키워드를 추출한다."""
-    return await _service.extract_for_task(
+    return await svc.extract_for_task(
         redis_client=redis_client,
         db=db,
         task_id=task_id,
@@ -85,10 +90,11 @@ async def recommend_meeting_keywords(
     payload: KeywordRecommendRequest | None = None,
     redis_client: aioredis.Redis = Depends(get_redis_client),
     db: AsyncSession = Depends(get_db_session),
+    svc: KeywordService = Depends(get_keyword_service),
 ) -> KeywordResponse:
     """현재 회의와 최근 회의 히스토리를 함께 반영해 추천 키워드를 반환한다."""
     options = payload or KeywordRecommendRequest()
-    return await _service.recommend_for_task(
+    return await svc.recommend_for_task(
         redis_client=redis_client,
         db=db,
         task_id=task_id,

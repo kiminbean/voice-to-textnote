@@ -23,8 +23,10 @@ from backend.schemas.meeting_share import (
 
 router = APIRouter(prefix="/meetings", tags=["meetings"])
 
-# MeetingShareService 인스턴스 (재사용)
-_meeting_service = MeetingShareService()
+
+def get_meeting_share_service() -> MeetingShareService:
+    """MeetingShareService 인스턴스 제공 (FastAPI Depends)"""
+    return MeetingShareService()
 
 
 @router.get(
@@ -37,11 +39,12 @@ async def list_my_meetings(
     page_size: int = Query(default=20, ge=1, le=100, description="페이지당 항목 수"),
     current_user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session),
+    meeting_svc: MeetingShareService = Depends(get_meeting_share_service),
 ) -> MeetingListResponse:
     """
     현재 사용자가 소유한 회의록 목록을 반환합니다.
     """
-    result = await _meeting_service.list_user_meetings(
+    result = await meeting_svc.list_user_meetings(
         session=db,
         user_id=current_user.id,
         page=page,
@@ -67,6 +70,7 @@ async def share_meeting(
     req: MeetingShareRequest,
     current_user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session),
+    meeting_svc: MeetingShareService = Depends(get_meeting_share_service),
 ) -> MeetingShareResponse:
     """
     회의록을 팀에 공유합니다.
@@ -82,7 +86,7 @@ async def share_meeting(
         unprocessable("유효하지 않은 팀 ID 형식입니다")
 
     # 요청자가 대상 팀 멤버인지 확인 (admin/member만 허용, viewer 제외)
-    role = await _meeting_service.get_team_member_role(
+    role = await meeting_svc.get_team_member_role(
         session=db,
         team_id=team_uuid,
         user_id=current_user.id,
@@ -91,7 +95,7 @@ async def share_meeting(
         forbidden("팀 멤버(admin 또는 member)만 회의록을 공유할 수 있습니다")
 
     # 공유 수행
-    ownership = await _meeting_service.share_meeting(
+    ownership = await meeting_svc.share_meeting(
         session=db,
         task_id=task_id,
         owner_id=current_user.id,
@@ -115,6 +119,7 @@ async def unshare_meeting(
     team_id: str,
     current_user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session),
+    meeting_svc: MeetingShareService = Depends(get_meeting_share_service),
 ) -> None:
     """
     회의록 팀 공유를 해제합니다.
@@ -128,12 +133,12 @@ async def unshare_meeting(
         unprocessable("유효하지 않은 팀 ID 형식입니다")
 
     # 소유자 또는 팀 admin 권한 확인
-    is_owner = await _meeting_service.is_meeting_owner(
+    is_owner = await meeting_svc.is_meeting_owner(
         session=db,
         task_id=task_id,
         user_id=current_user.id,
     )
-    role = await _meeting_service.get_team_member_role(
+    role = await meeting_svc.get_team_member_role(
         session=db,
         team_id=team_uuid,
         user_id=current_user.id,
@@ -142,7 +147,7 @@ async def unshare_meeting(
     if not is_owner and role != "admin":
         forbidden("회의록 소유자 또는 팀 admin만 공유 해제할 수 있습니다")
 
-    deleted = await _meeting_service.unshare_meeting(
+    deleted = await meeting_svc.unshare_meeting(
         session=db,
         task_id=task_id,
         team_id=team_uuid,

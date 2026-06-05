@@ -17,7 +17,10 @@ from backend.services.statistics import StatisticsService
 
 router = APIRouter(prefix="/statistics", tags=["statistics"])
 
-_service = StatisticsService()
+
+def get_statistics_service() -> StatisticsService:
+    """StatisticsService 인스턴스 제공 (FastAPI Depends)"""
+    return StatisticsService()
 
 
 @router.get("/{task_id}", response_model=StatisticsResponse)
@@ -37,9 +40,10 @@ async def get_statistics(
     ),
     redis_client: aioredis.Redis = Depends(get_redis_client),
     db: AsyncSession = Depends(get_db_session),
+    svc: StatisticsService = Depends(get_statistics_service),
 ) -> StatisticsResponse:
     """회의 통계 조회. minutes 결과가 있어야 동작한다."""
-    return await _service.compute(
+    return await svc.compute(
         redis_client=redis_client,
         db=db,
         task_id=task_id,

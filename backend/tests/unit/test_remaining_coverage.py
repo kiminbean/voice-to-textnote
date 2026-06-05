@@ -40,7 +40,9 @@ class TestWebhooksCrudReturns:
         from backend.app.api.v1.webhooks import create_webhook
         from backend.schemas.webhook import WebhookEndpointCreate, WebhookEndpointResponse
 
-        payload = WebhookEndpointCreate(url="https://example.com/hook", events=["transcription.completed"])
+        payload = WebhookEndpointCreate(
+            url="https://example.com/hook", events=["transcription.completed"]
+        )
         db = AsyncMock()
         user = MagicMock(id=uuid.uuid4())
 
@@ -54,11 +56,11 @@ class TestWebhooksCrudReturns:
         fake_resp.created_at = "2026-01-01T00:00:00"
         fake_resp.updated_at = "2026-01-01T00:00:00"
 
-        with patch("backend.app.api.v1.webhooks._service") as svc:
-            svc.create = AsyncMock(return_value=mock_endpoint_obj)
-            with patch.object(WebhookEndpointResponse, "from_orm_masked", return_value=fake_resp):
-                result = await create_webhook(payload, db, user)
-                assert result is not None
+        svc = AsyncMock()
+        svc.create = AsyncMock(return_value=mock_endpoint_obj)
+        with patch.object(WebhookEndpointResponse, "from_orm_masked", return_value=fake_resp):
+            result = await create_webhook(payload, db, user, svc=svc)
+            assert result is not None
 
     @pytest.mark.asyncio
     async def test_list_webhooks_return(self, mock_endpoint_obj):
@@ -79,11 +81,11 @@ class TestWebhooksCrudReturns:
         fake_resp.created_at = "2026-01-01T00:00:00"
         fake_resp.updated_at = "2026-01-01T00:00:00"
 
-        with patch("backend.app.api.v1.webhooks._service") as svc:
-            svc.list_for_user = AsyncMock(return_value=([mock_endpoint_obj], 1))
-            with patch.object(WebhookEndpointResponse, "from_orm_masked", return_value=fake_resp):
-                result = await list_webhooks(page=1, page_size=50, db=db, user=user)
-                assert result is not None
+        svc = AsyncMock()
+        svc.list_for_user = AsyncMock(return_value=([mock_endpoint_obj], 1))
+        with patch.object(WebhookEndpointResponse, "from_orm_masked", return_value=fake_resp):
+            result = await list_webhooks(page=1, page_size=50, db=db, user=user, svc=svc)
+            assert result is not None
 
     @pytest.mark.asyncio
     async def test_get_webhook_return(self, mock_endpoint_obj):
@@ -98,11 +100,11 @@ class TestWebhooksCrudReturns:
         fake_resp = MagicMock(spec=WebhookEndpointResponse)
         fake_resp.id = mock_endpoint_obj.id
 
-        with patch("backend.app.api.v1.webhooks._service") as svc:
-            svc.get_by_id = AsyncMock(return_value=mock_endpoint_obj)
-            with patch.object(WebhookEndpointResponse, "from_orm_masked", return_value=fake_resp):
-                result = await get_webhook(wid, db, user)
-                assert result is not None
+        svc = AsyncMock()
+        svc.get_by_id = AsyncMock(return_value=mock_endpoint_obj)
+        with patch.object(WebhookEndpointResponse, "from_orm_masked", return_value=fake_resp):
+            result = await get_webhook(wid, db, user, svc=svc)
+            assert result is not None
 
     @pytest.mark.asyncio
     async def test_update_webhook_return(self, mock_endpoint_obj):
@@ -118,11 +120,11 @@ class TestWebhooksCrudReturns:
         fake_resp = MagicMock(spec=WebhookEndpointResponse)
         fake_resp.id = mock_endpoint_obj.id
 
-        with patch("backend.app.api.v1.webhooks._service") as svc:
-            svc.update = AsyncMock(return_value=mock_endpoint_obj)
-            with patch.object(WebhookEndpointResponse, "from_orm_masked", return_value=fake_resp):
-                result = await update_webhook(wid, payload, db, user)
-                assert result is not None
+        svc = AsyncMock()
+        svc.update = AsyncMock(return_value=mock_endpoint_obj)
+        with patch.object(WebhookEndpointResponse, "from_orm_masked", return_value=fake_resp):
+            result = await update_webhook(wid, payload, db, user, svc=svc)
+            assert result is not None
 
 
 # ---------------------------------------------------------------------------
@@ -133,12 +135,12 @@ class TestAudioPreprocessRemaining:
 
     @pytest.mark.asyncio
     async def test_upload_generic_exception_returns_400(self):
-        """Lines 149-152: generic Exception during file write triggers HTTPException(400)"""
+        """Lines 149-152: generic Exception during file write triggers BadRequestError(400)"""
         from backend.app.api.v1.audio_preprocess import preprocess_endpoint
+        from backend.app.exceptions import BadRequestError
 
         mock_file = MagicMock()
         mock_file.filename = "test.wav"
-        # read raises IOError -> caught by except Exception at line 149
         mock_file.read = AsyncMock(side_effect=OSError("disk full"))
 
         with patch("backend.app.api.v1.audio_preprocess.settings") as mock_settings:
@@ -146,11 +148,13 @@ class TestAudioPreprocessRemaining:
             mock_settings.audio_preprocess_max_file_mb = 100
             mock_settings.audio_preprocess_default_high_pass_hz = 0
 
-            with patch("backend.app.api.v1.audio_preprocess.validate_audio_format",
-                       return_value=(True, "ok")):
+            with patch(
+                "backend.app.api.v1.audio_preprocess.validate_audio_format",
+                return_value=(True, "ok"),
+            ):
                 with patch("backend.app.api.v1.audio_preprocess._safe_unlink"):
                     with patch("backend.app.api.v1.audio_preprocess.logger"):
-                        with pytest.raises(HTTPException) as exc_info:
+                        with pytest.raises(BadRequestError) as exc_info:
                             await preprocess_endpoint(
                                 file=mock_file,
                                 convert_to_16k_mono=True,
@@ -166,39 +170,48 @@ class TestAudioPreprocessRemaining:
 
     @pytest.mark.asyncio
     async def test_oserror_during_wave_metadata(self):
-        """Lines 188-192: OSError during wave.open triggers HTTPException(500)"""
+        """Lines 188-192: OSError during wave.open triggers InternalServerError(500)"""
         from pathlib import Path as P  # noqa: N817
         from unittest.mock import mock_open
 
         from backend.app.api.v1.audio_preprocess import preprocess_endpoint
+        from backend.app.exceptions import InternalServerError
 
         mock_file = MagicMock()
         mock_file.filename = "test.wav"
-        mock_file.read = AsyncMock(
-            side_effect=[b"fake audio data", b""]  # First read returns data, second returns empty
-        )
+        mock_file.read = AsyncMock(side_effect=[b"fake audio data", b""])
 
         with patch("backend.app.api.v1.audio_preprocess.settings") as mock_settings:
             mock_settings.audio_preprocess_enabled = True
             mock_settings.audio_preprocess_max_file_mb = 100
             mock_settings.audio_preprocess_default_high_pass_hz = 0
 
-            with patch("backend.app.api.v1.audio_preprocess.validate_audio_format",
-                       return_value=(True, "ok")):
+            with patch(
+                "backend.app.api.v1.audio_preprocess.validate_audio_format",
+                return_value=(True, "ok"),
+            ):
                 with patch("backend.app.api.v1.audio_preprocess._safe_unlink"):
                     with patch("backend.app.api.v1.audio_preprocess.logger"):
-                        with patch("backend.app.api.v1.audio_preprocess.preprocess_audio",
-                                   return_value=P("/fake/out.wav")):
+                        with patch(
+                            "backend.app.api.v1.audio_preprocess.preprocess_audio",
+                            return_value=P("/fake/out.wav"),
+                        ):
                             # wave.open raises OSError (not wave.Error/EOFError)
-                            with patch("backend.app.api.v1.audio_preprocess.wave.open",
-                                       side_effect=OSError("file access error")):
-                                with patch("backend.app.api.v1.audio_preprocess._preprocess_semaphore") as sema:
+                            with patch(
+                                "backend.app.api.v1.audio_preprocess.wave.open",
+                                side_effect=OSError("file access error"),
+                            ):
+                                with patch(
+                                    "backend.app.api.v1.audio_preprocess._preprocess_semaphore"
+                                ) as sema:
                                     sema.__aenter__ = AsyncMock(return_value=None)
                                     sema.__aexit__ = AsyncMock(return_value=None)
-                                    with patch("backend.app.api.v1.audio_preprocess.tempfile.mkstemp",
-                                               return_value=(99, "/tmp/preprocess_in_test.wav")):
+                                    with patch(
+                                        "backend.app.api.v1.audio_preprocess.tempfile.mkstemp",
+                                        return_value=(99, "/tmp/preprocess_in_test.wav"),
+                                    ):
                                         with patch("builtins.open", mock_open()):
-                                            with pytest.raises(HTTPException) as exc_info:
+                                            with pytest.raises(InternalServerError) as exc_info:
                                                 await preprocess_endpoint(
                                                     file=mock_file,
                                                     convert_to_16k_mono=True,
@@ -231,9 +244,7 @@ class TestDashboardRemaining:
 
         redis_client = AsyncMock()
 
-        result = await get_dashboard_overview(
-            limit=100, redis_client=redis_client, db=db
-        )
+        result = await get_dashboard_overview(limit=100, redis_client=redis_client, db=db)
         assert isinstance(result, DashboardOverview)
         assert result.total_meetings == 0
         assert result.total_duration_seconds == 0.0
@@ -257,7 +268,9 @@ class TestDashboardRemaining:
 
         # Valid record
         rec4 = MagicMock()
-        rec4.result_data = {"segments": [{"start": 0.0, "end": 10.0, "text": "hello", "speaker": "A"}]}
+        rec4.result_data = {
+            "segments": [{"start": 0.0, "end": 10.0, "text": "hello", "speaker": "A"}]
+        }
 
         db = AsyncMock()
         mock_result = MagicMock()
@@ -266,9 +279,7 @@ class TestDashboardRemaining:
 
         redis_client = AsyncMock()
 
-        result = await get_dashboard_overview(
-            limit=100, redis_client=redis_client, db=db
-        )
+        result = await get_dashboard_overview(limit=100, redis_client=redis_client, db=db)
         assert isinstance(result, DashboardOverview)
         assert result.total_meetings == 4
         assert result.total_duration_seconds == 10.0
@@ -288,15 +299,15 @@ class TestEnhancedStatsRemaining:
 
         mock_response = MagicMock()
 
-        with patch("backend.app.api.v1.enhanced_statistics._service") as svc:
-            svc.get_project_overview = AsyncMock(return_value=mock_response)
-            db = AsyncMock()
-            redis_client = AsyncMock()
+        svc = AsyncMock()
+        svc.get_project_overview = AsyncMock(return_value=mock_response)
+        db = AsyncMock()
+        redis_client = AsyncMock()
 
-            result = await get_project_overview(
-                period="7d", top_meetings=5, db=db, redis_client=redis_client
-            )
-            assert result is mock_response
+        result = await get_project_overview(
+            period="7d", top_meetings=5, db=db, redis_client=redis_client, svc=svc
+        )
+        assert result is mock_response
 
 
 # ---------------------------------------------------------------------------

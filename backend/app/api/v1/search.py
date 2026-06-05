@@ -17,8 +17,11 @@ from backend.schemas.search import SearchResponse, SortOption
 
 router = APIRouter(tags=["search"])
 
-# SearchService 인스턴스 (재사용)
-_service = SearchService()
+
+def get_search_service() -> SearchService:
+    """SearchService 인스턴스 제공 (FastAPI Depends)"""
+    return SearchService()
+
 
 # 유효한 task_type 값
 _VALID_TASK_TYPES = {"all", "summary", "minutes"}
@@ -48,6 +51,7 @@ async def search(
     has_action_items: bool | None = Query(None, description="액션 아이템 존재 여부"),
     has_key_decisions: bool | None = Query(None, description="핵심 결정 존재 여부"),
     db: AsyncSession = Depends(get_db_session),
+    svc: SearchService = Depends(get_search_service),
 ) -> SearchResponse:
     """
     REQ-SEARCH-001/002: FTS5 기반 회의록 전문 검색 (확장)
@@ -77,7 +81,7 @@ async def search(
             f"유효하지 않은 task_type입니다. 허용 값: {', '.join(sorted(_VALID_TASK_TYPES))}"
         )
 
-    return await _service.search(
+    return await svc.search(
         session=db,
         query=q,
         task_type=task_type,

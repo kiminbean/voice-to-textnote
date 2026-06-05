@@ -17,11 +17,16 @@ from backend.db.models import TaskResult
 from backend.services.statistics import StatisticsService
 
 router = APIRouter(prefix="/statistics", tags=["statistics"])
-_service = StatisticsService()
+
+
+def get_statistics_service() -> StatisticsService:
+    """StatisticsService 인스턴스 제공 (FastAPI Depends)"""
+    return StatisticsService()
 
 
 class DashboardOverview(BaseModel):
     """전체 회의 통계 요약"""
+
     total_meetings: int = Field(description="완료된 총 회의 수")
     total_duration_seconds: float = Field(description="전체 회의 총 발화 시간 (초)")
     avg_duration_seconds: float = Field(description="평균 회의 발화 시간 (초)")

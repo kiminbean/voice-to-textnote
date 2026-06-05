@@ -39,11 +39,15 @@ from backend.schemas.team import (
 
 router = APIRouter(prefix="/teams", tags=["teams"])
 
-# TeamService 인스턴스 (재사용)
-_team_service = TeamService()
 
-# MeetingShareService 인스턴스 (재사용)
-_meeting_service = MeetingShareService()
+def get_team_service() -> TeamService:
+    """TeamService 인스턴스 제공 (FastAPI Depends)"""
+    return TeamService()
+
+
+def get_meeting_share_service() -> MeetingShareService:
+    """MeetingShareService 인스턴스 제공 (FastAPI Depends)"""
+    return MeetingShareService()
 
 
 @router.post(
@@ -56,12 +60,13 @@ async def create_team(
     req: TeamCreateRequest,
     current_user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session),
+    team_svc: TeamService = Depends(get_team_service),
 ) -> TeamResponse:
     """
     새 팀을 생성합니다.
     생성자는 자동으로 admin 역할로 팀에 추가됩니다.
     """
-    team = await _team_service.create_team(
+    team = await team_svc.create_team(
         session=db,
         name=req.name,
         description=req.description,
@@ -85,11 +90,12 @@ async def create_team(
 async def list_teams(
     current_user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session),
+    team_svc: TeamService = Depends(get_team_service),
 ) -> TeamListResponse:
     """
     현재 사용자가 속한 팀 목록을 반환합니다.
     """
-    teams = await _team_service.list_user_teams(session=db, user_id=current_user.id)
+    teams = await team_svc.list_user_teams(session=db, user_id=current_user.id)
     items = [
         TeamResponse(
             id=str(t["id"]),
@@ -113,6 +119,7 @@ async def get_team(
     team_id: str,
     current_user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session),
+    team_svc: TeamService = Depends(get_team_service),
 ) -> TeamDetailResponse:
     """
     팀 상세 정보와 멤버 목록을 반환합니다.
@@ -124,13 +131,11 @@ async def get_team(
         unprocessable("유효하지 않은 팀 ID 형식입니다")
 
     # 멤버십 확인
-    role = await _team_service.get_user_role(
-        session=db, team_id=team_uuid, user_id=current_user.id
-    )
+    role = await team_svc.get_user_role(session=db, team_id=team_uuid, user_id=current_user.id)
     if role is None:
         forbidden("팀에 접근할 권한이 없습니다")
 
-    detail = await _team_service.get_team_with_members(session=db, team_id=team_uuid)
+    detail = await team_svc.get_team_with_members(session=db, team_id=team_uuid)
     if detail is None:
         not_found("팀을 찾을 수 없습니다")
 
@@ -141,9 +146,7 @@ async def get_team(
         created_by=detail["created_by"],
         created_at=detail["created_at"],
         member_count=detail["member_count"],
-        members=[
-            TeamMemberResponse(**m) for m in detail["members"]
-        ],
+        members=[TeamMemberResponse(**m) for m in detail["members"]],
     )
 
 
@@ -157,6 +160,7 @@ async def update_team(
     req: TeamUpdateRequest,
     current_user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session),
+    team_svc: TeamService = Depends(get_team_service),
 ) -> TeamResponse:
     """
     팀 이름 또는 설명을 수정합니다.
@@ -168,13 +172,11 @@ async def update_team(
         unprocessable("유효하지 않은 팀 ID 형식입니다")
 
     # admin 권한 확인
-    role = await _team_service.get_user_role(
-        session=db, team_id=team_uuid, user_id=current_user.id
-    )
+    role = await team_svc.get_user_role(session=db, team_id=team_uuid, user_id=current_user.id)
     if role != "admin":
         forbidden("팀 수정은 admin만 가능합니다")
 
-    team = await _team_service.update_team(
+    team = await team_svc.update_team(
         session=db,
         team_id=team_uuid,
         name=req.name,
@@ -199,6 +201,7 @@ async def delete_team(
     team_id: str,
     current_user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session),
+    team_svc: TeamService = Depends(get_team_service),
 ) -> None:
     """
     팀을 삭제합니다.
@@ -210,13 +213,11 @@ async def delete_team(
         unprocessable("유효하지 않은 팀 ID 형식입니다")
 
     # admin 권한 확인
-    role = await _team_service.get_user_role(
-        session=db, team_id=team_uuid, user_id=current_user.id
-    )
+    role = await team_svc.get_user_role(session=db, team_id=team_uuid, user_id=current_user.id)
     if role != "admin":
         forbidden("팀 삭제는 admin만 가능합니다")
 
-    deleted = await _team_service.delete_team(session=db, team_id=team_uuid)
+    deleted = await team_svc.delete_team(session=db, team_id=team_uuid)
     if not deleted:
         not_found("팀을 찾을 수 없습니다")
 
@@ -235,6 +236,7 @@ async def list_team_members(
     team_id: str,
     current_user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session),
+    team_svc: TeamService = Depends(get_team_service),
 ) -> MemberListResponse:
     """
     팀 멤버 목록을 반환합니다.
@@ -246,13 +248,11 @@ async def list_team_members(
         unprocessable("유효하지 않은 팀 ID 형식입니다")
 
     # 멤버십 확인
-    role = await _team_service.get_user_role(
-        session=db, team_id=team_uuid, user_id=current_user.id
-    )
+    role = await team_svc.get_user_role(session=db, team_id=team_uuid, user_id=current_user.id)
     if role is None:
         forbidden("팀에 접근할 권한이 없습니다")
 
-    members = await _team_service.list_members(session=db, team_id=team_uuid)
+    members = await team_svc.list_members(session=db, team_id=team_uuid)
     items = [TeamMemberResponse(**m) for m in members]
     return MemberListResponse(items=items, total=len(items))
 
@@ -268,6 +268,7 @@ async def add_team_member(
     req: MemberInviteRequest,
     current_user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session),
+    team_svc: TeamService = Depends(get_team_service),
 ) -> TeamMemberResponse:
     """
     이메일로 사용자를 팀에 초대합니다.
@@ -279,14 +280,12 @@ async def add_team_member(
         unprocessable("유효하지 않은 팀 ID 형식입니다")
 
     # admin 권한 확인
-    role = await _team_service.get_user_role(
-        session=db, team_id=team_uuid, user_id=current_user.id
-    )
+    role = await team_svc.get_user_role(session=db, team_id=team_uuid, user_id=current_user.id)
     if role != "admin":
         forbidden("멤버 초대는 admin만 가능합니다")
 
     try:
-        member = await _team_service.add_member(
+        member = await team_svc.add_member(
             session=db,
             team_id=team_uuid,
             email=req.email,
@@ -303,7 +302,7 @@ async def add_team_member(
         bad_request(error_msg)
 
     # 멤버 상세 조회 (email, display_name 포함 반환)
-    members = await _team_service.list_members(session=db, team_id=team_uuid)
+    members = await team_svc.list_members(session=db, team_id=team_uuid)
     for m in members:
         if m["user_id"] == str(member.user_id):
             return TeamMemberResponse(**m)
@@ -329,6 +328,7 @@ async def update_member_role(
     req: MemberRoleUpdateRequest,
     current_user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session),
+    team_svc: TeamService = Depends(get_team_service),
 ) -> TeamMemberResponse:
     """
     팀 멤버의 역할을 변경합니다.
@@ -342,14 +342,12 @@ async def update_member_role(
         unprocessable("유효하지 않은 ID 형식입니다")
 
     # admin 권한 확인
-    role = await _team_service.get_user_role(
-        session=db, team_id=team_uuid, user_id=current_user.id
-    )
+    role = await team_svc.get_user_role(session=db, team_id=team_uuid, user_id=current_user.id)
     if role != "admin":
         forbidden("역할 변경은 admin만 가능합니다")
 
     try:
-        member = await _team_service.update_member_role(
+        member = await team_svc.update_member_role(
             session=db,
             team_id=team_uuid,
             user_id=user_uuid,
@@ -362,7 +360,7 @@ async def update_member_role(
         bad_request(str(e))
 
     # 업데이트된 멤버 상세 조회
-    members = await _team_service.list_members(session=db, team_id=team_uuid)
+    members = await team_svc.list_members(session=db, team_id=team_uuid)
     for m in members:
         if m["user_id"] == str(member.user_id):
             return TeamMemberResponse(**m)
@@ -386,6 +384,7 @@ async def remove_team_member(
     user_id: str,
     current_user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session),
+    team_svc: TeamService = Depends(get_team_service),
 ) -> None:
     """
     팀 멤버를 제거하거나 팀에서 탈퇴합니다.
@@ -400,7 +399,7 @@ async def remove_team_member(
         unprocessable("유효하지 않은 ID 형식입니다")
 
     # 요청자의 역할 확인
-    requester_role = await _team_service.get_user_role(
+    requester_role = await team_svc.get_user_role(
         session=db, team_id=team_uuid, user_id=current_user.id
     )
 
@@ -414,7 +413,7 @@ async def remove_team_member(
         forbidden("팀에 접근할 권한이 없습니다")
 
     try:
-        await _team_service.remove_member(
+        await team_svc.remove_member(
             session=db,
             team_id=team_uuid,
             user_id=user_uuid,
@@ -442,6 +441,8 @@ async def list_team_meetings(
     page_size: int = Query(default=20, ge=1, le=100, description="페이지당 항목 수"),
     current_user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session),
+    team_svc: TeamService = Depends(get_team_service),
+    meeting_svc: MeetingShareService = Depends(get_meeting_share_service),
 ) -> MeetingListResponse:
     """
     팀에 공유된 회의록 목록을 반환합니다.
@@ -453,13 +454,11 @@ async def list_team_meetings(
         unprocessable("유효하지 않은 팀 ID 형식입니다")
 
     # 멤버십 확인 (모든 역할 허용)
-    role = await _team_service.get_user_role(
-        session=db, team_id=team_uuid, user_id=current_user.id
-    )
+    role = await team_svc.get_user_role(session=db, team_id=team_uuid, user_id=current_user.id)
     if role is None:
         forbidden("팀에 접근할 권한이 없습니다")
 
-    result = await _meeting_service.list_team_meetings(
+    result = await meeting_svc.list_team_meetings(
         session=db,
         team_id=team_uuid,
         page=page,

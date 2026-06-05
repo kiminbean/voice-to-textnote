@@ -20,15 +20,11 @@ from fastapi.testclient import TestClient
 
 from backend.db.auth_models import User
 
-# ---------------------------------------------------------------------------
-# 테스트 픽스처
-# ---------------------------------------------------------------------------
-
 
 @pytest.fixture
 def tags_client():
-    """태그 API 테스트용 TestClient"""
     from backend.app.dependencies import get_current_user, get_db_session
+    from backend.app.api.v1.tags import get_tag_service
     from backend.app.main import app
 
     async def mock_db_session():
@@ -41,31 +37,28 @@ def tags_client():
         mock_user.is_active = True
         yield mock_user
 
+    svc_mock = AsyncMock()
+
+    async def override_svc():
+        return svc_mock
+
     app.dependency_overrides[get_db_session] = mock_db_session
     app.dependency_overrides[get_current_user] = mock_current_user
+    app.dependency_overrides[get_tag_service] = override_svc
 
     with patch("backend.app.main.WhisperEngine"):
         with patch("backend.app.main.DiarizationEngine"):
             with patch("backend.app.lifecycle.validate_startup", new_callable=AsyncMock):
                 with patch("backend.app.lifecycle.cleanup_shutdown", new_callable=AsyncMock):
-                    yield TestClient(app, raise_server_exceptions=False)
+                    yield TestClient(app, raise_server_exceptions=False), svc_mock
 
     app.dependency_overrides.clear()
 
 
-# ---------------------------------------------------------------------------
-# auto_tag_meeting 엔드포인트 테스트 (라인 40-74)
-# ---------------------------------------------------------------------------
-
-
 class TestAutoTagMeetingEndpoint:
-    """AI 자동 태깅 엔드포인트 테스트"""
-
     def test_auto_tag_meeting_success(self, tags_client) -> None:
-        """AI 자동 태깅 성공 (라인 52-70 커버)"""
-        from backend.app.api.v1 import tags
+        client, mock_svc = tags_client
 
-        # Mock the AI tagging engine
         mock_tags = [
             {"tag_type": "topic", "tag_value": "Strategy", "confidence": 0.95},
             {"tag_type": "category", "tag_value": "Planning", "confidence": 0.88},
@@ -80,7 +73,7 @@ class TestAutoTagMeetingEndpoint:
                 source="auto",
                 confidence=0.95,
                 note=None,
-                created_at="2024-01-01T00:00:00Z"
+                created_at="2024-01-01T00:00:00Z",
             ),
             MagicMock(
                 id=uuid.uuid4(),
@@ -90,20 +83,22 @@ class TestAutoTagMeetingEndpoint:
                 source="auto",
                 confidence=0.88,
                 note=None,
-                created_at="2024-01-01T00:00:00Z"
+                created_at="2024-01-01T00:00:00Z",
             ),
         ]
 
-        with patch.object(tags, "generate_auto_tags", return_value=mock_tags):
-            with patch.object(tags._service, "bulk_create", return_value=mock_created_tags):
-                response = tags_client.post(
-                    "/api/v1/tags/auto",
-                    json={
-                        "task_id": "task-123",
-                        "content": "Discuss strategy for Q4 planning",
-                        "max_tags": 5
-                    }
-                )
+        from backend.app.api.v1 import tags as tags_mod
+
+        with patch.object(tags_mod, "generate_auto_tags", return_value=mock_tags):
+            mock_svc.bulk_create = AsyncMock(return_value=mock_created_tags)
+            response = client.post(
+                "/api/v1/tags/auto",
+                json={
+                    "task_id": "task-123",
+                    "content": "Discuss strategy for Q4 planning",
+                    "max_tags": 5,
+                },
+            )
 
         assert response.status_code == status.HTTP_201_CREATED
         data = response.json()
@@ -112,19 +107,16 @@ class TestAutoTagMeetingEndpoint:
         assert len(data["tags"]) == 2
 
     def test_auto_tag_meeting_empty_tags(self, tags_client) -> None:
-        """AI 자동 태깅 결과가 없는 경우"""
-        from backend.app.api.v1 import tags
+        client, mock_svc = tags_client
 
-        with patch.object(tags, "generate_auto_tags", return_value=[]):
-            with patch.object(tags._service, "bulk_create", return_value=[]):
-                response = tags_client.post(
-                    "/api/v1/tags/auto",
-                    json={
-                        "task_id": "task-123",
-                        "content": "Short content",
-                        "max_tags": 5
-                    }
-                )
+        from backend.app.api.v1 import tags as tags_mod
+
+        with patch.object(tags_mod, "generate_auto_tags", return_value=[]):
+            mock_svc.bulk_create = AsyncMock(return_value=[])
+            response = client.post(
+                "/api/v1/tags/auto",
+                json={"task_id": "task-123", "content": "Short content", "max_tags": 5},
+            )
 
         assert response.status_code == status.HTTP_201_CREATED
         data = response.json()
@@ -132,17 +124,9 @@ class TestAutoTagMeetingEndpoint:
         assert data["tags"] == []
 
 
-# ---------------------------------------------------------------------------
-# create_tag 엔드포인트 테스트 (라인 77-89)
-# ---------------------------------------------------------------------------
-
-
 class TestCreateTagEndpoint:
-    """수동 태그 생성 엔드포인트 테스트"""
-
     def test_create_tag_success(self, tags_client) -> None:
-        """수동 태그 생성 성공 (라인 89 커버)"""
-        from backend.app.api.v1 import tags
+        client, mock_svc = tags_client
 
         mock_tag = MagicMock(
             id=uuid.uuid4(),
@@ -152,18 +136,14 @@ class TestCreateTagEndpoint:
             source="manual",
             confidence=None,
             note=None,
-            created_at="2024-01-01T00:00:00Z"
+            created_at="2024-01-01T00:00:00Z",
         )
 
-        with patch.object(tags._service, "create", return_value=mock_tag):
-            response = tags_client.post(
-                "/api/v1/tags",
-                json={
-                    "task_id": "task-123",
-                    "tag_type": "topic",
-                    "tag_value": "Important"
-                }
-            )
+        mock_svc.create = AsyncMock(return_value=mock_tag)
+        response = client.post(
+            "/api/v1/tags",
+            json={"task_id": "task-123", "tag_type": "topic", "tag_value": "Important"},
+        )
 
         assert response.status_code == status.HTTP_201_CREATED
         data = response.json()
@@ -171,17 +151,9 @@ class TestCreateTagEndpoint:
         assert data["tag_value"] == "Important"
 
 
-# ---------------------------------------------------------------------------
-# list_tags 엔드포인트 테스트 (라인 92-112)
-# ---------------------------------------------------------------------------
-
-
 class TestListTagsEndpoint:
-    """태그 목록 조회 엔드포인트 테스트"""
-
     def test_list_tags_success(self, tags_client) -> None:
-        """태그 목록 조회 성공 (라인 108 커버)"""
-        from backend.app.api.v1 import tags
+        client, mock_svc = tags_client
 
         mock_tags = [
             MagicMock(
@@ -192,14 +164,12 @@ class TestListTagsEndpoint:
                 source="manual",
                 confidence=None,
                 note=None,
-                created_at="2024-01-01T00:00:00Z"
+                created_at="2024-01-01T00:00:00Z",
             ),
         ]
 
-        with patch.object(tags._service, "list_for_meeting", return_value=(mock_tags, 1)):
-            response = tags_client.get(
-                "/api/v1/tags?task_id=task-123&page=1&page_size=100"
-            )
+        mock_svc.list_for_meeting = AsyncMock(return_value=(mock_tags, 1))
+        response = client.get("/api/v1/tags?task_id=task-123&page=1&page_size=100")
 
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
@@ -208,17 +178,9 @@ class TestListTagsEndpoint:
         assert len(data["items"]) == 1
 
 
-# ---------------------------------------------------------------------------
-# get_tag 엔드포인트 테스트 (라인 115-123)
-# ---------------------------------------------------------------------------
-
-
 class TestGetTagEndpoint:
-    """태그 단건 조회 엔드포인트 테스트"""
-
     def test_get_tag_success(self, tags_client) -> None:
-        """태그 단건 조회 성공 (라인 123 커버)"""
-        from backend.app.api.v1 import tags
+        client, mock_svc = tags_client
 
         mock_tag = MagicMock(
             id=uuid.uuid4(),
@@ -228,29 +190,21 @@ class TestGetTagEndpoint:
             source="manual",
             confidence=None,
             note=None,
-            created_at="2024-01-01T00:00:00Z"
+            created_at="2024-01-01T00:00:00Z",
         )
 
         tag_id = uuid.uuid4()
-        with patch.object(tags._service, "get_by_id", return_value=mock_tag):
-            response = tags_client.get(f"/api/v1/tags/{tag_id}")
+        mock_svc.get_by_id = AsyncMock(return_value=mock_tag)
+        response = client.get(f"/api/v1/tags/{tag_id}")
 
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert data["tag_value"] == "Strategy"
 
 
-# ---------------------------------------------------------------------------
-# update_tag 엔드포인트 테스트 (라인 126-135)
-# ---------------------------------------------------------------------------
-
-
 class TestUpdateTagEndpoint:
-    """태그 수정 엔드포인트 테스트"""
-
     def test_update_tag_success(self, tags_client) -> None:
-        """태그 수정 성공 (라인 135 커버)"""
-        from backend.app.api.v1 import tags
+        client, mock_svc = tags_client
 
         mock_tag = MagicMock(
             id=uuid.uuid4(),
@@ -260,35 +214,24 @@ class TestUpdateTagEndpoint:
             source="manual",
             confidence=None,
             note=None,
-            created_at="2024-01-01T00:00:00Z"
+            created_at="2024-01-01T00:00:00Z",
         )
 
         tag_id = uuid.uuid4()
-        with patch.object(tags._service, "update", return_value=mock_tag):
-            response = tags_client.patch(
-                f"/api/v1/tags/{tag_id}",
-                json={"tag_value": "Updated Strategy"}
-            )
+        mock_svc.update = AsyncMock(return_value=mock_tag)
+        response = client.patch(f"/api/v1/tags/{tag_id}", json={"tag_value": "Updated Strategy"})
 
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert data["tag_value"] == "Updated Strategy"
 
 
-# ---------------------------------------------------------------------------
-# delete_tag 엔드포인트 테스트 (라인 138-145)
-# ---------------------------------------------------------------------------
-
-
 class TestDeleteTagEndpoint:
-    """태그 삭제 엔드포인트 테스트"""
-
     def test_delete_tag_success(self, tags_client) -> None:
-        """태그 삭제 성공"""
-        from backend.app.api.v1 import tags
+        client, mock_svc = tags_client
 
         tag_id = uuid.uuid4()
-        with patch.object(tags._service, "delete", new_callable=AsyncMock):
-            response = tags_client.delete(f"/api/v1/tags/{tag_id}")
+        mock_svc.delete = AsyncMock(return_value=None)
+        response = client.delete(f"/api/v1/tags/{tag_id}")
 
         assert response.status_code == status.HTTP_204_NO_CONTENT

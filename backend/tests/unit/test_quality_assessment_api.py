@@ -98,8 +98,8 @@ async def seeded_db(db_engine):
     }
 
 
-def _make_app(db_engine):
-    from backend.app.api.v1.quality_assessment import router
+def _make_app(db_engine, svc_mock=None):
+    from backend.app.api.v1.quality_assessment import router, get_quality_service
     app = FastAPI()
     register_exception_handlers(app)
     app.include_router(router, prefix="/api/v1")
@@ -108,6 +108,10 @@ def _make_app(db_engine):
         async with factory() as session:
             yield session
     app.dependency_overrides[get_db_session] = override_db
+    if svc_mock is not None:
+        async def override_svc():
+            return svc_mock
+        app.dependency_overrides[get_quality_service] = override_svc
     return app
 
 
@@ -153,36 +157,42 @@ def _mock_improvements():
 
 class TestGetQualityAssessment:
     def test_successful_assessment(self, db_engine, seeded_db):
-        app = _make_app(db_engine)
-        with patch("backend.app.api.v1.quality_assessment._service") as mock_svc:
-            mock_svc.assess_minutes = AsyncMock(
-                return_value=_mock_assessment(task_id=seeded_db["task_id"])
-            )
-            with TestClient(app) as client:
-                resp = client.get(f"/api/v1/quality/{seeded_db['task_id']}")
+        svc_mock = AsyncMock()
+
+        app = _make_app(db_engine, svc_mock=svc_mock)
+        svc_mock.assess_minutes = AsyncMock(
+            return_value=_mock_assessment(task_id=seeded_db["task_id"])
+        )
+        with TestClient(app) as client:
+            resp = client.get(f"/api/v1/quality/{seeded_db['task_id']}")
         assert resp.status_code == 200
         body = resp.json()
         assert body["task_id"] == seeded_db["task_id"]
         assert body["assessment_summary"]["overall_score"] == 75.0
 
     def test_task_not_found_returns_404(self, db_engine, seeded_db):
-        app = _make_app(db_engine)
+        svc_mock = AsyncMock()
+
+        app = _make_app(db_engine, svc_mock=svc_mock)
         with TestClient(app) as client:
             resp = client.get("/api/v1/quality/nonexistent-task")
         assert resp.status_code == 404
 
     def test_empty_result_data_returns_404(self, db_engine, seeded_db):
-        app = _make_app(db_engine)
+        svc_mock = AsyncMock()
+
+        app = _make_app(db_engine, svc_mock=svc_mock)
         with TestClient(app) as client:
             resp = client.get(f"/api/v1/quality/{seeded_db['empty_task_id']}")
         assert resp.status_code == 404
 
     def test_service_error_returns_500(self, db_engine, seeded_db):
-        app = _make_app(db_engine)
-        with patch("backend.app.api.v1.quality_assessment._service") as mock_svc:
-            mock_svc.assess_minutes = AsyncMock(side_effect=RuntimeError("AI 장애"))
-            with TestClient(app) as client:
-                resp = client.get(f"/api/v1/quality/{seeded_db['task_id']}")
+        svc_mock = AsyncMock()
+
+        app = _make_app(db_engine, svc_mock=svc_mock)
+        svc_mock.assess_minutes = AsyncMock(side_effect=RuntimeError("AI 장애"))
+        with TestClient(app) as client:
+            resp = client.get(f"/api/v1/quality/{seeded_db['task_id']}")
         assert resp.status_code == 500
 
 
@@ -193,21 +203,24 @@ class TestGetQualityAssessment:
 
 class TestRequestQualityAssessment:
     def test_successful_assess(self, db_engine, seeded_db):
-        app = _make_app(db_engine)
-        with patch("backend.app.api.v1.quality_assessment._service") as mock_svc:
-            mock_svc.assess_minutes = AsyncMock(return_value=_mock_assessment())
-            with TestClient(app) as client:
-                resp = client.post(
-                    f"/api/v1/quality/{seeded_db['task_id']}/assess",
-                    json={
-                        "criteria": {"completeness": 80},
-                        "assessment_focus": ["completeness", "clarity"],
-                    },
-                )
+        svc_mock = AsyncMock()
+
+        app = _make_app(db_engine, svc_mock=svc_mock)
+        svc_mock.assess_minutes = AsyncMock(return_value=_mock_assessment())
+        with TestClient(app) as client:
+            resp = client.post(
+                f"/api/v1/quality/{seeded_db['task_id']}/assess",
+                json={
+                    "criteria": {"completeness": 80},
+                    "assessment_focus": ["completeness", "clarity"],
+                },
+            )
         assert resp.status_code == 200
 
     def test_assess_task_not_found(self, db_engine, seeded_db):
-        app = _make_app(db_engine)
+        svc_mock = AsyncMock()
+
+        app = _make_app(db_engine, svc_mock=svc_mock)
         with TestClient(app) as client:
             resp = client.post(
                 "/api/v1/quality/nonexistent-task/assess",
@@ -216,14 +229,15 @@ class TestRequestQualityAssessment:
         assert resp.status_code == 404
 
     def test_assess_service_error(self, db_engine, seeded_db):
-        app = _make_app(db_engine)
-        with patch("backend.app.api.v1.quality_assessment._service") as mock_svc:
-            mock_svc.assess_minutes = AsyncMock(side_effect=RuntimeError("AI 오류"))
-            with TestClient(app) as client:
-                resp = client.post(
-                    f"/api/v1/quality/{seeded_db['task_id']}/assess",
-                    json={},
-                )
+        svc_mock = AsyncMock()
+
+        app = _make_app(db_engine, svc_mock=svc_mock)
+        svc_mock.assess_minutes = AsyncMock(side_effect=RuntimeError("AI 오류"))
+        with TestClient(app) as client:
+            resp = client.post(
+                f"/api/v1/quality/{seeded_db['task_id']}/assess",
+                json={},
+            )
         assert resp.status_code == 500
 
 
@@ -234,53 +248,58 @@ class TestRequestQualityAssessment:
 
 class TestGetImprovementSuggestions:
     def test_successful_improvements(self, db_engine, seeded_db):
-        app = _make_app(db_engine)
-        with patch("backend.app.api.v1.quality_assessment._service") as mock_svc:
-            mock_svc.get_improvement_suggestions = AsyncMock(
-                return_value=_mock_improvements()
+        svc_mock = AsyncMock()
+
+        app = _make_app(db_engine, svc_mock=svc_mock)
+        svc_mock.get_improvement_suggestions = AsyncMock(
+            return_value=_mock_improvements()
+        )
+        svc_mock.generate_action_plan = AsyncMock(
+            return_value=["1. 구조를 개선하세요."]
+        )
+        with TestClient(app) as client:
+            resp = client.get(
+                f"/api/v1/quality/{seeded_db['task_id']}/improvements"
             )
-            mock_svc.generate_action_plan = AsyncMock(
-                return_value=["1. 구조를 개선하세요."]
-            )
-            with TestClient(app) as client:
-                resp = client.get(
-                    f"/api/v1/quality/{seeded_db['task_id']}/improvements"
-                )
         assert resp.status_code == 200
         body = resp.json()
         assert body["task_id"] == seeded_db["task_id"]
         assert body["total_improvements"] == 1
 
     def test_improvements_task_not_found(self, db_engine, seeded_db):
-        app = _make_app(db_engine)
+        svc_mock = AsyncMock()
+
+        app = _make_app(db_engine, svc_mock=svc_mock)
         with TestClient(app) as client:
             resp = client.get("/api/v1/quality/nonexistent-task/improvements")
         assert resp.status_code == 404
 
     def test_improvements_with_priority_filter(self, db_engine, seeded_db):
-        app = _make_app(db_engine)
-        with patch("backend.app.api.v1.quality_assessment._service") as mock_svc:
-            mock_svc.get_improvement_suggestions = AsyncMock(
-                return_value=_mock_improvements()
+        svc_mock = AsyncMock()
+
+        app = _make_app(db_engine, svc_mock=svc_mock)
+        svc_mock.get_improvement_suggestions = AsyncMock(
+            return_value=_mock_improvements()
+        )
+        svc_mock.generate_action_plan = AsyncMock(return_value=[])
+        with TestClient(app) as client:
+            resp = client.get(
+                f"/api/v1/quality/{seeded_db['task_id']}/improvements",
+                params={"priority": "high"},
             )
-            mock_svc.generate_action_plan = AsyncMock(return_value=[])
-            with TestClient(app) as client:
-                resp = client.get(
-                    f"/api/v1/quality/{seeded_db['task_id']}/improvements",
-                    params={"priority": "high"},
-                )
         assert resp.status_code == 200
 
     def test_improvements_service_error(self, db_engine, seeded_db):
-        app = _make_app(db_engine)
-        with patch("backend.app.api.v1.quality_assessment._service") as mock_svc:
-            mock_svc.get_improvement_suggestions = AsyncMock(
-                side_effect=RuntimeError("AI 장애")
+        svc_mock = AsyncMock()
+
+        app = _make_app(db_engine, svc_mock=svc_mock)
+        svc_mock.get_improvement_suggestions = AsyncMock(
+            side_effect=RuntimeError("AI 장애")
+        )
+        with TestClient(app) as client:
+            resp = client.get(
+                f"/api/v1/quality/{seeded_db['task_id']}/improvements"
             )
-            with TestClient(app) as client:
-                resp = client.get(
-                    f"/api/v1/quality/{seeded_db['task_id']}/improvements"
-                )
         assert resp.status_code == 500
 
 
@@ -294,18 +313,20 @@ class TestExtractMinutesContent:
 
     def test_segments_task_extracts_text(self, db_engine, seeded_db):
         """segments가 있는 task도 정상 처리."""
-        app = _make_app(db_engine)
-        with patch("backend.app.api.v1.quality_assessment._service") as mock_svc:
-            mock_svc.assess_minutes = AsyncMock(return_value=_mock_assessment())
-            with TestClient(app) as client:
-                resp = client.get(f"/api/v1/quality/{seeded_db['segments_task_id']}")
+        svc_mock = AsyncMock()
+
+        app = _make_app(db_engine, svc_mock=svc_mock)
+        svc_mock.assess_minutes = AsyncMock(return_value=_mock_assessment())
+        with TestClient(app) as client:
+            resp = client.get(f"/api/v1/quality/{seeded_db['segments_task_id']}")
         assert resp.status_code == 200
 
     def test_summary_text_task_extracts(self, db_engine, seeded_db):
         """summary_text가 있는 task도 정상 처리."""
-        app = _make_app(db_engine)
-        with patch("backend.app.api.v1.quality_assessment._service") as mock_svc:
-            mock_svc.assess_minutes = AsyncMock(return_value=_mock_assessment())
-            with TestClient(app) as client:
-                resp = client.get(f"/api/v1/quality/{seeded_db['summary_task_id']}")
+        svc_mock = AsyncMock()
+
+        app = _make_app(db_engine, svc_mock=svc_mock)
+        svc_mock.assess_minutes = AsyncMock(return_value=_mock_assessment())
+        with TestClient(app) as client:
+            resp = client.get(f"/api/v1/quality/{seeded_db['summary_task_id']}")
         assert resp.status_code == 200

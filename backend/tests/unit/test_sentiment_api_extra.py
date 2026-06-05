@@ -232,7 +232,7 @@ class TestSentimentAPI:
         mock_redis_client.get.return_value = None
 
         # When
-        response = client.get("/api/v1/sentiment/non-existent/result")
+        response = client.get("/api/v1/sentiment/non-existent")
 
         # Then
         assert response.status_code == 404
