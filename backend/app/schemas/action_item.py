@@ -7,7 +7,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Literal
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 
 class ActionItemStatus(StrEnum):
@@ -38,8 +38,9 @@ class ActionItemCreate(BaseModel):
     estimated_hours: float | None = Field(default=None, ge=0, le=1000, description="예상 소요 시간(시간)")
     category: str | None = Field(default=None, max_length=50, description="카테고리")
 
-    @validator('title')
-    def validate_title(self, v):
+    @field_validator('title')
+    @classmethod
+    def validate_title(cls, v):
         """제목 공백 제거"""
         return v.strip()
 
@@ -60,22 +61,25 @@ class ActionItemUpdate(BaseModel):
     tags: list[str] | None = Field(default=None, description="태그 목록")
     category: str | None = Field(default=None, max_length=50, description="카테고리")
 
-    @validator('title')
-    def validate_title(self, v):
+    @field_validator('title')
+    @classmethod
+    def validate_title(cls, v):
         """제목 공백 제거 (None이 아닐 경우)"""
         if v is not None:
             return v.strip()
         return v
 
-    @validator('completion_notes')
-    def validate_completion_notes(self, v):
+    @field_validator('completion_notes')
+    @classmethod
+    def validate_completion_notes(cls, v):
         """완료 메모 공백 제거 (None이 아닐 경우)"""
         if v is not None:
             return v.strip()
         return v
 
-    @validator('tags')
-    def validate_tags(self, v):
+    @field_validator('tags')
+    @classmethod
+    def validate_tags(cls, v):
         """태그 중복 제거"""
         if v is not None:
             # 중복 제거 및 정렬
