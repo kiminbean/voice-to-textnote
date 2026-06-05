@@ -31,6 +31,7 @@ from backend.app.api.v1.analytics import (
     dashboard,
     enhanced_statistics,
     search,
+    sentiment,
     statistics,
     vocabulary,
 )
@@ -38,6 +39,7 @@ from backend.app.api.v1.audio import (
     audio,
     audio_analysis,
     audio_preprocess,
+    enhanced_preprocess,
     qa,
     quality_assessment,
 )
@@ -57,7 +59,6 @@ from backend.app.api.v1.minutes import (
     action_items,
     keywords,
     minutes,
-    sentiment,
     summary,
     tags,
 )
@@ -94,6 +95,8 @@ ROUTER_REGISTRY: list[tuple[APIRouter, bool]] = [
     (dashboard.router, True),  # SPEC-STATS-002
     (enhanced_statistics.router, True),  # SPEC-ENHANCED-STATS-001
     (advanced_search.router, True),  # SPEC-ADVANCED-SEARCH-001
+    # ── 확장 오디오 처리 (API Key 필수) ──────────────────────────────────────────
+    (enhanced_preprocess.router, True),  # 고급 오디오 전처리 (AI 기반)
     # ── 인증 / 디바이스 / 팀 협업 (공개, JWT를 엔드포인트에서 직접 처리) ──────────
     (auth.router, False),  # SPEC-TEAM-001
     (devices.router, False),  # SPEC-MOBILE-001
@@ -115,5 +118,6 @@ ROUTER_REGISTRY: list[tuple[APIRouter, bool]] = [
     (vocabulary.router, True),  # REQ-VOCAB-001
     # ── 오디오 파일 서빙 / QA (혼합 인증) ───────────────────────────────────────
     (audio.router, False),  # 공개 엔드포인트
+    (enhanced_preprocess.router, True),  # 고급 오디오 전처리
     (qa.router, True),
 ]

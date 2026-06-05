@@ -8,6 +8,8 @@ import re
 from openai import OpenAI
 from pydantic import ValidationError
 
+from backend.utils.json_helpers import strip_json_comments
+
 from backend.schemas.summary import MindMapEdge, MindMapNode
 from backend.utils.logger import get_logger
 
@@ -136,27 +138,5 @@ def _clean_json_response(response_text: str) -> str:
         if cleaned.rstrip().endswith("```"):
             cleaned = cleaned.rstrip()[:-3].rstrip()
 
-    cleaned = _strip_json_comments(cleaned)
+    cleaned = strip_json_comments(cleaned)
     return re.sub(r",\s*([}\]])", r"\1", cleaned)
-
-
-def _strip_json_comments(text: str) -> str:
-    lines = text.split("\n")
-    result = []
-    for line in lines:
-        in_string = False
-        i = 0
-        stripped_line = line
-        while i < len(line) - 1:
-            ch = line[i]
-            if ch == "\\" and in_string:
-                i += 2
-                continue
-            if ch == '"':
-                in_string = not in_string
-            elif ch == "/" and line[i + 1] == "/" and not in_string:
-                stripped_line = line[:i].rstrip()
-                break
-            i += 1
-        result.append(stripped_line)
-    return "\n".join(result)
