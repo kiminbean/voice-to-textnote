@@ -20,7 +20,8 @@
       "Bash(git init:*)",
       "Bash(git add:*)",
       "Bash(git rebase:*)",
-      "Bash(GIT_EDITOR=true git rebase --continue)"
+      "Bash(GIT_EDITOR=true git rebase --continue)",
+      "Bash(venv/bin/python -m pytest backend/tests/unit/ -q --tb=line --ignore=backend/tests/unit/test_enhanced_bookmarks.py --ignore=backend/tests/unit/test_calendar_api.py --ignore=backend/tests/unit/test_core_coverage_final.py --ignore=backend/tests/unit/test_dashboard.py)"
     ],
     "defaultMode": "bypassPermissions"
   },
