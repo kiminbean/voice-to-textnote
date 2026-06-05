@@ -454,7 +454,10 @@ Iteration 2와 동일한 환경을 재사용한다.
 - 커버리지 게이트가 실패 식별을 방해하면 `-o addopts=""`로 비활성화하여 실패 목록만 확인한다.
 - e2e 이벤트 루프 이슈 9건(`tests/e2e/test_pipeline_e2e.py`)은 Python 3.14 asyncio 환경 이슈로 **제외**하므로, 전체 게이트는 `--ignore=tests/e2e/test_pipeline_e2e.py`로 실행한다.
 
-### 8.2 Scope C — 라우터 도메인 그룹핑 (Priority Low)
+### 8.2 Scope C — 라우터 도메인 그룹핑 (Priority Low, 범위 축소됨)
+
+**2026-06-05 구현 완료 후 범위 축소 결정:**
+De-risker C-D1 정정(위 참조): ~40개 테스트가 27개 라우터 서브모듈을 직접 import하므로, 파일 이동(REQ-RM-C1) 수행 시 테스트 import 경로 대량 깨짐. 호환성 shim 불가능(shim 자체가 flat .py 파일). **따라서 Option B 채택: registry.py만 도입, 파일 이동 제외.** 결과적으로 AC-C1/AC-C2/AC-C3/AC-C5는 충족, AC-C4(flat 라우터 0건)만 Deferred. REQ-RM-C1은 다음 반복으로 연기.
 
 #### 핵심 De-risker (검증됨, 2026-06-05)
 
@@ -549,13 +552,13 @@ REQ-ROUTE-001의 스케치는 ~24개만 명명했으나, 실제 인벤토리는 
 
 이번 반복의 완료 조건:
 
-| ID | 검증 명령 | 통과 조건 |
-|----|-----------|-----------|
-| AC-C1 | `cd backend && ../venv/bin/python -m pytest tests/ --ignore=tests/e2e/test_pipeline_e2e.py` | **0 failed** (skipped 허용) |
-| AC-C2 | 라우트 테이블 스냅샷: 재배치 전 `app.routes`의 (path, methods) 집합을 기록 → 재배치 후 동일 집합인지 비교 | **diff 0건** (URL/메서드 불변, A-1 증명) |
-| AC-C3 | `main.py`의 `include_router` 호출 개수: 35개 정적 호출 → registry 순회 루프로 축소 | `include_router` 직접 호출 **대폭 감소** (루프 1개소로 집약) |
-| AC-C4 | flat 라우터 잔존 검사: `ls backend/app/api/v1/*.py` (registry.py, __init__.py 제외) | flat 라우터 파일 **0건** (모두 도메인 서브패키지로 이동) |
-| AC-C5 | 인증 전략 보존: 재배치 후 api_key 라우터 레벨 의존성 / JWT·public 엔드포인트 레벨 의존성이 라우터별로 동일하게 유지 | AC-C1·AC-C2 통과로 간접 증명 + 등록 코드 리뷰 |
+| ID | 검증 명령 | 상태 | 결과 |
+|----|-----------|------|------|
+| AC-C1 | `cd backend && ../venv/bin/python -m pytest tests/ --ignore=tests/e2e/test_pipeline_e2e.py` | ✅ **충족** | **2478 passed, 4 skipped, 0 failed** (coverage 97.35%) |
+| AC-C2 | 라우트 테이블 스냅샷: 재배치 전 `app.routes`의 (path, methods) 집합을 기록 → 재배치 후 동일 집합인지 비교 | ✅ **충족** | **diff 0건** — `tests/unit/test_route_registry_invariance.py` + `_route_snapshot_baseline.json` (135 routes 불변 증명) |
+| AC-C3 | `main.py`의 `include_router` 호출 개수: 35개 정적 호출 → registry 순회 루프로 축소 | ✅ **충족** | **35 → 1** (`include_router` 직접 호출 대폭 감소, registry 루프로 집약) |
+| AC-C4 | flat 라우터 잔존 검사: `ls backend/app/api/v1/*.py` (registry.py, __init__.py 제외) | ❌ **미충족 (범위 축소)** | **Deferred** — REQ-RM-C1(도메인 그룹핑 파일 재배치) 미수행. 라우터는 flat 구조 유지. 대신 registry.py(SSOT) 도입 + 라우트 불변(AC-C2) + main.py 간소화(AC-C3) 달성. 파일 이동이 ~40개 테스트의 라우터 모듈 import를 깨뜨리므로(de-risker C-D1 refuted) Option B(registry-only) 채택. |
+| AC-C5 | 인증 전략 보존: 재배치 후 api_key 라우터 레벨 의존성 / JWT·public 엔드포인트 레벨 의존성이 라우터별로 동일하게 유지 | ✅ **충족** | **78 api_key + 57 no-router-dep** 라우트 (AC-C1·AC-C2 통과로 간접 증명) |
 
 > AC-C2(라우트 스냅샷)는 이번 반복의 **핵심 게이트**다. URL/메서드 집합이 불변이면 제약 A-1(기존 API 계약 불변)이 기계적으로 증명된다.
 

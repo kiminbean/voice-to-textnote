@@ -66,7 +66,7 @@
 
 | ID | 사실 | 영향 |
 |----|------|------|
-| C-D1 | `grep -r "from backend.app.api.v1" tests/` → **0건**. 테스트가 라우터를 모듈 경로로 import하지 않음 | 파일 이동이 테스트 import를 깨뜨리지 않음 (최대 de-risker) |
+| C-D1 | `grep -r "from backend.app.api.v1" tests/` → **0건** 클레임은 거짓. 실제: ~40개 테스트 파일이 27개 라우터 서브모듈을 직접 import (`from backend.app.api.v1.<module> import router/service`, 예: quality_assessment ×14, export ×9, stream ×7). grep 경로 오류(repo-root `tests/` 미존재 → 실제 `backend/tests/`) 때문에 거짓 0건 초래. **Refuted during implementation.** 파일 이동은 이들 import를 깨뜨림. 따라서 AC-C4(flat routers 0건)는 호환성 shim으로 불가능(shim 자체가 flat .py). **Option B(registry-only, 파일 이동 없음) 채택 사유.** |
 | C-D2 | 조건부/동적 라우터 등록 없음 (35개 정적 호출) | 등록 로직 단순·예측 가능 |
 | C-D3 | Phase 1-3 완료 (싱글톤 0건, 2475 passed per progress.md) | 안정 기반 위 순수 구조 변경 |
 | C-D4 | `backend/app/api/v1/__init__.py`는 최소(docstring만, import 없음) | 신규 도메인 `__init__.py` 충돌 없음 |
@@ -95,10 +95,11 @@ REQ-ROUTE-001의 스케치(~24개 명명)는 실제 35개 인벤토리와 불일
 
 ## 6. 수용 기준 핵심
 
-- AC-C1: `pytest tests/ --ignore=tests/e2e/test_pipeline_e2e.py` → 0 failed.
-- AC-C2: **라우트 테이블 스냅샷** — 재배치 전후 `app.routes`의 (path, methods) 집합 동일 (A-1 기계적 증명). **이번 반복 핵심 게이트.**
-- AC-C3: main.py `include_router` 호출 개수 대폭 감소 (루프 1개소 집약).
-- AC-C4: `ls backend/app/api/v1/*.py` (registry.py, __init__.py 제외) → flat 라우터 0건.
+- AC-C1: `pytest tests/ --ignore=tests/e2e/test_pipeline_e2e.py` → 0 failed. ✅ **충족 (2478 passed, 4 skipped)**.
+- AC-C2: **라우트 테이블 스냅샷** — 재배치 전후 `app.routes`의 (path, methods) 집합 동일 (A-1 기계적 증명). ✅ **충족 (135 routes invariant, _route_snapshot_baseline.json)**.
+- AC-C3: main.py `include_router` 호출 개수 대폭 감소 (루프 1개소 집약). ✅ **충족 (35→1)**.
+- AC-C4: `ls backend/app/api/v1/*.py` (registry.py, __init__.py 제외) → flat 라우터 0건. ❌ **Deferred (범위 축소: registry-only, 파일 이동 없음)** — REQ-RM-C1(도메인 그룹핑 파일 재배치) 미수행, 라우터는 flat 구조 유지. 대신 registry.py 도입으로 main.py 보일러플레이트 축소(AC-C3)·라우트 불변(AC-C2) 달성.
+- AC-C5: 인증 전략 보존 (api_key 라우터 레벨 78개, no-router-dep 57개). ✅ **충족** (AC-C1 통과로 간접 증명).
 
 ---
 

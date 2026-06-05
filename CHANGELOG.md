@@ -6,12 +6,20 @@
 
 ### Changed
 
-- **백엔드 구조 리팩토링 (SPEC-REFACTOR-001)**: 에러 처리 표준화 및 서비스 계층 통합
+- **백엔드 구조 리팩토링 (SPEC-REFACTOR-001) Iteration 3**: 라우터 registry 도입 및 main.py 보일러플레이트 축소
+  - `backend/app/api/v1/registry.py` 추가(신규): `ROUTER_REGISTRY` 35개 라우터의 SSOT(Single Source of Truth) — 순서 보존 리스트 형식, 각 항목 `(router, requires_api_key)` 튜플로 인증 전략 명시
+  - `backend/app/main.py` 간소화: 35개 정적 `include_router` 호출 + 35개 모듈 import 블록 → registry 순회 루프 1개소로 축소 (main.py 80+ 줄 → 10줄 이상 감소)
+  - `backend/tests/unit/test_route_registry_invariance.py` + `_route_snapshot_baseline.json` 신규: 라우트 테이블 불변성 증명 (135 routes, path/methods 스냅샷)
+  - **범위 축소**: 파일 이동 제외 (REQ-RM-C1 deferred). ~40개 테스트가 27개 라우터 서브모듈을 직접 import하므로 파일 재배치 시 import 경로 깨짐. 대신 registry.py 도입으로 URL/인증 불변성 보장.
+  - **테스트 통과**: 2478 passed, 4 skipped, 0 failed (coverage 97.35%)
+
+- **백엔드 구조 리팩토링 (SPEC-REFACTOR-001) Iterations 1-2**: 에러 처리 표준화 및 서비스 계층 통합
   - `backend/app/errors.py` 추가: 도메인 에러 헬퍼 10종 (`not_found`, `bad_request`, `unauthorized`, `forbidden`, `conflict`, `rate_limit`, `unprocessable`, `request_entity_too_large`, `internal_error`, `service_unavailable`)
   - `backend/app/exceptions.py` 확장: 기존 3종 → 14종 서브클래스 (`NotFoundError`, `UnauthorizedError`, `ForbiddenError`, `ConflictError`, `RateLimitError` 등)
   - 29개 API 라우터에서 raw `HTTPException` 제거 → 에러 헬퍼로 전환
   - `backend/db/`에서 11개 서비스 파일(`*_service.py`) 삭제 → `backend/services/`(26개)로 통합
   - `backend/db/`는 모델(`*_models.py`)만 유지
+  - 21개 모듈 레벨 서비스 싱글톤 → FastAPI `Depends()` 의존성 주입으로 전환
 
 ### Added
 
