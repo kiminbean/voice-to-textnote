@@ -464,9 +464,7 @@ class TestVersionService:
     def test_normalize_sections_skips_empty_title(self):
         from backend.services.version_service import VersionService
 
-        result = VersionService._normalize_sections(
-            {"sections": [{"title": "  ", "content": "C"}]}
-        )
+        result = VersionService._normalize_sections({"sections": [{"title": "  ", "content": "C"}]})
         assert result == {}
 
     def test_action_item_key_with_id(self):
@@ -709,9 +707,7 @@ class TestEnhancedAudioProcessor:
         from backend.pipeline.enhanced_audio_processor import AIModelManager
 
         remover = AIModelManager()
-        with patch(
-            "backend.pipeline.enhanced_audio_processor.AI_NOISE_REMOVAL_ENABLED", False
-        ):
+        with patch("backend.pipeline.enhanced_audio_processor.AI_NOISE_REMOVAL_ENABLED", False):
             result = await remover.load_model()
             assert result is False
 
@@ -767,13 +763,15 @@ class TestSummaryGenerator:
         from backend.pipeline.summary_generator import SummaryGenerator
 
         gen = SummaryGenerator()
-        response = json.dumps({
-            "summary_text": "s",
-            "action_items": [],
-            "key_decisions": [],
-            "next_steps": [],
-            "sections": {"intro": "hello", "conclusion": "bye"},
-        })
+        response = json.dumps(
+            {
+                "summary_text": "s",
+                "action_items": [],
+                "key_decisions": [],
+                "next_steps": [],
+                "sections": {"intro": "hello", "conclusion": "bye"},
+            }
+        )
         result = gen.parse_response(response)
         assert result.sections["intro"] == "hello"
 
@@ -817,11 +815,13 @@ class TestSentimentAnalyzer:
         from backend.pipeline.sentiment_analyzer import SentimentAnalyzer
 
         analyzer = SentimentAnalyzer()
-        response = json.dumps({
-            "segments": [
-                {"start": 0, "end": 5, "speaker": "A", "text": "hi", "sentiment": "invalid"},
-            ]
-        })
+        response = json.dumps(
+            {
+                "segments": [
+                    {"start": 0, "end": 5, "speaker": "A", "text": "hi", "sentiment": "invalid"},
+                ]
+            }
+        )
         result = analyzer.parse_response(response)
         # "invalid" should be normalized to "neutral"
         assert result.segments[0].sentiment == "neutral"

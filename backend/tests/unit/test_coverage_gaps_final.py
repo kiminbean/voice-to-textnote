@@ -492,7 +492,7 @@ class TestSentimentServiceGaps:
         sum_y = sum(values)
         sum_xy = sum(xi * yi for xi, yi in zip(x, values))
         sum_x2 = sum(xi * xi for xi in x)
-        numerator = n * sum_xy - sum_x * sum_y
+        n * sum_xy - sum_x * sum_y
         denominator = n * sum_x2 - sum_x * sum_x
 
         assert denominator == 0
@@ -941,7 +941,6 @@ class TestActionItemServiceGaps:
     """action_item_service.py 263라인: payload.completed_at 직접 설정"""
 
     def test_completed_at_from_payload(self):
-        from datetime import datetime
 
         completed_at_value = datetime(2026, 6, 1, 12, 0, 0)
         payload = MagicMock()

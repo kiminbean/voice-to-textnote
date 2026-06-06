@@ -142,7 +142,9 @@ class _MockRedisPipeline:
         self._ops.append("get")
         return self
 
-    def set(self, _key: str, _value: str, **_kw: object) -> "_MockRedisPipeline":  # pragma: no cover
+    def set(
+        self, _key: str, _value: str, **_kw: object
+    ) -> "_MockRedisPipeline":  # pragma: no cover
         self._ops.append("set")
         return self
 
@@ -227,11 +229,13 @@ def client(mock_redis_client, tmp_path):
     - API Key 인증 비활성화 (기존 테스트 호환성 유지)
     """
     from fastapi.testclient import TestClient
+    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
     from backend.app.config import Settings
-    from backend.app.dependencies import get_current_user, get_redis_client
+    from backend.app.dependencies import get_current_user, get_db_session, get_redis_client
     from backend.app.main import app
     from backend.app.middleware.auth import verify_api_key
+    from backend.db.models import Base
 
     # 임시 디렉토리를 스토리지로 사용
     test_settings = MagicMock(spec=Settings)
@@ -276,9 +280,26 @@ def client(mock_redis_client, tmp_path):
         mock_user.created_at = datetime.now(UTC)
         return mock_user
 
+    # SPEC-MOBILE-001: 테스트용 인메모리 SQLite DB (device_tokens 테이블 포함)
+    _test_engine = create_async_engine("sqlite+aiosqlite:///:memory:", echo=False)
+    _test_session_factory = async_sessionmaker(
+        _test_engine, class_=AsyncSession, expire_on_commit=False
+    )
+    _tables_created = False
+
+    async def override_db_session():
+        nonlocal _tables_created
+        if not _tables_created:
+            async with _test_engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+            _tables_created = True
+        async with _test_session_factory() as session:
+            yield session
+
     app.dependency_overrides[get_redis_client] = override_redis
     app.dependency_overrides[verify_api_key] = override_verify_api_key
     app.dependency_overrides[get_current_user] = override_get_current_user
+    app.dependency_overrides[get_db_session] = override_db_session
 
     # lifespan 중 모델 로드 방지
     with patch("backend.app.main.WhisperEngine") as mock_engine_cls:
@@ -322,6 +343,17 @@ def client(mock_redis_client, tmp_path):
                                 yield TestClient(app, raise_server_exceptions=True)
 
     app.dependency_overrides.clear()
+    # cleanup: engine dispose (best-effort, ignore if loop unavailable)
+    try:
+        import asyncio
+
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            loop.create_task(_test_engine.dispose())
+        else:
+            loop.run_until_complete(_test_engine.dispose())
+    except RuntimeError:
+        pass
 
 
 @pytest.fixture
@@ -357,3 +389,43 @@ def completed_task_data():
         "created_at": now,
         "completed_at": now,
     }
+
+
+# ---------------------------------------------------------------------------
+# Async DB Session 픽스처
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+async def db_session(tmp_path):
+    """
+    Async DB Session 픽스처 (SQLite in-memory)
+    - DeviceToken 등 DB 모델 테스트용
+    """
+    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+
+    # SQLite in-memory DB
+    engine = create_async_engine(
+        "sqlite+aiosqlite:///:memory:",
+        echo=False,
+    )
+
+    # 테이블 생성
+    async with engine.begin() as conn:
+        from backend.db.models import Base
+
+        await conn.run_sync(Base.metadata.create_all)
+
+    # Session 팩토리
+    async_session_maker = async_sessionmaker(
+        engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+    )
+
+    # Session 제공
+    async with async_session_maker() as session:
+        yield session
+
+    # Cleanup
+    await engine.dispose()

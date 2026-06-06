@@ -278,7 +278,7 @@ class TestPushService:
         from backend.services.push_service import get_push_service
 
         service = get_push_service()
-        service.register_device("device_001", "fcm_token_123")
+        service.register_device_sync("device_001", "fcm_token_123")
 
         devices = service.get_all_devices()
         assert "device_001" in devices
@@ -289,9 +289,9 @@ class TestPushService:
         from backend.services.push_service import get_push_service
 
         service = get_push_service()
-        service.register_device("device_001", "fcm_token_123")
+        service.register_device_sync("device_001", "fcm_token_123")
 
-        deleted = service.unregister_device("device_001")
+        deleted = service.unregister_device_sync("device_001")
         assert deleted is True
 
         # 삭제 후 존재하지 않음
@@ -303,7 +303,7 @@ class TestPushService:
         from backend.services.push_service import get_push_service
 
         service = get_push_service()
-        deleted = service.unregister_device("nonexistent")
+        deleted = service.unregister_device_sync("nonexistent")
         assert deleted is False
 
     def test_register_device_duplicate_token(self):
@@ -311,8 +311,8 @@ class TestPushService:
         from backend.services.push_service import get_push_service
 
         service = get_push_service()
-        service.register_device("device_001", "old_token")
-        service.register_device("device_001", "new_token")
+        service.register_device_sync("device_001", "old_token")
+        service.register_device_sync("device_001", "new_token")
 
         devices = service.get_all_devices()
         assert devices["device_001"] == "new_token"
@@ -322,7 +322,7 @@ class TestPushService:
         from backend.services.push_service import get_push_service
 
         service = get_push_service()
-        service.register_device("device_001", "token_001")
+        service.register_device_sync("device_001", "token_001")
 
         devices = service.get_all_devices()
         original_count = len(devices)
@@ -340,7 +340,7 @@ class TestPushService:
         from backend.services.push_service import get_push_service
 
         service = get_push_service()
-        service.register_device("device_001", "token_001")
+        service.register_device_sync("device_001", "token_001")
 
         # get_all_devices를 통해 특정 디바이스 조회
         devices = service.get_all_devices()
@@ -523,9 +523,10 @@ class TestDeviceAPIEndpoints:
         assert len(deleted_device) == 0
 
     def test_unregister_nonexistent_device(self, client):
-        """존재하지 않는 디바이스 해제 실패"""
+        """존재하지 않는 디바이스 해제 — 멱등성 유지 (204 반환)"""
         response = client.delete("/api/v1/devices/nonexistent_device")
-        assert response.status_code == status.HTTP_404_NOT_FOUND
+        # REST 표준: DELETE는 멱등. 존재하지 않아도 204 반환
+        assert response.status_code == status.HTTP_204_NO_CONTENT
 
     def test_register_device_missing_fcm_token(self, client):
         """FCM 토큰 누락으로 등록 실패"""

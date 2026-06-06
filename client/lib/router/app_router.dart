@@ -17,6 +17,8 @@ import 'package:voice_to_textnote/screens/speaker_profile_screen.dart';
 import 'package:voice_to_textnote/screens/team_list_screen.dart';
 import 'package:voice_to_textnote/screens/search_screen.dart';
 import 'package:voice_to_textnote/screens/team_detail_screen.dart';
+// SPEC-MOBILE-001: 딥링크 서비스
+import 'package:voice_to_textnote/services/deep_link_service.dart';
 
 // 인증이 불필요한 공개 경로 목록
 const _publicPaths = ['/login', '/register'];
@@ -24,7 +26,7 @@ const _publicPaths = ['/login', '/register'];
 // @MX:ANCHOR: 앱 전역 라우터 - 인증 리다이렉트 로직 포함
 // @MX:REASON: goRouter는 ProviderScope 외부에서 생성되므로 ref를 직접 받아야 함
 GoRouter createRouter(ProviderContainer container) {
-  return GoRouter(
+  final router = GoRouter(
     initialLocation: '/',
     // 인증 상태 변화 감지를 위한 리프레시 리스너
     refreshListenable: _AuthStateNotifier(container),
@@ -120,6 +122,11 @@ GoRouter createRouter(ProviderContainer container) {
       ),
     ],
   );
+
+  // SPEC-MOBILE-001: 딥링크 서비스에 라우터 등록
+  DeepLinkService.instance.setRouter(router);
+
+  return router;
 }
 
 // 인증 상태 변화를 GoRouter에 알려주는 리스너
