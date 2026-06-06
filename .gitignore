@@ -236,3 +236,8 @@ voice_to_textnote.db
 !**/.omc/state/
 !**/.omc/state/mission-state.json
 .omx/
+
+# ===========================================
+# Serena MCP local config & memories
+# ===========================================
+.serena/
