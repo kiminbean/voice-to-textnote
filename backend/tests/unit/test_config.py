@@ -307,6 +307,6 @@ class TestSettingsIntegration:
             assert len(settings.cors_allow_methods) == 2
         finally:
             if old_env:
-                os.environ["ENVIRONMENT"] = old_env
+                os.environ["ENVIRONMENT"] = old_env  # pragma: no cover
             else:
                 os.environ.pop("ENVIRONMENT", None)

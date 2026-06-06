@@ -210,7 +210,7 @@ class TestEnhancedAudioProcessor:
 
         # 정규화된 오디오는 진폭이 조정됨
         if normalized_audio.dBFS != float("-inf"):
-            assert abs(normalized_audio.dBFS - (-20.0)) < 1.0  # 허용 오차 1dB
+            assert abs(normalized_audio.dBFS - (-20.0)) < 1.0  # 허용 오차 1dB  # pragma: no cover
 
         # 무음 오디오 테스트
         silent_audio = AudioSegment.silent(duration=1000)

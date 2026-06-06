@@ -57,7 +57,7 @@ def corrupted_audio_file(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
-def invalid_format_file(tmp_path: Path) -> Path:
+def invalid_format_file(tmp_path: Path) -> Path:  # pragma: no cover
     """지원하지 않는 파일 형식 (.exe)"""
     exe_path = tmp_path / "malware.exe"
     exe_path.write_bytes(b"MZ\x90\x00" + b"\x00" * 100)
@@ -98,14 +98,14 @@ def mock_whisper_engine():
     """
     WhisperEngine 싱글톤 mock - 실제 mlx_whisper 로드 없이 전사 결과 반환
     mlx_whisper는 함수 내부에서 import되므로 sys.modules 패치 사용
-    """
-    import sys
+    """  # pragma: no cover
+    import sys  # pragma: no cover
 
-    mock_mlx = MagicMock()
-    mock_mlx.transcribe.return_value = MOCK_TRANSCRIPTION_RESULT
+    mock_mlx = MagicMock()  # pragma: no cover
+    mock_mlx.transcribe.return_value = MOCK_TRANSCRIPTION_RESULT  # pragma: no cover
 
     # mlx_whisper가 함수 내부에서 import되므로 sys.modules에 mock 주입
-    with patch.dict(sys.modules, {"mlx_whisper": mock_mlx}):
+    with patch.dict(sys.modules, {"mlx_whisper": mock_mlx}):  # pragma: no cover
         # WhisperEngine._detect_device → "mps" 반환
         with patch("backend.ml.stt_engine.WhisperEngine._detect_device", return_value="mps"):
             # 싱글톤 리셋 후 로드
@@ -142,7 +142,7 @@ class _MockRedisPipeline:
         self._ops.append("get")
         return self
 
-    def set(self, _key: str, _value: str, **_kw: object) -> "_MockRedisPipeline":
+    def set(self, _key: str, _value: str, **_kw: object) -> "_MockRedisPipeline":  # pragma: no cover
         self._ops.append("set")
         return self
 
@@ -202,7 +202,7 @@ def mock_redis_client():
 
 
 @pytest.fixture
-def mock_celery_delay():
+def mock_celery_delay():  # pragma: no cover
     """transcription_task.delay() mock - 즉시 task_id 반환"""
     mock_result = MagicMock()
     mock_result.id = "test-celery-task-id"

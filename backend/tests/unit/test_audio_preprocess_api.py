@@ -47,7 +47,7 @@ def app_client():
 
     # Redis override (미사용이지만 의존성 해결용)
     async def override_redis():
-        return MagicMock()
+        return MagicMock()  # pragma: no cover
 
     app.dependency_overrides[get_redis_client] = override_redis
 

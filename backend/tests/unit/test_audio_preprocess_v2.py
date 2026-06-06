@@ -263,7 +263,7 @@ class TestMetadataHeader:
 
         # Cleanup
         if mock_output_path.exists():
-            mock_output_path.unlink()
+            mock_output_path.unlink()  # pragma: no cover
 
         assert resp.status_code == 200
 

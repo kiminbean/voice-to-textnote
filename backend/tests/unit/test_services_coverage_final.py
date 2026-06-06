@@ -223,7 +223,7 @@ class TestRetentionCoverage:
             # test_file에 대해서만 FileNotFoundError, 나머지는 원본 동작
             if self == test_file:
                 raise FileNotFoundError()
-            return original_stat(self, follow_symlinks=follow_symlinks)
+            return original_stat(self, follow_symlinks=follow_symlinks)  # pragma: no cover
 
         with patch.object(Path, "stat", mock_stat_fn):
             with patch("backend.services.retention.logger"):

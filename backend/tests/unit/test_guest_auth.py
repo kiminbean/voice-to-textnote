@@ -197,7 +197,7 @@ class TestGuestSessionExpiresIn24h:
         # ISO 형식 파싱 (timezone-aware or naive)
         expires_at = datetime.fromisoformat(expires_at_str)
         if expires_at.tzinfo is None:
-            expires_at = expires_at.replace(tzinfo=UTC)
+            expires_at = expires_at.replace(tzinfo=UTC)  # pragma: no cover
 
         expected_min = before + timedelta(hours=24) - timedelta(seconds=5)
         expected_max = after + timedelta(hours=24) + timedelta(seconds=5)

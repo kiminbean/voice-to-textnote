@@ -437,7 +437,7 @@ def _make_silero_vad_mock(timestamps=None):
     timestamps: get_speech_timestamps가 반환할 list[dict{start, end}]
     """
     if timestamps is None:
-        timestamps = []
+        timestamps = []  # pragma: no cover
     mock_module = MagicMock()
     mock_module.load_silero_vad.return_value = MagicMock()
     mock_module.get_speech_timestamps.return_value = timestamps

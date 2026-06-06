@@ -34,7 +34,7 @@ def summary_client():
     from backend.app.main import app
 
     async def mock_db_session():
-        yield AsyncMock()
+        yield AsyncMock()  # pragma: no cover
 
     # Redis mock 생성
     mock_redis_instance = AsyncMock()

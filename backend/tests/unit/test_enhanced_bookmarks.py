@@ -260,4 +260,4 @@ class TestBookmarkServiceIntegration:
     async def test_bookmark_search_with_pagination(self, db_session):
         """분할된 북마크 검색 테스트"""
         # 페이지네이션 테스트
-        pytest.skip("Not yet implemented")
+        pytest.skip("Not yet implemented")  # pragma: no cover

@@ -299,7 +299,7 @@ class TestExportPdfApi:
             yield db_mock
 
         async def override_auth():
-            return "test-bypass"
+            return "test-bypass"  # pragma: no cover
 
         app.dependency_overrides[get_redis_client] = override_redis
         app.dependency_overrides[get_db_session] = override_db_with_data

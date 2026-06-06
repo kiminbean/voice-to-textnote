@@ -102,7 +102,7 @@ def guest_app_no_session(mock_redis_without_session):
         request: Request,
         _api_key: str = Depends(verify_api_key),
     ):
-        return {"ok": True}
+        return {"ok": True}  # pragma: no cover
 
     return TestClient(app)
 

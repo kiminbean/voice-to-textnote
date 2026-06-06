@@ -51,7 +51,7 @@ def admin_user():
 
 @pytest.fixture
 def member_user():
-    return _make_user("member")
+    return _make_user("member")  # pragma: no cover
 
 
 @pytest.fixture

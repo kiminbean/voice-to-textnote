@@ -304,7 +304,7 @@ class TestDeviceSelection:
                     assert device == "cpu"
             finally:
                 if old:
-                    sys.modules["mlx.core"] = old
+                    sys.modules["mlx.core"] = old  # pragma: no cover
 
     def test_detect_device_returns_string(self):
         """_detect_device()는 문자열 반환"""

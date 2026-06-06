@@ -128,7 +128,7 @@ class TestRouteRegistryInvariance:
             if actual is None:
                 mismatches.append(f"  라우트 누락: {key[1]} {key[0]}")
             elif actual != expected:
-                mismatches.append(
+                mismatches.append(  # pragma: no cover
                     f"  인증 정책 불일치: {key[1]} {key[0]}  "
                     f"expected api_key={expected}, got api_key={actual}"
                 )

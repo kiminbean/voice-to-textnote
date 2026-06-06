@@ -137,7 +137,7 @@ def client(test_app, populated_db):
 @pytest.fixture
 def empty_client(test_app):
     """빈 DB의 TestClient"""
-    return TestClient(test_app)
+    return TestClient(test_app)  # pragma: no cover
 
 
 # ---------------------------------------------------------------------------

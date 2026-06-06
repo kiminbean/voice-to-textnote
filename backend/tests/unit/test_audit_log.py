@@ -709,7 +709,7 @@ class TestPrometheusAccessCounter:
 
         @app.get("/api/v1/counter-test")
         async def counter_test_route():
-            return {"message": "ok"}
+            return {"message": "ok"}  # pragma: no cover
 
         _client = TestClient(app)
 

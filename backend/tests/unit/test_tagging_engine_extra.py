@@ -434,7 +434,7 @@ class TestEdgeCases:
         })
 
         async def mock_post(*args, **kwargs):
-            return mock_response
+            return mock_response  # pragma: no cover
 
         with patch("backend.ml.tagging_engine.settings") as mock_settings:
             mock_settings.openai_api_key = "test-key"

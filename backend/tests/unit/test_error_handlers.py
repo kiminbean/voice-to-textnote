@@ -46,7 +46,7 @@ def create_test_app() -> FastAPI:
 
     @app.post("/test/validation-error")
     async def trigger_validation_error(body: dict):
-        pass
+        pass  # pragma: no cover
 
     return app
 

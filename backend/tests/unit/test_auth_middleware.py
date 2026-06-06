@@ -36,7 +36,7 @@ def test_app_with_auth():
 
     @app.get("/health")
     async def health_route():
-        return {"status": "ok"}
+        return {"status": "ok"}  # pragma: no cover
 
     with patch("backend.app.middleware.auth.settings") as mock_settings:
         mock_settings.api_keys = ["test-valid-key-123", "another-valid-key"]

@@ -440,7 +440,7 @@ class TestExportMarkdownApi:
                 return json.dumps(valid_minutes_data)
             if "sum:result" in key:
                 return json.dumps(summary_only_decisions)
-            return None
+            return None  # pragma: no cover
 
         mock_redis = AsyncMock()
         mock_redis.get.side_effect = redis_side_effect

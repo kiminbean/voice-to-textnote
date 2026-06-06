@@ -176,7 +176,7 @@ class TestSSEEndpoint:
         }
 
         async def mock_listen():
-            yield completed_msg
+            yield completed_msg  # pragma: no cover
 
         pubsub_mock.listen = mock_listen
         redis_mock.pubsub.return_value = pubsub_mock

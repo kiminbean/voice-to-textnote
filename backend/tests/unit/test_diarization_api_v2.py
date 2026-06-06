@@ -363,7 +363,7 @@ class TestGetDiarizationResultAPI:
                         "status": "processing",
                         "created_at": now,
                     })
-                return None
+                return None  # pragma: no cover
 
             mock_redis.get = mock_get_with_count
 

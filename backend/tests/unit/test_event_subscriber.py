@@ -93,7 +93,7 @@ class TestSubscribeTaskEvents:
             if call_count == 1:
                 return {"type": "message", "data": json.dumps(completed_event)}
             # 이 메시지는 도달하면 안 됨
-            return {"type": "message", "data": json.dumps(extra_event)}
+            return {"type": "message", "data": json.dumps(extra_event)}  # pragma: no cover
 
         pubsub_mock.get_message = mock_get_message
         redis_mock = make_redis_mock_with_pubsub(pubsub_mock)

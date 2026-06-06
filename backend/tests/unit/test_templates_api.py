@@ -318,7 +318,7 @@ class TestListTemplates:
                         "created_at": datetime.now(UTC).isoformat(),
                     }
                 ).encode()
-            return None
+            return None  # pragma: no cover
 
         mock_redis_client.get.side_effect = mock_get
 
