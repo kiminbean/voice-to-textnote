@@ -1,6 +1,6 @@
 [project]
 name = "voice-to-textnote-backend"
-version = "0.1.0"
+version = "0.2.0-dev"
 description = "Privacy-first automated meeting minutes using local mlx-whisper"
 requires-python = ">=3.11"
 dependencies = [
