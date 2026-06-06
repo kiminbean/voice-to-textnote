@@ -83,3 +83,33 @@
 
 ## Tests Updated
 - `backend/tests/unit/test_lifecycle.py` — Updated all mocks to patch `backend.app.dependencies` instead of the removed `backend.app.lifecycle.create_engine` and `redis.asyncio.from_url`.
+
+---
+
+## 2026-06-05 ~ 2026-06-06 작업 내역
+
+### 감성 분석 & 고급 액션 아이템 (ebb127f)
+- **Files:** `backend/pipeline/sentiment_analyzer.py`, `backend/ml/action_items_engine.py`, `backend/services/sentiment_service.py`, `backend/services/action_item_service.py`
+- **내용:** 감성 분석 파이프라인 및 고급 액션 아이템 추출 기능 추가. Claude API 연동.
+
+### 프로덕션 롰칭 준비 (c4efc3b, bc23a68)
+- **Files:** 다수의 테스트 파일, 설정 파일
+- **내용:** E2E 테스트 Python 3.14 호환성 수정, 린트 정리, 스키마 마이그레이션, 가비지 제거, Docker 강화
+
+### 테스트 커버리지 97% 달성 (0988c20)
+- **Files:** `backend/tests/unit/test_coverage_*.py` (신규 다수), `backend/tests/unit/test_core_coverage_final.py`
+- **내용:** 신규 124개 테스트 추가로 커버리지 96.41% → 97% 향상. 코어 모듈(main, lifecycle, error_handlers, middleware) 커버리지 강화.
+
+### 백엔드 리팩토링 SPEC-REFACTOR-001 (여러 커밋)
+- **Iteration 1-2:** 에러 헬퍼 10종 추가, 예외 계층 14종 확장, 29개 라우터 raw HTTPException 제거, 11개 DB 서비스 → backend/services/ 통합, 21개 싱글톤 → DI 전환
+- **Iteration 3:** 라우터 registry.py 도입 (35개 라우터 SSOT), 라우트 테이블 불변성 테스트 (135 routes)
+- **Phase 4:** 라우터 도메인 그룹핑
+- **결과:** 2478 passed, 0 failed, 97.35% 커버리지
+
+### CI/CD 수정 (9bedd37, 774fa5d, 46b127d)
+- **내용:** CI 테스트 14건 그린화 — ffmpeg 설치, STT/retention 테스트 환경 비의존화, ruff 위반 84건 정리
+
+### 현재 미커밋 변경사항 (git status)
+- 다수 수정: 서비스(11), ML(5), API(7), 테스트(17+), 파이프라인(6), 워커(4)
+- 신규: 커버리지 테스트 파일 10+개, 테스트 conftest 파일
+- .serena/ 디렉토리 (Serena 프로젝트 설정)

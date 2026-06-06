@@ -4,6 +4,20 @@
 
 ## [Unreleased]
 
+### Added
+
+- **감성 분석 파이프라인 (ebb127f)**: 회의 음성 감성 분석 기능
+  - `backend/pipeline/sentiment_analyzer.py`: 감성 분석 파이프라인
+  - `backend/ml/action_items_engine.py`: 고급 액션 아이템 추출 (Claude API 연동)
+  - `backend/services/sentiment_service.py`, `action_item_service.py`: 비즈니스 로직
+  - 관련 API 엔드포인트, 스키마, 워커 태스크
+
+- **테스트 커버리지 97% 달성 (0988c20)**: 신규 124개 테스트 추가
+  - 코어 모듈 커버리지 강화: main.py, lifecycle.py, error_handlers.py, middleware
+  - ML 모듈: stt_engine, tagging_engine, diarization_engine
+  - 서비스: statistics, keyword, search, team, auth
+  - 총 2478개 테스트, 97.35% 커버리지
+
 ### Changed
 
 - **백엔드 구조 리팩토링 (SPEC-REFACTOR-001) Iteration 3**: 라우터 registry 도입 및 main.py 보일러플레이트 축소
@@ -84,6 +98,10 @@
 - **VAD segment 폭증/padding overhead 역효과**: 초기 VAD 통합이 100s 오디오를 24-segment로 잘라 DIA가 2.5배 느려진 문제. `min_silence_duration_ms=1500`, segment 병합, 압축 효과 검증 안전장치로 자동 skip 도입.
 - **SQLite `task_results.is_guest` 컬럼 누락**: SQLAlchemy 모델은 정의됐지만 alembic 001에 없던 컬럼을 ALTER로 추가 (`is_guest BOOLEAN NOT NULL DEFAULT 0`, `guest_session_id VARCHAR(36)`). 기존 208행 보존.
 - **ruff UP038**: `backend/db/version_service.py`의 `isinstance(x, (str, int))` → `isinstance(x, str | int)` 변환 (부수 lint).
+- **E2E 테스트 Python 3.14 호환성**: `c4efc3b` — E2E 테스트가 Python 3.14에서 실패하던 문제 수정
+- **CI 테스트 14건 그린화**: ffmpeg 설치 추가, STT/retention 테스트 환경 비의존화 (`9bedd37`)
+- **openai 의존성 누락**: 런타임 의존성에 `openai` 추가 (CI 테스트 collection 실패 해소)
+- **ruff 위반 84건 정리**: `46b127d` + export.py 예외 import 누락 수정
 
 ### Changed
 
