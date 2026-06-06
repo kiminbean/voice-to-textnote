@@ -110,6 +110,7 @@ def _make_export_app(mock_redis: AsyncMock) -> FastAPI:
         db_mock = AsyncMock()
         # DB 폴백에서 None 반환 (Redis 히트 시나리오)
         from unittest.mock import MagicMock
+
         result_mock = MagicMock()
         result_mock.scalars.return_value.first.return_value = None
         db_mock.execute.return_value = result_mock
@@ -312,13 +313,12 @@ class TestExportPdfApi:
         assert response.headers["content-type"] == "application/pdf"
         assert response.content[:5] == b"%PDF-"
 
-    def test_export_pdf_summary_task_id_not_found(
-        self, valid_minutes_data: dict
-    ) -> None:
+    def test_export_pdf_summary_task_id_not_found(self, valid_minutes_data: dict) -> None:
         """
         summary_task_id가 지정됐지만 데이터를 찾을 수 없으면
         요약 없이 PDF 생성 (200 반환, 경고 로그)
         """
+
         def redis_side_effect(key: str):
             # 회의록은 반환, 요약은 None
             if "min:result" in key:

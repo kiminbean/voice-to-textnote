@@ -187,13 +187,17 @@ class TemplateParser:
                                     # 숫자/언더스코어로 시작하면 제목 셀로 건너뜀
                                     word_count = len(cell_text.split())
                                     starts_with_special = (
-                                        cell_text[0].isdigit() or cell_text[0] == '_'
-                                    ) if cell_text else False
-                                    if (cell_text
-                                            and 1 <= len(cell_text) <= 15
-                                            and word_count <= 3
-                                            and not starts_with_special
-                                            and any('\uAC00' <= c <= '\uD7A3' for c in cell_text)):
+                                        (cell_text[0].isdigit() or cell_text[0] == "_")
+                                        if cell_text
+                                        else False
+                                    )
+                                    if (
+                                        cell_text
+                                        and 1 <= len(cell_text) <= 15
+                                        and word_count <= 3
+                                        and not starts_with_special
+                                        and any("\uac00" <= c <= "\ud7a3" for c in cell_text)
+                                    ):
                                         # 라벨 다음 셀의 값 추출
                                         value = ""
                                         if col_idx + 1 < len(row) and row[col_idx + 1]:
@@ -207,15 +211,21 @@ class TemplateParser:
 
                                 # 행 레이아웃 기록
                                 if len(row_labels) == 1:
-                                    table_layout.append({
-                                        "type": "full",
-                                        "label": row_labels[0]["label"],
-                                    })
+                                    table_layout.append(
+                                        {
+                                            "type": "full",
+                                            "label": row_labels[0]["label"],
+                                        }
+                                    )
                                 elif len(row_labels) >= 2:
-                                    table_layout.append({
-                                        "type": "split",
-                                        "cells": [{"label": lab["label"]} for lab in row_labels],
-                                    })
+                                    table_layout.append(
+                                        {
+                                            "type": "split",
+                                            "cells": [
+                                                {"label": lab["label"]} for lab in row_labels
+                                            ],
+                                        }
+                                    )
 
                 # 섹션 추출 (2가지 방법)
                 # 방법 1: 테이블 라벨 기반 (테이블이 있는 양식)
@@ -228,9 +238,7 @@ class TemplateParser:
 
                 # 방법 2: 번호/헤딩 패턴 (테이블 없는 양식, fallback)
                 if not sections:
-                    section_pattern = re.compile(
-                        r"^(?:(\d+[\.\d]*)[\.\s]+|#{1,6}\s+)(.+)$"
-                    )
+                    section_pattern = re.compile(r"^(?:(\d+[\.\d]*)[\.\s]+|#{1,6}\s+)(.+)$")
                     for line in raw_lines:
                         match = section_pattern.match(line)
                         if match:

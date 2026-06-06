@@ -46,9 +46,7 @@ class SpeakerVoiceProfile(Base):
 
     # 누적 통계
     sample_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    total_duration_seconds: Mapped[float] = mapped_column(
-        Float, nullable=False, default=0.0
-    )
+    total_duration_seconds: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
 
     # 음성 특성 (누적 평균)
     avg_energy_dbfs: Mapped[float | None] = mapped_column(Float, nullable=True)

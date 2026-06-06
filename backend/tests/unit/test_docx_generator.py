@@ -12,9 +12,24 @@ def sample_minutes():
     return {
         "task_id": "test-123",
         "segments": [
-            {"speaker": "SPEAKER_00", "start": 0.0, "end": 5.0, "text": "안녕하세요 회의를 시작하겠습니다."},
-            {"speaker": "SPEAKER_01", "start": 5.5, "end": 12.0, "text": "네, 오늘 안건을 설명드리겠습니다."},
-            {"speaker": "SPEAKER_00", "start": 12.5, "end": 20.0, "text": "프로젝트 진행 상황을 공유해주세요."},
+            {
+                "speaker": "SPEAKER_00",
+                "start": 0.0,
+                "end": 5.0,
+                "text": "안녕하세요 회의를 시작하겠습니다.",
+            },
+            {
+                "speaker": "SPEAKER_01",
+                "start": 5.5,
+                "end": 12.0,
+                "text": "네, 오늘 안건을 설명드리겠습니다.",
+            },
+            {
+                "speaker": "SPEAKER_00",
+                "start": 12.5,
+                "end": 20.0,
+                "text": "프로젝트 진행 상황을 공유해주세요.",
+            },
         ],
     }
 

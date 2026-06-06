@@ -101,9 +101,7 @@ class User(Base):
         return f"<User(id={self.id}, email={self.email!r}, provider={self.provider!r})>"
 
     # 소셜 계정 중복 방지 (provider + provider_id 조합 유니크, email 가입은 provider_id=NULL)
-    __table_args__ = (
-        UniqueConstraint("provider", "provider_id", name="uq_user_provider"),
-    )
+    __table_args__ = (UniqueConstraint("provider", "provider_id", name="uq_user_provider"),)
 
 
 class Team(Base):
@@ -196,9 +194,7 @@ class TeamMember(Base):
     )
 
     # 팀 내 user_id 유니크 (중복 멤버 방지)
-    __table_args__ = (
-        UniqueConstraint("team_id", "user_id", name="uq_team_user"),
-    )
+    __table_args__ = (UniqueConstraint("team_id", "user_id", name="uq_team_user"),)
 
     def __repr__(self) -> str:
         return f"<TeamMember(team_id={self.team_id}, user_id={self.user_id}, role={self.role!r})>"
@@ -305,9 +301,7 @@ class MeetingOwnership(Base):
     )
 
     # (task_id, team_id) 조합은 유니크 (동일 팀에 중복 공유 방지)
-    __table_args__ = (
-        UniqueConstraint("task_id", "team_id", name="uq_meeting_team"),
-    )
+    __table_args__ = (UniqueConstraint("task_id", "team_id", name="uq_meeting_team"),)
 
     def __repr__(self) -> str:
         return (

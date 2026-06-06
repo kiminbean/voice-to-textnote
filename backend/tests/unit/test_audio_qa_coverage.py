@@ -61,11 +61,13 @@ class TestAskQuestion:
         """정상 질문."""
         client, mock_redis, mock_svc = app_client
 
-        mock_svc.ask = AsyncMock(return_value=MagicMock(
-            answer="테스트 답변입니다.",
-            sources=[],
-            thread_id="thread-1",
-        ))
+        mock_svc.ask = AsyncMock(
+            return_value=MagicMock(
+                answer="테스트 답변입니다.",
+                sources=[],
+                thread_id="thread-1",
+            )
+        )
 
         resp = client.post(
             "/api/v1/qa/ask",
@@ -84,11 +86,13 @@ class TestAskQuestion:
         """스레드 ID 포함 질문."""
         client, mock_redis, mock_svc = app_client
 
-        mock_svc.ask = AsyncMock(return_value=MagicMock(
-            answer="후속 답변입니다.",
-            sources=[],
-            thread_id="thread-1",
-        ))
+        mock_svc.ask = AsyncMock(
+            return_value=MagicMock(
+                answer="후속 답변입니다.",
+                sources=[],
+                thread_id="thread-1",
+            )
+        )
 
         resp = client.post(
             "/api/v1/qa/ask",
@@ -146,9 +150,7 @@ class TestAskQuestion:
         """일반 예외 -> internal_error -> 500."""
         client, mock_redis, mock_svc = app_client
 
-        mock_svc.ask = AsyncMock(
-            side_effect=RuntimeError("예상치 못한 오류")
-        )
+        mock_svc.ask = AsyncMock(side_effect=RuntimeError("예상치 못한 오류"))
 
         resp = client.post(
             "/api/v1/qa/ask",
@@ -191,10 +193,12 @@ class TestGetQAHistory:
         """정상 이력 조회."""
         client, mock_redis, mock_svc = app_client
 
-        mock_svc.get_history = AsyncMock(return_value=MagicMock(
-            items=[],
-            total=0,
-        ))
+        mock_svc.get_history = AsyncMock(
+            return_value=MagicMock(
+                items=[],
+                total=0,
+            )
+        )
 
         resp = client.get("/api/v1/qa/task-123/history")
 
@@ -210,10 +214,12 @@ class TestGetQAHistory:
         mock_history_item.sources = []
         mock_history_item.created_at = "2024-01-01T00:00:00"
 
-        mock_svc.get_history = AsyncMock(return_value=MagicMock(
-            items=[mock_history_item],
-            total=1,
-        ))
+        mock_svc.get_history = AsyncMock(
+            return_value=MagicMock(
+                items=[mock_history_item],
+                total=1,
+            )
+        )
 
         resp = client.get("/api/v1/qa/task-123/history")
 

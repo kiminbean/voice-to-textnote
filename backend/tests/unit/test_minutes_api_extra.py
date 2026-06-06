@@ -40,7 +40,7 @@ class TestMinutesAPI:
 
         app.dependency_overrides[get_redis_client] = override_redis
 
-        with patch.object(settings, 'max_concurrent_minutes', 3):
+        with patch.object(settings, "max_concurrent_minutes", 3):
             yield TestClient(app)
 
         app.dependency_overrides.clear()
@@ -57,7 +57,7 @@ class TestMinutesAPI:
             "diarization_task_id": "test-diarization-123",
             "output_format": "markdown",
             "speaker_names": {"SPEAKER_00": "John", "SPEAKER_01": "Jane"},
-            "stt_task_id": "stt-123"
+            "stt_task_id": "stt-123",
         }
 
         with patch("backend.workers.tasks.minutes_task.minutes_celery_task") as mock_task:
@@ -85,10 +85,7 @@ class TestMinutesAPI:
         # Given - 동시 작업 수가 한도에 도달
         mock_redis_client.scard.return_value = 3
 
-        request_data = {
-            "diarization_task_id": "test-123",
-            "output_format": "markdown"
-        }
+        request_data = {"diarization_task_id": "test-123", "output_format": "markdown"}
 
         # When
         response = client.post("/api/v1/minutes", json=request_data)
@@ -132,7 +129,7 @@ class TestMinutesAPI:
             "status": "processing",
             "progress": 0.6,
             "message": "회의록 생성 중",
-            "error_message": None
+            "error_message": None,
         }
         mock_redis_client.get.return_value = json.dumps(status_data)
 
@@ -182,7 +179,7 @@ class TestMinutesAPI:
                     "speaker_name": "John",
                     "start": 0.0,
                     "end": 5.0,
-                    "text": "안녕하세요"
+                    "text": "안녕하세요",
                 }
             ],
             "speakers": [
@@ -191,12 +188,12 @@ class TestMinutesAPI:
                     "speaker_name": "John",
                     "total_speaking_time": 30.0,
                     "segment_count": 1,
-                    "speaking_ratio": 50.0
+                    "speaking_ratio": 50.0,
                 }
             ],
             "total_duration": 60.0,
             "total_speakers": 1,
-            "markdown": "# 회의록\n\n안녕하세요"
+            "markdown": "# 회의록\n\n안녕하세요",
         }
         mock_redis_client.get.return_value = json.dumps(result_data)
 
@@ -224,7 +221,7 @@ class TestMinutesAPI:
         status_data = {
             "task_id": task_id,
             "status": "processing",
-            "diarization_task_id": "diarization-456"
+            "diarization_task_id": "diarization-456",
         }
 
         # Redis get 호출 시 sequence로 status 반환
@@ -324,7 +321,7 @@ class TestMinutesAPI:
             "status": "failed",
             "diarization_task_id": "diarization-789",
             "error": "처리 중 오류 발생",
-            "error_message": "분석 실패"
+            "error_message": "분석 실패",
         }
         mock_redis_client.get.return_value = json.dumps(result_data)
 
@@ -352,7 +349,7 @@ class TestMinutesAPI:
             "status": "failed",
             "progress": 0.5,
             "message": "처리 실패",
-            "error_message": "내부 서버 오류"
+            "error_message": "내부 서버 오류",
         }
         mock_redis_client.get.return_value = json.dumps(status_data)
 

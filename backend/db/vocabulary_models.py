@@ -55,6 +55,5 @@ class CustomVocabulary(Base):
 
     def __repr__(self) -> str:
         return (
-            f"<CustomVocabulary(id={self.id}, name={self.name!r}, "
-            f"words_count={len(self.words)})>"
+            f"<CustomVocabulary(id={self.id}, name={self.name!r}, words_count={len(self.words)})>"
         )

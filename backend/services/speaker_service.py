@@ -42,12 +42,8 @@ class SpeakerService:
                 detail=f"이미 동일한 화자 프로필이 존재합니다 ({scope}, label={speaker_label})",
             )
 
-    async def _enforce_user_limit(
-        self, session: AsyncSession, user_id: uuid.UUID
-    ) -> None:
-        stmt = select(func.count(SpeakerProfile.id)).where(
-            SpeakerProfile.user_id == user_id
-        )
+    async def _enforce_user_limit(self, session: AsyncSession, user_id: uuid.UUID) -> None:
+        stmt = select(func.count(SpeakerProfile.id)).where(SpeakerProfile.user_id == user_id)
         result = await session.execute(stmt)
         count = result.scalar_one()
         if count >= _MAX_PROFILES_PER_USER:
@@ -104,9 +100,7 @@ class SpeakerService:
     ) -> tuple[list[SpeakerProfile], int]:
         """사용자 화자 프로필 목록. 전역 + 특정 회의록 프로필 모두 반환."""
         base = select(SpeakerProfile).where(SpeakerProfile.user_id == user_id)
-        count_base = select(func.count(SpeakerProfile.id)).where(
-            SpeakerProfile.user_id == user_id
-        )
+        count_base = select(func.count(SpeakerProfile.id)).where(SpeakerProfile.user_id == user_id)
 
         if task_id is not None:
             # 해당 회의록 오버라이드 + 전역 프로필 모두 반환

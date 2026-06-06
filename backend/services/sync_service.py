@@ -111,6 +111,7 @@ def _try_index_search_entry(
         with get_sync_session() as session:
             # FTS5 테이블 존재 확인 (없으면 생성)
             from backend.db.sync_engine import _get_sync_engine
+
             engine, _ = _get_sync_engine()
             ensure_search_index_table(engine)
 

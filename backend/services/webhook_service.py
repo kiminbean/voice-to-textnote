@@ -25,12 +25,8 @@ _DELIVERY_TIMEOUT = 10  # 초
 class WebhookService:
     """웹훅 엔드포인트 CRUD + 테스트 전송. 소유권 검증 포함."""
 
-    async def _enforce_user_limit(
-        self, session: AsyncSession, user_id: uuid.UUID
-    ) -> None:
-        stmt = select(func.count(WebhookEndpoint.id)).where(
-            WebhookEndpoint.user_id == user_id
-        )
+    async def _enforce_user_limit(self, session: AsyncSession, user_id: uuid.UUID) -> None:
+        stmt = select(func.count(WebhookEndpoint.id)).where(WebhookEndpoint.user_id == user_id)
         result = await session.execute(stmt)
         count = result.scalar_one()
         if count >= _MAX_WEBHOOKS_PER_USER:
@@ -162,7 +158,11 @@ class WebhookService:
             async with httpx.AsyncClient(timeout=_DELIVERY_TIMEOUT) as client:
                 resp = await client.post(url, content=body, headers=headers)
             success = resp.status_code < 400
-            return resp.status_code, success, ("전송 성공" if success else f"HTTP {resp.status_code}")
+            return (
+                resp.status_code,
+                success,
+                ("전송 성공" if success else f"HTTP {resp.status_code}"),
+            )
         except ValueError as exc:
             return None, False, str(exc)
         except httpx.TimeoutException:

@@ -208,10 +208,7 @@ class DiarizationEngine:
             merge_gap_samples = int(sample_rate * self.VAD_MERGE_GAP_SEC)
             speech_ts: list[dict] = []
             for ts in raw_speech_ts:
-                if (
-                    speech_ts
-                    and (ts["start"] - speech_ts[-1]["end"]) <= merge_gap_samples
-                ):
+                if speech_ts and (ts["start"] - speech_ts[-1]["end"]) <= merge_gap_samples:
                     speech_ts[-1] = {
                         "start": speech_ts[-1]["start"],
                         "end": ts["end"],
@@ -222,9 +219,7 @@ class DiarizationEngine:
             # 압축 효과 검증: 절약이 충분하지 않으면 VAD 사용 안 함
             original_samples = waveform.shape[-1]
             speech_samples = sum(ts["end"] - ts["start"] for ts in speech_ts)
-            speech_ratio = (
-                speech_samples / original_samples if original_samples > 0 else 1.0
-            )
+            speech_ratio = speech_samples / original_samples if original_samples > 0 else 1.0
             if speech_ratio > self.VAD_MIN_COMPRESSION_GAIN:
                 logger.info(
                     "VAD 압축 효과 부족, 원본 사용",
@@ -251,9 +246,9 @@ class DiarizationEngine:
 
                 # 양 채널 모두 보존
                 if waveform.dim() > 1:
-                    seg_wav = waveform[:, ts["start"]:ts["end"]]
+                    seg_wav = waveform[:, ts["start"] : ts["end"]]
                 else:
-                    seg_wav = waveform[ts["start"]:ts["end"]].unsqueeze(0)
+                    seg_wav = waveform[ts["start"] : ts["end"]].unsqueeze(0)
 
                 seg_length = ts["end"] - ts["start"]
                 mapping.append(
@@ -385,9 +380,7 @@ class DiarizationEngine:
                     original_sr=sample_rate,
                     target_sr=target_sample_rate,
                 )
-                waveform = torchaudio.functional.resample(
-                    waveform, sample_rate, target_sample_rate
-                )
+                waveform = torchaudio.functional.resample(waveform, sample_rate, target_sample_rate)
                 sample_rate = target_sample_rate
 
             # VAD 사전 필터링 (선택)
@@ -419,9 +412,7 @@ class DiarizationEngine:
 
             # VAD 압축을 적용했으면 원본 timestamp로 역매핑
             segments = (
-                self._map_segments(raw_segments, mapping, sample_rate)
-                if mapping
-                else raw_segments
+                self._map_segments(raw_segments, mapping, sample_rate) if mapping else raw_segments
             )
 
             elapsed = time.time() - start_time
@@ -526,7 +517,9 @@ class DiarizationEngine:
                 )
 
                 with torch.inference_mode():
-                    result = self._pipeline({"waveform": chunk_waveform, "sample_rate": sample_rate})
+                    result = self._pipeline(
+                        {"waveform": chunk_waveform, "sample_rate": sample_rate}
+                    )
 
                 local_segments = self._segments_from_result(result)
 

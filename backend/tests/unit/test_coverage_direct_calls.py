@@ -3,10 +3,7 @@
 HTTP 엔드포인트 테스트 대신 함수를 직접 호출하여 미커버 라인 실행
 """
 
-import json
 import uuid
-from datetime import datetime
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -163,8 +160,8 @@ class TestMinutesActionItemsDirectCalls:
 
     @pytest.mark.asyncio
     async def test_extract_voice_note_error_reraise(self):
-        from backend.app.exceptions import VoiceNoteError
         from backend.app.api.v1.minutes.action_items import extract_action_items_api
+        from backend.app.exceptions import VoiceNoteError
 
         vne = VoiceNoteError(error_code="EXT_ERR", message="추출 오류", status_code=500)
         with patch("backend.app.api.v1.minutes.action_items.extract_action_items", side_effect=vne):
@@ -274,8 +271,8 @@ class TestQualityAssessmentDirectCalls:
 
     @pytest.mark.asyncio
     async def test_live_score_vne(self):
-        from backend.app.exceptions import VoiceNoteError
         from backend.app.api.v1.audio.quality_assessment import get_live_quality_score
+        from backend.app.exceptions import VoiceNoteError
 
         vne = VoiceNoteError(error_code="Q_ERR", message="품질 오류", status_code=500)
         with (
@@ -312,8 +309,8 @@ class TestQualityAssessmentDirectCalls:
 
     @pytest.mark.asyncio
     async def test_submit_feedback_vne(self):
-        from backend.app.exceptions import VoiceNoteError
         from backend.app.api.v1.audio.quality_assessment import submit_quality_feedback
+        from backend.app.exceptions import VoiceNoteError
 
         vne = VoiceNoteError(error_code="FB_ERR", message="저장 실패", status_code=500)
         mock_db = AsyncMock()
@@ -334,8 +331,8 @@ class TestQualityAssessmentDirectCalls:
 
     @pytest.mark.asyncio
     async def test_list_feedback_vne(self):
-        from backend.app.exceptions import VoiceNoteError
         from backend.app.api.v1.audio.quality_assessment import list_quality_feedback
+        from backend.app.exceptions import VoiceNoteError
 
         vne = VoiceNoteError(error_code="LIST_ERR", message="조회 실패", status_code=500)
         with patch(
@@ -347,8 +344,8 @@ class TestQualityAssessmentDirectCalls:
 
     @pytest.mark.asyncio
     async def test_quality_trends_vne(self):
-        from backend.app.exceptions import VoiceNoteError
         from backend.app.api.v1.audio.quality_assessment import get_quality_trends
+        from backend.app.exceptions import VoiceNoteError
 
         vne = VoiceNoteError(error_code="TREND_ERR", message="추세 분석 실패", status_code=500)
         with patch(

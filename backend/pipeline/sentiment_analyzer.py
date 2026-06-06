@@ -23,8 +23,16 @@ logger = get_logger(__name__)
 
 # 지원 감정 레이블
 EMOTION_LABELS = [
-    "joy", "satisfaction", "interest", "neutral",
-    "frustration", "anger", "sadness", "surprise", "anxiety", "confusion",
+    "joy",
+    "satisfaction",
+    "interest",
+    "neutral",
+    "frustration",
+    "anger",
+    "sadness",
+    "surprise",
+    "anxiety",
+    "confusion",
 ]
 
 VALID_SENTIMENTS = {"positive", "neutral", "negative"}
@@ -49,9 +57,7 @@ class SentimentAnalyzer:
             text = seg.get("text", "")
             start = seg.get("start", 0.0)
             end = seg.get("end", 0.0)
-            dialogue_lines.append(
-                f"[{start:.1f}-{end:.1f}] {speaker}: {text}"
-            )
+            dialogue_lines.append(f"[{start:.1f}-{end:.1f}] {speaker}: {text}")
         dialogue_section = "\n".join(dialogue_lines) if dialogue_lines else "대화 내용 없음"
 
         # 화자 정보
@@ -95,11 +101,11 @@ class SentimentAnalyzer:
             cleaned = response_text.strip()
             if cleaned.startswith("```"):
                 first_newline = cleaned.index("\n")
-                cleaned = cleaned[first_newline + 1:]
+                cleaned = cleaned[first_newline + 1 :]
                 if cleaned.rstrip().endswith("```"):
                     cleaned = cleaned.rstrip()[:-3].rstrip()
 
-            cleaned = re.sub(r',\s*([}\]])', r'\1', cleaned)
+            cleaned = re.sub(r",\s*([}\]])", r"\1", cleaned)
             data = json.loads(cleaned)
 
             # 세그먼트 파싱
@@ -111,15 +117,17 @@ class SentimentAnalyzer:
                 sentiment = seg.get("sentiment", "neutral")
                 if sentiment not in VALID_SENTIMENTS:
                     sentiment = "neutral"
-                segments.append(SentimentSegment(
-                    start=seg.get("start", 0.0),
-                    end=seg.get("end", 0.0),
-                    speaker=seg.get("speaker", "알 수 없음"),
-                    text=seg.get("text", ""),
-                    sentiment=sentiment,
-                    emotion=seg.get("emotion", "neutral"),
-                    confidence=min(1.0, max(0.0, seg.get("confidence", 0.0))),
-                ))
+                segments.append(
+                    SentimentSegment(
+                        start=seg.get("start", 0.0),
+                        end=seg.get("end", 0.0),
+                        speaker=seg.get("speaker", "알 수 없음"),
+                        text=seg.get("text", ""),
+                        sentiment=sentiment,
+                        emotion=seg.get("emotion", "neutral"),
+                        confidence=min(1.0, max(0.0, seg.get("confidence", 0.0))),
+                    )
+                )
 
             # 화자별 통계 계산
             speakers = self._compute_speaker_stats(segments)
@@ -167,15 +175,17 @@ class SentimentAnalyzer:
             emotion_counter = Counter(s.emotion for s in segs)
             dominant = emotion_counter.most_common(1)[0][0] if emotion_counter else "neutral"
 
-            results.append(SpeakerSentiment(
-                speaker=speaker,
-                total_segments=total,
-                positive_ratio=round(pos / total, 3) if total else 0.0,
-                neutral_ratio=round(neu / total, 3) if total else 0.0,
-                negative_ratio=round(neg / total, 3) if total else 0.0,
-                dominant_emotion=dominant,
-                emotion_distribution=dict(emotion_counter),
-            ))
+            results.append(
+                SpeakerSentiment(
+                    speaker=speaker,
+                    total_segments=total,
+                    positive_ratio=round(pos / total, 3) if total else 0.0,
+                    neutral_ratio=round(neu / total, 3) if total else 0.0,
+                    negative_ratio=round(neg / total, 3) if total else 0.0,
+                    dominant_emotion=dominant,
+                    emotion_distribution=dict(emotion_counter),
+                )
+            )
 
         return results
 

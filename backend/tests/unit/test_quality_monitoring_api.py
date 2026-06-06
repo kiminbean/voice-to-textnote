@@ -2,7 +2,6 @@
 SPEC-QUALITY-MONITOR-001: 실시간 품질 모니터링 / 피드백 / 추세 API 테스트
 """
 
-
 import pytest
 import pytest_asyncio
 from fastapi import FastAPI
@@ -110,9 +109,7 @@ async def test_live_quality_score_404_when_no_minutes(db_engine, seeded_db):
     """빈 회의록은 404."""
     app = _make_app(db_engine)
     with TestClient(app) as client:
-        resp = client.get(
-            f"/api/v1/quality/{seeded_db['empty_task_id']}/quality-score"
-        )
+        resp = client.get(f"/api/v1/quality/{seeded_db['empty_task_id']}/quality-score")
     assert resp.status_code == 404
 
 
@@ -191,9 +188,7 @@ async def test_feedback_summary_aggregates(db_engine, seeded_db):
                 json={"rating": rating, "category": cat},
             )
 
-        resp = client.get(
-            f"/api/v1/quality/{seeded_db['task_id']}/quality-feedback"
-        )
+        resp = client.get(f"/api/v1/quality/{seeded_db['task_id']}/quality-feedback")
 
     assert resp.status_code == 200
     body = resp.json()
@@ -214,9 +209,7 @@ async def test_trends_insufficient_data(db_engine, seeded_db):
     """스냅샷 없을 때 insufficient_data."""
     app = _make_app(db_engine)
     with TestClient(app) as client:
-        resp = client.get(
-            f"/api/v1/quality/{seeded_db['task_id']}/quality-trends"
-        )
+        resp = client.get(f"/api/v1/quality/{seeded_db['task_id']}/quality-trends")
 
     assert resp.status_code == 200
     body = resp.json()
@@ -231,14 +224,10 @@ async def test_trends_with_snapshots(db_engine, seeded_db):
     with TestClient(app) as client:
         # 여러 번 호출해 스냅샷 누적
         for _ in range(3):
-            r = client.get(
-                f"/api/v1/quality/{seeded_db['task_id']}/quality-score?persist=true"
-            )
+            r = client.get(f"/api/v1/quality/{seeded_db['task_id']}/quality-score?persist=true")
             assert r.status_code == 200
 
-        resp = client.get(
-            f"/api/v1/quality/{seeded_db['task_id']}/quality-trends"
-        )
+        resp = client.get(f"/api/v1/quality/{seeded_db['task_id']}/quality-trends")
 
     assert resp.status_code == 200
     body = resp.json()
@@ -254,12 +243,8 @@ async def test_score_persist_false_does_not_create_snapshot(db_engine, seeded_db
     """persist=false 시 스냅샷 미생성 → trends는 여전히 비어있음."""
     app = _make_app(db_engine)
     with TestClient(app) as client:
-        client.get(
-            f"/api/v1/quality/{seeded_db['task_id']}/quality-score?persist=false"
-        )
-        resp = client.get(
-            f"/api/v1/quality/{seeded_db['task_id']}/quality-trends"
-        )
+        client.get(f"/api/v1/quality/{seeded_db['task_id']}/quality-score?persist=false")
+        resp = client.get(f"/api/v1/quality/{seeded_db['task_id']}/quality-trends")
 
     body = resp.json()
     assert body["points_count"] == 0

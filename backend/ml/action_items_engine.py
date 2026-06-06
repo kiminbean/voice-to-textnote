@@ -72,8 +72,13 @@ _KO_DEADLINE_PATTERNS = [
 
 _EN_DEADLINE_PATTERNS = [
     re.compile(r"by\s+(?:the\s+)?(?:end\s+of\s+)?(\w+\s+\d{1,2}(?:st|nd|rd|th)?)", re.IGNORECASE),
-    re.compile(r"(?:deadline|due)[：:\s]*(\d{4}[/-]\d{1,2}[/-]\d{1,2}|\w+\s+\d{1,2})", re.IGNORECASE),
-    re.compile(r"(?:by|before|until)\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)", re.IGNORECASE),
+    re.compile(
+        r"(?:deadline|due)[：:\s]*(\d{4}[/-]\d{1,2}[/-]\d{1,2}|\w+\s+\d{1,2})", re.IGNORECASE
+    ),
+    re.compile(
+        r"(?:by|before|until)\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)",
+        re.IGNORECASE,
+    ),
     re.compile(r"(tomorrow|today|next\s+week|this\s+week|end\s+of\s+month)", re.IGNORECASE),
 ]
 

@@ -24,6 +24,7 @@ from backend.schemas.bookmark import (
 def client():
     """TestClient for bookmark endpoints"""
     from backend.app.main import app
+
     return TestClient(app)
 
 
@@ -88,7 +89,7 @@ class TestEnhancedBookmarkAPI:
         BookmarkBulkOperation(
             operation="delete",
             bookmark_ids=[bookmark.id for bookmark in sample_bookmarks[:3]],
-            data=None
+            data=None,
         )
 
         # 실제 테스트를 위해서는 데이터베이스 모킹이 필요
@@ -104,7 +105,7 @@ class TestEnhancedBookmarkAPI:
         BookmarkBulkOperation(
             operation="update_category",
             bookmark_ids=[bookmark.id for bookmark in sample_bookmarks[:2]],
-            data={"category": BookmarkCategory.IMPORTANT}
+            data={"category": BookmarkCategory.IMPORTANT},
         )
 
         # 실제 테스트를 위해서는 데이터베이스 모킹이 필요
@@ -132,7 +133,7 @@ class TestEnhancedBookmarkAPI:
                 BookmarkPriority.LOW: 3,
             },
             tag_counts={"common": 10, "tag0": 1, "tag1": 1},
-            recent_bookmarks=sample_bookmarks[:3]
+            recent_bookmarks=sample_bookmarks[:3],
         )
 
         assert summary.total_count == 10
@@ -159,7 +160,7 @@ class TestEnhancedBookmarkAPI:
             page=1,
             page_size=50,
             sort_by="created_at",
-            sort_order="desc"
+            sort_order="desc",
         )
 
         assert search_request.query == "important"
@@ -189,7 +190,7 @@ class TestEnhancedBookmarkAPI:
             tags=["old", "unused"],
             dry_run=True,
             duplicates_only=False,
-            empty_only=True
+            empty_only=True,
         )
 
         assert cleanup_request.older_than_days == 30

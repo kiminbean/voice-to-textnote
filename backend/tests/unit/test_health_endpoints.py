@@ -55,9 +55,7 @@ def mock_diarization_engine():
 
 
 @pytest.fixture
-def client_full_deps(
-    mock_redis_healthy, mock_whisper_engine, mock_diarization_engine
-):
+def client_full_deps(mock_redis_healthy, mock_whisper_engine, mock_diarization_engine):
     """모든 의존성이 오버라이드된 테스트 클라이언트"""
     from backend.app.dependencies import (
         get_diarization_engine,
@@ -254,9 +252,7 @@ class TestHealthCheckDegraded:
 
     def test_celery_status_unknown_on_exception(self, client_full_deps):
         """Celery 상태 조회 실패 시 unknown 반환"""
-        with patch(
-            "backend.app.api.v1.admin.health.celery_app.control.inspect"
-        ) as mock_inspect:
+        with patch("backend.app.api.v1.admin.health.celery_app.control.inspect") as mock_inspect:
             mock_inspect.side_effect = Exception("broker error")
 
             response = client_full_deps.get("/api/v1/health")

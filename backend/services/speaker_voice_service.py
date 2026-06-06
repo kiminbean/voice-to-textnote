@@ -52,8 +52,15 @@ def _get_max_samples_per_profile() -> int:
 
 # 분석 가능한 오디오 확장자
 _ALLOWED_EXTENSIONS = {
-    ".wav", ".mp3", ".m4a", ".flac", ".ogg",
-    ".opus", ".wma", ".aac", ".webm",
+    ".wav",
+    ".mp3",
+    ".m4a",
+    ".flac",
+    ".ogg",
+    ".opus",
+    ".wma",
+    ".aac",
+    ".webm",
 }
 
 
@@ -71,9 +78,7 @@ class SpeakerVoiceService:
         result = await session.execute(stmt)
         speaker = result.scalar_one_or_none()
         if speaker is None or speaker.user_id != user_id:
-            raise HTTPException(
-                status_code=404, detail="화자 프로필을 찾을 수 없습니다"
-            )
+            raise HTTPException(status_code=404, detail="화자 프로필을 찾을 수 없습니다")
         return speaker
 
     async def _load_or_create_voice_profile(
@@ -118,9 +123,7 @@ class SpeakerVoiceService:
         n = voice.sample_count
         voice.avg_energy_dbfs = self._running_avg(voice.avg_energy_dbfs, n, sample.avg_dbfs)
         voice.avg_rms_dbfs = self._running_avg(voice.avg_rms_dbfs, n, sample.rms_dbfs)
-        voice.avg_speech_ratio = self._running_avg(
-            voice.avg_speech_ratio, n, sample.speech_ratio
-        )
+        voice.avg_speech_ratio = self._running_avg(voice.avg_speech_ratio, n, sample.speech_ratio)
         voice.avg_sample_rate = self._running_avg(
             voice.avg_sample_rate, n, float(sample.sample_rate) if sample.sample_rate else None
         )
@@ -267,9 +270,7 @@ class SpeakerVoiceService:
         result = await session.execute(stmt)
         voice = result.scalar_one_or_none()
         if voice is None:
-            raise HTTPException(
-                status_code=404, detail="음성 프로파일이 존재하지 않습니다"
-            )
+            raise HTTPException(status_code=404, detail="음성 프로파일이 존재하지 않습니다")
         return voice
 
     @staticmethod

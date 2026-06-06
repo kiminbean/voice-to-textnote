@@ -87,7 +87,10 @@ class TestWhisperEngineLoad:
         from backend.ml.stt_engine import WhisperEngine
 
         with patch.dict(sys.modules, {"mlx_whisper": _make_mock_mlx()}):
-            with patch("platform.system", return_value="Darwin"), patch.object(WhisperEngine, "_detect_device", return_value="mps"):
+            with (
+                patch("platform.system", return_value="Darwin"),
+                patch.object(WhisperEngine, "_detect_device", return_value="mps"),
+            ):
                 engine = WhisperEngine.get_instance()
                 engine.load()
                 assert engine.is_loaded is True
@@ -97,7 +100,10 @@ class TestWhisperEngineLoad:
         from backend.ml.stt_engine import WhisperEngine
 
         with patch.dict(sys.modules, {"mlx_whisper": _make_mock_mlx()}):
-            with patch("platform.system", return_value="Darwin"), patch.object(WhisperEngine, "_detect_device", return_value="mps"):
+            with (
+                patch("platform.system", return_value="Darwin"),
+                patch.object(WhisperEngine, "_detect_device", return_value="mps"),
+            ):
                 engine = WhisperEngine.get_instance()
                 engine.load()
                 assert engine.load_time_seconds is not None
@@ -108,7 +114,10 @@ class TestWhisperEngineLoad:
         from backend.ml.stt_engine import WhisperEngine
 
         with patch.dict(sys.modules, {"mlx_whisper": _make_mock_mlx()}):
-            with patch("platform.system", return_value="Darwin"), patch.object(WhisperEngine, "_detect_device", return_value="mps"):
+            with (
+                patch("platform.system", return_value="Darwin"),
+                patch.object(WhisperEngine, "_detect_device", return_value="mps"),
+            ):
                 engine = WhisperEngine.get_instance()
                 engine.load()
                 assert engine.is_loaded is True
@@ -158,7 +167,10 @@ class TestWhisperEngineTranscribe:
 
         mock_mlx = _make_mock_mlx(mock_result)
         with patch.dict(sys.modules, {"mlx_whisper": mock_mlx}):
-            with patch("platform.system", return_value="Darwin"), patch.object(WhisperEngine, "_detect_device", return_value="mps"):
+            with (
+                patch("platform.system", return_value="Darwin"),
+                patch.object(WhisperEngine, "_detect_device", return_value="mps"),
+            ):
                 engine = WhisperEngine.get_instance()
                 engine.load()
                 result = engine.transcribe(test_audio_file)
@@ -173,7 +185,10 @@ class TestWhisperEngineTranscribe:
 
         mock_mlx = _make_mock_mlx({"segments": [], "language": "ko"})
         with patch.dict(sys.modules, {"mlx_whisper": mock_mlx}):
-            with patch("platform.system", return_value="Darwin"), patch.object(WhisperEngine, "_detect_device", return_value="mps"):
+            with (
+                patch("platform.system", return_value="Darwin"),
+                patch.object(WhisperEngine, "_detect_device", return_value="mps"),
+            ):
                 engine = WhisperEngine.get_instance()
                 engine.load()
                 engine.transcribe(test_audio_file)
@@ -189,7 +204,10 @@ class TestWhisperEngineTranscribe:
 
         mock_mlx = _make_mock_mlx({"segments": [], "language": "en"})
         with patch.dict(sys.modules, {"mlx_whisper": mock_mlx}):
-            with patch("platform.system", return_value="Darwin"), patch.object(WhisperEngine, "_detect_device", return_value="mps"):
+            with (
+                patch("platform.system", return_value="Darwin"),
+                patch.object(WhisperEngine, "_detect_device", return_value="mps"),
+            ):
                 engine = WhisperEngine.get_instance()
                 engine.load()
                 engine.transcribe(test_audio_file, language="en")
@@ -212,7 +230,10 @@ class TestWhisperEngineTranscribe:
 
         mock_mlx = _make_mock_mlx({"segments": [expected_segment], "language": "ko"})
         with patch.dict(sys.modules, {"mlx_whisper": mock_mlx}):
-            with patch("platform.system", return_value="Darwin"), patch.object(WhisperEngine, "_detect_device", return_value="mps"):
+            with (
+                patch("platform.system", return_value="Darwin"),
+                patch.object(WhisperEngine, "_detect_device", return_value="mps"),
+            ):
                 engine = WhisperEngine.get_instance()
                 engine.load()
                 result = engine.transcribe(test_audio_file)
@@ -232,7 +253,10 @@ class TestWhisperEngineTranscribe:
 
         mock_mlx = _make_mock_mlx({"segments": segments, "language": "ko"})
         with patch.dict(sys.modules, {"mlx_whisper": mock_mlx}):
-            with patch("platform.system", return_value="Darwin"), patch.object(WhisperEngine, "_detect_device", return_value="mps"):
+            with (
+                patch("platform.system", return_value="Darwin"),
+                patch.object(WhisperEngine, "_detect_device", return_value="mps"),
+            ):
                 engine = WhisperEngine.get_instance()
                 engine.load()
                 result = engine.transcribe(test_audio_file)
@@ -247,7 +271,10 @@ class TestWhisperEngineTranscribe:
         mock_mlx = _make_mock_mlx()
         mock_mlx.transcribe.side_effect = RuntimeError("MLX 런타임 오류")
         with patch.dict(sys.modules, {"mlx_whisper": mock_mlx}):
-            with patch("platform.system", return_value="Darwin"), patch.object(WhisperEngine, "_detect_device", return_value="mps"):
+            with (
+                patch("platform.system", return_value="Darwin"),
+                patch.object(WhisperEngine, "_detect_device", return_value="mps"),
+            ):
                 engine = WhisperEngine.get_instance()
                 engine.load()
 
@@ -260,7 +287,10 @@ class TestWhisperEngineTranscribe:
 
         mock_mlx = _make_mock_mlx({"segments": [], "language": "ko"})
         with patch.dict(sys.modules, {"mlx_whisper": mock_mlx}):
-            with patch("platform.system", return_value="Darwin"), patch.object(WhisperEngine, "_detect_device", return_value="mps"):
+            with (
+                patch("platform.system", return_value="Darwin"),
+                patch.object(WhisperEngine, "_detect_device", return_value="mps"),
+            ):
                 engine = WhisperEngine.get_instance()
                 # load() 호출 안 함
                 assert engine.is_loaded is False
@@ -430,7 +460,10 @@ class TestWhisperEngineProperties:
         from backend.ml.stt_engine import WhisperEngine
 
         with patch.dict(sys.modules, {"mlx_whisper": _make_mock_mlx()}):
-            with patch("platform.system", return_value="Darwin"), patch.object(WhisperEngine, "_detect_device", return_value="mps"):
+            with (
+                patch("platform.system", return_value="Darwin"),
+                patch.object(WhisperEngine, "_detect_device", return_value="mps"),
+            ):
                 engine = WhisperEngine.get_instance()
                 engine.load()
                 assert engine.load_time_seconds is not None
@@ -562,9 +595,7 @@ class TestFasterWhisperBackend:
         # 매핑에 없는 이름은 그대로 반환 (자유 형식 모델 지원)
         assert _resolve_faster_whisper_model("custom/my-model") == "custom/my-model"
 
-    def test_faster_whisper_transcribe_returns_compatible_format(
-        self, test_audio_file: Path
-    ):
+    def test_faster_whisper_transcribe_returns_compatible_format(self, test_audio_file: Path):
         """faster-whisper 출력이 openai-whisper와 호환되는 형식인지 검증"""
         from backend.ml.stt_engine import WhisperEngine
 
@@ -602,9 +633,7 @@ class TestFasterWhisperBackend:
         assert result["segments"][0]["end"] == 5.6
         assert "회의" in result["segments"][0]["text"]
 
-    def test_faster_whisper_transcribe_calls_with_optimization_flags(
-        self, test_audio_file: Path
-    ):
+    def test_faster_whisper_transcribe_calls_with_optimization_flags(self, test_audio_file: Path):
         """transcribe() 호출 시 속도 최적화 옵션이 적용되는지 확인"""
         from backend.ml.stt_engine import WhisperEngine
 

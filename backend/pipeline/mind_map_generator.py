@@ -75,7 +75,9 @@ class MindMapGenerator:
             data = json.loads(_clean_json_response(response_text))
             root = MindMapNode.model_validate(data.get("root"))
             raw_edges = data.get("edges", [])
-            edges = [MindMapEdge.model_validate(edge) for edge in raw_edges if isinstance(edge, dict)]
+            edges = [
+                MindMapEdge.model_validate(edge) for edge in raw_edges if isinstance(edge, dict)
+            ]
             return root, edges
         except (json.JSONDecodeError, TypeError, ValidationError, ValueError) as exc:
             logger.warning(
@@ -133,7 +135,7 @@ def _clean_json_response(response_text: str) -> str:
     cleaned = response_text.strip()
     if cleaned.startswith("```"):
         first_newline = cleaned.index("\n")
-        cleaned = cleaned[first_newline + 1:]
+        cleaned = cleaned[first_newline + 1 :]
         if cleaned.rstrip().endswith("```"):
             cleaned = cleaned.rstrip()[:-3].rstrip()
 

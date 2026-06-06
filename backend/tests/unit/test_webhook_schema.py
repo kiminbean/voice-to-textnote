@@ -26,7 +26,7 @@ class TestWebhookEndpointCreate:
         payload = WebhookEndpointCreate(
             url="https://example.com/webhook",
             events=["minutes.completed"],
-            description="테스트 웹훅"
+            description="테스트 웹훅",
         )
         assert payload.url == "https://example.com/webhook"
         assert payload.events == ["minutes.completed"]
@@ -41,7 +41,7 @@ class TestWebhookEndpointCreate:
         """중복 이벤트 자동 제거"""
         payload = WebhookEndpointCreate(
             url="https://example.com/webhook",
-            events=["minutes.completed", "minutes.completed", "transcription.completed"]
+            events=["minutes.completed", "minutes.completed", "transcription.completed"],
         )
         # 중복 제거되고 순서 유지
         assert payload.events == ["minutes.completed", "transcription.completed"]
@@ -49,19 +49,13 @@ class TestWebhookEndpointCreate:
     def test_webhook_create_invalid_event_type(self):
         """지원하지 않는 이벤트 타입으로 ValidationError"""
         with pytest.raises(ValidationError) as exc_info:
-            WebhookEndpointCreate(
-                url="https://example.com/webhook",
-                events=["invalid.event"]
-            )
+            WebhookEndpointCreate(url="https://example.com/webhook", events=["invalid.event"])
         errors = exc_info.value.errors()
         assert any("지원하지 않는 이벤트 타입" in str(error["msg"]) for error in errors)
 
     def test_webhook_create_with_secret(self):
         """secret 포함 생성"""
-        payload = WebhookEndpointCreate(
-            url="https://example.com/webhook",
-            secret="test-secret-key"
-        )
+        payload = WebhookEndpointCreate(url="https://example.com/webhook", secret="test-secret-key")
         assert payload.secret == "test-secret-key"
 
     def test_webhook_create_url_too_long(self):
@@ -90,7 +84,7 @@ class TestWebhookEndpointUpdate:
             events=["minutes.completed"],
             secret="new-secret",
             is_active=True,
-            description="수정된 설명"
+            description="수정된 설명",
         )
         assert payload.url == "https://example.com/updated"
         assert payload.events == ["minutes.completed"]
@@ -209,8 +203,7 @@ class TestWebhookEndpointListResponse:
         mock_endpoint.updated_at = datetime(2025, 1, 2, 0, 0, 0)
 
         response = WebhookEndpointListResponse(
-            items=[WebhookEndpointResponse.from_orm_masked(mock_endpoint)],
-            total=1
+            items=[WebhookEndpointResponse.from_orm_masked(mock_endpoint)], total=1
         )
 
         assert len(response.items) == 1
@@ -235,7 +228,7 @@ class TestWebhookPingResponse:
             url="https://example.com/webhook",
             status_code=200,
             success=True,
-            message="Success"
+            message="Success",
         )
 
         assert response.webhook_id == webhook_id
@@ -252,7 +245,7 @@ class TestWebhookPingResponse:
             url="https://example.com/webhook",
             status_code=500,
             success=False,
-            message="Connection failed"
+            message="Connection failed",
         )
 
         assert response.success is False
@@ -267,7 +260,7 @@ class TestWebhookPingResponse:
             url="https://example.com/webhook",
             status_code=None,
             success=False,
-            message="Timeout"
+            message="Timeout",
         )
 
         assert response.status_code is None

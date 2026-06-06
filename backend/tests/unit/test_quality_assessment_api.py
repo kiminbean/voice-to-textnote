@@ -9,7 +9,6 @@ SPEC-QUALITY-001: 회의록 품질 평가 API 추가 테스트
   - Helper: _extract_minutes_text, _extract_minutes_title, _extract_minutes_content
 """
 
-
 from unittest.mock import AsyncMock
 
 import pytest_asyncio
@@ -100,17 +99,22 @@ async def seeded_db(db_engine):
 
 def _make_app(db_engine, svc_mock=None):
     from backend.app.api.v1.audio.quality_assessment import get_quality_service, router
+
     app = FastAPI()
     register_exception_handlers(app)
     app.include_router(router, prefix="/api/v1")
     factory = async_sessionmaker(db_engine, expire_on_commit=False)
+
     async def override_db():
         async with factory() as session:
             yield session
+
     app.dependency_overrides[get_db_session] = override_db
     if svc_mock is not None:
+
         async def override_svc():
             return svc_mock
+
         app.dependency_overrides[get_quality_service] = override_svc
     return app
 
@@ -122,10 +126,14 @@ def _mock_assessment(task_id=None):
         QualityAssessmentResponse,
         QualityScore,
     )
+
     return QualityAssessmentResponse(
         task_id=task_id or "test",
         assessment_summary=AssessmentSummary(
-            overall_score=75.0, grade="B+", total_issues=2, critical_issues=0,
+            overall_score=75.0,
+            grade="B+",
+            total_issues=2,
+            critical_issues=0,
         ),
         category_scores=[
             QualityScore(category="completeness", score=80.0, description="양호"),
@@ -138,10 +146,14 @@ def _mock_assessment(task_id=None):
 def _mock_improvements():
     """개선 제안 mock."""
     from backend.schemas.quality import ImprovementSuggestion, ImprovementType, Priority
+
     return [
         ImprovementSuggestion(
-            id="imp-1", type=ImprovementType.STRUCTURE, priority=Priority.HIGH,
-            title="구조 개선", description="회의록 구조를 체계화하세요.",
+            id="imp-1",
+            type=ImprovementType.STRUCTURE,
+            priority=Priority.HIGH,
+            title="구조 개선",
+            description="회의록 구조를 체계화하세요.",
         ),
     ]
 
@@ -251,16 +263,10 @@ class TestGetImprovementSuggestions:
         svc_mock = AsyncMock()
 
         app = _make_app(db_engine, svc_mock=svc_mock)
-        svc_mock.get_improvement_suggestions = AsyncMock(
-            return_value=_mock_improvements()
-        )
-        svc_mock.generate_action_plan = AsyncMock(
-            return_value=["1. 구조를 개선하세요."]
-        )
+        svc_mock.get_improvement_suggestions = AsyncMock(return_value=_mock_improvements())
+        svc_mock.generate_action_plan = AsyncMock(return_value=["1. 구조를 개선하세요."])
         with TestClient(app) as client:
-            resp = client.get(
-                f"/api/v1/quality/{seeded_db['task_id']}/improvements"
-            )
+            resp = client.get(f"/api/v1/quality/{seeded_db['task_id']}/improvements")
         assert resp.status_code == 200
         body = resp.json()
         assert body["task_id"] == seeded_db["task_id"]
@@ -278,9 +284,7 @@ class TestGetImprovementSuggestions:
         svc_mock = AsyncMock()
 
         app = _make_app(db_engine, svc_mock=svc_mock)
-        svc_mock.get_improvement_suggestions = AsyncMock(
-            return_value=_mock_improvements()
-        )
+        svc_mock.get_improvement_suggestions = AsyncMock(return_value=_mock_improvements())
         svc_mock.generate_action_plan = AsyncMock(return_value=[])
         with TestClient(app) as client:
             resp = client.get(
@@ -293,13 +297,9 @@ class TestGetImprovementSuggestions:
         svc_mock = AsyncMock()
 
         app = _make_app(db_engine, svc_mock=svc_mock)
-        svc_mock.get_improvement_suggestions = AsyncMock(
-            side_effect=RuntimeError("AI 장애")
-        )
+        svc_mock.get_improvement_suggestions = AsyncMock(side_effect=RuntimeError("AI 장애"))
         with TestClient(app) as client:
-            resp = client.get(
-                f"/api/v1/quality/{seeded_db['task_id']}/improvements"
-            )
+            resp = client.get(f"/api/v1/quality/{seeded_db['task_id']}/improvements")
         assert resp.status_code == 500
 
 

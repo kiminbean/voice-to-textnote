@@ -50,9 +50,7 @@ class MinutesVersion(Base):
         nullable=True,
     )
 
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, default=_utcnow
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)
 
     def __repr__(self) -> str:
         return (

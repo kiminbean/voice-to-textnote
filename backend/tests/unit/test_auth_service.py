@@ -25,6 +25,7 @@ from backend.db.auth_models import RefreshToken, User
 def auth_service():
     """AuthService 인스턴스"""
     from backend.services.auth_service import AuthService
+
     return AuthService()
 
 
@@ -105,6 +106,7 @@ def test_decode_access_token_valid(auth_service):
 def test_decode_access_token_expired(auth_service):
     """만료된 JWT 디코딩 시 예외 발생"""
     from fastapi import HTTPException
+
     user_id = str(uuid.uuid4())
     # 1초 전에 만료된 토큰 생성
     expired_token = auth_service.create_access_token(
@@ -256,6 +258,7 @@ async def test_login_nonexistent_email(auth_service, mock_session):
 async def test_refresh_token_rotation(auth_service, mock_session):
     """refresh token 갱신 시 새 토큰 쌍 반환 (rotation)"""
     import hashlib
+
     raw_token = "valid-refresh-token-string"
     token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
 
@@ -298,6 +301,7 @@ async def test_refresh_token_rotation(auth_service, mock_session):
 async def test_logout_revokes_token(auth_service, mock_session):
     """로그아웃 시 refresh token 폐기"""
     import hashlib
+
     raw_token = "logout-token-string"
     token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
 

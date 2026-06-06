@@ -174,7 +174,8 @@ class TestMergeSample:
 
     def test_first_sample_sets_all(self, svc):
         voice = SpeakerVoiceProfile(
-            sample_count=0, total_duration_seconds=0.0,
+            sample_count=0,
+            total_duration_seconds=0.0,
         )
         sample = _make_sample()
         svc._merge_sample(voice, sample)
@@ -267,7 +268,10 @@ class TestCreateOrReplaceFromSamples:
 
     @pytest.mark.asyncio
     async def test_empty_samples_creates_empty_profile(
-        self, svc, db_session, seeded_speaker,
+        self,
+        svc,
+        db_session,
+        seeded_speaker,
     ):
         voice = await svc.create_or_replace_from_samples(
             session=db_session,
@@ -291,7 +295,10 @@ class TestCreateOrReplaceFromSamples:
 
     @pytest.mark.asyncio
     async def test_sample_limit_exceeded_raises_409(
-        self, svc, db_session, seeded_speaker,
+        self,
+        svc,
+        db_session,
+        seeded_speaker,
     ):
         """환경변수로 샘플 한도를 1로 설정 후 2개 샘플 주입 → 409."""
         with patch(
@@ -490,7 +497,10 @@ class TestAnalyzeUpload:
 
     @pytest.mark.asyncio
     async def test_analyze_audio_error_raises_422(
-        self, svc, db_session, seeded_speaker,
+        self,
+        svc,
+        db_session,
+        seeded_speaker,
     ):
         upload = MagicMock()
         upload.filename = "corrupt.wav"
@@ -525,7 +535,10 @@ class TestAnalyzeUpload:
 
     @pytest.mark.asyncio
     async def test_sample_limit_reached_raises_409(
-        self, svc, db_session, seeded_speaker,
+        self,
+        svc,
+        db_session,
+        seeded_speaker,
     ):
         """이미 샘플 한도 도달 상태에서 업로드 → 409."""
         mock_result = _make_analysis_result()
@@ -533,12 +546,15 @@ class TestAnalyzeUpload:
         upload.filename = "voice.wav"
         upload.read = AsyncMock(side_effect=[b"data", b""])
 
-        with patch(
-            "backend.services.speaker_voice_service._get_max_samples_per_profile",
-            return_value=0,
-        ), patch(
-            "backend.ml.audio_analysis_engine.analyze_audio",
-            return_value=mock_result,
+        with (
+            patch(
+                "backend.services.speaker_voice_service._get_max_samples_per_profile",
+                return_value=0,
+            ),
+            patch(
+                "backend.ml.audio_analysis_engine.analyze_audio",
+                return_value=mock_result,
+            ),
         ):
             with pytest.raises(Exception) as exc_info:
                 await svc.analyze_upload(

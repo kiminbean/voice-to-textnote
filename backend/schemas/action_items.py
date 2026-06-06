@@ -3,7 +3,6 @@
 SPEC-ACTION-001: 회의록에서 할 일/액션 아이템 자동 추출
 """
 
-
 from pydantic import BaseModel, Field
 
 

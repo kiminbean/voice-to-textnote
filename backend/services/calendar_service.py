@@ -106,10 +106,7 @@ class CalendarService:
             info["participants"].add(speaker)
 
             text = segment.get("text", "")
-            if any(
-                kw in text.lower()
-                for kw in ("할 일", "해야 할 것", "action", "todo", "task")
-            ):
+            if any(kw in text.lower() for kw in ("할 일", "해야 할 것", "action", "todo", "task")):
                 info["action_items"].append(f"- {text.strip()}")
 
         info["participants"] = list(info["participants"])

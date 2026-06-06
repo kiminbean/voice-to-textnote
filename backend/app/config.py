@@ -181,7 +181,9 @@ class Settings(BaseSettings):
 
     # REQ-SEC-009/REQ-SEC-010: CORS 설정
     # 허용할 HTTP 메서드 목록 (와일드카드 금지)
-    cors_allow_methods: list[str] = Field(default_factory=lambda: ["GET", "POST", "PATCH", "DELETE"])
+    cors_allow_methods: list[str] = Field(
+        default_factory=lambda: ["GET", "POST", "PATCH", "DELETE"]
+    )
     # 허용할 Origins 목록 (기본: 로컬 개발 환경)
     cors_allow_origins: list[str] = Field(default_factory=lambda: list(_DEFAULT_CORS_ORIGINS))
 
@@ -236,7 +238,9 @@ class Settings(BaseSettings):
         if not origins:
             raise ValueError("cors_allow_origins는 최소 1개 이상의 origin을 포함해야 합니다")
         if "*" in origins:
-            raise ValueError("allow_credentials=True 환경에서는 cors_allow_origins에 '*'를 사용할 수 없습니다")
+            raise ValueError(
+                "allow_credentials=True 환경에서는 cors_allow_origins에 '*'를 사용할 수 없습니다"
+            )
 
         for origin in origins:
             parsed = urlparse(origin)

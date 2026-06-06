@@ -220,9 +220,7 @@ async def get_mind_map_result(
     data = json.loads(raw)
     root = MindMapNode.model_validate(data["root"]) if data.get("root") else None
     edges = [
-        MindMapEdge.model_validate(edge)
-        for edge in data.get("edges", [])
-        if isinstance(edge, dict)
+        MindMapEdge.model_validate(edge) for edge in data.get("edges", []) if isinstance(edge, dict)
     ]
 
     return MindMapResponse(

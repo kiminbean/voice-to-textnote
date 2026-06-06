@@ -21,6 +21,7 @@ from unittest.mock import MagicMock, patch
 # Helper Functions
 # =============================================================================
 
+
 def _make_mock_redis(active_count: int = 0):
     """Redis 동기 클라이언트 mock 생성"""
     mock = MagicMock()
@@ -44,12 +45,13 @@ def _make_mock_redis(active_count: int = 0):
 
 def _make_valid_wav_bytes() -> bytes:
     """유효한 WAV 파일 바이트 생성"""
-    return b"RIFF\x24\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x01\x00\x01\x00\x44\xAC\x00\x00\x44\xAC\x00\x00\x02\x00\x10\x00\x64\x61\x74\x61\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+    return b"RIFF\x24\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x01\x00\x01\x00\x44\xac\x00\x00\x44\xac\x00\x00\x02\x00\x10\x00\x64\x61\x74\x61\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
 
 
 # =============================================================================
 # Transcription Task Coverage Tests (lines 260-269, 303-304, 314-316, 331)
 # =============================================================================
+
 
 class TestTranscriptionTaskFinalCoverage:
     """transcription_task.py 커버리지 보완 테스트"""
@@ -70,15 +72,25 @@ class TestTranscriptionTaskFinalCoverage:
         def raise_timeout(*args, **kwargs):
             raise SoftTimeLimitExceeded()
 
-        with patch("backend.workers.tasks.transcription_task._get_redis", return_value=mock_redis), \
-             patch("backend.workers.tasks.transcription_task._increment_active_jobs"), \
-             patch("backend.workers.tasks.transcription_task._decrement_active_jobs"), \
-             patch("backend.workers.tasks.transcription_task._update_task_status"), \
-             patch("backend.workers.tasks.transcription_task._cache_result"), \
-             patch("backend.workers.tasks.transcription_task.get_audio_duration_seconds", return_value=30.0), \
-             patch("backend.workers.tasks.transcription_task.convert_and_normalize", return_value=audio_file), \
-             patch("backend.workers.tasks.transcription_task.split_audio", side_effect=raise_timeout), \
-             patch("backend.workers.tasks.transcription_task.settings") as mock_settings:
+        with (
+            patch("backend.workers.tasks.transcription_task._get_redis", return_value=mock_redis),
+            patch("backend.workers.tasks.transcription_task._increment_active_jobs"),
+            patch("backend.workers.tasks.transcription_task._decrement_active_jobs"),
+            patch("backend.workers.tasks.transcription_task._update_task_status"),
+            patch("backend.workers.tasks.transcription_task._cache_result"),
+            patch(
+                "backend.workers.tasks.transcription_task.get_audio_duration_seconds",
+                return_value=30.0,
+            ),
+            patch(
+                "backend.workers.tasks.transcription_task.convert_and_normalize",
+                return_value=audio_file,
+            ),
+            patch(
+                "backend.workers.tasks.transcription_task.split_audio", side_effect=raise_timeout
+            ),
+            patch("backend.workers.tasks.transcription_task.settings") as mock_settings,
+        ):
             mock_settings.cache_ttl_seconds = 604800
 
             result = transcription_task.apply(
@@ -109,17 +121,25 @@ class TestTranscriptionTaskFinalCoverage:
         def persist_failure(*args, **kwargs):
             raise Exception("DB connection failed")
 
-        with patch("backend.workers.tasks.transcription_task._get_redis", return_value=mock_redis), \
-             patch("backend.workers.tasks.transcription_task._increment_active_jobs"), \
-             patch("backend.workers.tasks.transcription_task._decrement_active_jobs"), \
-             patch("backend.workers.tasks.transcription_task._update_task_status"), \
-             patch("backend.workers.tasks.transcription_task._cache_result"), \
-             patch("backend.workers.tasks.transcription_task.get_audio_duration_seconds", return_value=30.0), \
-             patch("backend.workers.tasks.transcription_task.convert_and_normalize", return_value=audio_file), \
-             patch("backend.workers.tasks.transcription_task.split_audio", return_value=[]), \
-             patch("backend.workers.tasks.transcription_task.WhisperEngine") as mock_engine_cls, \
-             patch("backend.workers.tasks.transcription_task.settings") as mock_settings, \
-             patch("backend.services.sync_service.persist_task_result", side_effect=persist_failure):
+        with (
+            patch("backend.workers.tasks.transcription_task._get_redis", return_value=mock_redis),
+            patch("backend.workers.tasks.transcription_task._increment_active_jobs"),
+            patch("backend.workers.tasks.transcription_task._decrement_active_jobs"),
+            patch("backend.workers.tasks.transcription_task._update_task_status"),
+            patch("backend.workers.tasks.transcription_task._cache_result"),
+            patch(
+                "backend.workers.tasks.transcription_task.get_audio_duration_seconds",
+                return_value=30.0,
+            ),
+            patch(
+                "backend.workers.tasks.transcription_task.convert_and_normalize",
+                return_value=audio_file,
+            ),
+            patch("backend.workers.tasks.transcription_task.split_audio", return_value=[]),
+            patch("backend.workers.tasks.transcription_task.WhisperEngine") as mock_engine_cls,
+            patch("backend.workers.tasks.transcription_task.settings") as mock_settings,
+            patch("backend.services.sync_service.persist_task_result", side_effect=persist_failure),
+        ):
             mock_settings.results_dir = tmp_path
             mock_settings.cache_ttl_seconds = 604800
 
@@ -145,7 +165,6 @@ class TestTranscriptionTaskFinalCoverage:
     def test_max_retries_exceeded_error_handling(self):
         """Lines 314-316: MaxRetriesExceededError 및 재시도 로직 검증"""
         from celery.exceptions import MaxRetriesExceededError
-
 
         # Celery task의 재시도 메커니즘 테스트
         # 실제 환경에서는 self.retry()가 호출되고, 최대 재시도 초과 시 MaxRetriesExceededError 발생
@@ -188,16 +207,27 @@ class TestTranscriptionTaskFinalCoverage:
         def track_cleanup(path):
             cleanup_called.append(path)
 
-        with patch("backend.workers.tasks.transcription_task._get_redis", return_value=mock_redis), \
-             patch("backend.workers.tasks.transcription_task._increment_active_jobs"), \
-             patch("backend.workers.tasks.transcription_task._decrement_active_jobs"), \
-             patch("backend.workers.tasks.transcription_task._update_task_status"), \
-             patch("backend.workers.tasks.transcription_task._cache_result"), \
-             patch("backend.workers.tasks.transcription_task.get_audio_duration_seconds", return_value=30.0), \
-             patch("backend.workers.tasks.transcription_task.convert_and_normalize", return_value=dia_wav), \
-             patch("backend.workers.tasks.transcription_task.split_audio", side_effect=raise_error), \
-             patch("backend.workers.tasks.transcription_task.cleanup_temp_file", side_effect=track_cleanup), \
-             patch("backend.workers.tasks.transcription_task.settings") as mock_settings:
+        with (
+            patch("backend.workers.tasks.transcription_task._get_redis", return_value=mock_redis),
+            patch("backend.workers.tasks.transcription_task._increment_active_jobs"),
+            patch("backend.workers.tasks.transcription_task._decrement_active_jobs"),
+            patch("backend.workers.tasks.transcription_task._update_task_status"),
+            patch("backend.workers.tasks.transcription_task._cache_result"),
+            patch(
+                "backend.workers.tasks.transcription_task.get_audio_duration_seconds",
+                return_value=30.0,
+            ),
+            patch(
+                "backend.workers.tasks.transcription_task.convert_and_normalize",
+                return_value=dia_wav,
+            ),
+            patch("backend.workers.tasks.transcription_task.split_audio", side_effect=raise_error),
+            patch(
+                "backend.workers.tasks.transcription_task.cleanup_temp_file",
+                side_effect=track_cleanup,
+            ),
+            patch("backend.workers.tasks.transcription_task.settings") as mock_settings,
+        ):
             mock_settings.cache_ttl_seconds = 604800
 
             try:
@@ -220,6 +250,7 @@ class TestTranscriptionTaskFinalCoverage:
 # Summary Task Coverage Tests (lines 219, 269-270, 305-306, 333-334)
 # =============================================================================
 
+
 class TestSummaryTaskFinalCoverage:
     """summary_task.py 커버리지 보완 테스트"""
 
@@ -229,8 +260,10 @@ class TestSummaryTaskFinalCoverage:
 
         mock_redis = MagicMock()
 
-        with patch("backend.workers.tasks.summary_task._get_redis", return_value=mock_redis), \
-             patch("backend.workers.tasks.summary_task.settings") as mock_settings:
+        with (
+            patch("backend.workers.tasks.summary_task._get_redis", return_value=mock_redis),
+            patch("backend.workers.tasks.summary_task.settings") as mock_settings,
+        ):
             mock_settings.summary_result_ttl = 86400
 
             result = {"task_id": "test-id", "status": "completed"}
@@ -265,10 +298,12 @@ class TestSummaryTaskFinalCoverage:
         mock_gen_cls = MagicMock()
         mock_gen_cls.return_value.generate_summary.side_effect = Exception("Summary failed")
 
-        with patch("backend.workers.tasks.summary_task._get_redis", return_value=mock_redis), \
-             patch("backend.workers.tasks.summary_task.settings") as mock_settings, \
-             patch("backend.workers.tasks.summary_task.SummaryGenerator", mock_gen_cls), \
-             patch("backend.workers.tasks.summary_task._unregister_active_job"):
+        with (
+            patch("backend.workers.tasks.summary_task._get_redis", return_value=mock_redis),
+            patch("backend.workers.tasks.summary_task.settings") as mock_settings,
+            patch("backend.workers.tasks.summary_task.SummaryGenerator", mock_gen_cls),
+            patch("backend.workers.tasks.summary_task._unregister_active_job"),
+        ):
             mock_settings.summary_result_ttl = 86400
             mock_settings.max_concurrent_summaries = 2
 
@@ -315,6 +350,7 @@ class TestSummaryTaskFinalCoverage:
 # =============================================================================
 # Minutes Task Coverage Tests (lines 211-214, 318-319, 346-347)
 # =============================================================================
+
 
 class TestMinutesTaskFinalCoverage:
     """minutes_task.py 커버리지 보완 테스트"""
@@ -377,6 +413,7 @@ class TestMinutesTaskFinalCoverage:
 # Sentiment Task Coverage Tests (lines 203-204)
 # =============================================================================
 
+
 class TestSentimentTaskFinalCoverage:
     """sentiment_task.py 커버리지 보완 테스트"""
 
@@ -404,10 +441,12 @@ class TestSentimentTaskFinalCoverage:
         mock_analyzer_cls = MagicMock()
         mock_analyzer_cls.return_value.analyze.side_effect = Exception("Analysis failed")
 
-        with patch("backend.workers.tasks.sentiment_task._get_redis", return_value=mock_redis), \
-             patch("backend.workers.tasks.sentiment_task.settings") as mock_settings, \
-             patch("backend.workers.tasks.sentiment_task.SentimentAnalyzer", mock_analyzer_cls), \
-             patch("backend.workers.tasks.sentiment_task._unregister_active_job"):
+        with (
+            patch("backend.workers.tasks.sentiment_task._get_redis", return_value=mock_redis),
+            patch("backend.workers.tasks.sentiment_task.settings") as mock_settings,
+            patch("backend.workers.tasks.sentiment_task.SentimentAnalyzer", mock_analyzer_cls),
+            patch("backend.workers.tasks.sentiment_task._unregister_active_job"),
+        ):
             mock_settings.summary_result_ttl = 86400
             mock_settings.openai_api_key = "sk-test"
             mock_settings.summary_model = "gpt-4o-mini"
@@ -422,6 +461,7 @@ class TestSentimentTaskFinalCoverage:
 # Diarization Task Coverage Tests (line 32)
 # =============================================================================
 
+
 class TestDiarizationTaskFinalCoverage:
     """diarization_task.py 커버리지 보완 테스트"""
 
@@ -430,7 +470,9 @@ class TestDiarizationTaskFinalCoverage:
         from backend.workers.tasks.diarization_task import _get_redis
 
         mock_client = MagicMock()
-        with patch("backend.workers.tasks.diarization_task.get_worker_redis", return_value=mock_client):
+        with patch(
+            "backend.workers.tasks.diarization_task.get_worker_redis", return_value=mock_client
+        ):
             result = _get_redis()
 
         assert result is mock_client
@@ -440,6 +482,7 @@ class TestDiarizationTaskFinalCoverage:
 # Mind Map Task Coverage Tests (line 24)
 # =============================================================================
 
+
 class TestMindMapTaskFinalCoverage:
     """mind_map_task.py 커버리지 보완 테스트"""
 
@@ -448,7 +491,9 @@ class TestMindMapTaskFinalCoverage:
         from backend.workers.tasks.mind_map_task import _get_redis
 
         mock_client = MagicMock()
-        with patch("backend.workers.tasks.mind_map_task.get_worker_redis", return_value=mock_client):
+        with patch(
+            "backend.workers.tasks.mind_map_task.get_worker_redis", return_value=mock_client
+        ):
             result = _get_redis()
 
         assert result is mock_client

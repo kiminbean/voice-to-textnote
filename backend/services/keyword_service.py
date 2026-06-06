@@ -747,8 +747,10 @@ class KeywordService:
             base = current_candidate or history_candidate  # pragma: no cover
             if base is None:
                 continue  # pragma: no cover
-            source = "current+history" if current_candidate and history_candidate else (
-                "current" if current_candidate else "history"
+            source = (
+                "current+history"
+                if current_candidate and history_candidate
+                else ("current" if current_candidate else "history")
             )
             frequency = 0
             if current_candidate:

@@ -65,9 +65,11 @@ class TestSummaryTaskCoverage:
         }
         mock_redis.get.return_value = json.dumps(existing_data)
 
-        with patch("backend.workers.tasks.summary_task._get_redis", return_value=mock_redis), \
-             patch("backend.workers.tasks.summary_task.publish_task_event_sync"), \
-             patch("backend.workers.tasks.summary_task.settings") as mock_settings:
+        with (
+            patch("backend.workers.tasks.summary_task._get_redis", return_value=mock_redis),
+            patch("backend.workers.tasks.summary_task.publish_task_event_sync"),
+            patch("backend.workers.tasks.summary_task.settings") as mock_settings,
+        ):
             mock_settings.summary_result_ttl = 86400
 
             _update_task_status("test-id", TaskStatus.processing, 0.5)
@@ -83,9 +85,11 @@ class TestSummaryTaskCoverage:
         mock_redis = MagicMock()
         mock_redis.get.return_value = None
 
-        with patch("backend.workers.tasks.summary_task._get_redis", return_value=mock_redis), \
-             patch("backend.workers.tasks.summary_task.publish_task_event_sync"), \
-             patch("backend.workers.tasks.summary_task.settings") as mock_settings:
+        with (
+            patch("backend.workers.tasks.summary_task._get_redis", return_value=mock_redis),
+            patch("backend.workers.tasks.summary_task.publish_task_event_sync"),
+            patch("backend.workers.tasks.summary_task.settings") as mock_settings,
+        ):
             mock_settings.summary_result_ttl = 86400
 
             _update_task_status("test-id", TaskStatus.processing, 0.5)
@@ -99,8 +103,10 @@ class TestSummaryTaskCoverage:
 
         mock_redis = MagicMock()
 
-        with patch("backend.workers.tasks.summary_task._get_redis", return_value=mock_redis), \
-             patch("backend.workers.tasks.summary_task.settings") as mock_settings:
+        with (
+            patch("backend.workers.tasks.summary_task._get_redis", return_value=mock_redis),
+            patch("backend.workers.tasks.summary_task.settings") as mock_settings,
+        ):
             mock_settings.summary_result_ttl = 86400
 
             result = {"task_id": "test-id", "status": "completed"}
@@ -125,9 +131,11 @@ class TestSummaryTaskCoverage:
         mock_gen_cls = MagicMock()
         mock_gen_cls.return_value.generate_summary.side_effect = Exception("API error")
 
-        with patch("backend.workers.tasks.summary_task._get_redis", return_value=mock_redis), \
-             patch("backend.workers.tasks.summary_task.settings") as mock_settings, \
-             patch("backend.workers.tasks.summary_task.SummaryGenerator", mock_gen_cls):
+        with (
+            patch("backend.workers.tasks.summary_task._get_redis", return_value=mock_redis),
+            patch("backend.workers.tasks.summary_task.settings") as mock_settings,
+            patch("backend.workers.tasks.summary_task.SummaryGenerator", mock_gen_cls),
+        ):
             mock_settings.summary_result_ttl = 86400
             mock_settings.max_concurrent_summaries = 2
             mock_settings.openai_api_key = "sk-test"

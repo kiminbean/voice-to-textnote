@@ -115,9 +115,7 @@ class TestSearchSuggestions:
         assert any("회" in s for s in suggestions)
 
     @pytest.mark.asyncio
-    async def test_empty_prefix_returns_empty_list(
-        self, db_session: AsyncSession
-    ):
+    async def test_empty_prefix_returns_empty_list(self, db_session: AsyncSession):
         """
         REQ-SEARCH-009: 빈 접두사는 빈 목록 반환
 
@@ -128,9 +126,7 @@ class TestSearchSuggestions:
         service = SearchService()
 
         suggestions_empty = await service.get_suggestions(db_session, prefix="", limit=10)
-        suggestions_whitespace = await service.get_suggestions(
-            db_session, prefix="   ", limit=10
-        )
+        suggestions_whitespace = await service.get_suggestions(db_session, prefix="   ", limit=10)
 
         assert suggestions_empty == []
         assert suggestions_whitespace == []
@@ -185,9 +181,7 @@ class TestSearchSuggestions:
         assert len(suggestions) == len(set(suggestions))
 
     @pytest.mark.asyncio
-    async def test_special_characters_are_sanitized(
-        self, db_session: AsyncSession
-    ):
+    async def test_special_characters_are_sanitized(self, db_session: AsyncSession):
         """
         REQ-SEARCH-009: 특수 문자 처리 (SQL 인젝션 방지)
 

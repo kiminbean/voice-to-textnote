@@ -70,9 +70,7 @@ class TestExceptionAttributes:
 
     def test_unauthorized_error_has_correct_status_code(self):
         """UnauthorizedError가 올바른 상태 코드를 가지는지 확인"""
-        err = UnauthorizedError(
-            message="test", error_code="UNAUTHORIZED", status_code=401
-        )
+        err = UnauthorizedError(message="test", error_code="UNAUTHORIZED", status_code=401)
         assert err.status_code == 401
         assert err.error_code == "UNAUTHORIZED"
 
@@ -90,9 +88,7 @@ class TestExceptionAttributes:
 
     def test_rate_limit_error_has_correct_status_code(self):
         """RateLimitError가 올바른 상태 코드를 가지는지 확인"""
-        err = RateLimitError(
-            message="test", error_code="RATE_LIMIT", status_code=429
-        )
+        err = RateLimitError(message="test", error_code="RATE_LIMIT", status_code=429)
         assert err.status_code == 429
         assert err.error_code == "RATE_LIMIT"
 

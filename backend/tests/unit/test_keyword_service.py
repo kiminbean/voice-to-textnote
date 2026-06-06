@@ -103,7 +103,9 @@ class TestKeywordService:
             task_id="cached-task",
         )
         redis_client = AsyncMock()
-        redis_client.get.return_value = json.dumps(cached.model_dump(mode="json"), ensure_ascii=False)
+        redis_client.get.return_value = json.dumps(
+            cached.model_dump(mode="json"), ensure_ascii=False
+        )
         db = AsyncMock()
 
         response = await service.extract_for_task(redis_client, db, "cached-task")

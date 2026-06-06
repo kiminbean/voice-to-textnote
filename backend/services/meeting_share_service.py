@@ -92,9 +92,7 @@ class MeetingShareService:
 
         # MeetingOwnership 레코드가 전혀 없는 경우, task_id가 존재하면 소유자로 인정
         count_result = await session.execute(
-            select(func.count(MeetingOwnership.id)).where(
-                MeetingOwnership.task_id == task_id
-            )
+            select(func.count(MeetingOwnership.id)).where(MeetingOwnership.task_id == task_id)
         )
         count = count_result.scalar_one()
         return count == 0

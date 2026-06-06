@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 
 class CalendarEvent(BaseModel):
     """캘린더 이벤트 모델"""
+
     title: str = Field(..., description="이벤트 제목")
     description: str = Field(..., description="이벤트 설명")
     start_datetime: datetime = Field(..., description="시작 일시")
@@ -25,6 +26,7 @@ class CalendarEvent(BaseModel):
 
 class CalendarEventCreate(BaseModel):
     """캘린더 이벤트 생성 요청"""
+
     title: str = Field(..., description="이벤트 제목")
     description: str = Field(..., description="이벤트 설명")
     start_datetime: datetime = Field(..., description="시작 일시")
@@ -36,6 +38,7 @@ class CalendarEventCreate(BaseModel):
 
 class CalendarEventResponse(BaseModel):
     """캘린더 이벤트 응답"""
+
     success: bool = Field(..., description="요청 성공 여부")
     message: str = Field(..., description="응답 메시지")
     event: CalendarEvent = Field(..., description="캘린더 이벤트")

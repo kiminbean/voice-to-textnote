@@ -80,8 +80,10 @@ def _make_app(db_engine, svc_mock=None):
     app.dependency_overrides[get_db_session] = override_db
 
     if svc_mock is not None:
+
         async def override_svc():
             return svc_mock
+
         app.dependency_overrides[get_quality_service] = override_svc
 
     return app
@@ -129,7 +131,6 @@ class TestLiveQualityScore:
 
         svc_mock = AsyncMock()
 
-
         app = _make_app(db_engine, svc_mock=svc_mock)
         mock_score = LiveQualityScoreResponse(
             task_id=seeded_db["task_id"],
@@ -167,7 +168,6 @@ class TestLiveQualityScore:
 
         svc_mock = AsyncMock()
 
-
         app = _make_app(db_engine, svc_mock=svc_mock)
         mock_score = LiveQualityScoreResponse(
             task_id=seeded_db["task_id"],
@@ -183,9 +183,7 @@ class TestLiveQualityScore:
         svc_mock.compute_live_score = AsyncMock(return_value=mock_score)
 
         with TestClient(app) as client:
-            resp = client.get(
-                f"/api/v1/quality/{seeded_db['task_id']}/quality-score?persist=true"
-            )
+            resp = client.get(f"/api/v1/quality/{seeded_db['task_id']}/quality-score?persist=true")
 
         assert resp.status_code == 200
         # 서비스가 persist=True로 호출되었는지 확인
@@ -204,7 +202,6 @@ class TestSubmitQualityFeedback:
         from backend.schemas.quality import QualityFeedbackResponse
 
         svc_mock = AsyncMock()
-
 
         app = _make_app(db_engine, svc_mock=svc_mock)
         mock_response = QualityFeedbackResponse(
@@ -250,9 +247,7 @@ class TestSubmitQualityFeedback:
 
         app = _make_app(db_engine, svc_mock=svc_mock)
 
-        svc_mock.submit_feedback = AsyncMock(
-            side_effect=RuntimeError("Database error")
-        )
+        svc_mock.submit_feedback = AsyncMock(side_effect=RuntimeError("Database error"))
 
         with TestClient(app) as client:
             resp = client.post(
@@ -277,7 +272,6 @@ class TestListQualityFeedback:
 
         svc_mock = AsyncMock()
 
-
         app = _make_app(db_engine, svc_mock=svc_mock)
         mock_summary = QualityFeedbackSummary(
             task_id=seeded_db["task_id"],
@@ -290,9 +284,7 @@ class TestListQualityFeedback:
         svc_mock.get_feedback_summary = AsyncMock(return_value=mock_summary)
 
         with TestClient(app) as client:
-            resp = client.get(
-                f"/api/v1/quality/{seeded_db['task_id']}/quality-feedback"
-            )
+            resp = client.get(f"/api/v1/quality/{seeded_db['task_id']}/quality-feedback")
 
         assert resp.status_code == 200
         data = resp.json()
@@ -303,7 +295,6 @@ class TestListQualityFeedback:
         from backend.schemas.quality import QualityFeedbackSummary
 
         svc_mock = AsyncMock()
-
 
         app = _make_app(db_engine, svc_mock=svc_mock)
         mock_summary = QualityFeedbackSummary(
@@ -329,14 +320,10 @@ class TestListQualityFeedback:
 
         app = _make_app(db_engine, svc_mock=svc_mock)
 
-        svc_mock.get_feedback_summary = AsyncMock(
-            side_effect=RuntimeError("Database error")
-        )
+        svc_mock.get_feedback_summary = AsyncMock(side_effect=RuntimeError("Database error"))
 
         with TestClient(app) as client:
-            resp = client.get(
-                f"/api/v1/quality/{seeded_db['task_id']}/quality-feedback"
-            )
+            resp = client.get(f"/api/v1/quality/{seeded_db['task_id']}/quality-feedback")
 
         assert resp.status_code == 500
 
@@ -355,7 +342,6 @@ class TestQualityTrends:
 
         svc_mock = AsyncMock()
 
-
         app = _make_app(db_engine, svc_mock=svc_mock)
         mock_trends = QualityTrendsResponse(
             task_id=seeded_db["task_id"],
@@ -371,9 +357,7 @@ class TestQualityTrends:
         svc_mock.get_quality_trends = AsyncMock(return_value=mock_trends)
 
         with TestClient(app) as client:
-            resp = client.get(
-                f"/api/v1/quality/{seeded_db['task_id']}/quality-trends"
-            )
+            resp = client.get(f"/api/v1/quality/{seeded_db['task_id']}/quality-trends")
 
         assert resp.status_code == 200
         data = resp.json()
@@ -384,7 +368,6 @@ class TestQualityTrends:
         from backend.schemas.quality import QualityTrendsResponse
 
         svc_mock = AsyncMock()
-
 
         app = _make_app(db_engine, svc_mock=svc_mock)
         mock_trends = QualityTrendsResponse(
@@ -401,9 +384,7 @@ class TestQualityTrends:
         svc_mock.get_quality_trends = AsyncMock(return_value=mock_trends)
 
         with TestClient(app) as client:
-            resp = client.get(
-                f"/api/v1/quality/{seeded_db['task_id']}/quality-trends?limit=20"
-            )
+            resp = client.get(f"/api/v1/quality/{seeded_db['task_id']}/quality-trends?limit=20")
 
         assert resp.status_code == 200
 
@@ -412,7 +393,6 @@ class TestQualityTrends:
         from backend.schemas.quality import QualityTrendsResponse
 
         svc_mock = AsyncMock()
-
 
         app = _make_app(db_engine, svc_mock=svc_mock)
         mock_trends = QualityTrendsResponse(
@@ -441,13 +421,9 @@ class TestQualityTrends:
 
         app = _make_app(db_engine, svc_mock=svc_mock)
 
-        svc_mock.get_quality_trends = AsyncMock(
-            side_effect=RuntimeError("Database error")
-        )
+        svc_mock.get_quality_trends = AsyncMock(side_effect=RuntimeError("Database error"))
 
         with TestClient(app) as client:
-            resp = client.get(
-                f"/api/v1/quality/{seeded_db['task_id']}/quality-trends"
-            )
+            resp = client.get(f"/api/v1/quality/{seeded_db['task_id']}/quality-trends")
 
         assert resp.status_code == 500

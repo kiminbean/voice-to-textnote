@@ -207,11 +207,11 @@ async def search_bookmarks(
 
     date_from_obj = None
     if date_from:
-        date_from_obj = datetime.fromisoformat(date_from.replace('Z', '+00:00'))
+        date_from_obj = datetime.fromisoformat(date_from.replace("Z", "+00:00"))
 
     date_to_obj = None
     if date_to:
-        date_to_obj = datetime.fromisoformat(date_to.replace('Z', '+00:00'))
+        date_to_obj = datetime.fromisoformat(date_to.replace("Z", "+00:00"))
 
     # SearchRequest 생성
     search_request = BookmarkSearchRequest(

@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field, field_validator
 
 class ActionItemStatus(StrEnum):
     """액션 아이템 상태"""
+
     pending = "pending"
     in_progress = "in_progress"
     completed = "completed"
@@ -20,6 +21,7 @@ class ActionItemStatus(StrEnum):
 
 class ActionItemPriority(StrEnum):
     """액션 아이템 우선순위"""
+
     low = "low"
     medium = "medium"
     high = "high"
@@ -28,6 +30,7 @@ class ActionItemPriority(StrEnum):
 
 class ActionItemCreate(BaseModel):
     """액션 아이템 생성 요청"""
+
     title: str = Field(..., min_length=1, max_length=200, description="액션 아이템 제목")
     description: str | None = Field(default=None, max_length=2000, description="상세 설명")
     assignee_id: uuid.UUID | None = Field(default=None, description="담당자 ID")
@@ -35,10 +38,12 @@ class ActionItemCreate(BaseModel):
     due_date: datetime | None = Field(default=None, description="마감일")
     meeting_id: str | None = Field(default=None, description="관련 회의 ID")
     tags: list[str] = Field(default_factory=list, description="태그 목록")
-    estimated_hours: float | None = Field(default=None, ge=0, le=1000, description="예상 소요 시간(시간)")
+    estimated_hours: float | None = Field(
+        default=None, ge=0, le=1000, description="예상 소요 시간(시간)"
+    )
     category: str | None = Field(default=None, max_length=50, description="카테고리")
 
-    @field_validator('title')
+    @field_validator("title")
     @classmethod
     def validate_title(cls, v):
         """제목 공백 제거"""
@@ -47,7 +52,10 @@ class ActionItemCreate(BaseModel):
 
 class ActionItemUpdate(BaseModel):
     """액션 아이템 수정 요청"""
-    title: str | None = Field(default=None, min_length=1, max_length=200, description="액션 아이템 제목")
+
+    title: str | None = Field(
+        default=None, min_length=1, max_length=200, description="액션 아이템 제목"
+    )
     description: str | None = Field(default=None, max_length=2000, description="상세 설명")
     assignee_id: uuid.UUID | None = Field(default=None, description="담당자 ID")
     priority: ActionItemPriority | None = Field(default=None, description="우선순위")
@@ -61,7 +69,7 @@ class ActionItemUpdate(BaseModel):
     tags: list[str] | None = Field(default=None, description="태그 목록")
     category: str | None = Field(default=None, max_length=50, description="카테고리")
 
-    @field_validator('title')
+    @field_validator("title")
     @classmethod
     def validate_title(cls, v):
         """제목 공백 제거 (None이 아닐 경우)"""
@@ -69,7 +77,7 @@ class ActionItemUpdate(BaseModel):
             return v.strip()
         return v
 
-    @field_validator('completion_notes')
+    @field_validator("completion_notes")
     @classmethod
     def validate_completion_notes(cls, v):
         """완료 메모 공백 제거 (None이 아닐 경우)"""
@@ -77,7 +85,7 @@ class ActionItemUpdate(BaseModel):
             return v.strip()
         return v
 
-    @field_validator('tags')
+    @field_validator("tags")
     @classmethod
     def validate_tags(cls, v):
         """태그 중복 제거"""
@@ -89,6 +97,7 @@ class ActionItemUpdate(BaseModel):
 
 class ActionItemResponse(BaseModel):
     """액션 아이템 응답"""
+
     id: uuid.UUID
     title: str
     description: str | None
@@ -121,6 +130,7 @@ class ActionItemResponse(BaseModel):
 
 class ActionItemFilter(BaseModel):
     """액션 아이템 필터"""
+
     status: ActionItemStatus | None = None
     priority: ActionItemPriority | None = None
     assignee_id: uuid.UUID | None = None
@@ -134,6 +144,7 @@ class ActionItemFilter(BaseModel):
 
 class ActionItemListResponse(BaseModel):
     """액션 아이템 목록 응답"""
+
     items: list[ActionItemResponse]
     total: int
     page: int
@@ -142,6 +153,7 @@ class ActionItemListResponse(BaseModel):
 
 class ActionItemOverview(BaseModel):
     """액션 아이템 개요"""
+
     total_count: int
     pending_count: int
     in_progress_count: int
@@ -164,12 +176,16 @@ class ActionItemOverview(BaseModel):
 
 class ActionItemBulkUpdate(BaseModel):
     """액션 아이템 배치 업데이트 요청"""
-    item_ids: list[uuid.UUID] = Field(..., min_length=1, max_length=100, description="업데이트할 아이템 ID 목록")
+
+    item_ids: list[uuid.UUID] = Field(
+        ..., min_length=1, max_length=100, description="업데이트할 아이템 ID 목록"
+    )
     update_data: ActionItemUpdate = Field(..., description="업데이트 데이터")
 
 
 class ActionItemComment(BaseModel):
     """액션 아이템 댓글"""
+
     id: uuid.UUID
     action_item_id: uuid.UUID
     author_id: uuid.UUID
@@ -185,12 +201,14 @@ class ActionItemComment(BaseModel):
 
 class ActionItemCommentCreate(BaseModel):
     """액션 아이템 댓글 생성 요청"""
+
     content: str = Field(..., min_length=1, max_length=1000, description="댓글 내용")
     is_internal: bool = Field(default=False, description="내부 댓글 여부")
 
 
 class ActionItemCommentResponse(BaseModel):
     """액션 아이템 댓글 응답"""
+
     id: uuid.UUID
     action_item_id: uuid.UUID
     author_id: uuid.UUID
@@ -206,6 +224,7 @@ class ActionItemCommentResponse(BaseModel):
 
 class ActionItemHistory(BaseModel):
     """액션 아이템 변경 이력"""
+
     id: uuid.UUID
     action_item_id: uuid.UUID
     field_name: str
@@ -222,6 +241,7 @@ class ActionItemHistory(BaseModel):
 
 class ActionItemReminder(BaseModel):
     """액션 아이템 알림 설정"""
+
     id: uuid.UUID
     action_item_id: uuid.UUID
     reminder_type: Literal["before_due", "overdue", "daily"]

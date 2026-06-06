@@ -33,7 +33,9 @@ class TestTranscriptionTaskCoverage:
         from backend.workers.tasks.transcription_task import _get_redis
 
         mock_client = MagicMock()
-        with patch("backend.workers.tasks.transcription_task.get_worker_redis", return_value=mock_client):
+        with patch(
+            "backend.workers.tasks.transcription_task.get_worker_redis", return_value=mock_client
+        ):
             result = _get_redis()
 
         assert result is mock_client
@@ -51,9 +53,11 @@ class TestTranscriptionTaskCoverage:
         }
         mock_redis.get.return_value = json.dumps(existing_data)
 
-        with patch("backend.workers.tasks.transcription_task._get_redis", return_value=mock_redis), \
-             patch("backend.workers.tasks.transcription_task.publish_task_event_sync"), \
-             patch("backend.workers.tasks.transcription_task.settings") as mock_settings:
+        with (
+            patch("backend.workers.tasks.transcription_task._get_redis", return_value=mock_redis),
+            patch("backend.workers.tasks.transcription_task.publish_task_event_sync"),
+            patch("backend.workers.tasks.transcription_task.settings") as mock_settings,
+        ):
             mock_settings.cache_ttl_seconds = 86400
 
             _update_task_status("test-id", TaskStatus.processing, 0.5)
@@ -72,9 +76,11 @@ class TestTranscriptionTaskCoverage:
         mock_redis = MagicMock()
         mock_redis.get.return_value = None  # 기존 상태 없음
 
-        with patch("backend.workers.tasks.transcription_task._get_redis", return_value=mock_redis), \
-             patch("backend.workers.tasks.transcription_task.publish_task_event_sync"), \
-             patch("backend.workers.tasks.transcription_task.settings") as mock_settings:
+        with (
+            patch("backend.workers.tasks.transcription_task._get_redis", return_value=mock_redis),
+            patch("backend.workers.tasks.transcription_task.publish_task_event_sync"),
+            patch("backend.workers.tasks.transcription_task.settings") as mock_settings,
+        ):
             mock_settings.cache_ttl_seconds = 86400
 
             _update_task_status("test-id", TaskStatus.processing, 0.5)
@@ -89,11 +95,7 @@ class TestTranscriptionTaskCoverage:
         mock_redis = _make_mock_redis()
 
         with patch("backend.workers.tasks.transcription_task._get_redis", return_value=mock_redis):
-            failed_result = {
-                "task_id": "test-id",
-                "status": "failed",
-                "error": "Test error"
-            }
+            failed_result = {"task_id": "test-id", "status": "failed", "error": "Test error"}
             _cache_result("test-id", failed_result)
 
         mock_redis.setex.assert_called_once()
@@ -119,9 +121,13 @@ class TestTranscriptionTaskCoverage:
         def track_status(task_id, status, progress, message=None):
             status_updates.append({"progress": progress, "message": message})
 
-        with patch("backend.workers.tasks.transcription_task._update_task_status", side_effect=track_status), \
-             patch("backend.workers.tasks.transcription_task.merge_segments", return_value=[]):
-
+        with (
+            patch(
+                "backend.workers.tasks.transcription_task._update_task_status",
+                side_effect=track_status,
+            ),
+            patch("backend.workers.tasks.transcription_task.merge_segments", return_value=[]),
+        ):
             _process_chunks(mock_engine, chunks, "task-id", "ko")
 
         # 각 청크마다 진행률 업데이트 확인
@@ -138,7 +144,9 @@ class TestTranscriptionTaskCoverage:
 
         # 유효한 WAV 파일 생성 (RIFF 헤더)
         audio_file = tmp_path / "test.wav"
-        audio_file.write_bytes(b"RIFF\x24\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x01\x00\x01\x00\x44\xAC\x00\x00\x44\xAC\x00\x00\x02\x00\x10\x00\x64\x61\x74\x61\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00")
+        audio_file.write_bytes(
+            b"RIFF\x24\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x01\x00\x01\x00\x44\xac\x00\x00\x44\xac\x00\x00\x02\x00\x10\x00\x64\x61\x74\x61\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+        )
 
         mock_redis = _make_mock_redis()
 
@@ -146,17 +154,25 @@ class TestTranscriptionTaskCoverage:
         def persist_failure(*args, **kwargs):
             raise Exception("DB connection failed")
 
-        with patch("backend.workers.tasks.transcription_task._get_redis", return_value=mock_redis), \
-             patch("backend.workers.tasks.transcription_task._increment_active_jobs"), \
-             patch("backend.workers.tasks.transcription_task._decrement_active_jobs"), \
-             patch("backend.workers.tasks.transcription_task._update_task_status"), \
-             patch("backend.workers.tasks.transcription_task._cache_result"), \
-             patch("backend.workers.tasks.transcription_task.get_audio_duration_seconds", return_value=30.0), \
-             patch("backend.workers.tasks.transcription_task.convert_and_normalize", return_value=audio_file), \
-             patch("backend.workers.tasks.transcription_task.split_audio", return_value=[]), \
-             patch("backend.workers.tasks.transcription_task.WhisperEngine") as mock_engine_cls, \
-             patch("backend.workers.tasks.transcription_task.settings") as mock_settings, \
-             patch("backend.services.sync_service.persist_task_result", side_effect=persist_failure):
+        with (
+            patch("backend.workers.tasks.transcription_task._get_redis", return_value=mock_redis),
+            patch("backend.workers.tasks.transcription_task._increment_active_jobs"),
+            patch("backend.workers.tasks.transcription_task._decrement_active_jobs"),
+            patch("backend.workers.tasks.transcription_task._update_task_status"),
+            patch("backend.workers.tasks.transcription_task._cache_result"),
+            patch(
+                "backend.workers.tasks.transcription_task.get_audio_duration_seconds",
+                return_value=30.0,
+            ),
+            patch(
+                "backend.workers.tasks.transcription_task.convert_and_normalize",
+                return_value=audio_file,
+            ),
+            patch("backend.workers.tasks.transcription_task.split_audio", return_value=[]),
+            patch("backend.workers.tasks.transcription_task.WhisperEngine") as mock_engine_cls,
+            patch("backend.workers.tasks.transcription_task.settings") as mock_settings,
+            patch("backend.services.sync_service.persist_task_result", side_effect=persist_failure),
+        ):
             mock_settings.results_dir = tmp_path
             mock_settings.cache_ttl_seconds = 604800
             mock_settings.chunk_duration_ms = 1800000
@@ -204,20 +220,30 @@ class TestTranscriptionTaskCoverage:
         task_id = "fs-save-task"
         audio_file = tmp_path / "test.wav"
         # 유효한 WAV 헤더
-        audio_file.write_bytes(b"RIFF\x24\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x01\x00\x01\x00\x44\xAC\x00\x00\x44\xAC\x00\x00\x02\x00\x10\x00\x64\x61\x74\x61\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00")
+        audio_file.write_bytes(
+            b"RIFF\x24\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x01\x00\x01\x00\x44\xac\x00\x00\x44\xac\x00\x00\x02\x00\x10\x00\x64\x61\x74\x61\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+        )
 
         mock_redis = _make_mock_redis()
 
-        with patch("backend.workers.tasks.transcription_task._get_redis", return_value=mock_redis), \
-             patch("backend.workers.tasks.transcription_task._increment_active_jobs"), \
-             patch("backend.workers.tasks.transcription_task._decrement_active_jobs"), \
-             patch("backend.workers.tasks.transcription_task._update_task_status"), \
-             patch("backend.workers.tasks.transcription_task._cache_result"), \
-             patch("backend.workers.tasks.transcription_task.get_audio_duration_seconds", return_value=30.0), \
-             patch("backend.workers.tasks.transcription_task.convert_and_normalize", return_value=audio_file), \
-             patch("backend.workers.tasks.transcription_task.split_audio", return_value=[]), \
-             patch("backend.workers.tasks.transcription_task.WhisperEngine") as mock_engine_cls, \
-             patch("backend.workers.tasks.transcription_task.settings") as mock_settings:
+        with (
+            patch("backend.workers.tasks.transcription_task._get_redis", return_value=mock_redis),
+            patch("backend.workers.tasks.transcription_task._increment_active_jobs"),
+            patch("backend.workers.tasks.transcription_task._decrement_active_jobs"),
+            patch("backend.workers.tasks.transcription_task._update_task_status"),
+            patch("backend.workers.tasks.transcription_task._cache_result"),
+            patch(
+                "backend.workers.tasks.transcription_task.get_audio_duration_seconds",
+                return_value=30.0,
+            ),
+            patch(
+                "backend.workers.tasks.transcription_task.convert_and_normalize",
+                return_value=audio_file,
+            ),
+            patch("backend.workers.tasks.transcription_task.split_audio", return_value=[]),
+            patch("backend.workers.tasks.transcription_task.WhisperEngine") as mock_engine_cls,
+            patch("backend.workers.tasks.transcription_task.settings") as mock_settings,
+        ):
             mock_settings.results_dir = tmp_path
             mock_settings.cache_ttl_seconds = 604800
             mock_settings.chunk_duration_ms = 1800000

@@ -249,7 +249,9 @@ class TestActiveJobTracking:
 
         _increment_active_jobs("task-123")
 
-        mock_pipe.zadd.assert_called_once_with("active_jobs_ts", {"task-123": mock_pipe.zadd.call_args[0][1]["task-123"]})
+        mock_pipe.zadd.assert_called_once_with(
+            "active_jobs_ts", {"task-123": mock_pipe.zadd.call_args[0][1]["task-123"]}
+        )
         mock_pipe.execute.assert_called_once()
 
     @patch("backend.workers.tasks.transcription_task._get_redis")
@@ -578,6 +580,8 @@ class TestTranscriptionTaskMain:
         assert result["status"] == "completed"
         assert result["segments"][0]["text"] == "청크 결과"
         mock_engine.load.assert_called_once_with("test-model")
-        mock_process_chunks.assert_called_once_with(mock_engine, [chunk], "chunked-task", "ko", None)
+        mock_process_chunks.assert_called_once_with(
+            mock_engine, [chunk], "chunked-task", "ko", None
+        )
         mock_incr.assert_called_once_with("chunked-task")
         mock_decr.assert_called_once_with("chunked-task")

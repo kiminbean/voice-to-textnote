@@ -90,9 +90,7 @@ class MinutesDOCXGenerator:
                 run.font.color.rgb = self.COLOR_SECTION
 
             if isinstance(summary_data, dict):
-                summary_text = summary_data.get("summary") or summary_data.get(
-                    "result", ""
-                )
+                summary_text = summary_data.get("summary") or summary_data.get("result", "")
                 if summary_text:
                     doc.add_paragraph(str(summary_text))
                 # 키 포인트가 있으면 추가

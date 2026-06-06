@@ -298,9 +298,13 @@ class TestOAuthServiceCoverage:
             with patch("backend.services.oauth_service.JWTError", Exception):
                 with patch("backend.services.oauth_service.httpx.AsyncClient") as mock_client:
                     mock_response = MagicMock()
-                    mock_response.json.return_value = {"keys": [{"kid": "test-key", "n": "test", "e": "AQAB"}]}
+                    mock_response.json.return_value = {
+                        "keys": [{"kid": "test-key", "n": "test", "e": "AQAB"}]
+                    }
                     mock_response.raise_for_status = MagicMock()
-                    mock_client.return_value.__aenter__.return_value.get.return_value = mock_response
+                    mock_client.return_value.__aenter__.return_value.get.return_value = (
+                        mock_response
+                    )
 
                     with patch("backend.services.oauth_service.settings") as mock_settings:
                         mock_settings.apple_client_id = "test-client-id"
@@ -321,9 +325,7 @@ class TestQualityServiceCoverage:
         """Test assess_minutes exception handling (lines 140-142)"""
         service = QualityService()
 
-        with patch.object(
-            service, "_perform_basic_analysis", side_effect=RuntimeError("DB Error")
-        ):
+        with patch.object(service, "_perform_basic_analysis", side_effect=RuntimeError("DB Error")):
             with patch("backend.services.quality_service.logger") as mock_logger:
                 with pytest.raises(RuntimeError, match="DB Error"):
                     await service.assess_minutes(
@@ -351,9 +353,9 @@ class TestQualityServiceCoverage:
 
         mock_response = MagicMock()
         mock_response.choices = [MagicMock()]
-        mock_response.choices[0].message.content = (
-            'Some text before\n{"score": 85}\nSome text after'
-        )
+        mock_response.choices[
+            0
+        ].message.content = 'Some text before\n{"score": 85}\nSome text after'
         service.openai_client = MagicMock()
         service.openai_client.chat.completions.create = AsyncMock(return_value=mock_response)
 
@@ -616,7 +618,7 @@ class TestKeywordServiceCoverage:
         service = KeywordService()
 
         redis_client = AsyncMock()
-        redis_client.get.return_value = b'invalid json'
+        redis_client.get.return_value = b"invalid json"
 
         db = AsyncMock()
         mock_record = MagicMock()
@@ -646,7 +648,7 @@ class TestKeywordServiceCoverage:
         service = KeywordService()
 
         redis_client = AsyncMock()
-        redis_client.get.return_value = b'not a dict'
+        redis_client.get.return_value = b"not a dict"
 
         result = await service._fetch_cached_response(redis_client, "test-task", "extract")
         assert result is None

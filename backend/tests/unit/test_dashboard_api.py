@@ -8,7 +8,6 @@ SPEC-STATS-002: 전체 회의 통계 대시보드 API
 """
 
 
-
 class TestDashboardAPI:
     """대시보드 API 테스트 스위트"""
 

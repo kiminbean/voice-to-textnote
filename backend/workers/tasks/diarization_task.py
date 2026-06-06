@@ -66,8 +66,10 @@ def _update_task_status(
     r.setex(status_key, settings.diarization_result_ttl, json.dumps(data))
 
     # SSE 스트림 구독자에게 이벤트 발행
-    event_type = "completed" if status == TaskStatus.completed else (
-        "failed" if status == TaskStatus.failed else "status_update"
+    event_type = (
+        "completed"
+        if status == TaskStatus.completed
+        else ("failed" if status == TaskStatus.failed else "status_update")
     )
     publish_task_event_sync(r, task_id, event_type, data)
 
@@ -192,9 +194,7 @@ def diarization_task(
             stt_result_raw = r.get(stt_result_key)
 
             if stt_result_raw is None:
-                raise FileNotFoundError(
-                    f"STT 결과를 찾을 수 없습니다: stt_task_id={stt_task_id}"
-                )
+                raise FileNotFoundError(f"STT 결과를 찾을 수 없습니다: stt_task_id={stt_task_id}")
 
             stt_result = json.loads(stt_result_raw)
             stt_status = stt_result.get("status")
@@ -234,9 +234,11 @@ def diarization_task(
         if audio_duration >= threshold_sec:
             # BUGFIX: 설정 설명은 "15분 이상"인데 구현은 "15분 초과"라서
             # 정확히 15분인 파일만 단일 처리로 빠졌습니다. 경계값도 청크 경로로 보냅니다.
-            logger.info("청크 분할 화자 분리 적용",
-                         duration=round(audio_duration, 1),
-                         threshold=threshold_sec)
+            logger.info(
+                "청크 분할 화자 분리 적용",
+                duration=round(audio_duration, 1),
+                threshold=threshold_sec,
+            )
 
             def _progress_cb(current: int, total: int) -> None:
                 # 0.30 ~ 0.80 범위에서 청크별 진행률 업데이트
@@ -254,7 +256,9 @@ def diarization_task(
         else:
             # 15분 이하 → 기존 단일 파일 처리. REQ-DIA-PERF-001: max_speakers 힌트로 clustering 가속.
             # REQ-DIA-PERF-003: settings.dia_target_sample_rate > 0이면 다운샘플링 적용 (실험적).
-            target_sr = settings.dia_target_sample_rate if settings.dia_target_sample_rate > 0 else None
+            target_sr = (
+                settings.dia_target_sample_rate if settings.dia_target_sample_rate > 0 else None
+            )
             dia_segments = engine.diarize(
                 wav_path,
                 num_speakers=num_speakers,
@@ -267,9 +271,7 @@ def diarization_task(
         if parallel_mode and not stt_segments:
             # 병렬 모드 + STT 결과 없음: 매칭 skip, raw 화자 segments만 반환
             # (minutes_task가 STT/DIA 결과를 결합하여 매칭 수행)
-            _update_task_status(
-                task_id, TaskStatus.processing, 0.85, "화자 segments 정리 중..."
-            )
+            _update_task_status(task_id, TaskStatus.processing, 0.85, "화자 segments 정리 중...")
             speaker_stats: dict[str, dict] = {}
             for dseg in dia_segments:
                 sp = dseg.speaker_id
@@ -304,9 +306,7 @@ def diarization_task(
             }
         else:
             # 레거시 직렬 모드 (또는 병렬 모드인데 STT 결과까지 함께 받은 경우)
-            _update_task_status(
-                task_id, TaskStatus.processing, 0.80, "STT 결과와 화자 매칭 중..."
-            )
+            _update_task_status(task_id, TaskStatus.processing, 0.80, "STT 결과와 화자 매칭 중...")
             matcher = SpeakerMatcher()
             diarized_segments = matcher.match(stt_segments, dia_segments)
 
@@ -319,9 +319,7 @@ def diarization_task(
                             "total_speaking_time": 0.0,
                             "segment_count": 0,
                         }
-                    speaker_stats[seg.speaker_id]["total_speaking_time"] += (
-                        seg.end - seg.start
-                    )
+                    speaker_stats[seg.speaker_id]["total_speaking_time"] += seg.end - seg.start
                     speaker_stats[seg.speaker_id]["segment_count"] += 1
 
             processing_end = datetime.now(UTC)
@@ -342,6 +340,7 @@ def diarization_task(
         # DB 영속 저장 (best-effort, REQ-PERSIST-006)
         try:
             from backend.services.sync_service import persist_task_result
+
             persist_task_result(
                 task_id=task_id,
                 task_type="diarization",
@@ -398,6 +397,7 @@ def diarization_task(
         # DB 영속 저장 - 실패 상태 (best-effort, REQ-PERSIST-007)
         try:
             from backend.services.sync_service import persist_task_result
+
             persist_task_result(
                 task_id=task_id,
                 task_type="diarization",
@@ -426,6 +426,7 @@ def diarization_task(
         # DB 영속 저장 - 실패 상태 (best-effort, REQ-PERSIST-007)
         try:
             from backend.services.sync_service import persist_task_result
+
             persist_task_result(
                 task_id=task_id,
                 task_type="diarization",
@@ -455,7 +456,7 @@ def diarization_task(
     default_retry_delay=60,
     name="diarization_task",
     soft_time_limit=3600,  # 60분 소프트 타임아웃 (개별 DIA Celery task 기준)
-    time_limit=3900,       # 65분 하드 타임아웃
+    time_limit=3900,  # 65분 하드 타임아웃
 )
 def diarization_celery_task(
     self,

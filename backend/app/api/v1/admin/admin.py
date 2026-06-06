@@ -39,7 +39,9 @@ async def trigger_cleanup() -> dict:
         db_deleted = cleanup_expired_results(session, settings.data_retention_days)
 
     # 임시 파일 정리
-    files_deleted, freed_bytes = cleanup_temp_files(settings.temp_dir, settings.temp_file_retention_hours)
+    files_deleted, freed_bytes = cleanup_temp_files(
+        settings.temp_dir, settings.temp_file_retention_hours
+    )
 
     logger.info(
         "즉시 데이터 정리 완료",

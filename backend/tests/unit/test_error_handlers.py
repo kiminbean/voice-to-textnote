@@ -190,25 +190,41 @@ class TestRequestValidationErrorHandler:
     def test_validation_error_returns_422(self, client):
         """잘못된 요청은 422 상태 코드를 반환해야 한다 (REQ-ERR-006)"""
         # JSON body 없이 POST 요청 → 422 ValidationError 유발
-        response = client.post("/test/validation-error", content="invalid json", headers={"Content-Type": "application/json"})
+        response = client.post(
+            "/test/validation-error",
+            content="invalid json",
+            headers={"Content-Type": "application/json"},
+        )
         assert response.status_code == 422
 
     def test_validation_error_returns_error_code(self, client):
         """검증 오류 응답에 error_code 포함 (REQ-ERR-006)"""
-        response = client.post("/test/validation-error", content="invalid json", headers={"Content-Type": "application/json"})
+        response = client.post(
+            "/test/validation-error",
+            content="invalid json",
+            headers={"Content-Type": "application/json"},
+        )
         data = response.json()
         assert "error_code" in data
         assert data["error_code"] == "VALIDATION_ERROR"
 
     def test_validation_error_returns_field_details(self, client):
         """검증 오류 응답에 필드별 오류 상세 포함 (REQ-ERR-006)"""
-        response = client.post("/test/validation-error", content="invalid json", headers={"Content-Type": "application/json"})
+        response = client.post(
+            "/test/validation-error",
+            content="invalid json",
+            headers={"Content-Type": "application/json"},
+        )
         data = response.json()
         # 필드 레벨 오류 상세가 포함되어야 함
         assert "details" in data
 
     def test_validation_error_has_request_id(self, client):
         """검증 오류 응답에 request_id 포함"""
-        response = client.post("/test/validation-error", content="invalid json", headers={"Content-Type": "application/json"})
+        response = client.post(
+            "/test/validation-error",
+            content="invalid json",
+            headers={"Content-Type": "application/json"},
+        )
         data = response.json()
         assert "request_id" in data

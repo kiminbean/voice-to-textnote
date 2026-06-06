@@ -131,8 +131,11 @@ def mock_openai_client():
 @pytest.fixture
 def service(mock_openai_client):
     """QualityService 인스턴스."""
-    with patch("backend.services.quality_service.get_openai_client", return_value=mock_openai_client):
+    with patch(
+        "backend.services.quality_service.get_openai_client", return_value=mock_openai_client
+    ):
         from backend.services.quality_service import QualityService
+
         return QualityService()
 
 
@@ -239,7 +242,7 @@ class TestEvaluateCompleteness:
             "has_timeline": True,
             "has_decisions": True,
             "has_action_items": True,
-            "word_count": 600
+            "word_count": 600,
         }
         ai = {"completeness_score": 85.0}
 
@@ -257,7 +260,7 @@ class TestEvaluateCompleteness:
             "has_timeline": True,
             "has_decisions": True,
             "has_action_items": True,
-            "word_count": 500
+            "word_count": 500,
         }
         ai = {"completeness_score": 70.0}
 
@@ -272,7 +275,7 @@ class TestEvaluateCompleteness:
             "has_timeline": True,
             "has_decisions": True,
             "has_action_items": True,
-            "word_count": 100
+            "word_count": 100,
         }
         ai = {}
 
@@ -291,10 +294,7 @@ class TestEvaluateClarity:
 
     def test_ideal_sentence_length(self, service):
         """적절한 문장 길이."""
-        basic = {
-            "avg_sentence_length": 20,
-            "readability_score": 70.0
-        }
+        basic = {"avg_sentence_length": 20, "readability_score": 70.0}
         ai = {"clarity_score": 80.0}
 
         score = service._evaluate_clarity(basic, ai)
@@ -305,10 +305,7 @@ class TestEvaluateClarity:
 
     def test_too_long_sentences(self, service):
         """너무 긴 문장."""
-        basic = {
-            "avg_sentence_length": 60,
-            "readability_score": 40.0
-        }
+        basic = {"avg_sentence_length": 60, "readability_score": 40.0}
         ai = {"clarity_score": 50.0}
 
         score = service._evaluate_clarity(basic, ai)
@@ -326,10 +323,7 @@ class TestEvaluateStructure:
 
     def test_well_structured(self, service):
         """잘 구조화된 회의록."""
-        basic = {
-            "paragraph_count": 5,
-            "has_structure": True
-        }
+        basic = {"paragraph_count": 5, "has_structure": True}
         ai = {"structure_score": 85.0}
 
         score = service._evaluate_structure(basic, ai)
@@ -340,10 +334,7 @@ class TestEvaluateStructure:
 
     def test_poor_structure(self, service):
         """구조가 부족한 회의록."""
-        basic = {
-            "paragraph_count": 1,
-            "has_structure": False
-        }
+        basic = {"paragraph_count": 1, "has_structure": False}
         ai = {"structure_score": 40.0}
 
         score = service._evaluate_structure(basic, ai)
@@ -492,7 +483,7 @@ class TestIdentifyIssues:
             "has_attendees": True,
             "has_timeline": True,
             "has_action_items": True,
-            "avg_sentence_length": 55
+            "avg_sentence_length": 55,
         }
         ai = {}
 
@@ -508,7 +499,7 @@ class TestIdentifyIssues:
             "has_attendees": True,
             "has_timeline": True,
             "has_action_items": False,
-            "avg_sentence_length": 20
+            "avg_sentence_length": 20,
         }
         ai = {}
 
@@ -524,11 +515,9 @@ class TestIdentifyIssues:
             "has_attendees": True,
             "has_timeline": True,
             "has_action_items": True,
-            "avg_sentence_length": 20
+            "avg_sentence_length": 20,
         }
-        ai = {
-            "key_issues": ["배경 정보 부족", "데이터 불확실성"]
-        }
+        ai = {"key_issues": ["배경 정보 부족", "데이터 불확실성"]}
 
         issues = await service._identify_issues(basic, ai, 70.0)
 
@@ -542,7 +531,7 @@ class TestIdentifyIssues:
             "has_attendees": True,
             "has_timeline": True,
             "has_action_items": True,
-            "avg_sentence_length": 55
+            "avg_sentence_length": 55,
         }
         ai = {}
 
@@ -551,7 +540,11 @@ class TestIdentifyIssues:
 
         # 모든 문제가 최소 MEDIUM 이상
         for issue in issues:
-            assert issue.severity in [IssueSeverity.HIGH, IssueSeverity.MEDIUM, IssueSeverity.CRITICAL]
+            assert issue.severity in [
+                IssueSeverity.HIGH,
+                IssueSeverity.MEDIUM,
+                IssueSeverity.CRITICAL,
+            ]
 
 
 # ===========================================================================
@@ -681,7 +674,7 @@ class TestGenerateRecommendations:
         high_issue = MagicMock(
             severity=IssueSeverity.HIGH,
             description="참석자 정보 누락",
-            suggestion="참석자 목록을 명시하세요"
+            suggestion="참석자 목록을 명시하세요",
         )
         scores = []
 
@@ -719,7 +712,7 @@ class TestAssessMinutes:
             meeting_content=_FULL_MINUTES,
             meeting_title="분기 검토 회의",
             include_details=True,
-            db=db_session
+            db=db_session,
         )
 
         assert isinstance(result, QualityAssessmentResponse)
@@ -738,7 +731,7 @@ class TestAssessMinutes:
             meeting_content=_MINIMAL_MINUTES,
             meeting_title="간단 회의",
             include_details=False,
-            db=None
+            db=None,
         )
 
         assert result.assessment_summary.overall_score < 70  # 낮은 점수
@@ -747,17 +740,14 @@ class TestAssessMinutes:
     @pytest.mark.asyncio
     async def test_custom_criteria(self, service):
         """커스텀 평가 기준."""
-        custom_criteria = {
-            "relevance": 80.0,
-            "timeliness": 75.0
-        }
+        custom_criteria = {"relevance": 80.0, "timeliness": 75.0}
 
         result = await service.assess_minutes(
             task_id="test-task-003",
             meeting_content=_FULL_MINUTES,
             meeting_title="커스텀 평가",
             custom_criteria=custom_criteria,
-            db=None
+            db=None,
         )
 
         # 커스텀 기준이 추가됨
@@ -772,7 +762,7 @@ class TestAssessMinutes:
             meeting_content=_FULL_MINUTES,
             meeting_title="집중 평가",
             assessment_focus=[AssessmentFocus.COMPLETENESS, AssessmentFocus.CLARITY],
-            db=None
+            db=None,
         )
 
         # AI 분석에 집중 영역이 반영되어야 함
@@ -791,10 +781,7 @@ class TestGetImprovementSuggestions:
     async def test_all_suggestions(self, service):
         """모든 개선 제안 조회."""
         suggestions = await service.get_improvement_suggestions(
-            task_id="test-task",
-            improvement_type="all",
-            priority="all",
-            db=None
+            task_id="test-task", improvement_type="all", priority="all", db=None
         )
 
         assert len(suggestions) > 0
@@ -806,10 +793,7 @@ class TestGetImprovementSuggestions:
     async def test_structure_only(self, service):
         """구조 개선 제안만."""
         suggestions = await service.get_improvement_suggestions(
-            task_id="test-task",
-            improvement_type="structure",
-            priority="all",
-            db=None
+            task_id="test-task", improvement_type="structure", priority="all", db=None
         )
 
         assert len(suggestions) > 0
@@ -820,10 +804,7 @@ class TestGetImprovementSuggestions:
     async def test_high_priority_only(self, service):
         """높은 우선순위만."""
         suggestions = await service.get_improvement_suggestions(
-            task_id="test-task",
-            improvement_type="all",
-            priority="high",
-            db=None
+            task_id="test-task", improvement_type="all", priority="high", db=None
         )
 
         assert len(suggestions) > 0
@@ -834,18 +815,19 @@ class TestGetImprovementSuggestions:
     async def test_suggestion_structure(self, service):
         """제안 객체 구조 검증."""
         suggestions = await service.get_improvement_suggestions(
-            task_id="test-task",
-            improvement_type="structure",
-            priority="high",
-            db=None
+            task_id="test-task", improvement_type="structure", priority="high", db=None
         )
 
         for suggestion in suggestions:
             assert suggestion.id.startswith("improvement_test-task_")
             assert suggestion.title
             assert suggestion.description
-            assert suggestion.type in [ImprovementType.STRUCTURE, ImprovementType.CONTENT,
-                                     ImprovementType.CLARITY, ImprovementType.COMPLETENESS]
+            assert suggestion.type in [
+                ImprovementType.STRUCTURE,
+                ImprovementType.CONTENT,
+                ImprovementType.CLARITY,
+                ImprovementType.COMPLETENESS,
+            ]
             assert suggestion.priority in [Priority.HIGH, Priority.MEDIUM, Priority.LOW]
 
 
@@ -880,7 +862,7 @@ class TestGenerateActionPlan:
                 description="논리적 구조로 나누기",
                 example="## 개요\n\n1. 도입",
                 estimated_effort="30분",
-                impact="높음"
+                impact="높음",
             ),
             ImprovementSuggestion(
                 id="2",
@@ -889,7 +871,7 @@ class TestGenerateActionPlan:
                 title="명확한 용어",
                 description="전문 용어 설명",
                 estimated_effort="15분",
-                impact="중간"
+                impact="중간",
             ),
             ImprovementSuggestion(
                 id="3",
@@ -898,7 +880,7 @@ class TestGenerateActionPlan:
                 title="배경 정보",
                 description="배경 추가",
                 estimated_effort="10분",
-                impact="낮음"
+                impact="낮음",
             ),
         ]
 
@@ -929,7 +911,7 @@ class TestGenerateActionPlan:
                 title="고우선순위",
                 description="",
                 estimated_effort="1시간",
-                impact="높음"
+                impact="높음",
             ),
             ImprovementSuggestion(
                 id="2",
@@ -938,7 +920,7 @@ class TestGenerateActionPlan:
                 title="저우선순위",
                 description="",
                 estimated_effort="30분",
-                impact="낮음"
+                impact="낮음",
             ),
         ]
 
@@ -966,7 +948,7 @@ class TestGenerateActionPlan:
                 title="구조 개선",
                 description="논리적 구조",
                 estimated_effort="30분",
-                impact="높음"
+                impact="높음",
             ),
             ImprovementSuggestion(
                 id="2",
@@ -975,7 +957,7 @@ class TestGenerateActionPlan:
                 title="명확성 개선",  # 중복되는 제목
                 description="명확한 내용",
                 estimated_effort="20분",
-                impact="높음"
+                impact="높음",
             ),
         ]
 

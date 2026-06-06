@@ -142,11 +142,13 @@ def _rule_based_tags(content: str, max_tags: int) -> list[dict]:
             detected_category = cat
             break
 
-    tags.append({
-        "tag_type": "category",
-        "tag_value": detected_category,
-        "confidence": 0.6,
-    })
+    tags.append(
+        {
+            "tag_type": "category",
+            "tag_value": detected_category,
+            "confidence": 0.6,
+        }
+    )
 
     # 중요도 감지
     priority = "보통"
@@ -155,35 +157,73 @@ def _rule_based_tags(content: str, max_tags: int) -> list[dict]:
     elif any(w in content for w in ["중요", "필수", "필히", "important"]):
         priority = "중요"
 
-    tags.append({
-        "tag_type": "priority",
-        "tag_value": priority,
-        "confidence": 0.7,
-    })
+    tags.append(
+        {
+            "tag_type": "priority",
+            "tag_value": priority,
+            "confidence": 0.7,
+        }
+    )
 
     # 주제 추출 (명사구 기반 간단 추출)
     # 한글 2~6글자 단어 빈도수 기반
     korean_words = re.findall(r"[가-힣]{2,6}", content)
     # 불용어 제거
     stopwords = {
-        "합니다", "합니다다", "그리고", "그래서", "하지만", "그러면",
-        "이것", "그것", "저것", "여기", "거기", "저기",
-        "이런", "그런", "저런", "어떤", "이렇게",
-        "우리", "저희", "당신", "자신", "서로",
-        "지금", "현재", "오늘", "내일", "어제",
-        "그냥", "아주", "정말", "진짜", "매우",
-        "같은", "다른", "새로운", "이런", "그런",
-        "있습니다", "있어요", "습니다", "되어", "되는",
+        "합니다",
+        "합니다다",
+        "그리고",
+        "그래서",
+        "하지만",
+        "그러면",
+        "이것",
+        "그것",
+        "저것",
+        "여기",
+        "거기",
+        "저기",
+        "이런",
+        "그런",
+        "저런",
+        "어떤",
+        "이렇게",
+        "우리",
+        "저희",
+        "당신",
+        "자신",
+        "서로",
+        "지금",
+        "현재",
+        "오늘",
+        "내일",
+        "어제",
+        "그냥",
+        "아주",
+        "정말",
+        "진짜",
+        "매우",
+        "같은",
+        "다른",
+        "새로운",
+        "이런",
+        "그런",
+        "있습니다",
+        "있어요",
+        "습니다",
+        "되어",
+        "되는",
     }
     filtered = [w for w in korean_words if w not in stopwords]
     counter = Counter(filtered)
     top_topics = counter.most_common(max_tags - len(tags))
 
     for word, _ in top_topics[:5]:
-        tags.append({
-            "tag_type": "topic",
-            "tag_value": word,
-            "confidence": 0.5,
-        })
+        tags.append(
+            {
+                "tag_type": "topic",
+                "tag_value": word,
+                "confidence": 0.5,
+            }
+        )
 
     return tags[:max_tags]

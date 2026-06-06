@@ -156,9 +156,7 @@ class TestvalidatewebhookUrlHostvalidation:
         """resolve_host=True면 DNS 해석"""
         with patch("backend.utils.validators.socket.getaddrinfo") as mock_getaddrinfo:
             # 사설 IP로 해석
-            mock_getaddrinfo.return_value = [
-                (2, 1, 6, "", ("10.0.0.1", 443))
-            ]
+            mock_getaddrinfo.return_value = [(2, 1, 6, "", ("10.0.0.1", 443))]
 
             with pytest.raises(ValueError, match="사설"):
                 validate_webhook_url("https://evil.example.com/webhook", resolve_host=True)

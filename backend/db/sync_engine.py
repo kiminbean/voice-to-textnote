@@ -36,10 +36,7 @@ def _get_sync_engine() -> tuple[Engine, sessionmaker]:
         # - sqlite+aiosqlite → sqlite
         # - postgresql+asyncpg → postgresql+psycopg2
         if "+" in url:
-            sync_url = (
-                url.replace("+aiosqlite", "")
-                   .replace("+asyncpg", "+psycopg2")
-            )
+            sync_url = url.replace("+aiosqlite", "").replace("+asyncpg", "+psycopg2")
         else:
             sync_url = url
 

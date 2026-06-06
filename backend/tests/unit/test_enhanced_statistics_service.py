@@ -62,7 +62,7 @@ class TestFetchMinutesResult:
     async def test_redis_json_decode_error_falls_back_to_db(self):
         """Redis JSON 파싱 실패 시 DB 폴백."""
         redis_client = AsyncMock()
-        redis_client.get.return_value = b'{invalid json}'
+        redis_client.get.return_value = b"{invalid json}"
 
         from unittest.mock import MagicMock
 
@@ -250,7 +250,9 @@ class TestEnhancedStatisticsService:
         """요청 시 효율성 지표 포함."""
         service = EnhancedStatisticsService()
         redis_client = AsyncMock()
-        redis_client.get.return_value = b'{"segments": [{"start": 0.0, "end": 30.0, "speaker": "A", "text": "test segment"}]}'
+        redis_client.get.return_value = (
+            b'{"segments": [{"start": 0.0, "end": 30.0, "speaker": "A", "text": "test segment"}]}'
+        )
         db = AsyncMock()
 
         result = await service.get_enhanced_statistics(
@@ -271,7 +273,9 @@ class TestEnhancedStatisticsService:
         """요청하지 않을 때 효율성 지표 제외."""
         service = EnhancedStatisticsService()
         redis_client = AsyncMock()
-        redis_client.get.return_value = b'{"segments": [{"start": 0.0, "end": 30.0, "speaker": "A", "text": "test segment"}]}'
+        redis_client.get.return_value = (
+            b'{"segments": [{"start": 0.0, "end": 30.0, "speaker": "A", "text": "test segment"}]}'
+        )
         db = AsyncMock()
 
         result = await service.get_enhanced_statistics(
@@ -305,7 +309,11 @@ class TestEnhancedStatisticsService:
                     "created_at": datetime.now() - timedelta(days=i),
                     "result_data": {
                         "segments": [
-                            {"start": float(i * 30), "end": float(i * 30 + 30), "speaker": f"SPEAKER_{i % 3}"}
+                            {
+                                "start": float(i * 30),
+                                "end": float(i * 30 + 30),
+                                "speaker": f"SPEAKER_{i % 3}",
+                            }
                         ]
                     },
                 },

@@ -13,6 +13,7 @@ from backend.pipeline.template_parser import TemplateParser, _make_fallback
 # _make_fallback 테스트
 # ---------------------------------------------------------------------------
 
+
 class TestMakeFallback:
     """fallback dict 생성 함수 테스트"""
 
@@ -51,6 +52,7 @@ class TestMakeFallback:
 # TemplateParser.extract_structure 테스트
 # ---------------------------------------------------------------------------
 
+
 class TestExtractStructure:
     """구조 추출 메인 함수 테스트"""
 
@@ -86,9 +88,7 @@ class TestExtractStructure:
         test_file = tmp_path / "corrupt.pdf"
         test_file.write_bytes(b"corrupt content")
 
-        with patch.object(
-            parser, "_parse_pdf", side_effect=Exception("Parse error")
-        ):
+        with patch.object(parser, "_parse_pdf", side_effect=Exception("Parse error")):
             result = parser.extract_structure(test_file, "pdf")
 
             assert result["sections"] == []
@@ -98,6 +98,7 @@ class TestExtractStructure:
 # ---------------------------------------------------------------------------
 # TemplateParser._parse_docx 테스트
 # ---------------------------------------------------------------------------
+
 
 class TestParseDocx:
     """DOCX 파싱 테스트"""
@@ -110,6 +111,7 @@ class TestParseDocx:
         test_file.write_bytes(b"fake content")
 
         import sys
+
         with patch.dict(sys.modules, {"docx": None}):
             result = parser._parse_docx(test_file)
 
@@ -127,6 +129,7 @@ class TestParseDocx:
         mock_doc_module.Document.side_effect = Exception("Invalid file")
 
         import sys
+
         with patch.dict(sys.modules, {"docx": mock_doc_module}):
             result = parser._parse_docx(test_file)
 
@@ -158,6 +161,7 @@ class TestParseDocx:
         mock_doc_module.Document.return_value = mock_doc
 
         import sys
+
         with patch.dict(sys.modules, {"docx": mock_doc_module}):
             result = parser._parse_docx(test_file)
 
@@ -184,6 +188,7 @@ class TestParseDocx:
         mock_doc_module.Document.return_value = mock_doc
 
         import sys
+
         with patch.dict(sys.modules, {"docx": mock_doc_module}):
             result = parser._parse_docx(test_file)
 
@@ -212,6 +217,7 @@ class TestParseDocx:
         mock_doc_module.Document.return_value = mock_doc
 
         import sys
+
         with patch.dict(sys.modules, {"docx": mock_doc_module}):
             result = parser._parse_docx(test_file)
 
@@ -236,6 +242,7 @@ class TestParseDocx:
         mock_doc_module.Document.return_value = mock_doc
 
         import sys
+
         with patch.dict(sys.modules, {"docx": mock_doc_module}):
             result = parser._parse_docx(test_file)
 
@@ -246,6 +253,7 @@ class TestParseDocx:
 # ---------------------------------------------------------------------------
 # TemplateParser._parse_pdf 테스트
 # ---------------------------------------------------------------------------
+
 
 class TestParsePdf:
     """PDF 파싱 테스트"""
@@ -258,6 +266,7 @@ class TestParsePdf:
         test_file.write_bytes(b"fake pdf")
 
         import sys
+
         with patch.dict(sys.modules, {"pdfplumber": None}):
             result = parser._parse_pdf(test_file)
 
@@ -275,6 +284,7 @@ class TestParsePdf:
         mock_pdfplumber.open.side_effect = Exception("Cannot open")
 
         import sys
+
         with patch.dict(sys.modules, {"pdfplumber": mock_pdfplumber}):
             result = parser._parse_pdf(test_file)
 
@@ -300,6 +310,7 @@ class TestParsePdf:
         mock_pdfplumber.open.return_value = mock_pdf
 
         import sys
+
         with patch.dict(sys.modules, {"pdfplumber": mock_pdfplumber}):
             result = parser._parse_pdf(test_file)
 
@@ -326,6 +337,7 @@ class TestParsePdf:
         mock_pdfplumber.open.return_value = mock_pdf
 
         import sys
+
         with patch.dict(sys.modules, {"pdfplumber": mock_pdfplumber}):
             result = parser._parse_pdf(test_file)
 
@@ -357,6 +369,7 @@ class TestParsePdf:
         mock_pdfplumber.open.return_value = mock_pdf
 
         import sys
+
         with patch.dict(sys.modules, {"pdfplumber": mock_pdfplumber}):
             result = parser._parse_pdf(test_file)
 
@@ -389,6 +402,7 @@ class TestParsePdf:
         mock_pdfplumber.open.return_value = mock_pdf
 
         import sys
+
         with patch.dict(sys.modules, {"pdfplumber": mock_pdfplumber}):
             result = parser._parse_pdf(test_file)
 
@@ -424,6 +438,7 @@ class TestParsePdf:
         mock_pdfplumber.open.return_value = mock_pdf
 
         import sys
+
         with patch.dict(sys.modules, {"pdfplumber": mock_pdfplumber}):
             result = parser._parse_pdf(test_file)
 
@@ -463,6 +478,7 @@ class TestParsePdf:
         mock_pdfplumber.open.return_value = mock_pdf
 
         import sys
+
         with patch.dict(sys.modules, {"pdfplumber": mock_pdfplumber}):
             result = parser._parse_pdf(test_file)
 
@@ -498,6 +514,7 @@ class TestParsePdf:
         mock_pdfplumber.open.return_value = mock_pdf
 
         import sys
+
         with patch.dict(sys.modules, {"pdfplumber": mock_pdfplumber}):
             result = parser._parse_pdf(test_file)
 
@@ -522,7 +539,7 @@ class TestParsePdf:
             ],
             [
                 ["회의 일시", "2024-01-15"],
-            ]
+            ],
         ]
 
         mock_pdf = MagicMock()
@@ -534,6 +551,7 @@ class TestParsePdf:
         mock_pdfplumber.open.return_value = mock_pdf
 
         import sys
+
         with patch.dict(sys.modules, {"pdfplumber": mock_pdfplumber}):
             result = parser._parse_pdf(test_file)
 

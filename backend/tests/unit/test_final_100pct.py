@@ -88,7 +88,6 @@ class TestAuditLogFullCoverage:
 # quality_service.py - lines 489, 560, 611, 613, 615, 621, 1028
 # ---------------------------------------------------------------------------
 class TestQualityServiceFullCoverage:
-
     # --- Line 489: _calculate_overall_score with no relevant scores ---
     def test_calculate_overall_score_no_basic_categories(self):
         """Line 489: return 0.0 when no relevant scores found"""
@@ -120,7 +119,7 @@ class TestQualityServiceFullCoverage:
         import backend.services.quality_service as qs_mod
 
         mock_severity = MagicMock()
-        mock_severity.HIGH = IssueSeverity.LOW      # Issues created as "HIGH" -> actually LOW
+        mock_severity.HIGH = IssueSeverity.LOW  # Issues created as "HIGH" -> actually LOW
         mock_severity.MEDIUM = IssueSeverity.MEDIUM
         mock_severity.LOW = IssueSeverity.LOW
         mock_severity.CRITICAL = IssueSeverity.CRITICAL

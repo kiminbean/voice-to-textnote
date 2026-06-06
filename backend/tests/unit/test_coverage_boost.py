@@ -21,9 +21,13 @@ class TestOpenaiClientExceptionPath:
 
         # 첫 번째 호출(try 블록)은 실패, 두 번째 호출(except 블록)은 성공
         mock_client = MagicMock()
-        with patch("backend.ml.openai_client.AsyncOpenAI",
-                   side_effect=[Exception("설정 오류"), mock_client]), \
-             patch.dict("os.environ", {"OPENAI_API_KEY": "sk-test"}):
+        with (
+            patch(
+                "backend.ml.openai_client.AsyncOpenAI",
+                side_effect=[Exception("설정 오류"), mock_client],
+            ),
+            patch.dict("os.environ", {"OPENAI_API_KEY": "sk-test"}),
+        ):
             client = get_openai_client()
 
         assert client is mock_client  # except 블록에서 반환된 클라이언트

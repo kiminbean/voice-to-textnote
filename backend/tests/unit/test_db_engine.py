@@ -54,9 +54,7 @@ class TestCreateEngine:
             mock_engine = MagicMock()
             mock_create.return_value = mock_engine
 
-            create_engine(
-                database_url="postgresql+asyncpg://user:pass@localhost/testdb"
-            )
+            create_engine(database_url="postgresql+asyncpg://user:pass@localhost/testdb")
 
             # pool_size=5, max_overflow=15 인자로 호출됐는지 검증
             _, kwargs = mock_create.call_args

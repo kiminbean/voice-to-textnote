@@ -161,9 +161,7 @@ class TestReadinessCeleryCheck:
     def test_readiness_workers_false_when_no_celery(self, client_with_healthy_redis):
         """REQ-OPS-009: Celery 워커 없을 때 workers가 false (개발환경 허용)"""
         # Celery inspect를 mock하여 워커 없음 시뮬레이션
-        with patch(
-            "backend.app.api.v1.admin.health.celery_app.control.inspect"
-        ) as mock_inspect:
+        with patch("backend.app.api.v1.admin.health.celery_app.control.inspect") as mock_inspect:
             mock_inspect_instance = MagicMock()
             mock_inspect_instance.ping.return_value = None  # 워커 없음
             mock_inspect.return_value = mock_inspect_instance
@@ -176,13 +174,9 @@ class TestReadinessCeleryCheck:
 
     def test_readiness_workers_true_when_celery_available(self, client_with_healthy_redis):
         """REQ-OPS-009: Celery 워커 존재 시 workers가 true"""
-        with patch(
-            "backend.app.api.v1.admin.health.celery_app.control.inspect"
-        ) as mock_inspect:
+        with patch("backend.app.api.v1.admin.health.celery_app.control.inspect") as mock_inspect:
             mock_inspect_instance = MagicMock()
-            mock_inspect_instance.ping.return_value = {
-                "celery@worker1": {"ok": "pong"}
-            }
+            mock_inspect_instance.ping.return_value = {"celery@worker1": {"ok": "pong"}}
             mock_inspect.return_value = mock_inspect_instance
 
             response = client_with_healthy_redis.get("/api/v1/health/ready")
@@ -192,9 +186,7 @@ class TestReadinessCeleryCheck:
 
     def test_readiness_still_200_when_workers_unavailable(self, client_with_healthy_redis):
         """REQ-OPS-009: Celery 워커 없어도 Redis 정상이면 200 반환 (개발 환경 대응)"""
-        with patch(
-            "backend.app.api.v1.admin.health.celery_app.control.inspect"
-        ) as mock_inspect:
+        with patch("backend.app.api.v1.admin.health.celery_app.control.inspect") as mock_inspect:
             mock_inspect.side_effect = Exception("Celery not running")
 
             response = client_with_healthy_redis.get("/api/v1/health/ready")

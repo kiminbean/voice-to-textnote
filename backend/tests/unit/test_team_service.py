@@ -26,6 +26,7 @@ from backend.db.auth_models import Team, TeamMember, User
 def team_service():
     """TeamService 인스턴스"""
     from backend.services.team_service import TeamService
+
     return TeamService()
 
 
@@ -329,9 +330,7 @@ async def test_add_member_success(
 
 
 @pytest.mark.asyncio
-async def test_add_member_user_not_found(
-    team_service, mock_session, sample_user, sample_team
-):
+async def test_add_member_user_not_found(team_service, mock_session, sample_user, sample_team):
     """존재하지 않는 이메일로 초대 시 LookupError"""
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = None
@@ -485,9 +484,7 @@ async def test_remove_member_last_admin_cannot_leave(
 
 
 @pytest.mark.asyncio
-async def test_list_members(
-    team_service, mock_session, sample_user, sample_team, sample_member
-):
+async def test_list_members(team_service, mock_session, sample_user, sample_team, sample_member):
     """팀 멤버 목록 조회"""
     mock_result = MagicMock()
     mock_result.all.return_value = [(sample_user, sample_member)]

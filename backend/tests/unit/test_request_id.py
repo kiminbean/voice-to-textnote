@@ -96,9 +96,7 @@ class TestClientProvidedRequestID:
     def test_uses_client_provided_request_id(self, app_with_request_id):
         """REQ-OPS-007: 클라이언트가 X-Request-ID 제공 시 해당 ID 사용"""
         client_id = str(uuid.uuid4())
-        response = app_with_request_id.get(
-            "/test", headers={"X-Request-ID": client_id}
-        )
+        response = app_with_request_id.get("/test", headers={"X-Request-ID": client_id})
         assert response.headers["x-request-id"] == client_id
 
     def test_generates_new_id_when_client_does_not_provide(self, app_with_request_id):
@@ -115,9 +113,7 @@ class TestClientProvidedRequestID:
     def test_client_provided_non_uuid_id_is_used(self, app_with_request_id):
         """REQ-OPS-007: 클라이언트가 비-UUID 형식 ID 제공 시에도 해당 ID 사용"""
         custom_id = "custom-trace-id-12345"
-        response = app_with_request_id.get(
-            "/test", headers={"X-Request-ID": custom_id}
-        )
+        response = app_with_request_id.get("/test", headers={"X-Request-ID": custom_id})
         assert response.headers["x-request-id"] == custom_id
 
 

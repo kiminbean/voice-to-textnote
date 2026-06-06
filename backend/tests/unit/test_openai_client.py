@@ -18,6 +18,7 @@ from backend.ml.openai_client import get_cached_openai_client, get_openai_client
 def reset_client():
     """테스트 간 전역 클라이언트 초기화"""
     from backend.ml import openai_client
+
     openai_client._openai_client = None
     yield
     openai_client._openai_client = None
@@ -65,7 +66,10 @@ class TestGetOpenAIClient:
         assert call_kwargs["api_key"] == "dummy-key"
         assert result == mock_client
 
-    @patch.dict("os.environ", {"OPENAI_API_KEY": "test-key", "OPENAI_BASE_URL": "https://custom.openai.com/v1"})
+    @patch.dict(
+        "os.environ",
+        {"OPENAI_API_KEY": "test-key", "OPENAI_BASE_URL": "https://custom.openai.com/v1"},
+    )
     @patch("backend.ml.openai_client.AsyncOpenAI")
     def test_uses_custom_base_url(self, mock_async_openai):
         """커스텀 base_url 사용 검증"""
@@ -156,6 +160,7 @@ class TestGetCachedOpenAIClient:
         mock_get_client.assert_called_once()
         assert result == mock_client
         from backend.ml import openai_client
+
         assert openai_client._openai_client is not None
         assert openai_client._openai_client == mock_client
 

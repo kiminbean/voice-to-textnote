@@ -79,7 +79,9 @@ class TestPersistTaskResultIndexing:
         # 검색 인덱스에 추가되었는지 확인
         with self.engine.connect() as conn:
             result = conn.execute(
-                text("SELECT task_id, task_type, content FROM search_index WHERE task_id = 'idx-min-001'")
+                text(
+                    "SELECT task_id, task_type, content FROM search_index WHERE task_id = 'idx-min-001'"
+                )
             )
             row = result.fetchone()
 
@@ -122,7 +124,9 @@ class TestPersistTaskResultIndexing:
 
         with self.engine.connect() as conn:
             result = conn.execute(
-                text("SELECT task_id, task_type, summary_text FROM search_index WHERE task_id = 'idx-sum-001'")
+                text(
+                    "SELECT task_id, task_type, summary_text FROM search_index WHERE task_id = 'idx-sum-001'"
+                )
             )
             row = result.fetchone()
 

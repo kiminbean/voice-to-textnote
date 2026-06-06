@@ -19,7 +19,7 @@ POLL_TIMEOUT_SECONDS = 5.0
 
 # Redis 직접 상태 조회용 key prefix 목록
 STATUS_KEY_PREFIXES = (
-    "task:status:",      # transcription
+    "task:status:",  # transcription
     "task:dia:status:",  # diarization
     "task:min:status:",  # minutes
     "task:sum:status:",  # summary

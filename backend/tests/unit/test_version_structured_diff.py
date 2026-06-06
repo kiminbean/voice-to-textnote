@@ -20,9 +20,7 @@ def service() -> VersionService:
 class TestComputeStructuredDiff:
     """구조화 diff 핵심 시나리오."""
 
-    def test_identical_content_reports_no_change(
-        self, service: VersionService
-    ) -> None:
+    def test_identical_content_reports_no_change(self, service: VersionService) -> None:
         content = {
             "summary_text": "동일",
             "sections": [{"title": "A", "content": "내용"}],
@@ -53,9 +51,9 @@ class TestComputeStructuredDiff:
         }
         new = {
             "sections": [
-                {"title": "주요 안건", "content": "A안 검토"},        # 동일
-                {"title": "결정 사항", "content": "A안 채택"},        # 수정
-                {"title": "후속 액션", "content": "내주까지"},        # 추가
+                {"title": "주요 안건", "content": "A안 검토"},  # 동일
+                {"title": "결정 사항", "content": "A안 채택"},  # 수정
+                {"title": "후속 액션", "content": "내주까지"},  # 추가
             ]
         }
         diff = service.compute_structured_diff(old, new)
@@ -80,8 +78,8 @@ class TestComputeStructuredDiff:
         }
         new = {
             "action_items": [
-                {"id": "AI-1", "text": "준비", "assignee": "Bob"},   # modified
-                {"id": "AI-3", "text": "예산 검토"},                  # added
+                {"id": "AI-1", "text": "준비", "assignee": "Bob"},  # modified
+                {"id": "AI-3", "text": "예산 검토"},  # added
             ]
         }
         diff = service.compute_structured_diff(old, new)
@@ -93,9 +91,7 @@ class TestComputeStructuredDiff:
         assert ai["modified"][0]["before"]["assignee"] == "Alice"
         assert ai["modified"][0]["after"]["assignee"] == "Bob"
 
-    def test_action_items_fallback_to_text_key(
-        self, service: VersionService
-    ) -> None:
+    def test_action_items_fallback_to_text_key(self, service: VersionService) -> None:
         # id가 없으면 text 기준 매칭
         old = {"action_items": [{"text": "이메일 발송"}]}
         new = {"action_items": [{"text": "이메일 발송"}, {"text": "재확인"}]}
@@ -111,22 +107,20 @@ class TestComputeStructuredDiff:
             "action_items": [{"id": "1", "text": "t"}],
         }
         new = {
-            "summary_text": "v2",                                    # +1
+            "summary_text": "v2",  # +1
             "sections": [
-                {"title": "X", "content": "b"},                      # modified +1
-                {"title": "Y", "content": "c"},                      # added +1
+                {"title": "X", "content": "b"},  # modified +1
+                {"title": "Y", "content": "c"},  # added +1
             ],
             "action_items": [
-                {"id": "2", "text": "u"},                            # added +1, removed +1
+                {"id": "2", "text": "u"},  # added +1, removed +1
             ],
         }
         diff = service.compute_structured_diff(old, new)
         assert diff["total_changes"] == 5
         assert diff["changed"] is True
 
-    def test_malformed_sections_skipped_silently(
-        self, service: VersionService
-    ) -> None:
+    def test_malformed_sections_skipped_silently(self, service: VersionService) -> None:
         # 잘못된 형식의 section은 무시되어 카운트되지 않음
         old = {"sections": ["문자열", {"title": "ok", "content": "1"}]}
         new = {"sections": [{"title": "ok", "content": "2"}]}

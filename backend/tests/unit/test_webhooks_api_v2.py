@@ -221,7 +221,10 @@ class TestPingWebhookEndpoint:
 
         # WebhookService.ping 메서드 mock (실패 케이스)
         with patch.object(
-            WebhookService, "ping", new_callable=AsyncMock, return_value=(500, False, "Connection failed")
+            WebhookService,
+            "ping",
+            new_callable=AsyncMock,
+            return_value=(500, False, "Connection failed"),
         ):
             mock_endpoint = MagicMock()
             mock_endpoint.id = webhook_id

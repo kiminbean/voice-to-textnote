@@ -148,9 +148,7 @@ class TestGetResult:
         assert record.result_data == {"transcript": "테스트"}
 
     @pytest.mark.asyncio
-    async def test_get_result_returns_none_when_not_found(
-        self, db_session, result_service
-    ):
+    async def test_get_result_returns_none_when_not_found(self, db_session, result_service):
         """존재하지 않는 task_id 조회 시 None 반환 (캐시 미스 폴백 지원)"""
         record = await result_service.get_result(
             session=db_session,
@@ -233,12 +231,8 @@ class TestListResults:
                 status="completed",
             )
 
-        page1 = await result_service.list_results(
-            session=db_session, limit=2, offset=0
-        )
-        page2 = await result_service.list_results(
-            session=db_session, limit=2, offset=2
-        )
+        page1 = await result_service.list_results(session=db_session, limit=2, offset=0)
+        page2 = await result_service.list_results(session=db_session, limit=2, offset=2)
 
         assert len(page1) == 2
         assert len(page2) == 2

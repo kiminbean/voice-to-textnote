@@ -88,10 +88,15 @@ class TestDiarizationTaskHappyPath:
 
         mock_engine = _make_mock_engine()
 
-        with patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis), \
-             patch("backend.workers.tasks.diarization_task.DiarizationEngine.get_instance", return_value=mock_engine), \
-             patch("backend.workers.tasks.diarization_task.settings") as mock_settings, \
-             patch("backend.pipeline.audio_processor.get_audio_duration_seconds", return_value=10.0):
+        with (
+            patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis),
+            patch(
+                "backend.workers.tasks.diarization_task.DiarizationEngine.get_instance",
+                return_value=mock_engine,
+            ),
+            patch("backend.workers.tasks.diarization_task.settings") as mock_settings,
+            patch("backend.pipeline.audio_processor.get_audio_duration_seconds", return_value=10.0),
+        ):
             mock_settings.temp_dir = tmp_path
             mock_settings.diarization_result_ttl = 86400
             mock_settings.max_concurrent_diarizations = 2
@@ -126,10 +131,15 @@ class TestDiarizationTaskHappyPath:
 
         mock_engine = _make_mock_engine()
 
-        with patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis), \
-             patch("backend.workers.tasks.diarization_task.DiarizationEngine.get_instance", return_value=mock_engine), \
-             patch("backend.workers.tasks.diarization_task.settings") as mock_settings, \
-             patch("backend.pipeline.audio_processor.get_audio_duration_seconds", return_value=10.0):
+        with (
+            patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis),
+            patch(
+                "backend.workers.tasks.diarization_task.DiarizationEngine.get_instance",
+                return_value=mock_engine,
+            ),
+            patch("backend.workers.tasks.diarization_task.settings") as mock_settings,
+            patch("backend.pipeline.audio_processor.get_audio_duration_seconds", return_value=10.0),
+        ):
             mock_settings.temp_dir = tmp_path
             mock_settings.diarization_result_ttl = 86400
             mock_settings.max_concurrent_diarizations = 2
@@ -322,12 +332,12 @@ class TestDiarizationTaskErrors:
         }
         mock_redis = _make_mock_redis()
         mock_redis.pipeline.return_value.execute.return_value = [0, 0]
-        mock_redis.get.side_effect = lambda key: (
-            json.dumps(failed_stt) if "result" in key else None
-        )
+        mock_redis.get.side_effect = lambda key: json.dumps(failed_stt) if "result" in key else None
 
-        with patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis), \
-             patch("backend.workers.tasks.diarization_task.settings") as mock_settings:
+        with (
+            patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis),
+            patch("backend.workers.tasks.diarization_task.settings") as mock_settings,
+        ):
             mock_settings.temp_dir = tmp_path
             mock_settings.diarization_result_ttl = 86400
             mock_settings.max_concurrent_diarizations = 2
@@ -358,10 +368,15 @@ class TestDiarizationTaskErrors:
         mock_engine.is_loaded = True
         mock_engine.diarize.side_effect = SoftTimeLimitExceeded()
 
-        with patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis), \
-             patch("backend.workers.tasks.diarization_task.DiarizationEngine.get_instance", return_value=mock_engine), \
-             patch("backend.workers.tasks.diarization_task.settings") as mock_settings, \
-             patch("backend.pipeline.audio_processor.get_audio_duration_seconds", return_value=10.0):
+        with (
+            patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis),
+            patch(
+                "backend.workers.tasks.diarization_task.DiarizationEngine.get_instance",
+                return_value=mock_engine,
+            ),
+            patch("backend.workers.tasks.diarization_task.settings") as mock_settings,
+            patch("backend.pipeline.audio_processor.get_audio_duration_seconds", return_value=10.0),
+        ):
             mock_settings.temp_dir = tmp_path
             mock_settings.diarization_result_ttl = 86400
             mock_settings.max_concurrent_diarizations = 2
@@ -403,10 +418,17 @@ class TestDiarizationTaskErrors:
 
         mock_engine.diarize_chunked.side_effect = diarize_chunked_side_effect
 
-        with patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis), \
-             patch("backend.workers.tasks.diarization_task.DiarizationEngine.get_instance", return_value=mock_engine), \
-             patch("backend.workers.tasks.diarization_task.settings") as mock_settings, \
-             patch("backend.pipeline.audio_processor.get_audio_duration_seconds", return_value=900.0):
+        with (
+            patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis),
+            patch(
+                "backend.workers.tasks.diarization_task.DiarizationEngine.get_instance",
+                return_value=mock_engine,
+            ),
+            patch("backend.workers.tasks.diarization_task.settings") as mock_settings,
+            patch(
+                "backend.pipeline.audio_processor.get_audio_duration_seconds", return_value=900.0
+            ),
+        ):
             mock_settings.temp_dir = tmp_path
             mock_settings.diarization_result_ttl = 86400
             mock_settings.max_concurrent_diarizations = 2
@@ -463,10 +485,15 @@ class TestDiarizationTaskStatusTransitions:
 
         mock_engine = _make_mock_engine()
 
-        with patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis), \
-             patch("backend.workers.tasks.diarization_task.DiarizationEngine.get_instance", return_value=mock_engine), \
-             patch("backend.workers.tasks.diarization_task.settings") as mock_settings, \
-             patch("backend.pipeline.audio_processor.get_audio_duration_seconds", return_value=10.0):
+        with (
+            patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis),
+            patch(
+                "backend.workers.tasks.diarization_task.DiarizationEngine.get_instance",
+                return_value=mock_engine,
+            ),
+            patch("backend.workers.tasks.diarization_task.settings") as mock_settings,
+            patch("backend.pipeline.audio_processor.get_audio_duration_seconds", return_value=10.0),
+        ):
             mock_settings.temp_dir = tmp_path
             mock_settings.diarization_result_ttl = 86400
             mock_settings.max_concurrent_diarizations = 2
@@ -500,10 +527,15 @@ class TestDiarizationTaskStatusTransitions:
         )
         mock_engine = _make_mock_engine()
 
-        with patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis), \
-             patch("backend.workers.tasks.diarization_task.DiarizationEngine.get_instance", return_value=mock_engine), \
-             patch("backend.workers.tasks.diarization_task.settings") as mock_settings, \
-             patch("backend.pipeline.audio_processor.get_audio_duration_seconds", return_value=10.0):
+        with (
+            patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis),
+            patch(
+                "backend.workers.tasks.diarization_task.DiarizationEngine.get_instance",
+                return_value=mock_engine,
+            ),
+            patch("backend.workers.tasks.diarization_task.settings") as mock_settings,
+            patch("backend.pipeline.audio_processor.get_audio_duration_seconds", return_value=10.0),
+        ):
             mock_settings.temp_dir = tmp_path
             mock_settings.diarization_result_ttl = 86400
             mock_settings.max_concurrent_diarizations = 2
@@ -535,10 +567,15 @@ class TestDiarizationTaskStatusTransitions:
         )
         mock_engine = _make_mock_engine()
 
-        with patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis), \
-             patch("backend.workers.tasks.diarization_task.DiarizationEngine.get_instance", return_value=mock_engine), \
-             patch("backend.workers.tasks.diarization_task.settings") as mock_settings, \
-             patch("backend.pipeline.audio_processor.get_audio_duration_seconds", return_value=10.0):
+        with (
+            patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis),
+            patch(
+                "backend.workers.tasks.diarization_task.DiarizationEngine.get_instance",
+                return_value=mock_engine,
+            ),
+            patch("backend.workers.tasks.diarization_task.settings") as mock_settings,
+            patch("backend.pipeline.audio_processor.get_audio_duration_seconds", return_value=10.0),
+        ):
             mock_settings.temp_dir = tmp_path
             mock_settings.diarization_result_ttl = 86400
             mock_settings.max_concurrent_diarizations = 2
@@ -590,14 +627,17 @@ class TestDiarizationCeleryWrapper:
     def test_wrapper_returns_failed_after_max_retries(self):
         from backend.workers.tasks.diarization_task import diarization_celery_task
 
-        with patch(
-            "backend.workers.tasks.diarization_task.diarization_task",
-            side_effect=RuntimeError("temporary outage"),
-        ), patch.object(
-            diarization_celery_task,
-            "retry",
-            side_effect=diarization_celery_task.MaxRetriesExceededError(),
-        ) as retry:
+        with (
+            patch(
+                "backend.workers.tasks.diarization_task.diarization_task",
+                side_effect=RuntimeError("temporary outage"),
+            ),
+            patch.object(
+                diarization_celery_task,
+                "retry",
+                side_effect=diarization_celery_task.MaxRetriesExceededError(),
+            ) as retry,
+        ):
             result = diarization_celery_task.run("task-id", "stt-id")
 
         retry.assert_called_once()

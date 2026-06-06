@@ -101,7 +101,9 @@ class SummaryStatusResponse(BaseModel):
 class MindMapCreateRequest(BaseModel):
     """POST /api/v1/summaries/{summary_task_id}/mind-map 요청 본문"""
 
-    max_tokens: int = Field(default=2048, ge=512, le=8192, description="OpenAI API 최대 응답 토큰 수")
+    max_tokens: int = Field(
+        default=2048, ge=512, le=8192, description="OpenAI API 최대 응답 토큰 수"
+    )
 
 
 class MindMapNode(BaseModel):

@@ -70,10 +70,11 @@ class TestVerifyGoogleToken:
     @pytest.mark.asyncio
     async def test_successful_verification(self):
         """정상 토큰 → OAuthUserInfo 반환."""
-        with patch("backend.services.oauth_service.settings") as mock_settings, \
-             patch("backend.services.oauth_service.httpx.AsyncClient") as mock_client_cls, \
-             patch("backend.services.oauth_service.jwt") as mock_jwt:
-
+        with (
+            patch("backend.services.oauth_service.settings") as mock_settings,
+            patch("backend.services.oauth_service.httpx.AsyncClient") as mock_client_cls,
+            patch("backend.services.oauth_service.jwt") as mock_jwt,
+        ):
             mock_settings.google_client_id = "test-client-id"
 
             # httpx mock
@@ -110,10 +111,11 @@ class TestVerifyGoogleToken:
     @pytest.mark.asyncio
     async def test_no_kid_in_header_raises(self):
         """JWT 헤더에 kid 없으면 ValueError."""
-        with patch("backend.services.oauth_service.settings") as mock_settings, \
-             patch("backend.services.oauth_service.httpx.AsyncClient") as mock_client_cls, \
-             patch("backend.services.oauth_service.jwt") as mock_jwt:
-
+        with (
+            patch("backend.services.oauth_service.settings") as mock_settings,
+            patch("backend.services.oauth_service.httpx.AsyncClient") as mock_client_cls,
+            patch("backend.services.oauth_service.jwt") as mock_jwt,
+        ):
             mock_settings.google_client_id = "test-client-id"
             mock_resp = MagicMock()
             mock_resp.json.return_value = _GOOGLE_CERTS
@@ -132,10 +134,11 @@ class TestVerifyGoogleToken:
     @pytest.mark.asyncio
     async def test_no_matching_key_raises(self):
         """kid에 매칭되는 공개 키 없으면 ValueError."""
-        with patch("backend.services.oauth_service.settings") as mock_settings, \
-             patch("backend.services.oauth_service.httpx.AsyncClient") as mock_client_cls, \
-             patch("backend.services.oauth_service.jwt") as mock_jwt:
-
+        with (
+            patch("backend.services.oauth_service.settings") as mock_settings,
+            patch("backend.services.oauth_service.httpx.AsyncClient") as mock_client_cls,
+            patch("backend.services.oauth_service.jwt") as mock_jwt,
+        ):
             mock_settings.google_client_id = "test-client-id"
             mock_resp = MagicMock()
             mock_resp.json.return_value = {"keys": [{"kid": "other-kid"}]}
@@ -154,10 +157,11 @@ class TestVerifyGoogleToken:
     @pytest.mark.asyncio
     async def test_missing_sub_or_email_raises(self):
         """sub 또는 email 없으면 ValueError."""
-        with patch("backend.services.oauth_service.settings") as mock_settings, \
-             patch("backend.services.oauth_service.httpx.AsyncClient") as mock_client_cls, \
-             patch("backend.services.oauth_service.jwt") as mock_jwt:
-
+        with (
+            patch("backend.services.oauth_service.settings") as mock_settings,
+            patch("backend.services.oauth_service.httpx.AsyncClient") as mock_client_cls,
+            patch("backend.services.oauth_service.jwt") as mock_jwt,
+        ):
             mock_settings.google_client_id = "test-client-id"
             mock_resp = MagicMock()
             mock_resp.json.return_value = _GOOGLE_CERTS
@@ -179,10 +183,11 @@ class TestVerifyGoogleToken:
         """JWT 디코드 실패 시 ValueError."""
         from jose import JWTError
 
-        with patch("backend.services.oauth_service.settings") as mock_settings, \
-             patch("backend.services.oauth_service.httpx.AsyncClient") as mock_client_cls, \
-             patch("backend.services.oauth_service.jwt") as mock_jwt:
-
+        with (
+            patch("backend.services.oauth_service.settings") as mock_settings,
+            patch("backend.services.oauth_service.httpx.AsyncClient") as mock_client_cls,
+            patch("backend.services.oauth_service.jwt") as mock_jwt,
+        ):
             mock_settings.google_client_id = "test-client-id"
             mock_resp = MagicMock()
             mock_resp.json.return_value = _GOOGLE_CERTS
@@ -202,10 +207,11 @@ class TestVerifyGoogleToken:
     @pytest.mark.asyncio
     async def test_no_name_uses_email_prefix(self):
         """name 필드 없으면 email 접두어를 display_name으로."""
-        with patch("backend.services.oauth_service.settings") as mock_settings, \
-             patch("backend.services.oauth_service.httpx.AsyncClient") as mock_client_cls, \
-             patch("backend.services.oauth_service.jwt") as mock_jwt:
-
+        with (
+            patch("backend.services.oauth_service.settings") as mock_settings,
+            patch("backend.services.oauth_service.httpx.AsyncClient") as mock_client_cls,
+            patch("backend.services.oauth_service.jwt") as mock_jwt,
+        ):
             mock_settings.google_client_id = "test-client-id"
             mock_resp = MagicMock()
             mock_resp.json.return_value = _GOOGLE_CERTS
@@ -237,10 +243,11 @@ class TestVerifyAppleToken:
     @pytest.mark.asyncio
     async def test_successful_verification(self):
         """정상 Apple 토큰 → OAuthUserInfo."""
-        with patch("backend.services.oauth_service.settings") as mock_settings, \
-             patch("backend.services.oauth_service.httpx.AsyncClient") as mock_client_cls, \
-             patch("backend.services.oauth_service.jwt") as mock_jwt:
-
+        with (
+            patch("backend.services.oauth_service.settings") as mock_settings,
+            patch("backend.services.oauth_service.httpx.AsyncClient") as mock_client_cls,
+            patch("backend.services.oauth_service.jwt") as mock_jwt,
+        ):
             mock_settings.apple_client_id = "com.test.app"
             mock_settings.apple_team_id = "TEAM123"
 
@@ -275,10 +282,11 @@ class TestVerifyAppleToken:
     @pytest.mark.asyncio
     async def test_no_sub_raises(self):
         """sub 없으면 ValueError."""
-        with patch("backend.services.oauth_service.settings") as mock_settings, \
-             patch("backend.services.oauth_service.httpx.AsyncClient") as mock_client_cls, \
-             patch("backend.services.oauth_service.jwt") as mock_jwt:
-
+        with (
+            patch("backend.services.oauth_service.settings") as mock_settings,
+            patch("backend.services.oauth_service.httpx.AsyncClient") as mock_client_cls,
+            patch("backend.services.oauth_service.jwt") as mock_jwt,
+        ):
             mock_settings.apple_client_id = "com.test.app"
             mock_settings.apple_team_id = "TEAM123"
 
@@ -300,10 +308,11 @@ class TestVerifyAppleToken:
     @pytest.mark.asyncio
     async def test_no_email_uses_private_relay(self):
         """email 없으면 private relay 주소 생성."""
-        with patch("backend.services.oauth_service.settings") as mock_settings, \
-             patch("backend.services.oauth_service.httpx.AsyncClient") as mock_client_cls, \
-             patch("backend.services.oauth_service.jwt") as mock_jwt:
-
+        with (
+            patch("backend.services.oauth_service.settings") as mock_settings,
+            patch("backend.services.oauth_service.httpx.AsyncClient") as mock_client_cls,
+            patch("backend.services.oauth_service.jwt") as mock_jwt,
+        ):
             mock_settings.apple_client_id = "com.test.app"
             mock_settings.apple_team_id = "TEAM123"
 

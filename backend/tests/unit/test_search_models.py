@@ -160,7 +160,9 @@ class TestIndexSearchEntry:
         # 인덱스 항목 존재 확인
         with sync_engine.connect() as conn:
             result = conn.execute(
-                text("SELECT task_id, task_type, content, speaker_names FROM search_index WHERE task_id = 'task-min-001'")
+                text(
+                    "SELECT task_id, task_type, content, speaker_names FROM search_index WHERE task_id = 'task-min-001'"
+                )
             )
             row = result.fetchone()
 
@@ -188,7 +190,9 @@ class TestIndexSearchEntry:
 
         with sync_engine.connect() as conn:
             result = conn.execute(
-                text("SELECT task_id, task_type, summary_text, action_items_text FROM search_index WHERE task_id = 'task-sum-001'")
+                text(
+                    "SELECT task_id, task_type, summary_text, action_items_text FROM search_index WHERE task_id = 'task-sum-001'"
+                )
             )
             row = result.fetchone()
 
@@ -216,15 +220,18 @@ class TestIndexSearchEntry:
         sync_session.commit()
 
         # 수정된 데이터로 두 번째 추가
-        modified_minutes = {**SAMPLE_MINUTES, "segments": [
-            {
-                "speaker_id": "SPEAKER_00",
-                "speaker_name": "박차장",
-                "text": "업데이트된 내용입니다.",
-                "start": 0.0,
-                "end": 3.0,
-            }
-        ]}
+        modified_minutes = {
+            **SAMPLE_MINUTES,
+            "segments": [
+                {
+                    "speaker_id": "SPEAKER_00",
+                    "speaker_name": "박차장",
+                    "text": "업데이트된 내용입니다.",
+                    "start": 0.0,
+                    "end": 3.0,
+                }
+            ],
+        }
         index_search_entry(
             session=sync_session,
             task_id="task-upsert-001",

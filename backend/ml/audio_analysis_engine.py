@@ -108,7 +108,9 @@ def analyze_audio(
 
         total_silence_ms = sum(s.duration_ms for s in silence_segments)
         total_duration_ms = len(audio)
-        silence_ratio = round(total_silence_ms / total_duration_ms, 3) if total_duration_ms > 0 else 0.0
+        silence_ratio = (
+            round(total_silence_ms / total_duration_ms, 3) if total_duration_ms > 0 else 0.0
+        )
         speech_ratio = round(1.0 - silence_ratio, 3)
 
     # 품질 평가
@@ -209,7 +211,9 @@ def _evaluate_quality(
 
     # 2. 샘플레이트 검사
     if sample_rate < 8000:
-        issues.append(f"샘플레이트가 너무 낮아 STT 품질이 크게 저하될 수 있습니다 ({sample_rate}Hz)")
+        issues.append(
+            f"샘플레이트가 너무 낮아 STT 품질이 크게 저하될 수 있습니다 ({sample_rate}Hz)"
+        )
         score -= 0.4
     elif sample_rate < 16000:
         issues.append(f"샘플레이트가 낮습니다 ({sample_rate}Hz, 권장: 16kHz 이상)")
@@ -217,7 +221,9 @@ def _evaluate_quality(
 
     # 3. 채널 수
     if channels > 2:
-        issues.append(f"채널 수가 많습니다 ({channels}ch). 다중 화자 환경에서 화자 분리가 어려울 수 있습니다.")
+        issues.append(
+            f"채널 수가 많습니다 ({channels}ch). 다중 화자 환경에서 화자 분리가 어려울 수 있습니다."
+        )
         score -= 0.1
 
     # 4. 녹음 길이
@@ -228,10 +234,14 @@ def _evaluate_quality(
     # 5. 무음 비율
     if silence_ratio is not None:
         if silence_ratio > 0.7:
-            issues.append(f"무음 비율이 높습니다 ({silence_ratio * 100:.0f}%). 실제 발화 내용이 적습니다.")
+            issues.append(
+                f"무음 비율이 높습니다 ({silence_ratio * 100:.0f}%). 실제 발화 내용이 적습니다."
+            )
             score -= 0.15  # pragma: no cover
         elif silence_ratio > 0.5:
-            issues.append(f"무음 비율이 다소 높습니다 ({silence_ratio * 100:.0f}%)")  # pragma: no cover
+            issues.append(
+                f"무음 비율이 다소 높습니다 ({silence_ratio * 100:.0f}%)"
+            )  # pragma: no cover
             score -= 0.05  # pragma: no cover
 
     # 점수 보정 (0.0 ~ 1.0)
@@ -243,6 +253,8 @@ def _evaluate_quality(
     elif score >= 0.5:
         recommendation = "STT 처리 가능하지만, 전처리(볼륨 정규화 등)를 권장합니다."
     else:
-        recommendation = "오디오 품질이 낮아 STT 정확도가 크게 저하될 수 있습니다. 녹음 환경 개선을 권장합니다."
+        recommendation = (
+            "오디오 품질이 낮아 STT 정확도가 크게 저하될 수 있습니다. 녹음 환경 개선을 권장합니다."
+        )
 
     return round(score, 2), issues, recommendation

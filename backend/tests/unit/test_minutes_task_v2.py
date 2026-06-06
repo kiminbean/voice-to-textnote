@@ -113,9 +113,11 @@ class TestMinutesTaskDBPersistence:
         def mock_persist(**kwargs):
             persist_called.append(kwargs)
 
-        with patch("backend.workers.tasks.minutes_task._get_redis", return_value=mock_redis), \
-             patch("backend.workers.tasks.minutes_task.settings") as mock_settings, \
-             patch("backend.services.sync_service.persist_task_result", side_effect=mock_persist):
+        with (
+            patch("backend.workers.tasks.minutes_task._get_redis", return_value=mock_redis),
+            patch("backend.workers.tasks.minutes_task.settings") as mock_settings,
+            patch("backend.services.sync_service.persist_task_result", side_effect=mock_persist),
+        ):
             mock_settings.minutes_result_ttl = 86400
             mock_settings.max_concurrent_minutes = 3
 
@@ -142,9 +144,14 @@ class TestMinutesTaskDBPersistence:
             json.dumps(_make_mock_dia_result()) if "dia:result" in key else None
         )
 
-        with patch("backend.workers.tasks.minutes_task._get_redis", return_value=mock_redis), \
-             patch("backend.workers.tasks.minutes_task.settings") as mock_settings, \
-             patch("backend.services.sync_service.persist_task_result", side_effect=Exception("DB 연결 실패")):
+        with (
+            patch("backend.workers.tasks.minutes_task._get_redis", return_value=mock_redis),
+            patch("backend.workers.tasks.minutes_task.settings") as mock_settings,
+            patch(
+                "backend.services.sync_service.persist_task_result",
+                side_effect=Exception("DB 연결 실패"),
+            ),
+        ):
             mock_settings.minutes_result_ttl = 86400
             mock_settings.max_concurrent_minutes = 3
 
@@ -172,9 +179,11 @@ class TestMinutesTaskDBPersistence:
         def mock_persist(**kwargs):
             persist_called.append(kwargs)
 
-        with patch("backend.workers.tasks.minutes_task._get_redis", return_value=mock_redis), \
-             patch("backend.workers.tasks.minutes_task.settings") as mock_settings, \
-             patch("backend.services.sync_service.persist_task_result", side_effect=mock_persist):
+        with (
+            patch("backend.workers.tasks.minutes_task._get_redis", return_value=mock_redis),
+            patch("backend.workers.tasks.minutes_task.settings") as mock_settings,
+            patch("backend.services.sync_service.persist_task_result", side_effect=mock_persist),
+        ):
             mock_settings.minutes_result_ttl = 86400
             mock_settings.max_concurrent_minutes = 3
 
@@ -206,9 +215,11 @@ class TestMinutesTaskDBPersistence:
             persist_called.append(kwargs)
             raise Exception("DB 저장 오류")
 
-        with patch("backend.workers.tasks.minutes_task._get_redis", return_value=mock_redis), \
-             patch("backend.workers.tasks.minutes_task.settings") as mock_settings, \
-             patch("backend.services.sync_service.persist_task_result", side_effect=mock_persist):
+        with (
+            patch("backend.workers.tasks.minutes_task._get_redis", return_value=mock_redis),
+            patch("backend.workers.tasks.minutes_task.settings") as mock_settings,
+            patch("backend.services.sync_service.persist_task_result", side_effect=mock_persist),
+        ):
             mock_settings.minutes_result_ttl = 86400
             mock_settings.max_concurrent_minutes = 3
 
@@ -242,8 +253,10 @@ class TestMinutesTaskActiveJobManagement:
             json.dumps(_make_mock_dia_result()) if "dia:result" in key else None
         )
 
-        with patch("backend.workers.tasks.minutes_task._get_redis", return_value=mock_redis), \
-             patch("backend.workers.tasks.minutes_task.settings") as mock_settings:
+        with (
+            patch("backend.workers.tasks.minutes_task._get_redis", return_value=mock_redis),
+            patch("backend.workers.tasks.minutes_task.settings") as mock_settings,
+        ):
             mock_settings.minutes_result_ttl = 86400
             mock_settings.max_concurrent_minutes = 3
 
@@ -268,8 +281,10 @@ class TestMinutesTaskActiveJobManagement:
             json.dumps(_make_mock_dia_result()) if "dia:result" in key else None
         )
 
-        with patch("backend.workers.tasks.minutes_task._get_redis", return_value=mock_redis), \
-             patch("backend.workers.tasks.minutes_task.settings") as mock_settings:
+        with (
+            patch("backend.workers.tasks.minutes_task._get_redis", return_value=mock_redis),
+            patch("backend.workers.tasks.minutes_task.settings") as mock_settings,
+        ):
             mock_settings.minutes_result_ttl = 86400
             mock_settings.max_concurrent_minutes = 3
 
@@ -304,13 +319,15 @@ class TestMinutesTaskParallelMode:
 
         mock_redis = _make_mock_redis()
         mock_redis.get.side_effect = lambda key: (
-            json.dumps(_make_mock_dia_result(matched=False)) if "dia:result" in key else (
-                json.dumps(_make_mock_stt_result()) if "result" in key else None
-            )
+            json.dumps(_make_mock_dia_result(matched=False))
+            if "dia:result" in key
+            else (json.dumps(_make_mock_stt_result()) if "result" in key else None)
         )
 
-        with patch("backend.workers.tasks.minutes_task._get_redis", return_value=mock_redis), \
-             patch("backend.workers.tasks.minutes_task.settings") as mock_settings:
+        with (
+            patch("backend.workers.tasks.minutes_task._get_redis", return_value=mock_redis),
+            patch("backend.workers.tasks.minutes_task.settings") as mock_settings,
+        ):
             mock_settings.minutes_result_ttl = 86400
             mock_settings.max_concurrent_minutes = 3
 
@@ -337,8 +354,10 @@ class TestMinutesTaskParallelMode:
             json.dumps(_make_mock_dia_result(matched=False)) if "dia:result" in key else None
         )
 
-        with patch("backend.workers.tasks.minutes_task._get_redis", return_value=mock_redis), \
-             patch("backend.workers.tasks.minutes_task.settings") as mock_settings:
+        with (
+            patch("backend.workers.tasks.minutes_task._get_redis", return_value=mock_redis),
+            patch("backend.workers.tasks.minutes_task.settings") as mock_settings,
+        ):
             mock_settings.minutes_result_ttl = 86400
             mock_settings.max_concurrent_minutes = 3
 
@@ -365,8 +384,10 @@ class TestMinutesTaskParallelMode:
             json.dumps(_make_mock_dia_result(matched=False)) if "dia:result" in key else None
         )
 
-        with patch("backend.workers.tasks.minutes_task._get_redis", return_value=mock_redis), \
-             patch("backend.workers.tasks.minutes_task.settings") as mock_settings:
+        with (
+            patch("backend.workers.tasks.minutes_task._get_redis", return_value=mock_redis),
+            patch("backend.workers.tasks.minutes_task.settings") as mock_settings,
+        ):
             mock_settings.minutes_result_ttl = 86400
             mock_settings.max_concurrent_minutes = 3
 
@@ -401,8 +422,10 @@ class TestMinutesTaskLegacyModeEdgeCases:
             json.dumps(_make_mock_dia_result(matched=True)) if "dia:result" in key else None
         )
 
-        with patch("backend.workers.tasks.minutes_task._get_redis", return_value=mock_redis), \
-             patch("backend.workers.tasks.minutes_task.settings") as mock_settings:
+        with (
+            patch("backend.workers.tasks.minutes_task._get_redis", return_value=mock_redis),
+            patch("backend.workers.tasks.minutes_task.settings") as mock_settings,
+        ):
             mock_settings.minutes_result_ttl = 86400
             mock_settings.max_concurrent_minutes = 3
 

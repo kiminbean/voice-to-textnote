@@ -99,9 +99,7 @@ class TestMeetingSentiment:
         """정상 감성 분석."""
         client, mock_session, mock_svc = app_client
 
-        record = _make_mock_task_result(
-            result_data={"segments": [{"text": "좋은 회의였습니다"}]}
-        )
+        record = _make_mock_task_result(result_data={"segments": [{"text": "좋은 회의였습니다"}]})
         mock_result = MagicMock()
         mock_result.scalars.return_value.first.return_value = record
         mock_session.execute = AsyncMock(return_value=mock_result)
@@ -117,9 +115,7 @@ class TestMeetingSentiment:
             overall_score=0.5,
         )
         mock_svc.analyze_meeting_sentiment = AsyncMock(return_value=mock_score)
-        mock_svc.extract_key_phrases_with_sentiment = AsyncMock(
-            return_value={"키워드": 0.5}
-        )
+        mock_svc.extract_key_phrases_with_sentiment = AsyncMock(return_value={"키워드": 0.5})
         mock_svc.calculate_trend_direction = MagicMock(return_value="stable")
 
         resp = client.get("/api/v1/sentiment/meeting/test-meeting-1")
@@ -233,9 +229,7 @@ class TestSpeakerSentiment:
         mock_svc.get_speaker_segments = AsyncMock(
             return_value=[{"text": "좋습니다", "speaker": "spk1"}]
         )
-        mock_svc.analyze_speaker_sentiment = AsyncMock(
-            return_value=speaker_analysis
-        )
+        mock_svc.analyze_speaker_sentiment = AsyncMock(return_value=speaker_analysis)
 
         resp = client.get("/api/v1/sentiment/speaker/spk1")
 
@@ -255,16 +249,10 @@ class TestSpeakerSentiment:
         speaker_analysis.positive_ratio = 0.5
         speaker_analysis.negative_ratio = 0.2
 
-        mock_svc.get_speaker_segments = AsyncMock(
-            return_value=[{"text": "네", "speaker": "spk1"}]
-        )
-        mock_svc.analyze_speaker_sentiment = AsyncMock(
-            return_value=speaker_analysis
-        )
+        mock_svc.get_speaker_segments = AsyncMock(return_value=[{"text": "네", "speaker": "spk1"}])
+        mock_svc.analyze_speaker_sentiment = AsyncMock(return_value=speaker_analysis)
 
-        resp = client.get(
-            "/api/v1/sentiment/speaker/spk1?meeting_id=meeting-123"
-        )
+        resp = client.get("/api/v1/sentiment/speaker/spk1?meeting_id=meeting-123")
 
         assert resp.status_code == 200
 

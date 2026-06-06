@@ -16,18 +16,20 @@ _COLOR_PATTERN = re.compile(r"^#[0-9A-Fa-f]{3,8}$|^[a-zA-Z]{3,20}$")
 
 class BookmarkCategory(StrEnum):
     """북마크 카테고리"""
+
     IMPORTANT = "important"  # 중요
-    ACTION = "action"        # 액션 아이템
-    DECISION = "decision"    # 결정 사항
-    QUESTION = "question"    # 질문
-    SUMMARY = "summary"      # 핵심 요약
+    ACTION = "action"  # 액션 아이템
+    DECISION = "decision"  # 결정 사항
+    QUESTION = "question"  # 질문
+    SUMMARY = "summary"  # 핵심 요약
     FOLLOW_UP = "follow_up"  # 후속 조치
-    NOTE = "note"           # 참고 사항
-    CUSTOM = "custom"       # 사용자 정의
+    NOTE = "note"  # 참고 사항
+    CUSTOM = "custom"  # 사용자 정의
 
 
 class BookmarkPriority(StrEnum):
     """북마크 우선순위"""
+
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -56,9 +58,7 @@ class BookmarkBase(BaseModel):
         if not v:
             return None
         if not _COLOR_PATTERN.match(v):
-            raise ValueError(
-                "color 는 #RRGGBB 형식 또는 3~20자 알파벳 색상명이어야 합니다"
-            )
+            raise ValueError("color 는 #RRGGBB 형식 또는 3~20자 알파벳 색상명이어야 합니다")
         return v
 
     @field_validator("tags")
@@ -107,9 +107,7 @@ class BookmarkUpdate(BaseModel):
         if not v:
             return None
         if not _COLOR_PATTERN.match(v):
-            raise ValueError(
-                "color 는 #RRGGBB 형식 또는 3~20자 알파벳 색상명이어야 합니다"
-            )
+            raise ValueError("color 는 #RRGGBB 형식 또는 3~20자 알파벳 색상명이어야 합니다")
         return v
 
     @field_validator("tags")
@@ -160,9 +158,13 @@ class BookmarkListResponse(BaseModel):
 class BookmarkBulkOperation(BaseModel):
     """북마크 대량 작업."""
 
-    operation: str = Field(..., description="수행할 작업: 'delete', 'update_category', 'update_priority'")
+    operation: str = Field(
+        ..., description="수행할 작업: 'delete', 'update_category', 'update_priority'"
+    )
     bookmark_ids: list[uuid.UUID] = Field(..., min_length=1, max_length=100)
-    data: dict[str, Any] | None = Field(default=None, description="작업 데이터 (예: {'category': 'important'})")
+    data: dict[str, Any] | None = Field(
+        default=None, description="작업 데이터 (예: {'category': 'important'})"
+    )
 
 
 class BookmarkBulkResponse(BaseModel):
@@ -201,7 +203,9 @@ class BookmarkSearchRequest(BaseModel):
     page_size: int = Field(default=50, ge=1, le=200)
 
     # 정렬 옵션
-    sort_by: str = Field(default="created_at", description="정렬 기준: created_at, priority, category")
+    sort_by: str = Field(
+        default="created_at", description="정렬 기준: created_at, priority, category"
+    )
     sort_order: str = Field(default="desc", description="정렬 순서: asc, desc")
 
 

@@ -219,6 +219,7 @@ class WhisperEngine:
 
             # CUDA 가용성 확인
             import torch  # pragma: no cover
+
             if torch.cuda.is_available():
                 self._device = "cuda"  # pragma: no cover
             else:
@@ -263,8 +264,13 @@ class WhisperEngine:
 
         self._check_memory_usage()
 
-        logger.info("STT 추론 시작", path=str(audio_path), language=language, backend=self._backend,
-                     has_initial_prompt=initial_prompt is not None)
+        logger.info(
+            "STT 추론 시작",
+            path=str(audio_path),
+            language=language,
+            backend=self._backend,
+            has_initial_prompt=initial_prompt is not None,
+        )
         start_time = time.time()
 
         try:
@@ -293,7 +299,10 @@ class WhisperEngine:
             raise
 
     def _transcribe_mlx(
-        self, audio_path: str | Path, language: str, initial_prompt: str | None = None,
+        self,
+        audio_path: str | Path,
+        language: str,
+        initial_prompt: str | None = None,
     ) -> dict[str, Any]:
         """MLX 백엔드 추론"""
         import mlx_whisper
@@ -309,7 +318,10 @@ class WhisperEngine:
         return mlx_whisper.transcribe(str(audio_path), **kwargs)
 
     def _transcribe_whisper(
-        self, audio_path: str | Path, language: str, initial_prompt: str | None = None,
+        self,
+        audio_path: str | Path,
+        language: str,
+        initial_prompt: str | None = None,
     ) -> dict[str, Any]:
         """openai-whisper 백엔드 추론"""
         kwargs: dict[str, Any] = dict(
@@ -323,7 +335,10 @@ class WhisperEngine:
         return result
 
     def _transcribe_faster_whisper(
-        self, audio_path: str | Path, language: str, initial_prompt: str | None = None,
+        self,
+        audio_path: str | Path,
+        language: str,
+        initial_prompt: str | None = None,
     ) -> dict[str, Any]:
         """faster-whisper 백엔드 추론
 
@@ -361,14 +376,10 @@ class WhisperEngine:
                         float(seg.avg_logprob) if seg.avg_logprob is not None else None
                     ),
                     "no_speech_prob": (
-                        float(seg.no_speech_prob)
-                        if seg.no_speech_prob is not None
-                        else None
+                        float(seg.no_speech_prob) if seg.no_speech_prob is not None else None
                     ),
                     "compression_ratio": (
-                        float(seg.compression_ratio)
-                        if seg.compression_ratio is not None
-                        else None
+                        float(seg.compression_ratio) if seg.compression_ratio is not None else None
                     ),
                 }
             )

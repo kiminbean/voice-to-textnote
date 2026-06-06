@@ -384,11 +384,13 @@ class TestGetSummaryResultAPI:
         mock_redis.get = AsyncMock(
             side_effect=[
                 None,  # result_key 조회
-                json.dumps({  # status_key 조회
-                    "task_id": "sum-123",
-                    "status": "processing",
-                    "minutes_task_id": "minutes-456",
-                })
+                json.dumps(
+                    {  # status_key 조회
+                        "task_id": "sum-123",
+                        "status": "processing",
+                        "minutes_task_id": "minutes-456",
+                    }
+                ),
             ]
         )
 
@@ -559,11 +561,13 @@ class TestGetMindMapResultAPI:
         mock_redis.get = AsyncMock(
             side_effect=[
                 None,  # result 조회
-                json.dumps({  # status 조회
-                    "task_id": "mind-123",
-                    "status": "processing",
-                    "summary_task_id": "sum-456",
-                })
+                json.dumps(
+                    {  # status 조회
+                        "task_id": "mind-123",
+                        "status": "processing",
+                        "summary_task_id": "sum-456",
+                    }
+                ),
             ]
         )
 

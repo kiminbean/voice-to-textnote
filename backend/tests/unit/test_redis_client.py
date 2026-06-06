@@ -12,6 +12,7 @@ import pytest
 def reset_pool():
     """테스트 간 전역 연결 풀 초기화"""
     from backend.workers import redis_client
+
     redis_client._pool = None
     yield
     redis_client._pool = None
@@ -35,6 +36,7 @@ class TestGetWorkerRedis:
 
             # Act
             from backend.workers.redis_client import get_worker_redis
+
             result = get_worker_redis()
 
             # Assert
@@ -130,6 +132,7 @@ class TestGetWorkerRedis:
         for url in test_urls:
             # Reset
             from backend.workers import redis_client
+
             redis_client._pool = None
             mock_connection_pool.from_url.reset_mock()
 
@@ -138,6 +141,7 @@ class TestGetWorkerRedis:
 
                 # Act
                 from backend.workers.redis_client import get_worker_redis
+
                 get_worker_redis()
 
                 # Assert

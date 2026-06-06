@@ -146,7 +146,13 @@ class TestPostTemplates:
         docx_bytes = _make_docx_bytes()
         response = tmpl_client.post(
             "/api/v1/templates",
-            files={"file": ("template.docx", docx_bytes, "application/vnd.openxmlformats-officedocument.wordprocessingml.document")},
+            files={
+                "file": (
+                    "template.docx",
+                    docx_bytes,
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                )
+            },
             data={"name": "테스트 회의록 양식"},
         )
         assert response.status_code == 201
@@ -166,7 +172,13 @@ class TestPostTemplates:
         docx_bytes = _make_docx_bytes()
         response = tmpl_client.post(
             "/api/v1/templates",
-            files={"file": ("template.docx", docx_bytes, "application/vnd.openxmlformats-officedocument.wordprocessingml.document")},
+            files={
+                "file": (
+                    "template.docx",
+                    docx_bytes,
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                )
+            },
             data={"name": "테스트 양식"},
         )
         data = response.json()
@@ -177,7 +189,13 @@ class TestPostTemplates:
         docx_bytes = _make_docx_bytes()
         response = tmpl_client.post(
             "/api/v1/templates",
-            files={"file": ("template.docx", docx_bytes, "application/vnd.openxmlformats-officedocument.wordprocessingml.document")},
+            files={
+                "file": (
+                    "template.docx",
+                    docx_bytes,
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                )
+            },
             data={"name": "My Template"},
         )
         data = response.json()
@@ -188,7 +206,13 @@ class TestPostTemplates:
         docx_bytes = _make_docx_bytes()
         response = tmpl_client.post(
             "/api/v1/templates",
-            files={"file": ("template.docx", docx_bytes, "application/vnd.openxmlformats-officedocument.wordprocessingml.document")},
+            files={
+                "file": (
+                    "template.docx",
+                    docx_bytes,
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                )
+            },
             data={"name": "테스트"},
         )
         data = response.json()
@@ -200,7 +224,13 @@ class TestPostTemplates:
         docx_bytes = _make_docx_bytes()
         response = tmpl_client.post(
             "/api/v1/templates",
-            files={"file": ("template.docx", docx_bytes, "application/vnd.openxmlformats-officedocument.wordprocessingml.document")},
+            files={
+                "file": (
+                    "template.docx",
+                    docx_bytes,
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                )
+            },
             data={"name": "테스트"},
         )
         data = response.json()
@@ -212,7 +242,13 @@ class TestPostTemplates:
         docx_bytes = _make_docx_bytes()
         response = tmpl_client.post(
             "/api/v1/templates",
-            files={"file": ("template.docx", docx_bytes, "application/vnd.openxmlformats-officedocument.wordprocessingml.document")},
+            files={
+                "file": (
+                    "template.docx",
+                    docx_bytes,
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                )
+            },
             data={"name": "테스트"},
         )
         data = response.json()
@@ -233,7 +269,13 @@ class TestPostTemplates:
         large_content = b"A" * (10 * 1024 * 1024 + 1)
         response = tmpl_client.post(
             "/api/v1/templates",
-            files={"file": ("big.docx", large_content, "application/vnd.openxmlformats-officedocument.wordprocessingml.document")},
+            files={
+                "file": (
+                    "big.docx",
+                    large_content,
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                )
+            },
             data={"name": "큰 파일"},
         )
         assert response.status_code == 422
@@ -243,7 +285,13 @@ class TestPostTemplates:
         docx_bytes = _make_docx_bytes()
         response = tmpl_client.post(
             "/api/v1/templates",
-            files={"file": ("my_template.docx", docx_bytes, "application/vnd.openxmlformats-officedocument.wordprocessingml.document")},
+            files={
+                "file": (
+                    "my_template.docx",
+                    docx_bytes,
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                )
+            },
         )
         # 400이나 422가 아니라 성공해야 함
         assert response.status_code == 201
@@ -253,7 +301,13 @@ class TestPostTemplates:
         docx_bytes = _make_docx_bytes()
         response = tmpl_client.post(
             "/api/v1/templates",
-            files={"file": ("template.docx", docx_bytes, "application/vnd.openxmlformats-officedocument.wordprocessingml.document")},
+            files={
+                "file": (
+                    "template.docx",
+                    docx_bytes,
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                )
+            },
             data={"name": "저장 테스트"},
         )
         assert response.status_code == 201
@@ -290,7 +344,13 @@ class TestGetTemplateList:
         docx_bytes = _make_docx_bytes()
         upload_resp = tmpl_client.post(
             "/api/v1/templates",
-            files={"file": ("template.docx", docx_bytes, "application/vnd.openxmlformats-officedocument.wordprocessingml.document")},
+            files={
+                "file": (
+                    "template.docx",
+                    docx_bytes,
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                )
+            },
             data={"name": "목록 테스트"},
         )
         assert upload_resp.status_code == 201

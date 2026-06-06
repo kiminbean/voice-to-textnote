@@ -54,9 +54,7 @@ class QualityFeedback(Base):
         default=_utcnow,
     )
 
-    __table_args__ = (
-        Index("ix_quality_feedbacks_task_created", "task_id", "created_at"),
-    )
+    __table_args__ = (Index("ix_quality_feedbacks_task_created", "task_id", "created_at"),)
 
 
 class QualityScoreSnapshot(Base):
@@ -93,6 +91,4 @@ class QualityScoreSnapshot(Base):
         default=_utcnow,
     )
 
-    __table_args__ = (
-        Index("ix_quality_snapshots_task_created", "task_id", "created_at"),
-    )
+    __table_args__ = (Index("ix_quality_snapshots_task_created", "task_id", "created_at"),)

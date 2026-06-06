@@ -29,6 +29,7 @@ def _make_guest_token(
     """테스트용 게스트 JWT 생성"""
     if secret is None:
         from backend.app.config import settings
+
         secret = settings.jwt_secret
     if expires_delta is None:
         expires_delta = timedelta(hours=24)
@@ -163,9 +164,7 @@ class TestGuestTokenPassesAuth:
         )
 
         # Redis exists() 호출 확인
-        mock_redis_with_session.exists.assert_called_once_with(
-            f"guest:session:{session_id}"
-        )
+        mock_redis_with_session.exists.assert_called_once_with(f"guest:session:{session_id}")
 
 
 # ---------------------------------------------------------------------------

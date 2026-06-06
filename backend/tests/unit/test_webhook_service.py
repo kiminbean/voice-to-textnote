@@ -50,17 +50,14 @@ def sample_webhook_create_payload():
         url="https://example.com/webhook",
         events=["transcription.completed"],
         secret="test_secret",
-        description="Test webhook"
+        description="Test webhook",
     )
 
 
 @pytest.fixture
 def sample_webhook_update_payload():
     """웹훅 수정 payload"""
-    return WebhookEndpointUpdate(
-        url="https://example.com/updated",
-        is_active=False
-    )
+    return WebhookEndpointUpdate(url="https://example.com/updated", is_active=False)
 
 
 @pytest.fixture
@@ -80,6 +77,7 @@ def sample_webhook_endpoint(sample_user_id, sample_webhook_id):
 
 
 # _enforce_user_limit 테스트
+
 
 class TestEnforceUserLimit:
     """_enforce_user_limit 메서드 테스트"""
@@ -131,6 +129,7 @@ class TestEnforceUserLimit:
 
 # create 테스트
 
+
 class TestCreate:
     """create 메서드 테스트"""
 
@@ -159,7 +158,9 @@ class TestCreate:
         """웹훅 생성 시 사용자 제한 확인"""
         # Setup: _enforce_user_limit 예외 발생
         with patch.object(
-            webhook_service, "_enforce_user_limit", AsyncMock(side_effect=Exception("Limit exceeded"))
+            webhook_service,
+            "_enforce_user_limit",
+            AsyncMock(side_effect=Exception("Limit exceeded")),
         ):
             # Execute & Assert
             with pytest.raises(Exception, match="Limit exceeded"):
@@ -169,6 +170,7 @@ class TestCreate:
 
 
 # get_by_id 테스트
+
 
 class TestGetById:
     """get_by_id 메서드 테스트"""
@@ -190,7 +192,9 @@ class TestGetById:
         assert result == sample_webhook_endpoint
 
     @pytest.mark.asyncio
-    async def test_get_not_found(self, webhook_service, mock_session, sample_webhook_id, sample_user_id):
+    async def test_get_not_found(
+        self, webhook_service, mock_session, sample_webhook_id, sample_user_id
+    ):
         """웹훅 조회 실패 - 존재하지 않음"""
         # Setup: None 반환
         mock_result = MagicMock()
@@ -213,14 +217,13 @@ class TestGetById:
 
         # Execute & Assert (다른 사용자 ID로 조회)
         with pytest.raises(Exception) as exc_info:
-            await webhook_service.get_by_id(
-                mock_session, sample_webhook_endpoint.id, uuid.uuid4()
-            )
+            await webhook_service.get_by_id(mock_session, sample_webhook_endpoint.id, uuid.uuid4())
 
         assert exc_info.value.status_code == 404
 
 
 # list_for_user 테스트
+
 
 class TestListForUser:
     """list_for_user 메서드 테스트"""
@@ -243,7 +246,9 @@ class TestListForUser:
         mock_session.execute.side_effect = [mock_count_result, mock_list_result]
 
         # Execute
-        items, total = await webhook_service.list_for_user(mock_session, sample_user_id, limit=10, offset=0)
+        items, total = await webhook_service.list_for_user(
+            mock_session, sample_user_id, limit=10, offset=0
+        )
 
         # Assert
         assert items == mock_webhooks
@@ -263,7 +268,9 @@ class TestListForUser:
         mock_session.execute.side_effect = [mock_count_result, mock_list_result]
 
         # Execute
-        items, total = await webhook_service.list_for_user(mock_session, sample_user_id, limit=10, offset=0)
+        items, total = await webhook_service.list_for_user(
+            mock_session, sample_user_id, limit=10, offset=0
+        )
 
         # Assert
         assert items == []
@@ -271,6 +278,7 @@ class TestListForUser:
 
 
 # update 테스트
+
 
 class TestUpdate:
     """update 메서드 테스트"""
@@ -323,6 +331,7 @@ class TestUpdate:
 
 # delete 테스트
 
+
 class TestDelete:
     """delete 메서드 테스트"""
 
@@ -343,16 +352,16 @@ class TestDelete:
             mock_session.commit.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_delete_not_found(self, webhook_service, mock_session, sample_webhook_id, sample_user_id):
+    async def test_delete_not_found(
+        self, webhook_service, mock_session, sample_webhook_id, sample_user_id
+    ):
         """존재하지 않는 웹훅 삭제 시도"""
         # Setup: get_by_id가 404 예외 발생
         from fastapi import HTTPException
 
         http_exc = HTTPException(status_code=404, detail="Not found")
 
-        with patch.object(
-            webhook_service, "get_by_id", AsyncMock(side_effect=http_exc)
-        ):
+        with patch.object(webhook_service, "get_by_id", AsyncMock(side_effect=http_exc)):
             # Execute & Assert
             with pytest.raises(HTTPException) as exc_info:
                 await webhook_service.delete(mock_session, sample_webhook_id, sample_user_id)
@@ -361,6 +370,7 @@ class TestDelete:
 
 
 # ping 테스트
+
 
 class TestPing:
     """ping 메서드 테스트"""
@@ -382,7 +392,10 @@ class TestPing:
                 mock_client.__aexit__.return_value = None
                 mock_client_cls.return_value = mock_client
 
-                with patch("backend.services.webhook_service.validate_webhook_url", return_value="https://example.com/webhook"):
+                with patch(
+                    "backend.services.webhook_service.validate_webhook_url",
+                    return_value="https://example.com/webhook",
+                ):
                     # Execute
                     status, success, message = await webhook_service.ping(
                         mock_session, sample_webhook_endpoint.id, sample_webhook_endpoint.user_id
@@ -412,7 +425,10 @@ class TestPing:
                 mock_client.__aexit__.return_value = None
                 mock_client_cls.return_value = mock_client
 
-                with patch("backend.services.webhook_service.validate_webhook_url", return_value="https://example.com/webhook"):
+                with patch(
+                    "backend.services.webhook_service.validate_webhook_url",
+                    return_value="https://example.com/webhook",
+                ):
                     # Execute
                     status, success, message = await webhook_service.ping(
                         mock_session, sample_webhook_endpoint.id, sample_webhook_endpoint.user_id
@@ -440,7 +456,10 @@ class TestPing:
                 mock_client.__aexit__.return_value = None
                 mock_client_cls.return_value = mock_client
 
-                with patch("backend.services.webhook_service.validate_webhook_url", return_value="https://example.com/webhook"):
+                with patch(
+                    "backend.services.webhook_service.validate_webhook_url",
+                    return_value="https://example.com/webhook",
+                ):
                     # Execute
                     status, success, message = await webhook_service.ping(
                         mock_session, sample_webhook_endpoint.id, sample_webhook_endpoint.user_id
@@ -465,7 +484,10 @@ class TestPing:
                 mock_client.__aexit__.return_value = None
                 mock_client_cls.return_value = mock_client
 
-                with patch("backend.services.webhook_service.validate_webhook_url", return_value="https://example.com/webhook"):
+                with patch(
+                    "backend.services.webhook_service.validate_webhook_url",
+                    return_value="https://example.com/webhook",
+                ):
                     # Execute
                     status, success, message = await webhook_service.ping(
                         mock_session, sample_webhook_endpoint.id, sample_webhook_endpoint.user_id
@@ -477,7 +499,9 @@ class TestPing:
                     assert "타임아웃" in message
 
     @pytest.mark.asyncio
-    async def test_ping_connection_error(self, webhook_service, mock_session, sample_webhook_endpoint):
+    async def test_ping_connection_error(
+        self, webhook_service, mock_session, sample_webhook_endpoint
+    ):
         """핑 전송 연결 오류"""
         # Setup
         with patch.object(
@@ -490,7 +514,10 @@ class TestPing:
                 mock_client.__aexit__.return_value = None
                 mock_client_cls.return_value = mock_client
 
-                with patch("backend.services.webhook_service.validate_webhook_url", return_value="https://example.com/webhook"):
+                with patch(
+                    "backend.services.webhook_service.validate_webhook_url",
+                    return_value="https://example.com/webhook",
+                ):
                     # Execute
                     status, success, message = await webhook_service.ping(
                         mock_session, sample_webhook_endpoint.id, sample_webhook_endpoint.user_id
@@ -508,7 +535,10 @@ class TestPing:
         with patch.object(
             webhook_service, "get_by_id", AsyncMock(return_value=sample_webhook_endpoint)
         ):
-            with patch("backend.services.webhook_service.validate_webhook_url", side_effect=ValueError("Invalid URL")):
+            with patch(
+                "backend.services.webhook_service.validate_webhook_url",
+                side_effect=ValueError("Invalid URL"),
+            ):
                 # Execute
                 status, success, message = await webhook_service.ping(
                     mock_session, sample_webhook_endpoint.id, sample_webhook_endpoint.user_id

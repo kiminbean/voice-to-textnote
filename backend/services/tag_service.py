@@ -154,9 +154,7 @@ class TagService:
         total = count_result.scalar_one()
 
         list_stmt = (
-            base.order_by(MeetingTag.tag_type, MeetingTag.created_at)
-            .limit(limit)
-            .offset(offset)
+            base.order_by(MeetingTag.tag_type, MeetingTag.created_at).limit(limit).offset(offset)
         )
         list_result = await session.execute(list_stmt)
         items = list(list_result.scalars().all())

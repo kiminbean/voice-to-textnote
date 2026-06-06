@@ -151,11 +151,13 @@ class TestSubscribeTaskEvents:
         redis_mock = make_redis_mock_with_pubsub(pubsub_mock)
 
         # Redis 직접 조회에서 completed 상태 반환
-        completed_data = json.dumps({
-            "task_id": "test-task",
-            "status": "completed",
-            "progress": 1.0,
-        })
+        completed_data = json.dumps(
+            {
+                "task_id": "test-task",
+                "status": "completed",
+                "progress": 1.0,
+            }
+        )
         redis_mock.get = AsyncMock(return_value=completed_data)
 
         # Act

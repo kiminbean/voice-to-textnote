@@ -205,7 +205,13 @@ class EnhancedStatisticsService:
                     "duration": duration,
                     "efficiency": efficiency,
                     "created_at": record.created_at,
-                    "participant_count": len({s.get("speaker") for s in segments if isinstance(s, dict) and s.get("speaker")}),
+                    "participant_count": len(
+                        {
+                            s.get("speaker")
+                            for s in segments
+                            if isinstance(s, dict) and s.get("speaker")
+                        }
+                    ),
                 }
             )
 
@@ -239,11 +245,12 @@ class EnhancedStatisticsService:
                     speaker = seg.get("speaker", "UNKNOWN")
                     start = float(seg.get("start", 0) or 0)
                     end = float(seg.get("end", 0) or 0)
-                    speaker_durations[speaker] = speaker_durations.get(speaker, 0.0) + max(0.0, end - start)
+                    speaker_durations[speaker] = speaker_durations.get(speaker, 0.0) + max(
+                        0.0, end - start
+                    )
 
         active_speakers = [
-            speaker
-            for speaker, _ in sorted(speaker_durations.items(), key=lambda x: -x[1])[:10]
+            speaker for speaker, _ in sorted(speaker_durations.items(), key=lambda x: -x[1])[:10]
         ]
 
         # 5) 트렌딩 키워드 (전체 세그먼트 집계)
@@ -307,9 +314,7 @@ class EnhancedStatisticsService:
             duration = max(0.0, end - start)
 
             # 버킷 시간 계산
-            bucket_time = datetime.fromtimestamp(start).replace(
-                minute=0, second=0, microsecond=0
-            )
+            bucket_time = datetime.fromtimestamp(start).replace(minute=0, second=0, microsecond=0)
             hour_offset = int(start / 3600) % bucket_hours
             bucket_time = bucket_time - timedelta(hours=hour_offset)
 
@@ -385,7 +390,9 @@ class EnhancedStatisticsService:
             intervention_count = data["segment_count"]
 
             # 가장 활발한 시간대
-            most_active_hour = max(data["hours"].items(), key=lambda x: x[1])[0][0] if data["hours"] else "N/A"
+            most_active_hour = (
+                max(data["hours"].items(), key=lambda x: x[1])[0][0] if data["hours"] else "N/A"
+            )
 
             patterns.append(
                 SpeakerParticipationPattern(
@@ -481,9 +488,7 @@ class EnhancedStatisticsService:
 
         return trends
 
-    def _calculate_efficiency_metrics(
-        self, segments: list[dict[str, Any]]
-    ) -> EfficiencyMetrics:
+    def _calculate_efficiency_metrics(self, segments: list[dict[str, Any]]) -> EfficiencyMetrics:
         """회의 효율성 지표 계산.
 
         Args:
@@ -528,15 +533,11 @@ class EnhancedStatisticsService:
 
         # 침묵 비율
         silence_ratio = (
-            (total_duration - effective_duration) / total_duration
-            if total_duration > 0
-            else 0.0
+            (total_duration - effective_duration) / total_duration if total_duration > 0 else 0.0
         )
 
         # 평균 발화 전환 길이
-        avg_turn_length = (
-            sum(turn_lengths) / len(turn_lengths) if turn_lengths else 0.0
-        )
+        avg_turn_length = sum(turn_lengths) / len(turn_lengths) if turn_lengths else 0.0
 
         # 참여 균형도 (화자별 발화 시간의 표준편차 기반)
         if speaker_durations:

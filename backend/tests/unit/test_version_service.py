@@ -52,7 +52,7 @@ def sample_version_create_payload():
     """버전 생성 payload"""
     return VersionCreate(
         content={"summary_text": "Test summary", "sections": [], "action_items": []},
-        change_summary="Initial version"
+        change_summary="Initial version",
     )
 
 
@@ -70,6 +70,7 @@ def sample_minutes_version(sample_task_id, sample_version_id, sample_author_id):
 
 
 # _ensure_task_exists 테스트
+
 
 class TestEnsureTaskExists:
     """_ensure_task_exists 메서드 테스트"""
@@ -106,6 +107,7 @@ class TestEnsureTaskExists:
 
 # _next_version_number 테스트
 
+
 class TestNextVersionNumber:
     """_next_version_number 메서드 테스트"""
 
@@ -139,6 +141,7 @@ class TestNextVersionNumber:
 
 
 # create_version 테스트
+
 
 class TestCreateVersion:
     """create_version 메서드 테스트"""
@@ -188,6 +191,7 @@ class TestCreateVersion:
 
 
 # list_versions 테스트
+
 
 class TestListVersions:
     """list_versions 메서드 테스트"""
@@ -240,6 +244,7 @@ class TestListVersions:
 
 # get_version 테스트
 
+
 class TestGetVersion:
     """get_version 메서드 테스트"""
 
@@ -279,6 +284,7 @@ class TestGetVersion:
 
 
 # compute_diff 테스트
+
 
 class TestComputeDiff:
     """compute_diff 메서드 테스트"""
@@ -338,6 +344,7 @@ class TestComputeDiff:
 
 
 # compute_structured_diff 테스트
+
 
 class TestComputeStructuredDiff:
     """compute_structured_diff 메서드 테스트"""
@@ -513,6 +520,7 @@ class TestComputeStructuredDiff:
 
 # delete_version 테스트
 
+
 class TestDeleteVersion:
     """delete_version 메서드 테스트"""
 
@@ -547,6 +555,8 @@ class TestDeleteVersion:
         with patch.object(version_service, "get_version", AsyncMock(side_effect=http_exc)):
             # Execute & Assert
             with pytest.raises(HTTPException) as exc_info:
-                await version_service.delete_version(mock_session, sample_task_id, sample_version_id)
+                await version_service.delete_version(
+                    mock_session, sample_task_id, sample_version_id
+                )
 
             assert exc_info.value.status_code == 404

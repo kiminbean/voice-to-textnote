@@ -22,6 +22,7 @@ from backend.app.middleware.auth import verify_api_key
 
 # ─── 헬퍼 ────────────────────────────────────────────────────────────────────
 
+
 def _has_api_key_dep(route: fastapi.routing.APIRoute) -> bool:
     """해당 라우트의 의존성 트리에 verify_api_key가 포함되어 있는지 확인한다."""
     for dep in route.dependant.dependencies:
@@ -54,6 +55,7 @@ def _build_snapshot(app_routes: list) -> list[dict]:
 
 # ─── 픽스처 ──────────────────────────────────────────────────────────────────
 
+
 @pytest.fixture(scope="module")
 def baseline() -> list[dict]:
     """골든 베이스라인 JSON을 읽어 반환한다."""
@@ -74,6 +76,7 @@ def live_snapshot() -> list[dict]:
 
 # ─── 테스트 ───────────────────────────────────────────────────────────────────
 
+
 class TestRouteRegistryInvariance:
     """AC-C2 / AC-C5: 라우트 테이블과 인증 정책이 베이스라인과 동일함을 검증한다."""
 
@@ -93,12 +96,8 @@ class TestRouteRegistryInvariance:
         self, baseline: list[dict], live_snapshot: list[dict]
     ) -> None:
         """AC-C2 + AC-C5: 전체 라우트 테이블(경로·메서드·인증)이 베이스라인과 완전히 동일해야 한다."""
-        baseline_set = {
-            (r["path"], tuple(r["methods"]), r["api_key"]) for r in baseline
-        }
-        live_set = {
-            (r["path"], tuple(r["methods"]), r["api_key"]) for r in live_snapshot
-        }
+        baseline_set = {(r["path"], tuple(r["methods"]), r["api_key"]) for r in baseline}
+        live_set = {(r["path"], tuple(r["methods"]), r["api_key"]) for r in live_snapshot}
 
         added = live_set - baseline_set
         removed = baseline_set - live_set

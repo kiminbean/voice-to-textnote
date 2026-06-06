@@ -169,7 +169,7 @@ class TestSendOne:
         mock_client.__exit__ = MagicMock(return_value=False)
         mock_client_cls.return_value = mock_client
 
-        _send_one("https://example.com/hook", b'{}', "test.completed", None)
+        _send_one("https://example.com/hook", b"{}", "test.completed", None)
 
         call_kwargs = mock_client.post.call_args
         headers = call_kwargs.kwargs.get("headers") or call_kwargs[1].get("headers")
@@ -189,7 +189,7 @@ class TestSendOne:
         mock_client_cls.return_value = mock_client
 
         # 예외 없이 정상 완료 (best-effort)
-        _send_one("https://example.com/hook", b'{}', "test.completed", None)
+        _send_one("https://example.com/hook", b"{}", "test.completed", None)
 
 
 # ---------------------------------------------------------------------------

@@ -185,9 +185,7 @@ class TestSearchService:
         from backend.services.search_service import SearchService
 
         service = SearchService()
-        result = await service.search(
-            session=populated_search_db, query="API", task_type="minutes"
-        )
+        result = await service.search(session=populated_search_db, query="API", task_type="minutes")
 
         assert result.total > 0
         for item in result.items:
@@ -241,9 +239,7 @@ class TestSearchService:
         from backend.services.search_service import SearchService
 
         service = SearchService()
-        result = await service.search(
-            session=populated_search_db, query="프로젝트"
-        )
+        result = await service.search(session=populated_search_db, query="프로젝트")
 
         if result.items:
             # 스니펫이 비어있지 않아야 함
@@ -398,9 +394,7 @@ class TestSearchServiceExtendedFilters:
 
         service = SearchService()
 
-        result = await service.search(
-            session=populated_search_db, query="회의", speaker="김팀장"
-        )
+        result = await service.search(session=populated_search_db, query="회의", speaker="김팀장")
 
         # 필터가 적용되어 결과가 반환됨
         assert result is not None

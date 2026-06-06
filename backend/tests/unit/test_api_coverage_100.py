@@ -4,6 +4,7 @@ Test Coverage 100% - 커버리지 100% 달성을 위한 테스트
 
 각 파일별 커버되지 않은 라인을 타겟팅하여 100% 커버리지 달성
 """
+
 import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -16,6 +17,7 @@ from backend.utils.validators import validate_webhook_url
 # Auth API Tests (line 56)
 # =============================================================================
 
+
 class TestAuthAPI_GetAuthService:
     """auth.py line 56: get_auth_service 함수 테스트"""
 
@@ -25,14 +27,15 @@ class TestAuthAPI_GetAuthService:
 
         service = get_auth_service()
         assert service is not None
-        assert hasattr(service, 'register')
-        assert hasattr(service, 'login')
-        assert hasattr(service, 'refresh')
+        assert hasattr(service, "register")
+        assert hasattr(service, "login")
+        assert hasattr(service, "refresh")
 
 
 # =============================================================================
 # Devices API Tests (line 145)
 # =============================================================================
+
 
 class TestDevicesAPI_IsValidUUID:
     """devices.py line 145: is_valid_uuid 함수 테스트"""
@@ -52,6 +55,7 @@ class TestDevicesAPI_IsValidUUID:
 # =============================================================================
 # Validators Tests (line 103+)
 # =============================================================================
+
 
 class TestValidators:
     """validators.py line 103+: webhook URL 검증"""
@@ -91,6 +95,7 @@ class TestValidators:
 # Pipeline Tests (lines 119, 409, 128, 146)
 # =============================================================================
 
+
 class TestDocxGenerator:
     """docx_generator.py line 119: DOCX 생성 실패"""
 
@@ -123,7 +128,7 @@ class TestPdfGenerator:
 class TestMindMapGenerator:
     """mind_map_generator.py line 128: 마인드맵 생성 실패"""
 
-    @patch('backend.pipeline.mind_map_generator.OpenAI')
+    @patch("backend.pipeline.mind_map_generator.OpenAI")
     def test_generate_mind_map_empty_data(self, mock_openai):
         """빈 데이터로 마인드맵 생성"""
         from backend.pipeline.mind_map_generator import MindMapGenerator
@@ -140,10 +145,7 @@ class TestMindMapGenerator:
         mock_openai.return_value = mock_client
 
         result = generator.generate_mind_map(
-            summary_data=data,
-            api_key="test_key",
-            model="gpt-4",
-            max_tokens=1000
+            summary_data=data, api_key="test_key", model="gpt-4", max_tokens=1000
         )
         assert result is not None
 
@@ -175,9 +177,7 @@ class TestStatisticsService:
         db_mock = MockDB()
 
         result = await _fetch_minutes_result(
-            redis_client=redis_mock,
-            db=db_mock,
-            task_id="nonexistent-id"
+            redis_client=redis_mock, db=db_mock, task_id="nonexistent-id"
         )
 
         assert result is None

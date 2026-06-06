@@ -59,8 +59,10 @@ def _update_mind_map_status(
 
     r.setex(status_key, settings.summary_result_ttl, json.dumps(data))
 
-    event_type = "completed" if status == TaskStatus.completed else (
-        "failed" if status == TaskStatus.failed else "status_update"
+    event_type = (
+        "completed"
+        if status == TaskStatus.completed
+        else ("failed" if status == TaskStatus.failed else "status_update")
     )
     publish_task_event_sync(r, task_id, event_type, data)
 
@@ -107,7 +109,9 @@ def mind_map_task(task_id: str, summary_task_id: str, max_tokens: int = 2048) ->
         r = _get_redis()
         summary_raw = r.get(f"task:sum:result:{summary_task_id}")
         if summary_raw is None:
-            raise FileNotFoundError(f"요약 결과를 찾을 수 없습니다: summary_task_id={summary_task_id}")
+            raise FileNotFoundError(
+                f"요약 결과를 찾을 수 없습니다: summary_task_id={summary_task_id}"
+            )
 
         summary_data = json.loads(summary_raw)
         summary_status = summary_data.get("status")

@@ -359,7 +359,9 @@ class TestCacheResponse:
     async def test_handles_cache_failure_gracefully(self):
         """캐시 실패 시 예외 처리."""
         service = KeywordService()
-        response = service.extract_from_text("test text for caching with more characters", max_keywords=5, min_score=0.0)
+        response = service.extract_from_text(
+            "test text for caching with more characters", max_keywords=5, min_score=0.0
+        )
 
         redis_client = AsyncMock()
         redis_client.setex.side_effect = Exception("Redis connection failed")
@@ -382,7 +384,9 @@ class TestFetchCachedResponse:
         redis_client = AsyncMock()
         import json
 
-        redis_client.get.return_value = json.dumps(original.model_dump(mode="json"), ensure_ascii=False)
+        redis_client.get.return_value = json.dumps(
+            original.model_dump(mode="json"), ensure_ascii=False
+        )
 
         cached = await service._fetch_cached_response(redis_client, "task-001", "extract")
 
@@ -604,7 +608,9 @@ class TestExtractFromTextEdgeCases:
         """순한글 언어 감지."""
         service = KeywordService()
 
-        result = service.extract_from_text("프로젝트 일정을 확인했습니다", max_keywords=10, min_score=0.0)
+        result = service.extract_from_text(
+            "프로젝트 일정을 확인했습니다", max_keywords=10, min_score=0.0
+        )
 
         assert result.language == "ko"
 
@@ -612,7 +618,9 @@ class TestExtractFromTextEdgeCases:
         """순영어 언어 감지."""
         service = KeywordService()
 
-        result = service.extract_from_text("Project schedule confirmed", max_keywords=10, min_score=0.0)
+        result = service.extract_from_text(
+            "Project schedule confirmed", max_keywords=10, min_score=0.0
+        )
 
         assert result.language == "en"
 
@@ -620,9 +628,7 @@ class TestExtractFromTextEdgeCases:
         """max_keywords 제한 준수."""
         service = KeywordService()
 
-        result = service.extract_from_text(
-            "a b c d e f g h i j", max_keywords=5, min_score=0.0
-        )
+        result = service.extract_from_text("a b c d e f g h i j", max_keywords=5, min_score=0.0)
 
         assert len(result.keywords) <= 5
 
@@ -630,9 +636,7 @@ class TestExtractFromTextEdgeCases:
         """min_score 임계값 준수."""
         service = KeywordService()
 
-        result = service.extract_from_text(
-            "프로젝트 일정 확인", max_keywords=10, min_score=0.5
-        )
+        result = service.extract_from_text("프로젝트 일정 확인", max_keywords=10, min_score=0.5)
 
         # 모든 키워드가 min_score 이상
         for item in result.keywords:

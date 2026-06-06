@@ -18,9 +18,7 @@ class SentimentSegment(BaseModel):
         default="neutral",
         description="세부 감정 (joy/satisfaction/neutral/frustration/anger/sadness/surprise 등)",
     )
-    confidence: float = Field(
-        default=0.0, ge=0.0, le=1.0, description="감정 분석 신뢰도"
-    )
+    confidence: float = Field(default=0.0, ge=0.0, le=1.0, description="감정 분석 신뢰도")
 
 
 class SpeakerSentiment(BaseModel):
@@ -28,18 +26,10 @@ class SpeakerSentiment(BaseModel):
 
     speaker: str = Field(..., description="화자명")
     total_segments: int = Field(..., description="총 발화 구간 수")
-    positive_ratio: float = Field(
-        default=0.0, ge=0.0, le=1.0, description="긍정 발화 비율"
-    )
-    neutral_ratio: float = Field(
-        default=0.0, ge=0.0, le=1.0, description="중립 발화 비율"
-    )
-    negative_ratio: float = Field(
-        default=0.0, ge=0.0, le=1.0, description="부정 발화 비율"
-    )
-    dominant_emotion: str = Field(
-        default="neutral", description="가장 많이 나타난 감정"
-    )
+    positive_ratio: float = Field(default=0.0, ge=0.0, le=1.0, description="긍정 발화 비율")
+    neutral_ratio: float = Field(default=0.0, ge=0.0, le=1.0, description="중립 발화 비율")
+    negative_ratio: float = Field(default=0.0, ge=0.0, le=1.0, description="부정 발화 비율")
+    dominant_emotion: str = Field(default="neutral", description="가장 많이 나타난 감정")
     emotion_distribution: dict[str, int] = Field(
         default_factory=dict, description="감정별 발화 횟수"
     )
@@ -59,9 +49,7 @@ class SentimentResult(BaseModel):
         default="neutral",
         description="회의 전체 감정 (positive/neutral/negative)",
     )
-    overall_emotion: str = Field(
-        default="neutral", description="회의 전체 주요 감정"
-    )
+    overall_emotion: str = Field(default="neutral", description="회의 전체 주요 감정")
     segments: list[SentimentSegment] = Field(
         default_factory=list, description="구간별 감정 분석 결과"
     )

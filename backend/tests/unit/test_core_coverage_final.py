@@ -124,7 +124,9 @@ async def test_lifecycle_shutdown_redis_client_failure():
     from backend.app.lifecycle import cleanup_shutdown
 
     # Redis 정리 실패 시뮬레이션
-    with patch("backend.app.dependencies.close_redis_client", side_effect=Exception("Redis 정리 실패")):
+    with patch(
+        "backend.app.dependencies.close_redis_client", side_effect=Exception("Redis 정리 실패")
+    ):
         # 태깅 클라이언트는 성공 가정
         with patch("backend.ml.tagging_engine.close_http_client"):
             with patch("backend.app.lifecycle.logger") as mock_logger:
@@ -153,12 +155,8 @@ async def test_voice_note_error_handler_none_domain_exc():
     request = MagicMock(spec=Request)
     exc = Exception("일반 예외")
 
-    with patch(
-        "backend.app.error_handlers._unhandled_exception_handler"
-    ) as mock_unhandled:
-        mock_unhandled.return_value = JSONResponse(
-            status_code=500, content={"error": "Unhandled"}
-        )
+    with patch("backend.app.error_handlers._unhandled_exception_handler") as mock_unhandled:
+        mock_unhandled.return_value = JSONResponse(status_code=500, content={"error": "Unhandled"})
 
         await _voicenote_error_handler(request, exc)
 
@@ -177,12 +175,8 @@ async def test_validation_error_handler_none_validation_exc():
     request = MagicMock(spec=Request)
     exc = Exception("일반 예외")
 
-    with patch(
-        "backend.app.error_handlers._unhandled_exception_handler"
-    ) as mock_unhandled:
-        mock_unhandled.return_value = JSONResponse(
-            status_code=500, content={"error": "Unhandled"}
-        )
+    with patch("backend.app.error_handlers._unhandled_exception_handler") as mock_unhandled:
+        mock_unhandled.return_value = JSONResponse(status_code=500, content={"error": "Unhandled"})
 
         await _validation_error_handler(request, exc)
 
@@ -223,9 +217,7 @@ async def test_audit_log_dispatch_slow_request():
     with patch("time.perf_counter", side_effect=[0.0, 6.0]):
         with patch("backend.app.middleware.audit_log.logger") as mock_logger:
             with patch("backend.app.middleware.audit_log.get_contextvars", return_value={}):
-                with patch.object(
-                    middleware, "_should_skip", return_value=False
-                ):
+                with patch.object(middleware, "_should_skip", return_value=False):
                     await middleware.dispatch(request, slow_call_next)
 
                     # warning이 호출되었는지 확인
@@ -552,4 +544,3 @@ def test_record_task_failed():
 # =============================================================================
 # Helper imports
 # =============================================================================
-

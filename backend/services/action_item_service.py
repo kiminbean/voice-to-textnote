@@ -30,10 +30,7 @@ class ActionItemService:
         pass
 
     async def create(
-        self,
-        session: AsyncSession,
-        user_id: uuid.UUID,
-        payload: ActionItemCreate
+        self, session: AsyncSession, user_id: uuid.UUID, payload: ActionItemCreate
     ) -> ActionItemModel:
         """
         새 액션 아이템 생성
@@ -90,7 +87,7 @@ class ActionItemService:
         category: str | None = None,
         tags: list[str] | None = None,
         limit: int = 50,
-        offset: int = 0
+        offset: int = 0,
     ) -> tuple[list[ActionItemModel], int]:
         """
         액션 아이템 목록 조회
@@ -146,11 +143,12 @@ class ActionItemService:
             if is_overdue:
                 query = query.where(
                     ActionItemModel.due_date < now,
-                    ActionItemModel.status != ActionItemStatus.completed
+                    ActionItemModel.status != ActionItemStatus.completed,
                 )
             else:
                 query = query.where(
-                    (ActionItemModel.due_date >= now) | (ActionItemModel.status == ActionItemStatus.completed)
+                    (ActionItemModel.due_date >= now)
+                    | (ActionItemModel.status == ActionItemStatus.completed)
                 )
 
         # 카테고리 필터
@@ -190,10 +188,7 @@ class ActionItemService:
         return items, total
 
     async def get_by_id(
-        self,
-        session: AsyncSession,
-        item_id: uuid.UUID,
-        user_id: uuid.UUID
+        self, session: AsyncSession, item_id: uuid.UUID, user_id: uuid.UUID
     ) -> ActionItemModel | None:
         """
         ID로 액션 아이템 조회
@@ -208,7 +203,7 @@ class ActionItemService:
         """
         query = select(ActionItemModel).where(
             ActionItemModel.id == item_id,
-            (ActionItemModel.created_by == user_id) | (ActionItemModel.assignee_id == user_id)
+            (ActionItemModel.created_by == user_id) | (ActionItemModel.assignee_id == user_id),
         )
 
         result = await session.execute(query)
@@ -219,7 +214,7 @@ class ActionItemService:
         session: AsyncSession,
         item_id: uuid.UUID,
         user_id: uuid.UUID,
-        payload: ActionItemUpdate
+        payload: ActionItemUpdate,
     ) -> ActionItemModel | None:
         """
         액션 아이템 수정
@@ -275,23 +270,14 @@ class ActionItemService:
             update_data["category"] = payload.category
 
         # 업데이트 실행
-        stmt = (
-            update(ActionItemModel)
-            .where(ActionItemModel.id == item_id)
-            .values(**update_data)
-        )
+        stmt = update(ActionItemModel).where(ActionItemModel.id == item_id).values(**update_data)
         await session.execute(stmt)
         await session.commit()
 
         # 다시 조회하여 반환
         return await self.get_by_id(session, item_id, user_id)
 
-    async def delete(
-        self,
-        session: AsyncSession,
-        item_id: uuid.UUID,
-        user_id: uuid.UUID
-    ) -> bool:
+    async def delete(self, session: AsyncSession, item_id: uuid.UUID, user_id: uuid.UUID) -> bool:
         """
         액션 아이템 삭제
 
@@ -316,10 +302,7 @@ class ActionItemService:
         return True
 
     async def get_overview(
-        self,
-        session: AsyncSession,
-        user_id: uuid.UUID,
-        days: int = 30
+        self, session: AsyncSession, user_id: uuid.UUID, days: int = 30
     ) -> ActionItemOverview:
         """
         액션 아이템 개요 조회
@@ -337,7 +320,7 @@ class ActionItemService:
         # 기간 내 아이템 조회
         query = select(ActionItemModel).where(
             (ActionItemModel.created_by == user_id) | (ActionItemModel.assignee_id == user_id),
-            ActionItemModel.created_at >= start_date
+            ActionItemModel.created_at >= start_date,
         )
         result = await session.execute(query)
         items = result.scalars().all()
@@ -351,9 +334,11 @@ class ActionItemService:
 
         # 지연 아이템 계산
         now = datetime.utcnow()
-        overdue_count = sum(1 for item in items
-                          if item.due_date and item.due_date < now
-                          and item.status != ActionItemStatus.completed)
+        overdue_count = sum(
+            1
+            for item in items
+            if item.due_date and item.due_date < now and item.status != ActionItemStatus.completed
+        )
 
         # 우선순위별 통계
         critical_count = sum(1 for item in items if item.priority == ActionItemPriority.critical)
@@ -378,7 +363,9 @@ class ActionItemService:
         overdue_rate = (overdue_count / total_count * 100) if total_count > 0 else 0
 
         # 시간 통계
-        estimated_hours = [item.estimated_hours for item in items if item.estimated_hours is not None]
+        estimated_hours = [
+            item.estimated_hours for item in items if item.estimated_hours is not None
+        ]
         actual_hours = [item.actual_hours for item in items if item.actual_hours is not None]
 
         avg_estimated = sum(estimated_hours) / len(estimated_hours) if estimated_hours else None
@@ -416,7 +403,7 @@ class ActionItemService:
         session: AsyncSession,
         user_id: uuid.UUID,
         item_ids: list[uuid.UUID],
-        update_data: ActionItemUpdate
+        update_data: ActionItemUpdate,
     ) -> dict:
         """
         액션 아이템 배치 업데이트
@@ -477,9 +464,7 @@ class ActionItemService:
         }
 
     async def extract_action_items_from_meeting(
-        self,
-        session: AsyncSession,
-        meeting_id: str
+        self, session: AsyncSession, meeting_id: str
     ) -> list[ActionItemCreate]:
         """
         회의록에서 액션 아이템 추출
@@ -495,7 +480,7 @@ class ActionItemService:
         stmt = select(TaskResult).where(
             TaskResult.task_id == meeting_id,
             TaskResult.task_type == "minutes",
-            TaskResult.status == "completed"
+            TaskResult.status == "completed",
         )
         result = await session.execute(stmt)
         meeting = result.scalars().first()
@@ -509,8 +494,19 @@ class ActionItemService:
         action_items = []
 
         action_keywords = [
-            "할 일", "해야 할", "수행해야", "처리해야", "받아야", "해결",
-            "진행", "시작", "완료", "제출", "보고", "검토", "확인"
+            "할 일",
+            "해야 할",
+            "수행해야",
+            "처리해야",
+            "받아야",
+            "해결",
+            "진행",
+            "시작",
+            "완료",
+            "제출",
+            "보고",
+            "검토",
+            "확인",
         ]
 
         for i, segment in enumerate(segments):
@@ -520,7 +516,7 @@ class ActionItemService:
                 if any(keyword in text for keyword in action_keywords):
                     # 액션 아이템 생성
                     action_item = ActionItemCreate(
-                        title=f"회의 내용 {i+1}: {text[:50]}...",
+                        title=f"회의 내용 {i + 1}: {text[:50]}...",
                         description=text,
                         meeting_id=meeting_id,
                         priority=ActionItemPriority.medium,
