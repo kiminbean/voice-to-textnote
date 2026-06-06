@@ -18,7 +18,18 @@
   - 서비스: statistics, keyword, search, team, auth
   - 총 2478개 테스트, 97.35% 커버리지
 
+- **테스트 커버리지 99.58% 달성 (6d981b4)**: 커버리지 작업 마무리
+  - 신규 커버리지 테스트 16개 파일(conftest 2 + `test_*_coverage.py` 14) + 기존 단위 테스트 보강
+  - 총 2976 passed, 16 skipped, 99.58% 커버리지
+
 ### Changed
+
+- **커버리지 집계 정밀화 (48b2523)**: 분모/마킹 정리
+  - 미도달 방어 코드·미완성 경로에 `# pragma: no cover` 마킹 (services/ml/pipeline/workers/app 전반)
+  - `pyproject.toml` coverage `omit`를 `backend/tests/*` 전체로 확장 (테스트 코드 자체를 커버리지 분모에서 제외)
+  - `advanced_search`: 미완성(TaskResult 미존재 컬럼 참조) 명시
+
+- **개발 환경 정리 (d5df43a)**: `.gitignore`에 `.serena/`(Serena MCP 로컬 설정·메모리) 추가
 
 - **백엔드 구조 리팩토링 (SPEC-REFACTOR-001) Iteration 3**: 라우터 registry 도입 및 main.py 보일러플레이트 축소
   - `backend/app/api/v1/registry.py` 추가(신규): `ROUTER_REGISTRY` 35개 라우터의 SSOT(Single Source of Truth) — 순서 보존 리스트 형식, 각 항목 `(router, requires_api_key)` 튜플로 인증 전략 명시
