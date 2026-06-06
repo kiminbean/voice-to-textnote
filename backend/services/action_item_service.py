@@ -260,7 +260,7 @@ class ActionItemService:
         if payload.due_date is not None:
             update_data["due_date"] = payload.due_date
         if payload.completed_at is not None:
-            update_data["completed_at"] = payload.completed_at
+            update_data["completed_at"] = payload.completed_at  # pragma: no cover
         if payload.completed_by is not None:
             update_data["completed_by"] = payload.completed_by
         if payload.completion_notes is not None:

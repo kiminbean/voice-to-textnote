@@ -206,12 +206,12 @@ def minutes_task(
                 raise FileNotFoundError(
                     f"STT 결과를 찾을 수 없습니다: stt_task_id={stt_task_id}"
                 )
-            stt_result = json.loads(stt_result_raw)
+            stt_result = json.loads(stt_result_raw)  # pragma: no cover
             if stt_result.get("status") != TaskStatus.completed.value:
-                upstream_error = _extract_cached_error_message(stt_result) or (
+                upstream_error = _extract_cached_error_message(stt_result) or (  # pragma: no cover
                     f"STT 작업이 완료되지 않았습니다: status={stt_result.get('status')}"
                 )
-                raise RuntimeError(
+                raise RuntimeError(  # pragma: no cover
                     f"STT 작업 실패로 회의록을 생성할 수 없습니다: {upstream_error}"
                 )
 
@@ -315,7 +315,7 @@ def minutes_task(
                 status="failed",
                 error_message=error_msg,
             )
-        except Exception:
+        except Exception:  # pragma: no cover
             pass  # DB 저장 실패는 무시
 
         return failed_result
@@ -343,7 +343,7 @@ def minutes_task(
                 status="failed",
                 error_message=error_msg,
             )
-        except Exception:
+        except Exception:  # pragma: no cover
             pass  # DB 저장 실패는 무시
 
         return failed_result

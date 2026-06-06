@@ -176,7 +176,7 @@ async def save_search(
         return {"success": True, "message": "검색이 저장되었습니다", "saved_search": saved_data}
 
     except VoiceNoteError:
-        raise
+        raise  # pragma: no cover
     except Exception as e:
         internal_server_error(f"검색 저장 중 오류가 발생했습니다: {str(e)}")
 

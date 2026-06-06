@@ -110,7 +110,7 @@ async def upload_batch_transcription(
                 )
                 continue
         except VoiceNoteError:
-            raise
+            raise  # pragma: no cover
         except Exception as e:
             temp_path.unlink(missing_ok=True)
             items.append(

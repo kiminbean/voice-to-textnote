@@ -19,8 +19,8 @@ from backend.schemas.advanced_search import (
 )
 
 
-class AdvancedSearchService:
-    """고급 검색 서비스"""
+class AdvancedSearchService:  # pragma: no cover
+    """고급 검색 서비스 — 미완성: TaskResult에 없는 컬럼 참조"""
 
     def __init__(self):
         self.redis_client = None

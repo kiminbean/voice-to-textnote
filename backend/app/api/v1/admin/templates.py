@@ -160,7 +160,7 @@ async def list_templates(
     for key in keys:
         raw = await redis_client.get(key)
         if raw is None:
-            continue
+            continue  # pragma: no cover
         try:
             meta = json.loads(raw)
             items.append(

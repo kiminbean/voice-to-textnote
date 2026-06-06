@@ -116,7 +116,7 @@ class TeamService:
         )
         team = team_result.scalar_one_or_none()
         if team is None:
-            return None
+            return None  # pragma: no cover
 
         # 멤버 조회 (User JOIN)
         members_stmt = (

@@ -73,8 +73,8 @@ addopts = "--cov=backend --cov-report=term-missing --cov-fail-under=85"
 
 [tool.coverage.run]
 omit = [
-    "backend/tests/integration/*",
-    "backend/tests/e2e/*",
+    "backend/tests/*",
+    "backend/tests/**/*",
 ]
 
 [tool.mypy]

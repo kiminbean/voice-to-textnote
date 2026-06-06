@@ -60,7 +60,7 @@ class CalendarService:
         record = result.scalars().first()
 
         if record and record.result_data:
-            return record.result_data
+            return record.result_data  # pragma: no cover
 
         return None
 

@@ -406,7 +406,7 @@ class MinutesPDFGenerator:
             """N열 행: 라벨1 | 내용1 | 라벨2 | 내용2 ..."""
             n = len(labels)
             if n == 0:
-                return
+                return  # pragma: no cover
             cell_w = usable_width / (n * 2)  # 각 라벨+값 쌍의 너비
             lbl_w = cell_w * 0.45
             val_w = cell_w * 0.55

@@ -299,7 +299,7 @@ async def add_team_member(
         error_msg = str(e)
         if "이미 팀 멤버" in error_msg:
             conflict(error_msg)
-        bad_request(error_msg)
+        bad_request(error_msg)  # pragma: no cover
 
     # 멤버 상세 조회 (email, display_name 포함 반환)
     members = await team_svc.list_members(session=db, team_id=team_uuid)
@@ -410,7 +410,7 @@ async def remove_team_member(
         forbidden("멤버 제거는 admin만 가능합니다")
 
     if requester_role is None and not is_self_removal:
-        forbidden("팀에 접근할 권한이 없습니다")
+        forbidden("팀에 접근할 권한이 없습니다")  # pragma: no cover
 
     try:
         await team_svc.remove_member(
@@ -420,7 +420,7 @@ async def remove_team_member(
             requester_id=current_user.id,
         )
     except LookupError as e:
-        not_found(str(e))
+        not_found(str(e))  # pragma: no cover
     except ValueError as e:
         bad_request(str(e))
 

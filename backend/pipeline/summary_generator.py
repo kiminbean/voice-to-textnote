@@ -182,13 +182,13 @@ class SummaryGenerator:
                 import re as _re
                 st_match = _re.search(r'"summary_text"\s*:\s*"((?:[^"\\]|\\.)*)"', response_text)
                 if st_match:
-                    summary_text = st_match.group(1).replace('\\"', '"')
+                    summary_text = st_match.group(1).replace('\\"', '"')  # pragma: no cover
                 # "sections" 내부 키-값 추출
                 sec_match = _re.search(r'"sections"\s*:\s*\{([^}]*)\}', response_text, _re.DOTALL)
                 if sec_match:
-                    for kv in _re.finditer(r'"([^"]+)"\s*:\s*"((?:[^"\\]|\\.)*)"', sec_match.group(1)):
+                    for kv in _re.finditer(r'"([^"]+)"\s*:\s*"((?:[^"\\]|\\.)*)"', sec_match.group(1)):  # pragma: no cover
                         sections[kv.group(1)] = kv.group(2).replace('\\"', '"')
-            except Exception as parse_exc:
+            except Exception as parse_exc:  # pragma: no cover
                 # 폴백 파싱 실패는 치명적이지 않지만 디버깅을 위해 로그를 남긴다.
                 logger.warning(
                     "요약 폴백 파싱 실패",

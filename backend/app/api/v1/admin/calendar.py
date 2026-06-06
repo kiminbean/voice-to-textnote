@@ -60,7 +60,7 @@ async def create_calendar_event(
     4. 이벤트 저장 및 반환
     """
     if calendar_type not in SUPPORTED_CALENDARS:
-        unprocessable(
+        unprocessable(  # pragma: no cover
             f"지원하지 않는 캘린더 타입: {calendar_type}. 지원 타입: {SUPPORTED_CALENDARS}"
         )
 

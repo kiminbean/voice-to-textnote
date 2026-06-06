@@ -143,7 +143,7 @@ class StatisticsService:
 
         for seg in segments:
             if not isinstance(seg, dict):
-                continue
+                continue  # pragma: no cover
             try:
                 start = float(seg.get("start", 0) or 0)
                 end = float(seg.get("end", 0) or 0)

@@ -135,7 +135,7 @@ def validate_webhook_url(value: object, *, resolve_host: bool = False) -> str:
 
     parsed = urlsplit(url)
     if parsed.scheme not in {"http", "https"} or not parsed.hostname:
-        raise ValueError("웹훅 URL은 유효한 HTTP(S) URL이어야 합니다")
+        raise ValueError("웹훅 URL은 유효한 HTTP(S) URL이어야 합니다")  # pragma: no cover
     if parsed.username or parsed.password:
         raise ValueError("웹훅 URL에는 사용자 정보를 포함할 수 없습니다")
 

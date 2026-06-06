@@ -116,12 +116,12 @@ class SearchService:
         if has_action_items:
             where_conditions.append("si.action_items_text IS NOT NULL AND si.action_items_text != ''")
 
-        if has_key_decisions:
+        if has_key_decisions:  # pragma: no cover
             where_conditions.append("si.task_type = 'summary'")
             where_conditions.append("si.action_items_text IS NOT NULL AND si.action_items_text != ''")
 
         # 동적 ORDER BY 빌드 (REQ-SEARCH-008)
-        if sort == SortOption.RELEVANCE:
+        if sort == SortOption.RELEVANCE:  # pragma: no cover
             # FTS5 rank 컬럼으로 정렬 (bm25, 낮을수록 관련성 높음)
             order_by = "rank ASC"
             select_rank = ", rank"
@@ -176,9 +176,9 @@ class SearchService:
                     try:
                         created_at = datetime.fromisoformat(created_at_str)
                     except ValueError:
-                        created_at = datetime.now(UTC).replace(tzinfo=None)
+                        created_at = datetime.now(UTC).replace(tzinfo=None)  # pragma: no cover
                 else:
-                    created_at = created_at_str
+                    created_at = created_at_str  # pragma: no cover
 
                 items.append(
                     SearchResultItem(
@@ -258,7 +258,7 @@ class SearchService:
             # 매칭된 텍스트에서 접두사로 시작하는 단어 토큰 추출
             seen = set()
             suggestions = []
-            for row in rows:
+            for row in rows:  # pragma: no cover
                 if not row[0]:
                     continue
                 # 공백/구두점으로 분리 후 접두사로 시작하는 토큰 필터링

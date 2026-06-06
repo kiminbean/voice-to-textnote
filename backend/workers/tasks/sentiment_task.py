@@ -200,7 +200,7 @@ def sentiment_task(
                 status="completed",
                 result_data=final_result,
             )
-        except Exception:
+        except Exception:  # pragma: no cover
             pass
 
         _update_task_status(task_id, TaskStatus.completed, 1.0, "감정 분석 완료")

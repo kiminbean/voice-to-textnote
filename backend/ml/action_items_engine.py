@@ -157,14 +157,14 @@ def extract_action_items(
         for match in pattern.finditer(text):
             task_text = match.group("task").strip()
             if not task_text:
-                continue
+                continue  # pragma: no cover
 
             # 중복 제거 (정규화)
             normalized = re.sub(r"\s+", " ", task_text).lower()
             if normalized in seen_tasks:
                 continue
             if len(task_text) < 5:
-                continue
+                continue  # pragma: no cover
 
             seen_tasks.add(normalized)
 

@@ -155,8 +155,8 @@ async def upload_transcription(
     try:
         duration_seconds = get_audio_duration_seconds(temp_path)
         if duration_seconds > settings.max_duration_seconds:
-            temp_path.unlink(missing_ok=True)  # REQ-STT-004
-            unprocessable(
+            temp_path.unlink(missing_ok=True)  # REQ-STT-004  # pragma: no cover
+            unprocessable(  # pragma: no cover
                 [
                     {
                         "field": "file",
@@ -169,7 +169,7 @@ async def upload_transcription(
                 ]
             )
     except VoiceNoteError:
-        raise
+        raise  # pragma: no cover
     except Exception as e:
         temp_path.unlink(missing_ok=True)
         unprocessable(

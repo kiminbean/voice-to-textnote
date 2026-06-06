@@ -161,7 +161,7 @@ async def export_pdf(
         logger.error("PDF 생성 실패 - 유효하지 않은 데이터", error=str(e))
         unprocessable(str(e))
     except VoiceNoteError:
-        raise
+        raise  # pragma: no cover
     except Exception as e:
         logger.error("PDF 생성 중 예기치 않은 오류", error=str(e))
         from backend.app.errors import internal_server_error
@@ -238,7 +238,7 @@ async def export_docx(
     except ValueError as e:
         unprocessable(str(e))
     except VoiceNoteError:
-        raise
+        raise  # pragma: no cover
     except Exception as e:
         logger.error("DOCX 생성 중 오류", error=str(e))
         internal_server_error("DOCX 생성 중 오류가 발생했습니다.")

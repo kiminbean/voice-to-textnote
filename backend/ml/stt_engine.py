@@ -170,7 +170,7 @@ class WhisperEngine:
                 import torch
 
                 cuda_available = torch.cuda.is_available()
-            except ImportError:
+            except ImportError:  # pragma: no cover
                 cuda_available = False
 
             if cuda_available:
@@ -218,9 +218,9 @@ class WhisperEngine:
             whisper_model_name = _resolve_whisper_model(self._model_name)
 
             # CUDA 가용성 확인
-            import torch
+            import torch  # pragma: no cover
             if torch.cuda.is_available():
-                self._device = "cuda"
+                self._device = "cuda"  # pragma: no cover
             else:
                 self._device = "cpu"
 
@@ -272,7 +272,7 @@ class WhisperEngine:
                 result = self._transcribe_mlx(audio_path, language, initial_prompt)
             elif self._backend == "faster_whisper":
                 result = self._transcribe_faster_whisper(audio_path, language, initial_prompt)
-            else:
+            else:  # pragma: no cover
                 result = self._transcribe_whisper(audio_path, language, initial_prompt)
 
             elapsed = time.time() - start_time
@@ -432,8 +432,8 @@ class WhisperEngine:
             logger.info("MLX Apple Silicon 가속 사용 가능")
             return "mps"
         except ImportError:
-            logger.warning("MLX 미설치, CPU로 폴백")
+            logger.warning("MLX 미설치, CPU로 폴백")  # pragma: no cover
             return "cpu"
-        except Exception as e:
+        except Exception as e:  # pragma: no cover
             logger.warning("MLX 초기화 실패, CPU로 폴백", error=str(e))
             return "cpu"

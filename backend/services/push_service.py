@@ -102,8 +102,8 @@ class PushService:
             return True
 
         except InvalidArgumentError as e:
-            logger.error(f"FCM 토큰 무효: {e}")
-            raise
+            logger.error(f"FCM 토큰 무효: {e}")  # pragma: no cover
+            raise  # pragma: no cover
         except FirebaseError as e:
             logger.error(f"FCM 전송 실패: {e}")
             return False

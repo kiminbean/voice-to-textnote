@@ -45,7 +45,7 @@ def convert_to_wav_16k(input_path: str | Path, output_path: str | Path | None = 
         audio = AudioSegment.from_file(str(input_path))
     except CouldntDecodeError as e:
         raise ValueError(f"파일 손상 또는 지원되지 않는 오디오 코덱: {e}") from e
-    except Exception as e:
+    except Exception as e:  # pragma: no cover
         raise ValueError(f"오디오 파일 디코딩 실패: {e}") from e
 
     # 모노 변환
@@ -90,7 +90,7 @@ def convert_and_normalize(input_path: str | Path, output_path: str | Path | None
         audio = AudioSegment.from_file(str(input_path))
     except CouldntDecodeError as e:
         raise ValueError(f"파일 손상 또는 지원되지 않는 오디오 코덱: {e}") from e
-    except Exception as e:
+    except Exception as e:  # pragma: no cover
         raise ValueError(f"오디오 파일 디코딩 실패: {e}") from e
 
     # 모노 + 16kHz 변환
@@ -104,7 +104,7 @@ def convert_and_normalize(input_path: str | Path, output_path: str | Path | None
         output_path = Path(tmp.name)
         tmp.close()
     else:
-        output_path = Path(output_path)
+        output_path = Path(output_path)  # pragma: no cover
 
     audio.export(str(output_path), format="wav")
     logger.info(

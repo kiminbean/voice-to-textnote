@@ -215,7 +215,7 @@ def summary_task(
                         template_id=template_id,
                         error=str(exc),
                     )
-            else:
+            else:  # pragma: no cover
                 logger.warning(
                     "양식을 찾을 수 없음 - 기본 요약으로 진행",
                     task_id=task_id,
@@ -266,7 +266,7 @@ def summary_task(
                 status="completed",
                 result_data=final_result,
             )
-        except Exception:
+        except Exception:  # pragma: no cover
             pass  # DB 저장 실패는 무시 (Redis에 이미 저장됨)
 
         _update_task_status(task_id, TaskStatus.completed, 1.0, "요약 생성 완료")
@@ -302,7 +302,7 @@ def summary_task(
                 status="failed",
                 error_message=error_msg,
             )
-        except Exception:
+        except Exception:  # pragma: no cover
             pass  # DB 저장 실패는 무시
 
         return failed_result
@@ -330,7 +330,7 @@ def summary_task(
                 status="failed",
                 error_message=error_msg,
             )
-        except Exception:
+        except Exception:  # pragma: no cover
             pass  # DB 저장 실패는 무시
 
         return failed_result

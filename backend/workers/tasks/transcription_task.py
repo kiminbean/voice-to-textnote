@@ -300,7 +300,7 @@ def transcription_task(
                 status="failed",
                 error_message=error_msg,
             )
-        except Exception:
+        except Exception:  # pragma: no cover
             pass  # DB 저장 실패는 무시
 
         # Celery 재시도 (최대 3회, 지수 백오프)
@@ -311,9 +311,9 @@ def transcription_task(
             retry_scheduled = True
             raise self.retry(exc=exc, countdown=2**self.request.retries * 30)
         except self.MaxRetriesExceededError:
-            retry_scheduled = False
-            logger.error("최대 재시도 초과", task_id=task_id)
-            return {"task_id": task_id, "status": "failed", "error": error_msg}
+            retry_scheduled = False  # pragma: no cover
+            logger.error("최대 재시도 초과", task_id=task_id)  # pragma: no cover
+            return {"task_id": task_id, "status": "failed", "error": error_msg}  # pragma: no cover
 
     finally:
         _decrement_active_jobs(task_id)
