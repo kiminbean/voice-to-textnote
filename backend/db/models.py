@@ -27,6 +27,35 @@ def _utcnow() -> datetime:
     return datetime.now(UTC).replace(tzinfo=None)
 
 
+class ActionItem(Base):
+    """
+    액션 아이템 관리 모델 (SPEC-ACTION-001).
+    """
+
+    __tablename__ = "action_items"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    assignee_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True)
+    priority: Mapped[str] = mapped_column(String(20), nullable=False, default="medium")
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
+    created_by: Mapped[uuid.UUID] = mapped_column(nullable=False)
+    due_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    meeting_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    tags: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    estimated_hours: Mapped[float | None] = mapped_column(Float, nullable=True)
+    category: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    completed_by: Mapped[uuid.UUID | None] = mapped_column(nullable=True)
+    completion_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)
+
+    def __repr__(self) -> str:
+        return f"<ActionItem(id={self.id}, title={self.title!r}, status={self.status!r})>"
+
+
 class TaskResult(Base):
     """
     REQ-DB-004: 작업 결과 저장 모델
@@ -58,14 +87,10 @@ class TaskResult(Base):
     status: Mapped[str] = mapped_column(String(20), nullable=False)
 
     # 입력 메타데이터 (JSON)
-    input_metadata: Mapped[dict[str, Any] | None] = mapped_column(
-        JSON, nullable=True
-    )
+    input_metadata: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
 
     # 결과 데이터 (JSON)
-    result_data: Mapped[dict[str, Any] | None] = mapped_column(
-        JSON, nullable=True
-    )
+    result_data: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
 
     # 오류 메시지 (실패 시)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -84,9 +109,7 @@ class TaskResult(Base):
     )
 
     # 완료 시각 (완료 전 NULL)
-    completed_at: Mapped[datetime | None] = mapped_column(
-        DateTime, nullable=True
-    )
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     # REQ-GUEST-008: 게스트 세션 필드
     # 게스트 요청 여부 (비로그인 임시 사용자)
@@ -97,15 +120,10 @@ class TaskResult(Base):
         server_default="0",
     )
     # 게스트 세션 ID (is_guest=True일 때 설정)
-    guest_session_id: Mapped[str | None] = mapped_column(
-        String(36), nullable=True
-    )
+    guest_session_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
 
     def __repr__(self) -> str:
-        return (
-            f"<TaskResult(id={self.id}, task_id={self.task_id!r}, "
-            f"status={self.status!r})>"
-        )
+        return f"<TaskResult(id={self.id}, task_id={self.task_id!r}, status={self.status!r})>"
 
 
 class AuditLog(Base):

@@ -140,7 +140,9 @@ class TestEnhancedPreprocessGaps:
                 "processed_files": result.processed_files,
                 "failed_files": result.failed_files,
                 "processing_time_seconds": result.processing_time_seconds,
-                "success_rate": result.processed_files / result.total_files if result.total_files > 0 else 0,
+                "success_rate": result.processed_files / result.total_files
+                if result.total_files > 0
+                else 0,
             },
             "details": result.summary,
             "errors": result.errors,
@@ -192,7 +194,10 @@ class TestMinutesActionItemsGaps:
         """일반 Exception 발생 시 internal_server_error 호출 검증"""
         from backend.app.api.v1.minutes.action_items import extract_action_items_api
 
-        with patch("backend.app.api.v1.minutes.action_items.extract_action_items", side_effect=RuntimeError("알 수 없는 오류")):
+        with patch(
+            "backend.app.api.v1.minutes.action_items.extract_action_items",
+            side_effect=RuntimeError("알 수 없는 오류"),
+        ):
             # internal_server_error는 HTTPException을 발생시키므로 이를 캐치
             with pytest.raises(Exception, match="알 수 없는 오류"):
                 await extract_action_items_api(
@@ -223,7 +228,10 @@ class TestAudioAnalysisGaps:
         # UploadFile.read()가 작은 데이터를 반환하도록 설정
         mock_file.read = AsyncMock(side_effect=[b"fake audio data", b""])
         mock_file.seek = AsyncMock()
-        with patch("backend.app.api.v1.audio.audio_analysis.analyze_audio", side_effect=OSError("디스크 꽉참")):
+        with patch(
+            "backend.app.api.v1.audio.audio_analysis.analyze_audio",
+            side_effect=OSError("디스크 꽉참"),
+        ):
             with pytest.raises(Exception):
                 await analyze_audio_file(file=mock_file)
 
@@ -236,7 +244,10 @@ class TestAudioAnalysisGaps:
         mock_file.filename = "big.wav"
         mock_file.read = AsyncMock(side_effect=[b"fake audio data", b""])
         mock_file.seek = AsyncMock()
-        with patch("backend.app.api.v1.audio.audio_analysis.analyze_audio", side_effect=ValueError("파일 크기 초과")):
+        with patch(
+            "backend.app.api.v1.audio.audio_analysis.analyze_audio",
+            side_effect=ValueError("파일 크기 초과"),
+        ):
             with pytest.raises(Exception):
                 await analyze_audio_file(file=mock_file)
 
@@ -249,7 +260,10 @@ class TestAudioAnalysisGaps:
         mock_file.filename = "big.wav"
         mock_file.read = AsyncMock(side_effect=[b"fake audio data", b""])
         mock_file.seek = AsyncMock()
-        with patch("backend.app.api.v1.audio.audio_analysis.analyze_audio", side_effect=ValueError("File size exceeds limit")):
+        with patch(
+            "backend.app.api.v1.audio.audio_analysis.analyze_audio",
+            side_effect=ValueError("File size exceeds limit"),
+        ):
             with pytest.raises(Exception):
                 await analyze_audio_file(file=mock_file)
 
@@ -262,7 +276,10 @@ class TestAudioAnalysisGaps:
         mock_file.filename = "bad.wav"
         mock_file.read = AsyncMock(side_effect=[b"fake audio data", b""])
         mock_file.seek = AsyncMock()
-        with patch("backend.app.api.v1.audio.audio_analysis.analyze_audio", side_effect=ValueError("잘못된 포맷")):
+        with patch(
+            "backend.app.api.v1.audio.audio_analysis.analyze_audio",
+            side_effect=ValueError("잘못된 포맷"),
+        ):
             with pytest.raises(Exception):
                 await analyze_audio_file(file=mock_file)
 
@@ -281,15 +298,16 @@ class TestQualityAssessmentVoiceNoteErrors:
         from backend.app.exceptions import VoiceNoteError
 
         vne = VoiceNoteError(error_code="QUALITY_ERR", message="품질 오류", status_code=500)
-        with patch(
-            "backend.app.api.v1.audio.quality_assessment.get_quality_service",
-            return_value=MagicMock(
-                calculate_realtime_score=AsyncMock(side_effect=vne)
+        with (
+            patch(
+                "backend.app.api.v1.audio.quality_assessment.get_quality_service",
+                return_value=MagicMock(calculate_realtime_score=AsyncMock(side_effect=vne)),
             ),
-        ), patch(
-            # _load_minutes_text_or_404를 먼저 통과하도록 mock
-            "backend.app.api.v1.audio.quality_assessment._load_minutes_text_or_404",
-            new=AsyncMock(return_value="테스트 회의 내용"),
+            patch(
+                # _load_minutes_text_or_404를 먼저 통과하도록 mock
+                "backend.app.api.v1.audio.quality_assessment._load_minutes_text_or_404",
+                new=AsyncMock(return_value="테스트 회의 내용"),
+            ),
         ):
             from backend.app.api.v1.audio.quality_assessment import get_live_quality_score
 
@@ -325,9 +343,7 @@ class TestQualityAssessmentVoiceNoteErrors:
 
         with patch(
             "backend.app.api.v1.audio.quality_assessment.get_quality_service",
-            return_value=MagicMock(
-                submit_feedback=AsyncMock(side_effect=vne)
-            ),
+            return_value=MagicMock(submit_feedback=AsyncMock(side_effect=vne)),
         ):
             from backend.app.api.v1.audio.quality_assessment import submit_quality_feedback
 
@@ -346,9 +362,7 @@ class TestQualityAssessmentVoiceNoteErrors:
         vne = VoiceNoteError(error_code="LIST_ERR", message="조회 실패", status_code=500)
         with patch(
             "backend.app.api.v1.audio.quality_assessment.get_quality_service",
-            return_value=MagicMock(
-                get_feedback_summary=AsyncMock(side_effect=vne)
-            ),
+            return_value=MagicMock(get_feedback_summary=AsyncMock(side_effect=vne)),
         ):
             from backend.app.api.v1.audio.quality_assessment import list_quality_feedback
 
@@ -363,9 +377,7 @@ class TestQualityAssessmentVoiceNoteErrors:
         vne = VoiceNoteError(error_code="TREND_ERR", message="추세 분석 실패", status_code=500)
         with patch(
             "backend.app.api.v1.audio.quality_assessment.get_quality_service",
-            return_value=MagicMock(
-                analyze_quality_trends=AsyncMock(side_effect=vne)
-            ),
+            return_value=MagicMock(analyze_quality_trends=AsyncMock(side_effect=vne)),
         ):
             from backend.app.api.v1.audio.quality_assessment import get_quality_trends
 
@@ -387,7 +399,7 @@ class TestActionItemsOverview:
         mock_svc = MagicMock()
         mock_svc.get_overview = AsyncMock(return_value=MagicMock())
 
-        from backend.app.api.v1.action_items import get_action_items_overview
+        from backend.app.api.v1.minutes.action_items_crud import get_action_items_overview
 
         await get_action_items_overview(
             days=30,
@@ -679,11 +691,11 @@ class TestTaggingEngineGaps:
         import re
 
         raw_text = 'Some text\n```json\n{"tags": [{"name": "회의", "confidence": 0.9}]}\n```'
-        json_match = re.search(r'```json\s*(.*?)\s*```', raw_text, re.DOTALL)
+        json_match = re.search(r"```json\s*(.*?)\s*```", raw_text, re.DOTALL)
         if json_match:
             parsed = json.loads(json_match.group(1))
         else:
-            brace_match = re.search(r'\{.*\}', raw_text, re.DOTALL)
+            brace_match = re.search(r"\{.*\}", raw_text, re.DOTALL)
             parsed = json.loads(brace_match.group()) if brace_match else {}
 
         tags = parsed.get("tags", [])

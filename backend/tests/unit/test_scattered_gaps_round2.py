@@ -122,9 +122,7 @@ class TestBookmarkServiceCoverage:
 
         session = AsyncMock()
         session.execute = AsyncMock(
-            return_value=MagicMock(
-                scalar_one_or_none=MagicMock(return_value=bookmark)
-            )
+            return_value=MagicMock(scalar_one_or_none=MagicMock(return_value=bookmark))
         )
 
         with patch.object(svc, "_validate_note_length"):
@@ -192,7 +190,10 @@ class TestSyncServiceCoverage:
                 mock_get_session.return_value.__enter__ = MagicMock(return_value=mock_session)
                 mock_get_session.return_value.__exit__ = MagicMock(return_value=False)
                 with patch("backend.db.search_models.ensure_search_index_table"):
-                    with patch("backend.db.search_models.index_search_entry", side_effect=RuntimeError("boom")):
+                    with patch(
+                        "backend.db.search_models.index_search_entry",
+                        side_effect=RuntimeError("boom"),
+                    ):
                         _try_index_search_entry("task-1", "minutes", {"data": 1})
                         mock_logger.warning.assert_called()
 
@@ -419,7 +420,9 @@ class TestPushServiceCoverage:
         from backend.services.push_service import InvalidArgumentError, PushService
 
         svc = PushService()
-        with patch.object(svc, "_ensure_firebase_initialized", side_effect=InvalidArgumentError("bad token")):
+        with patch.object(
+            svc, "_ensure_firebase_initialized", side_effect=InvalidArgumentError("bad token")
+        ):
             with pytest.raises(InvalidArgumentError):
                 await svc.send_push("bad-token", "title", "body")
 
@@ -681,9 +684,7 @@ class TestTeamServiceCoverage:
         session.execute = AsyncMock(return_value=mock_result)
 
         with pytest.raises(LookupError):
-            await svc.update_member_role(
-                session, uuid.uuid4(), uuid.uuid4(), "admin", uuid.uuid4()
-            )
+            await svc.update_member_role(session, uuid.uuid4(), uuid.uuid4(), "admin", uuid.uuid4())
 
     @pytest.mark.asyncio
     async def test_remove_member_not_found(self):
@@ -1086,7 +1087,7 @@ class TestActionItemsAPICoverage:
     """app/api/v1/action_items.py lines 386, 392."""
 
     def test_router_exists(self):
-        from backend.app.api.v1.action_items import router
+        from backend.app.api.v1.minutes.action_items_crud import router
 
         assert router is not None
 
@@ -1156,7 +1157,9 @@ class TestActionItemsMinutesAPICoverage:
 
         with pytest.raises(VoiceNoteError):
             try:
-                raise VoiceNoteError(error_code="test", message="action items error", status_code=500)
+                raise VoiceNoteError(
+                    error_code="test", message="action items error", status_code=500
+                )
             except VoiceNoteError:
                 raise
 

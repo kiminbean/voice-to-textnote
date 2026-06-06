@@ -22,9 +22,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.dependencies import get_current_user, get_db_session
-from backend.db.auth_models import User
-from backend.db.models import TaskResult
-from backend.schemas.action_item import (
+from backend.app.schemas.action_item import (
     ActionItemBulkUpdate,
     ActionItemCreate,
     ActionItemListResponse,
@@ -34,6 +32,8 @@ from backend.schemas.action_item import (
     ActionItemStatus,
     ActionItemUpdate,
 )
+from backend.db.auth_models import User
+from backend.db.models import TaskResult
 from backend.services.action_item_service import ActionItemService
 from backend.utils.logger import get_logger
 
@@ -49,6 +49,7 @@ def get_action_item_service() -> ActionItemService:
 
 class BulkOperationResult(BaseModel):
     """배치 작업 결과"""
+
     success_count: int = Field(description="성공 처리된 항목 수")
     failure_count: int = Field(description="실패 처리된 항목 수")
     failed_ids: list[uuid.UUID] = Field(description="실패한 항목 ID 목록")
@@ -68,33 +69,16 @@ class BulkOperationResult(BaseModel):
 )
 async def list_action_items(
     status: ActionItemStatus | None = Query(
-        default=None,
-        description="상태 필터 (pending, in_progress, completed, overdue)"
+        default=None, description="상태 필터 (pending, in_progress, completed, overdue)"
     ),
     priority: ActionItemPriority | None = Query(
-        default=None,
-        description="우선순위 필터 (low, medium, high, critical)"
+        default=None, description="우선순위 필터 (low, medium, high, critical)"
     ),
-    assignee_id: uuid.UUID | None = Query(
-        default=None,
-        description="담당자 ID로 필터링"
-    ),
-    meeting_id: str | None = Query(
-        default=None,
-        description="특정 회의 ID로 필터링"
-    ),
-    due_from: datetime | None = Query(
-        default=None,
-        description="마감일 이후"
-    ),
-    due_to: datetime | None = Query(
-        default=None,
-        description="마감일 이전"
-    ),
-    is_overdue: bool | None = Query(
-        default=None,
-        description="지연 여부로 필터링"
-    ),
+    assignee_id: uuid.UUID | None = Query(default=None, description="담당자 ID로 필터링"),
+    meeting_id: str | None = Query(default=None, description="특정 회의 ID로 필터링"),
+    due_from: datetime | None = Query(default=None, description="마감일 이후"),
+    due_to: datetime | None = Query(default=None, description="마감일 이전"),
+    is_overdue: bool | None = Query(default=None, description="지연 여부로 필터링"),
     page: int = Query(default=1, ge=1, description="페이지 번호"),
     page_size: int = Query(default=50, ge=1, le=200, description="페이지당 항목 수"),
     db: AsyncSession = Depends(get_db_session),
@@ -118,11 +102,7 @@ async def list_action_items(
     filters = {k: v for k, v in filters.items() if v is not None}
 
     items, total = await svc.list_items(
-        session=db,
-        user_id=user.id,
-        **filters,
-        limit=page_size,
-        offset=offset
+        session=db, user_id=user.id, **filters, limit=page_size, offset=offset
     )
 
     return ActionItemListResponse(
@@ -148,15 +128,14 @@ async def create_action_item(
 ) -> ActionItemResponse:
     """새 액션 아이템을 생성합니다."""
     # 자동 마감일 설정 (우선순위에 따라)
-    if not payload.due_date and payload.priority in [ActionItemPriority.high, ActionItemPriority.critical]:
+    if not payload.due_date and payload.priority in [
+        ActionItemPriority.high,
+        ActionItemPriority.critical,
+    ]:
         default_days = 3 if payload.priority == ActionItemPriority.high else 1
         payload.due_date = datetime.utcnow() + timedelta(days=default_days)
 
-    action_item = await svc.create(
-        session=db,
-        user_id=user.id,
-        payload=payload
-    )
+    action_item = await svc.create(session=db, user_id=user.id, payload=payload)
 
     logger.info(
         "액션 아이템 생성 완료",
@@ -185,8 +164,7 @@ async def get_action_item(
 
     if not action_item:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"액션 아이템을 찾을 수 없습니다: {id}"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"액션 아이템을 찾을 수 없습니다: {id}"
         )
 
     return action_item
@@ -206,17 +184,11 @@ async def update_action_item(
     svc: ActionItemService = Depends(get_action_item_service),
 ) -> ActionItemResponse:
     """기존 액션 아이템을 수정합니다."""
-    action_item = await svc.update(
-        session=db,
-        item_id=id,
-        user_id=user.id,
-        payload=payload
-    )
+    action_item = await svc.update(session=db, item_id=id, user_id=user.id, payload=payload)
 
     if not action_item:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"액션 아이템을 찾을 수 없습니다: {id}"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"액션 아이템을 찾을 수 없습니다: {id}"
         )
 
     logger.info(
@@ -241,16 +213,11 @@ async def delete_action_item(
     svc: ActionItemService = Depends(get_action_item_service),
 ) -> None:
     """액션 아이템을 삭제합니다."""
-    success = await svc.delete(
-        session=db,
-        item_id=id,
-        user_id=user.id
-    )
+    success = await svc.delete(session=db, item_id=id, user_id=user.id)
 
     if not success:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"액션 아이템을 찾을 수 없습니다: {id}"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"액션 아이템을 찾을 수 없습니다: {id}"
         )
 
     logger.info(
@@ -273,14 +240,8 @@ async def delete_action_item(
 )
 async def get_meeting_action_items(
     meeting_id: str,
-    status: ActionItemStatus | None = Query(
-        default=None,
-        description="상태 필터"
-    ),
-    priority: ActionItemPriority | None = Query(
-        default=None,
-        description="우선순위 필터"
-    ),
+    status: ActionItemStatus | None = Query(default=None, description="상태 필터"),
+    priority: ActionItemPriority | None = Query(default=None, description="우선순위 필터"),
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(get_current_user),
     svc: ActionItemService = Depends(get_action_item_service),
@@ -290,23 +251,18 @@ async def get_meeting_action_items(
     stmt = select(TaskResult).where(
         TaskResult.task_id == meeting_id,
         TaskResult.task_type == "minutes",
-        TaskResult.status == "completed"
+        TaskResult.status == "completed",
     )
     result = await db.execute(stmt)
     meeting = result.scalars().first()
 
     if not meeting:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"회의록을 찾을 수 없습니다: {meeting_id}"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"회의록을 찾을 수 없습니다: {meeting_id}"
         )
 
     items, total = await svc.list_items(
-        session=db,
-        user_id=user.id,
-        meeting_id=meeting_id,
-        status=status,
-        priority=priority
+        session=db, user_id=user.id, meeting_id=meeting_id, status=status, priority=priority
     )
 
     return ActionItemListResponse(
@@ -325,35 +281,27 @@ async def get_meeting_action_items(
 )
 async def complete_action_item(
     id: uuid.UUID,
-    notes: str | None = Query(
-        default=None,
-        description="완료 메모"
-    ),
+    notes: str | None = Query(default=None, description="완료 메모"),
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(get_current_user),
     svc: ActionItemService = Depends(get_action_item_service),
 ) -> ActionItemResponse:
     """액션 아이템을 완료 처리합니다."""
     # 완료 처리 시 payload 생성
-    from backend.schemas.action_item import ActionItemUpdate
+    from backend.app.schemas.action_item import ActionItemUpdate
+
     update_payload = ActionItemUpdate(
         status=ActionItemStatus.completed,
         completed_at=datetime.utcnow(),
         completed_by=user.id,
-        completion_notes=notes or ""
+        completion_notes=notes or "",
     )
 
-    action_item = await svc.update(
-        session=db,
-        item_id=id,
-        user_id=user.id,
-        payload=update_payload
-    )
+    action_item = await svc.update(session=db, item_id=id, user_id=user.id, payload=update_payload)
 
     if not action_item:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"액션 아이템을 찾을 수 없습니다: {id}"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"액션 아이템을 찾을 수 없습니다: {id}"
         )
 
     logger.info(
@@ -372,22 +320,13 @@ async def complete_action_item(
     description="액션 아이템에 대한 통계 개요를 제공합니다.",
 )
 async def get_action_items_overview(
-    days: int = Query(
-        default=30,
-        ge=7,
-        le=365,
-        description="분석 기간 (일)"
-    ),
+    days: int = Query(default=30, ge=7, le=365, description="분석 기간 (일)"),
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(get_current_user),
     svc: ActionItemService = Depends(get_action_item_service),
 ) -> ActionItemOverview:
     """액션 아이템 개요를 조회합니다."""
-    overview = await svc.get_overview(
-        session=db,
-        user_id=user.id,
-        days=days
-    )
+    overview = await svc.get_overview(session=db, user_id=user.id, days=days)
 
     return overview
 
@@ -406,10 +345,7 @@ async def batch_update_action_items(
 ) -> BulkOperationResult:
     """액션 아이템 배치 업데이트를 수행합니다."""
     result = await svc.batch_update(
-        session=db,
-        user_id=user.id,
-        item_ids=payload.item_ids,
-        update_payload=payload.update_data
+        session=db, user_id=user.id, item_ids=payload.item_ids, update_payload=payload.update_data
     )
 
     logger.info(

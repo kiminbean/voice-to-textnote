@@ -24,7 +24,7 @@ from backend.app.error_handlers import register_exception_handlers
 @pytest.fixture
 def app_client():
     """minutes/sentiment 라우터 테스트 앱."""
-    from backend.app.api.v1.minutes.sentiment import router
+    from backend.app.api.v1.analytics.sentiment import router
 
     app = FastAPI()
     register_exception_handlers(app)
@@ -115,12 +115,14 @@ class TestGetSentimentStatus:
         """상태 조회 성공."""
         client, mock_redis = app_client
 
-        status_data = json.dumps({
-            "task_id": "task-1",
-            "status": "processing",
-            "progress": 0.5,
-            "message": "처리 중",
-        })
+        status_data = json.dumps(
+            {
+                "task_id": "task-1",
+                "status": "processing",
+                "progress": 0.5,
+                "message": "처리 중",
+            }
+        )
         mock_redis.get = AsyncMock(return_value=status_data)
 
         resp = client.get("/api/v1/sentiment/task-1/status")
@@ -142,12 +144,14 @@ class TestGetSentimentStatus:
         """에러 메시지 포함 상태."""
         client, mock_redis = app_client
 
-        status_data = json.dumps({
-            "task_id": "task-err",
-            "status": "failed",
-            "progress": 0.0,
-            "error_message": "처리 실패",
-        })
+        status_data = json.dumps(
+            {
+                "task_id": "task-err",
+                "status": "failed",
+                "progress": 0.0,
+                "error_message": "처리 실패",
+            }
+        )
         mock_redis.get = AsyncMock(return_value=status_data)
 
         resp = client.get("/api/v1/sentiment/task-err/status")
@@ -169,17 +173,19 @@ class TestGetSentimentResult:
         """전체 결과 조회 성공."""
         client, mock_redis = app_client
 
-        result_data = json.dumps({
-            "task_id": "task-full",
-            "status": "completed",
-            "minutes_task_id": "minutes-1",
-            "overall_sentiment": "positive",
-            "overall_emotion": "joy",
-            "segments": [],
-            "speakers": [],
-            "emotional_timeline": [],
-            "generation_time_seconds": 2.5,
-        })
+        result_data = json.dumps(
+            {
+                "task_id": "task-full",
+                "status": "completed",
+                "minutes_task_id": "minutes-1",
+                "overall_sentiment": "positive",
+                "overall_emotion": "joy",
+                "segments": [],
+                "speakers": [],
+                "emotional_timeline": [],
+                "generation_time_seconds": 2.5,
+            }
+        )
         mock_redis.get = AsyncMock(return_value=result_data)
 
         resp = client.get("/api/v1/sentiment/task-full")
@@ -196,11 +202,13 @@ class TestGetSentimentResult:
             if "result" in key:
                 return None
             # status 키
-            return json.dumps({
-                "task_id": "task-fallback",
-                "status": "processing",
-                "minutes_task_id": "minutes-2",
-            })
+            return json.dumps(
+                {
+                    "task_id": "task-fallback",
+                    "status": "processing",
+                    "minutes_task_id": "minutes-2",
+                }
+            )
 
         mock_redis.get = AsyncMock(side_effect=mock_get)
 
@@ -222,11 +230,13 @@ class TestGetSentimentResult:
         """error 필드 포함 결과 (error_message 폴백)."""
         client, mock_redis = app_client
 
-        result_data = json.dumps({
-            "task_id": "task-err-result",
-            "status": "failed",
-            "error": "분석 실패",
-        })
+        result_data = json.dumps(
+            {
+                "task_id": "task-err-result",
+                "status": "failed",
+                "error": "분석 실패",
+            }
+        )
         mock_redis.get = AsyncMock(return_value=result_data)
 
         resp = client.get("/api/v1/sentiment/task-err-result")
