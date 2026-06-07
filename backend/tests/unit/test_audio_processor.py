@@ -4,6 +4,7 @@ REQ-STT-015, REQ-STT-016, REQ-STT-017, SPEC-AUDIO-PREP-001
 """
 
 import math
+import shutil
 import struct
 import wave
 from pathlib import Path
@@ -11,6 +12,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from pydub import AudioSegment
+
+# ffmpeg 필요 테스트 건너뛰기 (CI 등 ffmpeg 미설치 환경)
+_HAS_FFMPEG = shutil.which("ffmpeg") is not None
 
 # ---------------------------------------------------------------------------
 # 테스트 헬퍼
@@ -225,6 +229,7 @@ class TestGetAudioDurationSeconds:
         with pytest.raises(ValueError, match="유효하지 않은 WAV 샘플레이트"):
             get_audio_duration_seconds(invalid_wav)
 
+    @pytest.mark.skipif(not _HAS_FFMPEG, reason="ffmpeg not installed")
     def test_non_wav_file_uses_mediainfo(self, tmp_path: Path, monkeypatch):
         """WAV가 아닌 파일은 mediainfo로 길이 측정"""
 
@@ -240,6 +245,7 @@ class TestGetAudioDurationSeconds:
             duration = get_audio_duration_seconds(mp3_path)
             assert duration == 2.5
 
+    @pytest.mark.skipif(not _HAS_FFMPEG, reason="ffmpeg not installed")
     def test_fallback_to_full_audio_load(self, tmp_path: Path):
         """mediainfo 실패 시 전체 오디오 로드로 폴백"""
         from backend.pipeline.audio_processor import get_audio_duration_seconds
