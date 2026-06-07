@@ -118,6 +118,7 @@ flutter:
 flutter_launcher_icons:
   android: true
   ios: true
+  remove_alpha_ios: true
   image_path: "assets/icon/app_icon.png"
 
 # flutter_native_splash 설정
