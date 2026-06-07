@@ -1,5 +1,11 @@
 ## SPEC-MOBILE-001 Progress
 
+- Sync (2026-06-07):
+  - Firebase 설정 커밋: google-services.json, GoogleService-Info.plist, firebase_options.dart, firebase.json
+  - macOS/iOS entitlements 검증 완료 (aps-environment + network.client)
+  - 백엔드 테스트: 3174 passed, 99.94% 커버리지
+  - SPEC status: in-progress → completed (Phase A/B/C 완료, Phase D/E 후속 분리)
+  - Issue #12 PR 업데이트
 - Started: 2026-06-02
 - Phase 0.9 complete: detected_language_skills=[moai-lang-flutter, moai-lang-python]
 - Phase 0.95 complete: Scale-based mode: Team Mode (files: 15+, domains: 3+, forced by --team flag)

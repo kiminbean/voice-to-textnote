@@ -1,9 +1,9 @@
 ---
 id: SPEC-MOBILE-001
 version: "2.0.0"
-status: in-progress
+status: completed
 created: "2026-03-22"
-updated: "2026-06-06"
+updated: "2026-06-07"
 author: kisoo
 priority: medium
 issue_number: 12
@@ -436,4 +436,4 @@ firebase-admin>=6.5.0       # Firebase Admin SDK — FCM 전송용
 
 *SPEC ID: SPEC-MOBILE-001*
 *생성일: 2026-03-22*
-*상태: in-progress (v2.0.0 — Phase A/B/C 구현 완료, Phase D/E 대기)*
+*상태: completed (v2.0.0 — Phase A/B/C 구현 완료, Phase D/E 후속 SPEC 분리)*
