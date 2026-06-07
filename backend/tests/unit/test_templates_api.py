@@ -24,6 +24,7 @@ from backend.schemas.template import TemplateDetail, TemplateListItem, TemplateU
 # _validate_file 테스트
 # ---------------------------------------------------------------------------
 
+
 class TestValidateFile:
     """파일 검증 함수 테스트 스위트"""
 
@@ -64,13 +65,12 @@ class TestValidateFile:
 # upload_template 테스트
 # ---------------------------------------------------------------------------
 
+
 class TestUploadTemplate:
     """양식 업로드 엔드포인트 테스트"""
 
     @pytest.mark.asyncio
-    async def test_upload_pdf_success(
-        self, mock_redis_client, tmp_path, monkeypatch
-    ):
+    async def test_upload_pdf_success(self, mock_redis_client, tmp_path, monkeypatch):
         """PDF 파일 업로드 성공"""
         from backend.app.config import settings
 
@@ -106,6 +106,7 @@ class TestUploadTemplate:
 
         # TemplateParser.patch로 주입
         import backend.app.api.v1.admin.templates as templates_module
+
         original_parser = templates_module.TemplateParser
         templates_module.TemplateParser = lambda: mock_parser
 
@@ -192,6 +193,7 @@ class TestUploadTemplate:
         mock_parser.extract_structure.return_value = mock_structure
 
         import backend.app.api.v1.admin.templates as templates_module
+
         original_parser = templates_module.TemplateParser
         templates_module.TemplateParser = lambda: mock_parser
 
@@ -208,6 +210,7 @@ class TestUploadTemplate:
 # ---------------------------------------------------------------------------
 # list_templates 테스트
 # ---------------------------------------------------------------------------
+
 
 class TestListTemplates:
     """양식 목록 조회 엔드포인트 테스트"""
@@ -332,6 +335,7 @@ class TestListTemplates:
 # get_template 테스트
 # ---------------------------------------------------------------------------
 
+
 class TestGetTemplate:
     """양식 상세 조회 엔드포인트 테스트"""
 
@@ -355,9 +359,7 @@ class TestGetTemplate:
 
         mock_redis_client.get.return_value = json.dumps(metadata).encode()
 
-        response = await get_template(
-            template_id=template_id, redis_client=mock_redis_client
-        )
+        response = await get_template(template_id=template_id, redis_client=mock_redis_client)
 
         assert isinstance(response, TemplateDetail)
         assert response.template_id == template_id
@@ -392,6 +394,7 @@ class TestGetTemplate:
 # delete_template 테스트
 # ---------------------------------------------------------------------------
 
+
 class TestDeleteTemplate:
     """양식 삭제 엔드포인트 테스트"""
 
@@ -419,9 +422,7 @@ class TestDeleteTemplate:
         ).encode()
         mock_redis_client.delete.return_value = 1
 
-        await delete_template(
-            template_id="test-uuid", redis_client=mock_redis_client
-        )
+        await delete_template(template_id="test-uuid", redis_client=mock_redis_client)
 
         mock_redis_client.delete.assert_called_once_with("template:test-uuid")
         assert not test_template_dir.exists()
@@ -432,9 +433,7 @@ class TestDeleteTemplate:
         mock_redis_client.get.return_value = None
 
         with pytest.raises(Exception) as exc_info:
-            await delete_template(
-                template_id="nonexistent", redis_client=mock_redis_client
-            )
+            await delete_template(template_id="nonexistent", redis_client=mock_redis_client)
 
         assert exc_info.value.status_code == status.HTTP_404_NOT_FOUND
         assert "양식을 찾을 수 없습니다" in exc_info.value.message
@@ -458,8 +457,6 @@ class TestDeleteTemplate:
         ).encode()
         mock_redis_client.delete.return_value = 1
 
-        await delete_template(
-            template_id="no-files", redis_client=mock_redis_client
-        )
+        await delete_template(template_id="no-files", redis_client=mock_redis_client)
 
         mock_redis_client.delete.assert_called_once()

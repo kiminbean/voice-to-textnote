@@ -10,7 +10,9 @@ class MeetingAskRequest(BaseModel):
 
     task_id: str = Field(..., min_length=1, max_length=255, description="회의록 task ID")
     question: str = Field(..., min_length=1, max_length=2000, description="자연어 질문")
-    thread_id: str | None = Field(default=None, max_length=255, description="대화 스레드 ID (대화 이어가기)")
+    thread_id: str | None = Field(
+        default=None, max_length=255, description="대화 스레드 ID (대화 이어가기)"
+    )
 
 
 class QASource(BaseModel):

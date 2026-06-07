@@ -135,16 +135,16 @@ class QAService:
             messages.append({"role": "assistant", "content": item.answer})
 
         # 현재 질문 (트랜스크립트 포함)
-        messages.append({
-            "role": "user",
-            "content": self._build_prompt(question, transcript),
-        })
+        messages.append(
+            {
+                "role": "user",
+                "content": self._build_prompt(question, transcript),
+            }
+        )
 
         return messages
 
-    def _extract_sources(
-        self, question: str, answer: str, minutes_data: dict
-    ) -> list[QASource]:
+    def _extract_sources(self, question: str, answer: str, minutes_data: dict) -> list[QASource]:
         """답변과 관련된 트랜스크립트 세그먼트를 출처로 추출"""
         segments = minutes_data.get("segments", [])
         if not segments:
@@ -159,11 +159,13 @@ class QAService:
             seg_words = set(text.split())
             overlap = len(answer_words & seg_words)
             if overlap >= max(3, len(seg_words) * 0.3):
-                sources.append(QASource(
-                    segment_index=i,
-                    speaker=seg.get("speaker"),
-                    text=text[:200],
-                ))
+                sources.append(
+                    QASource(
+                        segment_index=i,
+                        speaker=seg.get("speaker"),
+                        text=text[:200],
+                    )
+                )
             if len(sources) >= 5:
                 break
 

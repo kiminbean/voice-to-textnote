@@ -76,9 +76,13 @@ class TestCleanupExpiredResults:
 
         assert deleted == 0
         # 레코드가 여전히 존재하는지 확인
-        remaining = sync_db_session.execute(
-            select(TaskResult).where(TaskResult.task_id == "task-recent-001")
-        ).scalars().all()
+        remaining = (
+            sync_db_session.execute(
+                select(TaskResult).where(TaskResult.task_id == "task-recent-001")
+            )
+            .scalars()
+            .all()
+        )
         assert len(remaining) == 1
 
     def test_deletes_only_expired_records(self, sync_db_session):
@@ -139,6 +143,7 @@ class TestCleanupTempFiles:
         # 파일 수정 시각을 25시간 전으로 설정 (24시간 기준 만료)
         old_mtime = (datetime.now(UTC).timestamp()) - (25 * 3600)
         import os
+
         os.utime(old_file, (old_mtime, old_mtime))
 
         deleted_count, freed_bytes = cleanup_temp_files(tmp_path, retention_hours=24)
@@ -157,6 +162,7 @@ class TestCleanupTempFiles:
         # 파일 수정 시각을 1시간 전으로 설정 (24시간 기준 유효)
         recent_mtime = datetime.now(UTC).timestamp() - 3600
         import os
+
         os.utime(recent_file, (recent_mtime, recent_mtime))
 
         deleted_count, freed_bytes = cleanup_temp_files(tmp_path, retention_hours=24)
@@ -206,6 +212,7 @@ class TestCleanupTempFiles:
         # 하위 디렉토리의 수정 시각을 오래 전으로 설정
         old_mtime = datetime.now(UTC).timestamp() - (25 * 3600)
         import os
+
         os.utime(subdir, (old_mtime, old_mtime))
 
         deleted_count, freed_bytes = cleanup_temp_files(tmp_path, retention_hours=24)

@@ -28,6 +28,7 @@ from backend.schemas.audio_enhanced import (
 def client():
     """TestClient for enhanced audio preprocessing endpoints"""
     from backend.app.main import app
+
     return TestClient(app)
 
 
@@ -81,17 +82,13 @@ class TestEnhancedAudioProcessor:
             ai_noise_removal=False,  # 테스트에서는 AI 제거
             target_dbfs=-20.0,
             high_pass_hz=80,
-            low_pass_hz=8000
+            low_pass_hz=8000,
         )
 
         output_path = Path(sample_audio_file.replace(".wav", "_processed.wav"))
 
         try:
-            result = await processor.preprocess_batch(
-                [sample_audio_file],
-                options,
-                None
-            )
+            result = await processor.preprocess_batch([sample_audio_file], options, None)
 
             assert result.total_files == 1
             assert result.processed_files == 1
@@ -117,19 +114,13 @@ class TestEnhancedAudioProcessor:
         await processor.initialize()
 
         options = BatchPreprocessOptions(
-            convert_to_16k_mono=True,
-            normalize=True,
-            ai_noise_removal=False
+            convert_to_16k_mono=True, normalize=True, ai_noise_removal=False
         )
 
         output_dir = tempfile.mkdtemp()
 
         try:
-            result = await processor.preprocess_batch(
-                sample_audio_files,
-                options,
-                output_dir
-            )
+            result = await processor.preprocess_batch(sample_audio_files, options, output_dir)
 
             assert result.total_files == len(sample_audio_files)
             assert result.processed_files == len(sample_audio_files)
@@ -152,6 +143,7 @@ class TestEnhancedAudioProcessor:
         finally:
             # 클린업
             import shutil
+
             shutil.rmtree(output_dir, ignore_errors=True)
 
     @pytest.mark.asyncio
@@ -185,10 +177,7 @@ class TestEnhancedAudioProcessor:
 
         # 기본 파이프라인 적용
         options = BatchPreprocessOptions(
-            convert_to_16k_mono=True,
-            normalize=True,
-            trim_silence=True,
-            high_pass_hz=100
+            convert_to_16k_mono=True, normalize=True, trim_silence=True, high_pass_hz=100
         )
 
         processed_audio = processor._apply_preprocessing_pipeline(audio, options)
@@ -259,7 +248,7 @@ class TestEnhancedAudioAPI:
             "batch_max_files",
             "batch_max_concurrent",
             "supported_ai_features",
-            "processing_limits"
+            "processing_limits",
         ]
 
         for field in required_fields:
@@ -288,7 +277,7 @@ class TestEnhancedAudioAPI:
             silence_min_len_ms=500,
             ai_noise_removal=True,
             noise_threshold=0.1,
-            denoise_strength=0.8
+            denoise_strength=0.8,
         )
 
         assert valid_options.target_dbfs == -20.0
@@ -317,10 +306,7 @@ class TestEnhancedAudioAPI:
     async def test_batch_preprocess_options(self):
         """배치 전처리 옵션 테스트"""
         options = BatchPreprocessOptions(
-            convert_to_16k_mono=True,
-            normalize=True,
-            ai_noise_removal=True,
-            denoise_strength=0.7
+            convert_to_16k_mono=True, normalize=True, ai_noise_removal=True, denoise_strength=0.7
         )
 
         assert options.convert_to_16k_mono is True
@@ -348,7 +334,7 @@ class TestEnhancedAudioAPI:
             duration_seconds=5.0,
             sample_rate=16000,
             channels=1,
-            metadata={"format": "wav"}
+            metadata={"format": "wav"},
         )
 
         assert audio_info.original_path == "/path/to/original.wav"
@@ -374,11 +360,7 @@ class TestAudioProcessingErrorHandling:
         # 존재하지 않는 파일 테스트
         options = BatchPreprocessOptions()
 
-        result = await processor.preprocess_batch(
-            ["/nonexistent/file.wav"],
-            options,
-            None
-        )
+        result = await processor.preprocess_batch(["/nonexistent/file.wav"], options, None)
 
         assert result.total_files == 1
         assert result.processed_files == 0
@@ -397,11 +379,7 @@ class TestAudioProcessingErrorHandling:
         options = BatchPreprocessOptions()
 
         with pytest.raises(ValueError, match="최대"):
-            await processor.preprocess_batch(
-                large_file_list,
-                options,
-                None
-            )
+            await processor.preprocess_batch(large_file_list, options, None)
 
     @pytest.mark.asyncio
     async def test_memory_efficiency(self, sample_audio_files):
@@ -414,11 +392,7 @@ class TestAudioProcessingErrorHandling:
         )
 
         # 대량 파일 처리 테스트
-        result = await processor.preprocess_batch(
-            sample_audio_files,
-            options,
-            None
-        )
+        result = await processor.preprocess_batch(sample_audio_files, options, None)
 
         assert result.processed_files == len(sample_audio_files)
         assert result.failed_files == 0

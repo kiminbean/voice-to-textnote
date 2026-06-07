@@ -20,11 +20,27 @@ _SAFE_SEGMENT_PATTERN = re.compile(r"^[a-zA-Z0-9_-]+$")
 _API_PREFIX = "/api/v1/"
 
 # 검증 제외 경로 세그먼트 (라우터 접두사 등 고정 값)
-_KNOWN_SEGMENTS = frozenset({
-    "api", "v1", "transcriptions", "diarizations", "minutes",
-    "summaries", "tasks", "history", "health", "metrics",
-    "status", "stream", "admin", "retention", "keywords", "extract", "recommend",
-})
+_KNOWN_SEGMENTS = frozenset(
+    {
+        "api",
+        "v1",
+        "transcriptions",
+        "diarizations",
+        "minutes",
+        "summaries",
+        "tasks",
+        "history",
+        "health",
+        "metrics",
+        "status",
+        "stream",
+        "admin",
+        "retention",
+        "keywords",
+        "extract",
+        "recommend",
+    }
+)
 
 
 class PathValidationMiddleware(BaseHTTPMiddleware):

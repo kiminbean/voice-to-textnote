@@ -67,6 +67,7 @@ def publish_task_event_sync(
     if event_type in ("completed", "failed"):
         try:
             from backend.services.webhook_notifier import notify_webhooks_sync
+
             task_type = data.get("task_type", "unknown")
             notify_webhooks_sync(
                 task_id=task_id,

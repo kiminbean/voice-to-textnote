@@ -11,12 +11,14 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 class OutputFormat(StrEnum):
     """출력 형식"""
+
     ZIP = "zip"
     INDIVIDUAL = "individual"
 
 
 class AIProcessingStatus(StrEnum):
     """AI 처리 상태"""
+
     ENABLED = "enabled"
     DISABLED = "disabled"
     LOADING = "loading"
@@ -25,6 +27,7 @@ class AIProcessingStatus(StrEnum):
 
 class FormatInfo(BaseModel):
     """오디오 포맷 정보"""
+
     extension: str = Field(..., description="파일 확장자")
     description: str = Field(..., description="포맷 설명")
     supported_codecs: list[str] = Field(..., description="지원 코덱 목록")
@@ -32,6 +35,7 @@ class FormatInfo(BaseModel):
 
 class ModelStatusResponse(BaseModel):
     """AI 모델 상태 응답"""
+
     ai_noise_removal_enabled: bool = Field(..., description="AI 노이즈 제거 활성화 여부")
     model_loaded: bool = Field(..., description="AI 모델 로드 상태")
     supported_formats: int = Field(..., description="지원 오디오 포맷 수")
@@ -43,6 +47,7 @@ class ModelStatusResponse(BaseModel):
 
 class EnhancedPreprocessOptions(BaseModel):
     """고급 전처리 옵션"""
+
     convert_to_16k_mono: bool = Field(default=True, description="16kHz 모노로 변환")
     normalize: bool = Field(default=True, description="오디오 레벨 정규화")
     target_dbfs: float = Field(default=-20.0, description="목표 dBFS (선형적)")
@@ -107,6 +112,7 @@ class EnhancedPreprocessOptions(BaseModel):
 
 class AudioFileInfo(BaseModel):
     """오디오 파일 정보"""
+
     model_config = ConfigDict(from_attributes=True)
 
     original_path: str = Field(..., description="원본 파일 경로")
@@ -122,14 +128,18 @@ class AudioFileInfo(BaseModel):
 
 class BatchPreprocessRequest(BaseModel):
     """배치 전처리 요청"""
+
     files: list[str] = Field(..., min_length=1, max_length=20, description="처리할 파일 경로 목록")
-    options: EnhancedPreprocessOptions = Field(default_factory=EnhancedPreprocessOptions, description="전처리 옵션")
+    options: EnhancedPreprocessOptions = Field(
+        default_factory=EnhancedPreprocessOptions, description="전처리 옵션"
+    )
     output_format: OutputFormat = Field(default=OutputFormat.ZIP, description="출력 형식")
     return_report: bool = Field(default=True, description="상세 보고서 포함")
 
 
 class PreprocessResponse(BaseModel):
     """단일 전처리 응답"""
+
     original_filename: str = Field(..., description="원본 파일명")
     processed_filename: str = Field(..., description="처리된 파일명")
     original_size_bytes: int = Field(..., description="원본 파일 크기")
@@ -145,6 +155,7 @@ class PreprocessResponse(BaseModel):
 
 class BatchSummary(BaseModel):
     """배치 처리 요약"""
+
     total_input_size_bytes: int = Field(..., description="총 입력 파일 크기")
     total_output_size_bytes: int = Field(..., description="총 출력 파일 크기")
     compression_ratio: float = Field(..., description="평균 압축률")
@@ -156,6 +167,7 @@ class BatchSummary(BaseModel):
 
 class BatchPreprocessResponse(BaseModel):
     """배치 전처리 응답"""
+
     task_id: str = Field(..., description="배치 작업 ID")
     total_files: int = Field(..., description="총 파일 수")
     processed_files: int = Field(..., description="성공 처리된 파일 수")
@@ -169,6 +181,7 @@ class BatchPreprocessResponse(BaseModel):
 
 class ProcessingStatus(BaseModel):
     """처리 상태"""
+
     task_id: str = Field(..., description="작업 ID")
     status: str = Field(..., description="상태 (running, completed, failed)")
     progress_percent: float = Field(..., description="진행률 (%)")
@@ -182,6 +195,7 @@ class ProcessingStatus(BaseModel):
 
 class AudioAnalysisResult(BaseModel):
     """오디오 분석 결과"""
+
     filename: str = Field(..., description="파일명")
     duration_seconds: float = Field(..., description="오디오 길이 (초)")
     sample_rate: int = Field(..., description="샘플 레이트")
@@ -200,6 +214,7 @@ class AudioAnalysisResult(BaseModel):
 
 class ProcessingReport(BaseModel):
     """처리 보고서"""
+
     task_id: str = Field(..., description="작업 ID")
     created_at: datetime = Field(..., description="보고서 생성 시각")
     summary: BatchSummary = Field(..., description="처리 요약")

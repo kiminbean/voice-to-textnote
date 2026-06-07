@@ -80,9 +80,11 @@ class TestDiarizationStatusPreservation:
         mock_settings = MagicMock()
         mock_settings.diarization_result_ttl = 86400
 
-        with patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis), \
-             patch("backend.workers.tasks.diarization_task.settings", mock_settings), \
-             patch("backend.workers.tasks.diarization_task.publish_task_event_sync"):
+        with (
+            patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis),
+            patch("backend.workers.tasks.diarization_task.settings", mock_settings),
+            patch("backend.workers.tasks.diarization_task.publish_task_event_sync"),
+        ):
             _update_task_status(task_id, TaskStatus.processing, 0.5)
 
         # setex 호출 확인 - data에 created_at 보존
@@ -101,9 +103,11 @@ class TestDiarizationStatusPreservation:
         mock_settings = MagicMock()
         mock_settings.diarization_result_ttl = 86400
 
-        with patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis), \
-             patch("backend.workers.tasks.diarization_task.settings", mock_settings), \
-             patch("backend.workers.tasks.diarization_task.publish_task_event_sync"):
+        with (
+            patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis),
+            patch("backend.workers.tasks.diarization_task.settings", mock_settings),
+            patch("backend.workers.tasks.diarization_task.publish_task_event_sync"),
+        ):
             _update_task_status(task_id, TaskStatus.processing, 0.1)
 
         call_args = mock_redis.setex.call_args
@@ -132,9 +136,11 @@ class TestDiarizationConcurrencyLimit:
 
         mock_settings = _default_settings(tmp_path)
 
-        with patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis), \
-             patch("backend.workers.tasks.diarization_task.settings", mock_settings), \
-             patch("backend.workers.tasks.diarization_task.publish_task_event_sync"):
+        with (
+            patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis),
+            patch("backend.workers.tasks.diarization_task.settings", mock_settings),
+            patch("backend.workers.tasks.diarization_task.publish_task_event_sync"),
+        ):
             result = diarization_task(task_id=task_id, stt_task_id=stt_task_id)
 
         assert result["status"] == "rejected"
@@ -159,9 +165,11 @@ class TestDiarizationLegacyModeErrors:
         mock_redis = _make_mock_redis()
         mock_settings = _default_settings(tmp_path)
 
-        with patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis), \
-             patch("backend.workers.tasks.diarization_task.settings", mock_settings), \
-             patch("backend.workers.tasks.diarization_task.publish_task_event_sync"):
+        with (
+            patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis),
+            patch("backend.workers.tasks.diarization_task.settings", mock_settings),
+            patch("backend.workers.tasks.diarization_task.publish_task_event_sync"),
+        ):
             result = diarization_task(task_id=task_id)
 
         assert result["status"] == "failed"
@@ -186,9 +194,11 @@ class TestDiarizationParallelMode:
         mock_redis = _make_mock_redis()
         mock_settings = _default_settings(tmp_path)
 
-        with patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis), \
-             patch("backend.workers.tasks.diarization_task.settings", mock_settings), \
-             patch("backend.workers.tasks.diarization_task.publish_task_event_sync"):
+        with (
+            patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis),
+            patch("backend.workers.tasks.diarization_task.settings", mock_settings),
+            patch("backend.workers.tasks.diarization_task.publish_task_event_sync"),
+        ):
             result = diarization_task(
                 task_id=task_id,
                 audio_path=fake_wav,
@@ -209,11 +219,16 @@ class TestDiarizationParallelMode:
         mock_engine = _make_mock_engine()
         mock_settings = _default_settings(tmp_path)
 
-        with patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis), \
-             patch("backend.workers.tasks.diarization_task.DiarizationEngine.get_instance", return_value=mock_engine), \
-             patch("backend.workers.tasks.diarization_task.settings", mock_settings), \
-             patch("backend.workers.tasks.diarization_task.publish_task_event_sync"), \
-             patch("backend.pipeline.audio_processor.get_audio_duration_seconds", return_value=10.0):
+        with (
+            patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis),
+            patch(
+                "backend.workers.tasks.diarization_task.DiarizationEngine.get_instance",
+                return_value=mock_engine,
+            ),
+            patch("backend.workers.tasks.diarization_task.settings", mock_settings),
+            patch("backend.workers.tasks.diarization_task.publish_task_event_sync"),
+            patch("backend.pipeline.audio_processor.get_audio_duration_seconds", return_value=10.0),
+        ):
             result = diarization_task(
                 task_id=task_id,
                 audio_path=str(wav_path),
@@ -238,11 +253,16 @@ class TestDiarizationParallelMode:
         mock_engine = _make_mock_engine()
         mock_settings = _default_settings(tmp_path)
 
-        with patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis), \
-             patch("backend.workers.tasks.diarization_task.DiarizationEngine.get_instance", return_value=mock_engine), \
-             patch("backend.workers.tasks.diarization_task.settings", mock_settings), \
-             patch("backend.workers.tasks.diarization_task.publish_task_event_sync"), \
-             patch("backend.pipeline.audio_processor.get_audio_duration_seconds", return_value=10.0):
+        with (
+            patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis),
+            patch(
+                "backend.workers.tasks.diarization_task.DiarizationEngine.get_instance",
+                return_value=mock_engine,
+            ),
+            patch("backend.workers.tasks.diarization_task.settings", mock_settings),
+            patch("backend.workers.tasks.diarization_task.publish_task_event_sync"),
+            patch("backend.pipeline.audio_processor.get_audio_duration_seconds", return_value=10.0),
+        ):
             diarization_task(task_id=task_id, audio_path=str(wav_path))
 
         # finally 블록에서 파일 삭제됨 (line 446-449)
@@ -260,12 +280,17 @@ class TestDiarizationParallelMode:
         mock_engine = _make_mock_engine()
         mock_settings = _default_settings(tmp_path)
 
-        with patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis), \
-             patch("backend.workers.tasks.diarization_task.DiarizationEngine.get_instance", return_value=mock_engine), \
-             patch("backend.workers.tasks.diarization_task.settings", mock_settings), \
-             patch("backend.workers.tasks.diarization_task.publish_task_event_sync"), \
-             patch("backend.pipeline.audio_processor.get_audio_duration_seconds", return_value=10.0), \
-             patch("backend.workers.tasks.diarization_task.Path") as mock_path_cls:
+        with (
+            patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis),
+            patch(
+                "backend.workers.tasks.diarization_task.DiarizationEngine.get_instance",
+                return_value=mock_engine,
+            ),
+            patch("backend.workers.tasks.diarization_task.settings", mock_settings),
+            patch("backend.workers.tasks.diarization_task.publish_task_event_sync"),
+            patch("backend.pipeline.audio_processor.get_audio_duration_seconds", return_value=10.0),
+            patch("backend.workers.tasks.diarization_task.Path") as mock_path_cls,
+        ):
             # Path.unlink에서 OSError 발생
             mock_path_instance = MagicMock()
             mock_path_instance.unlink.side_effect = OSError("permission denied")
@@ -297,21 +322,33 @@ class TestDiarizationDbPersistErrors:
 
         mock_redis = _make_mock_redis()
         mock_redis.get.side_effect = lambda key: (
-            json.dumps({
-                "task_id": stt_task_id,
-                "status": "completed",
-                "segments": [{"id": 0, "start": 0.0, "end": 5.0, "text": "test"}],
-            }) if "result" in key else None
+            json.dumps(
+                {
+                    "task_id": stt_task_id,
+                    "status": "completed",
+                    "segments": [{"id": 0, "start": 0.0, "end": 5.0, "text": "test"}],
+                }
+            )
+            if "result" in key
+            else None
         )
         mock_engine = _make_mock_engine()
         mock_settings = _default_settings(tmp_path)
 
-        with patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis), \
-             patch("backend.workers.tasks.diarization_task.DiarizationEngine.get_instance", return_value=mock_engine), \
-             patch("backend.workers.tasks.diarization_task.settings", mock_settings), \
-             patch("backend.workers.tasks.diarization_task.publish_task_event_sync"), \
-             patch("backend.pipeline.audio_processor.get_audio_duration_seconds", return_value=10.0), \
-             patch("backend.services.sync_service.persist_task_result", side_effect=Exception("DB 연결 실패")):
+        with (
+            patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis),
+            patch(
+                "backend.workers.tasks.diarization_task.DiarizationEngine.get_instance",
+                return_value=mock_engine,
+            ),
+            patch("backend.workers.tasks.diarization_task.settings", mock_settings),
+            patch("backend.workers.tasks.diarization_task.publish_task_event_sync"),
+            patch("backend.pipeline.audio_processor.get_audio_duration_seconds", return_value=10.0),
+            patch(
+                "backend.services.sync_service.persist_task_result",
+                side_effect=Exception("DB 연결 실패"),
+            ),
+        ):
             result = diarization_task(task_id=task_id, stt_task_id=stt_task_id)
 
         # DB 저장 실패해도 완료 결과 반환됨 (line 351-352)
@@ -327,18 +364,27 @@ class TestDiarizationDbPersistErrors:
 
         mock_redis = _make_mock_redis()
         mock_redis.get.side_effect = lambda key: (
-            json.dumps({
-                "task_id": stt_task_id,
-                "status": "completed",
-                "segments": [],
-            }) if "result" in key else None
+            json.dumps(
+                {
+                    "task_id": stt_task_id,
+                    "status": "completed",
+                    "segments": [],
+                }
+            )
+            if "result" in key
+            else None
         )
         mock_settings = _default_settings(tmp_path)
 
-        with patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis), \
-             patch("backend.workers.tasks.diarization_task.settings", mock_settings), \
-             patch("backend.workers.tasks.diarization_task.publish_task_event_sync"), \
-             patch("backend.services.sync_service.persist_task_result", side_effect=Exception("DB 오류")):
+        with (
+            patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis),
+            patch("backend.workers.tasks.diarization_task.settings", mock_settings),
+            patch("backend.workers.tasks.diarization_task.publish_task_event_sync"),
+            patch(
+                "backend.services.sync_service.persist_task_result",
+                side_effect=Exception("DB 오류"),
+            ),
+        ):
             result = diarization_task(task_id=task_id, stt_task_id=stt_task_id)
 
         # FileNotFoundError 경로의 DB 저장 실패 무시됨 (line 407-408)
@@ -354,11 +400,15 @@ class TestDiarizationDbPersistErrors:
 
         mock_redis = _make_mock_redis()
         mock_redis.get.side_effect = lambda key: (
-            json.dumps({
-                "task_id": stt_task_id,
-                "status": "completed",
-                "segments": [],
-            }) if "result" in key else None
+            json.dumps(
+                {
+                    "task_id": stt_task_id,
+                    "status": "completed",
+                    "segments": [],
+                }
+            )
+            if "result" in key
+            else None
         )
         mock_engine = MagicMock()
         mock_engine.is_loaded = True
@@ -366,12 +416,20 @@ class TestDiarizationDbPersistErrors:
 
         mock_settings = _default_settings(tmp_path)
 
-        with patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis), \
-             patch("backend.workers.tasks.diarization_task.DiarizationEngine.get_instance", return_value=mock_engine), \
-             patch("backend.workers.tasks.diarization_task.settings", mock_settings), \
-             patch("backend.workers.tasks.diarization_task.publish_task_event_sync"), \
-             patch("backend.pipeline.audio_processor.get_audio_duration_seconds", return_value=10.0), \
-             patch("backend.services.sync_service.persist_task_result", side_effect=Exception("DB 오류")):
+        with (
+            patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis),
+            patch(
+                "backend.workers.tasks.diarization_task.DiarizationEngine.get_instance",
+                return_value=mock_engine,
+            ),
+            patch("backend.workers.tasks.diarization_task.settings", mock_settings),
+            patch("backend.workers.tasks.diarization_task.publish_task_event_sync"),
+            patch("backend.pipeline.audio_processor.get_audio_duration_seconds", return_value=10.0),
+            patch(
+                "backend.services.sync_service.persist_task_result",
+                side_effect=Exception("DB 오류"),
+            ),
+        ):
             result = diarization_task(task_id=task_id, stt_task_id=stt_task_id)
 
         # 일반 예외 경로의 DB 저장 실패 무시됨 (line 435-436)

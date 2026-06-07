@@ -283,5 +283,3 @@ class TestEfficiencyMetrics:
         assert 0 <= metrics["participation_balance"] <= 1
         assert metrics["speaking_turn_count"] >= 0
         assert metrics["average_turn_length"] >= 0
-
-

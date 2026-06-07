@@ -148,9 +148,7 @@ class AuthService:
             HTTPException(409): 이메일 중복
         """
         # 이메일 중복 검사
-        existing = await session.execute(
-            select(User).where(User.email == email)
-        )
+        existing = await session.execute(select(User).where(User.email == email))
         if existing.scalar_one_or_none() is not None:
             raise HTTPException(status_code=409, detail="이미 사용 중인 이메일입니다")
 
@@ -195,9 +193,7 @@ class AuthService:
         Raises:
             HTTPException(401): 이메일 없음 또는 비밀번호 불일치
         """
-        result = await session.execute(
-            select(User).where(User.email == email)
-        )
+        result = await session.execute(select(User).where(User.email == email))
         user = result.scalar_one_or_none()
 
         # 이메일/비밀번호 모두 같은 에러 반환 (사용자 열거 방지)
@@ -250,23 +246,27 @@ class AuthService:
         token_record = result.scalar_one_or_none()
 
         if token_record is None:
-            raise HTTPException(status_code=401, detail="유효하지 않은 refresh token입니다")  # pragma: no cover
+            raise HTTPException(
+                status_code=401, detail="유효하지 않은 refresh token입니다"
+            )  # pragma: no cover
 
         # 만료 또는 폐기 확인
         now = datetime.now(UTC).replace(tzinfo=None)
         if token_record.is_revoked or token_record.expires_at < now:
-            raise HTTPException(status_code=401, detail="만료되었거나 폐기된 refresh token입니다")  # pragma: no cover
+            raise HTTPException(
+                status_code=401, detail="만료되었거나 폐기된 refresh token입니다"
+            )  # pragma: no cover
 
         # 기존 토큰 폐기 (rotation)
         token_record.is_revoked = True
 
         # 사용자 조회
-        user_result = await session.execute(
-            select(User).where(User.id == token_record.user_id)
-        )
+        user_result = await session.execute(select(User).where(User.id == token_record.user_id))
         user = user_result.scalar_one_or_none()
         if user is None or not user.is_active:
-            raise HTTPException(status_code=401, detail="사용자를 찾을 수 없습니다")  # pragma: no cover
+            raise HTTPException(
+                status_code=401, detail="사용자를 찾을 수 없습니다"
+            )  # pragma: no cover
 
         # 새 refresh token 생성
         new_raw_refresh = self.create_refresh_token()
@@ -333,9 +333,7 @@ class AuthService:
         user = result.scalar_one_or_none()
 
         if user is None:
-            existing_email = await session.execute(
-                select(User).where(User.email == email)
-            )
+            existing_email = await session.execute(select(User).where(User.email == email))
             if existing_email.scalar_one_or_none() is not None:
                 raise HTTPException(
                     status_code=409,

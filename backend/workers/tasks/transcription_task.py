@@ -72,8 +72,10 @@ def _update_task_status(
     r.setex(status_key, settings.cache_ttl_seconds, json.dumps(data))
 
     # SSE 스트림 구독자에게 이벤트 발행
-    event_type = "completed" if status == TaskStatus.completed else (
-        "failed" if status == TaskStatus.failed else "status_update"
+    event_type = (
+        "completed"
+        if status == TaskStatus.completed
+        else ("failed" if status == TaskStatus.failed else "status_update")
     )
     publish_task_event_sync(r, task_id, event_type, data)
 
@@ -119,7 +121,7 @@ def _decrement_active_jobs(task_id: str) -> None:
     default_retry_delay=60,
     name="transcription_task",
     soft_time_limit=3600,  # 60분 소프트 타임아웃 (개별 STT Celery task 기준)
-    time_limit=3900,       # 65분 하드 타임아웃 (워커 강제 종료)
+    time_limit=3900,  # 65분 하드 타임아웃 (워커 강제 종료)
 )
 def transcription_task(
     self,
@@ -200,8 +202,14 @@ def transcription_task(
         else:
             # 30분 이하 → 단일 파일 처리
             _update_task_status(task_id, TaskStatus.processing, 0.30, "STT 처리 중...")
-            raw_result = engine.transcribe(str(processed_path), language=language, initial_prompt=initial_prompt)
-            logger.info("STT 원시 결과 키", keys=list(raw_result.keys()), text_preview=raw_result.get("text", "")[:200])
+            raw_result = engine.transcribe(
+                str(processed_path), language=language, initial_prompt=initial_prompt
+            )
+            logger.info(
+                "STT 원시 결과 키",
+                keys=list(raw_result.keys()),
+                text_preview=raw_result.get("text", "")[:200],
+            )
             all_segments = _extract_segments(raw_result.get("segments", []))
             _update_task_status(task_id, TaskStatus.processing, 0.90, "결과 정리 중...")
 
@@ -236,6 +244,7 @@ def transcription_task(
         # DB 영속 저장 (best-effort, REQ-PERSIST-004)
         try:
             from backend.services.sync_service import persist_task_result
+
             persist_task_result(
                 task_id=task_id,
                 task_type="transcription",
@@ -260,12 +269,15 @@ def transcription_task(
         error_msg = "처리 시간이 60분을 초과하여 작업이 중단되었습니다"
         logger.error("전사 작업 시간 초과", task_id=task_id)
         _update_task_status(task_id, TaskStatus.failed, 0.0, error_message=error_msg)
-        _cache_result(task_id, {
-            "task_id": task_id,
-            "status": TaskStatus.failed.value,
-            "error_message": error_msg,
-            "created_at": processing_start.isoformat(),
-        })
+        _cache_result(
+            task_id,
+            {
+                "task_id": task_id,
+                "status": TaskStatus.failed.value,
+                "error_message": error_msg,
+                "created_at": processing_start.isoformat(),
+            },
+        )
         return {"task_id": task_id, "status": "failed", "error": error_msg}
 
     except Exception as exc:
@@ -294,6 +306,7 @@ def transcription_task(
         # DB 영속 저장 - 실패 상태 (best-effort, REQ-PERSIST-005)
         try:
             from backend.services.sync_service import persist_task_result
+
             persist_task_result(
                 task_id=task_id,
                 task_type="transcription",
@@ -353,7 +366,9 @@ def _process_chunks(
 
         logger.info("청크 처리", chunk_index=i, path=str(chunk.file_path))
         raw_result = engine.transcribe(
-            str(chunk.file_path), language=language, initial_prompt=initial_prompt,
+            str(chunk.file_path),
+            language=language,
+            initial_prompt=initial_prompt,
         )
         chunk_results.append((chunk, raw_result.get("segments", [])))
 

@@ -116,7 +116,9 @@ async def enhanced_preprocess_endpoint(
                 while chunk := await file.read(1024 * 1024):
                     bytes_read += len(chunk)
                     if bytes_read > max_bytes:
-                        bad_request(f"파일 크기가 {settings.audio_preprocess_max_file_mb}MB를 초과합니다.")
+                        bad_request(
+                            f"파일 크기가 {settings.audio_preprocess_max_file_mb}MB를 초과합니다."
+                        )
                     fp.write(chunk)
         except Exception as exc:
             src_path.unlink(missing_ok=True)
@@ -125,17 +127,10 @@ async def enhanced_preprocess_endpoint(
 
         # 처리 수행 (비동기)
         try:
-            result = await processor.preprocess_batch(
-                [src_path],
-                options,
-                None
-            )
+            result = await processor.preprocess_batch([src_path], options, None)
 
             if result.failed_files > 0:
-                raise HTTPException(
-                    status_code=400,
-                    detail="오디오 처리 실패"
-                )
+                raise HTTPException(status_code=400, detail="오디오 처리 실패")
 
             processed_file = result.results[0]
             processed_path = processed_file.processed_path
@@ -149,7 +144,7 @@ async def enhanced_preprocess_endpoint(
                 "sample_rate": processed_file.sample_rate,
                 "channels": processed_file.channels,
                 "applied_options": options.model_dump(),
-                "ai_noise_removed": processed_file.metadata.get("ai_noise_removed", False)
+                "ai_noise_removed": processed_file.metadata.get("ai_noise_removed", False),
             }
 
             # 클린업 태스크
@@ -163,16 +158,13 @@ async def enhanced_preprocess_endpoint(
                 media_type="audio/wav",
                 filename=output_name,
                 background=BackgroundTask(cleanup),
-                headers={"X-Enhanced-Preprocess-Meta": str(metadata)}
+                headers={"X-Enhanced-Preprocess-Meta": str(metadata)},
             )
 
         except Exception as exc:
             src_path.unlink(missing_ok=True)
             logger.error("오디오 전처리 실패", error=str(exc))
-            raise HTTPException(
-                status_code=400,
-                detail=f"오디오 전처리 실패: {exc}"
-            )
+            raise HTTPException(status_code=400, detail=f"오디오 전처리 실패: {exc}")
 
     except HTTPException:
         raise
@@ -264,15 +256,13 @@ async def batch_preprocess_endpoint(
                     while chunk := await file.read(1024 * 1024):
                         bytes_read += len(chunk)
                         if bytes_read > max_bytes:
-                            bad_request(f"파일 크기가 {settings.audio_preprocess_max_file_mb}MB를 초과합니다.")
+                            bad_request(
+                                f"파일 크기가 {settings.audio_preprocess_max_file_mb}MB를 초과합니다."
+                            )
                         fp.write(chunk)
 
             # 배치 처리 수행
-            result = await processor.preprocess_batch(
-                temp_files,
-                options,
-                None
-            )
+            result = await processor.preprocess_batch(temp_files, options, None)
 
             # 보고서 생성
             report = await processor.create_processing_report(result) if return_report else None
@@ -284,15 +274,12 @@ async def batch_preprocess_endpoint(
                 failed_files=result.failed_files,
                 processing_time_seconds=result.processing_time_seconds,
                 summary=result.summary,
-                report=report
+                report=report,
             )
 
         except Exception as exc:
             logger.error("배치 처리 실패", error=str(exc))
-            raise HTTPException(
-                status_code=400,
-                detail=f"배치 처리 실패: {exc}"
-            )
+            raise HTTPException(status_code=400, detail=f"배치 처리 실패: {exc}")
 
         finally:
             # 클린업
@@ -318,47 +305,23 @@ async def get_supported_formats() -> list[FormatInfo]:
         FormatInfo(
             extension="wav",
             description="WAV (무손실)",
-            supported_codecs=["pcm", "adpcm", "imaadpcm"]
+            supported_codecs=["pcm", "adpcm", "imaadpcm"],
+        ),
+        FormatInfo(extension="mp3", description="MP3 (압축)", supported_codecs=["mp3", "mpeg"]),
+        FormatInfo(extension="flac", description="FLAC (무손실 압축)", supported_codecs=["flac"]),
+        FormatInfo(
+            extension="aac", description="AAC (고급 압축)", supported_codecs=["aac", "mp4a"]
         ),
         FormatInfo(
-            extension="mp3",
-            description="MP3 (압축)",
-            supported_codecs=["mp3", "mpeg"]
+            extension="ogg", description="OGG (오픈 포맷)", supported_codecs=["vorbis", "opus"]
         ),
+        FormatInfo(extension="m4a", description="M4A (AAC 기반)", supported_codecs=["aac", "mp4a"]),
         FormatInfo(
-            extension="flac",
-            description="FLAC (무손실 압축)",
-            supported_codecs=["flac"]
+            extension="wma", description="WMA (Windows Media)", supported_codecs=["wma", "wmav2"]
         ),
+        FormatInfo(extension="opus", description="Opus (고효율 코덱)", supported_codecs=["opus"]),
         FormatInfo(
-            extension="aac",
-            description="AAC (고급 압축)",
-            supported_codecs=["aac", "mp4a"]
-        ),
-        FormatInfo(
-            extension="ogg",
-            description="OGG (오픈 포맷)",
-            supported_codecs=["vorbis", "opus"]
-        ),
-        FormatInfo(
-            extension="m4a",
-            description="M4A (AAC 기반)",
-            supported_codecs=["aac", "mp4a"]
-        ),
-        FormatInfo(
-            extension="wma",
-            description="WMA (Windows Media)",
-            supported_codecs=["wma", "wmav2"]
-        ),
-        FormatInfo(
-            extension="opus",
-            description="Opus (고효율 코덱)",
-            supported_codecs=["opus"]
-        ),
-        FormatInfo(
-            extension="webm",
-            description="WebM (웹용)",
-            supported_codecs=["opus", "vorbis"]
+            extension="webm", description="WebM (웹용)", supported_codecs=["opus", "vorbis"]
         ),
     ]
     return formats
@@ -372,13 +335,15 @@ async def get_model_status() -> ModelStatusResponse:
     return ModelStatusResponse(
         ai_noise_removal_enabled=True,
         model_loaded=processor.ai_model.model_loaded,
-        supported_formats=len([f for f in ["wav", "mp3", "flac", "aac", "ogg", "m4a", "wma", "opus", "webm"]]),
+        supported_formats=len(
+            [f for f in ["wav", "mp3", "flac", "aac", "ogg", "m4a", "wma", "opus", "webm"]]
+        ),
         batch_max_files=20,
         batch_max_concurrent=5,
         supported_ai_features=["noise_removal", "audio_enhancement"],
         processing_limits={
             "max_file_size_mb": settings.audio_preprocess_max_file_mb,
             "timeout_seconds": 300,
-            "max_concurrent_batches": 5
-        }
+            "max_concurrent_batches": 5,
+        },
     )

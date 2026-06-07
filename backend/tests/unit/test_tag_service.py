@@ -56,18 +56,14 @@ def sample_tag_create_payload(sample_task_id):
         tag_value="AI",
         source="manual",
         confidence=0.9,
-        note="Important topic"
+        note="Important topic",
     )
 
 
 @pytest.fixture
 def sample_tag_update_payload():
     """태그 수정 payload"""
-    return TagUpdate(
-        tag_type="category",
-        tag_value="Updated",
-        note="Updated note"
-    )
+    return TagUpdate(tag_type="category", tag_value="Updated", note="Updated note")
 
 
 @pytest.fixture
@@ -86,6 +82,7 @@ def sample_meeting_tag(sample_user_id, sample_task_id, sample_tag_id):
 
 
 # _enforce_meeting_limit 테스트
+
 
 class TestEnforceMeetingLimit:
     """_enforce_meeting_limit 메서드 테스트"""
@@ -107,9 +104,7 @@ class TestEnforceMeetingLimit:
         mock_session.execute.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_at_limit_fails(
-        self, tag_service, mock_session, sample_user_id, sample_task_id
-    ):
+    async def test_at_limit_fails(self, tag_service, mock_session, sample_user_id, sample_task_id):
         """태그 개수가 제한과 같은 경우 예외 발생"""
         # Setup: count = 100
         mock_result = MagicMock()
@@ -126,13 +121,12 @@ class TestEnforceMeetingLimit:
 
 # _get_tag_or_404 테스트
 
+
 class TestGetTagOr404:
     """_get_tag_or_404 메서드 테스트"""
 
     @pytest.mark.asyncio
-    async def test_tag_found(
-        self, tag_service, mock_session, sample_tag_id, sample_meeting_tag
-    ):
+    async def test_tag_found(self, tag_service, mock_session, sample_tag_id, sample_meeting_tag):
         """태그 조회 성공"""
         # Setup
         mock_result = MagicMock()
@@ -140,15 +134,15 @@ class TestGetTagOr404:
         mock_session.execute.return_value = mock_result
 
         # Execute
-        result = await tag_service._get_tag_or_404(mock_session, sample_tag_id, sample_meeting_tag.user_id)
+        result = await tag_service._get_tag_or_404(
+            mock_session, sample_tag_id, sample_meeting_tag.user_id
+        )
 
         # Assert
         assert result == sample_meeting_tag
 
     @pytest.mark.asyncio
-    async def test_tag_not_found(
-        self, tag_service, mock_session, sample_tag_id, sample_user_id
-    ):
+    async def test_tag_not_found(self, tag_service, mock_session, sample_tag_id, sample_user_id):
         """태그 조회 실패 - 존재하지 않음"""
         # Setup: None 반환
         mock_result = MagicMock()
@@ -180,6 +174,7 @@ class TestGetTagOr404:
 
 # create 테스트
 
+
 class TestCreate:
     """create 메서드 테스트"""
 
@@ -191,7 +186,9 @@ class TestCreate:
         # Setup: _enforce_meeting_limit 통과
         with patch.object(tag_service, "_enforce_meeting_limit", AsyncMock()):
             # Execute
-            result = await tag_service.create(mock_session, sample_user_id, sample_tag_create_payload)
+            result = await tag_service.create(
+                mock_session, sample_user_id, sample_tag_create_payload
+            )
 
             # Assert
             mock_session.add.assert_called_once()
@@ -205,11 +202,7 @@ class TestCreate:
     ):
         """잘못된 태그 타입으로 생성 시도"""
         # Setup: 유효하지 않은 태그 타입
-        payload = TagCreate(
-            task_id=sample_task_id,
-            tag_type="invalid_type",
-            tag_value="test"
-        )
+        payload = TagCreate(task_id=sample_task_id, tag_type="invalid_type", tag_value="test")
 
         # Execute & Assert
         with pytest.raises(Exception) as exc_info:
@@ -220,6 +213,7 @@ class TestCreate:
 
 
 # bulk_create 테스트
+
 
 class TestBulkCreate:
     """bulk_create 메서드 테스트"""
@@ -264,6 +258,7 @@ class TestBulkCreate:
 
 # get_by_id 테스트
 
+
 class TestGetById:
     """get_by_id 메서드 테스트"""
 
@@ -273,9 +268,13 @@ class TestGetById:
     ):
         """ID로 태그 조회 성공"""
         # Setup: _get_tag_or_404가 태그를 반환
-        with patch.object(tag_service, "_get_tag_or_404", AsyncMock(return_value=sample_meeting_tag)):
+        with patch.object(
+            tag_service, "_get_tag_or_404", AsyncMock(return_value=sample_meeting_tag)
+        ):
             # Execute
-            result = await tag_service.get_by_id(mock_session, sample_tag_id, sample_meeting_tag.user_id)
+            result = await tag_service.get_by_id(
+                mock_session, sample_tag_id, sample_meeting_tag.user_id
+            )
 
             # Assert
             assert result == sample_meeting_tag
@@ -283,13 +282,12 @@ class TestGetById:
 
 # list_for_meeting 테스트
 
+
 class TestListForMeeting:
     """list_for_meeting 메서드 테스트"""
 
     @pytest.mark.asyncio
-    async def test_list_success(
-        self, tag_service, mock_session, sample_user_id, sample_task_id
-    ):
+    async def test_list_success(self, tag_service, mock_session, sample_user_id, sample_task_id):
         """태그 목록 조회 성공"""
         # Setup
         mock_tags = [MagicMock(spec=MeetingTag) for _ in range(3)]
@@ -305,7 +303,9 @@ class TestListForMeeting:
         mock_session.execute.side_effect = [mock_count_result, mock_list_result]
 
         # Execute
-        items, total = await tag_service.list_for_meeting(mock_session, sample_user_id, sample_task_id)
+        items, total = await tag_service.list_for_meeting(
+            mock_session, sample_user_id, sample_task_id
+        )
 
         # Assert
         assert items == mock_tags
@@ -337,9 +337,7 @@ class TestListForMeeting:
         assert len(items) == 1
 
     @pytest.mark.asyncio
-    async def test_list_empty(
-        self, tag_service, mock_session, sample_user_id, sample_task_id
-    ):
+    async def test_list_empty(self, tag_service, mock_session, sample_user_id, sample_task_id):
         """빈 태그 목록 조회"""
         # Setup
         mock_count_result = MagicMock()
@@ -351,7 +349,9 @@ class TestListForMeeting:
         mock_session.execute.side_effect = [mock_count_result, mock_list_result]
 
         # Execute
-        items, total = await tag_service.list_for_meeting(mock_session, sample_user_id, sample_task_id)
+        items, total = await tag_service.list_for_meeting(
+            mock_session, sample_user_id, sample_task_id
+        )
 
         # Assert
         assert items == []
@@ -359,6 +359,7 @@ class TestListForMeeting:
 
 
 # update 테스트
+
 
 class TestUpdate:
     """update 메서드 테스트"""
@@ -373,10 +374,15 @@ class TestUpdate:
     ):
         """태그 수정 성공"""
         # Setup: _get_tag_or_404가 태그를 반환
-        with patch.object(tag_service, "_get_tag_or_404", AsyncMock(return_value=sample_meeting_tag)):
+        with patch.object(
+            tag_service, "_get_tag_or_404", AsyncMock(return_value=sample_meeting_tag)
+        ):
             # Execute
             result = await tag_service.update(
-                mock_session, sample_meeting_tag.id, sample_meeting_tag.user_id, sample_tag_update_payload
+                mock_session,
+                sample_meeting_tag.id,
+                sample_meeting_tag.user_id,
+                sample_tag_update_payload,
             )
 
             # Assert
@@ -387,14 +393,14 @@ class TestUpdate:
             mock_session.refresh.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_update_invalid_tag_type(
-        self, tag_service, mock_session, sample_meeting_tag
-    ):
+    async def test_update_invalid_tag_type(self, tag_service, mock_session, sample_meeting_tag):
         """잘못된 태그 타입으로 수정 시도"""
         # Setup
         payload = TagUpdate(tag_type="invalid_type")
 
-        with patch.object(tag_service, "_get_tag_or_404", AsyncMock(return_value=sample_meeting_tag)):
+        with patch.object(
+            tag_service, "_get_tag_or_404", AsyncMock(return_value=sample_meeting_tag)
+        ):
             # Execute & Assert
             with pytest.raises(Exception) as exc_info:
                 await tag_service.update(
@@ -404,14 +410,14 @@ class TestUpdate:
             assert exc_info.value.status_code == 422
 
     @pytest.mark.asyncio
-    async def test_update_partial(
-        self, tag_service, mock_session, sample_meeting_tag
-    ):
+    async def test_update_partial(self, tag_service, mock_session, sample_meeting_tag):
         """부분 수정 (tag_value만)"""
         # Setup
         payload = TagUpdate(tag_value="Updated only")
 
-        with patch.object(tag_service, "_get_tag_or_404", AsyncMock(return_value=sample_meeting_tag)):
+        with patch.object(
+            tag_service, "_get_tag_or_404", AsyncMock(return_value=sample_meeting_tag)
+        ):
             # Execute
             result = await tag_service.update(
                 mock_session, sample_meeting_tag.id, sample_meeting_tag.user_id, payload
@@ -425,27 +431,28 @@ class TestUpdate:
 
 # delete 테스트
 
+
 class TestDelete:
     """delete 메서드 테스트"""
 
     @pytest.mark.asyncio
-    async def test_delete_success(
-        self, tag_service, mock_session, sample_meeting_tag
-    ):
+    async def test_delete_success(self, tag_service, mock_session, sample_meeting_tag):
         """태그 삭제 성공"""
         # Setup: _get_tag_or_404가 태그를 반환
-        with patch.object(tag_service, "_get_tag_or_404", AsyncMock(return_value=sample_meeting_tag)):
+        with patch.object(
+            tag_service, "_get_tag_or_404", AsyncMock(return_value=sample_meeting_tag)
+        ):
             # Execute
-            await tag_service.delete(mock_session, sample_meeting_tag.id, sample_meeting_tag.user_id)
+            await tag_service.delete(
+                mock_session, sample_meeting_tag.id, sample_meeting_tag.user_id
+            )
 
             # Assert
             mock_session.delete.assert_called_once_with(sample_meeting_tag)
             mock_session.commit.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_delete_not_found(
-        self, tag_service, mock_session, sample_tag_id, sample_user_id
-    ):
+    async def test_delete_not_found(self, tag_service, mock_session, sample_tag_id, sample_user_id):
         """존재하지 않는 태그 삭제 시도"""
         # Setup: _get_tag_or_404가 404 예외 발생
         from fastapi import HTTPException
@@ -462,6 +469,7 @@ class TestDelete:
 
 # delete_all_for_meeting 테스트
 
+
 class TestDeleteAllForMeeting:
     """delete_all_for_meeting 메서드 테스트"""
 
@@ -477,7 +485,9 @@ class TestDeleteAllForMeeting:
         mock_session.execute.return_value = mock_result
 
         # Execute
-        count = await tag_service.delete_all_for_meeting(mock_session, sample_user_id, sample_task_id)
+        count = await tag_service.delete_all_for_meeting(
+            mock_session, sample_user_id, sample_task_id
+        )
 
         # Assert
         assert count == 3
@@ -514,7 +524,9 @@ class TestDeleteAllForMeeting:
         mock_session.execute.return_value = mock_result
 
         # Execute
-        count = await tag_service.delete_all_for_meeting(mock_session, sample_user_id, sample_task_id)
+        count = await tag_service.delete_all_for_meeting(
+            mock_session, sample_user_id, sample_task_id
+        )
 
         # Assert
         assert count == 0

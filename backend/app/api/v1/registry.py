@@ -57,6 +57,7 @@ from backend.app.api.v1.collaboration import (
 )
 from backend.app.api.v1.minutes import (
     action_items,
+    action_items_crud,
     keywords,
     minutes,
     summary,
@@ -111,6 +112,7 @@ ROUTER_REGISTRY: list[tuple[APIRouter, bool]] = [
     (tags.router, True),  # SPEC-TAG-001
     (keywords.router, True),  # SPEC-KEYWORD-001
     (action_items.router, True),  # SPEC-ACTION-001
+    (action_items_crud.router, True),  # SPEC-ACTION-001: CRUD management
     (audio_analysis.router, True),  # SPEC-AUDIO-ANALYSIS-001
     (audio_preprocess.router, True),  # SPEC-AUDIO-PREP-001
     (quality_assessment.router, True),  # SPEC-QUALITY-001

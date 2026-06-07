@@ -48,6 +48,7 @@ def _make_fw_segment(idx, start, end, text, avg_logprob=-0.3):
 def _reset_engine():
     """WhisperEngine 싱글톤 리셋"""
     from backend.ml.stt_engine import WhisperEngine
+
     WhisperEngine._instance = None
     WhisperEngine._model_loaded = False
     WhisperEngine._load_time_seconds = None
@@ -65,9 +66,10 @@ class TestWhisperEngineDoubleLock:
         from backend.ml.stt_engine import WhisperEngine
 
         with patch.dict(sys.modules, {"mlx_whisper": _make_mock_mlx()}):
-            with patch("platform.system", return_value="Darwin"), \
-                 patch.object(WhisperEngine, "_detect_device", return_value="mps"):
-
+            with (
+                patch("platform.system", return_value="Darwin"),
+                patch.object(WhisperEngine, "_detect_device", return_value="mps"),
+            ):
                 engine = WhisperEngine.get_instance()
                 results = []
                 errors = []
@@ -140,7 +142,9 @@ class TestWhisperBackendLoad:
 
         engine = WhisperEngine.get_instance()
 
-        with patch.dict(sys.modules, {"whisper": None, "mlx_whisper": None, "faster_whisper": None}):
+        with patch.dict(
+            sys.modules, {"whisper": None, "mlx_whisper": None, "faster_whisper": None}
+        ):
             with patch("platform.system", return_value="Linux"):
                 result = engine._try_load_whisper()
                 assert result is False
@@ -155,7 +159,9 @@ class TestWhisperBackendLoad:
         mock_whisper.load_model.side_effect = RuntimeError("Load failed")
         mock_whisper.__name__ = "whisper"
 
-        with patch.dict(sys.modules, {"whisper": mock_whisper, "mlx_whisper": None, "faster_whisper": None}):
+        with patch.dict(
+            sys.modules, {"whisper": mock_whisper, "mlx_whisper": None, "faster_whisper": None}
+        ):
             with patch("platform.system", return_value="Linux"):
                 result = engine._try_load_whisper()
                 assert result is False
@@ -173,14 +179,15 @@ class TestTranscribeMlx:
 
         mock_result = {
             "segments": [{"id": 0, "start": 0.0, "end": 4.0, "text": "테스트"}],
-            "language": "ko"
+            "language": "ko",
         }
         mock_mlx = _make_mock_mlx(mock_result)
 
         with patch.dict(sys.modules, {"mlx_whisper": mock_mlx}):
-            with patch("platform.system", return_value="Darwin"), \
-                 patch.object(WhisperEngine, "_detect_device", return_value="mps"):
-
+            with (
+                patch("platform.system", return_value="Darwin"),
+                patch.object(WhisperEngine, "_detect_device", return_value="mps"),
+            ):
                 engine = WhisperEngine.get_instance()
                 engine._backend = "mlx"
                 engine._model_loaded = True
@@ -195,22 +202,19 @@ class TestTranscribeMlx:
 
         mock_result = {
             "segments": [{"id": 0, "start": 0.0, "end": 4.0, "text": "회의록"}],
-            "language": "ko"
+            "language": "ko",
         }
         mock_mlx = _make_mock_mlx(mock_result)
 
         with patch.dict(sys.modules, {"mlx_whisper": mock_mlx}):
-            with patch("platform.system", return_value="Darwin"), \
-                 patch.object(WhisperEngine, "_detect_device", return_value="mps"):
-
+            with (
+                patch("platform.system", return_value="Darwin"),
+                patch.object(WhisperEngine, "_detect_device", return_value="mps"),
+            ):
                 engine = WhisperEngine.get_instance()
                 engine._backend = "mlx"
                 engine._model_loaded = True
-                engine._transcribe_mlx(
-                    test_audio_file,
-                    "ko",
-                    "회의록 작성"
-                )
+                engine._transcribe_mlx(test_audio_file, "ko", "회의록 작성")
 
                 call_args = mock_mlx.transcribe.call_args
                 kwargs = call_args.kwargs
@@ -223,9 +227,10 @@ class TestTranscribeMlx:
         mock_mlx = _make_mock_mlx({"segments": [], "language": "ko"})
 
         with patch.dict(sys.modules, {"mlx_whisper": mock_mlx}):
-            with patch("platform.system", return_value="Darwin"), \
-                 patch.object(WhisperEngine, "_detect_device", return_value="mps"):
-
+            with (
+                patch("platform.system", return_value="Darwin"),
+                patch.object(WhisperEngine, "_detect_device", return_value="mps"),
+            ):
                 engine = WhisperEngine.get_instance()
                 engine._backend = "mlx"
                 engine._model_loaded = True
@@ -242,9 +247,10 @@ class TestTranscribeMlx:
         mock_mlx = _make_mock_mlx({"segments": [], "language": "ko"})
 
         with patch.dict(sys.modules, {"mlx_whisper": mock_mlx}):
-            with patch("platform.system", return_value="Darwin"), \
-                 patch.object(WhisperEngine, "_detect_device", return_value="mps"):
-
+            with (
+                patch("platform.system", return_value="Darwin"),
+                patch.object(WhisperEngine, "_detect_device", return_value="mps"),
+            ):
                 engine = WhisperEngine.get_instance()
                 engine._backend = "mlx"
                 engine._model_loaded = True
@@ -270,14 +276,15 @@ class TestTranscribeWhisper:
         mock_model = MagicMock()
         mock_model.transcribe.return_value = {
             "segments": [{"id": 0, "start": 0.0, "end": 4.0, "text": "테스트"}],
-            "language": "ko"
+            "language": "ko",
         }
         mock_whisper.load_model.return_value = mock_model
 
         with patch.dict(sys.modules, {"whisper": mock_whisper, "mlx_whisper": None}):
-            with patch("platform.system", return_value="Linux"), \
-                 patch("torch.cuda.is_available", return_value=False):
-
+            with (
+                patch("platform.system", return_value="Linux"),
+                patch("torch.cuda.is_available", return_value=False),
+            ):
                 engine = WhisperEngine.get_instance()
                 engine._backend = "whisper"
                 engine._whisper_model = mock_model
@@ -297,18 +304,15 @@ class TestTranscribeWhisper:
         mock_whisper.load_model.return_value = mock_model
 
         with patch.dict(sys.modules, {"whisper": mock_whisper, "mlx_whisper": None}):
-            with patch("platform.system", return_value="Linux"), \
-                 patch("torch.cuda.is_available", return_value=False):
-
+            with (
+                patch("platform.system", return_value="Linux"),
+                patch("torch.cuda.is_available", return_value=False),
+            ):
                 engine = WhisperEngine.get_instance()
                 engine._backend = "whisper"
                 engine._whisper_model = mock_model
                 engine._model_loaded = True
-                engine._transcribe_whisper(
-                    test_audio_file,
-                    "ko",
-                    "회의록"
-                )
+                engine._transcribe_whisper(test_audio_file, "ko", "회의록")
 
                 call_args = mock_model.transcribe.call_args
                 kwargs = call_args.kwargs
@@ -324,9 +328,10 @@ class TestTranscribeWhisper:
         mock_whisper.load_model.return_value = mock_model
 
         with patch.dict(sys.modules, {"whisper": mock_whisper, "mlx_whisper": None}):
-            with patch("platform.system", return_value="Linux"), \
-                 patch("torch.cuda.is_available", return_value=False):
-
+            with (
+                patch("platform.system", return_value="Linux"),
+                patch("torch.cuda.is_available", return_value=False),
+            ):
                 engine = WhisperEngine.get_instance()
                 engine._backend = "whisper"
                 engine._whisper_model = mock_model
@@ -337,7 +342,9 @@ class TestTranscribeWhisper:
                 kwargs = call_args.kwargs
                 assert kwargs.get("word_timestamps") is True
 
-    @pytest.mark.skip(reason="Singleton engine caches device from previous tests; CUDA mock ineffective")
+    @pytest.mark.skip(
+        reason="Singleton engine caches device from previous tests; CUDA mock ineffective"
+    )
     def test_transcribe_whisper_with_cuda_device(self, test_audio_file: Path):
         """openai-whisper 백엔드: CUDA 장치 사용 (CI 환경에서만 검증)"""
 
@@ -352,15 +359,16 @@ class TestTranscribeFasterWhisper:
         """faster-whisper 백엔드: initial_prompt 없이 추론"""
         from backend.ml.stt_engine import WhisperEngine
 
-        segments = [
-            _make_fw_segment(0, 0.0, 5.0, "테스트")
-        ]
+        segments = [_make_fw_segment(0, 0.0, 5.0, "테스트")]
         mock_fw, mock_model = _make_mock_faster_whisper(segments=segments)
 
-        with patch.dict(sys.modules, {"faster_whisper": mock_fw, "mlx_whisper": None, "torch": MagicMock()}):
-            with patch("platform.system", return_value="Linux"), \
-                 patch("torch.cuda.is_available", return_value=False):
-
+        with patch.dict(
+            sys.modules, {"faster_whisper": mock_fw, "mlx_whisper": None, "torch": MagicMock()}
+        ):
+            with (
+                patch("platform.system", return_value="Linux"),
+                patch("torch.cuda.is_available", return_value=False),
+            ):
                 engine = WhisperEngine.get_instance()
                 engine._backend = "faster_whisper"
                 engine._faster_whisper_model = mock_model
@@ -377,19 +385,18 @@ class TestTranscribeFasterWhisper:
         segments = [_make_fw_segment(0, 0.0, 5.0, "테스트")]
         mock_fw, mock_model = _make_mock_faster_whisper(segments=segments)
 
-        with patch.dict(sys.modules, {"faster_whisper": mock_fw, "mlx_whisper": None, "torch": MagicMock()}):
-            with patch("platform.system", return_value="Linux"), \
-                 patch("torch.cuda.is_available", return_value=False):
-
+        with patch.dict(
+            sys.modules, {"faster_whisper": mock_fw, "mlx_whisper": None, "torch": MagicMock()}
+        ):
+            with (
+                patch("platform.system", return_value="Linux"),
+                patch("torch.cuda.is_available", return_value=False),
+            ):
                 engine = WhisperEngine.get_instance()
                 engine._backend = "faster_whisper"
                 engine._faster_whisper_model = mock_model
                 engine._model_loaded = True
-                engine._transcribe_faster_whisper(
-                    test_audio_file,
-                    "ko",
-                    "회의록"
-                )
+                engine._transcribe_faster_whisper(test_audio_file, "ko", "회의록")
 
                 call_args = mock_model.transcribe.call_args
                 kwargs = call_args.kwargs
@@ -401,10 +408,13 @@ class TestTranscribeFasterWhisper:
 
         mock_fw, mock_model = _make_mock_faster_whisper()
 
-        with patch.dict(sys.modules, {"faster_whisper": mock_fw, "mlx_whisper": None, "torch": MagicMock()}):
-            with patch("platform.system", return_value="Linux"), \
-                 patch("torch.cuda.is_available", return_value=False):
-
+        with patch.dict(
+            sys.modules, {"faster_whisper": mock_fw, "mlx_whisper": None, "torch": MagicMock()}
+        ):
+            with (
+                patch("platform.system", return_value="Linux"),
+                patch("torch.cuda.is_available", return_value=False),
+            ):
                 engine = WhisperEngine.get_instance()
                 engine._backend = "faster_whisper"
                 engine._faster_whisper_model = mock_model
@@ -433,9 +443,10 @@ class TestTranscribeMemoryCheck:
         mock_mlx = _make_mock_mlx({"segments": [], "language": "ko"})
 
         with patch.dict(sys.modules, {"mlx_whisper": mock_mlx}):
-            with patch("platform.system", return_value="Darwin"), \
-                 patch.object(WhisperEngine, "_detect_device", return_value="mps"):
-
+            with (
+                patch("platform.system", return_value="Darwin"),
+                patch.object(WhisperEngine, "_detect_device", return_value="mps"),
+            ):
                 engine = WhisperEngine.get_instance()
                 engine.load()
 
@@ -472,7 +483,9 @@ class TestMlxDeviceDetection:
             device = WhisperEngine._detect_device()
             assert device == "cpu"
 
-    @pytest.mark.skip(reason="Singleton state from earlier tests affects _detect_device; passes in isolation")
+    @pytest.mark.skip(
+        reason="Singleton state from earlier tests affects _detect_device; passes in isolation"
+    )
     def test_detect_device_initialization_error_returns_cpu(self):
         """MLX 초기화 실패 시 cpu 반환 (라인 438-439)"""
         from backend.ml.stt_engine import WhisperEngine

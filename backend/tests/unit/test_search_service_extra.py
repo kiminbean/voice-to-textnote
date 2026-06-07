@@ -90,25 +90,21 @@ class TestSearchService:
 
         mock_rows_result = MagicMock()
         mock_row = MagicMock()
-        mock_row.__iter__ = lambda self: iter([
-            "task-123",  # task_id
-            "minutes",   # task_type
-            "<b>snippet</b>",  # snippet
-            "2025-01-01T00:00:00",  # created_at
-            None,  # completed_at
-        ])
+        mock_row.__iter__ = lambda self: iter(
+            [
+                "task-123",  # task_id
+                "minutes",  # task_type
+                "<b>snippet</b>",  # snippet
+                "2025-01-01T00:00:00",  # created_at
+                None,  # completed_at
+            ]
+        )
         mock_rows_result.fetchall.return_value = [mock_row]
 
-        mock_session.execute = AsyncMock(
-            side_effect=[mock_count_result, mock_rows_result]
-        )
+        mock_session.execute = AsyncMock(side_effect=[mock_count_result, mock_rows_result])
 
         result = await service.search(
-            session=mock_session,
-            query="test query",
-            task_type="all",
-            page=1,
-            page_size=20
+            session=mock_session, query="test query", task_type="all", page=1, page_size=20
         )
 
         assert result.total == 10
@@ -127,16 +123,10 @@ class TestSearchService:
         mock_rows_result = MagicMock()
         mock_rows_result.fetchall.return_value = []
 
-        mock_session.execute = AsyncMock(
-            side_effect=[mock_count_result, mock_rows_result]
-        )
+        mock_session.execute = AsyncMock(side_effect=[mock_count_result, mock_rows_result])
 
         result = await service.search(
-            session=mock_session,
-            query="test",
-            task_type="minutes",
-            page=1,
-            page_size=20
+            session=mock_session, query="test", task_type="minutes", page=1, page_size=20
         )
 
         assert result.total == 5
@@ -155,16 +145,10 @@ class TestSearchService:
         mock_rows_result = MagicMock()
         mock_rows_result.fetchall.return_value = []
 
-        mock_session.execute = AsyncMock(
-            side_effect=[mock_count_result, mock_rows_result]
-        )
+        mock_session.execute = AsyncMock(side_effect=[mock_count_result, mock_rows_result])
 
         result = await service.search(
-            session=mock_session,
-            query="test",
-            task_type="all",
-            page=3,
-            page_size=10
+            session=mock_session, query="test", task_type="all", page=3, page_size=10
         )
 
         # offset = (3-1) * 10 = 20
@@ -178,11 +162,7 @@ class TestSearchService:
         mock_session.execute = AsyncMock(side_effect=Exception("DB error"))
 
         result = await service.search(
-            session=mock_session,
-            query="test",
-            task_type="all",
-            page=1,
-            page_size=20
+            session=mock_session, query="test", task_type="all", page=1, page_size=20
         )
 
         # 빈 결과 반환
@@ -201,25 +181,21 @@ class TestSearchService:
         mock_rows_result = MagicMock()
         mock_row = MagicMock()
         # 잘못된 datetime 형식
-        mock_row.__iter__ = lambda self: iter([
-            "task-456",
-            "summary",
-            "<b>snippet</b>",
-            "invalid-datetime-format",  # 잘못된 형식
-            None,
-        ])
+        mock_row.__iter__ = lambda self: iter(
+            [
+                "task-456",
+                "summary",
+                "<b>snippet</b>",
+                "invalid-datetime-format",  # 잘못된 형식
+                None,
+            ]
+        )
         mock_rows_result.fetchall.return_value = [mock_row]
 
-        mock_session.execute = AsyncMock(
-            side_effect=[mock_count_result, mock_rows_result]
-        )
+        mock_session.execute = AsyncMock(side_effect=[mock_count_result, mock_rows_result])
 
         result = await service.search(
-            session=mock_session,
-            query="test",
-            task_type="all",
-            page=1,
-            page_size=20
+            session=mock_session, query="test", task_type="all", page=1, page_size=20
         )
 
         # datetime 파싱 실패 시 현재 시간 사용
@@ -238,16 +214,10 @@ class TestSearchService:
         mock_rows_result = MagicMock()
         mock_rows_result.fetchall.return_value = []
 
-        mock_session.execute = AsyncMock(
-            side_effect=[mock_count_result, mock_rows_result]
-        )
+        mock_session.execute = AsyncMock(side_effect=[mock_count_result, mock_rows_result])
 
         result = await service.search(
-            session=mock_session,
-            query="nonexistent",
-            task_type="all",
-            page=1,
-            page_size=20
+            session=mock_session, query="nonexistent", task_type="all", page=1, page_size=20
         )
 
         assert result.total == 0
@@ -265,16 +235,10 @@ class TestSearchService:
         mock_rows_result = MagicMock()
         mock_rows_result.fetchall.return_value = []
 
-        mock_session.execute = AsyncMock(
-            side_effect=[mock_count_result, mock_rows_result]
-        )
+        mock_session.execute = AsyncMock(side_effect=[mock_count_result, mock_rows_result])
 
         result = await service.search(
-            session=mock_session,
-            query="test",
-            task_type="all",
-            page=1,
-            page_size=20
+            session=mock_session, query="test", task_type="all", page=1, page_size=20
         )
 
         # None이 0으로 변환됨

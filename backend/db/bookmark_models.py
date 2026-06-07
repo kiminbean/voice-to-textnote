@@ -60,14 +60,21 @@ class Bookmark(Base):
 
     # 북마크 분류 및 메타데이터
     category: Mapped[str] = mapped_column(
-        String(20), nullable=False, server_default="note",
+        String(20),
+        nullable=False,
+        server_default="note",
     )
     priority: Mapped[str] = mapped_column(
-        String(20), nullable=False, server_default="medium",
+        String(20),
+        nullable=False,
+        server_default="medium",
     )
     tags: Mapped[list | None] = mapped_column(JSON, nullable=True, default=list)
     is_private: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default="true", default=True,
+        Boolean,
+        nullable=False,
+        server_default="true",
+        default=True,
     )
 
     created_at: Mapped[datetime] = mapped_column(
@@ -83,9 +90,7 @@ class Bookmark(Base):
     )
 
     # (user_id, task_id) 조회 최적화
-    __table_args__ = (
-        Index("ix_bookmarks_user_task", "user_id", "task_id"),
-    )
+    __table_args__ = (Index("ix_bookmarks_user_task", "user_id", "task_id"),)
 
     def __repr__(self) -> str:
         return (

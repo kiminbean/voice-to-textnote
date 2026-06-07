@@ -110,9 +110,11 @@ class TestSentimentTaskHappyPath:
         analyzer_cls = MagicMock()
         analyzer_cls.return_value.analyze.return_value = _make_sentiment_result()
 
-        with patch("backend.workers.tasks.sentiment_task._get_redis", return_value=mock_redis), \
-             patch("backend.workers.tasks.sentiment_task.settings") as mock_settings, \
-             patch("backend.workers.tasks.sentiment_task.SentimentAnalyzer", analyzer_cls):
+        with (
+            patch("backend.workers.tasks.sentiment_task._get_redis", return_value=mock_redis),
+            patch("backend.workers.tasks.sentiment_task.settings") as mock_settings,
+            patch("backend.workers.tasks.sentiment_task.SentimentAnalyzer", analyzer_cls),
+        ):
             _configure_settings(mock_settings)
 
             result = sentiment_task(
@@ -146,14 +148,17 @@ class TestSentimentTaskHappyPath:
         analyzer_cls = MagicMock()
         analyzer_cls.return_value.analyze.return_value = _make_sentiment_result()
 
-        with patch("backend.workers.tasks.sentiment_task._get_redis", return_value=mock_redis), \
-             patch("backend.workers.tasks.sentiment_task.settings") as mock_settings, \
-             patch("backend.workers.tasks.sentiment_task.SentimentAnalyzer", analyzer_cls):
+        with (
+            patch("backend.workers.tasks.sentiment_task._get_redis", return_value=mock_redis),
+            patch("backend.workers.tasks.sentiment_task.settings") as mock_settings,
+            patch("backend.workers.tasks.sentiment_task.SentimentAnalyzer", analyzer_cls),
+        ):
             _configure_settings(mock_settings)
             sentiment_task(task_id=task_id, minutes_task_id=minutes_task_id)
 
         result_writes = [
-            call for call in mock_redis.setex.call_args_list
+            call
+            for call in mock_redis.setex.call_args_list
             if call.args[0] == f"task:sentiment:result:{task_id}"
         ]
         assert result_writes
@@ -168,8 +173,10 @@ class TestSentimentTaskErrors:
         from backend.workers.tasks.sentiment_task import sentiment_task
 
         mock_redis = _make_mock_redis()
-        with patch("backend.workers.tasks.sentiment_task._get_redis", return_value=mock_redis), \
-             patch("backend.workers.tasks.sentiment_task.settings") as mock_settings:
+        with (
+            patch("backend.workers.tasks.sentiment_task._get_redis", return_value=mock_redis),
+            patch("backend.workers.tasks.sentiment_task.settings") as mock_settings,
+        ):
             _configure_settings(mock_settings)
             mock_settings.openai_api_key = ""
 
@@ -182,8 +189,10 @@ class TestSentimentTaskErrors:
         from backend.workers.tasks.sentiment_task import sentiment_task
 
         mock_redis = _make_mock_redis(active_count=3)
-        with patch("backend.workers.tasks.sentiment_task._get_redis", return_value=mock_redis), \
-             patch("backend.workers.tasks.sentiment_task.settings") as mock_settings:
+        with (
+            patch("backend.workers.tasks.sentiment_task._get_redis", return_value=mock_redis),
+            patch("backend.workers.tasks.sentiment_task.settings") as mock_settings,
+        ):
             _configure_settings(mock_settings)
 
             result = sentiment_task(task_id="task-id", minutes_task_id="minutes-id")
@@ -196,8 +205,10 @@ class TestSentimentTaskErrors:
 
         mock_redis = _make_mock_redis()
         mock_redis.get.return_value = None
-        with patch("backend.workers.tasks.sentiment_task._get_redis", return_value=mock_redis), \
-             patch("backend.workers.tasks.sentiment_task.settings") as mock_settings:
+        with (
+            patch("backend.workers.tasks.sentiment_task._get_redis", return_value=mock_redis),
+            patch("backend.workers.tasks.sentiment_task.settings") as mock_settings,
+        ):
             _configure_settings(mock_settings)
 
             result = sentiment_task(task_id="task-id", minutes_task_id="missing-minutes")
@@ -219,8 +230,10 @@ class TestSentimentTaskErrors:
             json.dumps(failed_minutes) if f"min:result:{minutes_task_id}" in key else None
         )
 
-        with patch("backend.workers.tasks.sentiment_task._get_redis", return_value=mock_redis), \
-             patch("backend.workers.tasks.sentiment_task.settings") as mock_settings:
+        with (
+            patch("backend.workers.tasks.sentiment_task._get_redis", return_value=mock_redis),
+            patch("backend.workers.tasks.sentiment_task.settings") as mock_settings,
+        ):
             _configure_settings(mock_settings)
 
             result = sentiment_task(task_id="task-id", minutes_task_id=minutes_task_id)
@@ -239,9 +252,11 @@ class TestSentimentTaskErrors:
         analyzer_cls = MagicMock()
         analyzer_cls.return_value.analyze.side_effect = RuntimeError("OpenAI timeout")
 
-        with patch("backend.workers.tasks.sentiment_task._get_redis", return_value=mock_redis), \
-             patch("backend.workers.tasks.sentiment_task.settings") as mock_settings, \
-             patch("backend.workers.tasks.sentiment_task.SentimentAnalyzer", analyzer_cls):
+        with (
+            patch("backend.workers.tasks.sentiment_task._get_redis", return_value=mock_redis),
+            patch("backend.workers.tasks.sentiment_task.settings") as mock_settings,
+            patch("backend.workers.tasks.sentiment_task.SentimentAnalyzer", analyzer_cls),
+        ):
             _configure_settings(mock_settings)
 
             result = sentiment_task(task_id="task-id", minutes_task_id=minutes_task_id)
@@ -260,9 +275,11 @@ class TestSentimentTaskHelpers:
         mock_redis = _make_mock_redis()
         mock_redis.get.return_value = json.dumps({"created_at": "2026-01-01T00:00:00+00:00"})
 
-        with patch("backend.workers.tasks.sentiment_task._get_redis", return_value=mock_redis), \
-             patch("backend.workers.tasks.sentiment_task.publish_task_event_sync"), \
-             patch("backend.workers.tasks.sentiment_task.settings") as mock_settings:
+        with (
+            patch("backend.workers.tasks.sentiment_task._get_redis", return_value=mock_redis),
+            patch("backend.workers.tasks.sentiment_task.publish_task_event_sync"),
+            patch("backend.workers.tasks.sentiment_task.settings") as mock_settings,
+        ):
             mock_settings.summary_result_ttl = 86400
             _update_task_status("task-id", TaskStatus.processing, 0.25, "처리 중")
 
@@ -303,14 +320,17 @@ class TestSentimentCeleryWrapper:
     def test_wrapper_returns_failed_after_max_retries(self):
         from backend.workers.tasks.sentiment_task import sentiment_celery_task
 
-        with patch(
-            "backend.workers.tasks.sentiment_task.sentiment_task",
-            side_effect=RuntimeError("temporary outage"),
-        ), patch.object(
-            sentiment_celery_task,
-            "retry",
-            side_effect=sentiment_celery_task.MaxRetriesExceededError(),
-        ) as retry:
+        with (
+            patch(
+                "backend.workers.tasks.sentiment_task.sentiment_task",
+                side_effect=RuntimeError("temporary outage"),
+            ),
+            patch.object(
+                sentiment_celery_task,
+                "retry",
+                side_effect=sentiment_celery_task.MaxRetriesExceededError(),
+            ) as retry,
+        ):
             result = sentiment_celery_task.run("task-id", "minutes-id")
 
         retry.assert_called_once()

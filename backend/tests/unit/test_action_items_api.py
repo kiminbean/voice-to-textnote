@@ -345,9 +345,7 @@ class TestExtractFromMeetingAPI:
         """회의록 내용이 너무 짧음"""
         client, mock_redis = meeting_client_with_redis
 
-        mock_redis.get = AsyncMock(
-            return_value=json.dumps({"transcription": "짧음"})
-        )
+        mock_redis.get = AsyncMock(return_value=json.dumps({"transcription": "짧음"}))
 
         response = client.post(
             "/api/v1/action-items/meeting",
@@ -366,9 +364,7 @@ class TestExtractFromMeetingAPI:
         client, mock_redis = meeting_client_with_redis
 
         mock_redis.get = AsyncMock(
-            return_value=json.dumps({
-                "transcription": "김대리가 보고서를 작성해 주세요."
-            })
+            return_value=json.dumps({"transcription": "김대리가 보고서를 작성해 주세요."})
         )
 
         response = client.post(
@@ -386,11 +382,7 @@ class TestExtractFromMeetingAPI:
         """text 필드에서 텍스트 추출"""
         client, mock_redis = meeting_client_with_redis
 
-        mock_redis.get = AsyncMock(
-            return_value=json.dumps({
-                "text": "박과장이 검토해 주세요."
-            })
-        )
+        mock_redis.get = AsyncMock(return_value=json.dumps({"text": "박과장이 검토해 주세요."}))
 
         response = client.post(
             "/api/v1/action-items/meeting",
@@ -408,12 +400,14 @@ class TestExtractFromMeetingAPI:
         client, mock_redis = meeting_client_with_redis
 
         mock_redis.get = AsyncMock(
-            return_value=json.dumps({
-                "segments": [
-                    {"text": "김대리가 보고서 작성"},
-                    {"text": "박과장이 검토"},
-                ]
-            })
+            return_value=json.dumps(
+                {
+                    "segments": [
+                        {"text": "김대리가 보고서 작성"},
+                        {"text": "박과장이 검토"},
+                    ]
+                }
+            )
         )
 
         response = client.post(
@@ -432,9 +426,9 @@ class TestExtractFromMeetingAPI:
         client, mock_redis = meeting_client_with_redis
 
         mock_redis.get = AsyncMock(
-            return_value=json.dumps({
-                "minutes": "회의록 본문입니다. 김대리가 보고서를 작성해 주세요."
-            })
+            return_value=json.dumps(
+                {"minutes": "회의록 본문입니다. 김대리가 보고서를 작성해 주세요."}
+            )
         )
 
         response = client.post(
@@ -453,11 +447,9 @@ class TestExtractFromMeetingAPI:
         client, mock_redis = meeting_client_with_redis
 
         mock_redis.get = AsyncMock(
-            return_value=json.dumps({
-                "minutes": {
-                    "content": "회의록 내용입니다. 박과장이 검토하겠습니다."
-                }
-            })
+            return_value=json.dumps(
+                {"minutes": {"content": "회의록 내용입니다. 박과장이 검토하겠습니다."}}
+            )
         )
 
         response = client.post(
@@ -489,9 +481,7 @@ class TestExtractFromMeetingAPI:
         client, mock_redis = meeting_client_with_redis
 
         mock_redis.get = AsyncMock(
-            return_value=json.dumps({
-                "transcription": "김대리가 내일까지 보고서를 작성해 주세요."
-            })
+            return_value=json.dumps({"transcription": "김대리가 내일까지 보고서를 작성해 주세요."})
         )
 
         response = client.post(
@@ -505,16 +495,14 @@ class TestExtractFromMeetingAPI:
 
         assert response.status_code == 200
 
-    def test_extract_from_meeting_language_detection_korean(
-        self, meeting_client_with_redis
-    ):
+    def test_extract_from_meeting_language_detection_korean(self, meeting_client_with_redis):
         """한국어 자동 감지 (10% 이상 한글)"""
         client, mock_redis = meeting_client_with_redis
 
         mock_redis.get = AsyncMock(
-            return_value=json.dumps({
-                "transcription": "회의록입니다. 김대리가 보고서를 작성해 주세요."
-            })
+            return_value=json.dumps(
+                {"transcription": "회의록입니다. 김대리가 보고서를 작성해 주세요."}
+            )
         )
 
         response = client.post(
@@ -526,16 +514,14 @@ class TestExtractFromMeetingAPI:
 
         assert response.status_code == 200
 
-    def test_extract_from_meeting_language_detection_english(
-        self, meeting_client_with_redis
-    ):
+    def test_extract_from_meeting_language_detection_english(self, meeting_client_with_redis):
         """영어 자동 감지 (한글 10% 미만)"""
         client, mock_redis = meeting_client_with_redis
 
         mock_redis.get = AsyncMock(
-            return_value=json.dumps({
-                "transcription": "Meeting notes. John will prepare the report."
-            })
+            return_value=json.dumps(
+                {"transcription": "Meeting notes. John will prepare the report."}
+            )
         )
 
         response = client.post(

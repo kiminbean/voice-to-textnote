@@ -326,7 +326,6 @@ class TestFullPipeline:
         """
         import asyncio
 
-
         # 단계 1: STT 업로드
         wav_bytes = make_test_wav(duration_seconds=1)
         stt_response = e2e_client.post(
@@ -434,7 +433,6 @@ class TestFullPipeline:
         """
         import asyncio
 
-
         stt_id = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
         dia_id = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
         min_id = "cccccccc-cccc-cccc-cccc-cccccccccccc"
@@ -519,7 +517,6 @@ class TestFullPipeline:
         4개 파이프라인 단계의 삭제 엔드포인트가 204 응답 반환 검증 (REQ-E2E-010)
         """
         import asyncio
-
 
         stt_id = "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"
         dia_id = "ffffffff-ffff-ffff-ffff-ffffffffffff"
@@ -661,7 +658,6 @@ class TestPipelineErrors:
         """
         import asyncio
 
-
         # active_dia_jobs에 2개 작업 등록 (한도=2이므로 이미 가득 찬 상태)
         asyncio.run(e2e_redis.sadd("active_dia_jobs", "job1", "job2"))
 
@@ -686,11 +682,8 @@ class TestPipelineErrors:
         """
         import asyncio
 
-
         # active_min_jobs에 3개 작업 등록 (한도=3이므로 가득 찬 상태)
-        asyncio.run(
-            e2e_redis.sadd("active_min_jobs", "min_job1", "min_job2", "min_job3")
-        )
+        asyncio.run(e2e_redis.sadd("active_min_jobs", "min_job1", "min_job2", "min_job3"))
 
         dia_task_id = "66666666-6666-6666-6666-666666666666"
 
@@ -712,7 +705,6 @@ class TestPipelineErrors:
         active_sum_jobs Set을 미리 채워 한도 초과 상황 시뮬레이션
         """
         import asyncio
-
 
         # active_sum_jobs에 2개 작업 등록 (한도=2이므로 가득 찬 상태)
         asyncio.run(e2e_redis.sadd("active_sum_jobs", "sum_job1", "sum_job2"))

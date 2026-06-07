@@ -78,7 +78,7 @@ def api_client():
     """TestClient using a minimal FastAPI app with only the action_items router."""
     from fastapi import FastAPI
 
-    from backend.app.api.v1.action_items import router
+    from backend.app.api.v1.minutes.action_items_crud import router
     from backend.app.dependencies import get_current_user, get_db_session
 
     app = FastAPI()
@@ -108,10 +108,13 @@ def api_client():
 @pytest.fixture
 def mock_service():
     """Mock ActionItemService with all methods stubbed."""
-    with patch("backend.app.api.v1.action_items.ActionItemService") as cls:
+    with patch("backend.app.api.v1.minutes.action_items_crud.ActionItemService") as cls:
         instance = AsyncMock()
         cls.return_value = instance
-        with patch("backend.app.api.v1.action_items.get_action_item_service", return_value=instance):
+        with patch(
+            "backend.app.api.v1.minutes.action_items_crud.get_action_item_service",
+            return_value=instance,
+        ):
             yield instance
 
 
@@ -210,9 +213,7 @@ class TestListActionItems:
         """담당자 ID 필터"""
         mock_service.list_items.return_value = ([], 0)
 
-        response = api_client.get(
-            f"/api/v1/action-items?assignee_id={FAKE_ASSIGNEE_ID}"
-        )
+        response = api_client.get(f"/api/v1/action-items?assignee_id={FAKE_ASSIGNEE_ID}")
 
         assert response.status_code == 200
 
@@ -503,6 +504,7 @@ class TestGetMeetingActionItems:
             # Reset to default mock db
             async def orig():
                 yield AsyncMock()
+
             app.dependency_overrides[get_db_session] = orig
 
     def test_meeting_not_found_raises_error(self, mock_service):
@@ -516,7 +518,7 @@ class TestGetMeetingActionItems:
         from fastapi import FastAPI
         from fastapi.testclient import TestClient
 
-        from backend.app.api.v1.action_items import router
+        from backend.app.api.v1.minutes.action_items_crud import router
         from backend.app.dependencies import get_current_user, get_db_session
 
         app = FastAPI()
@@ -550,13 +552,13 @@ class TestGetMeetingActionItems:
         app.dependency_overrides[get_db_session] = self._make_db_override(meeting_found=True)
 
         try:
-            response = api_client.get(
-                "/api/v1/action-items/meeting/meeting-123?status=completed"
-            )
+            response = api_client.get("/api/v1/action-items/meeting/meeting-123?status=completed")
             assert response.status_code == 200
         finally:
+
             async def orig():
                 yield AsyncMock()
+
             app.dependency_overrides[get_db_session] = orig
 
     def test_meeting_with_priority_filter(self, api_client, mock_service):
@@ -569,13 +571,13 @@ class TestGetMeetingActionItems:
         app.dependency_overrides[get_db_session] = self._make_db_override(meeting_found=True)
 
         try:
-            response = api_client.get(
-                "/api/v1/action-items/meeting/meeting-123?priority=high"
-            )
+            response = api_client.get("/api/v1/action-items/meeting/meeting-123?priority=high")
             assert response.status_code == 200
         finally:
+
             async def orig():
                 yield AsyncMock()  # pragma: no cover
+
             app.dependency_overrides[get_db_session] = orig
 
 
@@ -592,9 +594,7 @@ class TestCompleteActionItem:
         item = _make_action_item_response(item_id=FAKE_ITEM_ID, status="completed")
         mock_service.update.return_value = item
 
-        response = api_client.patch(
-            f"/api/v1/action-items/{FAKE_ITEM_ID}/complete"
-        )
+        response = api_client.patch(f"/api/v1/action-items/{FAKE_ITEM_ID}/complete")
 
         assert response.status_code == 200
         assert response.json()["status"] == "completed"
@@ -620,9 +620,7 @@ class TestCompleteActionItem:
         """존재하지 않는 ID 완료 시 404"""
         mock_service.update.return_value = None
 
-        response = api_client.patch(
-            f"/api/v1/action-items/{uuid.uuid4()}/complete"
-        )
+        response = api_client.patch(f"/api/v1/action-items/{uuid.uuid4()}/complete")
 
         assert response.status_code == 404
 
@@ -631,9 +629,7 @@ class TestCompleteActionItem:
         item = _make_action_item_response(item_id=FAKE_ITEM_ID, status="completed")
         mock_service.update.return_value = item
 
-        response = api_client.patch(
-            f"/api/v1/action-items/{FAKE_ITEM_ID}/complete"
-        )
+        response = api_client.patch(f"/api/v1/action-items/{FAKE_ITEM_ID}/complete")
 
         assert response.status_code == 200
         payload = mock_service.update.call_args.kwargs["payload"]
@@ -652,17 +648,28 @@ def _make_empty_overview():
     )
 
     return OverviewSchema(
-        total_count=0, pending_count=0, in_progress_count=0,
-        completed_count=0, cancelled_count=0, overdue_count=0,
-        critical_count=0, high_priority_count=0,
-        by_category={}, by_assignee={},
-        completion_rate=0.0, overdue_rate=0.0,
-        avg_estimated_hours=None, avg_actual_hours=None,
-        efficiency_ratio=None, trending_status="stable",
+        total_count=0,
+        pending_count=0,
+        in_progress_count=0,
+        completed_count=0,
+        cancelled_count=0,
+        overdue_count=0,
+        critical_count=0,
+        high_priority_count=0,
+        by_category={},
+        by_assignee={},
+        completion_rate=0.0,
+        overdue_rate=0.0,
+        avg_estimated_hours=None,
+        avg_actual_hours=None,
+        efficiency_ratio=None,
+        trending_status="stable",
         weekly_completion_trend=[],
         productivity_metrics={
-            "completion_velocity": 0.0, "backlog_ratio": 0.0,
-            "priority_fulfillment": 0.0, "time_accuracy": 0.0,
+            "completion_velocity": 0.0,
+            "backlog_ratio": 0.0,
+            "priority_fulfillment": 0.0,
+            "time_accuracy": 0.0,
         },
     )
 
@@ -683,18 +690,28 @@ class TestGetOverview:
         )
 
         overview = OverviewSchema(
-            total_count=10, pending_count=3, in_progress_count=2,
-            completed_count=4, cancelled_count=1, overdue_count=1,
-            critical_count=2, high_priority_count=3,
+            total_count=10,
+            pending_count=3,
+            in_progress_count=2,
+            completed_count=4,
+            cancelled_count=1,
+            overdue_count=1,
+            critical_count=2,
+            high_priority_count=3,
             by_category={"development": 5, "design": 3, "기타": 2},
             by_assignee={str(FAKE_USER_ID): 6, str(FAKE_ASSIGNEE_ID): 4},
-            completion_rate=40.0, overdue_rate=10.0,
-            avg_estimated_hours=3.5, avg_actual_hours=4.2,
-            efficiency_ratio=1.2, trending_status="stable",
+            completion_rate=40.0,
+            overdue_rate=10.0,
+            avg_estimated_hours=3.5,
+            avg_actual_hours=4.2,
+            efficiency_ratio=1.2,
+            trending_status="stable",
             weekly_completion_trend=[{"week": 1, "completed": 5, "created": 8}],
             productivity_metrics={
-                "completion_velocity": 7.2, "backlog_ratio": 0.3,
-                "priority_fulfillment": 0.85, "time_accuracy": 0.92,
+                "completion_velocity": 7.2,
+                "backlog_ratio": 0.3,
+                "priority_fulfillment": 0.85,
+                "time_accuracy": 0.92,
             },
         )
         mock_service.get_overview.return_value = overview
@@ -772,7 +789,8 @@ class TestBatchUpdateActionItems:
     def test_batch_update_all_success(self, api_client, mock_service):
         """모든 항목 성공"""
         mock_service.batch_update.return_value = self._make_batch_result(
-            success_count=3, failure_count=0,
+            success_count=3,
+            failure_count=0,
         )
 
         ids = [str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4())]

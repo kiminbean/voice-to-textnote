@@ -9,13 +9,13 @@ This file provides coverage for:
 - Parameterized edge case testing
 """
 
-
 import pytest
 
 # =============================================================================
 # AUTH SERVICE TESTS
 # Focus: verify_password error handling (lines 70-71)
 # =============================================================================
+
 
 class TestAuthServiceCoverage:
     """Test coverage for auth_service.py edge cases"""
@@ -53,6 +53,7 @@ class TestAuthServiceCoverage:
 # =============================================================================
 # DB MODEL TESTS (__repr__ methods)
 # =============================================================================
+
 
 class TestAuthModelsCoverage:
     """Test coverage for auth_models.py"""
@@ -218,6 +219,7 @@ class TestQualityFeedbackModelsCoverage:
 # PYDANTIC SCHEMA VALIDATION TESTS
 # =============================================================================
 
+
 class TestSchemaValidationCoverage:
     """Test Pydantic schema validation edge cases"""
 
@@ -228,11 +230,7 @@ class TestSchemaValidationCoverage:
 
             # Test with optional fields as None
             try:
-                schema = ActionItemCreate(
-                    title="Test",
-                    description=None,
-                    due_date=None
-                )
+                schema = ActionItemCreate(title="Test", description=None, due_date=None)
                 assert schema.title == "Test"
             except (TypeError, ValueError):
                 # Schema may require certain fields
@@ -248,7 +246,7 @@ class TestSchemaValidationCoverage:
             with pytest.raises((TypeError, ValueError)):
                 ActionItemCreate(
                     title=123,  # Should be string
-                    description="Test"
+                    description="Test",
                 )
         except ImportError:
             pytest.skip("action_item schema not available")
@@ -257,6 +255,7 @@ class TestSchemaValidationCoverage:
 # =============================================================================
 # PARAMETERIZED TESTS FOR EDGE CASES
 # =============================================================================
+
 
 class TestEdgeCasesWithParameters:
     """Test edge cases with parametrization"""
@@ -272,12 +271,15 @@ class TestEdgeCasesWithParameters:
             result = invalid_id.strip()
             assert result == invalid_id.strip()
 
-    @pytest.mark.parametrize("pagination_input,expected_valid", [
-        ({"page": -1, "page_size": 10}, False),
-        ({"page": 1, "page_size": -1}, False),
-        ({"page": 1, "page_size": 0}, False),
-        ({"page": 1, "page_size": 10}, True),
-    ])
+    @pytest.mark.parametrize(
+        "pagination_input,expected_valid",
+        [
+            ({"page": -1, "page_size": 10}, False),
+            ({"page": 1, "page_size": -1}, False),
+            ({"page": 1, "page_size": 0}, False),
+            ({"page": 1, "page_size": 10}, True),
+        ],
+    )
     def test_pagination_validation(self, pagination_input, expected_valid):
         """Test pagination validation logic"""
         page = pagination_input.get("page", 1)
@@ -286,13 +288,16 @@ class TestEdgeCasesWithParameters:
         is_valid = page > 0 and page_size > 0
         assert is_valid == expected_valid
 
-    @pytest.mark.parametrize("input_string,should_be_empty", [
-        ("", True),
-        ("   ", True),
-        ("\t\n", True),
-        ("test", False),
-        ("  test  ", False),
-    ])
+    @pytest.mark.parametrize(
+        "input_string,should_be_empty",
+        [
+            ("", True),
+            ("   ", True),
+            ("\t\n", True),
+            ("test", False),
+            ("  test  ", False),
+        ],
+    )
     def test_string_empty_check(self, input_string, should_be_empty):
         """Test string empty detection"""
         is_empty = not input_string.strip()

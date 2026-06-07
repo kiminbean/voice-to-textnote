@@ -188,7 +188,9 @@ def setup_metrics(app: FastAPI) -> Instrumentator:
         return getattr(app.state, "_instrumentator", None)
 
     # http_requests_inprogress 이미 등록된 경우 inprogress 비활성화
-    inprogress_registered = "http_requests_inprogress" in prom_registry.REGISTRY._names_to_collectors
+    inprogress_registered = (
+        "http_requests_inprogress" in prom_registry.REGISTRY._names_to_collectors
+    )
 
     instrumentator = Instrumentator(
         # 모든 엔드포인트 계측 (필터 없음)

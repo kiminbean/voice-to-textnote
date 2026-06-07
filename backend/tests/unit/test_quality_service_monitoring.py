@@ -90,6 +90,7 @@ def svc():
     with patch("backend.services.quality_service.get_openai_client") as mock_get:
         mock_get.return_value = MagicMock()
         from backend.services.quality_service import QualityService
+
         return QualityService()
 
 
@@ -149,9 +150,8 @@ class TestComputeLiveScore:
 
         # 저장된 스냅샷이 없어야 함
         from sqlalchemy import func, select
-        count = (await db_session.execute(
-            select(func.count(QualityScoreSnapshot.id))
-        )).scalar()
+
+        count = (await db_session.execute(select(func.count(QualityScoreSnapshot.id)))).scalar()
         assert count == 0
 
     @pytest.mark.asyncio
@@ -168,9 +168,7 @@ class TestComputeLiveScore:
             persist_snapshot=True,
         )
 
-        snapshots = (await db_session.execute(
-            select(QualityScoreSnapshot)
-        )).scalars().all()
+        snapshots = (await db_session.execute(select(QualityScoreSnapshot))).scalars().all()
         assert len(snapshots) == 1
         assert snapshots[0].task_id == seeded_task.task_id
         assert snapshots[0].mode == "lightweight"
@@ -308,7 +306,8 @@ class TestGetFeedbackSummary:
                 task_id=seeded_task.task_id,
                 user_id=None,
                 payload=QualityFeedbackCreate(
-                    rating=i + 1, category=FeedbackCategory.OTHER,
+                    rating=i + 1,
+                    category=FeedbackCategory.OTHER,
                 ),
             )
 
@@ -331,7 +330,10 @@ class TestGetQualityTrends:
 
     @pytest.mark.asyncio
     async def test_no_snapshots_insufficient_data(
-        self, svc, db_session, seeded_task,
+        self,
+        svc,
+        db_session,
+        seeded_task,
     ):
         """스냅샷 없으면 insufficient_data."""
         result = await svc.get_quality_trends(
@@ -344,7 +346,10 @@ class TestGetQualityTrends:
 
     @pytest.mark.asyncio
     async def test_single_snapshot_insufficient_data(
-        self, svc, db_session, seeded_task,
+        self,
+        svc,
+        db_session,
+        seeded_task,
     ):
         """스냅샷 1개여도 insufficient_data."""
         await svc.compute_live_score(
@@ -362,7 +367,10 @@ class TestGetQualityTrends:
 
     @pytest.mark.asyncio
     async def test_multiple_snapshots_with_trend(
-        self, svc, db_session, seeded_task,
+        self,
+        svc,
+        db_session,
+        seeded_task,
     ):
         """스냅샷 3개 누적 후 추세 분석."""
         for _ in range(3):
@@ -406,7 +414,10 @@ class TestGetQualityTrends:
 
     @pytest.mark.asyncio
     async def test_different_task_no_cross_contamination(
-        self, svc, db_session, seeded_task,
+        self,
+        svc,
+        db_session,
+        seeded_task,
     ):
         """다른 task_id의 스냅샷은 포함되지 않음."""
         await svc.compute_live_score(

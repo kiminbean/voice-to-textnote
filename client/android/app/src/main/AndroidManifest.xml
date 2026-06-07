@@ -1,6 +1,7 @@
-# AndroidManifest.xml - Voice to TextNote
-# Package: com.voicetextnote.app
-# Min SDK: 29, Target SDK: 34
+<?xml version="1.0" encoding="utf-8"?>
+<!-- AndroidManifest.xml - Voice to TextNote
+     Package: com.voicetextnote.app
+     Min SDK: 29, Target SDK: 34 -->
 
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.voicetextnote.app">
@@ -35,6 +36,13 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- SPEC-MOBILE-001: Deep link intent-filter (voicetextnote://) -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="voicetextnote" />
             </intent-filter>
         </activity>
 

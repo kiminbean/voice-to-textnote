@@ -32,8 +32,15 @@ router = APIRouter(prefix="/audio-analysis", tags=["audio-analysis"])
 
 # 지원 오디오 포맷
 _ALLOWED_EXTENSIONS = {
-    ".wav", ".mp3", ".m4a", ".flac", ".ogg",
-    ".opus", ".wma", ".aac", ".webm",
+    ".wav",
+    ".mp3",
+    ".m4a",
+    ".flac",
+    ".ogg",
+    ".opus",
+    ".wma",
+    ".aac",
+    ".webm",
 }
 
 
@@ -58,7 +65,9 @@ async def analyze_audio_file(
     filename = file.filename or "unknown"
     ext = os.path.splitext(filename)[1].lower()
     if ext not in _ALLOWED_EXTENSIONS:
-        bad_request(f"지원하지 않는 파일 포맷: {ext}. 지원 포맷: {', '.join(sorted(_ALLOWED_EXTENSIONS))}")
+        bad_request(
+            f"지원하지 않는 파일 포맷: {ext}. 지원 포맷: {', '.join(sorted(_ALLOWED_EXTENSIONS))}"
+        )
 
     # 임시 파일로 스트리밍 저장하며 크기 검증
     max_bytes = settings.max_file_size_mb * 1024 * 1024
@@ -70,7 +79,9 @@ async def analyze_audio_file(
             while chunk := await file.read(1024 * 1024):
                 bytes_read += len(chunk)
                 if bytes_read > max_bytes:
-                    request_entity_too_large(f"파일 크기 초과: {bytes_read} bytes (최대 {settings.max_file_size_mb}MB)")
+                    request_entity_too_large(
+                        f"파일 크기 초과: {bytes_read} bytes (최대 {settings.max_file_size_mb}MB)"
+                    )
                 tmp.write(chunk)
 
         result = analyze_audio(

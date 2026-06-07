@@ -579,14 +579,17 @@ class TestSummaryCeleryWrapper:
     def test_wrapper_returns_failed_after_max_retries(self):
         from backend.workers.tasks.summary_task import summary_celery_task
 
-        with patch(
-            "backend.workers.tasks.summary_task.summary_task",
-            side_effect=RuntimeError("temporary outage"),
-        ), patch.object(
-            summary_celery_task,
-            "retry",
-            side_effect=summary_celery_task.MaxRetriesExceededError(),
-        ) as retry:
+        with (
+            patch(
+                "backend.workers.tasks.summary_task.summary_task",
+                side_effect=RuntimeError("temporary outage"),
+            ),
+            patch.object(
+                summary_celery_task,
+                "retry",
+                side_effect=summary_celery_task.MaxRetriesExceededError(),
+            ) as retry,
+        ):
             result = summary_celery_task.run("task-id", "minutes-id")
 
         retry.assert_called_once_with(exc=retry.call_args.kwargs["exc"], countdown=30)

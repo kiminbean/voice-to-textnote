@@ -328,7 +328,9 @@ class TestGetDiarizationResultAPI:
         task_id = str(uuid.uuid4())
 
         # get_result_with_fallback mock - None 반환
-        with patch("backend.app.api.v1.transcription.diarization.get_result_with_fallback") as mock_fallback:
+        with patch(
+            "backend.app.api.v1.transcription.diarization.get_result_with_fallback"
+        ) as mock_fallback:
             mock_fallback.return_value = None
 
             response = client.get(f"/api/v1/diarizations/{task_id}")
@@ -348,7 +350,9 @@ class TestGetDiarizationResultAPI:
 
         # get_result_with_fallback mock - None 반환 (결과 없음)
         # 상태는 Redis에서 직접 조회
-        with patch("backend.app.api.v1.transcription.diarization.get_result_with_fallback") as mock_fallback:
+        with patch(
+            "backend.app.api.v1.transcription.diarization.get_result_with_fallback"
+        ) as mock_fallback:
             mock_fallback.return_value = None
 
             # 두 번째 Redis 호출 (status 조회)
@@ -357,12 +361,14 @@ class TestGetDiarizationResultAPI:
             async def mock_get_with_count(key):
                 call_count[0] += 1
                 if call_count[0] == 1:  # status_key 조회
-                    return json.dumps({
-                        "task_id": task_id,
-                        "stt_task_id": str(uuid.uuid4()),
-                        "status": "processing",
-                        "created_at": now,
-                    })
+                    return json.dumps(
+                        {
+                            "task_id": task_id,
+                            "stt_task_id": str(uuid.uuid4()),
+                            "status": "processing",
+                            "created_at": now,
+                        }
+                    )
                 return None  # pragma: no cover
 
             mock_redis.get = mock_get_with_count

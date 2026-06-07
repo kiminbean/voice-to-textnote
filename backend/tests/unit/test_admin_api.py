@@ -34,7 +34,9 @@ class TestTriggerCleanup:
         """cleanup 요청이 200 OK를 반환한다"""
         with (
             patch("backend.app.api.v1.admin.admin.cleanup_expired_results", return_value=5),
-            patch("backend.app.api.v1.admin.admin.cleanup_temp_files", return_value=(3, 1024 * 1024)),
+            patch(
+                "backend.app.api.v1.admin.admin.cleanup_temp_files", return_value=(3, 1024 * 1024)
+            ),
             patch("backend.app.api.v1.admin.admin.get_sync_session") as mock_session_cm,
         ):
             mock_session = MagicMock()
@@ -49,7 +51,10 @@ class TestTriggerCleanup:
         """cleanup 결과에 삭제된 DB 레코드 수와 파일 수가 포함된다"""
         with (
             patch("backend.app.api.v1.admin.admin.cleanup_expired_results", return_value=10),
-            patch("backend.app.api.v1.admin.admin.cleanup_temp_files", return_value=(7, 2 * 1024 * 1024)),
+            patch(
+                "backend.app.api.v1.admin.admin.cleanup_temp_files",
+                return_value=(7, 2 * 1024 * 1024),
+            ),
             patch("backend.app.api.v1.admin.admin.get_sync_session") as mock_session_cm,
         ):
             mock_session = MagicMock()
@@ -67,7 +72,9 @@ class TestTriggerCleanup:
         freed_bytes = 5 * 1024 * 1024  # 5 MB
         with (
             patch("backend.app.api.v1.admin.admin.cleanup_expired_results", return_value=0),
-            patch("backend.app.api.v1.admin.admin.cleanup_temp_files", return_value=(3, freed_bytes)),
+            patch(
+                "backend.app.api.v1.admin.admin.cleanup_temp_files", return_value=(3, freed_bytes)
+            ),
             patch("backend.app.api.v1.admin.admin.get_sync_session") as mock_session_cm,
         ):
             mock_session = MagicMock()

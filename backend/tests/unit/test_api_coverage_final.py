@@ -43,16 +43,22 @@ class TestAudioPreprocessCoverage:
         fake_path = Path("/nonexistent/path/file.wav")
 
         # cleanup_temp_file가 실제로 호출되도록 모의
-        with patch("backend.app.api.v1.audio.audio_preprocess.cleanup_temp_file", side_effect=OSError("Disk error")):
+        with patch(
+            "backend.app.api.v1.audio.audio_preprocess.cleanup_temp_file",
+            side_effect=OSError("Disk error"),
+        ):
             # _safe_unlink는 예외를 삼키므로 호출해도 안전
             _safe_unlink(fake_path)  # 예외 없이 완료되어야 함
 
         # 실제 존재하는 파일로 테스트
         import tempfile
+
         with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
             tmp_path = Path(tmp.name)
             # 파일이 존재하면 cleanup_temp_file 호출됨
-            with patch("backend.app.api.v1.audio.audio_preprocess.cleanup_temp_file") as mock_cleanup:
+            with patch(
+                "backend.app.api.v1.audio.audio_preprocess.cleanup_temp_file"
+            ) as mock_cleanup:
                 _safe_unlink(tmp_path)
                 # cleanup_temp_file가 호출되었는지 확인
                 mock_cleanup.assert_called_once_with(tmp_path)
@@ -99,7 +105,7 @@ class TestAudioPreprocessCoverage:
         try:
             raise HTTPException(
                 status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                detail="파일 크기가 500MB를 초과합니다."
+                detail="파일 크기가 500MB를 초과합니다.",
             )
         except HTTPException as exc:
             assert exc.status_code == 413
@@ -117,7 +123,7 @@ class TestAudioPreprocessCoverage:
         try:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="전처리 결과 파일 접근 실패"
+                detail="전처리 결과 파일 접근 실패",
             )
         except HTTPException as exc:
             assert exc.status_code == 500
@@ -219,10 +225,7 @@ class TestEnhancedStatisticsCoverage:
         mock_service.get_project_overview = AsyncMock(return_value={})
 
         await mock_service.get_project_overview(
-            period="7d",
-            top_meetings=5,
-            db=AsyncMock(),
-            redis_client=AsyncMock()
+            period="7d", top_meetings=5, db=AsyncMock(), redis_client=AsyncMock()
         )
 
         mock_service.get_project_overview.assert_called_once()
@@ -244,10 +247,7 @@ class TestActionItemsCoverage:
             raise Exception("Extraction failed")
         except Exception as e:
             try:
-                raise HTTPException(
-                    status_code=500,
-                    detail=f"액션 아이템 추출 중 오류 발생: {e}"
-                )
+                raise HTTPException(status_code=500, detail=f"액션 아이템 추출 중 오류 발생: {e}")
             except HTTPException as exc:
                 assert exc.status_code == 500
 
@@ -268,10 +268,7 @@ class TestAudioAnalysisCoverage:
             raise OSError("Disk full")
         except OSError as e:
             try:
-                raise HTTPException(
-                    status_code=422,
-                    detail=f"파일 저장 실패: {e}"
-                )
+                raise HTTPException(status_code=422, detail=f"파일 저장 실패: {e}")
             except HTTPException as exc:
                 assert exc.status_code == 422
 
@@ -324,10 +321,7 @@ class TestQualityAssessmentCoverage:
             raise Exception("Compute failed")
         except Exception as e:
             try:
-                raise HTTPException(
-                    status_code=500,
-                    detail=f"실시간 품질 점수 계산 실패: {e}"
-                )
+                raise HTTPException(status_code=500, detail=f"실시간 품질 점수 계산 실패: {e}")
             except HTTPException as exc:
                 assert exc.status_code == 500
 
@@ -344,10 +338,7 @@ class TestQualityAssessmentCoverage:
             raise Exception("DB error")
         except Exception as e:
             try:
-                raise HTTPException(
-                    status_code=500,
-                    detail=f"품질 피드백 저장 실패: {e}"
-                )
+                raise HTTPException(status_code=500, detail=f"품질 피드백 저장 실패: {e}")
             except HTTPException as exc:
                 assert exc.status_code == 500
 
@@ -411,14 +402,16 @@ class TestTranscriptionCoverage:
             try:
                 raise HTTPException(
                     status_code=422,
-                    detail=[{
-                        "field": "file",
-                        "message": (
-                            f"재생 시간이 제한({max_hours}시간)을 초과합니다. "
-                            f"실제 재생 시간: {duration_seconds / 3600:.1f}시간"
-                        ),
-                        "type": "duration_exceeded",
-                    }]
+                    detail=[
+                        {
+                            "field": "file",
+                            "message": (
+                                f"재생 시간이 제한({max_hours}시간)을 초과합니다. "
+                                f"실제 재생 시간: {duration_seconds / 3600:.1f}시간"
+                            ),
+                            "type": "duration_exceeded",
+                        }
+                    ],
                 )
             except HTTPException as exc:
                 assert exc.status_code == 422

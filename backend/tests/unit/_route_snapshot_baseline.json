@@ -1,5 +1,26 @@
 [
   {
+    "path": "/api/v1/action-items",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/action-items",
+    "methods": [
+      "POST"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/action-items/batch-update",
+    "methods": [
+      "POST"
+    ],
+    "api_key": true
+  },
+  {
     "path": "/api/v1/action-items/extract",
     "methods": [
       "POST"
@@ -10,6 +31,48 @@
     "path": "/api/v1/action-items/meeting",
     "methods": [
       "POST"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/action-items/meeting/{meeting_id}",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/action-items/overview",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/action-items/{id}",
+    "methods": [
+      "DELETE"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/action-items/{id}",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/action-items/{id}",
+    "methods": [
+      "PATCH"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/action-items/{id}/complete",
+    "methods": [
+      "PATCH"
     ],
     "api_key": true
   },
@@ -609,6 +672,13 @@
     "api_key": true
   },
   {
+    "path": "/api/v1/sentiment",
+    "methods": [
+      "POST"
+    ],
+    "api_key": true
+  },
+  {
     "path": "/api/v1/sentiment/dashboard/summary",
     "methods": [
       "GET"
@@ -631,6 +701,27 @@
   },
   {
     "path": "/api/v1/sentiment/trends",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/sentiment/{task_id}",
+    "methods": [
+      "DELETE"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/sentiment/{task_id}",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/sentiment/{task_id}/status",
     "methods": [
       "GET"
     ],

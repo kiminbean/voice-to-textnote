@@ -13,11 +13,17 @@ from pydantic import BaseModel, ConfigDict, Field
 class SpeakerProfileCreate(BaseModel):
     """화자 프로필 생성 요청"""
 
-    speaker_label: str = Field(..., min_length=1, max_length=50, description="화자 레이블 (예: SPEAKER_00)")
+    speaker_label: str = Field(
+        ..., min_length=1, max_length=50, description="화자 레이블 (예: SPEAKER_00)"
+    )
     display_name: str = Field(..., min_length=1, max_length=100, description="표시 이름")
     role: str | None = Field(default=None, max_length=100, description="역할 (예: 팀장)")
     note: str | None = Field(default=None, max_length=1000, description="메모")
-    task_id: str | None = Field(default=None, max_length=255, description="회의록 전용 오버라이드용 task_id. None이면 전역 프로필.")
+    task_id: str | None = Field(
+        default=None,
+        max_length=255,
+        description="회의록 전용 오버라이드용 task_id. None이면 전역 프로필.",
+    )
 
 
 class SpeakerProfileUpdate(BaseModel):

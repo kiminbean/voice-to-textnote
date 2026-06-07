@@ -58,7 +58,7 @@ class TestQualityEvaluationRms:
             sample_rate=16000,
             channels=1,
             avg_dbfs=-15.0,
-            silence_ratio=0.1
+            silence_ratio=0.1,
         )
 
         # RMS가 0이어도 점수 계산됨
@@ -78,7 +78,7 @@ class TestQualityEvaluationRms:
             sample_rate=16000,
             channels=1,
             avg_dbfs=float("-inf"),
-            silence_ratio=0.1
+            silence_ratio=0.1,
         )
 
         # -inf도 점수 계산됨
@@ -100,7 +100,7 @@ class TestQualityEvaluationBoundary:
             sample_rate=8000,
             channels=1,
             avg_dbfs=-15.0,
-            silence_ratio=0.1
+            silence_ratio=0.1,
         )
 
         assert score <= 0.8  # 경계값에서 감점
@@ -118,7 +118,7 @@ class TestQualityEvaluationBoundary:
             sample_rate=16000,
             channels=3,
             avg_dbfs=-15.0,
-            silence_ratio=0.1
+            silence_ratio=0.1,
         )
 
         assert score <= 0.9  # 다중 채널 감점
@@ -131,7 +131,9 @@ class TestAnalyzeAudioWithSilence:
     @patch("pydub.AudioSegment")
     @patch("pydub.utils.mediainfo")
     @patch("pathlib.Path.stat")
-    def test_analyze_audio_with_silence_detection(self, mock_stat, mock_mediainfo, mock_audio_segment):
+    def test_analyze_audio_with_silence_detection(
+        self, mock_stat, mock_mediainfo, mock_audio_segment
+    ):
         """무음 감지 포함 분석"""
         mock_audio = MagicMock()
         mock_audio.frame_rate = 16000
@@ -150,14 +152,15 @@ class TestAnalyzeAudioWithSilence:
         with patch("pydub.silence.detect_silence") as mock_detect:
             mock_detect.return_value = [(1000, 2000), (5000, 6000)]
 
-            with patch("pathlib.Path.name", return_value="test.mp3"), \
-                 patch("pathlib.Path.suffix", ".mp3"):
-
+            with (
+                patch("pathlib.Path.name", return_value="test.mp3"),
+                patch("pathlib.Path.suffix", ".mp3"),
+            ):
                 result = analyze_audio(
                     "test.mp3",
                     include_silence_detection=True,
                     silence_threshold_db=-40.0,
-                    min_silence_duration_ms=500
+                    min_silence_duration_ms=500,
                 )
 
         # 무음 구간 확인
@@ -169,7 +172,9 @@ class TestAnalyzeAudioWithSilence:
     @patch("pydub.AudioSegment")
     @patch("pydub.utils.mediainfo")
     @patch("pathlib.Path.stat")
-    def test_analyze_audio_without_silence_detection(self, mock_stat, mock_mediainfo, mock_audio_segment):
+    def test_analyze_audio_without_silence_detection(
+        self, mock_stat, mock_mediainfo, mock_audio_segment
+    ):
         """무음 감지 제외 분석"""
         mock_audio = MagicMock()
         mock_audio.frame_rate = 16000
@@ -184,13 +189,11 @@ class TestAnalyzeAudioWithSilence:
         mock_mediainfo.return_value = {"bit_rate": "128000"}
         mock_stat.return_value.st_size = 1024000
 
-        with patch("pathlib.Path.name", return_value="test.mp3"), \
-             patch("pathlib.Path.suffix", ".mp3"):
-
-            result = analyze_audio(
-                "test.mp3",
-                include_silence_detection=False
-            )
+        with (
+            patch("pathlib.Path.name", return_value="test.mp3"),
+            patch("pathlib.Path.suffix", ".mp3"),
+        ):
+            result = analyze_audio("test.mp3", include_silence_detection=False)
 
         # 무음 감지 비활성화
         assert result.silence_segments == []
@@ -220,10 +223,11 @@ class TestAnalyzeAudioErrors:
 
         mock_audio_segment.from_file.side_effect = CouldntDecodeError("Decode failed")
 
-        with patch("pathlib.Path.name", return_value="test.mp3"), \
-             patch("pathlib.Path.suffix", ".mp3"), \
-             patch("pathlib.Path.__str__", return_value="test.mp3"):
-
+        with (
+            patch("pathlib.Path.name", return_value="test.mp3"),
+            patch("pathlib.Path.suffix", ".mp3"),
+            patch("pathlib.Path.__str__", return_value="test.mp3"),
+        ):
             with pytest.raises(ValueError, match="오디오 파일 로드 실패"):
                 analyze_audio("test.mp3")
 
@@ -234,10 +238,11 @@ class TestAnalyzeAudioErrors:
         """일반적인 예외 발생 시 ValueError"""
         mock_audio_segment.from_file.side_effect = Exception("General error")
 
-        with patch("pathlib.Path.name", return_value="test.mp3"), \
-             patch("pathlib.Path.suffix", ".mp3"), \
-             patch("pathlib.Path.__str__", return_value="test.mp3"):
-
+        with (
+            patch("pathlib.Path.name", return_value="test.mp3"),
+            patch("pathlib.Path.suffix", ".mp3"),
+            patch("pathlib.Path.__str__", return_value="test.mp3"),
+        ):
             with pytest.raises(ValueError, match="오디오 파일 로드 실패"):
                 analyze_audio("test.mp3")
 
@@ -259,7 +264,7 @@ class TestQualityEvaluationExtremes:
             sample_rate=16000,
             channels=1,
             avg_dbfs=-15.0,
-            silence_ratio=0.05
+            silence_ratio=0.05,
         )
 
         assert score >= 0.9
@@ -280,7 +285,7 @@ class TestQualityEvaluationExtremes:
             sample_rate=4000,
             channels=5,
             avg_dbfs=-50.0,
-            silence_ratio=0.9  # 90% 무음
+            silence_ratio=0.9,  # 90% 무음
         )
 
         # 점수 보정
@@ -302,7 +307,7 @@ class TestQualityEvaluationExtremes:
             sample_rate=16000,
             channels=1,
             avg_dbfs=-1.0,
-            silence_ratio=0.1
+            silence_ratio=0.1,
         )
 
         assert score < 0.9
@@ -320,7 +325,7 @@ class TestQualityEvaluationExtremes:
             sample_rate=16000,
             channels=1,
             avg_dbfs=-15.0,
-            silence_ratio=0.1
+            silence_ratio=0.1,
         )
 
         assert score <= 0.9
@@ -332,12 +337,7 @@ class TestSilenceSegmentCreation:
 
     def test_silence_segment_with_all_fields(self):
         """모든 필드가 포함된 SilenceSegment 생성"""
-        segment = SilenceSegment(
-            start_ms=1000.0,
-            end_ms=2000.0,
-            duration_ms=1000.0,
-            avg_dbfs=-45.0
-        )
+        segment = SilenceSegment(start_ms=1000.0, end_ms=2000.0, duration_ms=1000.0, avg_dbfs=-45.0)
 
         assert segment.start_ms == 1000.0
         assert segment.end_ms == 2000.0
@@ -346,10 +346,6 @@ class TestSilenceSegmentCreation:
 
     def test_silence_segment_without_optional_fields(self):
         """선택적 필드 없는 SilenceSegment 생성"""
-        segment = SilenceSegment(
-            start_ms=1000.0,
-            end_ms=2000.0,
-            duration_ms=1000.0
-        )
+        segment = SilenceSegment(start_ms=1000.0, end_ms=2000.0, duration_ms=1000.0)
 
         assert segment.avg_dbfs is None

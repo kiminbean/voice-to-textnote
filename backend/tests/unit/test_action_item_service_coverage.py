@@ -459,7 +459,9 @@ class TestUpdate:
         existing = _make_action_item_instance()
         updated = _make_action_item_instance(title="Updated title")
 
-        with patch.object(svc, "get_by_id", new_callable=AsyncMock, side_effect=[existing, updated]):
+        with patch.object(
+            svc, "get_by_id", new_callable=AsyncMock, side_effect=[existing, updated]
+        ):
             result = await svc.update(
                 session=session,
                 item_id=FAKE_ITEM_ID,
@@ -501,7 +503,9 @@ class TestUpdate:
         existing = _make_action_item_instance(status="in_progress")
         updated = _make_action_item_instance(status="completed")
 
-        with patch.object(svc, "get_by_id", new_callable=AsyncMock, side_effect=[existing, updated]):
+        with patch.object(
+            svc, "get_by_id", new_callable=AsyncMock, side_effect=[existing, updated]
+        ):
             result = await svc.update(
                 session=session,
                 item_id=FAKE_ITEM_ID,
@@ -523,7 +527,9 @@ class TestUpdate:
         existing = _make_action_item_instance()
         updated = _make_action_item_instance(title="Multi", priority="high")
 
-        with patch.object(svc, "get_by_id", new_callable=AsyncMock, side_effect=[existing, updated]):
+        with patch.object(
+            svc, "get_by_id", new_callable=AsyncMock, side_effect=[existing, updated]
+        ):
             result = await svc.update(
                 session=session,
                 item_id=FAKE_ITEM_ID,
@@ -555,7 +561,9 @@ class TestUpdate:
         )
         updated = _make_action_item_instance(status="completed")
 
-        with patch.object(svc, "get_by_id", new_callable=AsyncMock, side_effect=[existing, updated]):
+        with patch.object(
+            svc, "get_by_id", new_callable=AsyncMock, side_effect=[existing, updated]
+        ):
             result = await svc.update(
                 session=session,
                 item_id=FAKE_ITEM_ID,
@@ -576,7 +584,9 @@ class TestUpdate:
         existing = _make_action_item_instance()
         updated = _make_action_item_instance(estimated_hours=5.0, actual_hours=4.5)
 
-        with patch.object(svc, "get_by_id", new_callable=AsyncMock, side_effect=[existing, updated]):
+        with patch.object(
+            svc, "get_by_id", new_callable=AsyncMock, side_effect=[existing, updated]
+        ):
             result = await svc.update(
                 session=session,
                 item_id=FAKE_ITEM_ID,
@@ -600,7 +610,9 @@ class TestUpdate:
         existing = _make_action_item_instance()
         updated = _make_action_item_instance(completion_notes="Done well")
 
-        with patch.object(svc, "get_by_id", new_callable=AsyncMock, side_effect=[existing, updated]):
+        with patch.object(
+            svc, "get_by_id", new_callable=AsyncMock, side_effect=[existing, updated]
+        ):
             result = await svc.update(
                 session=session,
                 item_id=FAKE_ITEM_ID,
@@ -622,7 +634,9 @@ class TestUpdate:
         new_due = datetime.utcnow() + timedelta(days=14)
         updated = _make_action_item_instance(due_date=new_due)
 
-        with patch.object(svc, "get_by_id", new_callable=AsyncMock, side_effect=[existing, updated]):
+        with patch.object(
+            svc, "get_by_id", new_callable=AsyncMock, side_effect=[existing, updated]
+        ):
             result = await svc.update(
                 session=session,
                 item_id=FAKE_ITEM_ID,
@@ -644,7 +658,9 @@ class TestUpdate:
         new_assignee = uuid.uuid4()
         updated = _make_action_item_instance(assignee_id=new_assignee)
 
-        with patch.object(svc, "get_by_id", new_callable=AsyncMock, side_effect=[existing, updated]):
+        with patch.object(
+            svc, "get_by_id", new_callable=AsyncMock, side_effect=[existing, updated]
+        ):
             result = await svc.update(
                 session=session,
                 item_id=FAKE_ITEM_ID,
@@ -666,7 +682,9 @@ class TestUpdate:
         completer = uuid.uuid4()
         updated = _make_action_item_instance(completed_by=completer)
 
-        with patch.object(svc, "get_by_id", new_callable=AsyncMock, side_effect=[existing, updated]):
+        with patch.object(
+            svc, "get_by_id", new_callable=AsyncMock, side_effect=[existing, updated]
+        ):
             result = await svc.update(
                 session=session,
                 item_id=FAKE_ITEM_ID,
@@ -882,7 +900,9 @@ class TestBatchUpdate:
         item2_id = uuid.uuid4()
 
         with patch.object(
-            svc, "update", new_callable=AsyncMock,
+            svc,
+            "update",
+            new_callable=AsyncMock,
             side_effect=[_make_action_item_instance(id=item1_id), None],
         ):
             result = await svc.batch_update(
@@ -909,7 +929,9 @@ class TestBatchUpdate:
         item2_id = uuid.uuid4()
 
         with patch.object(
-            svc, "update", new_callable=AsyncMock,
+            svc,
+            "update",
+            new_callable=AsyncMock,
             side_effect=[_make_action_item_instance(id=item1_id), RuntimeError("DB error")],
         ):
             result = await svc.batch_update(
@@ -955,7 +977,10 @@ class TestBatchUpdate:
         id2 = uuid.uuid4()
 
         with patch.object(
-            svc, "update", new_callable=AsyncMock, side_effect=[None, None],
+            svc,
+            "update",
+            new_callable=AsyncMock,
+            side_effect=[None, None],
         ):
             result = await svc.batch_update(
                 session=session,

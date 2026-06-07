@@ -3,10 +3,7 @@
 HTTP 엔드포인트 테스트 대신 함수를 직접 호출하여 미커버 라인 실행
 """
 
-import json
 import uuid
-from datetime import datetime
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -47,7 +44,11 @@ class TestBookmarksDirectCalls:
         mock_svc.search_bookmarks.assert_called_once()
         # 호출 인자의 search_request 검증
         call_kwargs = mock_svc.search_bookmarks.call_args
-        search_req = call_kwargs[0][2] if len(call_kwargs[0]) > 2 else call_kwargs.kwargs.get("search_request")
+        search_req = (
+            call_kwargs[0][2]
+            if len(call_kwargs[0]) > 2
+            else call_kwargs.kwargs.get("search_request")
+        )
         if search_req is None:
             search_req = mock_svc.search_bookmarks.call_args[0][2]  # pragma: no cover
 
@@ -60,11 +61,18 @@ class TestBookmarksDirectCalls:
         mock_svc.search_bookmarks = AsyncMock(return_value=MagicMock())
 
         await search_bookmarks(
-            query=None, category=None, priority=None,
+            query=None,
+            category=None,
+            priority=None,
             tags="a, b, c",
-            task_id=None, has_tags=None,
-            date_from=None, date_to=None,
-            page=1, page_size=50, sort_by="created_at", sort_order="desc",
+            task_id=None,
+            has_tags=None,
+            date_from=None,
+            date_to=None,
+            page=1,
+            page_size=50,
+            sort_by="created_at",
+            sort_order="desc",
             db=AsyncMock(),
             user=MagicMock(id=uuid.uuid4()),
             svc=mock_svc,
@@ -80,11 +88,18 @@ class TestBookmarksDirectCalls:
         mock_svc.search_bookmarks = AsyncMock(return_value=MagicMock())
 
         await search_bookmarks(
-            query=None, category=None, priority=None,
-            tags=None, task_id=None, has_tags=None,
+            query=None,
+            category=None,
+            priority=None,
+            tags=None,
+            task_id=None,
+            has_tags=None,
             date_from="2026-01-15T10:30:00Z",
             date_to=None,
-            page=1, page_size=50, sort_by="created_at", sort_order="desc",
+            page=1,
+            page_size=50,
+            sort_by="created_at",
+            sort_order="desc",
             db=AsyncMock(),
             user=MagicMock(id=uuid.uuid4()),
             svc=mock_svc,
@@ -100,11 +115,18 @@ class TestBookmarksDirectCalls:
         mock_svc.search_bookmarks = AsyncMock(return_value=MagicMock())
 
         await search_bookmarks(
-            query=None, category=None, priority=None,
-            tags=None, task_id=None, has_tags=None,
+            query=None,
+            category=None,
+            priority=None,
+            tags=None,
+            task_id=None,
+            has_tags=None,
             date_from=None,
             date_to="2026-06-30T23:59:59Z",
-            page=1, page_size=50, sort_by="created_at", sort_order="desc",
+            page=1,
+            page_size=50,
+            sort_by="created_at",
+            sort_order="desc",
             db=AsyncMock(),
             user=MagicMock(id=uuid.uuid4()),
             svc=mock_svc,
@@ -138,24 +160,31 @@ class TestMinutesActionItemsDirectCalls:
 
     @pytest.mark.asyncio
     async def test_extract_voice_note_error_reraise(self):
-        from backend.app.exceptions import VoiceNoteError
         from backend.app.api.v1.minutes.action_items import extract_action_items_api
+        from backend.app.exceptions import VoiceNoteError
 
         vne = VoiceNoteError(error_code="EXT_ERR", message="추출 오류", status_code=500)
         with patch("backend.app.api.v1.minutes.action_items.extract_action_items", side_effect=vne):
             with pytest.raises(VoiceNoteError):
                 await extract_action_items_api(
-                    request=MagicMock(text="테스트", language="ko", include_deadlines=True, include_assignees=True),
+                    request=MagicMock(
+                        text="테스트", language="ko", include_deadlines=True, include_assignees=True
+                    ),
                 )
 
     @pytest.mark.asyncio
     async def test_extract_generic_error_internal(self):
         from backend.app.api.v1.minutes.action_items import extract_action_items_api
 
-        with patch("backend.app.api.v1.minutes.action_items.extract_action_items", side_effect=RuntimeError("알 수 없는 오류")):
+        with patch(
+            "backend.app.api.v1.minutes.action_items.extract_action_items",
+            side_effect=RuntimeError("알 수 없는 오류"),
+        ):
             with pytest.raises(Exception):
                 await extract_action_items_api(
-                    request=MagicMock(text="테스트", language="ko", include_deadlines=True, include_assignees=True),
+                    request=MagicMock(
+                        text="테스트", language="ko", include_deadlines=True, include_assignees=True
+                    ),
                 )
 
 
@@ -176,7 +205,10 @@ class TestAudioAnalysisDirectCalls:
         mock_file.read = AsyncMock(side_effect=[b"audio", b""])
         mock_file.seek = AsyncMock()
 
-        with patch("backend.app.api.v1.audio.audio_analysis.analyze_audio", side_effect=OSError("디스크 오류")):
+        with patch(
+            "backend.app.api.v1.audio.audio_analysis.analyze_audio",
+            side_effect=OSError("디스크 오류"),
+        ):
             with pytest.raises(Exception):
                 await analyze_audio_file(file=mock_file)
 
@@ -189,7 +221,10 @@ class TestAudioAnalysisDirectCalls:
         mock_file.read = AsyncMock(side_effect=[b"data", b""])
         mock_file.seek = AsyncMock()
 
-        with patch("backend.app.api.v1.audio.audio_analysis.analyze_audio", side_effect=ValueError("파일 크기 초과")):
+        with patch(
+            "backend.app.api.v1.audio.audio_analysis.analyze_audio",
+            side_effect=ValueError("파일 크기 초과"),
+        ):
             with pytest.raises(Exception):
                 await analyze_audio_file(file=mock_file)
 
@@ -202,7 +237,10 @@ class TestAudioAnalysisDirectCalls:
         mock_file.read = AsyncMock(side_effect=[b"data", b""])
         mock_file.seek = AsyncMock()
 
-        with patch("backend.app.api.v1.audio.audio_analysis.analyze_audio", side_effect=ValueError("File size exceeded")):
+        with patch(
+            "backend.app.api.v1.audio.audio_analysis.analyze_audio",
+            side_effect=ValueError("File size exceeded"),
+        ):
             with pytest.raises(Exception):
                 await analyze_audio_file(file=mock_file)
 
@@ -215,7 +253,10 @@ class TestAudioAnalysisDirectCalls:
         mock_file.read = AsyncMock(side_effect=[b"data", b""])
         mock_file.seek = AsyncMock()
 
-        with patch("backend.app.api.v1.audio.audio_analysis.analyze_audio", side_effect=ValueError("잘못된 포맷")):
+        with patch(
+            "backend.app.api.v1.audio.audio_analysis.analyze_audio",
+            side_effect=ValueError("잘못된 포맷"),
+        ):
             with pytest.raises(Exception):
                 await analyze_audio_file(file=mock_file)
 
@@ -230,16 +271,19 @@ class TestQualityAssessmentDirectCalls:
 
     @pytest.mark.asyncio
     async def test_live_score_vne(self):
-        from backend.app.exceptions import VoiceNoteError
         from backend.app.api.v1.audio.quality_assessment import get_live_quality_score
+        from backend.app.exceptions import VoiceNoteError
 
         vne = VoiceNoteError(error_code="Q_ERR", message="품질 오류", status_code=500)
-        with patch(
-            "backend.app.api.v1.audio.quality_assessment.get_quality_service",
-            return_value=MagicMock(calculate_realtime_score=AsyncMock(side_effect=vne)),
-        ), patch(
-            "backend.app.api.v1.audio.quality_assessment._load_minutes_text_or_404",
-            new=AsyncMock(return_value="테스트"),
+        with (
+            patch(
+                "backend.app.api.v1.audio.quality_assessment.get_quality_service",
+                return_value=MagicMock(calculate_realtime_score=AsyncMock(side_effect=vne)),
+            ),
+            patch(
+                "backend.app.api.v1.audio.quality_assessment._load_minutes_text_or_404",
+                new=AsyncMock(return_value="테스트"),
+            ),
         ):
             with pytest.raises(VoiceNoteError):
                 await get_live_quality_score(task_id="test-task")
@@ -248,20 +292,25 @@ class TestQualityAssessmentDirectCalls:
     async def test_live_score_generic(self):
         from backend.app.api.v1.audio.quality_assessment import get_live_quality_score
 
-        with patch(
-            "backend.app.api.v1.audio.quality_assessment.get_quality_service",
-            return_value=MagicMock(calculate_realtime_score=AsyncMock(side_effect=RuntimeError("DB 오류"))),
-        ), patch(
-            "backend.app.api.v1.audio.quality_assessment._load_minutes_text_or_404",
-            new=AsyncMock(return_value="테스트"),
+        with (
+            patch(
+                "backend.app.api.v1.audio.quality_assessment.get_quality_service",
+                return_value=MagicMock(
+                    calculate_realtime_score=AsyncMock(side_effect=RuntimeError("DB 오류"))
+                ),
+            ),
+            patch(
+                "backend.app.api.v1.audio.quality_assessment._load_minutes_text_or_404",
+                new=AsyncMock(return_value="테스트"),
+            ),
         ):
             with pytest.raises(Exception):
                 await get_live_quality_score(task_id="test-task")
 
     @pytest.mark.asyncio
     async def test_submit_feedback_vne(self):
-        from backend.app.exceptions import VoiceNoteError
         from backend.app.api.v1.audio.quality_assessment import submit_quality_feedback
+        from backend.app.exceptions import VoiceNoteError
 
         vne = VoiceNoteError(error_code="FB_ERR", message="저장 실패", status_code=500)
         mock_db = AsyncMock()
@@ -275,13 +324,15 @@ class TestQualityAssessmentDirectCalls:
         ):
             with pytest.raises(VoiceNoteError):
                 await submit_quality_feedback(
-                    task_id="test-task", payload=MagicMock(), db=mock_db,
+                    task_id="test-task",
+                    payload=MagicMock(),
+                    db=mock_db,
                 )
 
     @pytest.mark.asyncio
     async def test_list_feedback_vne(self):
-        from backend.app.exceptions import VoiceNoteError
         from backend.app.api.v1.audio.quality_assessment import list_quality_feedback
+        from backend.app.exceptions import VoiceNoteError
 
         vne = VoiceNoteError(error_code="LIST_ERR", message="조회 실패", status_code=500)
         with patch(
@@ -293,8 +344,8 @@ class TestQualityAssessmentDirectCalls:
 
     @pytest.mark.asyncio
     async def test_quality_trends_vne(self):
-        from backend.app.exceptions import VoiceNoteError
         from backend.app.api.v1.audio.quality_assessment import get_quality_trends
+        from backend.app.exceptions import VoiceNoteError
 
         vne = VoiceNoteError(error_code="TREND_ERR", message="추세 분석 실패", status_code=500)
         with patch(
@@ -313,12 +364,15 @@ class TestQualityAssessmentDirectCalls:
 class TestActionItemsOverviewDirect:
     @pytest.mark.asyncio
     async def test_get_overview_direct(self):
-        from backend.app.api.v1.action_items import get_action_items_overview
+        from backend.app.api.v1.minutes.action_items_crud import get_action_items_overview
 
         mock_svc = MagicMock()
         mock_svc.get_overview = AsyncMock(return_value=MagicMock())
         await get_action_items_overview(
-            days=30, db=AsyncMock(), user=MagicMock(id=uuid.uuid4()), svc=mock_svc,
+            days=30,
+            db=AsyncMock(),
+            user=MagicMock(id=uuid.uuid4()),
+            svc=mock_svc,
         )
         mock_svc.get_overview.assert_called_once()
 
@@ -331,32 +385,39 @@ class TestActionItemsOverviewDirect:
 class TestSchemaDirect:
     def test_update_tags_dedup(self):
         from backend.app.schemas.action_item import ActionItemUpdate
+
         schema = ActionItemUpdate(tags=["a", " a ", "b", "b"])
         assert len(schema.tags) <= 2
 
     def test_update_tags_none(self):
         from backend.app.schemas.action_item import ActionItemUpdate
+
         schema = ActionItemUpdate(tags=None)
         assert schema.tags is None
 
     def test_response_config(self):
         from backend.app.schemas.action_item import ActionItemResponse
+
         assert ActionItemResponse.model_config.get("from_attributes") is True
 
     def test_comment_config(self):
         from backend.app.schemas.action_item import ActionItemComment
+
         assert ActionItemComment.model_config.get("from_attributes") is True
 
     def test_comment_response_config(self):
         from backend.app.schemas.action_item import ActionItemCommentResponse
+
         assert ActionItemCommentResponse.model_config.get("from_attributes") is True
 
     def test_history_config(self):
         from backend.app.schemas.action_item import ActionItemHistory
+
         assert ActionItemHistory.model_config.get("from_attributes") is True
 
     def test_reminder_config(self):
         from backend.app.schemas.action_item import ActionItemReminder
+
         assert ActionItemReminder.model_config.get("from_attributes") is True
 
 

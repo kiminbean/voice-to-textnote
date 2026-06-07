@@ -72,9 +72,7 @@ class VersionService:
         """버전 목록 조회 (최신 버전 우선)."""
         await self._ensure_task_exists(session, task_id)
 
-        count_stmt = select(func.count(MinutesVersion.id)).where(
-            MinutesVersion.task_id == task_id
-        )
+        count_stmt = select(func.count(MinutesVersion.id)).where(MinutesVersion.task_id == task_id)
         total = (await session.execute(count_stmt)).scalar_one()
 
         list_stmt = (
@@ -134,9 +132,7 @@ class VersionService:
         new_lines = _flatten(new_content).splitlines(keepends=True)
         diff_lines = list(difflib.unified_diff(old_lines, new_lines, lineterm=""))
 
-        added = sum(
-            1 for line in diff_lines if line.startswith("+") and not line.startswith("+++")
-        )
+        added = sum(1 for line in diff_lines if line.startswith("+") and not line.startswith("+++"))
         removed = sum(
             1 for line in diff_lines if line.startswith("-") and not line.startswith("---")
         )
@@ -173,9 +169,7 @@ class VersionService:
         return f"hash:{hash(frozenset((k, str(v)) for k, v in item.items()))}"
 
     @classmethod
-    def _normalize_action_items(
-        cls, content: dict[str, Any]
-    ) -> dict[str, dict[str, Any]]:
+    def _normalize_action_items(cls, content: dict[str, Any]) -> dict[str, dict[str, Any]]:
         """action_items를 {key: item_dict}로 정규화."""
         items: dict[str, dict[str, Any]] = {}
         for raw in content.get("action_items") or []:
@@ -196,12 +190,16 @@ class VersionService:
         프런트에서 곧바로 UI 렌더링이 가능한 형태를 반환한다.
         """
         # summary_text -------------------------------------------------------
-        old_summary = old_content.get("summary_text") if isinstance(
-            old_content.get("summary_text"), str
-        ) else None
-        new_summary = new_content.get("summary_text") if isinstance(
-            new_content.get("summary_text"), str
-        ) else None
+        old_summary = (
+            old_content.get("summary_text")
+            if isinstance(old_content.get("summary_text"), str)
+            else None
+        )
+        new_summary = (
+            new_content.get("summary_text")
+            if isinstance(new_content.get("summary_text"), str)
+            else None
+        )
         summary_changed = (old_summary or "") != (new_summary or "")
 
         # sections -----------------------------------------------------------
@@ -239,9 +237,7 @@ class VersionService:
             if key not in old_items:
                 added_items.append({"key": key, "before": None, "after": item})
             elif old_items[key] != item:
-                modified_items.append(
-                    {"key": key, "before": old_items[key], "after": item}
-                )
+                modified_items.append({"key": key, "before": old_items[key], "after": item})
         for key, item in old_items.items():
             if key not in new_items:
                 removed_items.append({"key": key, "before": item, "after": None})

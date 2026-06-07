@@ -94,9 +94,7 @@ class TeamService:
         team_id: uuid.UUID,
     ) -> Team | None:
         """팀 ID로 단순 조회"""
-        result = await session.execute(
-            select(Team).where(Team.id == team_id)
-        )
+        result = await session.execute(select(Team).where(Team.id == team_id))
         return result.scalar_one_or_none()
 
     async def get_team_with_members(
@@ -111,9 +109,7 @@ class TeamService:
             팀 상세 딕셔너리 또는 None
         """
         # 팀 조회
-        team_result = await session.execute(
-            select(Team).where(Team.id == team_id)
-        )
+        team_result = await session.execute(select(Team).where(Team.id == team_id))
         team = team_result.scalar_one_or_none()
         if team is None:
             return None  # pragma: no cover
@@ -161,12 +157,11 @@ class TeamService:
         Returns:
             업데이트된 Team 인스턴스
         """
-        result = await session.execute(
-            select(Team).where(Team.id == team_id)
-        )
+        result = await session.execute(select(Team).where(Team.id == team_id))
         team = result.scalar_one_or_none()
         if team is None:
             from fastapi import HTTPException
+
             raise HTTPException(status_code=404, detail="팀을 찾을 수 없습니다")
 
         if name is not None:
@@ -188,9 +183,7 @@ class TeamService:
         Returns:
             성공 시 True
         """
-        result = await session.execute(
-            select(Team).where(Team.id == team_id)
-        )
+        result = await session.execute(select(Team).where(Team.id == team_id))
         team = result.scalar_one_or_none()
         if team is None:
             return False
@@ -272,9 +265,7 @@ class TeamService:
             raise ValueError(f"유효하지 않은 역할입니다: {role}")
 
         # 이메일로 사용자 조회
-        user_result = await session.execute(
-            select(User).where(User.email == email)
-        )
+        user_result = await session.execute(select(User).where(User.email == email))
         user = user_result.scalar_one_or_none()
         if user is None:
             raise LookupError(f"이메일 '{email}'에 해당하는 사용자를 찾을 수 없습니다")
@@ -392,7 +383,9 @@ class TeamService:
         if member.role == "admin":
             admin_count = await self.count_admins(session, team_id)
             if admin_count <= 1:
-                raise ValueError("마지막 admin은 팀에서 나갈 수 없습니다. 다른 admin을 먼저 지정해주세요")
+                raise ValueError(
+                    "마지막 admin은 팀에서 나갈 수 없습니다. 다른 admin을 먼저 지정해주세요"
+                )
 
         await session.delete(member)
         await session.commit()

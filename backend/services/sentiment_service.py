@@ -18,32 +18,121 @@ class SentimentService:
 
     # 감성 단어 사전 (한국어)
     POSITIVE_WORDS = {
-        "좋아", "훌륭", "대단", "완벽", "만족", "감사", "최고", "짱", "굿", "좋음",
-        "성공", "극대화", "효과적", "생산적", "협력", "기여", "창의적", "혁신",
-        "발전", "성장", "긍정", "호기심", "열정", "자신감", "유능", "전문",
-        "정확", "신속", "체계", "효율", "안정", "신뢰", "대화", "소통",
-        "이해", "공감", "지지", "동의", "찬성", "적극", "적응", "유연",
-        "문해", "혁신적", "프로", "완벽한", "훌륭한", "뛰어난", "특별한"
+        "좋아",
+        "훌륭",
+        "대단",
+        "완벽",
+        "만족",
+        "감사",
+        "최고",
+        "짱",
+        "굿",
+        "좋음",
+        "성공",
+        "극대화",
+        "효과적",
+        "생산적",
+        "협력",
+        "기여",
+        "창의적",
+        "혁신",
+        "발전",
+        "성장",
+        "긍정",
+        "호기심",
+        "열정",
+        "자신감",
+        "유능",
+        "전문",
+        "정확",
+        "신속",
+        "체계",
+        "효율",
+        "안정",
+        "신뢰",
+        "대화",
+        "소통",
+        "이해",
+        "공감",
+        "지지",
+        "동의",
+        "찬성",
+        "적극",
+        "적응",
+        "유연",
+        "문해",
+        "혁신적",
+        "프로",
+        "완벽한",
+        "훌륭한",
+        "뛰어난",
+        "특별한",
     }
 
     NEGATIVE_WORDS = {
-        "나쁘", "싫어", "실망", "불만", "문제", "오류", "실패", "약점", "부족",
-        "지연", "어려움", "고통", "스트레스", "압박", "불안", "우려", "의심",
-        "반대", "거부", "저항", "충돌", "마찰", "갈등", "대립", "비판",
-        "불만족", "불이익", "위험", "손실", "손해", "차질", "혼란", "복잡",
-        "비효율", "저조", "부진", "불안정", "불신", "원망", "불평", "불화",
-        "갈등", "마찰", "대립", "갈등", "문제", "장애", "핸디캡", "제약",
-        "한계", "부정", "회의적", "냉소적", "비관적", "무기력", "피로", "지침"
+        "나쁘",
+        "싫어",
+        "실망",
+        "불만",
+        "문제",
+        "오류",
+        "실패",
+        "약점",
+        "부족",
+        "지연",
+        "어려움",
+        "고통",
+        "스트레스",
+        "압박",
+        "불안",
+        "우려",
+        "의심",
+        "반대",
+        "거부",
+        "저항",
+        "충돌",
+        "마찰",
+        "갈등",
+        "대립",
+        "비판",
+        "불만족",
+        "불이익",
+        "위험",
+        "손실",
+        "손해",
+        "차질",
+        "혼란",
+        "복잡",
+        "비효율",
+        "저조",
+        "부진",
+        "불안정",
+        "불신",
+        "원망",
+        "불평",
+        "불화",
+        "갈등",
+        "마찰",
+        "대립",
+        "갈등",
+        "문제",
+        "장애",
+        "핸디캡",
+        "제약",
+        "한계",
+        "부정",
+        "회의적",
+        "냉소적",
+        "비관적",
+        "무기력",
+        "피로",
+        "지침",
     }
 
     # 감성 강도 조정어
-    INTENSIFIERS = {
-        "매우", "아주", "정말", "완전히", "극적으로", "특히", "더욱", "높게", "크게"
-    }
+    INTENSIFIERS = {"매우", "아주", "정말", "완전히", "극적으로", "특히", "더욱", "높게", "크게"}
 
-    NEGATORS = {
-        "안", "못", "지 않", "아니", "전혀", "조금도", "결코", "아예"
-    }
+    NEGATORS = {"안", "못", "지 않", "아니", "전혀", "조금도", "결코", "아예"}
 
     def __init__(self):
         """초기화"""
@@ -67,7 +156,7 @@ class SentimentService:
             return 0.0
 
         # 토큰화 (간단한 한국어 분할)
-        words = re.findall(r'\b\w+\b', text.lower())
+        words = re.findall(r"\b\w+\b", text.lower())
 
         if not words:  # pragma: no cover
             return 0.0
@@ -191,7 +280,7 @@ class SentimentService:
         key_phrase_scores = defaultdict(list)
 
         # 키워드 추출 패턴 (2-3음절 단어)
-        keyword_pattern = re.compile(r'\b\w{2,4}\b')
+        keyword_pattern = re.compile(r"\b\w{2,4}\b")
 
         for segment in segments:
             text = str(segment.get("text", "") or "")
@@ -214,7 +303,9 @@ class SentimentService:
         sorted_result = dict(sorted(result.items(), key=lambda x: x[1], reverse=True)[:20])
         return sorted_result
 
-    def calculate_trend_direction(self, segments: list[dict]) -> Literal["improving", "declining", "stable"]:
+    def calculate_trend_direction(
+        self, segments: list[dict]
+    ) -> Literal["improving", "declining", "stable"]:
         """
         회의 진행 방향에 따른 감성 추이 계산
 
@@ -259,7 +350,9 @@ class SentimentService:
         else:
             return "stable"
 
-    def calculate_overall_trend(self, sentiment_scores: list[float]) -> Literal["improving", "declining", "stable"]:
+    def calculate_overall_trend(
+        self, sentiment_scores: list[float]
+    ) -> Literal["improving", "declining", "stable"]:
         """
         전체 감성 추이 계산
 
@@ -317,21 +410,25 @@ class SentimentService:
                 meeting_id = meeting_data.get("meeting_id", meeting_data.get("task_id", "unknown"))
                 created_at = meeting_data.get("created_at", meeting_data.get("timestamp", ""))
 
-                trends.append({
-                    "meeting_id": meeting_id,
-                    "created_at": created_at,
-                    "sentiment_score": analysis["overall_score"],
-                    "positive_ratio": analysis["positive"],
-                    "negative_ratio": analysis["negative"],
-                    "neutral_ratio": analysis["neutral"],
-                    "segments_count": len(segments),
-                })
+                trends.append(
+                    {
+                        "meeting_id": meeting_id,
+                        "created_at": created_at,
+                        "sentiment_score": analysis["overall_score"],
+                        "positive_ratio": analysis["positive"],
+                        "negative_ratio": analysis["negative"],
+                        "neutral_ratio": analysis["neutral"],
+                        "segments_count": len(segments),
+                    }
+                )
 
         # 시간순 정렬
         trends.sort(key=lambda x: x.get("created_at", ""))
         return trends
 
-    async def get_speaker_segments(self, speaker_id: str, meeting_ids: list[str] | None = None) -> list[dict]:
+    async def get_speaker_segments(
+        self, speaker_id: str, meeting_ids: list[str] | None = None
+    ) -> list[dict]:
         """
         특정 화자의 세그먼트 조회
 

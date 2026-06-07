@@ -76,11 +76,13 @@ class TestBulkBookmarkOperations:
         """대량 삭제 성공."""
         client, mock_session, mock_svc = app_client
 
-        mock_svc.bulk_operation = AsyncMock(return_value={
-            "processed_count": 3,
-            "failed_count": 0,
-            "errors": [],
-        })
+        mock_svc.bulk_operation = AsyncMock(
+            return_value={
+                "processed_count": 3,
+                "failed_count": 0,
+                "errors": [],
+            }
+        )
 
         resp = client.post(
             "/api/v1/bookmarks/bulk",
@@ -102,11 +104,13 @@ class TestBulkBookmarkOperations:
         """대량 카테고리 업데이트."""
         client, mock_session, mock_svc = app_client
 
-        mock_svc.bulk_operation = AsyncMock(return_value={
-            "processed_count": 2,
-            "failed_count": 0,
-            "errors": [],
-        })
+        mock_svc.bulk_operation = AsyncMock(
+            return_value={
+                "processed_count": 2,
+                "failed_count": 0,
+                "errors": [],
+            }
+        )
 
         resp = client.post(
             "/api/v1/bookmarks/bulk",
@@ -162,15 +166,17 @@ class TestBookmarkCleanup:
         """정리 성공."""
         client, mock_session, mock_svc = app_client
 
-        mock_svc.cleanup_bookmarks = AsyncMock(return_value={
-            "total_count": 5,
-            "deleted_count": 3,
-            "archived_count": 2,
-            "duplicate_count": 0,
-            "empty_count": 0,
-            "categories": {},
-            "preview": [],
-        })
+        mock_svc.cleanup_bookmarks = AsyncMock(
+            return_value={
+                "total_count": 5,
+                "deleted_count": 3,
+                "archived_count": 2,
+                "duplicate_count": 0,
+                "empty_count": 0,
+                "categories": {},
+                "preview": [],
+            }
+        )
 
         resp = client.post(
             "/api/v1/bookmarks/cleanup",
@@ -185,15 +191,17 @@ class TestBookmarkCleanup:
         """dry_run 모드 (기본값)."""
         client, mock_session, mock_svc = app_client
 
-        mock_svc.cleanup_bookmarks = AsyncMock(return_value={
-            "total_count": 2,
-            "deleted_count": 0,
-            "archived_count": 0,
-            "duplicate_count": 0,
-            "empty_count": 0,
-            "categories": {},
-            "preview": [],
-        })
+        mock_svc.cleanup_bookmarks = AsyncMock(
+            return_value={
+                "total_count": 2,
+                "deleted_count": 0,
+                "archived_count": 0,
+                "duplicate_count": 0,
+                "empty_count": 0,
+                "categories": {},
+                "preview": [],
+            }
+        )
 
         resp = client.post(
             "/api/v1/bookmarks/cleanup",
@@ -206,15 +214,17 @@ class TestBookmarkCleanup:
         """카테고리 필터 정리."""
         client, mock_session, mock_svc = app_client
 
-        mock_svc.cleanup_bookmarks = AsyncMock(return_value={
-            "total_count": 1,
-            "deleted_count": 1,
-            "archived_count": 0,
-            "duplicate_count": 0,
-            "empty_count": 0,
-            "categories": {},
-            "preview": [],
-        })
+        mock_svc.cleanup_bookmarks = AsyncMock(
+            return_value={
+                "total_count": 1,
+                "deleted_count": 1,
+                "archived_count": 0,
+                "duplicate_count": 0,
+                "empty_count": 0,
+                "categories": {},
+                "preview": [],
+            }
+        )
 
         resp = client.post(
             "/api/v1/bookmarks/cleanup",
@@ -236,11 +246,13 @@ class TestBookmarkExport:
         """JSON 형식 내보내기."""
         client, mock_session, mock_svc = app_client
 
-        mock_svc.export_bookmarks = AsyncMock(return_value={
-            "format": "json",
-            "data": [],
-            "count": 0,
-        })
+        mock_svc.export_bookmarks = AsyncMock(
+            return_value={
+                "format": "json",
+                "data": [],
+                "count": 0,
+            }
+        )
 
         resp = client.post("/api/v1/bookmarks/export?format=json")
 
@@ -250,15 +262,15 @@ class TestBookmarkExport:
         """task_id 필터 내보내기."""
         client, mock_session, mock_svc = app_client
 
-        mock_svc.export_bookmarks = AsyncMock(return_value={
-            "format": "csv",
-            "data": [],
-            "count": 0,
-        })
-
-        resp = client.post(
-            "/api/v1/bookmarks/export?format=csv&task_id=task-123"
+        mock_svc.export_bookmarks = AsyncMock(
+            return_value={
+                "format": "csv",
+                "data": [],
+                "count": 0,
+            }
         )
+
+        resp = client.post("/api/v1/bookmarks/export?format=csv&task_id=task-123")
 
         assert resp.status_code == 200
 
@@ -266,11 +278,13 @@ class TestBookmarkExport:
         """CSV 형식 내보내기."""
         client, mock_session, mock_svc = app_client
 
-        mock_svc.export_bookmarks = AsyncMock(return_value={
-            "format": "csv",
-            "data": "id,text\n1,test",
-            "count": 1,
-        })
+        mock_svc.export_bookmarks = AsyncMock(
+            return_value={
+                "format": "csv",
+                "data": "id,text\n1,test",
+                "count": 1,
+            }
+        )
 
         resp = client.post("/api/v1/bookmarks/export?format=csv")
 

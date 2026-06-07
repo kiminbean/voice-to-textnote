@@ -38,14 +38,9 @@ class TestVerifyGuestToken:
             mock_settings.jwt_secret = "test-secret"
 
             with patch("backend.app.middleware.auth.jwt.decode") as mock_decode:
-                mock_decode.return_value = {
-                    "type": "guest",
-                    "sub": "guest-session-123"
-                }
+                mock_decode.return_value = {"type": "guest", "sub": "guest-session-123"}
 
-                result = await _verify_guest_token(
-                    mock_request, "valid-token", mock_redis
-                )
+                result = await _verify_guest_token(mock_request, "valid-token", mock_redis)
 
                 assert result == "guest-session-123"
                 assert mock_request.state.is_guest is True
@@ -62,9 +57,7 @@ class TestVerifyGuestToken:
 
             with patch("backend.app.middleware.auth.jwt.decode", side_effect=JWTError):
                 with pytest.raises(Exception) as exc_info:
-                    await _verify_guest_token(
-                        mock_request, "invalid-token", mock_redis
-                    )
+                    await _verify_guest_token(mock_request, "invalid-token", mock_redis)
 
                 assert exc_info.value.status_code == 401
 
@@ -81,9 +74,7 @@ class TestVerifyGuestToken:
                 mock_decode.return_value = {"type": "access", "sub": "123"}
 
                 with pytest.raises(Exception) as exc_info:
-                    await _verify_guest_token(
-                        mock_request, "token", mock_redis
-                    )
+                    await _verify_guest_token(mock_request, "token", mock_redis)
 
                 assert exc_info.value.status_code == 401
 
@@ -100,9 +91,7 @@ class TestVerifyGuestToken:
                 mock_decode.return_value = {"type": "guest"}
 
                 with pytest.raises(Exception) as exc_info:
-                    await _verify_guest_token(
-                        mock_request, "token", mock_redis
-                    )
+                    await _verify_guest_token(mock_request, "token", mock_redis)
 
                 assert exc_info.value.status_code == 401
 
@@ -120,15 +109,10 @@ class TestVerifyGuestToken:
             mock_settings.jwt_secret = "test-secret"
 
             with patch("backend.app.middleware.auth.jwt.decode") as mock_decode:
-                mock_decode.return_value = {
-                    "type": "guest",
-                    "sub": "expired-session"
-                }
+                mock_decode.return_value = {"type": "guest", "sub": "expired-session"}
 
                 with pytest.raises(Exception) as exc_info:
-                    await _verify_guest_token(
-                        mock_request, "token", mock_redis
-                )
+                    await _verify_guest_token(mock_request, "token", mock_redis)
 
                 assert exc_info.value.status_code == 401
                 assert "만료" in exc_info.value.detail
@@ -158,12 +142,10 @@ class TestVerifyAccessToken:
                 mock_decode.return_value = {
                     "type": "access",
                     "sub": "user-123",
-                    "email": "user@example.com"
+                    "email": "user@example.com",
                 }
 
-                result = await _verify_access_token(
-                    mock_request, "valid-token", mock_redis
-                )
+                result = await _verify_access_token(mock_request, "valid-token", mock_redis)
 
                 assert result == "user-123"
                 assert mock_request.state.is_guest is False
@@ -181,9 +163,7 @@ class TestVerifyAccessToken:
 
             with patch("backend.app.middleware.auth.jwt.decode", side_effect=JWTError):
                 with pytest.raises(Exception) as exc_info:
-                    await _verify_access_token(
-                        mock_request, "invalid-token", mock_redis
-                    )
+                    await _verify_access_token(mock_request, "invalid-token", mock_redis)
 
                 assert exc_info.value.status_code == 401
                 assert "유효하지 않거나 만료된" in exc_info.value.detail
@@ -201,9 +181,7 @@ class TestVerifyAccessToken:
                 mock_decode.return_value = {"type": "guest", "sub": "123"}
 
                 with pytest.raises(Exception) as exc_info:
-                    await _verify_access_token(
-                        mock_request, "token", mock_redis
-                    )
+                    await _verify_access_token(mock_request, "token", mock_redis)
 
                 assert exc_info.value.status_code == 401
 
@@ -220,9 +198,7 @@ class TestVerifyAccessToken:
                 mock_decode.return_value = {"type": "access"}
 
                 with pytest.raises(Exception) as exc_info:
-                    await _verify_access_token(
-                        mock_request, "token", mock_redis
-                    )
+                    await _verify_access_token(mock_request, "token", mock_redis)
 
                 assert exc_info.value.status_code == 401
 
@@ -239,14 +215,9 @@ class TestVerifyAccessToken:
             mock_settings.jwt_secret = "test-secret"
 
             with patch("backend.app.middleware.auth.jwt.decode") as mock_decode:
-                mock_decode.return_value = {
-                    "type": "access",
-                    "sub": "user-456"
-                }
+                mock_decode.return_value = {"type": "access", "sub": "user-456"}
 
-                result = await _verify_access_token(
-                    mock_request, "token", mock_redis
-                )
+                result = await _verify_access_token(mock_request, "token", mock_redis)
 
                 assert result == "user-456"
                 assert mock_request.state.user_email == ""
@@ -278,9 +249,7 @@ class TestVerifyApiKeyBearerTokens:
                 mock_verify_guest.return_value = "guest-session-abc"
 
                 result = await verify_api_key(
-                    request=mock_request,
-                    api_key_header=None,
-                    redis_client=mock_redis
+                    request=mock_request, api_key_header=None, redis_client=mock_redis
                 )
 
                 assert result == "guest-session-abc"
@@ -303,9 +272,7 @@ class TestVerifyApiKeyBearerTokens:
                 mock_verify_access.return_value = "user-xyz"
 
                 result = await verify_api_key(
-                    request=mock_request,
-                    api_key_header=None,
-                    redis_client=mock_redis
+                    request=mock_request, api_key_header=None, redis_client=mock_redis
                 )
 
                 assert result == "user-xyz"
@@ -326,9 +293,7 @@ class TestVerifyApiKeyBearerTokens:
 
             with pytest.raises(Exception) as exc_info:
                 await verify_api_key(
-                    request=mock_request,
-                    api_key_header=None,
-                    redis_client=mock_redis
+                    request=mock_request, api_key_header=None, redis_client=mock_redis
                 )
 
                 assert exc_info.value.status_code == 503
@@ -348,9 +313,7 @@ class TestVerifyApiKeyBearerTokens:
             mock_settings.environment = "development"
 
             result = await verify_api_key(
-                request=mock_request,
-                api_key_header=None,
-                redis_client=mock_redis
+                request=mock_request, api_key_header=None, redis_client=mock_redis
             )
 
             assert result == "dev-mode"
@@ -369,9 +332,7 @@ class TestVerifyApiKeyBearerTokens:
 
             # secrets.compare_digest는 문자열 비교에 타이밍 안전성 제공
             result = await verify_api_key(
-                request=mock_request,
-                api_key_header="correct-key",
-                redis_client=mock_redis
+                request=mock_request, api_key_header="correct-key", redis_client=mock_redis
             )
 
             assert result == "correct-key"
@@ -390,9 +351,7 @@ class TestVerifyApiKeyBearerTokens:
 
             with pytest.raises(Exception) as exc_info:
                 await verify_api_key(
-                    request=mock_request,
-                    api_key_header="valid-api-key",
-                    redis_client=mock_redis
+                    request=mock_request, api_key_header="valid-api-key", redis_client=mock_redis
                 )
 
             # API Key 검증 실패 (random-token != valid-api-key)

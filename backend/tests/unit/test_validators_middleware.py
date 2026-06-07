@@ -30,6 +30,7 @@ def validation_middleware() -> PathValidationMiddleware:
 @pytest.fixture
 def mock_request():
     """모의 Request 생성 헬퍼"""
+
     def _create_request(path: str) -> Request:
         scope = {
             "type": "http",
@@ -41,6 +42,7 @@ def mock_request():
             "scheme": "http",
         }
         return Request(scope)
+
     return _create_request
 
 
@@ -86,7 +88,9 @@ class TestPathValidationMiddleware:
         assert call_next_called  # call_next가 호출되어야 함
         assert response.status_code == 200
 
-    async def test_block_path_traversal_double_dot(self, validation_middleware, mock_request) -> None:
+    async def test_block_path_traversal_double_dot(
+        self, validation_middleware, mock_request
+    ) -> None:
         """경로 탐색 패턴 차단 (.. 포함) - 라인 51-56"""
         request = mock_request("/api/v1/tasks/../etc/passwd")
         call_next_called = False
@@ -117,7 +121,9 @@ class TestPathValidationMiddleware:
         assert not call_next_called
         assert response.status_code == 400
 
-    async def test_block_path_traversal_backslash(self, validation_middleware, mock_request) -> None:
+    async def test_block_path_traversal_backslash(
+        self, validation_middleware, mock_request
+    ) -> None:
         """경로 탐색 패턴 차단 (\\ 포함) - 라인 51-56"""
         request = mock_request("/api/v1/tasks\\admin\\secret")
         call_next_called = False

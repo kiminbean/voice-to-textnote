@@ -115,7 +115,9 @@ class TestGenerateMindMap:
 
         with patch("backend.pipeline.mind_map_generator.OpenAI") as mock_cls:
             mock_client = MagicMock()
-            mock_client.chat.completions.create.return_value = _make_mock_response(VALID_MIND_MAP_JSON)
+            mock_client.chat.completions.create.return_value = _make_mock_response(
+                VALID_MIND_MAP_JSON
+            )
             mock_cls.return_value = mock_client
 
             root, edges = MindMapGenerator().generate_mind_map(

@@ -26,13 +26,13 @@ class TestPublishTaskEvent:
             redis_client=mock_redis,
             task_id="task-123",
             event_type="status_update",
-            data={"status": "processing", "progress": 50}
+            data={"status": "processing", "progress": 50},
         )
 
         # Assert
         mock_redis.publish.assert_called_once_with(
             "task:task-123:status",
-            '{"event": "status_update", "data": {"status": "processing", "progress": 50}}'
+            '{"event": "status_update", "data": {"status": "processing", "progress": 50}}',
         )
 
     @pytest.mark.asyncio
@@ -47,7 +47,7 @@ class TestPublishTaskEvent:
             redis_client=mock_redis,
             task_id="task-456",
             event_type="completed",
-            data={"status": "completed", "result": "success"}
+            data={"status": "completed", "result": "success"},
         )
 
         mock_redis.publish.assert_called_once()
@@ -67,7 +67,7 @@ class TestPublishTaskEvent:
             redis_client=mock_redis,
             task_id="task-789",
             event_type="failed",
-            data={"status": "failed", "error": "Processing timeout"}
+            data={"status": "failed", "error": "Processing timeout"},
         )
 
         mock_redis.publish.assert_called_once()
@@ -92,13 +92,13 @@ class TestPublishTaskEventSync:
             redis_client=mock_redis,
             task_id="task-sync-123",
             event_type="status_update",
-            data={"status": "processing", "progress": 75}
+            data={"status": "processing", "progress": 75},
         )
 
         # Assert
         mock_redis.publish.assert_called_once_with(
             "task:task-sync-123:status",
-            '{"event": "status_update", "data": {"status": "processing", "progress": 75}}'
+            '{"event": "status_update", "data": {"status": "processing", "progress": 75}}',
         )
 
     def test_publish_sync_with_exception(self):
@@ -113,7 +113,7 @@ class TestPublishTaskEventSync:
             redis_client=mock_redis,
             task_id="task-sync-456",
             event_type="status_update",
-            data={"status": "processing"}
+            data={"status": "processing"},
         )
 
         # 호출은 시도되었음
@@ -131,7 +131,7 @@ class TestPublishTaskEventSync:
                 redis_client=mock_redis,
                 task_id="task-sync-789",
                 event_type="completed",
-                data={"status": "completed", "task_type": "transcription"}
+                data={"status": "completed", "task_type": "transcription"},
             )
 
             # 웹훅 알림 호출 확인
@@ -139,7 +139,7 @@ class TestPublishTaskEventSync:
                 task_id="task-sync-789",
                 event_type="completed",
                 task_type="transcription",
-                data={"status": "completed", "task_type": "transcription"}
+                data={"status": "completed", "task_type": "transcription"},
             )
 
     def test_publish_sync_failed_event_triggers_webhook(self):
@@ -154,7 +154,7 @@ class TestPublishTaskEventSync:
                 redis_client=mock_redis,
                 task_id="task-sync-999",
                 event_type="failed",
-                data={"status": "failed", "error": "Timeout", "task_type": "diarization"}
+                data={"status": "failed", "error": "Timeout", "task_type": "diarization"},
             )
 
             # 웹훅 알림 호출 확인
@@ -162,7 +162,7 @@ class TestPublishTaskEventSync:
                 task_id="task-sync-999",
                 event_type="failed",
                 task_type="diarization",
-                data={"status": "failed", "error": "Timeout", "task_type": "diarization"}
+                data={"status": "failed", "error": "Timeout", "task_type": "diarization"},
             )
 
     def test_publish_sync_status_update_does_not_trigger_webhook(self):
@@ -177,7 +177,7 @@ class TestPublishTaskEventSync:
                 redis_client=mock_redis,
                 task_id="task-sync-111",
                 event_type="status_update",
-                data={"status": "processing", "progress": 50}
+                data={"status": "processing", "progress": 50},
             )
 
             # 웹훅 알림 호출되지 않음
@@ -190,13 +190,16 @@ class TestPublishTaskEventSync:
 
         from backend.events.publisher import publish_task_event_sync
 
-        with patch("backend.services.webhook_notifier.notify_webhooks_sync", side_effect=Exception("Webhook error")):
+        with patch(
+            "backend.services.webhook_notifier.notify_webhooks_sync",
+            side_effect=Exception("Webhook error"),
+        ):
             # 예외가 발생하지 않고 처리되어야 함
             publish_task_event_sync(
                 redis_client=mock_redis,
                 task_id="task-sync-222",
                 event_type="completed",
-                data={"status": "completed"}
+                data={"status": "completed"},
             )
 
             # Redis 발행은 성공
@@ -214,7 +217,7 @@ class TestPublishTaskEventSync:
                 redis_client=mock_redis,
                 task_id="task-sync-333",
                 event_type="completed",
-                data={"status": "completed"}  # task_type 없음
+                data={"status": "completed"},  # task_type 없음
             )
 
             # task_type 기본값 확인

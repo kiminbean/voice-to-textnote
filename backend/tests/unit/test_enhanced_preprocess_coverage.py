@@ -30,8 +30,7 @@ def _make_wav_bytes(duration: float = 0.5, sr: int = 16000) -> bytes:
         wf.setsampwidth(2)
         wf.setframerate(sr)
         frames = b"".join(
-            struct.pack("<h", int(16000 * math.sin(2 * math.pi * 440 * i / sr)))
-            for i in range(n)
+            struct.pack("<h", int(16000 * math.sin(2 * math.pi * 440 * i / sr))) for i in range(n)
         )
         wf.writeframes(frames)
     return buf.getvalue()
@@ -72,9 +71,13 @@ class TestEnhancedPreprocess:
 
     def test_invalid_format_returns_400(self, app_client):
         """지원하지 않는 포맷 -> 400."""
-        with patch("backend.app.api.v1.audio.enhanced_preprocess.settings") as mock_s, \
-             patch("backend.app.api.v1.audio.enhanced_preprocess.validate_audio_format",
-                   return_value=(False, "지원하지 않는 포맷")):
+        with (
+            patch("backend.app.api.v1.audio.enhanced_preprocess.settings") as mock_s,
+            patch(
+                "backend.app.api.v1.audio.enhanced_preprocess.validate_audio_format",
+                return_value=(False, "지원하지 않는 포맷"),
+            ),
+        ):
             mock_s.audio_preprocess_enabled = True
             resp = app_client.post(
                 "/api/v1/enhanced/preprocess",
@@ -84,14 +87,20 @@ class TestEnhancedPreprocess:
 
     def test_file_too_large_returns_500(self, app_client):
         """파일 크기 초과 -> bad_request가 except Exception에서 잡혀 500으로 승격."""
-        with patch("backend.app.api.v1.audio.enhanced_preprocess.settings") as mock_s, \
-             patch("backend.app.api.v1.audio.enhanced_preprocess.validate_audio_format",
-                   return_value=(True, "")):
+        with (
+            patch("backend.app.api.v1.audio.enhanced_preprocess.settings") as mock_s,
+            patch(
+                "backend.app.api.v1.audio.enhanced_preprocess.validate_audio_format",
+                return_value=(True, ""),
+            ),
+        ):
             mock_s.audio_preprocess_enabled = True
             mock_s.audio_preprocess_max_file_mb = 0  # 0MB 제한
 
-            with patch("backend.app.api.v1.audio.enhanced_preprocess.get_enhanced_processor",
-                       new_callable=AsyncMock) as mock_proc:
+            with patch(
+                "backend.app.api.v1.audio.enhanced_preprocess.get_enhanced_processor",
+                new_callable=AsyncMock,
+            ) as mock_proc:
                 mock_processor = MagicMock()
                 mock_proc.return_value = mock_processor
 
@@ -106,20 +115,28 @@ class TestEnhancedPreprocess:
         """업로드 저장 실패 -> 400."""
         wav_bytes = _make_wav_bytes()
 
-        with patch("backend.app.api.v1.audio.enhanced_preprocess.settings") as mock_s, \
-             patch("backend.app.api.v1.audio.enhanced_preprocess.validate_audio_format",
-                   return_value=(True, "")):
+        with (
+            patch("backend.app.api.v1.audio.enhanced_preprocess.settings") as mock_s,
+            patch(
+                "backend.app.api.v1.audio.enhanced_preprocess.validate_audio_format",
+                return_value=(True, ""),
+            ),
+        ):
             mock_s.audio_preprocess_enabled = True
             mock_s.audio_preprocess_max_file_mb = 500
 
-            with patch("backend.app.api.v1.audio.enhanced_preprocess.get_enhanced_processor",
-                       new_callable=AsyncMock) as mock_proc:
+            with patch(
+                "backend.app.api.v1.audio.enhanced_preprocess.get_enhanced_processor",
+                new_callable=AsyncMock,
+            ) as mock_proc:
                 mock_processor = MagicMock()
                 mock_proc.return_value = mock_processor
 
                 # 파일 읽기 중 예외 발생 시뮬레이션
-                with patch("backend.app.api.v1.audio.enhanced_preprocess.tempfile.mkstemp",
-                           side_effect=OSError("디스크 공간 부족")):
+                with patch(
+                    "backend.app.api.v1.audio.enhanced_preprocess.tempfile.mkstemp",
+                    side_effect=OSError("디스크 공간 부족"),
+                ):
                     # mkstemp 실패 시 내부 예외 → 500
                     resp = app_client.post(
                         "/api/v1/enhanced/preprocess",
@@ -131,18 +148,22 @@ class TestEnhancedPreprocess:
         """프로세서 실패 -> 400."""
         wav_bytes = _make_wav_bytes()
 
-        with patch("backend.app.api.v1.audio.enhanced_preprocess.settings") as mock_s, \
-             patch("backend.app.api.v1.audio.enhanced_preprocess.validate_audio_format",
-                   return_value=(True, "")):
+        with (
+            patch("backend.app.api.v1.audio.enhanced_preprocess.settings") as mock_s,
+            patch(
+                "backend.app.api.v1.audio.enhanced_preprocess.validate_audio_format",
+                return_value=(True, ""),
+            ),
+        ):
             mock_s.audio_preprocess_enabled = True
             mock_s.audio_preprocess_max_file_mb = 500
 
-            with patch("backend.app.api.v1.audio.enhanced_preprocess.get_enhanced_processor",
-                       new_callable=AsyncMock) as mock_proc:
+            with patch(
+                "backend.app.api.v1.audio.enhanced_preprocess.get_enhanced_processor",
+                new_callable=AsyncMock,
+            ) as mock_proc:
                 mock_processor = MagicMock()
-                mock_processor.preprocess_batch = AsyncMock(
-                    side_effect=RuntimeError("처리 실패")
-                )
+                mock_processor.preprocess_batch = AsyncMock(side_effect=RuntimeError("처리 실패"))
                 mock_proc.return_value = mock_processor
 
                 resp = app_client.post(
@@ -155,15 +176,21 @@ class TestEnhancedPreprocess:
         """예상치 못한 예외 -> 500."""
         wav_bytes = _make_wav_bytes()
 
-        with patch("backend.app.api.v1.audio.enhanced_preprocess.settings") as mock_s, \
-             patch("backend.app.api.v1.audio.enhanced_preprocess.validate_audio_format",
-                   return_value=(True, "")):
+        with (
+            patch("backend.app.api.v1.audio.enhanced_preprocess.settings") as mock_s,
+            patch(
+                "backend.app.api.v1.audio.enhanced_preprocess.validate_audio_format",
+                return_value=(True, ""),
+            ),
+        ):
             mock_s.audio_preprocess_enabled = True
             mock_s.audio_preprocess_max_file_mb = 500
 
-            with patch("backend.app.api.v1.audio.enhanced_preprocess.get_enhanced_processor",
-                       new_callable=AsyncMock,
-                       side_effect=RuntimeError("모델 로드 실패")):
+            with patch(
+                "backend.app.api.v1.audio.enhanced_preprocess.get_enhanced_processor",
+                new_callable=AsyncMock,
+                side_effect=RuntimeError("모델 로드 실패"),
+            ):
                 resp = app_client.post(
                     "/api/v1/enhanced/preprocess",
                     files={"file": ("test.wav", wav_bytes, "audio/wav")},
@@ -195,10 +222,7 @@ class TestBatchPreprocess:
         """파일 수 초과 (21개) -> 400."""
         with patch("backend.app.api.v1.audio.enhanced_preprocess.settings") as mock_s:
             mock_s.audio_preprocess_enabled = True
-            files = [
-                ("files", (f"f{i}.wav", b"x", "audio/wav"))
-                for i in range(21)
-            ]
+            files = [("files", (f"f{i}.wav", b"x", "audio/wav")) for i in range(21)]
             resp = app_client.post(
                 "/api/v1/enhanced/batch",
                 files=files,
@@ -207,9 +231,13 @@ class TestBatchPreprocess:
 
     def test_batch_invalid_format_returns_400(self, app_client):
         """지원하지 않는 포맷 포함 -> 400."""
-        with patch("backend.app.api.v1.audio.enhanced_preprocess.settings") as mock_s, \
-             patch("backend.app.api.v1.audio.enhanced_preprocess.validate_audio_format",
-                   return_value=(False, "지원하지 않는 포맷")):
+        with (
+            patch("backend.app.api.v1.audio.enhanced_preprocess.settings") as mock_s,
+            patch(
+                "backend.app.api.v1.audio.enhanced_preprocess.validate_audio_format",
+                return_value=(False, "지원하지 않는 포맷"),
+            ),
+        ):
             mock_s.audio_preprocess_enabled = True
             resp = app_client.post(
                 "/api/v1/enhanced/batch",
@@ -221,14 +249,20 @@ class TestBatchPreprocess:
 
     def test_batch_file_too_large_returns_400(self, app_client):
         """배치 파일 크기 초과 -> 400."""
-        with patch("backend.app.api.v1.audio.enhanced_preprocess.settings") as mock_s, \
-             patch("backend.app.api.v1.audio.enhanced_preprocess.validate_audio_format",
-                   return_value=(True, "")):
+        with (
+            patch("backend.app.api.v1.audio.enhanced_preprocess.settings") as mock_s,
+            patch(
+                "backend.app.api.v1.audio.enhanced_preprocess.validate_audio_format",
+                return_value=(True, ""),
+            ),
+        ):
             mock_s.audio_preprocess_enabled = True
             mock_s.audio_preprocess_max_file_mb = 0
 
-            with patch("backend.app.api.v1.audio.enhanced_preprocess.get_enhanced_processor",
-                       new_callable=AsyncMock) as mock_proc:
+            with patch(
+                "backend.app.api.v1.audio.enhanced_preprocess.get_enhanced_processor",
+                new_callable=AsyncMock,
+            ) as mock_proc:
                 mock_processor = MagicMock()
                 mock_proc.return_value = mock_processor
 
@@ -242,14 +276,20 @@ class TestBatchPreprocess:
 
     def test_batch_processor_failure_returns_400(self, app_client):
         """배치 처리 실패 -> 400."""
-        with patch("backend.app.api.v1.audio.enhanced_preprocess.settings") as mock_s, \
-             patch("backend.app.api.v1.audio.enhanced_preprocess.validate_audio_format",
-                   return_value=(True, "")):
+        with (
+            patch("backend.app.api.v1.audio.enhanced_preprocess.settings") as mock_s,
+            patch(
+                "backend.app.api.v1.audio.enhanced_preprocess.validate_audio_format",
+                return_value=(True, ""),
+            ),
+        ):
             mock_s.audio_preprocess_enabled = True
             mock_s.audio_preprocess_max_file_mb = 500
 
-            with patch("backend.app.api.v1.audio.enhanced_preprocess.get_enhanced_processor",
-                       new_callable=AsyncMock) as mock_proc:
+            with patch(
+                "backend.app.api.v1.audio.enhanced_preprocess.get_enhanced_processor",
+                new_callable=AsyncMock,
+            ) as mock_proc:
                 mock_processor = MagicMock()
                 mock_processor.preprocess_batch = AsyncMock(
                     side_effect=RuntimeError("배치 처리 실패")
@@ -266,15 +306,21 @@ class TestBatchPreprocess:
 
     def test_batch_unexpected_error_returns_500(self, app_client):
         """예상치 못한 예외 -> 500."""
-        with patch("backend.app.api.v1.audio.enhanced_preprocess.settings") as mock_s, \
-             patch("backend.app.api.v1.audio.enhanced_preprocess.validate_audio_format",
-                   return_value=(True, "")):
+        with (
+            patch("backend.app.api.v1.audio.enhanced_preprocess.settings") as mock_s,
+            patch(
+                "backend.app.api.v1.audio.enhanced_preprocess.validate_audio_format",
+                return_value=(True, ""),
+            ),
+        ):
             mock_s.audio_preprocess_enabled = True
             mock_s.audio_preprocess_max_file_mb = 500
 
-            with patch("backend.app.api.v1.audio.enhanced_preprocess.get_enhanced_processor",
-                       new_callable=AsyncMock,
-                       side_effect=RuntimeError("모델 로드 실패")):
+            with patch(
+                "backend.app.api.v1.audio.enhanced_preprocess.get_enhanced_processor",
+                new_callable=AsyncMock,
+                side_effect=RuntimeError("모델 로드 실패"),
+            ):
                 resp = app_client.post(
                     "/api/v1/enhanced/batch",
                     files=[
@@ -319,9 +365,14 @@ class TestGetModelStatus:
         mock_processor.ai_model = MagicMock()
         mock_processor.ai_model.model_loaded = True
 
-        with patch("backend.app.api.v1.audio.enhanced_preprocess.settings") as mock_s, \
-             patch("backend.app.api.v1.audio.enhanced_preprocess.get_enhanced_processor",
-                   new_callable=AsyncMock, return_value=mock_processor):
+        with (
+            patch("backend.app.api.v1.audio.enhanced_preprocess.settings") as mock_s,
+            patch(
+                "backend.app.api.v1.audio.enhanced_preprocess.get_enhanced_processor",
+                new_callable=AsyncMock,
+                return_value=mock_processor,
+            ),
+        ):
             mock_s.audio_preprocess_max_file_mb = 500
             resp = app_client.get("/api/v1/enhanced/status")
         assert resp.status_code == 200

@@ -213,7 +213,9 @@ class TestGetCurrentUser:
         # AuthService mock - 지연 임포트되므로 경로 주의
         with patch("backend.services.auth_service.AuthService") as mock_auth_service_class:
             mock_auth_service = MagicMock()
-            mock_auth_service.decode_access_token = MagicMock(return_value={"sub": str(mock_user.id)})
+            mock_auth_service.decode_access_token = MagicMock(
+                return_value={"sub": str(mock_user.id)}
+            )
             mock_auth_service_class.return_value = mock_auth_service
 
             # DB query mock

@@ -29,6 +29,7 @@ from backend.db.models import TaskResult
 def meeting_service():
     """MeetingShareService 인스턴스"""
     from backend.services.meeting_share_service import MeetingShareService
+
     return MeetingShareService()
 
 

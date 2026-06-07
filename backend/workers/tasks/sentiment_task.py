@@ -56,8 +56,10 @@ def _update_task_status(
 
     r.setex(status_key, settings.summary_result_ttl, json.dumps(data))
 
-    event_type = "completed" if status == TaskStatus.completed else (
-        "failed" if status == TaskStatus.failed else "status_update"
+    event_type = (
+        "completed"
+        if status == TaskStatus.completed
+        else ("failed" if status == TaskStatus.failed else "status_update")
     )
     publish_task_event_sync(r, task_id, event_type, data)
 
@@ -153,7 +155,9 @@ def sentiment_task(
             upstream_error = min_result.get("error_message") or (
                 f"회의록 작업이 완료되지 않았습니다: status={min_status}"
             )
-            raise RuntimeError(f"회의록 생성 실패로 감정 분석을 시작할 수 없습니다: {upstream_error}")
+            raise RuntimeError(
+                f"회의록 생성 실패로 감정 분석을 시작할 수 없습니다: {upstream_error}"
+            )
 
         segments = min_result.get("segments", [])
         speaker_stats = min_result.get("speakers", [])
@@ -194,6 +198,7 @@ def sentiment_task(
         # DB 영속 저장 (best-effort)
         try:
             from backend.services.sync_service import persist_task_result
+
             persist_task_result(
                 task_id=task_id,
                 task_type="sentiment",

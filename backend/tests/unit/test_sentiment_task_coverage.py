@@ -55,7 +55,9 @@ class TestSentimentTaskCoverage:
         from backend.workers.tasks.sentiment_task import _get_redis
 
         mock_client = MagicMock()
-        with patch("backend.workers.tasks.sentiment_task.get_worker_redis", return_value=mock_client):
+        with patch(
+            "backend.workers.tasks.sentiment_task.get_worker_redis", return_value=mock_client
+        ):
             result = _get_redis()
 
         assert result is mock_client
@@ -75,9 +77,11 @@ class TestSentimentTaskCoverage:
         mock_analyzer_cls = MagicMock()
         mock_analyzer_cls.return_value.analyze.side_effect = Exception("Analysis failed")
 
-        with patch("backend.workers.tasks.sentiment_task._get_redis", return_value=mock_redis), \
-             patch("backend.workers.tasks.sentiment_task.settings") as mock_settings, \
-             patch("backend.workers.tasks.sentiment_task.SentimentAnalyzer", mock_analyzer_cls):
+        with (
+            patch("backend.workers.tasks.sentiment_task._get_redis", return_value=mock_redis),
+            patch("backend.workers.tasks.sentiment_task.settings") as mock_settings,
+            patch("backend.workers.tasks.sentiment_task.SentimentAnalyzer", mock_analyzer_cls),
+        ):
             mock_settings.summary_result_ttl = 86400
             mock_settings.openai_api_key = "sk-test"
             mock_settings.summary_model = "gpt-4o-mini"

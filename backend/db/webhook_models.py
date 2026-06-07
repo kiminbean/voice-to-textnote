@@ -17,16 +17,18 @@ from sqlalchemy.orm import Mapped, mapped_column
 from backend.db.models import Base, _utcnow
 
 # 지원 이벤트 타입
-WEBHOOK_EVENT_TYPES = frozenset({
-    "transcription.completed",
-    "transcription.failed",
-    "diarization.completed",
-    "diarization.failed",
-    "minutes.completed",
-    "minutes.failed",
-    "summary.completed",
-    "summary.failed",
-})
+WEBHOOK_EVENT_TYPES = frozenset(
+    {
+        "transcription.completed",
+        "transcription.failed",
+        "diarization.completed",
+        "diarization.failed",
+        "minutes.completed",
+        "minutes.failed",
+        "summary.completed",
+        "summary.failed",
+    }
+)
 
 
 class WebhookEndpoint(Base):
@@ -79,9 +81,7 @@ class WebhookEndpoint(Base):
         onupdate=_utcnow,
     )
 
-    __table_args__ = (
-        Index("ix_webhook_endpoints_user_active", "user_id", "is_active"),
-    )
+    __table_args__ = (Index("ix_webhook_endpoints_user_active", "user_id", "is_active"),)
 
     def __repr__(self) -> str:
         return (

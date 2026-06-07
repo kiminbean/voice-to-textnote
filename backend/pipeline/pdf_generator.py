@@ -28,11 +28,11 @@ class MinutesPDFGenerator:
     MARGIN = 15
 
     # 색상 정의 (RGB)
-    COLOR_TITLE = (30, 30, 100)      # 진한 남색 - 제목
-    COLOR_SECTION = (50, 50, 150)    # 남색 - 섹션 헤더
-    COLOR_BORDER = (180, 180, 200)   # 연한 회색 - 테이블 테두리
+    COLOR_TITLE = (30, 30, 100)  # 진한 남색 - 제목
+    COLOR_SECTION = (50, 50, 150)  # 남색 - 섹션 헤더
+    COLOR_BORDER = (180, 180, 200)  # 연한 회색 - 테이블 테두리
     COLOR_HEADER_BG = (230, 230, 245)  # 연한 라벤더 - 테이블 헤더 배경
-    COLOR_TEXT = (40, 40, 40)        # 거의 검정 - 본문
+    COLOR_TEXT = (40, 40, 40)  # 거의 검정 - 본문
 
     def __init__(self) -> None:
         """PDF 객체 초기화 및 폰트 등록"""
@@ -80,9 +80,11 @@ class MinutesPDFGenerator:
         self.pdf.add_page()
 
         # 양식 테이블이 있으면 양식 형태로 렌더링 (화면과 동일)
-        if (summary_data
-                and summary_data.get("template_structure")
-                and summary_data["template_structure"].get("table_layout")):
+        if (
+            summary_data
+            and summary_data.get("template_structure")
+            and summary_data["template_structure"].get("table_layout")
+        ):
             self._render_template_table(minutes_data, summary_data)
         else:
             # 기존 기본 레이아웃
@@ -137,8 +139,13 @@ class MinutesPDFGenerator:
         total_speakers = minutes_data.get("total_speakers", 0)
 
         pdf.cell(40, 7, "작성일:", new_x="RIGHT", new_y="TOP")
-        pdf.cell(0, 7, created_at[:19] if len(created_at) >= 19 else created_at,
-                 new_x="LMARGIN", new_y="NEXT")
+        pdf.cell(
+            0,
+            7,
+            created_at[:19] if len(created_at) >= 19 else created_at,
+            new_x="LMARGIN",
+            new_y="NEXT",
+        )
         pdf.cell(40, 7, "총 길이:", new_x="RIGHT", new_y="TOP")
         pdf.cell(0, 7, duration_str, new_x="LMARGIN", new_y="NEXT")
         pdf.cell(40, 7, "참여자 수:", new_x="RIGHT", new_y="TOP")
@@ -248,6 +255,7 @@ class MinutesPDFGenerator:
         if summary_text.strip().startswith("{"):
             try:
                 import json as _json
+
                 parsed = _json.loads(summary_text)
                 if isinstance(parsed, dict) and "summary_text" in parsed:
                     summary_text = parsed["summary_text"]
@@ -361,8 +369,14 @@ class MinutesPDFGenerator:
         # 제목
         pdf.set_font("NotoSansKR", "B", 16)
         pdf.set_text_color(*self.COLOR_TITLE)
-        pdf.cell(0, 10, f"회의록_{created_at[:10] if created_at else ''}", align="L",
-                 new_x="LMARGIN", new_y="NEXT")
+        pdf.cell(
+            0,
+            10,
+            f"회의록_{created_at[:10] if created_at else ''}",
+            align="L",
+            new_x="LMARGIN",
+            new_y="NEXT",
+        )
         pdf.ln(4)
 
         usable_width = pdf.w - 2 * self.MARGIN
@@ -399,8 +413,7 @@ class MinutesPDFGenerator:
                 pdf.cell(label_width, row_h, label, border=1, fill=True)
                 pdf.set_font("NotoSansKR", "", 9)
                 pdf.set_fill_color(255, 255, 255)
-                pdf.cell(value_width, row_h, value, border=1,
-                         new_x="LMARGIN", new_y="NEXT")
+                pdf.cell(value_width, row_h, value, border=1, new_x="LMARGIN", new_y="NEXT")
 
         def render_split_row(labels: list[str]) -> None:
             """N열 행: 라벨1 | 내용1 | 라벨2 | 내용2 ..."""

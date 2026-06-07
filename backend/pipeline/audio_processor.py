@@ -26,12 +26,12 @@ TARGET_CHANNELS = 1
 TARGET_DBFS = -20.0  # 정규화 목표 레벨
 
 # SPEC-AUDIO-PREP-001: 전처리 옵션 기본값 및 안전 한계
-DEFAULT_HIGH_PASS_HZ = 80     # 음성 대역 보존 (저주파 험/팬 노이즈 제거)
+DEFAULT_HIGH_PASS_HZ = 80  # 음성 대역 보존 (저주파 험/팬 노이즈 제거)
 MAX_HIGH_PASS_HZ = 500
 MIN_LOW_PASS_HZ = 1000
 MAX_LOW_PASS_HZ = 16000
-DEFAULT_SILENCE_THRESHOLD_DB = -40.0   # 이 아래는 무음으로 간주
-DEFAULT_SILENCE_MIN_LEN_MS = 700       # 이 길이 이상 연속 무음 구간만 잘라냄
+DEFAULT_SILENCE_THRESHOLD_DB = -40.0  # 이 아래는 무음으로 간주
+DEFAULT_SILENCE_MIN_LEN_MS = 700  # 이 길이 이상 연속 무음 구간만 잘라냄
 
 
 def convert_to_wav_16k(input_path: str | Path, output_path: str | Path | None = None) -> Path:
@@ -165,8 +165,8 @@ class PreprocessOptions:
     convert_to_16k_mono: bool = True
     normalize: bool = True
     target_dbfs: float = TARGET_DBFS
-    high_pass_hz: int | None = None         # 예: 80 → 80Hz 미만 차단
-    low_pass_hz: int | None = None          # 예: 8000 → 8000Hz 초과 차단
+    high_pass_hz: int | None = None  # 예: 80 → 80Hz 미만 차단
+    low_pass_hz: int | None = None  # 예: 8000 → 8000Hz 초과 차단
     trim_silence: bool = False
     silence_threshold_db: float = DEFAULT_SILENCE_THRESHOLD_DB
     silence_min_len_ms: int = DEFAULT_SILENCE_MIN_LEN_MS
@@ -175,9 +175,7 @@ class PreprocessOptions:
         """옵션 안전 범위 검증. 위반 시 ValueError."""
         if self.high_pass_hz is not None:
             if not (1 <= self.high_pass_hz <= MAX_HIGH_PASS_HZ):
-                raise ValueError(
-                    f"high_pass_hz는 1~{MAX_HIGH_PASS_HZ}Hz 사이여야 합니다."
-                )
+                raise ValueError(f"high_pass_hz는 1~{MAX_HIGH_PASS_HZ}Hz 사이여야 합니다.")
         if self.low_pass_hz is not None:
             if not (MIN_LOW_PASS_HZ <= self.low_pass_hz <= MAX_LOW_PASS_HZ):
                 raise ValueError(
@@ -217,9 +215,7 @@ def trim_leading_trailing_silence(
     return audio[start_ms:end_ms]
 
 
-def _apply_preprocess_options(
-    audio: AudioSegment, options: PreprocessOptions
-) -> AudioSegment:
+def _apply_preprocess_options(audio: AudioSegment, options: PreprocessOptions) -> AudioSegment:
     """검증된 PreprocessOptions를 AudioSegment에 순차 적용."""
     if options.convert_to_16k_mono:
         if audio.channels != TARGET_CHANNELS:

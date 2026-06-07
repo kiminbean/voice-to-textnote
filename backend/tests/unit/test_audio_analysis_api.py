@@ -27,8 +27,7 @@ def _make_wav_bytes(duration: float = 0.5, sr: int = 16000) -> bytes:
         wf.setsampwidth(2)
         wf.setframerate(sr)
         frames = b"".join(
-            struct.pack("<h", int(16000 * math.sin(2 * math.pi * 440 * i / sr)))
-            for i in range(n)
+            struct.pack("<h", int(16000 * math.sin(2 * math.pi * 440 * i / sr))) for i in range(n)
         )
         wf.writeframes(frames)
     return buf.getvalue()
@@ -82,8 +81,12 @@ class TestAnalyzeAudioFile:
 
     def test_successful_analysis(self, app_client):
         mock_result = _make_analysis_result()
-        with patch("backend.app.api.v1.audio.audio_analysis.analyze_audio", return_value=mock_result), \
-             patch("backend.app.api.v1.audio.audio_analysis.settings") as mock_s:
+        with (
+            patch(
+                "backend.app.api.v1.audio.audio_analysis.analyze_audio", return_value=mock_result
+            ),
+            patch("backend.app.api.v1.audio.audio_analysis.settings") as mock_s,
+        ):
             mock_s.max_file_size_mb = 500
             resp = app_client.post(
                 "/api/v1/audio-analysis",
@@ -114,9 +117,13 @@ class TestAnalyzeAudioFile:
         assert resp.status_code == 413
 
     def test_analysis_value_error_returns_422(self, app_client):
-        with patch("backend.app.api.v1.audio.audio_analysis.analyze_audio",
-                    side_effect=ValueError("오디오 디코딩 실패")), \
-             patch("backend.app.api.v1.audio.audio_analysis.settings") as mock_s:
+        with (
+            patch(
+                "backend.app.api.v1.audio.audio_analysis.analyze_audio",
+                side_effect=ValueError("오디오 디코딩 실패"),
+            ),
+            patch("backend.app.api.v1.audio.audio_analysis.settings") as mock_s,
+        ):
             mock_s.max_file_size_mb = 500
             resp = app_client.post(
                 "/api/v1/audio-analysis",
@@ -125,9 +132,13 @@ class TestAnalyzeAudioFile:
         assert resp.status_code == 422
 
     def test_analysis_unexpected_error_returns_500(self, app_client):
-        with patch("backend.app.api.v1.audio.audio_analysis.analyze_audio",
-                    side_effect=RuntimeError("pydub 장애")), \
-             patch("backend.app.api.v1.audio.audio_analysis.settings") as mock_s:
+        with (
+            patch(
+                "backend.app.api.v1.audio.audio_analysis.analyze_audio",
+                side_effect=RuntimeError("pydub 장애"),
+            ),
+            patch("backend.app.api.v1.audio.audio_analysis.settings") as mock_s,
+        ):
             mock_s.max_file_size_mb = 500
             resp = app_client.post(
                 "/api/v1/audio-analysis",
@@ -137,8 +148,12 @@ class TestAnalyzeAudioFile:
 
     def test_with_custom_silence_params(self, app_client):
         mock_result = _make_analysis_result()
-        with patch("backend.app.api.v1.audio.audio_analysis.analyze_audio", return_value=mock_result) as mock_analyze, \
-             patch("backend.app.api.v1.audio.audio_analysis.settings") as mock_s:
+        with (
+            patch(
+                "backend.app.api.v1.audio.audio_analysis.analyze_audio", return_value=mock_result
+            ) as mock_analyze,
+            patch("backend.app.api.v1.audio.audio_analysis.settings") as mock_s,
+        ):
             mock_s.max_file_size_mb = 500
             resp = app_client.post(
                 "/api/v1/audio-analysis",
@@ -158,8 +173,12 @@ class TestAnalyzeAudioFile:
     def test_no_filename_uses_unknown(self, app_client):
         """filename이 없어도 'unknown'으로 처리."""
         mock_result = _make_analysis_result()
-        with patch("backend.app.api.v1.audio.audio_analysis.analyze_audio", return_value=mock_result), \
-             patch("backend.app.api.v1.audio.audio_analysis.settings") as mock_s:
+        with (
+            patch(
+                "backend.app.api.v1.audio.audio_analysis.analyze_audio", return_value=mock_result
+            ),
+            patch("backend.app.api.v1.audio.audio_analysis.settings") as mock_s,
+        ):
             mock_s.max_file_size_mb = 500
             resp = app_client.post(
                 "/api/v1/audio-analysis",

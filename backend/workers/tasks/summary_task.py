@@ -65,8 +65,10 @@ def _update_task_status(
     r.setex(status_key, settings.summary_result_ttl, json.dumps(data))
 
     # SSE 스트림 구독자에게 이벤트 발행
-    event_type = "completed" if status == TaskStatus.completed else (
-        "failed" if status == TaskStatus.failed else "status_update"
+    event_type = (
+        "completed"
+        if status == TaskStatus.completed
+        else ("failed" if status == TaskStatus.failed else "status_update")
     )
     publish_task_event_sync(r, task_id, event_type, data)
 
@@ -260,6 +262,7 @@ def summary_task(
         # DB 영속 저장 (best-effort, REQ-PERSIST-008)
         try:
             from backend.services.sync_service import persist_task_result
+
             persist_task_result(
                 task_id=task_id,
                 task_type="summary",
@@ -296,6 +299,7 @@ def summary_task(
         # DB 영속 저장 - 실패 상태 (best-effort, REQ-PERSIST-008)
         try:
             from backend.services.sync_service import persist_task_result
+
             persist_task_result(
                 task_id=task_id,
                 task_type="summary",
@@ -324,6 +328,7 @@ def summary_task(
         # DB 영속 저장 - 실패 상태 (best-effort, REQ-PERSIST-008)
         try:
             from backend.services.sync_service import persist_task_result
+
             persist_task_result(
                 task_id=task_id,
                 task_type="summary",

@@ -66,8 +66,10 @@ def _update_task_status(
     r.setex(status_key, settings.minutes_result_ttl, json.dumps(data))
 
     # SSE 스트림 구독자에게 이벤트 발행
-    event_type = "completed" if status == TaskStatus.completed else (
-        "failed" if status == TaskStatus.failed else "status_update"
+    event_type = (
+        "completed"
+        if status == TaskStatus.completed
+        else ("failed" if status == TaskStatus.failed else "status_update")
     )
     publish_task_event_sync(r, task_id, event_type, data)
 
@@ -203,9 +205,7 @@ def minutes_task(
             stt_result_key = f"task:result:{stt_task_id}"
             stt_result_raw = r.get(stt_result_key)
             if stt_result_raw is None:
-                raise FileNotFoundError(
-                    f"STT 결과를 찾을 수 없습니다: stt_task_id={stt_task_id}"
-                )
+                raise FileNotFoundError(f"STT 결과를 찾을 수 없습니다: stt_task_id={stt_task_id}")
             stt_result = json.loads(stt_result_raw)  # pragma: no cover
             if stt_result.get("status") != TaskStatus.completed.value:
                 upstream_error = _extract_cached_error_message(stt_result) or (  # pragma: no cover
@@ -272,6 +272,7 @@ def minutes_task(
         # DB 영속 저장 (best-effort, REQ-PERSIST-006)
         try:
             from backend.services.sync_service import persist_task_result
+
             persist_task_result(
                 task_id=task_id,
                 task_type="minutes",
@@ -309,6 +310,7 @@ def minutes_task(
         # DB 영속 저장 - 실패 상태 (best-effort, REQ-PERSIST-007)
         try:
             from backend.services.sync_service import persist_task_result
+
             persist_task_result(
                 task_id=task_id,
                 task_type="minutes",
@@ -337,6 +339,7 @@ def minutes_task(
         # DB 영속 저장 - 실패 상태 (best-effort, REQ-PERSIST-007)
         try:
             from backend.services.sync_service import persist_task_result
+
             persist_task_result(
                 task_id=task_id,
                 task_type="minutes",

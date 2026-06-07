@@ -11,7 +11,6 @@ This conftest must be at backend/tests/ level to run before any test files are c
 """
 
 import sys
-
 import uuid
 from datetime import datetime
 
@@ -19,11 +18,9 @@ from sqlalchemy import Float, String, Text
 from sqlalchemy.dialects.sqlite import JSON
 from sqlalchemy.orm import Mapped, mapped_column
 
-
 # ---------------------------------------------------------------------------
 # 1. Inject backend.schemas.action_item -> re-export from backend.app.schemas.action_item
 # ---------------------------------------------------------------------------
-
 import backend.app.schemas.action_item as _real_action_item_schema  # noqa: E402
 
 sys.modules["backend.schemas.action_item"] = _real_action_item_schema

@@ -31,6 +31,7 @@ from backend.schemas.advanced_search import (
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_search_result_item(task_id: str = "t1") -> dict:
     return {
         "id": "uuid-001",
@@ -126,6 +127,7 @@ def _build_search_body(**overrides) -> dict:
 # ---------------------------------------------------------------------------
 # POST /search 테스트
 # ---------------------------------------------------------------------------
+
 
 class TestAdvancedSearchEndpoint:
     """POST /advanced-search/search 엔드포인트 테스트"""
@@ -346,6 +348,7 @@ class TestAdvancedSearchEndpoint:
 # GET /history 테스트
 # ---------------------------------------------------------------------------
 
+
 class TestGetHistoryEndpoint:
     """GET /advanced-search/history 엔드포인트 테스트"""
 
@@ -464,6 +467,7 @@ class TestGetHistoryEndpoint:
 # POST /save-search 테스트
 # ---------------------------------------------------------------------------
 
+
 class TestSaveSearchEndpoint:
     """POST /advanced-search/save-search 엔드포인트 테스트"""
 
@@ -529,6 +533,7 @@ class TestSaveSearchEndpoint:
 # ---------------------------------------------------------------------------
 # DELETE /history/{history_id} 테스트
 # ---------------------------------------------------------------------------
+
 
 class TestDeleteHistoryEndpoint:
     """DELETE /advanced-search/history/{history_id} 엔드포인트 테스트"""

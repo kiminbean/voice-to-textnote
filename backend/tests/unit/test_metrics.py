@@ -113,10 +113,7 @@ class TestHTTPRequestMetrics:
         response = app_with_metrics.get("/metrics")
         # prometheus-fastapi-instrumentator 기본 메트릭스 확인
         # http_requests_total 또는 http_request_duration_seconds 등
-        assert (
-            "http_request" in response.text.lower()
-            or "http_requests" in response.text.lower()
-        )
+        assert "http_request" in response.text.lower() or "http_requests" in response.text.lower()
 
     def test_http_request_duration_histogram_exists(self, app_with_metrics):
         """REQ-OPS-002: HTTP 요청 응답 시간 히스토그램 존재"""

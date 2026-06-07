@@ -28,10 +28,7 @@ class TestFTS5TableCreation:
         # 테이블 존재 확인
         with engine.connect() as conn:
             result = conn.execute(
-                text(
-                    "SELECT name FROM sqlite_master "
-                    "WHERE type='table' AND name='search_index'"
-                )
+                text("SELECT name FROM sqlite_master WHERE type='table' AND name='search_index'")
             )
             tables = [row[0] for row in result]
             assert "search_index" in tables
@@ -70,9 +67,7 @@ class TestFTS5TableCreation:
 
         with engine.connect() as conn:
             # FTS5 테이블 SQL 확인
-            result = conn.execute(
-                text("SELECT sql FROM sqlite_master WHERE name='search_index'")
-            )
+            result = conn.execute(text("SELECT sql FROM sqlite_master WHERE name='search_index'"))
             sql = result.scalar()
 
             # FTS5 및 unicode61 토크나이저 확인
@@ -84,9 +79,7 @@ class TestFTS5TableCreation:
 class TestIndexSearchEntryMinutes:
     """minutes 결과 데이터 인덱싱 테스트"""
 
-    def test_index_minutes_entry_extracts_content_and_speakers(
-        self, tmp_path, get_sync_session
-    ):
+    def test_index_minutes_entry_extracts_content_and_speakers(self, tmp_path, get_sync_session):
         """minutes result_data에서 content와 speaker_names를 추출해야 함"""
         from backend.db.search_models import ensure_search_index_table, index_search_entry
 
@@ -187,9 +180,7 @@ class TestIndexSearchEntrySummary:
 class TestIndexSearchEntryUpsert:
     """중복 task_id upsert 테스트"""
 
-    def test_duplicate_task_id_should_update_existing_entry(
-        self, tmp_path, get_sync_session
-    ):
+    def test_duplicate_task_id_should_update_existing_entry(self, tmp_path, get_sync_session):
         """동일 task_id로 재인덱싱 시 기존 레코드를 업데이트해야 함"""
         from backend.db.search_models import ensure_search_index_table, index_search_entry
 
@@ -248,9 +239,7 @@ class TestIndexSearchEntryUpsert:
 class TestIndexSearchEntryBestEffort:
     """인덱싱 실패 시 best-effort 처리 테스트"""
 
-    def test_indexing_failure_should_not_raise_exception(
-        self, tmp_path, get_sync_session, caplog
-    ):
+    def test_indexing_failure_should_not_raise_exception(self, tmp_path, get_sync_session, caplog):
         """인덱싱 실패 시 예외를 전파하지 않고 로그만 남겨야 함"""
         from backend.db.search_models import index_search_entry
 
@@ -297,9 +286,7 @@ class TestIndexSearchEntryBestEffort:
 class TestDeleteSearchEntry:
     """검색 인덱스 삭제 테스트"""
 
-    def test_delete_search_entry_removes_indexed_record(
-        self, tmp_path, get_sync_session
-    ):
+    def test_delete_search_entry_removes_indexed_record(self, tmp_path, get_sync_session):
         """delete_search_entry()가 인덱싱된 레코드를 삭제해야 함"""
         from backend.db.search_models import (
             delete_search_entry,
@@ -346,9 +333,7 @@ class TestDeleteSearchEntry:
 class TestIndexSearchEntryFiltering:
     """task_type 필터링 테스트"""
 
-    def test_transcription_and_diarization_should_not_be_indexed(
-        self, tmp_path, get_sync_session
-    ):
+    def test_transcription_and_diarization_should_not_be_indexed(self, tmp_path, get_sync_session):
         """transcription, diarization 타입은 인덱싱하지 않아야 함"""
         from backend.db.search_models import (
             ensure_search_index_table,

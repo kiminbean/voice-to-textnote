@@ -90,7 +90,9 @@ class TestCalculateSentenceSentiment:
     def test_with_intensifier(self, sentiment_service):
         """강조어 포함"""
         normal_score = sentiment_service.calculate_sentence_sentiment("이것은 좋은 결과입니다")
-        intensified_score = sentiment_service.calculate_sentence_sentiment("이것은 매우 좋은 결과입니다")
+        intensified_score = sentiment_service.calculate_sentence_sentiment(
+            "이것은 매우 좋은 결과입니다"
+        )
         # 강조어가 적용되면 점수가 높아야 함
         assert intensified_score >= normal_score
 
@@ -104,9 +106,7 @@ class TestCalculateSentenceSentiment:
     def test_score_normalization(self, sentiment_service):
         """점수 정규화 (-1.0 ~ 1.0)"""
         # 극단적으로 긍정적인 문장
-        score = sentiment_service.calculate_sentence_sentiment(
-            " ".join(["좋아"] * 100)
-        )
+        score = sentiment_service.calculate_sentence_sentiment(" ".join(["좋아"] * 100))
         assert -1.0 <= score <= 1.0
 
     def test_case_insensitive(self, sentiment_service):
@@ -451,9 +451,7 @@ class TestGetSpeakerSegments:
     @pytest.mark.asyncio
     async def test_with_meeting_ids(self, sentiment_service):
         """특정 회의 ID 필터"""
-        result = await sentiment_service.get_speaker_segments(
-            "speaker-1", meeting_ids=["m1", "m2"]
-        )
+        result = await sentiment_service.get_speaker_segments("speaker-1", meeting_ids=["m1", "m2"])
         assert result == []
 
 

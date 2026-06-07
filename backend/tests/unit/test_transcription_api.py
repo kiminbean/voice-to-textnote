@@ -47,7 +47,9 @@ class TestUploadTranscription:
 
         vocab_id = str(uuid.uuid4())
 
-        with patch.object(VocabularyService, "get_initial_prompt", new=AsyncMock(return_value="test prompt")) as mock_get:
+        with patch.object(
+            VocabularyService, "get_initial_prompt", new=AsyncMock(return_value="test prompt")
+        ) as mock_get:
             with open(test_audio_file, "rb") as f:
                 response = client.post(
                     "/api/v1/transcriptions",
@@ -118,11 +120,13 @@ class TestUploadTranscription:
         """
         # Settings override
         import backend.app.config as config_module
+
         monkeypatch.setattr(config_module.settings, "max_file_size_bytes", 500 * 1024 * 1024)
 
         # 큰 파일 생성 (temp_path에 저장되며 크기 검증)
         large_content = b"\x00" * (501 * 1024 * 1024)  # 501MB
         import io
+
         large_file = io.BytesIO(large_content)
 
         response = client.post(
@@ -526,7 +530,9 @@ class TestDeleteTranscription:
 class TestEdgeCases:
     """엣지 케이스 및 에러 경로 테스트"""
 
-    def test_upload_redis_error_during_active_count(self, client, test_audio_file, mock_redis_client):
+    def test_upload_redis_error_during_active_count(
+        self, client, test_audio_file, mock_redis_client
+    ):
         """
         Given: Redis active_jobs_ts 조회 시 Exception 발생
         When: 파일 업로드
@@ -543,7 +549,10 @@ class TestEdgeCases:
             )
 
         # 예외를 삼켜서 0으로 처리 후 계속 진행
-        assert response.status_code in [status.HTTP_201_CREATED, status.HTTP_422_UNPROCESSABLE_ENTITY]
+        assert response.status_code in [
+            status.HTTP_201_CREATED,
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+        ]
 
     @pytest.mark.skip(reason="Redis error handling needs conftest adjustment")
     def test_get_status_redis_error(self, client, mock_redis_client):
@@ -557,7 +566,10 @@ class TestEdgeCases:
         response = client.get(f"/api/v1/transcriptions/{uuid.uuid4()}/status")
 
         # 에러가 발생하면 404로 처리되지 않고 500이 될 수 있음
-        assert response.status_code in [status.HTTP_404_NOT_FOUND, status.HTTP_500_INTERNAL_SERVER_ERROR]
+        assert response.status_code in [
+            status.HTTP_404_NOT_FOUND,
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+        ]
 
     @pytest.mark.skip(reason="Redis pipeline error handling needs conftest adjustment")
     def test_get_result_redis_pipeline_error(self, client, mock_redis_client):
@@ -571,7 +583,10 @@ class TestEdgeCases:
         response = client.get(f"/api/v1/transcriptions/{uuid.uuid4()}")
 
         # 에러가 발생하면 404로 처리되지 않고 500이 될 수 있음
-        assert response.status_code in [status.HTTP_404_NOT_FOUND, status.HTTP_500_INTERNAL_SERVER_ERROR]
+        assert response.status_code in [
+            status.HTTP_404_NOT_FOUND,
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+        ]
 
     def test_upload_without_filename(self, client, test_audio_bytes):
         """
@@ -582,7 +597,6 @@ class TestEdgeCases:
 
         # UploadFile 객체 직접 생성 (filename=None)
         import io
-
 
         # TestClient override로 직접 호출
         client.post(

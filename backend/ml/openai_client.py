@@ -22,17 +22,17 @@ def get_openai_client() -> AsyncOpenAI:
     api_key = os.getenv("OPENAI_API_KEY")
 
     if not api_key:
-        logger.warning("OPENAI_API_KEY 환경 변수가 설정되지 않았습니다. 품질 평가 기능이 제한됩니다.")
+        logger.warning(
+            "OPENAI_API_KEY 환경 변수가 설정되지 않았습니다. 품질 평가 기능이 제한됩니다."
+        )
         # 개발 환경을 위한 기본 설정 (실제 프로덕션에서는 API 키 필수)
         return AsyncOpenAI(
-            api_key="dummy-key",
-            base_url=os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
+            api_key="dummy-key", base_url=os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
         )
 
     try:
         client = AsyncOpenAI(
-            api_key=api_key,
-            base_url=os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
+            api_key=api_key, base_url=os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
         )
         logger.info("OpenAI 클라이언트가 성공적으로 초기화되었습니다.")
         return client
@@ -40,8 +40,7 @@ def get_openai_client() -> AsyncOpenAI:
         logger.error(f"OpenAI 클라이언트 초기화 실패: {str(e)}")
         # 실패 시 대체 클라이언트 반환
         return AsyncOpenAI(
-            api_key="dummy-key",
-            base_url=os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
+            api_key="dummy-key", base_url=os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
         )
 
 

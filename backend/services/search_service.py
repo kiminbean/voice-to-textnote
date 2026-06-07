@@ -114,11 +114,15 @@ class SearchService:
 
         # REQ-SEARCH-012: 상세 필터
         if has_action_items:
-            where_conditions.append("si.action_items_text IS NOT NULL AND si.action_items_text != ''")
+            where_conditions.append(
+                "si.action_items_text IS NOT NULL AND si.action_items_text != ''"
+            )
 
         if has_key_decisions:  # pragma: no cover
             where_conditions.append("si.task_type = 'summary'")
-            where_conditions.append("si.action_items_text IS NOT NULL AND si.action_items_text != ''")
+            where_conditions.append(
+                "si.action_items_text IS NOT NULL AND si.action_items_text != ''"
+            )
 
         # 동적 ORDER BY 빌드 (REQ-SEARCH-008)
         if sort == SortOption.RELEVANCE:  # pragma: no cover

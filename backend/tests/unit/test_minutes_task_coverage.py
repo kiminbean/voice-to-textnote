@@ -39,9 +39,7 @@ MOCK_DIA_RESULT = {
             "speaker_confidence": 0.95,
         }
     ],
-    "speakers": [
-        {"speaker_id": "SPEAKER_00", "total_speaking_time": 5.0, "segment_count": 1}
-    ],
+    "speakers": [{"speaker_id": "SPEAKER_00", "total_speaking_time": 5.0, "segment_count": 1}],
     "num_speakers": 1,
 }
 
@@ -62,9 +60,11 @@ class TestMinutesTaskCoverage:
         }
         mock_redis.get.return_value = json.dumps(existing_data)
 
-        with patch("backend.workers.tasks.minutes_task._get_redis", return_value=mock_redis), \
-             patch("backend.workers.tasks.minutes_task.publish_task_event_sync"), \
-             patch("backend.workers.tasks.minutes_task.settings") as mock_settings:
+        with (
+            patch("backend.workers.tasks.minutes_task._get_redis", return_value=mock_redis),
+            patch("backend.workers.tasks.minutes_task.publish_task_event_sync"),
+            patch("backend.workers.tasks.minutes_task.settings") as mock_settings,
+        ):
             mock_settings.minutes_result_ttl = 86400
 
             _update_task_status("test-id", TaskStatus.processing, 0.5)
@@ -80,9 +80,11 @@ class TestMinutesTaskCoverage:
         mock_redis = MagicMock()
         mock_redis.get.return_value = None
 
-        with patch("backend.workers.tasks.minutes_task._get_redis", return_value=mock_redis), \
-             patch("backend.workers.tasks.minutes_task.publish_task_event_sync"), \
-             patch("backend.workers.tasks.minutes_task.settings") as mock_settings:
+        with (
+            patch("backend.workers.tasks.minutes_task._get_redis", return_value=mock_redis),
+            patch("backend.workers.tasks.minutes_task.publish_task_event_sync"),
+            patch("backend.workers.tasks.minutes_task.settings") as mock_settings,
+        ):
             mock_settings.minutes_result_ttl = 86400
 
             _update_task_status("test-id", TaskStatus.processing, 0.5)
@@ -96,8 +98,10 @@ class TestMinutesTaskCoverage:
 
         mock_redis = MagicMock()
 
-        with patch("backend.workers.tasks.minutes_task._get_redis", return_value=mock_redis), \
-             patch("backend.workers.tasks.minutes_task.settings") as mock_settings:
+        with (
+            patch("backend.workers.tasks.minutes_task._get_redis", return_value=mock_redis),
+            patch("backend.workers.tasks.minutes_task.settings") as mock_settings,
+        ):
             mock_settings.minutes_result_ttl = 86400
 
             result = {"task_id": "test-id", "status": "completed"}
@@ -144,8 +148,10 @@ class TestMinutesTaskCoverage:
             json.dumps(failed_dia) if f"dia:result:{dia_task_id}" in key else None
         )
 
-        with patch("backend.workers.tasks.minutes_task._get_redis", return_value=mock_redis), \
-             patch("backend.workers.tasks.minutes_task.settings") as mock_settings:
+        with (
+            patch("backend.workers.tasks.minutes_task._get_redis", return_value=mock_redis),
+            patch("backend.workers.tasks.minutes_task.settings") as mock_settings,
+        ):
             mock_settings.minutes_result_ttl = 86400
             mock_settings.max_concurrent_minutes = 3
 

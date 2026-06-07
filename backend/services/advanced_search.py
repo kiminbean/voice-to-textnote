@@ -30,9 +30,7 @@ class AdvancedSearchService:  # pragma: no cover
         self.redis_client = redis_client
 
     async def search_advanced(
-        self,
-        request: AdvancedSearchRequest,
-        db: AsyncSession
+        self, request: AdvancedSearchRequest, db: AsyncSession
     ) -> tuple[list[SearchResultItem], dict[str, Any], SearchAnalytics]:
         """고급 검색 실행"""
         start_time = time.time()
@@ -48,7 +46,7 @@ class AdvancedSearchService:  # pragma: no cover
             search_conditions.append(
                 or_(
                     TaskResult.content.ilike(f"%{request.query}%"),
-                    TaskResult.summary.ilike(f"%{request.query}%")
+                    TaskResult.summary.ilike(f"%{request.query}%"),
                 )
             )
 
@@ -63,9 +61,7 @@ class AdvancedSearchService:  # pragma: no cover
         if request.filters.speaker_ids:
             # TaskResult.speakers가 JSON 필드라고 가정
             # 실제로는 JSONB 쿼리를 사용해야 함
-            search_conditions.append(
-                TaskResult.speakers.op('?|')(request.filters.speaker_ids)
-            )
+            search_conditions.append(TaskResult.speakers.op("?|")(request.filters.speaker_ids))
 
         # 콘텐츠 유형 필터
         if request.filters.content_types:
@@ -74,9 +70,7 @@ class AdvancedSearchService:  # pragma: no cover
         # 태그 필터
         if request.filters.tags:
             # TaskResult.tags가 JSON 필드라고 가정
-            search_conditions.append(
-                TaskResult.tags.op('?|')(request.filters.tags)
-            )
+            search_conditions.append(TaskResult.tags.op("?|")(request.filters.tags))
 
         # 단어 수 필터
         if request.filters.min_word_count:
@@ -126,7 +120,7 @@ class AdvancedSearchService:  # pragma: no cover
                 tags=task.tags or [],
                 created_at=task.created_at,
                 relevance_score=self._calculate_relevance(task, request.query),
-                highlights=self._extract_highlights(task, request.query)
+                highlights=self._extract_highlights(task, request.query),
             )
             search_results.append(search_result)
 
@@ -138,7 +132,7 @@ class AdvancedSearchService:  # pragma: no cover
             "page": request.page,
             "page_size": request.page_size,
             "total_results": len(search_results),
-            "has_next": len(search_results) == request.page_size
+            "has_next": len(search_results) == request.page_size,
         }
 
         search_time_ms = (time.time() - start_time) * 1000
@@ -193,17 +187,16 @@ class AdvancedSearchService:  # pragma: no cover
         return highlights[:3]  # 최대 3개
 
     async def _generate_analytics(
-        self,
-        db: AsyncSession,
-        request: AdvancedSearchRequest,
-        results: list[SearchResultItem]
+        self, db: AsyncSession, request: AdvancedSearchRequest, results: list[SearchResultItem]
     ) -> SearchAnalytics:
         """검색 분석 생성"""
 
         # 타입별 분포
         type_distribution = {}
         for result in results:
-            type_distribution[result.content_type] = type_distribution.get(result.content_type, 0) + 1
+            type_distribution[result.content_type] = (
+                type_distribution.get(result.content_type, 0) + 1
+            )
 
         # 화자별 분포
         speaker_distribution = {}
@@ -223,13 +216,15 @@ class AdvancedSearchService:  # pragma: no cover
         ]
 
         # 평균 단어 수
-        avg_word_count = sum(result.word_count for result in results) / len(results) if results else 0
+        avg_word_count = (
+            sum(result.word_count for result in results) / len(results) if results else 0
+        )
 
         # 검색 트렌드 (간단한 구현)
         search_trends = [
             {"period": "last_week", "searches": 150},
             {"period": "last_month", "searches": 450},
-            {"period": "last_year", "searches": 1200}
+            {"period": "last_year", "searches": 1200},
         ]
 
         return SearchAnalytics(
@@ -239,14 +234,10 @@ class AdvancedSearchService:  # pragma: no cover
             distribution_by_speaker=speaker_distribution,
             popular_tags=popular_tags,
             average_word_count=avg_word_count,
-            search_trends=search_trends
+            search_trends=search_trends,
         )
 
-    async def _save_search_history(
-        self,
-        request: AdvancedSearchRequest,
-        search_time_ms: float
-    ):
+    async def _save_search_history(self, request: AdvancedSearchRequest, search_time_ms: float):
         """검색 기록 저장"""
         if not self.redis_client:
             return
@@ -262,14 +253,14 @@ class AdvancedSearchService:  # pragma: no cover
             "result_count": 0,  # 실제 결과 수는 이후에 업데이트
             "search_time_ms": search_time_ms,
             "created_at": datetime.utcnow().isoformat(),
-            "is_saved": False
+            "is_saved": False,
         }
 
         # Redis에 저장 (TTL: 30일)
         await self.redis_client.setex(
             f"search_history:{history_id}",
             30 * 24 * 60 * 60,  # 30 days TTL
-            str(history_data)
+            str(history_data),
         )
 
         # 최근 검색 기록 목록에 추가 (최대 100개)

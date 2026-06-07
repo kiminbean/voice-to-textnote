@@ -88,7 +88,9 @@ class SummaryGenerator:
 
         # REQ-UI-003: 양식 있을 때 섹션별 JSON 출력 지시
         if template_structure and template_structure.get("sections"):
-            section_titles = [s.get("title", "") for s in template_structure["sections"] if s.get("title")]
+            section_titles = [
+                s.get("title", "") for s in template_structure["sections"] if s.get("title")
+            ]
             sections_keys = ", ".join(f'"{t}": "해당 내용"' for t in section_titles)
             format_instruction = self.JSON_FORMAT_WITH_SECTIONS.format(sections_keys=sections_keys)
             # 모든 섹션 키를 명시적으로 나열하여 누락 방지
@@ -100,7 +102,9 @@ class SummaryGenerator:
             )
         else:
             format_instruction = self.JSON_FORMAT_INSTRUCTION
-            mandatory_instruction = "\n\n[중요] JSON 안에 주석(// ...)을 절대 넣지 마세요. 순수 JSON만 출력하세요."
+            mandatory_instruction = (
+                "\n\n[중요] JSON 안에 주석(// ...)을 절대 넣지 마세요. 순수 JSON만 출력하세요."
+            )
 
         prompt = f"""다음은 회의 녹취록입니다. 회의 내용을 분석하여 핵심 요약을 작성해 주세요.
 
@@ -127,7 +131,7 @@ class SummaryGenerator:
             cleaned = response_text.strip()
             if cleaned.startswith("```"):
                 first_newline = cleaned.index("\n")
-                cleaned = cleaned[first_newline + 1:]
+                cleaned = cleaned[first_newline + 1 :]
                 if cleaned.rstrip().endswith("```"):
                     cleaned = cleaned.rstrip()[:-3].rstrip()
 
@@ -135,7 +139,7 @@ class SummaryGenerator:
             # 각 줄에서 따옴표 밖에 있는 // 만 제거
             cleaned = strip_json_comments(cleaned)
             # 후행 쉼표 제거 (주석 제거 후 남은 ,} 또는 ,] 패턴)
-            cleaned = re.sub(r',\s*([}\]])', r'\1', cleaned)
+            cleaned = re.sub(r",\s*([}\]])", r"\1", cleaned)
 
             data = json.loads(cleaned)
 
@@ -180,13 +184,16 @@ class SummaryGenerator:
             try:
                 # "summary_text" 값 추출 (정규식)
                 import re as _re
+
                 st_match = _re.search(r'"summary_text"\s*:\s*"((?:[^"\\]|\\.)*)"', response_text)
                 if st_match:
                     summary_text = st_match.group(1).replace('\\"', '"')  # pragma: no cover
                 # "sections" 내부 키-값 추출
                 sec_match = _re.search(r'"sections"\s*:\s*\{([^}]*)\}', response_text, _re.DOTALL)
                 if sec_match:
-                    for kv in _re.finditer(r'"([^"]+)"\s*:\s*"((?:[^"\\]|\\.)*)"', sec_match.group(1)):  # pragma: no cover
+                    for kv in _re.finditer(
+                        r'"([^"]+)"\s*:\s*"((?:[^"\\]|\\.)*)"', sec_match.group(1)
+                    ):  # pragma: no cover
                         sections[kv.group(1)] = kv.group(2).replace('\\"', '"')
             except Exception as parse_exc:  # pragma: no cover
                 # 폴백 파싱 실패는 치명적이지 않지만 디버깅을 위해 로그를 남긴다.
@@ -280,16 +287,22 @@ def _build_template_items_section(template_structure: dict) -> str:
 
     for i, section in enumerate(sections, start=1):
         title = section.get("title", f"섹션 {i}")
-        lines.append(f'{i}. sections."{title}": 이 항목에 해당하는 내용을 회의 대화에서 추출하여 상세히 작성')
+        lines.append(
+            f'{i}. sections."{title}": 이 항목에 해당하는 내용을 회의 대화에서 추출하여 상세히 작성'
+        )
 
     lines.append("")
     lines.append("또한 다음 항목도 작성해 주세요:")
-    lines.append('- summary_text: 회의 핵심 요약 (2-3문장으로 간결하게)')
-    lines.append('- action_items: 담당자별 수행해야 할 구체적 작업 목록')
-    lines.append('- key_decisions: 회의에서 내린 주요 결정 사항')
-    lines.append('- next_steps: 향후 진행할 다음 단계')
+    lines.append("- summary_text: 회의 핵심 요약 (2-3문장으로 간결하게)")
+    lines.append("- action_items: 담당자별 수행해야 할 구체적 작업 목록")
+    lines.append("- key_decisions: 회의에서 내린 주요 결정 사항")
+    lines.append("- next_steps: 향후 진행할 다음 단계")
     lines.append("")
-    lines.append("[중요] sections 필드의 각 값에 실제 내용을 상세히 작성해야 합니다. 빈 문자열로 두지 마세요.")
-    lines.append("[중요] summary_text에는 간결한 요약만 넣고, 상세 내용은 반드시 sections에 넣으세요.")
+    lines.append(
+        "[중요] sections 필드의 각 값에 실제 내용을 상세히 작성해야 합니다. 빈 문자열로 두지 마세요."
+    )
+    lines.append(
+        "[중요] summary_text에는 간결한 요약만 넣고, 상세 내용은 반드시 sections에 넣으세요."
+    )
 
     return "\n".join(lines)

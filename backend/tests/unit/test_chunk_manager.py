@@ -110,7 +110,9 @@ class TestSplitAudio:
     @patch("backend.pipeline.chunk_manager.AudioSegment")
     @patch("backend.pipeline.chunk_manager.normalize_audio")
     @patch("backend.pipeline.chunk_manager.tempfile.mkdtemp")
-    def test_creates_temp_dir_when_not_specified(self, mock_mkdtemp, mock_normalize, mock_audio_segment):
+    def test_creates_temp_dir_when_not_specified(
+        self, mock_mkdtemp, mock_normalize, mock_audio_segment
+    ):
         """output_dir이 지정되지 않으면 임시 디렉토리 생성 검증"""
         # Arrange
         mock_temp_dir = "/tmp/auto_chunks"
@@ -303,10 +305,12 @@ class TestMergeSegments:
         ]  # 오버랩(5초) 이후
 
         # Act
-        result = merge_segments([
-            (chunk1, raw_segments1),
-            (chunk2, raw_segments2),
-        ])
+        result = merge_segments(
+            [
+                (chunk1, raw_segments1),
+                (chunk2, raw_segments2),
+            ]
+        )
 
         # Assert
         assert len(result) == 2

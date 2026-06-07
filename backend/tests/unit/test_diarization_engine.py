@@ -29,10 +29,12 @@ def _make_mock_pipeline():
     mock_turn2.end = 10.0
 
     mock_diarization = MagicMock(spec=[])
-    mock_diarization.itertracks = MagicMock(return_value=[
-        (mock_turn1, None, "SPEAKER_00"),
-        (mock_turn2, None, "SPEAKER_01"),
-    ])
+    mock_diarization.itertracks = MagicMock(
+        return_value=[
+            (mock_turn1, None, "SPEAKER_00"),
+            (mock_turn2, None, "SPEAKER_01"),
+        ]
+    )
 
     # pyannote 4.x: DiarizeOutput.speaker_diarization → Annotation
     # spec=[]로 생성하여 speaker_diarization이 없으면 getattr fallback 동작
@@ -528,9 +530,7 @@ class TestDiarizeVAD:
 
         # 음성이 거의 전부 (16000 samples 중 15000 = 0.94 ratio)
         # threshold(0.85)보다 크므로 VAD skip되어 원본 사용
-        vad_mock = _make_silero_vad_mock(
-            timestamps=[{"start": 0, "end": 15000}]
-        )
+        vad_mock = _make_silero_vad_mock(timestamps=[{"start": 0, "end": 15000}])
 
         waveform = torch.zeros((1, 16000))
         with patch.dict(sys.modules, {"silero_vad": vad_mock}):
@@ -564,9 +564,7 @@ class TestDiarizeVAD:
         assert mapping[0]["original_start"] == 0
         assert mapping[1]["original_start"] == 12000
         # compressed는 원본보다 짧음 (8000 + silence padding)
-        assert compressed.shape[-1] < waveform.shape[-1] + int(
-            16000 * engine.VAD_SILENCE_PAD_SEC
-        )
+        assert compressed.shape[-1] < waveform.shape[-1] + int(16000 * engine.VAD_SILENCE_PAD_SEC)
 
     def test_adjacent_segments_merged(self, tmp_path):
         """인접 짧은 음성 segment (간격 < VAD_MERGE_GAP_SEC)는 하나로 병합"""
@@ -605,9 +603,7 @@ class TestDiarizeVAD:
             }
         ]
         # compressed에서 0.5~0.7초 segment
-        raw_segments = [
-            SpeakerSegment(speaker_id="SPEAKER_00", start=0.5, end=0.7)
-        ]
+        raw_segments = [SpeakerSegment(speaker_id="SPEAKER_00", start=0.5, end=0.7)]
 
         mapped = engine._map_segments(raw_segments, mapping, 16000)
 

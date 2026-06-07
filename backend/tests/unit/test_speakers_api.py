@@ -178,19 +178,27 @@ async def test_list_speakers_filter_by_task_id(db_engine, seeded_db):
     app = _make_app(db_engine, seeded_db["user_a"])
     with TestClient(app) as client:
         # 전역 프로필
-        client.post("/api/v1/speakers", json={"speaker_label": "SPEAKER_00", "display_name": "전역"})
+        client.post(
+            "/api/v1/speakers", json={"speaker_label": "SPEAKER_00", "display_name": "전역"}
+        )
         # 회의록 오버라이드
-        client.post("/api/v1/speakers", json={
-            "speaker_label": "SPEAKER_00",
-            "display_name": "오버라이드",
-            "task_id": seeded_db["task_id"],
-        })
+        client.post(
+            "/api/v1/speakers",
+            json={
+                "speaker_label": "SPEAKER_00",
+                "display_name": "오버라이드",
+                "task_id": seeded_db["task_id"],
+            },
+        )
         # 다른 회의록
-        client.post("/api/v1/speakers", json={
-            "speaker_label": "SPEAKER_00",
-            "display_name": "다른 회의록",
-            "task_id": "other-task-999",
-        })
+        client.post(
+            "/api/v1/speakers",
+            json={
+                "speaker_label": "SPEAKER_00",
+                "display_name": "다른 회의록",
+                "task_id": "other-task-999",
+            },
+        )
 
         resp = client.get(f"/api/v1/speakers?task_id={seeded_db['task_id']}")
 

@@ -17,10 +17,16 @@ class TestCleanupExpiredData:
         session_context = MagicMock()
         session_context.__enter__.return_value = session
 
-        with patch("backend.db.sync_engine.get_sync_session", return_value=session_context), \
-             patch("backend.services.retention.cleanup_expired_results", return_value=7) as db_cleanup, \
-             patch("backend.services.retention.cleanup_temp_files", return_value=(3, 4096)) as file_cleanup, \
-             patch("backend.app.config.settings") as mock_settings:
+        with (
+            patch("backend.db.sync_engine.get_sync_session", return_value=session_context),
+            patch(
+                "backend.services.retention.cleanup_expired_results", return_value=7
+            ) as db_cleanup,
+            patch(
+                "backend.services.retention.cleanup_temp_files", return_value=(3, 4096)
+            ) as file_cleanup,
+            patch("backend.app.config.settings") as mock_settings,
+        ):
             mock_settings.data_retention_days = 45
             mock_settings.temp_dir = tmp_path
             mock_settings.temp_file_retention_hours = 6
@@ -44,10 +50,12 @@ class TestCleanupExpiredData:
         session_context = MagicMock()
         session_context.__enter__.return_value = MagicMock()
 
-        with patch("backend.db.sync_engine.get_sync_session", return_value=session_context), \
-             patch("backend.services.retention.cleanup_expired_results", return_value=0), \
-             patch("backend.services.retention.cleanup_temp_files", return_value=(0, 0)), \
-             patch("backend.app.config.settings") as mock_settings:
+        with (
+            patch("backend.db.sync_engine.get_sync_session", return_value=session_context),
+            patch("backend.services.retention.cleanup_expired_results", return_value=0),
+            patch("backend.services.retention.cleanup_temp_files", return_value=(0, 0)),
+            patch("backend.app.config.settings") as mock_settings,
+        ):
             mock_settings.data_retention_days = 30
             mock_settings.temp_dir = tmp_path
             mock_settings.temp_file_retention_hours = 24

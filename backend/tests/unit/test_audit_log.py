@@ -158,6 +158,7 @@ class TestAuditLogFields:
         logged_data = {}
 
         with patch("backend.app.middleware.audit_log.logger") as mock_logger:
+
             def capture_log(*args, **kwargs):
                 logged_data.update(kwargs)
 
@@ -184,6 +185,7 @@ class TestAuditLogFields:
         logged_data = {}
 
         with patch("backend.app.middleware.audit_log.logger") as mock_logger:
+
             def capture_log(*args, **kwargs):
                 logged_data.update(kwargs)
 
@@ -210,6 +212,7 @@ class TestAuditLogFields:
         logged_data = {}
 
         with patch("backend.app.middleware.audit_log.logger") as mock_logger:
+
             def capture_log(*args, **kwargs):
                 logged_data.update(kwargs)
 
@@ -236,6 +239,7 @@ class TestAuditLogFields:
         logged_data = {}
 
         with patch("backend.app.middleware.audit_log.logger") as mock_logger:
+
             def capture_log(*args, **kwargs):
                 logged_data.update(kwargs)
 
@@ -253,7 +257,9 @@ class TestAuditLogFields:
             client.get("/api/v1/duration-test")
 
             assert "duration_ms" in logged_data, "duration_ms 필드가 감사 로그에 없음"
-            assert isinstance(logged_data["duration_ms"], float), "duration_ms는 float 타입이어야 함"
+            assert isinstance(logged_data["duration_ms"], float), (
+                "duration_ms는 float 타입이어야 함"
+            )
             assert logged_data["duration_ms"] >= 0, "duration_ms는 0 이상이어야 함"
 
     def test_audit_log_client_ip_field(self):
@@ -263,6 +269,7 @@ class TestAuditLogFields:
         logged_data = {}
 
         with patch("backend.app.middleware.audit_log.logger") as mock_logger:
+
             def capture_log(*args, **kwargs):
                 logged_data.update(kwargs)
 
@@ -288,6 +295,7 @@ class TestAuditLogFields:
         logged_data = {}
 
         with patch("backend.app.middleware.audit_log.logger") as mock_logger:
+
             def capture_log(*args, **kwargs):
                 logged_data.update(kwargs)
 
@@ -315,6 +323,7 @@ class TestAuditLogFields:
         logged_data = {}
 
         with patch("backend.app.middleware.audit_log.logger") as mock_logger:
+
             def capture_log(*args, **kwargs):
                 logged_data.update(kwargs)
 
@@ -342,6 +351,7 @@ class TestAuditLogFields:
         logged_data = {}
 
         with patch("backend.app.middleware.audit_log.logger") as mock_logger:
+
             def capture_log(*args, **kwargs):
                 logged_data.update(kwargs)
 
@@ -376,6 +386,7 @@ class TestSensitiveInfoExclusion:
         logged_data = {}
 
         with patch("backend.app.middleware.audit_log.logger") as mock_logger:
+
             def capture_log(*args, **kwargs):
                 logged_data.update(kwargs)
 
@@ -397,8 +408,7 @@ class TestSensitiveInfoExclusion:
 
             # 감사 로그에 API Key 값이 포함되지 않아야 함
             logged_str = str(logged_data)
-            assert "super-secret-api-key-12345" not in logged_str, \
-                "API Key가 감사 로그에 노출됨"
+            assert "super-secret-api-key-12345" not in logged_str, "API Key가 감사 로그에 노출됨"
 
     def test_authorization_header_not_in_audit_log(self):
         """REQ-LOG-003: Authorization 헤더가 감사 로그에 포함되지 않음"""
@@ -407,6 +417,7 @@ class TestSensitiveInfoExclusion:
         logged_data = {}
 
         with patch("backend.app.middleware.audit_log.logger") as mock_logger:
+
             def capture_log(*args, **kwargs):
                 logged_data.update(kwargs)
 
@@ -427,8 +438,9 @@ class TestSensitiveInfoExclusion:
             )
 
             logged_str = str(logged_data)
-            assert "secret-jwt-token-xyz" not in logged_str, \
+            assert "secret-jwt-token-xyz" not in logged_str, (
                 "Authorization 토큰이 감사 로그에 노출됨"
+            )
 
     def test_cookie_header_not_in_audit_log(self):
         """REQ-LOG-003: Cookie 헤더가 감사 로그에 포함되지 않음"""
@@ -437,6 +449,7 @@ class TestSensitiveInfoExclusion:
         logged_data = {}
 
         with patch("backend.app.middleware.audit_log.logger") as mock_logger:
+
             def capture_log(*args, **kwargs):
                 logged_data.update(kwargs)
 
@@ -457,8 +470,7 @@ class TestSensitiveInfoExclusion:
             )
 
             logged_str = str(logged_data)
-            assert "secret-session-value" not in logged_str, \
-                "Cookie가 감사 로그에 노출됨"
+            assert "secret-session-value" not in logged_str, "Cookie가 감사 로그에 노출됨"
 
     def test_sensitive_headers_constant_exists(self):
         """REQ-LOG-003: 민감 헤더 상수 정의 확인"""
@@ -545,8 +557,9 @@ class TestAuditLogSkipPaths:
         """REQ-LOG-004: 스킵 경로 상수 정의 확인"""
         from backend.app.middleware.audit_log import SKIP_PATHS
 
-        assert any(path.startswith("/api/v1/health") for path in SKIP_PATHS) or \
-               any(path == "/api/v1/health" for path in SKIP_PATHS)
+        assert any(path.startswith("/api/v1/health") for path in SKIP_PATHS) or any(
+            path == "/api/v1/health" for path in SKIP_PATHS
+        )
         assert "/metrics" in SKIP_PATHS
 
     def test_non_health_path_does_not_skip_audit_log(self):
@@ -642,6 +655,7 @@ class TestSlowRequestWarning:
         logged_data = {}
 
         with patch("backend.app.middleware.audit_log.logger") as mock_logger:
+
             def capture_warning(*args, **kwargs):
                 logged_data.update(kwargs)
 
@@ -662,9 +676,9 @@ class TestSlowRequestWarning:
                 client.get("/api/v1/slow-marker-test")
 
                 # slow_request 마커가 로그에 포함돼야 함
-                assert "slow_request" in logged_data or \
-                       "slow_request" in str(mock_logger.warning.call_args), \
-                       "slow_request 마커가 WARNING 로그에 없음"
+                assert "slow_request" in logged_data or "slow_request" in str(
+                    mock_logger.warning.call_args
+                ), "slow_request 마커가 WARNING 로그에 없음"
 
     def test_slow_request_threshold_constant(self):
         """REQ-LOG-005: 5초 임계값 상수 정의 확인"""
@@ -694,11 +708,10 @@ class TestPrometheusAccessCounter:
 
         # Counter 또는 Counter의 부모 클래스인지 확인
         # prometheus_client 내부 클래스 구조상 직접 비교
-        assert hasattr(API_ACCESS_COUNTER, "labels"), \
-            "API_ACCESS_COUNTER에 labels 메서드가 없음"
-        assert hasattr(API_ACCESS_COUNTER, "inc") or \
-               hasattr(API_ACCESS_COUNTER.labels(), "inc"), \
-               "API_ACCESS_COUNTER에 inc 메서드가 없음"
+        assert hasattr(API_ACCESS_COUNTER, "labels"), "API_ACCESS_COUNTER에 labels 메서드가 없음"
+        assert hasattr(API_ACCESS_COUNTER, "inc") or hasattr(API_ACCESS_COUNTER.labels(), "inc"), (
+            "API_ACCESS_COUNTER에 inc 메서드가 없음"
+        )
 
     def test_access_counter_incremented_on_request(self):
         """REQ-LOG-006: 요청 시 접근 카운터 증가"""

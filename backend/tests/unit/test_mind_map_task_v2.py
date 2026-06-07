@@ -47,7 +47,9 @@ def _default_patches(mock_redis, mock_settings):
     from contextlib import ExitStack
 
     stack = ExitStack()
-    stack.enter_context(patch("backend.workers.tasks.mind_map_task._get_redis", return_value=mock_redis))
+    stack.enter_context(
+        patch("backend.workers.tasks.mind_map_task._get_redis", return_value=mock_redis)
+    )
     stack.enter_context(patch("backend.workers.tasks.mind_map_task.settings", mock_settings))
     stack.enter_context(patch("backend.workers.tasks.mind_map_task.publish_task_event_sync"))
     return stack
@@ -119,9 +121,11 @@ class TestMindMapTaskStatusPreservation:
         mock_settings = MagicMock()
         mock_settings.summary_result_ttl = 86400
 
-        with patch("backend.workers.tasks.mind_map_task._get_redis", return_value=mock_redis), \
-             patch("backend.workers.tasks.mind_map_task.settings", mock_settings), \
-             patch("backend.workers.tasks.mind_map_task.publish_task_event_sync"):
+        with (
+            patch("backend.workers.tasks.mind_map_task._get_redis", return_value=mock_redis),
+            patch("backend.workers.tasks.mind_map_task.settings", mock_settings),
+            patch("backend.workers.tasks.mind_map_task.publish_task_event_sync"),
+        ):
             _update_mind_map_status(
                 task_id=task_id,
                 summary_task_id=summary_task_id,
@@ -199,7 +203,10 @@ class TestMindMapTaskUpstreamErrors:
             )
 
         assert result["status"] == "failed"
-        assert "완료 상태가 아닙니다" in result["error_message"] or "요약 작업이 완료되지 않았습니다" in result["error_message"]
+        assert (
+            "완료 상태가 아닙니다" in result["error_message"]
+            or "요약 작업이 완료되지 않았습니다" in result["error_message"]
+        )
 
     def test_propagates_summary_error_message(self):
         """요약 결과에 error_message가 있으면 그 내용 전파"""
@@ -267,8 +274,10 @@ class TestMindMapTaskStatusUpdate:
         mock_settings.summary_result_ttl = 86400
         mock_settings.summary_model = "gpt-4o"
 
-        with _default_patches(mock_redis, mock_settings), \
-             patch("backend.workers.tasks.mind_map_task.MindMapGenerator", _make_mock_generator()):
+        with (
+            _default_patches(mock_redis, mock_settings),
+            patch("backend.workers.tasks.mind_map_task.MindMapGenerator", _make_mock_generator()),
+        ):
             mind_map_task(
                 task_id=task_id,
                 summary_task_id=summary_task_id,
@@ -277,8 +286,7 @@ class TestMindMapTaskStatusUpdate:
 
         # processing 상태 업데이트 확인
         processing_status = next(
-            (u for u in status_updates if u.get("status") == "processing"),
-            None
+            (u for u in status_updates if u.get("status") == "processing"), None
         )
         assert processing_status is not None
         assert processing_status["task_type"] == "mind_map"
@@ -319,8 +327,10 @@ class TestMindMapTaskCaching:
         mock_settings.summary_result_ttl = 86400
         mock_settings.summary_model = "gpt-4o"
 
-        with _default_patches(mock_redis, mock_settings), \
-             patch("backend.workers.tasks.mind_map_task.MindMapGenerator", _make_mock_generator()):
+        with (
+            _default_patches(mock_redis, mock_settings),
+            patch("backend.workers.tasks.mind_map_task.MindMapGenerator", _make_mock_generator()),
+        ):
             mind_map_task(
                 task_id=task_id,
                 summary_task_id=summary_task_id,
@@ -328,10 +338,7 @@ class TestMindMapTaskCaching:
             )
 
         assert len(cache_calls) >= 2  # status + result
-        result_cache = next(
-            (c for c in cache_calls if "result:" in c["key"]),
-            None
-        )
+        result_cache = next((c for c in cache_calls if "result:" in c["key"]), None)
         assert result_cache is not None
         assert result_cache["ttl"] == 86400
 
@@ -366,8 +373,10 @@ class TestMindMapTaskGenericException:
         mock_settings.summary_result_ttl = 86400
         mock_settings.summary_model = "gpt-4o"
 
-        with _default_patches(mock_redis, mock_settings), \
-             patch("backend.workers.tasks.mind_map_task.MindMapGenerator", mock_gen):
+        with (
+            _default_patches(mock_redis, mock_settings),
+            patch("backend.workers.tasks.mind_map_task.MindMapGenerator", mock_gen),
+        ):
             result = mind_map_task(
                 task_id=task_id,
                 summary_task_id=summary_task_id,
@@ -413,9 +422,7 @@ class TestMindMapCeleryWrapper:
         raw_func = mind_map_celery_task.run.__func__
 
         mock_self = MagicMock()
-        mock_self.MaxRetriesExceededError = type(
-            'MaxRetriesExceededError', (Exception,), {}
-        )
+        mock_self.MaxRetriesExceededError = type("MaxRetriesExceededError", (Exception,), {})
         mock_self.retry.side_effect = mock_self.MaxRetriesExceededError()
 
         with patch(
@@ -438,9 +445,7 @@ class TestMindMapCeleryWrapper:
         raw_func = mind_map_celery_task.run.__func__
 
         mock_self = MagicMock()
-        mock_self.MaxRetriesExceededError = type(
-            'MaxRetriesExceededError', (Exception,), {}
-        )
+        mock_self.MaxRetriesExceededError = type("MaxRetriesExceededError", (Exception,), {})
         mock_self.retry.side_effect = mock_self.MaxRetriesExceededError()
 
         with patch(
@@ -481,8 +486,10 @@ class TestMindMapTaskGenerationTime:
         mock_settings.summary_result_ttl = 86400
         mock_settings.summary_model = "gpt-4o"
 
-        with _default_patches(mock_redis, mock_settings), \
-             patch("backend.workers.tasks.mind_map_task.MindMapGenerator", _make_mock_generator()):
+        with (
+            _default_patches(mock_redis, mock_settings),
+            patch("backend.workers.tasks.mind_map_task.MindMapGenerator", _make_mock_generator()),
+        ):
             result = mind_map_task(
                 task_id=task_id,
                 summary_task_id=summary_task_id,

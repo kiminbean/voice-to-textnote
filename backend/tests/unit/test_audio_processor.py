@@ -4,6 +4,7 @@ REQ-STT-015, REQ-STT-016, REQ-STT-017, SPEC-AUDIO-PREP-001
 """
 
 import math
+import shutil
 import struct
 import wave
 from pathlib import Path
@@ -11,6 +12,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from pydub import AudioSegment
+
+# ffmpeg 필요 테스트 건너뛰기 (CI 등 ffmpeg 미설치 환경)
+_HAS_FFMPEG = shutil.which("ffmpeg") is not None
 
 # ---------------------------------------------------------------------------
 # 테스트 헬퍼
@@ -217,7 +221,7 @@ class TestGetAudioDurationSeconds:
         # WAV 파일에서 sample rate 위치 (offset 24)를 0으로 설정
         # WAV 구조: [12 bytes header] [4 bytes fmt] [16 bytes fmt chunk] [sample rate at offset 24]
         if len(wav_data) > 28:
-            wav_data[24:28] = b'\x00\x00\x00\x00'  # frame_rate = 0
+            wav_data[24:28] = b"\x00\x00\x00\x00"  # frame_rate = 0
 
         with open(invalid_wav, "wb") as f:
             f.write(wav_data)
@@ -225,6 +229,7 @@ class TestGetAudioDurationSeconds:
         with pytest.raises(ValueError, match="유효하지 않은 WAV 샘플레이트"):
             get_audio_duration_seconds(invalid_wav)
 
+    @pytest.mark.skipif(not _HAS_FFMPEG, reason="ffmpeg not installed")
     def test_non_wav_file_uses_mediainfo(self, tmp_path: Path, monkeypatch):
         """WAV가 아닌 파일은 mediainfo로 길이 측정"""
 
@@ -240,6 +245,7 @@ class TestGetAudioDurationSeconds:
             duration = get_audio_duration_seconds(mp3_path)
             assert duration == 2.5
 
+    @pytest.mark.skipif(not _HAS_FFMPEG, reason="ffmpeg not installed")
     def test_fallback_to_full_audio_load(self, tmp_path: Path):
         """mediainfo 실패 시 전체 오디오 로드로 폴백"""
         from backend.pipeline.audio_processor import get_audio_duration_seconds
@@ -446,9 +452,7 @@ class TestTrimLeadingTrailingSilence:
         from backend.pipeline.audio_processor import trim_leading_trailing_silence
 
         # 200ms 무음 + 300ms 발화 + 200ms 무음
-        audio = AudioSegment.silent(duration=200) + _make_audio_segment(
-            duration_ms=300
-        )
+        audio = AudioSegment.silent(duration=200) + _make_audio_segment(duration_ms=300)
 
         # min_silence_len_ms=150로 설정하면 200ms 무음 구간이 제거됨
         result = trim_leading_trailing_silence(
@@ -498,9 +502,7 @@ class TestApplyPreprocessOptions:
         )
 
         # 스테레오 44100Hz 오디오
-        audio = _make_audio_segment(duration_ms=1000, sample_rate=44100).set_channels(
-            2
-        )
+        audio = _make_audio_segment(duration_ms=1000, sample_rate=44100).set_channels(2)
         opts = MagicMock()
         opts.convert_to_16k_mono = True
         opts.high_pass_hz = None
@@ -590,7 +592,9 @@ class TestApplyPreprocessOptions:
         opts.normalize = True
         opts.target_dbfs = TARGET_DBFS
 
-        with patch("backend.pipeline.audio_processor.normalize_audio", return_value=audio) as mock_norm:
+        with patch(
+            "backend.pipeline.audio_processor.normalize_audio", return_value=audio
+        ) as mock_norm:
             _apply_preprocess_options(audio, opts)
             mock_norm.assert_called_once_with(audio, target_dbfs=TARGET_DBFS)
 
@@ -620,9 +624,7 @@ class TestApplyPreprocessOptions:
         with patch.object(audio, "set_channels", return_value=audio):
             with patch.object(audio, "set_frame_rate", return_value=audio):
                 with patch.object(audio, "high_pass_filter", return_value=audio) as mock_hp:
-                    with patch.object(
-                        audio, "low_pass_filter", return_value=audio
-                    ) as mock_lp:
+                    with patch.object(audio, "low_pass_filter", return_value=audio) as mock_lp:
                         with patch(
                             "backend.pipeline.audio_processor.trim_leading_trailing_silence",
                             return_value=audio,
@@ -818,9 +820,7 @@ class TestSplitAudio:
         """30분 이하 오디오는 분할 없이 빈 리스트 반환"""
         from backend.pipeline.chunk_manager import split_audio
 
-        chunks = split_audio(
-            test_audio_file, chunk_duration_ms=30 * 60 * 1000, overlap_ms=5000
-        )
+        chunks = split_audio(test_audio_file, chunk_duration_ms=30 * 60 * 1000, overlap_ms=5000)
         assert chunks == []
 
 
@@ -834,9 +834,7 @@ class TestMergeSegments:
         chunk = AudioChunk(
             index=0, file_path=Path("/tmp/c0.wav"), start_ms=0, end_ms=60000, overlap_ms=0
         )
-        raw_segments = [
-            {"id": 0, "start": 1.0, "end": 3.0, "text": "안녕", "avg_logprob": -0.3}
-        ]
+        raw_segments = [{"id": 0, "start": 1.0, "end": 3.0, "text": "안녕", "avg_logprob": -0.3}]
         results = merge_segments([(chunk, raw_segments)])
 
         assert len(results) == 1
@@ -852,9 +850,7 @@ class TestMergeSegments:
 class TestValidateAudioFormat:
     """파일 형식 검증 테스트 (REQ-STT-001, REQ-STT-003)"""
 
-    @pytest.mark.parametrize(
-        "filename", ["audio.wav", "meeting.mp3", "recording.m4a", "voice.ogg"]
-    )
+    @pytest.mark.parametrize("filename", ["audio.wav", "meeting.mp3", "recording.m4a", "voice.ogg"])
     def test_valid_formats_accepted(self, filename: str):
         """허용 포맷(WAV, MP3, M4A, OGG)은 검증 통과"""
         from backend.utils.validators import validate_audio_format

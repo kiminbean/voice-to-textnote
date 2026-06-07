@@ -17,9 +17,7 @@ from backend.schemas.bookmark import BookmarkCreate, BookmarkUpdate
 class BookmarkService:
     """북마크 CRUD. 소유권 검증 포함."""
 
-    async def _ensure_task_exists(
-        self, session: AsyncSession, task_id: str
-    ) -> None:
+    async def _ensure_task_exists(self, session: AsyncSession, task_id: str) -> None:
         """task_id가 실제 task_results에 존재하는지 확인."""
         stmt = select(TaskResult.id).where(TaskResult.task_id == task_id)
         result = await session.execute(stmt)
@@ -47,9 +45,7 @@ class BookmarkService:
                 ),
             )
 
-    def _validate_segment_range(
-        self, segment_start: float, segment_end: float
-    ) -> None:
+    def _validate_segment_range(self, segment_start: float, segment_end: float) -> None:
         if segment_end <= segment_start:
             raise HTTPException(
                 status_code=422,
@@ -60,9 +56,7 @@ class BookmarkService:
         if note is not None and len(note) > settings.bookmark_note_max_length:
             raise HTTPException(
                 status_code=422,
-                detail=(
-                    f"note는 {settings.bookmark_note_max_length}자를 초과할 수 없습니다"
-                ),
+                detail=(f"note는 {settings.bookmark_note_max_length}자를 초과할 수 없습니다"),
             )
 
     async def create(
@@ -125,9 +119,7 @@ class BookmarkService:
         total = count_result.scalar_one()
 
         list_stmt = (
-            base.order_by(Bookmark.task_id, Bookmark.segment_start)
-            .limit(limit)
-            .offset(offset)
+            base.order_by(Bookmark.task_id, Bookmark.segment_start).limit(limit).offset(offset)
         )
         list_result = await session.execute(list_stmt)
         items = list(list_result.scalars().all())
@@ -144,15 +136,9 @@ class BookmarkService:
 
         # 적용 대상 값 계산 (None 은 미수정으로 처리)
         new_start = (
-            payload.segment_start
-            if payload.segment_start is not None
-            else bookmark.segment_start
+            payload.segment_start if payload.segment_start is not None else bookmark.segment_start
         )
-        new_end = (
-            payload.segment_end
-            if payload.segment_end is not None
-            else bookmark.segment_end
-        )
+        new_end = payload.segment_end if payload.segment_end is not None else bookmark.segment_end
         self._validate_segment_range(new_start, new_end)
         if payload.note is not None:
             self._validate_note_length(payload.note)

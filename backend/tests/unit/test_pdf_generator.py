@@ -211,9 +211,7 @@ class TestMinutesPDFGenerator:
         result = generator.generate(minutes_with_korean)
         assert result[:5] == b"%PDF-"
 
-    def test_empty_segments_raises_value_error(
-        self, empty_segments_minutes_data: dict
-    ) -> None:
+    def test_empty_segments_raises_value_error(self, empty_segments_minutes_data: dict) -> None:
         """
         REQ-EXPORT-008: segments가 비어있으면 ValueError를 발생시켜야 함
         """
@@ -249,9 +247,7 @@ class TestMinutesPDFGenerator:
         assert isinstance(result, bytes)
         assert result[:5] == b"%PDF-"
 
-    def test_generate_with_template_table_layout(
-        self, sample_minutes_data: dict
-    ) -> None:
+    def test_generate_with_template_table_layout(self, sample_minutes_data: dict) -> None:
         """
         template_structure에 table_layout이 있으면 양식 테이블 렌더링 경로가 실행되어야 함
         """
@@ -270,10 +266,13 @@ class TestMinutesPDFGenerator:
             "template_structure": {
                 "table_layout": [
                     {"type": "full", "label": "과정명"},
-                    {"type": "split", "cells": [
-                        {"label": "미팅시간"},
-                        {"label": "참여자"},
-                    ]},
+                    {
+                        "type": "split",
+                        "cells": [
+                            {"label": "미팅시간"},
+                            {"label": "참여자"},
+                        ],
+                    },
                     {"type": "full", "label": "주요 논의", "large": True},
                 ]
             },
@@ -348,9 +347,7 @@ class TestMinutesPDFGenerator:
         assert isinstance(result, bytes)
         assert result[:5] == b"%PDF-"
 
-    def test_summary_empty_text_skips_summary_section(
-        self, sample_minutes_data: dict
-    ) -> None:
+    def test_summary_empty_text_skips_summary_section(self, sample_minutes_data: dict) -> None:
         """
         summary_text가 빈 문자열이면 요약 섹션이 생략되어야 함
         """

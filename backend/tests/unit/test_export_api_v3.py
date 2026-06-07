@@ -157,6 +157,7 @@ class TestExportDocxApi:
         self, valid_minutes_data: dict, valid_summary_data: dict
     ) -> None:
         """요약 포함 DOCX 생성"""
+
         def redis_side_effect(key: str):
             if "min:result" in key:
                 return json.dumps(valid_minutes_data)
@@ -238,6 +239,7 @@ class TestExportDocxApi:
 
     def test_export_docx_summary_not_found_continues(self, valid_minutes_data: dict) -> None:
         """요약 데이터를 찾을 수 없어도 DOCX 생성 계속 진행"""
+
         def redis_side_effect(key: str):
             if "min:result" in key:
                 return json.dumps(valid_minutes_data)
@@ -318,6 +320,7 @@ class TestExportMarkdownApi:
         self, valid_minutes_data: dict, valid_summary_data: dict
     ) -> None:
         """요약 포함 Markdown 생성"""
+
         def redis_side_effect(key: str):
             if "min:result" in key:
                 return json.dumps(valid_minutes_data)
@@ -362,9 +365,7 @@ class TestExportMarkdownApi:
         assert "attachment" in content_disposition
         assert "minutes_minutes-task-001.md" in content_disposition
 
-    def test_export_markdown_with_empty_summary_fields(
-        self, valid_minutes_data: dict
-    ) -> None:
+    def test_export_markdown_with_empty_summary_fields(self, valid_minutes_data: dict) -> None:
         """요약 데이터가 있지만 필드가 비어있을 때"""
         empty_summary = {
             "task_id": "empty-summary",

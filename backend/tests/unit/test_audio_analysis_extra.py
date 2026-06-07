@@ -21,12 +21,7 @@ class TestSilenceSegment:
 
     def test_silence_segment_creation(self):
         """SilenceSegment 생성"""
-        segment = SilenceSegment(
-            start_ms=1000.0,
-            end_ms=2000.0,
-            duration_ms=1000.0,
-            avg_dbfs=-50.0
-        )
+        segment = SilenceSegment(start_ms=1000.0, end_ms=2000.0, duration_ms=1000.0, avg_dbfs=-50.0)
         assert segment.start_ms == 1000.0
         assert segment.end_ms == 2000.0
         assert segment.duration_ms == 1000.0
@@ -34,11 +29,7 @@ class TestSilenceSegment:
 
     def test_silence_segment_without_avg_dbfs(self):
         """avg_dbfs가 없는 SilenceSegment 생성"""
-        segment = SilenceSegment(
-            start_ms=1000.0,
-            end_ms=1500.0,
-            duration_ms=500.0
-        )
+        segment = SilenceSegment(start_ms=1000.0, end_ms=1500.0, duration_ms=500.0)
         assert segment.avg_dbfs is None
 
 
@@ -64,7 +55,7 @@ class TestAudioAnalysisResult:
             speech_ratio=0.9,
             quality_score=0.85,
             quality_issues=[],
-            recommendation="STT 처리에 적합한 오디오 품질입니다."
+            recommendation="STT 처리에 적합한 오디오 품질입니다.",
         )
         assert result.filename == "test.mp3"
         assert result.duration_seconds == 120.5
@@ -136,7 +127,7 @@ class TestEvaluateQuality:
             sample_rate=16000,
             channels=1,
             avg_dbfs=-15.0,
-            silence_ratio=0.1
+            silence_ratio=0.1,
         )
 
         assert score >= 0.8
@@ -153,7 +144,7 @@ class TestEvaluateQuality:
             sample_rate=16000,
             channels=1,
             avg_dbfs=-40.0,  # 매우 낮음
-            silence_ratio=0.1
+            silence_ratio=0.1,
         )
 
         assert score <= 0.8  # 수정: <=로 변경
@@ -169,7 +160,7 @@ class TestEvaluateQuality:
             sample_rate=16000,
             channels=1,
             avg_dbfs=-2.0,  # 너무 높음
-            silence_ratio=0.1
+            silence_ratio=0.1,
         )
 
         assert score < 0.9
@@ -185,7 +176,7 @@ class TestEvaluateQuality:
             sample_rate=8000,  # 낮음
             channels=1,
             avg_dbfs=-15.0,
-            silence_ratio=0.1
+            silence_ratio=0.1,
         )
 
         assert score <= 0.8  # 수정: <=로 변경
@@ -201,7 +192,7 @@ class TestEvaluateQuality:
             sample_rate=16000,
             channels=1,
             avg_dbfs=-15.0,
-            silence_ratio=0.8  # 80% 무음
+            silence_ratio=0.8,  # 80% 무음
         )
 
         assert score <= 0.85  # 수정: <= 0.85로 변경
@@ -217,7 +208,7 @@ class TestEvaluateQuality:
             sample_rate=16000,
             channels=1,
             avg_dbfs=-15.0,
-            silence_ratio=0.1
+            silence_ratio=0.1,
         )
 
         assert score <= 0.9  # 수정: <=로 변경
@@ -233,7 +224,7 @@ class TestEvaluateQuality:
             sample_rate=16000,
             channels=4,  # 4채널
             avg_dbfs=-15.0,
-            silence_ratio=0.1
+            silence_ratio=0.1,
         )
 
         assert score <= 0.9  # 수정: <=로 변경
@@ -249,7 +240,7 @@ class TestEvaluateQuality:
             sample_rate=16000,
             channels=1,
             avg_dbfs=-15.0,
-            silence_ratio=None  # 무음 비율 없음
+            silence_ratio=None,  # 무음 비율 없음
         )
 
         # 무음 비율 관련 이슈 없음
@@ -266,7 +257,7 @@ class TestEvaluateQuality:
             sample_rate=8000,
             channels=4,
             avg_dbfs=-50.0,
-            silence_ratio=0.9
+            silence_ratio=0.9,
         )
 
         # 점수 보정됨

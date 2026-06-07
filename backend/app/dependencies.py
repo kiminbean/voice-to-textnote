@@ -105,6 +105,7 @@ async def get_current_user(
         raise HTTPException(status_code=401, detail="유효하지 않은 토큰입니다")
 
     import uuid as _uuid
+
     try:
         user_uuid = _uuid.UUID(user_id)
     except ValueError:

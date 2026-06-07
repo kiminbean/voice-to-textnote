@@ -119,6 +119,7 @@ class _FakeAnalysis:
 @pytest.fixture
 def stub_analyze_audio(monkeypatch):
     """audio_analysis_engine.analyze_audio() 호출을 가짜 결과로 대체."""
+
     def _fake(file_path, **_kwargs):
         return _FakeAnalysis()
 
@@ -192,7 +193,9 @@ async def test_voice_profile_overwrite_resets_counters(db_engine, seeded_db):
 
         client.post(
             f"/api/v1/speakers/{speaker_id}/voice-profile",
-            json={"samples": [{"duration_seconds": 3.0, "sample_rate": 16000, "speech_ratio": 0.5}]},
+            json={
+                "samples": [{"duration_seconds": 3.0, "sample_rate": 16000, "speech_ratio": 0.5}]
+            },
         )
         # overwrite
         resp = client.post(

@@ -165,6 +165,7 @@ async def export_pdf(
     except Exception as e:
         logger.error("PDF 생성 중 예기치 않은 오류", error=str(e))
         from backend.app.errors import internal_server_error
+
         internal_server_error("PDF 생성 중 오류가 발생했습니다.")
 
     # 5. StreamingResponse 반환

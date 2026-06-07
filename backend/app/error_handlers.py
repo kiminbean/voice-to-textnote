@@ -64,9 +64,7 @@ async def _voicenote_error_handler(request: Request, exc: Exception) -> JSONResp
     )
 
 
-async def _validation_error_handler(
-    request: Request, exc: Exception
-) -> JSONResponse:
+async def _validation_error_handler(request: Request, exc: Exception) -> JSONResponse:
     """
     REQ-ERR-006: 요청 유효성 검사 실패 처리기
     FastAPI의 RequestValidationError를 필드별 상세 오류 정보와 함께 반환한다.

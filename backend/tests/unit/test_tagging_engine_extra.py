@@ -28,13 +28,13 @@ class TestExtractJson:
 
     def test_extract_json_with_code_block(self):
         """```json 블록에서 JSON 추출"""
-        text = '''```json
+        text = """```json
 {
   "tags": [
     {"tag_type": "topic", "tag_value": "AI", "confidence": 0.9}
   ]
 }
-```'''
+```"""
         result = _extract_json(text)
         assert "tags" in result
         assert isinstance(result["tags"], list)
@@ -47,21 +47,21 @@ class TestExtractJson:
 
     def test_extract_json_with_text_around(self):
         """텍스트 중간에 있는 JSON 추출"""
-        text = '''Here is the response:
+        text = """Here is the response:
 {"tags": [{"tag_type": "priority", "tag_value": "긴급", "confidence": 0.95}]}
-End of response'''
+End of response"""
         result = _extract_json(text)
         assert "tags" in result
 
     def test_extract_json_with_newlines_in_codeblock(self):
         """코드블록 내 newline 처리"""
-        text = '''```json
+        text = """```json
 
 {
   "tags": []
 }
 
-```'''
+```"""
         result = _extract_json(text)
         assert result["tags"] == []
 
@@ -148,8 +148,19 @@ class TestRuleBasedTags:
         tags = _rule_based_tags(content, max_tags=10)
         tag_values = [t["tag_value"] for t in tags if t["tag_type"] == "topic"]
         # 원본 코드의 불용어 목록 (그러나는 없음)
-        stopwords = {"합니다", "합니다다", "그리고", "그래서", "그러면",
-                     "이것", "그것", "저것", "여기", "거기", "저기"}
+        stopwords = {
+            "합니다",
+            "합니다다",
+            "그리고",
+            "그래서",
+            "그러면",
+            "이것",
+            "그것",
+            "저것",
+            "여기",
+            "거기",
+            "저기",
+        }
         for word in stopwords:
             assert word not in tag_values, f"불용어 '{word}'가 태그에 포함됨: {tag_values}"
         # "프로젝트"와 "진행"은 유지되어야 함 (2-6글자)
@@ -197,13 +208,17 @@ class TestGenerateAutoTags:
 
         mock_response = MagicMock()
         mock_response.raise_for_status = MagicMock()
-        mock_response.json = MagicMock(return_value={
-            "choices": [{
-                "message": {
-                    "content": '{"tags": [{"tag_type": "topic", "tag_value": "Test", "confidence": 0.9}]}'
-                }
-            }]
-        })
+        mock_response.json = MagicMock(
+            return_value={
+                "choices": [
+                    {
+                        "message": {
+                            "content": '{"tags": [{"tag_type": "topic", "tag_value": "Test", "confidence": 0.9}]}'
+                        }
+                    }
+                ]
+            }
+        )
 
         async def mock_post(*args, **kwargs):
             return mock_response
@@ -228,16 +243,13 @@ class TestGenerateAutoTags:
 
         # AI 응답이 10개 태그를 반환하지만 max_tags=5이면 5개만 반환
         ai_tags = [
-            {"tag_type": "topic", "tag_value": f"Topic{i}", "confidence": 0.9}
-            for i in range(10)
+            {"tag_type": "topic", "tag_value": f"Topic{i}", "confidence": 0.9} for i in range(10)
         ]
-        mock_response.json = MagicMock(return_value={
-            "choices": [{
-                "message": {
-                    "content": f'{{"tags": {json.dumps(ai_tags)}}}'
-                }
-            }]
-        })
+        mock_response.json = MagicMock(
+            return_value={
+                "choices": [{"message": {"content": f'{{"tags": {json.dumps(ai_tags)}}}'}}]
+            }
+        )
 
         async def mock_post(*args, **kwargs):
             # AI 태그 길이가 max_tags보다 많으면 제한
@@ -279,7 +291,9 @@ class TestGenerateAutoTags:
         import httpx
 
         mock_client = AsyncMock()
-        mock_client.post = MagicMock(side_effect=httpx.HTTPStatusError("401", request=MagicMock(), response=MagicMock()))
+        mock_client.post = MagicMock(
+            side_effect=httpx.HTTPStatusError("401", request=MagicMock(), response=MagicMock())
+        )
 
         with patch("backend.ml.tagging_engine.settings") as mock_settings:
             mock_settings.openai_api_key = "test-key"
@@ -297,13 +311,9 @@ class TestGenerateAutoTags:
         mock_client = AsyncMock()
         mock_response = MagicMock()
         mock_response.raise_for_status = MagicMock()
-        mock_response.json = MagicMock(return_value={
-            "choices": [{
-                "message": {
-                    "content": '{"tags": []}'
-                }
-            }]
-        })
+        mock_response.json = MagicMock(
+            return_value={"choices": [{"message": {"content": '{"tags": []}'}}]}
+        )
         mock_client.post = MagicMock(return_value=mock_response)
 
         with patch("backend.ml.tagging_engine.settings") as mock_settings:
@@ -339,6 +349,7 @@ class TestHttpClientManagement:
 
         # 전역 변수 초기화 확인
         from backend.ml import tagging_engine
+
         assert tagging_engine._http_client is None
 
     @pytest.mark.asyncio
@@ -383,7 +394,7 @@ class TestEdgeCases:
 
     def test_extract_json_with_nested_structure(self):
         """중첩된 JSON 구조 추출"""
-        text = '''```json
+        text = """```json
 {
   "tags": [
     {
@@ -394,7 +405,7 @@ class TestEdgeCases:
     }
   ]
 }
-```'''
+```"""
         result = _extract_json(text)
         assert result["tags"][0]["tag_value"] == "Deep Learning"
 
@@ -425,13 +436,9 @@ class TestEdgeCases:
 
         mock_response = MagicMock()
         mock_response.raise_for_status = MagicMock()
-        mock_response.json = MagicMock(return_value={
-            "choices": [{
-                "message": {
-                    "content": '{"tags": []}'
-                }
-            }]
-        })
+        mock_response.json = MagicMock(
+            return_value={"choices": [{"message": {"content": '{"tags": []}'}}]}
+        )
 
         async def mock_post(*args, **kwargs):
             return mock_response  # pragma: no cover

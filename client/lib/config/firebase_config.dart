@@ -4,6 +4,7 @@
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
+import 'package:voice_to_textnote/firebase_options.dart';
 
 /// Firebase 초기화 결과
 class FirebaseInitResult {
@@ -23,14 +24,10 @@ class FirebaseConfig {
         return const FirebaseInitResult(success: true);
       }
 
-      // Firebase 기본 옵션으로 초기화
+      // flutterfire configure로 생성된 플랫폼별 옵션으로 초기화
+      // (lib/firebase_options.dart, voice-to-textnote 프로젝트)
       await Firebase.initializeApp(
-        options: const FirebaseOptions(
-          apiKey: '', // 프로덕션에서는 환경변수 주입 필요
-          appId: '',
-          messagingSenderId: '',
-          projectId: '',
-        ),
+        options: DefaultFirebaseOptions.currentPlatform,
       );
 
       debugPrint('Firebase 초기화 성공');
@@ -38,7 +35,7 @@ class FirebaseConfig {
     } catch (e) {
       // Firebase 미구성 시 우회 (개발 환경 지원)
       debugPrint('Firebase 초기화 실패 (우회 모드): $e');
-      return FirebaseInitResult(
+      return const FirebaseInitResult(
         success: false,
         error: 'Firebase가 구성되지 않았습니다. 일부 기능이 제한됩니다.',
       );

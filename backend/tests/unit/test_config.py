@@ -15,7 +15,6 @@ config.py 모듈 테스트
 - chunk_overlap_ms property (라인 267)
 """
 
-
 import pytest
 from pydantic import ValidationError
 
@@ -64,6 +63,7 @@ class TestValidateEnvironment:
         for env in ["development", "staging", "production"]:
             # 환경 변수를 설정하여 검증
             import os
+
             old_val = os.environ.get("ENVIRONMENT")
             old_api = os.environ.get("API_KEYS")
             try:
@@ -87,6 +87,7 @@ class TestValidateEnvironment:
     def test_invalid_environment(self):
         """유효하지 않은 환경값 (라인 218-219)"""
         import os
+
         old_val = os.environ.get("ENVIRONMENT")
         old_api = os.environ.get("API_KEYS")
         try:
@@ -108,6 +109,7 @@ class TestValidateEnvironment:
     def test_environment_normalization(self):
         """환경값 정규화 (라인 216)"""
         import os
+
         old_val = os.environ.get("ENVIRONMENT")
         old_api = os.environ.get("API_KEYS")
         try:
@@ -133,7 +135,9 @@ class TestValidateCorsAllowMethods:
         """빈 메서드 목록은 에러 (라인 227)"""
         with pytest.raises(ValidationError) as exc_info:
             Settings(cors_allow_methods=[])
-        assert "cors_allow_methods는 최소 1개 이상의 메서드를 포함해야 합니다" in str(exc_info.value)
+        assert "cors_allow_methods는 최소 1개 이상의 메서드를 포함해야 합니다" in str(
+            exc_info.value
+        )
 
     def test_wildcard_raises_error(self):
         """와일드카드(*)는 에러 (라인 229)"""
@@ -159,15 +163,14 @@ class TestValidateCorsAllowOrigins:
         """빈 origin 목록은 에러 (라인 237)"""
         with pytest.raises(ValidationError) as exc_info:
             Settings(cors_allow_origins=[])
-        assert "cors_allow_origins는 최소 1개 이상의 origin을 포함해야 합니다" in str(exc_info.value)
+        assert "cors_allow_origins는 최소 1개 이상의 origin을 포함해야 합니다" in str(
+            exc_info.value
+        )
 
     def test_wildcard_with_credentials_raises_error(self):
         """allow_credentials=True일 때 와일드카드(*)는 에러 (라인 239)"""
         with pytest.raises(ValidationError) as exc_info:
-            Settings(
-                cors_allow_origins=["*"],
-                allow_credentials=True
-            )
+            Settings(cors_allow_origins=["*"], allow_credentials=True)
         assert "cors_allow_origins에 '*'를 사용할 수 없습니다" in str(exc_info.value)
 
     def test_invalid_origin_format(self):
@@ -178,9 +181,7 @@ class TestValidateCorsAllowOrigins:
 
     def test_valid_origins(self):
         """유효한 origin 목록"""
-        settings = Settings(
-            cors_allow_origins=["http://localhost:3000", "https://example.com"]
-        )
+        settings = Settings(cors_allow_origins=["http://localhost:3000", "https://example.com"])
         assert len(settings.cors_allow_origins) == 2
 
 
@@ -190,6 +191,7 @@ class TestValidateProductionSecurity:
     def test_production_without_api_keys_raises_error(self):
         """production 환경에서 API_KEYS 없으면 에러 (라인 250)"""
         import os
+
         old_val = os.environ.get("API_KEYS")
         old_env = os.environ.get("ENVIRONMENT")
         try:
@@ -211,6 +213,7 @@ class TestValidateProductionSecurity:
     def test_development_without_api_keys_ok(self):
         """development 환경에서는 API_KEYS 없어도 OK"""
         import os
+
         old_val = os.environ.get("API_KEYS")
         old_env = os.environ.get("ENVIRONMENT")
         try:
@@ -268,15 +271,13 @@ class TestSettingsIntegration:
     def test_custom_values(self):
         """사용자 정의값 설정"""
         import os
+
         old_api = os.environ.get("API_KEYS")
         old_env = os.environ.get("ENVIRONMENT")
         try:
             os.environ["API_KEYS"] = "test-key"
             os.environ["ENVIRONMENT"] = "production"
-            settings = Settings(
-                max_file_size_mb=1000,
-                max_concurrent_jobs=5
-            )
+            settings = Settings(max_file_size_mb=1000, max_concurrent_jobs=5)
             assert settings.max_file_size_mb == 1000
             assert settings.max_concurrent_jobs == 5
             assert settings.environment == "production"
@@ -293,6 +294,7 @@ class TestSettingsIntegration:
     def test_field_validators(self):
         """필드 검증기 통합 테스트"""
         import os
+
         old_env = os.environ.get("ENVIRONMENT")
         try:
             os.environ["ENVIRONMENT"] = "production"
@@ -300,7 +302,7 @@ class TestSettingsIntegration:
             settings = Settings(
                 environment="production",
                 cors_allow_origins=["https://example.com"],
-                cors_allow_methods=["GET", "POST"]
+                cors_allow_methods=["GET", "POST"],
             )
             assert settings.environment == "production"
             assert len(settings.cors_allow_origins) == 1

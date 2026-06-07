@@ -130,9 +130,7 @@ class TestStatistics:
         # SPEAKER_01 = 5초
         assert speakers["SPEAKER_01"]["speaking_time_seconds"] == pytest.approx(5.0)
         # 비율 합은 1.0 근사
-        assert sum(s["speaking_ratio"] for s in body["speakers"]) == pytest.approx(
-            1.0, rel=1e-3
-        )
+        assert sum(s["speaking_ratio"] for s in body["speakers"]) == pytest.approx(1.0, rel=1e-3)
 
     def test_top_keywords_include_repeated_terms(self, client):
         body = client.get(
@@ -171,10 +169,16 @@ class TestStatisticsEmptySegments:
     def test_empty_segments_returns_zero_stats(self, db_engine):
         """세그먼트가 빈 배열이면 200 + zero 통계 반환"""
         import json
-        client = _make_app_with_redis(db_engine, json.dumps({
-            "status": "completed",
-            "result": {"segments": []},
-        }))
+
+        client = _make_app_with_redis(
+            db_engine,
+            json.dumps(
+                {
+                    "status": "completed",
+                    "result": {"segments": []},
+                }
+            ),
+        )
         resp = client.get("/api/v1/statistics/minutes-stats-001")
         assert resp.status_code == 200
         body = resp.json()
@@ -184,17 +188,23 @@ class TestStatisticsEmptySegments:
     def test_non_dict_and_invalid_segments_skipped(self, db_engine):
         """비정상 세그먼트가 있으면 무시하고 정상 항목만 집계"""
         import json
-        client = _make_app_with_redis(db_engine, json.dumps({
-            "status": "completed",
-            "result": {
-                "segments": [
-                    "not_a_dict",
-                    42,
-                    {"start": "abc", "end": "xyz", "text": "bad"},
-                    {"start": 0, "end": 10, "text": "good"},
-                ]
-            },
-        }))
+
+        client = _make_app_with_redis(
+            db_engine,
+            json.dumps(
+                {
+                    "status": "completed",
+                    "result": {
+                        "segments": [
+                            "not_a_dict",
+                            42,
+                            {"start": "abc", "end": "xyz", "text": "bad"},
+                            {"start": 0, "end": 10, "text": "good"},
+                        ]
+                    },
+                }
+            ),
+        )
         resp = client.get("/api/v1/statistics/minutes-stats-001")
         assert resp.status_code == 200
         # 비정상 세그먼트가 모두 무시되었는지 확인 (total_segments ≤ 1)

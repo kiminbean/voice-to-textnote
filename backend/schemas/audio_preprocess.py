@@ -21,9 +21,7 @@ class PreprocessOptionsPayload(BaseModel):
     프로그램적 호출을 위해 동일한 스키마를 JSON으로도 사용할 수 있게 둔다.
     """
 
-    convert_to_16k_mono: bool = Field(
-        default=True, description="16kHz 모노 WAV로 강제 변환"
-    )
+    convert_to_16k_mono: bool = Field(default=True, description="16kHz 모노 WAV로 강제 변환")
     normalize: bool = Field(default=True, description="dBFS 정규화 적용 여부")
     target_dbfs: float = Field(
         default=-20.0,
@@ -43,9 +41,7 @@ class PreprocessOptionsPayload(BaseModel):
         le=16000,
         description="이 주파수 초과 차단 (고주파 화이트노이즈 완화)",
     )
-    trim_silence: bool = Field(
-        default=False, description="앞/뒤 무음 구간 자동 제거"
-    )
+    trim_silence: bool = Field(default=False, description="앞/뒤 무음 구간 자동 제거")
     silence_threshold_db: float = Field(
         default=-40.0,
         ge=-80.0,

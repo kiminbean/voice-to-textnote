@@ -35,7 +35,10 @@ logger = get_logger(__name__)
 TAGS_METADATA = [
     {"name": "health", "description": "Service liveness, readiness, and version checks."},
     {"name": "batch", "description": "Batch transcription submission and status APIs."},
-    {"name": "transcriptions", "description": "Audio upload, STT processing, and result retrieval."},
+    {
+        "name": "transcriptions",
+        "description": "Audio upload, STT processing, and result retrieval.",
+    },
     {"name": "diarizations", "description": "Speaker diarization task submission and results."},
     {"name": "minutes", "description": "Structured meeting minutes generation and retrieval."},
     {"name": "summaries", "description": "AI summary generation from meeting minutes."},
@@ -46,8 +49,14 @@ TAGS_METADATA = [
     {"name": "search", "description": "Full-text meeting search."},
     {"name": "export", "description": "Meeting export endpoints."},
     {"name": "statistics", "description": "Meeting statistics and dashboard views."},
-    {"name": "quality", "description": "Meeting minutes quality assessment and improvement suggestions."},
-    {"name": "calendar", "description": "Calendar integration for meeting events and action items."},
+    {
+        "name": "quality",
+        "description": "Meeting minutes quality assessment and improvement suggestions.",
+    },
+    {
+        "name": "calendar",
+        "description": "Calendar integration for meeting events and action items.",
+    },
     {"name": "auth", "description": "User authentication and session APIs."},
     {"name": "devices", "description": "FCM device registration and push notification management."},
     {"name": "teams", "description": "Team workspace management."},
@@ -62,7 +71,10 @@ TAGS_METADATA = [
     {"name": "action-items", "description": "Action item extraction from meeting text."},
     {"name": "audio-analysis", "description": "Audio quality analysis."},
     {"name": "audio-preprocess", "description": "Audio cleanup and normalization."},
-    {"name": "advanced-search", "description": "Advanced search with filters, analytics, and history."},
+    {
+        "name": "advanced-search",
+        "description": "Advanced search with filters, analytics, and history.",
+    },
 ]
 
 

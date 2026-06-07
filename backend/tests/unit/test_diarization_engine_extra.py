@@ -45,10 +45,12 @@ def _make_mock_pipeline():
     mock_turn2.end = 10.0
 
     mock_diarization = MagicMock(spec=[])
-    mock_diarization.itertracks = MagicMock(return_value=[
-        (mock_turn1, None, "SPEAKER_00"),
-        (mock_turn2, None, "SPEAKER_01"),
-    ])
+    mock_diarization.itertracks = MagicMock(
+        return_value=[
+            (mock_turn1, None, "SPEAKER_00"),
+            (mock_turn2, None, "SPEAKER_01"),
+        ]
+    )
 
     mock_pipeline.return_value = mock_diarization
     return mock_pipeline
@@ -105,11 +107,7 @@ class TestDiarizeChunked:
         mock_torchaudio.load.return_value = (torch.zeros((1, 16000)), 16000)
 
         with patch.dict(sys.modules, {"torchaudio": mock_torchaudio}):
-            result = engine.diarize_chunked(
-                audio_file,
-                chunk_duration_sec=1,
-                overlap_sec=0
-            )
+            result = engine.diarize_chunked(audio_file, chunk_duration_sec=1, overlap_sec=0)
 
             # 32개 샘플 / 16000 = 2초 분할 예상
             # 2초를 1초 청크로 나누면 최소 2개 청크
@@ -130,10 +128,7 @@ class TestDiarizeChunked:
 
         with patch.dict(sys.modules, {"torchaudio": mock_torchaudio}):
             engine.diarize_chunked(
-                audio_file,
-                chunk_duration_sec=1,
-                overlap_sec=0,
-                progress_callback=callback_mock
+                audio_file, chunk_duration_sec=1, overlap_sec=0, progress_callback=callback_mock
             )
 
             # 최소 한 번 이상 호출되어야 함
@@ -163,11 +158,7 @@ class TestDiarizeChunked:
 
         with patch.dict(sys.modules, {"torchaudio": mock_torchaudio}):
             # 3초 오디오, 1초 청크, 0.5초 오버랩
-            result = engine.diarize_chunked(
-                audio_file,
-                chunk_duration_sec=1,
-                overlap_sec=0.5
-            )
+            result = engine.diarize_chunked(audio_file, chunk_duration_sec=1, overlap_sec=0.5)
 
             # 오버랩 고려하여 청크 분할
             assert isinstance(result, list)
@@ -183,33 +174,27 @@ class TestMatchChunkSpeakers:
 
     def test_match_chunk_speakers_with_no_previous_segments(self):
         """이전 세그먼트 없으면 빈 매핑"""
-        local_segments = [
-            SpeakerSegment(speaker_id="A", start=0.0, end=5.0)
-        ]
+        local_segments = [SpeakerSegment(speaker_id="A", start=0.0, end=5.0)]
 
         result = DiarizationEngine._match_chunk_speakers(
             local_segments=local_segments,
             previous_segments=[],
             chunk_offset_sec=0.0,
-            overlap_sec=10
+            overlap_sec=10,
         )
 
         assert result == {}
 
     def test_match_chunk_speakers_with_zero_offset(self):
         """chunk_offset_sec <= 0 이면 빈 매핑"""
-        local_segments = [
-            SpeakerSegment(speaker_id="A", start=0.0, end=5.0)
-        ]
-        previous_segments = [
-            SpeakerSegment(speaker_id="SPEAKER_00", start=0.0, end=5.0)
-        ]
+        local_segments = [SpeakerSegment(speaker_id="A", start=0.0, end=5.0)]
+        previous_segments = [SpeakerSegment(speaker_id="SPEAKER_00", start=0.0, end=5.0)]
 
         result = DiarizationEngine._match_chunk_speakers(
             local_segments=local_segments,
             previous_segments=previous_segments,
             chunk_offset_sec=0.0,
-            overlap_sec=10
+            overlap_sec=10,
         )
 
         assert result == {}
@@ -217,21 +202,17 @@ class TestMatchChunkSpeakers:
     def test_match_chunk_speakers_by_overlap(self):
         """오버랩 구간으로 화자 매칭"""
         # 이전 청크: 0-10초에 SPEAKER_00
-        previous_segments = [
-            SpeakerSegment(speaker_id="SPEAKER_00", start=0.0, end=10.0)
-        ]
+        previous_segments = [SpeakerSegment(speaker_id="SPEAKER_00", start=0.0, end=10.0)]
 
         # 현재 청크 (offset=5초): 0-5초 로컬 타임 (글로벌 5-10초)
         # 현재 청크의 0-2초 = 글로벌 5-7초 → 이전 청크와 2초 오버랩
-        local_segments = [
-            SpeakerSegment(speaker_id="A", start=0.0, end=5.0)
-        ]
+        local_segments = [SpeakerSegment(speaker_id="A", start=0.0, end=5.0)]
 
         result = DiarizationEngine._match_chunk_speakers(
             local_segments=local_segments,
             previous_segments=previous_segments,
             chunk_offset_sec=5.0,
-            overlap_sec=5.0
+            overlap_sec=5.0,
         )
 
         # A → SPEAKER_00 매칭
@@ -240,20 +221,16 @@ class TestMatchChunkSpeakers:
 
     def test_match_chunk_speakers_no_overlap_returns_empty(self):
         """오버랩 없으면 빈 매핑"""
-        previous_segments = [
-            SpeakerSegment(speaker_id="SPEAKER_00", start=0.0, end=5.0)
-        ]
+        previous_segments = [SpeakerSegment(speaker_id="SPEAKER_00", start=0.0, end=5.0)]
 
-        local_segments = [
-            SpeakerSegment(speaker_id="A", start=0.0, end=5.0)
-        ]
+        local_segments = [SpeakerSegment(speaker_id="A", start=0.0, end=5.0)]
 
         # 20초 offset으로 오버랩 없음
         result = DiarizationEngine._match_chunk_speakers(
             local_segments=local_segments,
             previous_segments=previous_segments,
             chunk_offset_sec=20.0,
-            overlap_sec=5.0
+            overlap_sec=5.0,
         )
 
         assert result == {}
@@ -274,7 +251,7 @@ class TestMatchChunkSpeakers:
             local_segments=local_segments,
             previous_segments=previous_segments,
             chunk_offset_sec=5.0,
-            overlap_sec=10.0
+            overlap_sec=10.0,
         )
 
         # 두 화자 모두 매칭 시도
@@ -420,9 +397,7 @@ class TestVADCompression:
         engine, _ = _make_loaded_engine_with_mock_pipeline()
 
         vad_mock = MagicMock()
-        vad_mock.get_speech_timestamps.return_value = [
-            {"start": 0, "end": 8000}
-        ]
+        vad_mock.get_speech_timestamps.return_value = [{"start": 0, "end": 8000}]
 
         # 모노 waveform (1D 텐서)
         waveform = torch.zeros(16000)
@@ -437,9 +412,7 @@ class TestVADCompression:
         engine, _ = _make_loaded_engine_with_mock_pipeline()
 
         vad_mock = MagicMock()
-        vad_mock.get_speech_timestamps.return_value = [
-            {"start": 0, "end": 8000}
-        ]
+        vad_mock.get_speech_timestamps.return_value = [{"start": 0, "end": 8000}]
 
         # 스테레오 waveform (2D 텐서)
         waveform = torch.zeros((2, 16000))
@@ -466,9 +439,7 @@ class TestMapSegments:
         """빈 mapping이면 raw_segments 그대로 반환"""
         engine, _ = _make_loaded_engine_with_mock_pipeline()
 
-        raw_segments = [
-            SpeakerSegment(speaker_id="SPEAKER_00", start=0.0, end=5.0)
-        ]
+        raw_segments = [SpeakerSegment(speaker_id="SPEAKER_00", start=0.0, end=5.0)]
 
         result = engine._map_segments(raw_segments, [], 16000)
 
@@ -479,14 +450,10 @@ class TestMapSegments:
         """매핑과 겹치는 부분 없으면 해당 세그먼트 제외"""
         engine, _ = _make_loaded_engine_with_mock_pipeline()
 
-        mapping = [
-            {"compressed_start": 0, "compressed_end": 8000, "original_start": 50000}
-        ]
+        mapping = [{"compressed_start": 0, "compressed_end": 8000, "original_start": 50000}]
 
         # compressed 시간 10-15초 (mapping 범위 밖)
-        raw_segments = [
-            SpeakerSegment(speaker_id="SPEAKER_00", start=10.0, end=15.0)
-        ]
+        raw_segments = [SpeakerSegment(speaker_id="SPEAKER_00", start=10.0, end=15.0)]
 
         result = engine._map_segments(raw_segments, mapping, 16000)
 
@@ -499,14 +466,10 @@ class TestMapSegments:
 
         # mapping: compressed 0-5초 = original 50-55초 (sample_rate 16000)
         # compressed 0-80000 samples = 5초, original_start=500000 samples = 31.25초
-        mapping = [
-            {"compressed_start": 0, "compressed_end": 80000, "original_start": 500000}
-        ]
+        mapping = [{"compressed_start": 0, "compressed_end": 80000, "original_start": 500000}]
 
         # compressed 2-4초 (mapping 범위 내)
-        raw_segments = [
-            SpeakerSegment(speaker_id="SPEAKER_00", start=2.0, end=4.0)
-        ]
+        raw_segments = [SpeakerSegment(speaker_id="SPEAKER_00", start=2.0, end=4.0)]
 
         result = engine._map_segments(raw_segments, mapping, 16000)
 
@@ -526,9 +489,7 @@ class TestMapSegments:
         ]
 
         # 두 매핑을 모두 가로지르는 긴 세그먼트
-        raw_segments = [
-            SpeakerSegment(speaker_id="SPEAKER_00", start=0.0, end=10.0)
-        ]
+        raw_segments = [SpeakerSegment(speaker_id="SPEAKER_00", start=0.0, end=10.0)]
 
         result = engine._map_segments(raw_segments, mapping, 16000)
 
@@ -709,9 +670,7 @@ class TestSegmentsFromResult:
         mock_turn.start = 2.0
         mock_turn.end = 4.5
 
-        mock_result.itertracks = MagicMock(return_value=[
-            (mock_turn, None, "SPEAKER_00")
-        ])
+        mock_result.itertracks = MagicMock(return_value=[(mock_turn, None, "SPEAKER_00")])
 
         segments = DiarizationEngine._segments_from_result(mock_result)
 
