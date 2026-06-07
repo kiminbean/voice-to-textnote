@@ -44,7 +44,7 @@ class TestAdminCalendarAPI:
     def test_supported_calendars_constant(self):
         from backend.app.api.v1.admin.calendar import SUPPORTED_CALENDARS
 
-        assert isinstance(SUPPORTED_CALENDARS, (list, tuple, set))
+        assert isinstance(SUPPORTED_CALENDARS, list | tuple | set)
 
 
 class TestAdminExportAPI:

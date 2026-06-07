@@ -538,7 +538,7 @@ class TestPushServiceGaps:
         from backend.services.push_service import FirebaseError, InvalidArgumentError
 
         assert issubclass(FirebaseError, Exception)
-        assert issubclass(InvalidArgumentError, (ValueError, Exception))
+        assert issubclass(InvalidArgumentError, ValueError | Exception)
 
 
 # ---------------------------------------------------------------------------

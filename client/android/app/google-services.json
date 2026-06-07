@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "546416114080",
+    "project_id": "voice-to-textnote",
+    "storage_bucket": "voice-to-textnote.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:546416114080:android:65155b01c68cc13e90ccc5",
+        "android_client_info": {
+          "package_name": "com.voicetextnote.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBK_6Mz-WG1svjs-fuT3gXwiezp8snhs88"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

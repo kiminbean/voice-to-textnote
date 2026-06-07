@@ -12,7 +12,11 @@ void main() async {
   // Firebase 초기화 (우회 지원)
   await FirebaseConfig.initializeFirebase();
 
-  runApp(const ProviderScope(child: VoiceToTextNoteApp()));
+  // ProviderScope를 두지 않음: VoiceToTextNoteApp이 build에서
+  // UncontrolledProviderScope로 직접 만든 _container를 노출한다.
+  // (외부 ProviderScope와 내부 UncontrolledProviderScope 이중 중첩 시
+  //  !_dirty assertion 크래시가 발생하므로 단일 컨테이너로 통일)
+  runApp(const VoiceToTextNoteApp());
 }
 
 class VoiceToTextNoteApp extends StatefulWidget {
