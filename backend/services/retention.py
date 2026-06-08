@@ -39,7 +39,8 @@ def cleanup_expired_results(session: Session, retention_days: int) -> int:
     result = session.execute(stmt)
     session.commit()
 
-    deleted = result.rowcount
+    # SQLAlchemy Result는 런타임에 rowcount를 제공하지만 타입 스텁에 노출되지 않음
+    deleted = result.rowcount  # type: ignore[attr-defined]
     # REQ-RET-005: 삭제 수 로깅
     logger.info("만료 결과 정리 완료", deleted_count=deleted, retention_days=retention_days)
     return deleted
@@ -124,7 +125,8 @@ def cleanup_guest_data(session: Session, guest_retention_hours: int = 24) -> int
     result = session.execute(stmt)
     session.commit()
 
-    deleted = result.rowcount
+    # SQLAlchemy Result는 런타임에 rowcount를 제공하지만 타입 스텁에 노출되지 않음
+    deleted = result.rowcount  # type: ignore[attr-defined]
     # REQ-RET-005: 삭제 수 로깅
     logger.info(
         "게스트 데이터 정리 완료",

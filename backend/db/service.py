@@ -183,4 +183,5 @@ class ResultService:
         stmt = delete(TaskResult).where(TaskResult.task_id == task_id)
         result = await session.execute(stmt)
         await session.commit()
-        return result.rowcount > 0
+        # SQLAlchemy async Result는 런타임에 rowcount를 제공하지만 타입 스텁에 노출되지 않음
+        return result.rowcount > 0  # type: ignore[attr-defined]
