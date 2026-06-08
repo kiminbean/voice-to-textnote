@@ -4,6 +4,7 @@
 
 import uuid
 from datetime import datetime, timedelta
+from typing import Any, Literal
 
 from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -183,7 +184,7 @@ class ActionItemService:
 
         # 실행
         result = await session.execute(query)
-        items = result.scalars().all()
+        items: list[ActionItemModel] = list(result.scalars().all())
 
         return items, total
 
@@ -233,8 +234,8 @@ class ActionItemService:
         if not existing_item:
             return None
 
-        # 업데이트 데이터 준비
-        update_data = {
+        # 업데이트 데이터 준비 — Any 타입으로 선언해야 uuid/str/datetime/float/list 등을 모두 담을 수 있음
+        update_data: dict[str, Any] = {
             "updated_at": datetime.utcnow(),
         }
 
@@ -345,13 +346,13 @@ class ActionItemService:
         high_priority_count = sum(1 for item in items if item.priority == ActionItemPriority.high)
 
         # 카테고리별 통계
-        by_category = {}
+        by_category: dict[str, int] = {}
         for item in items:
             category = item.category or "기타"
             by_category[category] = by_category.get(category, 0) + 1
 
         # 담당자별 통계
-        by_assignee = {}
+        by_assignee: dict[str, int] = {}
         for item in items:
             if item.assignee_id:
                 # 실제 담당자 이름 조회 로직 추가 가능
@@ -373,9 +374,10 @@ class ActionItemService:
         efficiency_ratio = (avg_actual / avg_estimated) if avg_estimated and avg_actual else None
 
         # 추이 분석 (간단한 구현)
-        trending_status = "stable"  # 실제로는 데이터에 따라 계산
-        weekly_trend = self._calculate_weekly_completion_trend(items)
-        productivity_metrics = self._calculate_productivity_metrics(items)
+        trending_status: Literal["improving", "declining", "stable"] = "stable"
+        items_list: list[ActionItemModel] = list(items)
+        weekly_trend = self._calculate_weekly_completion_trend(items_list)
+        productivity_metrics = self._calculate_productivity_metrics(items_list)
 
         return ActionItemOverview(
             total_count=total_count,

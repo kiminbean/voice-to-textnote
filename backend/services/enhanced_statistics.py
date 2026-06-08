@@ -181,8 +181,8 @@ class EnhancedStatisticsService:
         all_participants = set()
         efficiency_scores = []
 
-        # 상위 회의 수집
-        meeting_summaries = []
+        # 상위 회의 수집 — dict[str, Any] 명시로 m["task_id"] 등이 object로 추론되는 것을 방지
+        meeting_summaries: list[dict[str, Any]] = []
 
         for record in records:
             segments = record.result_data.get("segments", []) if record.result_data else []
@@ -237,7 +237,7 @@ class EnhancedStatisticsService:
         )
 
         # 4) 활발한 화자 목록 (발화 시간 기준 상위 10)
-        speaker_durations = {}
+        speaker_durations: dict[str, float] = {}
         for record in records:
             segments = record.result_data.get("segments", []) if record.result_data else []
             for seg in segments:
@@ -254,7 +254,7 @@ class EnhancedStatisticsService:
         ]
 
         # 5) 트렌딩 키워드 (전체 세그먼트 집계)
-        all_segments = []
+        all_segments: list[Any] = []
         for record in records:
             segments = record.result_data.get("segments", []) if record.result_data else []
             all_segments.extend(segments)
@@ -462,7 +462,7 @@ class EnhancedStatisticsService:
 
             # 추세 방향 (단순히 등장 시간 기준)
             trend_direction = "stable"
-            if len(appearances) >= 2:
+            if len(appearances) >= 2 and last_appearance is not None and first_appearance is not None:
                 time_diff = (last_appearance - first_appearance).total_seconds()
                 if time_diff > 0:
                     frequency_change = count / (time_diff / 3600)  # 시간당 빈도

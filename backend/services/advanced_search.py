@@ -83,20 +83,23 @@ class AdvancedSearchService:  # pragma: no cover
         if search_conditions:
             query = query.where(and_(*search_conditions))
 
-        # 정렬
-        if request.sort_by == "date":
-            order_column = TaskResult.created_at
-        elif request.sort_by == "speaker":
-            order_column = TaskResult.speakers  # 실제로는 JSON 필드 정렬 필요
+        # 정렬 — sort_by 값에 따라 정렬 컬럼을 직접 query에 적용
+        # (speakers/word_count은 created_at과 Mapped 타입이 달라 단일 변수로 묶으면 type 불일치)
+        if request.sort_by == "speaker":
+            if request.sort_order == "desc":
+                query = query.order_by(TaskResult.speakers.desc())
+            else:
+                query = query.order_by(TaskResult.speakers.asc())
         elif request.sort_by == "word_count":
-            order_column = TaskResult.word_count
-        else:  # relevance
-            order_column = TaskResult.created_at  # 기본값
-
-        if request.sort_order == "desc":
-            query = query.order_by(order_column.desc())
-        else:
-            query = query.order_by(order_column.asc())
+            if request.sort_order == "desc":
+                query = query.order_by(TaskResult.word_count.desc())
+            else:
+                query = query.order_by(TaskResult.word_count.asc())
+        else:  # "date" or "relevance" — created_at 기본값
+            if request.sort_order == "desc":
+                query = query.order_by(TaskResult.created_at.desc())
+            else:
+                query = query.order_by(TaskResult.created_at.asc())
 
         # 페이징
         offset = (request.page - 1) * request.page_size
@@ -192,20 +195,20 @@ class AdvancedSearchService:  # pragma: no cover
         """검색 분석 생성"""
 
         # 타입별 분포
-        type_distribution = {}
+        type_distribution: dict[str, int] = {}
         for result in results:
             type_distribution[result.content_type] = (
                 type_distribution.get(result.content_type, 0) + 1
             )
 
         # 화자별 분포
-        speaker_distribution = {}
+        speaker_distribution: dict[str, int] = {}
         for result in results:
             for speaker_id in result.speaker_ids:
                 speaker_distribution[speaker_id] = speaker_distribution.get(speaker_id, 0) + 1
 
         # 인기 태그
-        tag_counts = {}
+        tag_counts: dict[str, int] = {}
         for result in results:
             for tag in result.tags:
                 tag_counts[tag] = tag_counts.get(tag, 0) + 1

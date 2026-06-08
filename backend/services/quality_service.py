@@ -8,6 +8,7 @@ import os
 import re
 import uuid as _uuid
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -132,8 +133,8 @@ class QualityService:
         words = content.split()
         sentences = re.split(r"[.!?]+", content)
 
-        # 기본 통계
-        analysis = {
+        # 기본 통계 — 명시적 타입 선언으로 mypy dict invariance 에러 방지
+        analysis: dict[str, int | float | list[str]] = {
             "word_count": len(words),
             "sentence_count": len([s for s in sentences if s.strip()]),
             "paragraph_count": len(content.split("\n\n")),
@@ -157,6 +158,19 @@ class QualityService:
         }
 
         return analysis
+
+    @staticmethod
+    def _get_float(d: dict[str, int | float | list[str]], key: str, default: float = 0.0) -> float:
+        """dict에서 숫자 값을 float로 안전하게 꺼낸다.
+
+        basic_analysis dict의 값은 int | float | list[str] 유니온이지만,
+        숫자 키(word_count, avg_sentence_length 등)는 항상 숫자이므로
+        isinstance 가드로 좁혀 반환한다.
+        """
+        val = d.get(key, default)
+        if isinstance(val, (int, float)):
+            return float(val)
+        return default
 
     def _calculate_readability(self, words: list[str], sentences: list[str]) -> float:
         """가독성 점수 계산 (간단한 Flesch Reading Ease 공식)"""
@@ -326,11 +340,13 @@ class QualityService:
 
         # AI 분석 결과 반영
         if "completeness_score" in ai_analysis:
-            score += ai_analysis["completeness_score"] * 0.2
+            ai_completeness = ai_analysis["completeness_score"]
+            if isinstance(ai_completeness, (int, float)):
+                score += ai_completeness * 0.2
             components += 1
 
         # 단어 수 기준
-        word_count = basic_analysis.get("word_count", 0)
+        word_count = self._get_float(basic_analysis, "word_count")
         if word_count > 500:
             score += min(20, (word_count - 500) / 50)
         components += 1
@@ -347,7 +363,7 @@ class QualityService:
         components = 0
 
         # 문장 길이 기준
-        avg_sentence_length = basic_analysis.get("avg_sentence_length", 0)
+        avg_sentence_length = self._get_float(basic_analysis, "avg_sentence_length")
         if 15 <= avg_sentence_length <= 30:
             score += 30
         else:
@@ -355,13 +371,15 @@ class QualityService:
         components += 1
 
         # 가독성
-        readability = basic_analysis.get("readability_score", 0)
+        readability = self._get_float(basic_analysis, "readability_score")
         score += min(40, readability * 0.4)
         components += 1
 
         # AI 명확성 점수
         if "clarity_score" in ai_analysis:
-            score += ai_analysis["clarity_score"] * 0.3
+            ai_clarity = ai_analysis["clarity_score"]
+            if isinstance(ai_clarity, (int, float)):
+                score += ai_clarity * 0.3
             components += 1
 
         return min(100, score / max(components, 1))
@@ -376,7 +394,7 @@ class QualityService:
         components = 0
 
         # 단락 수
-        paragraph_count = basic_analysis.get("paragraph_count", 0)
+        paragraph_count = self._get_float(basic_analysis, "paragraph_count")
         if paragraph_count >= 3:
             score += 30
         else:
@@ -390,7 +408,9 @@ class QualityService:
 
         # AI 구조 점수
         if "structure_score" in ai_analysis:
-            score += ai_analysis["structure_score"] * 0.4
+            ai_structure = ai_analysis["structure_score"]
+            if isinstance(ai_structure, (int, float)):
+                score += ai_structure * 0.4
             components += 1
 
         return min(100, score / max(components, 1))
@@ -405,7 +425,7 @@ class QualityService:
         components = 0
 
         # 단어 수 기준
-        word_count = basic_analysis.get("word_count", 0)
+        word_count = self._get_float(basic_analysis, "word_count")
         if word_count > 200:
             score += 40
         else:
@@ -414,7 +434,9 @@ class QualityService:
 
         # AI 내용 점수
         if "content_score" in ai_analysis:
-            score += ai_analysis["content_score"] * 0.6
+            ai_content = ai_analysis["content_score"]
+            if isinstance(ai_content, (int, float)):
+                score += ai_content * 0.6
             components += 1
 
         return min(100, score / max(components, 1))
@@ -437,7 +459,9 @@ class QualityService:
 
         # AI 액션 아이템 점수
         if "action_items_score" in ai_analysis:
-            score += ai_analysis["action_items_score"] * 0.5
+            ai_action = ai_analysis["action_items_score"]
+            if isinstance(ai_action, (int, float)):
+                score += ai_action * 0.5
             components += 1
 
         return min(100, score / max(components, 1))
@@ -514,7 +538,7 @@ class QualityService:
             )
 
         # 명확성 문제
-        avg_sentence_length = basic_analysis.get("avg_sentence_length", 0)
+        avg_sentence_length = self._get_float(basic_analysis, "avg_sentence_length")
         if avg_sentence_length > 50:
             issues.append(
                 QualityIssue(
@@ -539,16 +563,19 @@ class QualityService:
             )
 
         # AI 분석에서 심각한 문제가 발견된 경우
+        # key_issues 값은 list[str]이지만 union 타입이므로 isinstance로 좁힘
         if "key_issues" in ai_analysis:
-            for i, issue in enumerate(ai_analysis["key_issues"][:3]):
+            key_issues_val = ai_analysis["key_issues"]
+            key_issues_list = key_issues_val if isinstance(key_issues_val, list) else []
+            for i, ai_issue_text in enumerate(key_issues_list[:3]):
                 severity = IssueSeverity.HIGH if i < 1 else IssueSeverity.MEDIUM
                 issues.append(
                     QualityIssue(
                         id=f"issue_ai_{i:03d}",
                         category="ai_analysis",
                         severity=severity,
-                        description=issue,
-                        suggestion=f"AI 분석에 의한 제안: {issue}",
+                        description=str(ai_issue_text),
+                        suggestion=f"AI 분석에 의한 제안: {ai_issue_text}",
                     )
                 )
 
@@ -672,8 +699,8 @@ class QualityService:
         """개선 제안 가져오기"""
         suggestions = []
 
-        # 개선 제안 템플릿
-        templates = {
+        # 개선 제안 템플릿 — dict[str, Any]로 명시해서 mypy가 "type"/"priority" 값을 str로 좁히지 않도록 함
+        templates: dict[str, list[dict[str, Any]]] = {
             "structure": [
                 {
                     "title": "논리적 구조 개선",
@@ -762,9 +789,12 @@ class QualityService:
         else:
             selected_templates = templates.get(improvement_type, [])
 
-        # 우선순위 필터링
+        # 우선순위 필터링 — template dict의 "priority" 값은 Priority enum이므로 .value로 비교
         if priority != "all":
-            selected_templates = [t for t in selected_templates if t["priority"].value == priority]
+            selected_templates = [
+                t for t in selected_templates
+                if isinstance(t["priority"], Priority) and t["priority"].value == priority
+            ]
 
         # ImprovementSuggestion 객체 생성
         for i, template in enumerate(selected_templates):
@@ -880,7 +910,7 @@ class QualityService:
             completeness_score=round(completeness, 2),
             clarity_score=round(clarity, 2),
             structure_score=round(structure, 2),
-            word_count=int(basic.get("word_count", 0) or 0),
+            word_count=int(self._get_float(basic, "word_count")),
             computed_at=now,
             mode="lightweight",
         )

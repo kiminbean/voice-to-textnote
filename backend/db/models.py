@@ -45,6 +45,7 @@ class ActionItem(Base):
     meeting_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     tags: Mapped[list | None] = mapped_column(JSON, nullable=True)
     estimated_hours: Mapped[float | None] = mapped_column(Float, nullable=True)
+    actual_hours: Mapped[float | None] = mapped_column(Float, nullable=True)
     category: Mapped[str | None] = mapped_column(String(100), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     completed_by: Mapped[uuid.UUID | None] = mapped_column(nullable=True)
@@ -110,6 +111,24 @@ class TaskResult(Base):
 
     # 완료 시각 (완료 전 NULL)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    # 회의록 제목 (advanced_search에서 참조)
+    title: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+    # 회의록 본문 (전사 결과 원문)
+    content: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # 회의록 요약 텍스트
+    summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # 화자 목록 (JSON array of speaker IDs)
+    speakers: Mapped[list | None] = mapped_column(JSON, nullable=True)
+
+    # 태그 목록 (JSON array of strings)
+    tags: Mapped[list | None] = mapped_column(JSON, nullable=True)
+
+    # 단어 수 (검색 필터링용)
+    word_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     # REQ-GUEST-008: 게스트 세션 필드
     # 게스트 요청 여부 (비로그인 임시 사용자)
