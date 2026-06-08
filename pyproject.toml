@@ -77,29 +77,6 @@ omit = [
     "backend/tests/**/*",
 ]
 
-[tool.mypy]
-ignore_missing_imports = true
-disable_error_code = [
-    "var-annotated",
-    "method-assign",
-    "arg-type",
-    "union-attr",
-    "return-value",
-    "misc",
-    "no-redef",
-    "index",
-    "attr-defined",
-    "operator",
-    "str-bytes-safe",
-]
-warn_return_any = false
-warn_unused_configs = true
-exclude = [
-    "client/ios/Flutter/ephemeral/",
-    "\\.venv/",
-    "alembic/",
-]
-
 [tool.ruff]
 line-length = 100
 target-version = "py311"
