@@ -52,7 +52,7 @@ async def create_summary(
     POST /api/v1/summaries
     """
     # --- 동시 처리 제한 확인 (REQ-SUM-008: 최대 2개) ---
-    active_count = await redis_client.scard("active_sum_jobs") or 0
+    active_count = await redis_client.scard("active_sum_jobs") or 0  # type: ignore[misc]
     if active_count >= settings.max_concurrent_summaries:
         too_many_requests(
             f"동시 요약 작업 한도({settings.max_concurrent_summaries}개)를 "

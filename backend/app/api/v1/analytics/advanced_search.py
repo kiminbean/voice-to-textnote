@@ -137,7 +137,7 @@ async def get_search_history(
             },
         ]
 
-        return SearchHistoryResponse(history=history_items, saved_searches=saved_searches)
+        return SearchHistoryResponse(history=history_items, saved_searches=saved_searches)  # type: ignore[arg-type]
 
     except VoiceNoteError:
         raise

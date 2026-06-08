@@ -53,7 +53,7 @@ def _update_task_status(
     existing_raw = r.get(status_key)
     existing_created_at = None
     if existing_raw:
-        existing_data = json.loads(existing_raw)
+        existing_data = json.loads(existing_raw)  # type: ignore[arg-type]
         existing_created_at = existing_data.get("created_at")
 
     data: dict = {

@@ -730,8 +730,8 @@ class KeywordService:
 
         raw_scores: dict[str, float] = {}
         for keyword in keywords:
-            current_score = current_map.get(keyword).score if keyword in current_map else 0.0
-            history_score = history_map.get(keyword).score if keyword in history_map else 0.0
+            current_score = current_map.get(keyword).score if keyword in current_map else 0.0  # type: ignore[union-attr]
+            history_score = history_map.get(keyword).score if keyword in history_map else 0.0  # type: ignore[union-attr]
             if current_score and history_score:
                 raw_scores[keyword] = (current_score * 0.72) + (history_score * 0.28) + 0.08
             elif current_score:

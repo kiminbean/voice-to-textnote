@@ -45,7 +45,7 @@ async def create_diarization(
     POST /api/v1/diarizations
     """
     # --- 동시 처리 제한 확인 (REQ-DIA-014: 최대 2개) ---
-    active_count = await redis_client.scard("active_dia_jobs") or 0
+    active_count = await redis_client.scard("active_dia_jobs") or 0  # type: ignore[misc]
     if active_count >= settings.max_concurrent_diarizations:
         too_many_requests(
             f"동시 화자 분리 작업 한도({settings.max_concurrent_diarizations}개)를 "

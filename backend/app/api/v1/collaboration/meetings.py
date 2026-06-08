@@ -105,7 +105,7 @@ async def share_meeting(
     return MeetingShareResponse(
         task_id=ownership.task_id,
         team_id=str(ownership.team_id),
-        shared_at=ownership.shared_at,
+        shared_at=ownership.shared_at,  # type: ignore[arg-type]
     )
 
 

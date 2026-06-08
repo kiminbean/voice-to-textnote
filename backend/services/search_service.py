@@ -162,8 +162,8 @@ class SearchService:
             total = count_result.scalar() or 0
 
             # 검색 결과 조회
-            params["limit"] = page_size
-            params["offset"] = offset
+            params["limit"] = page_size  # type: ignore[assignment]
+            params["offset"] = offset  # type: ignore[assignment]
             rows_result = await session.execute(text(search_sql), params)
             rows = rows_result.fetchall()
 

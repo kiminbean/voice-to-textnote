@@ -72,10 +72,10 @@ def sample_pdf_path(tmp_path: Path) -> Path:
             pdf = FPDF()
             pdf.add_page()
             pdf.set_font("Helvetica", size=12)
-            pdf.cell(200, 10, "Meeting Minutes", ln=True)
-            pdf.cell(200, 10, "1. Overview", ln=True)
-            pdf.cell(200, 10, "Date: 2025-01-01", ln=True)
-            pdf.cell(200, 10, "2. Main Agenda", ln=True)
+            pdf.cell(200, 10, "Meeting Minutes", ln=True)  # type: ignore[arg-type]
+            pdf.cell(200, 10, "1. Overview", ln=True)  # type: ignore[arg-type]
+            pdf.cell(200, 10, "Date: 2025-01-01", ln=True)  # type: ignore[arg-type]
+            pdf.cell(200, 10, "2. Main Agenda", ln=True)  # type: ignore[arg-type]
             pdf.output(str(pdf_path))
         except ImportError:
             # 최소 PDF 바이트 (텍스트 없음 - 파싱 실패 경로 테스트용)

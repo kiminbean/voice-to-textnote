@@ -89,7 +89,7 @@ class QAService:
         response = client.chat.completions.create(
             model=settings.summary_model,
             max_tokens=1500,
-            messages=messages,
+            messages=messages,  # type: ignore[arg-type]
         )
 
         answer_text = response.choices[0].message.content or ""

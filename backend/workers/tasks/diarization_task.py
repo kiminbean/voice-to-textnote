@@ -47,7 +47,7 @@ def _update_task_status(
     existing_created_at = None
     existing_raw = r.get(status_key)
     if existing_raw:
-        existing_data = json.loads(existing_raw)
+        existing_data = json.loads(existing_raw)  # type: ignore[arg-type]
         existing_created_at = existing_data.get("created_at")
 
     data: dict = {
@@ -196,7 +196,7 @@ def diarization_task(
             if stt_result_raw is None:
                 raise FileNotFoundError(f"STT 결과를 찾을 수 없습니다: stt_task_id={stt_task_id}")
 
-            stt_result = json.loads(stt_result_raw)
+            stt_result = json.loads(stt_result_raw)  # type: ignore[arg-type]
             stt_status = stt_result.get("status")
             if stt_status and stt_status != TaskStatus.completed.value:
                 upstream_error = _extract_cached_error_message(stt_result) or (
@@ -357,7 +357,7 @@ def diarization_task(
         logger.info(
             "화자 분리 작업 완료",
             task_id=task_id,
-            segments=len(final_result["segments"]),
+            segments=len(final_result.get("segments", [])),  # type: ignore[arg-type]
             speakers=len(speaker_stats),
             matched=final_result.get("matched", True),
         )

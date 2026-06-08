@@ -60,7 +60,7 @@ def _make_analysis_result(**overrides) -> AudioAnalysisResult:
         recommendation=None,
     )
     defaults.update(overrides)
-    return AudioAnalysisResult(**defaults)
+    return AudioAnalysisResult(**defaults)  # type: ignore[arg-type]
 
 
 def _make_sample(**overrides) -> VoiceSampleAnalysis:
@@ -76,7 +76,7 @@ def _make_sample(**overrides) -> VoiceSampleAnalysis:
         quality_issues=[],
     )
     defaults.update(overrides)
-    return VoiceSampleAnalysis(**defaults)
+    return VoiceSampleAnalysis(**defaults)  # type: ignore[arg-type]
 
 
 # ---------------------------------------------------------------------------

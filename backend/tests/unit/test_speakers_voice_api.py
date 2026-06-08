@@ -97,7 +97,7 @@ class _FakeAnalysis:
     speech_ratio: float = 0.85
     silence_ratio: float = 0.15
     quality_score: float = 0.9
-    quality_issues: list = None
+    quality_issues: list | None = None
     # 미사용 필드 - 호환을 위해 추가
     filename: str = "x.wav"
     format: str = "WAV"
@@ -106,7 +106,7 @@ class _FakeAnalysis:
     bitrate: str | None = None
     file_size_bytes: int = 10000
     max_dbfs: float = -3.0
-    silence_segments: list = None
+    silence_segments: list | None = None
     recommendation: str | None = None
 
     def __post_init__(self):

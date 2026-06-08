@@ -118,11 +118,11 @@ class MindMapGenerator:
 
         logger.info(
             "OpenAI API 마인드맵 응답 수신",
-            input_tokens=response.usage.prompt_tokens,
-            output_tokens=response.usage.completion_tokens,
+            input_tokens=response.usage.prompt_tokens,  # type: ignore[union-attr]
+            output_tokens=response.usage.completion_tokens,  # type: ignore[union-attr]
         )
 
-        return self.parse_response(response_text)
+        return self.parse_response(response_text)  # type: ignore[arg-type]
 
 
 def _format_string_list(items: object) -> str:

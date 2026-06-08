@@ -61,4 +61,4 @@ class _FakeActionItemModel(Base):
     updated_at: Mapped[datetime] = mapped_column(nullable=False)
 
 
-_models_mod.ActionItem = _FakeActionItemModel  # type: ignore[attr-defined]
+_models_mod.ActionItem = _FakeActionItemModel  # type: ignore[misc,assignment]

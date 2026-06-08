@@ -153,7 +153,7 @@ async def list_devices(
         DeviceResponse(
             id=dt.id,
             fcm_token=dt.fcm_token,
-            platform=dt.platform,
+            platform=dt.platform,  # type: ignore[arg-type]
             device_id=None,  # MVP: device_id 필드 없음
             created_at=dt.created_at,
             updated_at=dt.updated_at,

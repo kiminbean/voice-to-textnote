@@ -47,7 +47,7 @@ def _update_task_status(
     existing_created_at = None
     existing_raw = r.get(status_key)
     if existing_raw:
-        existing_data = json.loads(existing_raw)
+        existing_data = json.loads(existing_raw)  # type: ignore[arg-type]
         existing_created_at = existing_data.get("created_at")
 
     data: dict = {
@@ -179,7 +179,7 @@ def minutes_task(
                 f"화자 분리 결과를 찾을 수 없습니다: diarization_task_id={diarization_task_id}"
             )
 
-        dia_result = json.loads(dia_result_raw)
+        dia_result = json.loads(dia_result_raw)  # type: ignore[arg-type]
         dia_status = dia_result.get("status")
         if dia_status and dia_status != TaskStatus.completed.value:
             # BUGFIX: 화자 분리 실패 결과를 빈 segments로 처리하면 회의록이
@@ -206,7 +206,7 @@ def minutes_task(
             stt_result_raw = r.get(stt_result_key)
             if stt_result_raw is None:
                 raise FileNotFoundError(f"STT 결과를 찾을 수 없습니다: stt_task_id={stt_task_id}")
-            stt_result = json.loads(stt_result_raw)  # pragma: no cover
+            stt_result = json.loads(stt_result_raw)  # type: ignore[arg-type] # pragma: no cover
             if stt_result.get("status") != TaskStatus.completed.value:
                 upstream_error = _extract_cached_error_message(stt_result) or (  # pragma: no cover
                     f"STT 작업이 완료되지 않았습니다: status={stt_result.get('status')}"

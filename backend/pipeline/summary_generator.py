@@ -158,17 +158,17 @@ class SummaryGenerator:
 
             # REQ-UI-003: sections 파싱 (양식 기반 섹션별 내용)
             raw_sections = data.get("sections", {})
-            sections: dict[str, str] = {}
+            sections_parsed: dict[str, str] = {}
             if isinstance(raw_sections, dict):
                 for k, v in raw_sections.items():
-                    sections[str(k)] = str(v) if v else ""
+                    sections_parsed[str(k)] = str(v) if v else ""
 
             return SummaryResult(
                 summary_text=data.get("summary_text", ""),
                 action_items=action_items,
                 key_decisions=data.get("key_decisions", []),
                 next_steps=data.get("next_steps", []),
-                sections=sections,
+                sections=sections_parsed,
             )
 
         except (json.JSONDecodeError, ValueError, KeyError) as exc:
@@ -179,7 +179,7 @@ class SummaryGenerator:
             )
             # 잘린 JSON에서라도 summary_text 추출 시도
             summary_text = response_text
-            sections: dict[str, str] = {}
+            sections_fallback: dict[str, str] = {}
             action_items_fallback: list[ActionItem] = []
             try:
                 # "summary_text" 값 추출 (정규식)
@@ -194,7 +194,7 @@ class SummaryGenerator:
                     for kv in _re.finditer(
                         r'"([^"]+)"\s*:\s*"((?:[^"\\]|\\.)*)"', sec_match.group(1)
                     ):  # pragma: no cover
-                        sections[kv.group(1)] = kv.group(2).replace('\\"', '"')
+                        sections_fallback[kv.group(1)] = kv.group(2).replace('\\"', '"')
             except Exception as parse_exc:  # pragma: no cover
                 # 폴백 파싱 실패는 치명적이지 않지만 디버깅을 위해 로그를 남긴다.
                 logger.warning(
@@ -206,7 +206,7 @@ class SummaryGenerator:
                 action_items=action_items_fallback,
                 key_decisions=[],
                 next_steps=[],
-                sections=sections,
+                sections=sections_fallback,
             )
 
     def generate_summary(
@@ -258,11 +258,11 @@ class SummaryGenerator:
 
         logger.info(
             "OpenAI API 응답 수신",
-            input_tokens=response.usage.prompt_tokens,
-            output_tokens=response.usage.completion_tokens,
+            input_tokens=response.usage.prompt_tokens,  # type: ignore[union-attr]
+            output_tokens=response.usage.completion_tokens,  # type: ignore[union-attr]
         )
 
-        return self.parse_response(response_text)
+        return self.parse_response(response_text)  # type: ignore[arg-type]
 
 
 def _seconds_to_hhmmss(seconds: float) -> str:
