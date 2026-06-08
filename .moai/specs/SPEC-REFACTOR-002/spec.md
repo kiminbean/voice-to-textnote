@@ -1,9 +1,9 @@
 ---
 id: SPEC-REFACTOR-002
 version: 0.2.0
-status: draft
+status: completed
 created: 2026-06-06
-updated: 2026-06-06
+updated: 2026-06-08
 decisions_resolved: true
 author: MoAI
 priority: medium
@@ -269,3 +269,22 @@ tests/unit/test_tags_api_v5.py:112                 from backend.app.api.v1.minut
 | D-1 (action_items 분리 등록) | REQ-R2-002 | AC-R2-1, AC-R2-4, AC-R2-7 |
 | D-2 (sentiment 통합) | REQ-R2-003 | AC-R2-4, AC-R2-7 |
 | 라우트 baseline 재생성 (delta) | REQ-R2-005 | AC-R2-2, AC-R2-7, AC-R2-8 |
+
+---
+
+## 9. Process Exception Note (2026-06-08)
+
+Implementation was completed in commit `48e2c84` outside the formal Run phase. All 8 acceptance criteria were verified post-hoc against the current codebase (2026-06-08):
+
+| AC | Result |
+|----|--------|
+| AC-R2-1 | flat routers = 0 |
+| AC-R2-2 | route invariance: passed |
+| AC-R2-3 | old-style imports = 0 |
+| AC-R2-4 | sentiment=1, action_items=2 (both registered) |
+| AC-R2-5 | 3158+ passed, 0 failed |
+| AC-R2-6 | registry order preserved, 0 changes to existing tuples |
+| AC-R2-7 | baseline = 161 entries (148+13) |
+| AC-R2-8 | subset gate: 0 missing |
+
+This SPEC is marked completed based on verified implementation, not Run-phase workflow completion. Future agents should treat this as a deliberate exception, not a precedent to emulate.

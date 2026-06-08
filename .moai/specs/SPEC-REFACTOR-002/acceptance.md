@@ -1,7 +1,7 @@
 ---
 id: SPEC-REFACTOR-002
 type: acceptance
-status: draft
+status: completed
 parent_spec: SPEC-REFACTOR-001
 decisions_resolved: true
 ---
@@ -12,13 +12,13 @@ decisions_resolved: true
 
 ## 1. Definition of Done
 
-- [ ] flat 라우터 모듈 0건 (top-level `action_items.py` → `minutes/action_items_crud.py` 이동 완료)
-- [ ] **D-1 완료**: CRUD 라우터가 `ROUTER_REGISTRY`에 등록되어 실제 서빙됨. 추출 라우터도 유지·서빙됨 (둘 다 서빙)
-- [ ] **D-2 완료**: `minutes/sentiment.py`의 4개 엔드포인트가 `analytics/sentiment.py`로 병합됨. 고아 파일 삭제됨. sentiment 모듈 1개만 존재
-- [ ] 잔여 flat-style 테스트 import 재지정 완료 (action_items 5건 → CRUD 모듈, sentiment 2건 → analytics 모듈)
-- [ ] **기존 148개 서빙 라우트 무손실** (subset 게이트 통과) + delta(+13) 문서화 후 baseline 재생성
-- [ ] registry 기존 35개 튜플 순서·인증 정책 불변 (batch→transcription 보존)
-- [ ] 전체 백엔드 스위트 그린 (e2e 9건 제외), 커버리지 게이트 충족
+- [x] flat 라우터 모듈 0건 (top-level `action_items.py` → `minutes/action_items_crud.py` 이동 완료)
+- [x] **D-1 완료**: CRUD 라우터가 `ROUTER_REGISTRY`에 등록되어 실제 서빙됨. 추출 라우터도 유지·서빙됨 (둘 다 서빙)
+- [x] **D-2 완료**: `minutes/sentiment.py`의 4개 엔드포인트가 `analytics/sentiment.py`로 병합됨. 고아 파일 삭제됨. sentiment 모듈 1개만 존재
+- [x] 잔여 flat-style 테스트 import 재지정 완료 (action_items 5건 → CRUD 모듈, sentiment 2건 → analytics 모듈)
+- [x] **기존 148개 서빙 라우트 무손실** (subset 게이트 통과) + delta(+13) 문서화 후 baseline 재생성
+- [x] registry 기존 35개 튜플 순서·인증 정책 불변 (batch→transcription 보존)
+- [x] 전체 백엔드 스위트 그린 (e2e 9건 제외), 커버리지 게이트 충족
 
 ## 2. 수용 검증 (Acceptance Checks)
 
