@@ -3,6 +3,7 @@ SPEC-BOOKMARK-001: 북마크/하이라이트 CRUD 서비스
 """
 
 import uuid
+from typing import Any
 
 from fastapi import HTTPException
 from sqlalchemy import func, select
@@ -11,7 +12,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.config import settings
 from backend.db.bookmark_models import Bookmark
 from backend.db.models import TaskResult
-from backend.schemas.bookmark import BookmarkCreate, BookmarkUpdate
+from backend.schemas.bookmark import (
+    BookmarkBulkOperation,
+    BookmarkCleanupRequest,
+    BookmarkCreate,
+    BookmarkSearchRequest,
+    BookmarkUpdate,
+)
 
 
 class BookmarkService:
@@ -165,3 +172,52 @@ class BookmarkService:
         bookmark = await self.get_by_id(session, bookmark_id, user_id)
         await session.delete(bookmark)
         await session.commit()
+
+    # @MX:TODO: SPEC-BOOKMARK-001 — 미구현 고급 기능 스텁 (Phase 2 mypy 해결용)
+    # 각 메서드는 API 라우트에서 참조하므로 최소 시그니처만 정의
+
+    async def bulk_operation(
+        self,
+        session: AsyncSession,
+        user_id: uuid.UUID,
+        payload: BookmarkBulkOperation,
+    ) -> dict[str, Any]:
+        """대량 북마크 작업 (삭제, 카테고리/우선순위 업데이트)."""
+        raise HTTPException(status_code=501, detail="bulk_operation 미구현")
+
+    async def get_summary(
+        self,
+        session: AsyncSession,
+        user_id: uuid.UUID,
+        task_id: str | None = None,
+    ) -> dict[str, Any]:
+        """북마크 통계 및 요약 정보."""
+        raise HTTPException(status_code=501, detail="get_summary 미구현")
+
+    async def search_bookmarks(
+        self,
+        session: AsyncSession,
+        user_id: uuid.UUID,
+        request: BookmarkSearchRequest,
+    ) -> dict[str, Any]:
+        """고급 북마크 검색."""
+        raise HTTPException(status_code=501, detail="search_bookmarks 미구현")
+
+    async def cleanup_bookmarks(
+        self,
+        session: AsyncSession,
+        user_id: uuid.UUID,
+        payload: BookmarkCleanupRequest,
+    ) -> dict[str, Any]:
+        """북마크 정리."""
+        raise HTTPException(status_code=501, detail="cleanup_bookmarks 미구현")
+
+    async def export_bookmarks(
+        self,
+        session: AsyncSession,
+        user_id: uuid.UUID,
+        task_id: str | None = None,
+        format: str = "json",  # noqa: A002
+    ) -> dict[str, Any]:
+        """북마크 내보내기."""
+        raise HTTPException(status_code=501, detail="export_bookmarks 미구현")

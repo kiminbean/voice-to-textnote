@@ -127,7 +127,20 @@ async def enhanced_preprocess_endpoint(
 
         # 처리 수행 (비동기)
         try:
-            result = await processor.preprocess_batch([src_path], options, None)
+            batch_options = BatchPreprocessOptions(
+                convert_to_16k_mono=convert_to_16k_mono,
+                normalize=normalize,
+                target_dbfs=target_dbfs,
+                high_pass_hz=high_pass_hz,
+                low_pass_hz=low_pass_hz,
+                trim_silence=trim_silence,
+                silence_threshold_db=silence_threshold_db,
+                silence_min_len_ms=silence_min_len_ms,
+                ai_noise_removal=ai_noise_removal,
+                noise_threshold=noise_threshold,
+                denoise_strength=denoise_strength,
+            )
+            result = await processor.preprocess_batch([src_path], batch_options, None)
 
             if result.failed_files > 0:
                 raise HTTPException(status_code=400, detail="오디오 처리 실패")
@@ -153,12 +166,20 @@ async def enhanced_preprocess_endpoint(
                 processed_path.unlink(missing_ok=True)
 
             output_name = f"{Path(filename).stem}_enhanced.wav"
+
+            # 지연 파일 이터레이터: 응답 전송 시에만 파일을 열어 FileNotFoundError 방지
+            def _iter_file(file_path: Path):
+                with open(file_path, "rb") as f:
+                    yield from f
+
             return StreamingResponse(
-                path=str(processed_path),
+                content=_iter_file(processed_path),
                 media_type="audio/wav",
-                filename=output_name,
                 background=BackgroundTask(cleanup),
-                headers={"X-Enhanced-Preprocess-Meta": str(metadata)},
+                headers={
+                    "Content-Disposition": f'attachment; filename="{output_name}"',
+                    "X-Enhanced-Preprocess-Meta": str(metadata),
+                },
             )
 
         except Exception as exc:
@@ -262,10 +283,24 @@ async def batch_preprocess_endpoint(
                         fp.write(chunk)
 
             # 배치 처리 수행
-            result = await processor.preprocess_batch(temp_files, options, None)
+            result = await processor.preprocess_batch([str(f) for f in temp_files], options, None)
 
             # 보고서 생성
             report = await processor.create_processing_report(result) if return_report else None
+
+            # summary가 dict인 경우 BatchSummary로 변환
+            summary_data = result.summary if isinstance(result.summary, dict) else {}
+            from backend.schemas.audio_enhanced import BatchSummary
+
+            batch_summary = BatchSummary(
+                total_input_size_bytes=summary_data.get("total_input_size_bytes", 0),
+                total_output_size_bytes=summary_data.get("total_output_size_bytes", 0),
+                compression_ratio=summary_data.get("compression_ratio", 1.0),
+                total_duration_seconds=summary_data.get("total_duration_seconds", 0.0),
+                average_duration_seconds=summary_data.get("average_duration_seconds", 0.0),
+                average_sample_rate=int(summary_data.get("average_sample_rate", 16000)),
+                format_distribution=summary_data.get("format_distribution", {}),
+            )
 
             return BatchPreprocessResponse(
                 task_id=result.task_id,
@@ -273,7 +308,7 @@ async def batch_preprocess_endpoint(
                 processed_files=result.processed_files,
                 failed_files=result.failed_files,
                 processing_time_seconds=result.processing_time_seconds,
-                summary=result.summary,
+                summary=batch_summary,
                 report=report,
             )
 

@@ -108,19 +108,22 @@ def rate_limit(msg: str = "요청 제한을 초과했습니다", **kwargs: str) 
     )
 
 
-def unprocessable(msg: str = "요청을 처리할 수 없습니다", **kwargs: str) -> NoReturn:
+def unprocessable(
+    msg: str | list[dict[str, str]] = "요청을 처리할 수 없습니다",
+    **kwargs: str,
+) -> NoReturn:
     """
     UnprocessableEntityError를 발생시키는 헬퍼 함수
 
     Args:
-        msg: 에러 메시지
+        msg: 에러 메시지 (문자열 또는 상세 에러 리스트)
         **kwargs: error_code 등 추가 파라미터
 
     Raises:
         UnprocessableEntityError: 422 에러
     """
     raise UnprocessableEntityError(
-        message=msg,
+        message=msg,  # type: ignore[arg-type]  # BaseError.message은 str|list 모두 허용
         error_code=kwargs.get("error_code", "UNPROCESSABLE_ENTITY"),
         status_code=422,
     )

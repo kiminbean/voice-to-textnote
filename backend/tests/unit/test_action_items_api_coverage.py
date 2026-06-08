@@ -508,12 +508,10 @@ class TestGetMeetingActionItems:
             app.dependency_overrides[get_db_session] = orig
 
     def test_meeting_not_found_raises_error(self, mock_service):
-        """존재하지 않는 회의 시 내부 에러 발생
+        """존재하지 않는 회의 시 404 반환
 
-        BUG: The function parameter 'status' shadows the fastapi 'status' module.
-        When meeting not found, line 300 tries status.HTTP_404_NOT_FOUND but
-        'status' is the query param (None), causing AttributeError.
-        This test documents the current buggy behavior.
+        BUG (수정됨): 기존에는 status 파라미터가 fastapi.status를 가려
+        500 에러가 발생했으나, SPEC-TYPING-001 Phase 2에서 수정됨.
         """
         from fastapi import FastAPI
         from fastapi.testclient import TestClient
@@ -540,7 +538,7 @@ class TestGetMeetingActionItems:
 
         response = client.get("/api/v1/action-items/meeting/nonexistent")
         # AttributeError from the status shadowing bug surfaces as 500
-        assert response.status_code == 500
+        assert response.status_code == 404
 
     def test_meeting_with_status_filter(self, api_client, mock_service):
         """회의 액션 아이템 상태 필터"""

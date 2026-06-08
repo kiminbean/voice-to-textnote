@@ -137,8 +137,8 @@ class TestSentimentTrends:
 
     def test_trends_no_records(self, app_client):
         """레코드 없을 때 빈 추이.
-        참고: 엔드포인트 반환 타입(dict[str, list[dict]])이 실제 응답과 불일치하여
-        ResponseValidationError 발생 -> 500 반환 (소스 코드 타입 버그).
+        참고: 반환 타입을 dict로 수정(SPEC-TYPING-001 Phase 2)하여
+        ResponseValidationError 해결 → 정상 200 반환.
         """
         client, mock_session, mock_svc = app_client
 
@@ -150,8 +150,7 @@ class TestSentimentTrends:
 
         resp = client.get("/api/v1/sentiment/trends")
 
-        # ResponseValidationError로 인해 500 반환 (타입 버그)
-        assert resp.status_code == 500
+        assert resp.status_code == 200
 
     def test_trends_with_records(self, app_client):
         """레코드 있을 때 추이 분석.
@@ -173,12 +172,11 @@ class TestSentimentTrends:
 
         resp = client.get("/api/v1/sentiment/trends?days=30")
 
-        # ResponseValidationError로 인해 500 반환 (타입 버그)
-        assert resp.status_code == 500
+        # SPEC-TYPING-001 Phase 2 수정으로 정상 응답
+        assert resp.status_code == 200
 
     def test_trends_filters_none_result_data(self, app_client):
         """result_data가 None인 레코드는 필터링.
-        참고: ResponseValidationError로 인해 500 반환.
         """
         client, mock_session, mock_svc = app_client
 
@@ -194,8 +192,8 @@ class TestSentimentTrends:
 
         resp = client.get("/api/v1/sentiment/trends")
 
-        # ResponseValidationError로 인해 500 반환 (타입 버그)
-        assert resp.status_code == 500
+        # SPEC-TYPING-001 Phase 2 수정으로 정상 응답
+        assert resp.status_code == 200
 
 
 # ---------------------------------------------------------------------------

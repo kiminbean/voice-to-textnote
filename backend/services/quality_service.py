@@ -168,7 +168,7 @@ class QualityService:
         isinstance 가드로 좁혀 반환한다.
         """
         val = d.get(key, default)
-        if isinstance(val, (int, float)):
+        if isinstance(val, int | float):
             return float(val)
         return default
 
@@ -341,7 +341,7 @@ class QualityService:
         # AI 분석 결과 반영
         if "completeness_score" in ai_analysis:
             ai_completeness = ai_analysis["completeness_score"]
-            if isinstance(ai_completeness, (int, float)):
+            if isinstance(ai_completeness, int | float):
                 score += ai_completeness * 0.2
             components += 1
 
@@ -378,7 +378,7 @@ class QualityService:
         # AI 명확성 점수
         if "clarity_score" in ai_analysis:
             ai_clarity = ai_analysis["clarity_score"]
-            if isinstance(ai_clarity, (int, float)):
+            if isinstance(ai_clarity, int | float):
                 score += ai_clarity * 0.3
             components += 1
 
@@ -409,7 +409,7 @@ class QualityService:
         # AI 구조 점수
         if "structure_score" in ai_analysis:
             ai_structure = ai_analysis["structure_score"]
-            if isinstance(ai_structure, (int, float)):
+            if isinstance(ai_structure, int | float):
                 score += ai_structure * 0.4
             components += 1
 
@@ -435,7 +435,7 @@ class QualityService:
         # AI 내용 점수
         if "content_score" in ai_analysis:
             ai_content = ai_analysis["content_score"]
-            if isinstance(ai_content, (int, float)):
+            if isinstance(ai_content, int | float):
                 score += ai_content * 0.6
             components += 1
 
@@ -460,7 +460,7 @@ class QualityService:
         # AI 액션 아이템 점수
         if "action_items_score" in ai_analysis:
             ai_action = ai_analysis["action_items_score"]
-            if isinstance(ai_action, (int, float)):
+            if isinstance(ai_action, int | float):
                 score += ai_action * 0.5
             components += 1
 
