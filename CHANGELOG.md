@@ -4,6 +4,23 @@
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-06-08
+
+### Changed
+
+- **Mypy 정적 타입 오류 194→0 해소 (SPEC-TYPING-001)**:
+  - Phase 1-4에 걸쳐 40개 파일 194건 타입 어노테이션 불일치 수정
+  - Workers, Pipeline, Services, API Routes, DB Models, Tests 전반 수정
+  - `mypy --config-file mypy.ini backend/` → `Success: no issues found in 384 source files`
+  - 3158 passed, 0 failed, 94.17% 커버리지 유지
+
+- **API 라우터 도메인 그룹핑 완료 (SPEC-REFACTOR-002)**:
+  - top-level `action_items.py` → `minutes/action_items_crud.py` 이동 (flat 라우터 0건)
+  - sentiment 라우터 통합: `minutes/sentiment.py` → `analytics/sentiment.py` 병합
+  - 라우트 baseline: 148→161 entries (+13, 무손실 검증 통과)
+
+- **설정 동기화**: `llm.yaml` team_mode `cg`→`glm` 동기화
+
 ## [0.1.0] - 2026-06-06
 
 ### Added
