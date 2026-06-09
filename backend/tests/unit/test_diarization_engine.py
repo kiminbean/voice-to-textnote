@@ -42,10 +42,9 @@ def _make_mock_pipeline():
 
 
 def _reset_engine():
-    """DiarizationEngine 싱글톤 리셋"""
+    """DiarizationEngine 상태 리셋"""
     from backend.ml.diarization_engine import DiarizationEngine
 
-    DiarizationEngine._instance = None
     DiarizationEngine._model_loaded = False
     DiarizationEngine._load_time_seconds = None
     DiarizationEngine._pipeline = None

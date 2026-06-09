@@ -23,48 +23,6 @@ def _make_mock_mlx(transcribe_result=None):
 # ---------------------------------------------------------------------------
 
 
-class TestWhisperEngineSingleton:
-    """싱글톤 패턴 테스트 (REQ-STT-007)"""
-
-    def setup_method(self):
-        """각 테스트 전 싱글톤 리셋"""
-        from backend.ml.stt_engine import WhisperEngine
-
-        WhisperEngine._instance = None
-        WhisperEngine._model_loaded = False
-        WhisperEngine._load_time_seconds = None
-        WhisperEngine._device = "cpu"
-
-    def test_get_instance_returns_same_object(self):
-        """get_instance()는 동일한 인스턴스를 반환해야 함"""
-        from backend.ml.stt_engine import WhisperEngine
-
-        instance1 = WhisperEngine.get_instance()
-        instance2 = WhisperEngine.get_instance()
-        assert instance1 is instance2
-
-    def test_get_instance_called_multiple_times_same(self):
-        """여러 번 호출해도 동일 인스턴스"""
-        from backend.ml.stt_engine import WhisperEngine
-
-        instances = [WhisperEngine.get_instance() for _ in range(5)]
-        assert all(i is instances[0] for i in instances)
-
-    def test_is_loaded_false_initially(self):
-        """초기 상태에서 is_loaded == False (모델 미로드)"""
-        from backend.ml.stt_engine import WhisperEngine
-
-        engine = WhisperEngine()
-        assert engine.is_loaded is False
-
-    def test_model_not_loaded_without_explicit_call(self):
-        """load() 호출 없이는 모델 미로드"""
-        from backend.ml.stt_engine import WhisperEngine
-
-        engine = WhisperEngine()
-        # 로드 호출 안 함 → _model_loaded=False
-        assert not engine._model_loaded
-
 
 # ---------------------------------------------------------------------------
 # load() 메서드 테스트
@@ -73,14 +31,6 @@ class TestWhisperEngineSingleton:
 
 class TestWhisperEngineLoad:
     """모델 로딩 테스트 (REQ-STT-007: lazy load + 재사용)"""
-
-    def setup_method(self):
-        from backend.ml.stt_engine import WhisperEngine
-
-        WhisperEngine._instance = None
-        WhisperEngine._model_loaded = False
-        WhisperEngine._load_time_seconds = None
-        WhisperEngine._device = "cpu"
 
     def test_load_sets_model_loaded_true(self):
         """load() 후 is_loaded == True"""
@@ -146,9 +96,9 @@ class TestWhisperEngineTranscribe:
     """전사 기능 테스트 (REQ-STT-005, REQ-STT-008)"""
 
     def setup_method(self):
+        """테스트 전 상태 리셋"""
         from backend.ml.stt_engine import WhisperEngine
 
-        WhisperEngine._instance = None
         WhisperEngine._model_loaded = False
         WhisperEngine._load_time_seconds = None
         WhisperEngine._device = "cpu"
@@ -356,7 +306,6 @@ class TestWhisperEngineMemory:
     def setup_method(self):
         from backend.ml.stt_engine import WhisperEngine
 
-        WhisperEngine._instance = None
         WhisperEngine._model_loaded = False
 
     def test_get_memory_info_returns_dict(self):
@@ -429,7 +378,6 @@ class TestWhisperEngineProperties:
     def setup_method(self):
         from backend.ml.stt_engine import WhisperEngine
 
-        WhisperEngine._instance = None
         WhisperEngine._model_loaded = False
         WhisperEngine._load_time_seconds = None
         WhisperEngine._device = "cpu"
@@ -519,7 +467,6 @@ class TestFasterWhisperBackend:
     def setup_method(self):
         from backend.ml.stt_engine import WhisperEngine
 
-        WhisperEngine._instance = None
         WhisperEngine._model_loaded = False
         WhisperEngine._load_time_seconds = None
         WhisperEngine._device = "cpu"

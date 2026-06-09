@@ -222,7 +222,7 @@ class TestDiarizationParallelMode:
         with (
             patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis),
             patch(
-                "backend.workers.tasks.diarization_task.DiarizationEngine.get_instance",
+                "backend.workers.tasks.diarization_task.DiarizationEngine",
                 return_value=mock_engine,
             ),
             patch("backend.workers.tasks.diarization_task.settings", mock_settings),
@@ -256,7 +256,7 @@ class TestDiarizationParallelMode:
         with (
             patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis),
             patch(
-                "backend.workers.tasks.diarization_task.DiarizationEngine.get_instance",
+                "backend.workers.tasks.diarization_task.DiarizationEngine",
                 return_value=mock_engine,
             ),
             patch("backend.workers.tasks.diarization_task.settings", mock_settings),
@@ -283,7 +283,7 @@ class TestDiarizationParallelMode:
         with (
             patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis),
             patch(
-                "backend.workers.tasks.diarization_task.DiarizationEngine.get_instance",
+                "backend.workers.tasks.diarization_task.DiarizationEngine",
                 return_value=mock_engine,
             ),
             patch("backend.workers.tasks.diarization_task.settings", mock_settings),
@@ -338,7 +338,7 @@ class TestDiarizationDbPersistErrors:
         with (
             patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis),
             patch(
-                "backend.workers.tasks.diarization_task.DiarizationEngine.get_instance",
+                "backend.workers.tasks.diarization_task.DiarizationEngine",
                 return_value=mock_engine,
             ),
             patch("backend.workers.tasks.diarization_task.settings", mock_settings),
@@ -419,7 +419,7 @@ class TestDiarizationDbPersistErrors:
         with (
             patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis),
             patch(
-                "backend.workers.tasks.diarization_task.DiarizationEngine.get_instance",
+                "backend.workers.tasks.diarization_task.DiarizationEngine",
                 return_value=mock_engine,
             ),
             patch("backend.workers.tasks.diarization_task.settings", mock_settings),

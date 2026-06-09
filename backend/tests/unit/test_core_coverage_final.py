@@ -70,16 +70,15 @@ async def test_main_lifecycle_diarization_model_load_failure(client):
     """
     from backend.app.config import Settings
     from backend.app.main import lifespan
-    from backend.ml.diarization_engine import DiarizationEngine
 
     # settings mock
     mock_settings = MagicMock(spec=Settings)
     mock_settings.huggingface_token = "test-token"
     mock_settings.diarization_model = "test-model"
 
-    with patch.object(DiarizationEngine, "get_instance") as mock_get:
+    with patch("backend.app.main.DiarizationEngine") as mock_engine_cls:
         mock_engine = MagicMock()
-        mock_get.return_value = mock_engine
+        mock_engine_cls.return_value = mock_engine
         mock_engine.load.side_effect = Exception("화자 분리 모델 로드 실패")
 
         with patch("backend.app.main.logger") as mock_logger:

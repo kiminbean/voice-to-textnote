@@ -180,7 +180,7 @@ def transcription_task(
         _update_task_status(task_id, TaskStatus.processing, 0.15, "STT 모델 준비 중...")
 
         # --- 2단계: STT 엔진 초기화 ---
-        engine = WhisperEngine.get_instance()
+        engine = WhisperEngine()
         if not engine.is_loaded:
             engine.load(model_name)
 

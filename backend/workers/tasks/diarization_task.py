@@ -216,7 +216,7 @@ def diarization_task(
         _update_task_status(task_id, TaskStatus.processing, 0.20, "화자 분리 모델 준비 중...")
 
         # --- 3단계: DiarizationEngine 초기화 ---
-        engine = DiarizationEngine.get_instance()
+        engine = DiarizationEngine()
         if not engine.is_loaded:
             engine.load(
                 hf_token=settings.huggingface_token,

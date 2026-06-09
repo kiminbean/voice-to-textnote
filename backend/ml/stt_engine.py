@@ -71,9 +71,6 @@ class WhisperEngine:
     - 스레드 안전 초기화 (인스턴스 레벨 self._lock)
     """
 
-    # @MX:WARN: [AUTO] Deprecated singleton shim — Phase 5에서 제거 예정
-    # @MX:REASON: 다수 테스트가 get_instance()를 mock하므로 즉시 제거 불가
-    _instance: "WhisperEngine | None" = None
 
     _model_loaded: bool = False
     _load_time_seconds: float | None = None
@@ -86,16 +83,6 @@ class WhisperEngine:
 
     def __init__(self) -> None:
         pass
-
-    @classmethod
-    def get_instance(cls) -> "WhisperEngine":
-        """
-        Deprecated: Depends(get_whisper_engine) 사용 권장
-        Phase 5 (Test Infrastructure Cleanup)에서 제거 예정
-        """
-        if cls._instance is None:
-            cls._instance = cls()
-        return cls._instance
 
     def load(self, model_name: str | None = None) -> None:
         """

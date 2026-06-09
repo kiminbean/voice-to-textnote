@@ -808,8 +808,7 @@ class TestScenario13MemoryWarning:
         """80% 임계값 초과 시 WARNING 로그 기록 (REQ-STT-022)"""
         from backend.ml.stt_engine import MEMORY_WARNING_THRESHOLD_BYTES, WhisperEngine
 
-        WhisperEngine._instance = None
-        engine = WhisperEngine.get_instance()
+        engine = WhisperEngine()
 
         mock_vm = MagicMock()
         mock_vm.used = MEMORY_WARNING_THRESHOLD_BYTES + 1024  # 임계값 초과
@@ -819,7 +818,6 @@ class TestScenario13MemoryWarning:
             with patch("backend.ml.stt_engine.logger") as mock_logger:
                 engine._check_memory_usage()
                 mock_logger.warning.assert_called_once()
-        WhisperEngine._instance = None
 
     def test_model_health_reflects_memory_usage(self, client: TestClient):
         """GET /health/model 응답에 memory_usage_mb와 available_memory_mb 포함 (시나리오 13)"""

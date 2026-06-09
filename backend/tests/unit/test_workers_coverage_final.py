@@ -148,7 +148,7 @@ class TestTranscriptionTaskFinalCoverage:
             mock_engine.transcribe.return_value = {
                 "segments": [{"start": 0.0, "end": 1.0, "text": "테스트", "avg_logprob": -0.25}]
             }
-            mock_engine_cls.get_instance.return_value = mock_engine
+            mock_engine_cls.return_value = mock_engine
 
             result = transcription_task.apply(
                 args=(),

@@ -23,8 +23,7 @@ from backend.pipeline.speaker_matcher import SpeakerSegment
 
 
 def _reset_engine():
-    """DiarizationEngine 싱글톤 리셋"""
-    DiarizationEngine._instance = None
+    """DiarizationEngine 클래스 변수 리셋 (Phase 5: _instance 제거됨)"""
     DiarizationEngine._model_loaded = False
     DiarizationEngine._load_time_seconds = None
     DiarizationEngine._pipeline = None
@@ -60,7 +59,7 @@ def _make_loaded_engine_with_mock_pipeline():
     """모델이 로드된 상태의 엔진 + pipeline 호출 추적 mock"""
     _reset_engine()
     mock_pipeline = _make_mock_pipeline()
-    engine = DiarizationEngine.get_instance()
+    engine = DiarizationEngine()
     engine._pipeline = mock_pipeline
     engine._model_loaded = True
     return engine, mock_pipeline
@@ -136,7 +135,7 @@ class TestDiarizeChunked:
 
     def test_diarize_chunked_without_model_raises_error(self, tmp_path):
         """모델 미로드 시 RuntimeError"""
-        engine = DiarizationEngine.get_instance()
+        engine = DiarizationEngine()
         # 모델 로드 안 함
 
         audio_file = tmp_path / "test.wav"
@@ -510,7 +509,7 @@ class TestEngineProperties:
 
     def test_is_loaded_property(self):
         """is_loaded 프로퍼티"""
-        engine = DiarizationEngine.get_instance()
+        engine = DiarizationEngine()
 
         # 초기: False
         assert engine.is_loaded is False
@@ -521,14 +520,14 @@ class TestEngineProperties:
 
     def test_model_name_property(self):
         """model_name 프로퍼티"""
-        engine = DiarizationEngine.get_instance()
+        engine = DiarizationEngine()
 
         # 기본값
         assert "diarization" in engine.model_name
 
     def test_load_time_seconds_property(self):
         """load_time_seconds 프로퍼티"""
-        engine = DiarizationEngine.get_instance()
+        engine = DiarizationEngine()
 
         # 초기: None
         assert engine.load_time_seconds is None
@@ -540,7 +539,7 @@ class TestEngineProperties:
     def test_unload_clears_all_state(self):
         """unload() 시 모든 상태 초기화"""
         mock_pipeline = _make_mock_pipeline()
-        engine = DiarizationEngine.get_instance()
+        engine = DiarizationEngine()
         engine._pipeline = mock_pipeline
         engine._model_loaded = True
         engine._load_time_seconds = 2.0

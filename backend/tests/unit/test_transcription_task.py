@@ -376,7 +376,7 @@ class TestTranscriptionTaskMain:
         mock_engine.transcribe.return_value = {
             "segments": [{"start": 0.0, "end": 4.2, "text": "안녕하세요.", "avg_logprob": -0.25}]
         }
-        mock_engine_cls.get_instance.return_value = mock_engine
+        mock_engine_cls.return_value = mock_engine
 
         from backend.workers.tasks.transcription_task import transcription_task
 
@@ -495,7 +495,7 @@ class TestTranscriptionTaskMain:
         mock_engine = MagicMock()
         mock_engine.is_loaded = True
         mock_engine.transcribe.return_value = {"segments": []}
-        mock_engine_cls.get_instance.return_value = mock_engine
+        mock_engine_cls.return_value = mock_engine
 
         from backend.workers.tasks.transcription_task import transcription_task
 
@@ -564,7 +564,7 @@ class TestTranscriptionTaskMain:
 
         mock_engine = MagicMock()
         mock_engine.is_loaded = False
-        mock_engine_cls.get_instance.return_value = mock_engine
+        mock_engine_cls.return_value = mock_engine
 
         from backend.workers.tasks.transcription_task import transcription_task
 

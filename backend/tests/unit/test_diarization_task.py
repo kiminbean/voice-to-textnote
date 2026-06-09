@@ -91,7 +91,7 @@ class TestDiarizationTaskHappyPath:
         with (
             patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis),
             patch(
-                "backend.workers.tasks.diarization_task.DiarizationEngine.get_instance",
+                "backend.workers.tasks.diarization_task.DiarizationEngine",
                 return_value=mock_engine,
             ),
             patch("backend.workers.tasks.diarization_task.settings") as mock_settings,
@@ -134,7 +134,7 @@ class TestDiarizationTaskHappyPath:
         with (
             patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis),
             patch(
-                "backend.workers.tasks.diarization_task.DiarizationEngine.get_instance",
+                "backend.workers.tasks.diarization_task.DiarizationEngine",
                 return_value=mock_engine,
             ),
             patch("backend.workers.tasks.diarization_task.settings") as mock_settings,
@@ -174,7 +174,7 @@ class TestDiarizationTaskHappyPath:
 
         with patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis):
             with patch(
-                "backend.workers.tasks.diarization_task.DiarizationEngine.get_instance",
+                "backend.workers.tasks.diarization_task.DiarizationEngine",
                 return_value=mock_engine,
             ):
                 with patch("backend.workers.tasks.diarization_task.settings") as mock_settings:
@@ -303,7 +303,7 @@ class TestDiarizationTaskErrors:
 
         with patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis):
             with patch(
-                "backend.workers.tasks.diarization_task.DiarizationEngine.get_instance",
+                "backend.workers.tasks.diarization_task.DiarizationEngine",
                 return_value=mock_engine,
             ):
                 with patch("backend.workers.tasks.diarization_task.settings") as mock_settings:
@@ -371,7 +371,7 @@ class TestDiarizationTaskErrors:
         with (
             patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis),
             patch(
-                "backend.workers.tasks.diarization_task.DiarizationEngine.get_instance",
+                "backend.workers.tasks.diarization_task.DiarizationEngine",
                 return_value=mock_engine,
             ),
             patch("backend.workers.tasks.diarization_task.settings") as mock_settings,
@@ -421,7 +421,7 @@ class TestDiarizationTaskErrors:
         with (
             patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis),
             patch(
-                "backend.workers.tasks.diarization_task.DiarizationEngine.get_instance",
+                "backend.workers.tasks.diarization_task.DiarizationEngine",
                 return_value=mock_engine,
             ),
             patch("backend.workers.tasks.diarization_task.settings") as mock_settings,
@@ -488,7 +488,7 @@ class TestDiarizationTaskStatusTransitions:
         with (
             patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis),
             patch(
-                "backend.workers.tasks.diarization_task.DiarizationEngine.get_instance",
+                "backend.workers.tasks.diarization_task.DiarizationEngine",
                 return_value=mock_engine,
             ),
             patch("backend.workers.tasks.diarization_task.settings") as mock_settings,
@@ -530,7 +530,7 @@ class TestDiarizationTaskStatusTransitions:
         with (
             patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis),
             patch(
-                "backend.workers.tasks.diarization_task.DiarizationEngine.get_instance",
+                "backend.workers.tasks.diarization_task.DiarizationEngine",
                 return_value=mock_engine,
             ),
             patch("backend.workers.tasks.diarization_task.settings") as mock_settings,
@@ -570,7 +570,7 @@ class TestDiarizationTaskStatusTransitions:
         with (
             patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis),
             patch(
-                "backend.workers.tasks.diarization_task.DiarizationEngine.get_instance",
+                "backend.workers.tasks.diarization_task.DiarizationEngine",
                 return_value=mock_engine,
             ),
             patch("backend.workers.tasks.diarization_task.settings") as mock_settings,

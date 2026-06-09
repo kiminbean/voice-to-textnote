@@ -31,9 +31,6 @@ class DiarizationEngine:
     - CPU only 실행
     """
 
-    # @MX:WARN: [AUTO] Deprecated singleton shim — Phase 5에서 제거 예정
-    # @MX:REASON: 다수 테스트가 get_instance()를 mock하므로 즉시 제거 불가
-    _instance: "DiarizationEngine | None" = None
 
     _model_loaded: bool = False
     _load_time_seconds: float | None = None
@@ -61,16 +58,6 @@ class DiarizationEngine:
 
     def __init__(self) -> None:
         pass
-
-    @classmethod
-    def get_instance(cls) -> "DiarizationEngine":
-        """
-        Deprecated: Depends(get_diarization_engine) 사용 권장
-        Phase 5 (Test Infrastructure Cleanup)에서 제거 예정
-        """
-        if cls._instance is None:
-            cls._instance = cls()
-        return cls._instance
 
     def load(self, hf_token: str | None = None, model_name: str | None = None) -> None:
         """

@@ -11,23 +11,25 @@ from unittest.mock import MagicMock
 class TestEngineDI:
     """AC-DI-009 to AC-DI-014"""
 
-    def test_whisper_has_deprecated_singleton_shim(self):
-        """AC-DI-014: get_instance()는 deprecated shim으로 존재 (Phase 5에서 제거)"""
+    def test_whisper_singleton_shim_removed(self):
+        """AC-DI-014: get_instance() 싱글톤 shim이 Phase 5에서 제거됨"""
         from backend.ml.stt_engine import WhisperEngine
 
-        # deprecated shim 존재 확인 (Phase 5에서 제거 예정)
-        assert hasattr(WhisperEngine, "get_instance"), "Shim should exist for backward compat"
+        # Phase 5: get_instance() 제거 확인
+        assert not hasattr(WhisperEngine, "get_instance"), "get_instance() should be removed in Phase 5"
+        assert not hasattr(WhisperEngine, "_instance"), "_instance should be removed in Phase 5"
 
         # 직접 인스턴스화 가능해야 함 (DI 패턴)
         engine = WhisperEngine()
         assert engine is not None
 
-    def test_diarization_has_deprecated_singleton_shim(self):
-        """AC-DI-014: get_instance()는 deprecated shim으로 존재 (Phase 5에서 제거)"""
+    def test_diarization_singleton_shim_removed(self):
+        """AC-DI-014: get_instance() 싱글톤 shim이 Phase 5에서 제거됨"""
         from backend.ml.diarization_engine import DiarizationEngine
 
-        # deprecated shim 존재 확인 (Phase 5에서 제거 예정)
-        assert hasattr(DiarizationEngine, "get_instance"), "Shim should exist for backward compat"
+        # Phase 5: get_instance() 제거 확인
+        assert not hasattr(DiarizationEngine, "get_instance"), "get_instance() should be removed in Phase 5"
+        assert not hasattr(DiarizationEngine, "_instance"), "_instance should be removed in Phase 5"
 
         # 직접 인스턴스화 가능해야 함 (DI 패턴)
         engine = DiarizationEngine()
