@@ -15,12 +15,12 @@ from backend.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-# 공유 httpx 클라이언트 (연결 재사용)
+# 공유 httpx 클라이언트 (deprecated shim — Phase 5에서 제거 예정)
 _http_client: httpx.AsyncClient | None = None
 
 
 def _get_http_client() -> httpx.AsyncClient:
-    """공유 httpx.AsyncClient 반환 (lazy init)"""
+    """공유 httpx.AsyncClient 반환 (lazy init, deprecated shim)"""
     global _http_client
     if _http_client is None or _http_client.is_closed:
         _http_client = httpx.AsyncClient(timeout=30.0)
@@ -28,7 +28,7 @@ def _get_http_client() -> httpx.AsyncClient:
 
 
 async def close_http_client() -> None:
-    """태깅 엔진의 공유 HTTP 클라이언트를 종료."""
+    """태깅 엔진의 공유 HTTP 클라이언트를 종료 (lifespan에서 처리 권장)."""
     global _http_client
     if _http_client is not None and not _http_client.is_closed:
         await _http_client.aclose()

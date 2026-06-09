@@ -44,16 +44,14 @@ def get_openai_client() -> AsyncOpenAI:
         )
 
 
-# 전역 클라이언트 인스턴스
+# 전역 클라이언트 인스턴스 (deprecated shim — Phase 5에서 제거 예정)
 _openai_client = None
 
 
 def get_cached_openai_client() -> AsyncOpenAI:
     """
     캐시된 OpenAI 클라이언트 인스턴스를 반환합니다.
-
-    Returns:
-        AsyncOpenAI: OpenAI 클라이언트 인스턴스
+    Deprecated: Depends(get_openai_client) 사용 권장
     """
     global _openai_client
     if _openai_client is None:

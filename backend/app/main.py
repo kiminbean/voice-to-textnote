@@ -114,10 +114,21 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     else:
         logger.warning("HUGGINGFACE_TOKEN 미설정 - 화자 분리 모델 로드 건너뜀")
 
+    # AC-DI-015/AC-DI-018: OpenAI 클라이언트 + 공유 HTTP 클라이언트 lifespan 생성
+    import httpx
+
+    from backend.ml.openai_client import get_openai_client
+
+    app.state.openai_client = get_openai_client()
+    app.state.http_client = httpx.AsyncClient(timeout=30.0)
+
     yield
 
     # 종료 시 클린업
     logger.info("서버 종료")
+    # HTTP 클라이언트 정리
+    if hasattr(app.state, "http_client") and not app.state.http_client.is_closed:
+        await app.state.http_client.aclose()
     # SPEC-LIFECYCLE-001: 종료 시 리소스 정리 (DB 커넥션 풀 dispose)
     await cleanup_shutdown()
 

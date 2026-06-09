@@ -6,8 +6,10 @@ import inspect
 from collections.abc import AsyncGenerator
 from functools import lru_cache
 
+import httpx
 import redis.asyncio as aioredis
 from fastapi import Depends, HTTPException, Request
+from openai import AsyncOpenAI
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -56,6 +58,16 @@ def get_whisper_engine(request: Request) -> WhisperEngine:
 def get_diarization_engine(request: Request) -> DiarizationEngine:
     """AC-DI-013: FastAPI app.state에서 DiarizationEngine 반환"""
     return request.app.state.diarization_engine
+
+
+def get_openai_client(request: Request) -> AsyncOpenAI:
+    """AC-DI-016: FastAPI app.state에서 AsyncOpenAI 클라이언트 반환"""
+    return request.app.state.openai_client
+
+
+def get_http_client(request: Request) -> httpx.AsyncClient:
+    """AC-DI-018: FastAPI app.state에서 공유 httpx.AsyncClient 반환"""
+    return request.app.state.http_client
 
 
 async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
