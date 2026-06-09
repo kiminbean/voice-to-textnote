@@ -1,9 +1,9 @@
 ---
 id: SPEC-DI-001
 version: 1.0.0
-status: planned
+status: completed
 created: 2026-06-09
-updated: 2026-06-09
+updated: 2026-06-10
 author: MoAI
 priority: high
 title: "Dependency Injection 패턴 전환 — Global State 제거"
