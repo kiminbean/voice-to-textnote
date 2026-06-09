@@ -160,6 +160,9 @@ class _MockRedisPipeline:
         get_fn = self._redis._get_pipeline_results
         override = get_fn()
         if override is not None:
+            # Exception 인스턴스면 raise (실제 Redis pipeline 동작과 일치)
+            if isinstance(override, Exception):
+                raise override
             return override
         if "zcard" in self._ops:
             return [0, 0]

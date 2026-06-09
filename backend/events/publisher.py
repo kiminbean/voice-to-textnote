@@ -59,9 +59,16 @@ def publish_task_event_sync(
     try:
         redis_client.publish(channel, message)
         logger.debug("태스크 이벤트 발행(동기)", task_id=task_id, event_type=event_type)
-    except Exception:
-        # Pub/Sub 발행 실패는 무시 (폴링 폴백으로 처리 가능)
-        logger.warning("태스크 이벤트 발행 실패", task_id=task_id, event_type=event_type)
+    except Exception as e:
+        # Pub/Sub 발행 실패 시 구조화된 에러 로그 (REQ-ERR2-006)
+        logger.error(
+            "태스크 이벤트 발행 실패",
+            task_id=task_id,
+            event_type=event_type,
+            channel=channel,
+            error=str(e),
+            exc_info=True,
+        )
 
     # SPEC-WEBHOOK-001: 작업 완료/실패 시 등록된 웹훅 URL로 best-effort 알림
     if event_type in ("completed", "failed"):
@@ -75,5 +82,13 @@ def publish_task_event_sync(
                 task_type=task_type,
                 data=data,
             )
-        except Exception:
-            logger.warning("웹훅 알림 호출 실패 (무시)", task_id=task_id, event_type=event_type)
+        except Exception as e:
+            # 웹훅 알림 실패 시 구조화된 에러 로그 (REQ-ERR2-006)
+            logger.error(
+                "웹훅 알림 호출 실패 (무시)",
+                task_id=task_id,
+                event_type=event_type,
+                task_type=task_type,
+                error=str(e),
+                exc_info=True,
+            )

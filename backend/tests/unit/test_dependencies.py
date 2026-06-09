@@ -11,8 +11,10 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from fastapi import HTTPException, Request
+from fastapi import Request
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from backend.app.exceptions import UnauthorizedError
 
 
 class TestGetRedisClient:
@@ -177,11 +179,11 @@ class TestGetCurrentUser:
 
         mock_request.headers.get = MagicMock(return_value=None)
 
-        with pytest.raises(HTTPException) as exc:
+        with pytest.raises(UnauthorizedError) as exc:
             await get_current_user(mock_request, mock_db_session)
 
         assert exc.value.status_code == 401
-        assert "인증이 필요합니다" in exc.value.detail
+        assert "인증이 필요합니다" in exc.value.message
 
     @pytest.mark.asyncio
     async def test_invalid_bearer_format(self, mock_request, mock_db_session):
@@ -190,11 +192,11 @@ class TestGetCurrentUser:
 
         mock_request.headers.get = MagicMock(return_value="InvalidFormat")
 
-        with pytest.raises(HTTPException) as exc:
+        with pytest.raises(UnauthorizedError) as exc:
             await get_current_user(mock_request, mock_db_session)
 
         assert exc.value.status_code == 401
-        assert "인증이 필요합니다" in exc.value.detail
+        assert "인증이 필요합니다" in exc.value.message
 
     @pytest.mark.asyncio
     async def test_valid_token_returns_user(self, mock_request, mock_db_session):
@@ -240,11 +242,11 @@ class TestGetCurrentUser:
             mock_auth_service.decode_access_token = MagicMock(return_value={})
             mock_auth_service_class.return_value = mock_auth_service
 
-            with pytest.raises(HTTPException) as exc:
+            with pytest.raises(UnauthorizedError) as exc:
                 await get_current_user(mock_request, mock_db_session)
 
             assert exc.value.status_code == 401
-            assert "유효하지 않은 토큰입니다" in exc.value.detail
+            assert "유효하지 않은 토큰입니다" in exc.value.message
 
     @pytest.mark.asyncio
     async def test_invalid_uuid_format(self, mock_request, mock_db_session):
@@ -258,11 +260,11 @@ class TestGetCurrentUser:
             mock_auth_service.decode_access_token = MagicMock(return_value={"sub": "invalid-uuid"})
             mock_auth_service_class.return_value = mock_auth_service
 
-            with pytest.raises(HTTPException) as exc:
+            with pytest.raises(UnauthorizedError) as exc:
                 await get_current_user(mock_request, mock_db_session)
 
             assert exc.value.status_code == 401
-            assert "유효하지 않은 토큰입니다" in exc.value.detail
+            assert "유효하지 않은 토큰입니다" in exc.value.message
 
     @pytest.mark.asyncio
     async def test_user_not_found(self, mock_request, mock_db_session):
@@ -284,11 +286,11 @@ class TestGetCurrentUser:
             mock_result.scalar_one_or_none = MagicMock(return_value=None)
             mock_db_session.execute.return_value = mock_result
 
-            with pytest.raises(HTTPException) as exc:
+            with pytest.raises(UnauthorizedError) as exc:
                 await get_current_user(mock_request, mock_db_session)
 
             assert exc.value.status_code == 401
-            assert "사용자를 찾을 수 없습니다" in exc.value.detail
+            assert "사용자를 찾을 수 없습니다" in exc.value.message
 
     @pytest.mark.asyncio
     async def test_inactive_user(self, mock_request, mock_db_session):
@@ -315,8 +317,8 @@ class TestGetCurrentUser:
             mock_result.scalar_one_or_none = MagicMock(return_value=mock_user)
             mock_db_session.execute.return_value = mock_result
 
-            with pytest.raises(HTTPException) as exc:
+            with pytest.raises(UnauthorizedError) as exc:
                 await get_current_user(mock_request, mock_db_session)
 
             assert exc.value.status_code == 401
-            assert "사용자를 찾을 수 없습니다" in exc.value.detail
+            assert "사용자를 찾을 수 없습니다" in exc.value.message

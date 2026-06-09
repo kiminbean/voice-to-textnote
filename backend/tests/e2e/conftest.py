@@ -93,6 +93,25 @@ class InMemoryRedis:
         """키 존재 여부 확인, 존재하는 키 수 반환"""
         return sum(1 for k in keys if k in self._storage)
 
+    # --- Pipeline 지원 (transcription active_count 조회용) ---
+
+    class _InMemoryPipeline:
+        """인메모리 Redis pipeline mock — execute 시 빈 결과 반환"""
+
+        def zremrangebyscore(self, *_a: object, **_kw: object) -> "InMemoryRedis._InMemoryPipeline":
+            return self
+
+        def zcard(self, _key: str) -> "InMemoryRedis._InMemoryPipeline":
+            return self
+
+        async def execute(self) -> list:
+            # 기본: active_count=0 반환 (zremrangebyscore + zcard)
+            return [0, 0]
+
+    def pipeline(self) -> _InMemoryPipeline:
+        """Pipeline 객체 반환"""
+        return self._InMemoryPipeline()
+
 
 # ---------------------------------------------------------------------------
 # E2E 테스트용 mock 데이터 상수

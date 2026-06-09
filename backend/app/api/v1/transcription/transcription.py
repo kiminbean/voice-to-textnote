@@ -133,15 +133,20 @@ async def upload_transcription(
         unprocessable([e.model_dump() for e in errors])
 
     # --- 동시 처리 제한 확인 (REQ: 최대 N개) ---
-    # Soft check: 워커의 ZSET 기반 카운트와 다를 수 있지만 과도한 큐잉은 방지합니다.
+    # Soft check: 워커의 ZSET 기반 카운트와 다를 수 있지만 과도한 큐잉을 방지합니다.
     try:
         now_ts = time.time()
         pipe = redis_client.pipeline()
         pipe.zremrangebyscore("active_jobs_ts", "-inf", now_ts - 7200)
         pipe.zcard("active_jobs_ts")
         active_count = (await pipe.execute())[1]
-    except Exception:
-        active_count = 0
+    # REQ-ERR2-002: Redis 연결 실패 시 ServiceUnavailableError 발생 (silent fallback 금지)
+    except (aioredis.RedisError, aioredis.ConnectionError, OSError) as e:
+        from backend.app.errors import service_unavailable
+
+        service_unavailable(
+            f"Redis 연결 실패: {str(e)}. 잠시 후 재시도하세요."
+        )
     if active_count >= settings.max_concurrent_jobs:
         from backend.app.errors import too_many_requests
 

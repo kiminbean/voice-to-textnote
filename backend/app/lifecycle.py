@@ -32,15 +32,17 @@ async def validate_startup() -> dict:
     REQ-LIFE-001: Redis 연결 검증
     REQ-LIFE-002: DB 연결 검증 + 개발 모드 테이블 생성
     REQ-LIFE-003: 구조화된 JSON 시작 로그
+    REQ-ERR2-008: 연결 실패 시 degraded 플래그
 
     Returns:
-        {"redis": "ok"|"warning: ...", "database": "ok"|"warning: ..."}
+        {"redis": "ok"|"warning: ...", "database": "ok"|"warning: ...", "degraded": bool}
     """
     global _app_started_at
     # 시작 시각 기록 (UTC)
     _app_started_at = datetime.now(UTC)
 
     status: dict[str, str] = {}
+    degraded = False
 
     # REQ-LIFE-001: Redis 연결 검증 - 앱 공유 클라이언트 사용 (연결 누수 방지)
     try:
@@ -52,6 +54,7 @@ async def validate_startup() -> dict:
     except Exception as e:
         status["redis"] = f"warning: {e}"
         logger.warning("시작 검증: Redis 연결 실패", error=str(e))
+        degraded = True
 
     # REQ-LIFE-002: DB 연결 검증 + 개발 모드 테이블 자동 생성
     try:
@@ -86,11 +89,14 @@ async def validate_startup() -> dict:
     except Exception as e:
         status["database"] = f"warning: {e}"
         logger.warning("시작 검증: DB 연결 실패", error=str(e))
+        degraded = True
 
     # REQ-LIFE-003: 구조화된 시작 로그 출력
-    logger.info("시작 검증 완료", **status)
+    logger.info("시작 검증 완료", **status, degraded=degraded)
 
-    return status
+    # REQ-ERR2-008: degraded 플래그 추가
+    result = {**status, "degraded": degraded}
+    return result
 
 
 async def cleanup_shutdown() -> None:

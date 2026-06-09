@@ -26,9 +26,11 @@ def test_app_with_auth():
     """
     from fastapi import Depends
 
+    from backend.app.error_handlers import register_exception_handlers
     from backend.app.middleware.auth import verify_api_key
 
     app = FastAPI()
+    register_exception_handlers(app)
 
     @app.get("/protected")
     async def protected_route(api_key: str = Depends(verify_api_key)):
@@ -50,9 +52,11 @@ def test_app_no_auth():
     """
     from fastapi import Depends
 
+    from backend.app.error_handlers import register_exception_handlers
     from backend.app.middleware.auth import verify_api_key
 
     app = FastAPI()
+    register_exception_handlers(app)
 
     @app.get("/protected")
     async def protected_route(api_key: str = Depends(verify_api_key)):

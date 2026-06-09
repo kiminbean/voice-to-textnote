@@ -60,6 +60,7 @@ class TestVerifyGuestToken:
                     await _verify_guest_token(mock_request, "invalid-token", mock_redis)
 
                 assert exc_info.value.status_code == 401
+                assert exc_info.value.message is not None
 
     @pytest.mark.asyncio
     async def test_verify_guest_token_wrong_type_claim(self):
@@ -115,7 +116,7 @@ class TestVerifyGuestToken:
                     await _verify_guest_token(mock_request, "token", mock_redis)
 
                 assert exc_info.value.status_code == 401
-                assert "만료" in exc_info.value.detail
+                assert "만료" in exc_info.value.message
 
 
 # ==========================================================================
@@ -166,7 +167,7 @@ class TestVerifyAccessToken:
                     await _verify_access_token(mock_request, "invalid-token", mock_redis)
 
                 assert exc_info.value.status_code == 401
-                assert "유효하지 않거나 만료된" in exc_info.value.detail
+                assert "유효하지 않거나 만료된" in exc_info.value.message
 
     @pytest.mark.asyncio
     async def test_verify_access_token_wrong_type(self):
@@ -297,7 +298,7 @@ class TestVerifyApiKeyBearerTokens:
                 )
 
                 assert exc_info.value.status_code == 503
-                assert "인증 설정" in exc_info.value.detail
+                assert "인증 설정" in exc_info.value.message
 
     @pytest.mark.asyncio
     async def test_verify_api_key_dev_mode_no_keys_returns_dev_mode(self):

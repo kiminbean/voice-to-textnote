@@ -12,12 +12,13 @@ SPEC-TEAM-001: Bearer <jwt> 액세스 토큰 인증 지원
 import secrets
 
 import redis.asyncio as aioredis
-from fastapi import Depends, HTTPException, Request, Security, status
+from fastapi import Depends, Request, Security
 from fastapi.security import APIKeyHeader
 from jose import JWTError, jwt
 
 from backend.app.config import settings
 from backend.app.dependencies import get_redis_client
+from backend.app.exceptions import ServiceUnavailableError, UnauthorizedError
 from backend.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -43,41 +44,29 @@ async def _verify_guest_token(
         검증된 guest_session_id
 
     Raises:
-        HTTPException(401): 토큰 무효 또는 세션 만료
+        UnauthorizedError: 토큰 무효 또는 세션 만료
     """
     try:
         payload = jwt.decode(token_str, settings.jwt_secret, algorithms=["HS256"])
     except JWTError:
         logger.warning("게스트 토큰 JWT 디코딩 실패")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="유효하지 않거나 만료된 게스트 토큰입니다.",
-        )
+        raise UnauthorizedError(message="유효하지 않거나 만료된 게스트 토큰입니다.")
 
     # type 클레임 검증
     if payload.get("type") != "guest":
         logger.warning("게스트 토큰 type 클레임 불일치")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="유효하지 않은 게스트 토큰입니다.",
-        )
+        raise UnauthorizedError(message="유효하지 않은 게스트 토큰입니다.")
 
     guest_session_id = payload.get("sub")
     if not guest_session_id:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="유효하지 않은 게스트 토큰입니다.",
-        )
+        raise UnauthorizedError(message="유효하지 않은 게스트 토큰입니다.")
 
     # Redis에서 세션 존재 여부 확인
     redis_key = f"guest:session:{guest_session_id}"
     exists = await redis_client.exists(redis_key)
     if not exists:
         logger.warning("게스트 세션 만료 또는 미존재")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="게스트 세션이 만료되었거나 존재하지 않습니다.",
-        )
+        raise UnauthorizedError(message="게스트 세션이 만료되었거나 존재하지 않습니다.")
 
     # request.state에 게스트 정보 설정
     request.state.is_guest = True
@@ -104,23 +93,14 @@ async def _verify_access_token(
     try:
         payload = jwt.decode(token_str, settings.jwt_secret, algorithms=["HS256"])
     except JWTError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="유효하지 않거나 만료된 토큰입니다.",
-        )
+        raise UnauthorizedError(message="유효하지 않거나 만료된 토큰입니다.")
 
     if payload.get("type") != "access":
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="유효하지 않은 토큰입니다.",
-        )
+        raise UnauthorizedError(message="유효하지 않은 토큰입니다.")
 
     user_id = payload.get("sub")
     if not user_id:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="유효하지 않은 토큰입니다.",
-        )
+        raise UnauthorizedError(message="유효하지 않은 토큰입니다.")
 
     request.state.is_guest = False
     request.state.user_id = user_id
@@ -162,20 +142,15 @@ async def verify_api_key(
     if not settings.api_keys:
         if getattr(settings, "environment", "development") == "production":
             logger.error("프로덕션 환경에서 API Key 미설정")
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="서버 인증 설정이 완료되지 않았습니다.",
-            )
+            raise ServiceUnavailableError(message="서버 인증 설정이 완료되지 않았습니다.")
         logger.debug("인증 비활성화 (개발 모드 - API_KEYS 미설정)")
         return "dev-mode"
 
     # REQ-SEC-002: API Key 누락 시 401 반환
     if not api_key_header:
         logger.warning("API Key 누락 - 인증 거부")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="API Key가 필요합니다. X-API-Key 헤더를 제공하세요.",
-            headers={"WWW-Authenticate": "ApiKey"},
+        raise UnauthorizedError(
+            message="API Key가 필요합니다. X-API-Key 헤더를 제공하세요.",
         )
 
     # REQ-SEC-003: 유효한 키 검증
@@ -188,8 +163,4 @@ async def verify_api_key(
 
     # REQ-SEC-002: 잘못된 키 시 401 반환 (키 값은 로그에 포함하지 않음)
     logger.warning("잘못된 API Key - 인증 거부")
-    raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="유효하지 않은 API Key입니다.",
-        headers={"WWW-Authenticate": "ApiKey"},
-    )
+    raise UnauthorizedError(message="유효하지 않은 API Key입니다.")

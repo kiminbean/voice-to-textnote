@@ -7,11 +7,12 @@ from collections.abc import AsyncGenerator
 from functools import lru_cache
 
 import redis.asyncio as aioredis
-from fastapi import Depends, HTTPException, Request
+from fastapi import Depends, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.config import settings
+from backend.app.exceptions import UnauthorizedError
 from backend.db.engine import create_engine, get_session_factory
 from backend.ml.diarization_engine import DiarizationEngine
 from backend.ml.stt_engine import WhisperEngine
@@ -86,35 +87,46 @@ async def get_current_user(
     Authorization: Bearer <access_token> 헤더 필수.
 
     Raises:
-        HTTPException(401): 토큰 없음, 만료, 또는 사용자 없음
+        UnauthorizedError: 토큰 없음, 만료, 또는 사용자 없음
     """
-    # 지연 임포트로 순환 참조 방지
+    # 지연 잉모트로 순환 참조 방지
+    from fastapi import HTTPException
+    from jose import JWTError
+
     from backend.db.auth_models import User
     from backend.services.auth_service import AuthService
 
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="인증이 필요합니다")
+        raise UnauthorizedError(message="인증이 필요합니다")
 
     token = auth_header.split(" ", 1)[1]
-    auth_service = AuthService()
-    payload = auth_service.decode_access_token(token)
+
+    # JWT 디코딩 실패 및 AuthService HTTPException catch 후 커스텀 예외로 변환
+    try:
+        auth_service = AuthService()
+        payload = auth_service.decode_access_token(token)
+    except (JWTError, HTTPException) as e:
+        # AuthService에서 HTTPException을 던지는 경우도 catch
+        if isinstance(e, HTTPException):
+            raise UnauthorizedError(message=e.detail)
+        raise UnauthorizedError(message="유효하지 않거나 만료된 토큰입니다.")
 
     user_id = payload.get("sub")
     if not user_id:
-        raise HTTPException(status_code=401, detail="유효하지 않은 토큰입니다")
+        raise UnauthorizedError(message="유효하지 않은 토큰입니다")
 
     import uuid as _uuid
 
     try:
         user_uuid = _uuid.UUID(user_id)
     except ValueError:
-        raise HTTPException(status_code=401, detail="유효하지 않은 토큰입니다")
+        raise UnauthorizedError(message="유효하지 않은 토큰입니다")
 
     result = await db.execute(select(User).where(User.id == user_uuid))
     user = result.scalar_one_or_none()
 
     if user is None or not user.is_active:
-        raise HTTPException(status_code=401, detail="사용자를 찾을 수 없습니다")
+        raise UnauthorizedError(message="사용자를 찾을 수 없습니다")
 
     return user

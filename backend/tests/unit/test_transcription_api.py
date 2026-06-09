@@ -536,10 +536,10 @@ class TestEdgeCases:
         """
         Given: Redis active_jobs_ts 조회 시 Exception 발생
         When: 파일 업로드
-        Then: active_count=0 기본값으로 계속 진행
+        Then: ServiceUnavailableError (503) 반환
         """
         # pipeline.execute에서 Exception 발생
-        mock_redis_client._set_pipeline_results(Exception("Redis connection lost"))
+        mock_redis_client._set_pipeline_results(OSError("Redis connection lost"))
 
         with open(test_audio_file, "rb") as f:
             response = client.post(
@@ -548,11 +548,8 @@ class TestEdgeCases:
                 data={"language": "ko"},
             )
 
-        # 예외를 삼켜서 0으로 처리 후 계속 진행
-        assert response.status_code in [
-            status.HTTP_201_CREATED,
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
-        ]
+        # Redis 연결 실패로 503 서비스 불가 에러 반환
+        assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
 
     @pytest.mark.skip(reason="Redis error handling needs conftest adjustment")
     def test_get_status_redis_error(self, client, mock_redis_client):

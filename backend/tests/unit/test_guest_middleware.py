@@ -70,9 +70,11 @@ def mock_redis_without_session():
 def guest_middleware_app(mock_redis_with_session):
     """게스트 미들웨어가 통합된 테스트 앱"""
     from backend.app.dependencies import get_redis_client
+    from backend.app.error_handlers import register_exception_handlers
     from backend.app.middleware.auth import verify_api_key
 
     app = FastAPI()
+    register_exception_handlers(app)
     app.dependency_overrides[get_redis_client] = lambda: mock_redis_with_session
 
     @app.get("/protected")
@@ -93,9 +95,11 @@ def guest_middleware_app(mock_redis_with_session):
 def guest_app_no_session(mock_redis_without_session):
     """Redis에 게스트 세션이 없는 테스트 앱 (만료 시뮬레이션)"""
     from backend.app.dependencies import get_redis_client
+    from backend.app.error_handlers import register_exception_handlers
     from backend.app.middleware.auth import verify_api_key
 
     app = FastAPI()
+    register_exception_handlers(app)
     app.dependency_overrides[get_redis_client] = lambda: mock_redis_without_session
 
     @app.get("/protected")

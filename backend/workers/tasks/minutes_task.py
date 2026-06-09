@@ -279,8 +279,14 @@ def minutes_task(
                 status="completed",
                 result_data=final_result,
             )
-        except Exception:
-            pass  # DB 저장 실패는 무시 (Redis에 이미 저장됨)
+        # REQ-ERR2-003: DB 저장 실패 시 에러 로깅 (best-effort, 재시도 아님)
+        except Exception as e:
+            logger.error(
+                "DB 영속 저장 실패",
+                task_id=task_id,
+                error=str(e),
+                exc_info=True,
+            )
 
         _update_task_status(task_id, TaskStatus.completed, 1.0, "회의록 생성 완료")
 

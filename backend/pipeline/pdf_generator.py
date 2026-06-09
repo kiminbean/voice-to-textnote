@@ -9,6 +9,10 @@ from pathlib import Path
 
 from fpdf import FPDF
 
+from backend.utils.logger import get_logger
+
+logger = get_logger(__name__)
+
 
 class MinutesPDFGenerator:
     """
@@ -259,8 +263,13 @@ class MinutesPDFGenerator:
                 parsed = _json.loads(summary_text)
                 if isinstance(parsed, dict) and "summary_text" in parsed:
                     summary_text = parsed["summary_text"]
-            except Exception:
-                pass
+            except (_json.JSONDecodeError, ValueError) as e:
+                # REQ-ERR2-007: JSON 파싱 실패 시 에러 로그 + 안전한 폴백
+                logger.error(
+                    "회의 요약 JSON 파싱 실패 (원본 텍스트 사용)",
+                    error=str(e),
+                    exc_info=True,
+                )
 
         self._render_section_title("회의 요약")
 
