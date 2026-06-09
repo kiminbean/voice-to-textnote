@@ -64,15 +64,16 @@ def _resolve_faster_whisper_model(model_name: str) -> str:
 
 class WhisperEngine:
     """
-    플랫폼 적응형 Whisper 싱글톤 엔진
+    플랫폼 적응형 Whisper 엔진
     - macOS: mlx_whisper 사용 (Apple Silicon 가속)
     - Linux: faster-whisper 우선 (CTranslate2 int8 - CPU에서 4~6배 빠름), 미설치 시 openai-whisper 폴백
-    - 프로세스당 1개 인스턴스
-    - 스레드 안전 초기화
+    - 인스턴스는 FastAPI app.state에 저장됨
+    - 스레드 안전 초기화 (인스턴스 레벨 self._lock)
     """
 
+    # @MX:WARN: [AUTO] Deprecated singleton shim — Phase 5에서 제거 예정
+    # @MX:REASON: 다수 테스트가 get_instance()를 mock하므로 즉시 제거 불가
     _instance: "WhisperEngine | None" = None
-    _lock: Lock = Lock()
 
     _model_loaded: bool = False
     _load_time_seconds: float | None = None
@@ -81,17 +82,19 @@ class WhisperEngine:
     _backend: str = "unknown"  # "mlx", "faster_whisper", 또는 "whisper"
     _whisper_model: Any = None  # openai-whisper 모델 객체
     _faster_whisper_model: Any = None  # faster-whisper WhisperModel 객체
+    _lock: Lock = Lock()  # 인스턴스 레벨 lock (lazy load를 위한 스레드 안전성)
 
     def __init__(self) -> None:
         pass
 
     @classmethod
     def get_instance(cls) -> "WhisperEngine":
-        """싱글톤 인스턴스 반환 (스레드 안전)"""
+        """
+        Deprecated: Depends(get_whisper_engine) 사용 권장
+        Phase 5 (Test Infrastructure Cleanup)에서 제거 예정
+        """
         if cls._instance is None:
-            with cls._lock:
-                if cls._instance is None:
-                    cls._instance = cls()
+            cls._instance = cls()
         return cls._instance
 
     def load(self, model_name: str | None = None) -> None:

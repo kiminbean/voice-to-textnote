@@ -25,19 +25,21 @@ if TYPE_CHECKING:
 
 class DiarizationEngine:
     """
-    pyannote.audio 싱글톤 화자 분리 엔진
-    - 프로세스당 1개 인스턴스
-    - 스레드 안전 초기화 (double-checked locking)
+    pyannote.audio 화자 분리 엔진
+    - 인스턴스는 FastAPI app.state에 저장됨
+    - 스레드 안전 초기화 (인스턴스 레벨 self._lock)
     - CPU only 실행
     """
 
+    # @MX:WARN: [AUTO] Deprecated singleton shim — Phase 5에서 제거 예정
+    # @MX:REASON: 다수 테스트가 get_instance()를 mock하므로 즉시 제거 불가
     _instance: "DiarizationEngine | None" = None
-    _lock: Lock = Lock()
 
     _model_loaded: bool = False
     _load_time_seconds: float | None = None
     _model_name: str = "pyannote/speaker-diarization-3.1"
     _pipeline: Any = None
+    _lock: Lock = Lock()  # 인스턴스 레벨 lock (lazy load를 위한 스레드 안전성)
 
     # REQ-DIA-PERF-002: Silero VAD 사전 필터 (회의 무음 구간 제거)
     _vad_model: Any = None
@@ -62,11 +64,12 @@ class DiarizationEngine:
 
     @classmethod
     def get_instance(cls) -> "DiarizationEngine":
-        """싱글톤 인스턴스 반환 (스레드 안전, double-checked locking)"""
+        """
+        Deprecated: Depends(get_diarization_engine) 사용 권장
+        Phase 5 (Test Infrastructure Cleanup)에서 제거 예정
+        """
         if cls._instance is None:
-            with cls._lock:
-                if cls._instance is None:
-                    cls._instance = cls()
+            cls._instance = cls()
         return cls._instance
 
     def load(self, hf_token: str | None = None, model_name: str | None = None) -> None:

@@ -70,7 +70,7 @@ class TestWhisperEngineDoubleLock:
                 patch("platform.system", return_value="Darwin"),
                 patch.object(WhisperEngine, "_detect_device", return_value="mps"),
             ):
-                engine = WhisperEngine.get_instance()
+                engine = WhisperEngine()
                 results = []
                 errors = []
 
@@ -103,7 +103,7 @@ class TestFasterWhisperLoad:
         """faster-whisper 로드 중 예외 발생 시 False 반환"""
         from backend.ml.stt_engine import WhisperEngine
 
-        engine = WhisperEngine.get_instance()
+        engine = WhisperEngine()
 
         with patch.dict(sys.modules, {"faster_whisper": None, "mlx_whisper": None}):
             with patch("platform.system", return_value="Linux"):
@@ -116,7 +116,7 @@ class TestFasterWhisperLoad:
         """faster-whisper 로드 실패 시 에러 로그 기록"""
         from backend.ml.stt_engine import WhisperEngine
 
-        engine = WhisperEngine.get_instance()
+        engine = WhisperEngine()
 
         mock_fw = MagicMock()
         mock_fw.WhisperModel.side_effect = Exception("Load failed")
@@ -140,7 +140,7 @@ class TestWhisperBackendLoad:
         """openai-whisper ImportError 시 False 반환"""
         from backend.ml.stt_engine import WhisperEngine
 
-        engine = WhisperEngine.get_instance()
+        engine = WhisperEngine()
 
         with patch.dict(
             sys.modules, {"whisper": None, "mlx_whisper": None, "faster_whisper": None}
@@ -153,7 +153,7 @@ class TestWhisperBackendLoad:
         """openai-whisper 로드 중 예외 발생 시 False 반환"""
         from backend.ml.stt_engine import WhisperEngine
 
-        engine = WhisperEngine.get_instance()
+        engine = WhisperEngine()
 
         mock_whisper = MagicMock()
         mock_whisper.load_model.side_effect = RuntimeError("Load failed")
@@ -188,7 +188,7 @@ class TestTranscribeMlx:
                 patch("platform.system", return_value="Darwin"),
                 patch.object(WhisperEngine, "_detect_device", return_value="mps"),
             ):
-                engine = WhisperEngine.get_instance()
+                engine = WhisperEngine()
                 engine._backend = "mlx"
                 engine._model_loaded = True
                 result = engine._transcribe_mlx(test_audio_file, "ko", None)
@@ -211,7 +211,7 @@ class TestTranscribeMlx:
                 patch("platform.system", return_value="Darwin"),
                 patch.object(WhisperEngine, "_detect_device", return_value="mps"),
             ):
-                engine = WhisperEngine.get_instance()
+                engine = WhisperEngine()
                 engine._backend = "mlx"
                 engine._model_loaded = True
                 engine._transcribe_mlx(test_audio_file, "ko", "회의록 작성")
@@ -231,7 +231,7 @@ class TestTranscribeMlx:
                 patch("platform.system", return_value="Darwin"),
                 patch.object(WhisperEngine, "_detect_device", return_value="mps"),
             ):
-                engine = WhisperEngine.get_instance()
+                engine = WhisperEngine()
                 engine._backend = "mlx"
                 engine._model_loaded = True
                 engine._transcribe_mlx(test_audio_file, "ko", None)
@@ -251,7 +251,7 @@ class TestTranscribeMlx:
                 patch("platform.system", return_value="Darwin"),
                 patch.object(WhisperEngine, "_detect_device", return_value="mps"),
             ):
-                engine = WhisperEngine.get_instance()
+                engine = WhisperEngine()
                 engine._backend = "mlx"
                 engine._model_loaded = True
                 engine._transcribe_mlx(test_audio_file, "ko", None)
@@ -285,7 +285,7 @@ class TestTranscribeWhisper:
                 patch("platform.system", return_value="Linux"),
                 patch("torch.cuda.is_available", return_value=False),
             ):
-                engine = WhisperEngine.get_instance()
+                engine = WhisperEngine()
                 engine._backend = "whisper"
                 engine._whisper_model = mock_model
                 engine._model_loaded = True
@@ -308,7 +308,7 @@ class TestTranscribeWhisper:
                 patch("platform.system", return_value="Linux"),
                 patch("torch.cuda.is_available", return_value=False),
             ):
-                engine = WhisperEngine.get_instance()
+                engine = WhisperEngine()
                 engine._backend = "whisper"
                 engine._whisper_model = mock_model
                 engine._model_loaded = True
@@ -332,7 +332,7 @@ class TestTranscribeWhisper:
                 patch("platform.system", return_value="Linux"),
                 patch("torch.cuda.is_available", return_value=False),
             ):
-                engine = WhisperEngine.get_instance()
+                engine = WhisperEngine()
                 engine._backend = "whisper"
                 engine._whisper_model = mock_model
                 engine._model_loaded = True
@@ -369,7 +369,7 @@ class TestTranscribeFasterWhisper:
                 patch("platform.system", return_value="Linux"),
                 patch("torch.cuda.is_available", return_value=False),
             ):
-                engine = WhisperEngine.get_instance()
+                engine = WhisperEngine()
                 engine._backend = "faster_whisper"
                 engine._faster_whisper_model = mock_model
                 engine._model_loaded = True
@@ -392,7 +392,7 @@ class TestTranscribeFasterWhisper:
                 patch("platform.system", return_value="Linux"),
                 patch("torch.cuda.is_available", return_value=False),
             ):
-                engine = WhisperEngine.get_instance()
+                engine = WhisperEngine()
                 engine._backend = "faster_whisper"
                 engine._faster_whisper_model = mock_model
                 engine._model_loaded = True
@@ -415,7 +415,7 @@ class TestTranscribeFasterWhisper:
                 patch("platform.system", return_value="Linux"),
                 patch("torch.cuda.is_available", return_value=False),
             ):
-                engine = WhisperEngine.get_instance()
+                engine = WhisperEngine()
                 engine._backend = "faster_whisper"
                 engine._faster_whisper_model = mock_model
                 engine._model_loaded = True
@@ -447,7 +447,7 @@ class TestTranscribeMemoryCheck:
                 patch("platform.system", return_value="Darwin"),
                 patch.object(WhisperEngine, "_detect_device", return_value="mps"),
             ):
-                engine = WhisperEngine.get_instance()
+                engine = WhisperEngine()
                 engine.load()
 
                 with patch.object(engine, "_check_memory_usage") as mock_check:

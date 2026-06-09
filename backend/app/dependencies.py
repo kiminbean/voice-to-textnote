@@ -48,16 +48,14 @@ async def close_redis_client() -> None:
     get_redis_client.cache_clear()
 
 
-@lru_cache
-def get_whisper_engine() -> WhisperEngine:
-    """WhisperEngine 싱글톤 반환"""
-    return WhisperEngine.get_instance()
+def get_whisper_engine(request: Request) -> WhisperEngine:
+    """AC-DI-010: FastAPI app.state에서 WhisperEngine 반환"""
+    return request.app.state.whisper_engine
 
 
-@lru_cache
-def get_diarization_engine() -> DiarizationEngine:
-    """DiarizationEngine 싱글톤 반환"""
-    return DiarizationEngine.get_instance()
+def get_diarization_engine(request: Request) -> DiarizationEngine:
+    """AC-DI-013: FastAPI app.state에서 DiarizationEngine 반환"""
+    return request.app.state.diarization_engine
 
 
 async def get_db_session() -> AsyncGenerator[AsyncSession, None]:

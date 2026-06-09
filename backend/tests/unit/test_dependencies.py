@@ -82,49 +82,73 @@ class TestCloseRedisClient:
 
 
 class TestGetWhisperEngine:
-    """get_whisper_engine() 싱글톤 테스트"""
+    """AC-DI-010: get_whisper_engine() app.state 주입 테스트"""
 
     @pytest.mark.asyncio
-    async def test_returns_engine_instance(self):
-        """WhisperEngine 인스턴스 반환 확인"""
+    async def test_returns_engine_from_app_state(self):
+        """Request의 app.state에서 엔진 반환"""
         from backend.app.dependencies import get_whisper_engine
+        from backend.ml.stt_engine import WhisperEngine
 
-        with patch("backend.ml.stt_engine.WhisperEngine.get_instance"):
-            engine = get_whisper_engine()
-            assert engine is not None
+        # mock Request 생성
+        mock_request = MagicMock()
+        mock_engine = MagicMock(spec=WhisperEngine)
+
+        # Request.app.state.whisper_engine 설정
+        mock_request.app.state.whisper_engine = mock_engine
+
+        engine = get_whisper_engine(mock_request)
+        assert engine is not None
+        assert engine is mock_engine
 
     @pytest.mark.asyncio
-    async def test_singleton_behavior(self):
-        """싱글톤 동작 확인"""
+    async def test_same_engine_for_same_request(self):
+        """동일 Request에서 동일 엔진 반환"""
         from backend.app.dependencies import get_whisper_engine
+        from backend.ml.stt_engine import WhisperEngine
 
-        with patch("backend.ml.stt_engine.WhisperEngine.get_instance"):
-            engine1 = get_whisper_engine()
-            engine2 = get_whisper_engine()
-            assert engine1 is engine2
+        mock_request = MagicMock()
+        mock_engine = MagicMock(spec=WhisperEngine)
+        mock_request.app.state.whisper_engine = mock_engine
+
+        engine1 = get_whisper_engine(mock_request)
+        engine2 = get_whisper_engine(mock_request)
+        assert engine1 is engine2
 
 
 class TestGetDiarizationEngine:
-    """get_diarization_engine() 싱글톤 테스트"""
+    """AC-DI-013: get_diarization_engine() app.state 주입 테스트"""
 
     @pytest.mark.asyncio
-    async def test_returns_engine_instance(self):
-        """DiarizationEngine 인스턴스 반환 확인"""
+    async def test_returns_engine_from_app_state(self):
+        """Request의 app.state에서 엔진 반환"""
         from backend.app.dependencies import get_diarization_engine
+        from backend.ml.diarization_engine import DiarizationEngine
 
-        with patch("backend.ml.diarization_engine.DiarizationEngine.get_instance"):
-            engine = get_diarization_engine()
-            assert engine is not None
+        # mock Request 생성
+        mock_request = MagicMock()
+        mock_engine = MagicMock(spec=DiarizationEngine)
+
+        # Request.app.state.diarization_engine 설정
+        mock_request.app.state.diarization_engine = mock_engine
+
+        engine = get_diarization_engine(mock_request)
+        assert engine is not None
+        assert engine is mock_engine
 
     @pytest.mark.asyncio
-    async def test_singleton_behavior(self):
-        """싱글톤 동작 확인"""
+    async def test_same_engine_for_same_request(self):
+        """동일 Request에서 동일 엔진 반환"""
         from backend.app.dependencies import get_diarization_engine
+        from backend.ml.diarization_engine import DiarizationEngine
 
-        with patch("backend.ml.diarization_engine.DiarizationEngine.get_instance"):
-            engine1 = get_diarization_engine()
-            engine2 = get_diarization_engine()
-            assert engine1 is engine2
+        mock_request = MagicMock()
+        mock_engine = MagicMock(spec=DiarizationEngine)
+        mock_request.app.state.diarization_engine = mock_engine
+
+        engine1 = get_diarization_engine(mock_request)
+        engine2 = get_diarization_engine(mock_request)
+        assert engine1 is engine2
 
 
 class TestGetDbSession:

@@ -90,10 +90,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # SPEC-LIFECYCLE-001: 시작 시 의존성 검증 (Redis, DB)
     await validate_startup()
 
+    # AC-DI-001: FastAPI app.state에 엔진 인스턴스 생성 (REQ-STT-021, REQ-DIA-011)
+    app.state.whisper_engine = WhisperEngine()
+    app.state.diarization_engine = DiarizationEngine()
+
     # STT 모델 사전 로드 (REQ-STT-021)
     try:
-        stt_engine = WhisperEngine.get_instance()
-        stt_engine.load(settings.whisper_model)
+        app.state.whisper_engine.load(settings.whisper_model)
         logger.info("STT 모델 사전 로드 완료", model=settings.whisper_model)
     except Exception as e:
         logger.error("STT 모델 사전 로드 실패 (서버는 계속 실행)", error=str(e))
@@ -101,8 +104,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # 화자 분리 모델 사전 로드 (REQ-DIA-011)
     if settings.huggingface_token:
         try:
-            dia_engine = DiarizationEngine.get_instance()
-            dia_engine.load(
+            app.state.diarization_engine.load(
                 hf_token=settings.huggingface_token,
                 model_name=settings.diarization_model,
             )

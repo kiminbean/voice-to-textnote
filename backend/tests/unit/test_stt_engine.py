@@ -54,14 +54,14 @@ class TestWhisperEngineSingleton:
         """초기 상태에서 is_loaded == False (모델 미로드)"""
         from backend.ml.stt_engine import WhisperEngine
 
-        engine = WhisperEngine.get_instance()
+        engine = WhisperEngine()
         assert engine.is_loaded is False
 
     def test_model_not_loaded_without_explicit_call(self):
         """load() 호출 없이는 모델 미로드"""
         from backend.ml.stt_engine import WhisperEngine
 
-        engine = WhisperEngine.get_instance()
+        engine = WhisperEngine()
         # 로드 호출 안 함 → _model_loaded=False
         assert not engine._model_loaded
 
@@ -91,7 +91,7 @@ class TestWhisperEngineLoad:
                 patch("platform.system", return_value="Darwin"),
                 patch.object(WhisperEngine, "_detect_device", return_value="mps"),
             ):
-                engine = WhisperEngine.get_instance()
+                engine = WhisperEngine()
                 engine.load()
                 assert engine.is_loaded is True
 
@@ -104,7 +104,7 @@ class TestWhisperEngineLoad:
                 patch("platform.system", return_value="Darwin"),
                 patch.object(WhisperEngine, "_detect_device", return_value="mps"),
             ):
-                engine = WhisperEngine.get_instance()
+                engine = WhisperEngine()
                 engine.load()
                 assert engine.load_time_seconds is not None
                 assert engine.load_time_seconds >= 0
@@ -118,7 +118,7 @@ class TestWhisperEngineLoad:
                 patch("platform.system", return_value="Darwin"),
                 patch.object(WhisperEngine, "_detect_device", return_value="mps"),
             ):
-                engine = WhisperEngine.get_instance()
+                engine = WhisperEngine()
                 engine.load()
                 assert engine.is_loaded is True
                 engine.load()  # 두 번째 호출도 정상
@@ -132,7 +132,7 @@ class TestWhisperEngineLoad:
             with patch(
                 "builtins.__import__", side_effect=ImportError("No module named 'mlx_whisper'")
             ):
-                engine = WhisperEngine.get_instance()
+                engine = WhisperEngine()
                 with pytest.raises((RuntimeError, ImportError)):
                     engine.load()
 
@@ -171,7 +171,7 @@ class TestWhisperEngineTranscribe:
                 patch("platform.system", return_value="Darwin"),
                 patch.object(WhisperEngine, "_detect_device", return_value="mps"),
             ):
-                engine = WhisperEngine.get_instance()
+                engine = WhisperEngine()
                 engine.load()
                 result = engine.transcribe(test_audio_file)
 
@@ -189,7 +189,7 @@ class TestWhisperEngineTranscribe:
                 patch("platform.system", return_value="Darwin"),
                 patch.object(WhisperEngine, "_detect_device", return_value="mps"),
             ):
-                engine = WhisperEngine.get_instance()
+                engine = WhisperEngine()
                 engine.load()
                 engine.transcribe(test_audio_file)
 
@@ -208,7 +208,7 @@ class TestWhisperEngineTranscribe:
                 patch("platform.system", return_value="Darwin"),
                 patch.object(WhisperEngine, "_detect_device", return_value="mps"),
             ):
-                engine = WhisperEngine.get_instance()
+                engine = WhisperEngine()
                 engine.load()
                 engine.transcribe(test_audio_file, language="en")
 
@@ -234,7 +234,7 @@ class TestWhisperEngineTranscribe:
                 patch("platform.system", return_value="Darwin"),
                 patch.object(WhisperEngine, "_detect_device", return_value="mps"),
             ):
-                engine = WhisperEngine.get_instance()
+                engine = WhisperEngine()
                 engine.load()
                 result = engine.transcribe(test_audio_file)
 
@@ -257,7 +257,7 @@ class TestWhisperEngineTranscribe:
                 patch("platform.system", return_value="Darwin"),
                 patch.object(WhisperEngine, "_detect_device", return_value="mps"),
             ):
-                engine = WhisperEngine.get_instance()
+                engine = WhisperEngine()
                 engine.load()
                 result = engine.transcribe(test_audio_file)
 
@@ -275,7 +275,7 @@ class TestWhisperEngineTranscribe:
                 patch("platform.system", return_value="Darwin"),
                 patch.object(WhisperEngine, "_detect_device", return_value="mps"),
             ):
-                engine = WhisperEngine.get_instance()
+                engine = WhisperEngine()
                 engine.load()
 
                 with pytest.raises(RuntimeError, match="MLX 런타임 오류"):
@@ -291,7 +291,7 @@ class TestWhisperEngineTranscribe:
                 patch("platform.system", return_value="Darwin"),
                 patch.object(WhisperEngine, "_detect_device", return_value="mps"),
             ):
-                engine = WhisperEngine.get_instance()
+                engine = WhisperEngine()
                 # load() 호출 안 함
                 assert engine.is_loaded is False
                 engine.transcribe(test_audio_file)
@@ -363,7 +363,7 @@ class TestWhisperEngineMemory:
         """get_memory_info()가 딕셔너리 반환"""
         from backend.ml.stt_engine import WhisperEngine
 
-        engine = WhisperEngine.get_instance()
+        engine = WhisperEngine()
         info = engine.get_memory_info()
         assert isinstance(info, dict)
 
@@ -371,7 +371,7 @@ class TestWhisperEngineMemory:
         """get_memory_info()에 필수 키 포함 (시나리오 13)"""
         from backend.ml.stt_engine import WhisperEngine
 
-        engine = WhisperEngine.get_instance()
+        engine = WhisperEngine()
         info = engine.get_memory_info()
         for key in ("total_mb", "available_mb", "used_mb", "percent"):
             assert key in info, f"memory_info에 '{key}' 키 누락"
@@ -380,7 +380,7 @@ class TestWhisperEngineMemory:
         """메모리 정보값은 양수 (시나리오 4, 13)"""
         from backend.ml.stt_engine import WhisperEngine
 
-        engine = WhisperEngine.get_instance()
+        engine = WhisperEngine()
         info = engine.get_memory_info()
         assert info["total_mb"] > 0
         assert info["available_mb"] >= 0
@@ -395,7 +395,7 @@ class TestWhisperEngineMemory:
         mock_vm.used = MEMORY_WARNING_THRESHOLD_BYTES + 1
         mock_vm.percent = 85.0
 
-        engine = WhisperEngine.get_instance()
+        engine = WhisperEngine()
 
         with patch("psutil.virtual_memory", return_value=mock_vm):
             with patch("backend.ml.stt_engine.logger") as mock_logger:
@@ -410,7 +410,7 @@ class TestWhisperEngineMemory:
         mock_vm.used = MEMORY_WARNING_THRESHOLD_BYTES - 1
         mock_vm.percent = 75.0
 
-        engine = WhisperEngine.get_instance()
+        engine = WhisperEngine()
 
         with patch("psutil.virtual_memory", return_value=mock_vm):
             with patch("backend.ml.stt_engine.logger") as mock_logger:
@@ -438,21 +438,21 @@ class TestWhisperEngineProperties:
         """모델명에 'whisper' 포함 (시나리오 4)"""
         from backend.ml.stt_engine import WhisperEngine
 
-        engine = WhisperEngine.get_instance()
+        engine = WhisperEngine()
         assert "whisper" in engine.model_name.lower()
 
     def test_device_property_returns_string(self):
         """device 프로퍼티가 문자열 반환"""
         from backend.ml.stt_engine import WhisperEngine
 
-        engine = WhisperEngine.get_instance()
+        engine = WhisperEngine()
         assert isinstance(engine.device, str)
 
     def test_load_time_none_before_load(self):
         """load() 호출 전 load_time_seconds == None"""
         from backend.ml.stt_engine import WhisperEngine
 
-        engine = WhisperEngine.get_instance()
+        engine = WhisperEngine()
         assert engine.load_time_seconds is None
 
     def test_load_time_positive_after_load(self):
@@ -464,7 +464,7 @@ class TestWhisperEngineProperties:
                 patch("platform.system", return_value="Darwin"),
                 patch.object(WhisperEngine, "_detect_device", return_value="mps"),
             ):
-                engine = WhisperEngine.get_instance()
+                engine = WhisperEngine()
                 engine.load()
                 assert engine.load_time_seconds is not None
                 assert engine.load_time_seconds >= 0.0
@@ -535,7 +535,7 @@ class TestFasterWhisperBackend:
         # mlx_whisper를 ImportError로 만들기 위해 sys.modules에서 제거
         with patch.dict(sys.modules, {"faster_whisper": mock_fw, "mlx_whisper": None}):
             with patch("platform.system", return_value="Linux"):
-                engine = WhisperEngine.get_instance()
+                engine = WhisperEngine()
                 engine.load()
                 assert engine.is_loaded is True
                 assert engine.backend == "faster_whisper"
@@ -553,7 +553,7 @@ class TestFasterWhisperBackend:
             {"faster_whisper": mock_fw, "torch": mock_torch, "mlx_whisper": None},
         ):
             with patch("platform.system", return_value="Linux"):
-                engine = WhisperEngine.get_instance()
+                engine = WhisperEngine()
                 engine.load()
                 # WhisperModel() 호출 시 device, compute_type 확인
                 call_args = mock_fw.WhisperModel.call_args
@@ -575,7 +575,7 @@ class TestFasterWhisperBackend:
             {"faster_whisper": mock_fw, "torch": mock_torch, "mlx_whisper": None},
         ):
             with patch("platform.system", return_value="Linux"):
-                engine = WhisperEngine.get_instance()
+                engine = WhisperEngine()
                 engine.load()
                 call_args = mock_fw.WhisperModel.call_args
                 kwargs = call_args.kwargs if hasattr(call_args, "kwargs") else {}
@@ -612,7 +612,7 @@ class TestFasterWhisperBackend:
             {"faster_whisper": mock_fw, "torch": mock_torch, "mlx_whisper": None},
         ):
             with patch("platform.system", return_value="Linux"):
-                engine = WhisperEngine.get_instance()
+                engine = WhisperEngine()
                 engine.load()
                 result = engine.transcribe(test_audio_file)
 
@@ -646,7 +646,7 @@ class TestFasterWhisperBackend:
             {"faster_whisper": mock_fw, "torch": mock_torch, "mlx_whisper": None},
         ):
             with patch("platform.system", return_value="Linux"):
-                engine = WhisperEngine.get_instance()
+                engine = WhisperEngine()
                 engine.load()
                 engine.transcribe(test_audio_file, language="ko")
 
@@ -678,7 +678,7 @@ class TestFasterWhisperBackend:
             },
         ):
             with patch("platform.system", return_value="Linux"):
-                engine = WhisperEngine.get_instance()
+                engine = WhisperEngine()
                 engine.load()
                 # faster-whisper 실패 → openai-whisper 선택
                 assert engine.backend == "whisper"

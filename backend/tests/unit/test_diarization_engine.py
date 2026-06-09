@@ -5,7 +5,6 @@ REQ-DIA-007~012: pyannote.audio Pipeline 싱글톤 엔진
 
 import sys
 from pathlib import Path
-from threading import Thread
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -57,55 +56,13 @@ def _reset_engine():
 # ---------------------------------------------------------------------------
 
 
-class TestDiarizationEngineSingleton:
-    """싱글톤 패턴 테스트 (REQ-DIA-007: 프로세스당 1개)"""
-
-    def setup_method(self):
-        """각 테스트 전 싱글톤 리셋"""
-        _reset_engine()
-
-    def test_get_instance_returns_same_object(self):
-        """get_instance()는 동일한 인스턴스 반환"""
-        from backend.ml.diarization_engine import DiarizationEngine
-
-        instance1 = DiarizationEngine.get_instance()
-        instance2 = DiarizationEngine.get_instance()
-        assert instance1 is instance2
-
-    def test_get_instance_called_multiple_times_same(self):
-        """여러 번 호출해도 동일 인스턴스"""
-        from backend.ml.diarization_engine import DiarizationEngine
-
-        instances = [DiarizationEngine.get_instance() for _ in range(5)]
-        assert all(i is instances[0] for i in instances)
-
-    def test_is_loaded_false_initially(self):
-        """초기 상태에서 is_loaded == False"""
-        from backend.ml.diarization_engine import DiarizationEngine
-
-        engine = DiarizationEngine.get_instance()
-        assert engine.is_loaded is False
-
-    def test_thread_safety(self):
-        """멀티스레드에서 동일 인스턴스 반환 (thread safety)"""
-        from backend.ml.diarization_engine import DiarizationEngine
-
-        instances = []
-
-        def get_inst():
-            instances.append(DiarizationEngine.get_instance())
-
-        threads = [Thread(target=get_inst) for _ in range(10)]
-        for t in threads:
-            t.start()
-        for t in threads:
-            t.join()
-
-        assert all(i is instances[0] for i in instances)
-
+# ---------------------------------------------------------------------------
+# AC-DI-014 제거: 싱글톤 패턴 테스트
+# get_instance() 메서드가 제거되었으므로 TestDiarizationEngineSingleton 클래스 삭제됨
+# ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
-# load() 메서드 테스트
+# load() 메서드 테스트 (AC-DI-011: 인스턴스 레벨 lazy load 보존)
 # ---------------------------------------------------------------------------
 
 
@@ -136,7 +93,7 @@ class TestDiarizationEngineLoad:
         ctx, mock_pipeline_cls = self._patch_pyannote()
         with ctx:
             mock_pipeline_cls.from_pretrained.return_value = _make_mock_pipeline()
-            engine = DiarizationEngine.get_instance()
+            engine = DiarizationEngine()
             engine.load(hf_token="hf_testtoken")
             assert engine.is_loaded is True
 
@@ -147,7 +104,7 @@ class TestDiarizationEngineLoad:
         ctx, mock_pipeline_cls = self._patch_pyannote()
         with ctx:
             mock_pipeline_cls.from_pretrained.return_value = _make_mock_pipeline()
-            engine = DiarizationEngine.get_instance()
+            engine = DiarizationEngine()
             engine.load(hf_token="hf_testtoken")
             assert engine.load_time_seconds is not None
             assert engine.load_time_seconds >= 0
@@ -159,7 +116,7 @@ class TestDiarizationEngineLoad:
         ctx, mock_pipeline_cls = self._patch_pyannote()
         with ctx:
             mock_pipeline_cls.from_pretrained.return_value = _make_mock_pipeline()
-            engine = DiarizationEngine.get_instance()
+            engine = DiarizationEngine()
             engine.load(hf_token="hf_testtoken")
             assert engine.is_loaded is True
             # 두 번째 호출 시 from_pretrained 다시 호출 안 됨
@@ -171,7 +128,7 @@ class TestDiarizationEngineLoad:
         """HuggingFace 토큰 없이 load() 시 에러"""
         from backend.ml.diarization_engine import DiarizationEngine
 
-        engine = DiarizationEngine.get_instance()
+        engine = DiarizationEngine()
         with pytest.raises((ValueError, RuntimeError)):
             engine.load(hf_token="")
 
@@ -182,7 +139,7 @@ class TestDiarizationEngineLoad:
         ctx, mock_pipeline_cls = self._patch_pyannote()
         with ctx:
             mock_pipeline_cls.from_pretrained.side_effect = Exception("401 Unauthorized")
-            engine = DiarizationEngine.get_instance()
+            engine = DiarizationEngine()
             with pytest.raises((RuntimeError, Exception)):
                 engine.load(hf_token="invalid_token")
 
@@ -193,7 +150,7 @@ class TestDiarizationEngineLoad:
         ctx, mock_pipeline_cls = self._patch_pyannote()
         with ctx:
             mock_pipeline_cls.from_pretrained.return_value = _make_mock_pipeline()
-            engine = DiarizationEngine.get_instance()
+            engine = DiarizationEngine()
             engine.load(hf_token="hf_mytoken123")
 
             call_kwargs = mock_pipeline_cls.from_pretrained.call_args
@@ -243,7 +200,7 @@ class TestDiarizationEngineDiarize:
         mock_torchaudio.load.return_value = (mock_waveform, 16000)
 
         with ctx, patch.dict(sys.modules, {"torchaudio": mock_torchaudio}):
-            engine = DiarizationEngine.get_instance()
+            engine = DiarizationEngine()
             engine.load(hf_token="hf_testtoken")
             result = engine.diarize(wav_file)
 
@@ -265,7 +222,7 @@ class TestDiarizationEngineDiarize:
         mock_torchaudio.load.return_value = (mock_waveform, 16000)
 
         with ctx, patch.dict(sys.modules, {"torchaudio": mock_torchaudio}):
-            engine = DiarizationEngine.get_instance()
+            engine = DiarizationEngine()
             engine.load(hf_token="hf_testtoken")
             result = engine.diarize(wav_file)
 
@@ -287,7 +244,7 @@ class TestDiarizationEngineDiarize:
         mock_torchaudio.load.return_value = (mock_waveform, 16000)
 
         with ctx, patch.dict(sys.modules, {"torchaudio": mock_torchaudio}):
-            engine = DiarizationEngine.get_instance()
+            engine = DiarizationEngine()
             engine.load(hf_token="hf_testtoken")
             result = engine.diarize(wav_file)
 
@@ -298,7 +255,7 @@ class TestDiarizationEngineDiarize:
         """미로드 상태에서 diarize() 호출 시 RuntimeError (HF 토큰 필요)"""
         from backend.ml.diarization_engine import DiarizationEngine
 
-        engine = DiarizationEngine.get_instance()
+        engine = DiarizationEngine()
         wav_file = tmp_path / "test.wav"
         wav_file.write_bytes(b"\x00" * 100)
 
@@ -322,7 +279,7 @@ class TestDiarizationEngineDiarize:
         mock_torchaudio.load.return_value = (torch.zeros(1, 16000), 16000)
 
         with ctx, patch.dict(sys.modules, {"torchaudio": mock_torchaudio}):
-            engine = DiarizationEngine.get_instance()
+            engine = DiarizationEngine()
             engine.load(hf_token="hf_testtoken")
             with pytest.raises(RuntimeError):
                 engine.diarize(wav_file)
@@ -354,7 +311,7 @@ class TestDiarizationEngineUnload:
         from backend.ml.diarization_engine import DiarizationEngine
 
         with self._patch_pyannote():
-            engine = DiarizationEngine.get_instance()
+            engine = DiarizationEngine()
             engine.load(hf_token="hf_testtoken")
             assert engine.is_loaded is True
             engine.unload()
@@ -365,7 +322,7 @@ class TestDiarizationEngineUnload:
         from backend.ml.diarization_engine import DiarizationEngine
 
         with self._patch_pyannote():
-            engine = DiarizationEngine.get_instance()
+            engine = DiarizationEngine()
             engine.load(hf_token="hf_testtoken")
             engine.unload()
             assert engine._pipeline is None
@@ -386,14 +343,14 @@ class TestDiarizationEngineProperties:
         """model_name에 'diarization' 포함"""
         from backend.ml.diarization_engine import DiarizationEngine
 
-        engine = DiarizationEngine.get_instance()
+        engine = DiarizationEngine()
         assert "diarization" in engine.model_name.lower()
 
     def test_load_time_none_before_load(self):
         """load() 전 load_time_seconds == None"""
         from backend.ml.diarization_engine import DiarizationEngine
 
-        engine = DiarizationEngine.get_instance()
+        engine = DiarizationEngine()
         assert engine.load_time_seconds is None
 
     def test_load_time_positive_after_load(self):
@@ -409,7 +366,7 @@ class TestDiarizationEngineProperties:
             sys.modules,
             {"pyannote": MagicMock(), "pyannote.audio": mock_pyannote_audio},
         ):
-            engine = DiarizationEngine.get_instance()
+            engine = DiarizationEngine()
             engine.load(hf_token="hf_testtoken")
             assert engine.load_time_seconds is not None
             assert engine.load_time_seconds >= 0.0
@@ -427,7 +384,7 @@ def _make_loaded_engine_with_mock_pipeline():
 
     _reset_engine()
     mock_pipeline = _make_mock_pipeline()
-    engine = DiarizationEngine.get_instance()
+    engine = DiarizationEngine()
     engine._pipeline = mock_pipeline
     engine._model_loaded = True
     return engine, mock_pipeline

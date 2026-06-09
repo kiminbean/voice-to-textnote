@@ -38,10 +38,8 @@ class TestMainFullCoverage:
         mock_stt = MagicMock()
 
         with patch("backend.app.main.validate_startup", new_callable=AsyncMock):
-            with patch("backend.app.main.WhisperEngine") as mock_whisper_cls:
-                mock_whisper_cls.get_instance.return_value = mock_stt
-                with patch("backend.app.main.DiarizationEngine") as mock_dia_cls:
-                    mock_dia_cls.get_instance.return_value = mock_dia
+            with patch("backend.app.main.WhisperEngine", return_value=mock_stt):
+                with patch("backend.app.main.DiarizationEngine", return_value=mock_dia):
                     with patch("backend.app.main.settings") as mock_settings:
                         mock_settings.whisper_model = "base"
                         mock_settings.huggingface_token = "hf_test_token"
