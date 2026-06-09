@@ -1,4 +1,6 @@
 // 녹음 화면
+// @MX:NOTE: SPEC-APP-005 — Pause/Resume, AudioLevelMeter, QualitySelector 통합
+
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,6 +12,8 @@ import 'package:voice_to_textnote/providers/vocabulary_provider.dart';
 import 'package:voice_to_textnote/providers/notification_provider.dart';
 import 'package:voice_to_textnote/services/permission_service.dart';
 import 'package:voice_to_textnote/widgets/permission_dialog.dart';
+import 'package:voice_to_textnote/widgets/audio_level_meter.dart';
+import 'package:voice_to_textnote/widgets/recording_quality_selector.dart';
 
 class RecordingScreen extends ConsumerStatefulWidget {
   const RecordingScreen({super.key});
@@ -57,7 +61,6 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
     final micStatus = await permissionService.checkMicrophonePermission();
 
     if (micStatus != PermissionStatus.granted) {
-      // 권한 요청 다이얼로그 표시
       if (mounted) {
         _showPermissionDialog(PermissionType.microphone);
       }
@@ -87,7 +90,6 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
     if (type == PermissionType.microphone) {
       final status = await permissionService.requestMicrophonePermission();
       if (status == PermissionStatus.permanentlyDenied) {
-        // 영구 거부 다이얼로그 표시
         if (mounted) {
           _showPermanentlyDeniedDialog(type);
         }
@@ -140,7 +142,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
     final status = ref.read(recordingProvider).status;
 
     if (status == RecordingStatus.idle || status == RecordingStatus.stopped) {
-      // 실제 녹음 시작 (마이크 권한 요청 포함)
+      // 실제 녹음 시작
       await ref.read(recordingProvider.notifier).startRecording();
 
       // 권한이 거부되어 상태가 idle인 경우 타이머 시작 안함
@@ -158,6 +160,18 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
     }
   }
 
+  // 일시정지/재개 토글 (REQ-001)
+  Future<void> _togglePause() async {
+    final status = ref.read(recordingProvider).status;
+    if (status == RecordingStatus.recording) {
+      _stopTimer();
+      await ref.read(recordingProvider.notifier).pauseRecording();
+    } else if (status == RecordingStatus.paused) {
+      await ref.read(recordingProvider.notifier).resumeRecording();
+      _startTimer();
+    }
+  }
+
   // Meeting 객체 생성 후 목록에 추가, 처리 화면으로 이동
   Future<void> _createMeetingAndNavigate() async {
     final recordingState = ref.read(recordingProvider);
@@ -170,13 +184,13 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
     // 고유 ID 생성 (타임스탬프 기반)
     final meetingId = 'meeting_${DateTime.now().millisecondsSinceEpoch}';
 
-    // 녹음 일시 기반 제목 생성 (예: "미팅 2025-01-15 14:30")
+    // 녹음 일시 기반 제목 생성
     final now = DateTime.now();
     final title =
         '미팅 ${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')} '
         '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
 
-    // processing 상태로 Meeting 생성 (파이프라인이 완료되면 completed로 변경됨)
+    // processing 상태로 Meeting 생성
     final newMeeting = Meeting(
       id: meetingId,
       title: title,
@@ -193,7 +207,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
     // recordingProvider 초기화
     ref.read(recordingProvider.notifier).reset();
 
-    // 처리 화면으로 이동 (파이프라인 진행 상태 표시)
+    // 처리 화면으로 이동
     if (mounted) {
       context.go('/processing/$meetingId');
     }
@@ -210,6 +224,8 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
   Widget build(BuildContext context) {
     final state = ref.watch(recordingProvider);
     final isRecording = state.status == RecordingStatus.recording;
+    final isPaused = state.status == RecordingStatus.paused;
+    final isActive = isRecording || isPaused;
 
     return Scaffold(
       appBar: AppBar(
@@ -227,32 +243,69 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
                     fontFeatures: const [],
                   ),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 16),
+
+            // 오디오 레벨 미터 (REQ-002) — 녹음/일시정지 상태에서만 표시
+            if (isActive)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 48),
+                child: AudioLevelMeter(
+                  level: state.audioLevel,
+                  isActive: isRecording,
+                ),
+              ),
+            if (isActive) const SizedBox(height: 16),
+
             // 녹음 상태 텍스트
             Text(
               _getStatusText(state.status),
               style: TextStyle(
-                color: isRecording ? Colors.red : Colors.grey,
+                color: isRecording
+                    ? Colors.red
+                    : isPaused
+                        ? Colors.orange
+                        : Colors.grey,
                 fontSize: 16,
               ),
             ),
-            const SizedBox(height: 48),
+            const SizedBox(height: 24),
+
+            // 품질 설정 + 현재 설정 표시 (REQ-003,004,005)
+            if (!isActive && state.status != RecordingStatus.stopped)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: RecordingQualitySelector(
+                  currentConfig: state.recordingConfig,
+                  onChanged: (config) {
+                    ref.read(recordingProvider.notifier).setRecordingConfig(config);
+                  },
+                  isRecording: false,
+                ),
+              ),
+            if (!isActive && state.status != RecordingStatus.stopped)
+              const SizedBox(height: 16),
+
             // 사용자 사전 선택 (녹음 전에만 표시)
-            if (!isRecording && state.status != RecordingStatus.stopped)
+            if (!isActive && state.status != RecordingStatus.stopped)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 48),
                 child: _buildVocabularySelector(context),
               ),
-            if (!isRecording && state.status != RecordingStatus.stopped)
-              const SizedBox(height: 24),
-            // 녹음 버튼 (스케일 애니메이션 피드백)
+            if (!isActive && state.status != RecordingStatus.stopped)
+              const SizedBox(height: 32),
+
+            // 녹음/중지 버튼
             ScaleTransition(
               scale: _scaleAnimation,
               child: Semantics(
                 button: true,
-                label: isRecording ? '녹음 중지' : '녹음 시작',
+                label: isActive ? '녹음 중지' : '녹음 시작',
                 child: Material(
-                  color: isRecording ? Colors.red : Theme.of(context).colorScheme.primary,
+                  color: isRecording
+                      ? Colors.red
+                      : isPaused
+                          ? Colors.orange
+                          : Theme.of(context).colorScheme.primary,
                   shape: const CircleBorder(),
                   clipBehavior: Clip.antiAlias,
                   child: InkWell(
@@ -265,7 +318,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
                       width: 100,
                       height: 100,
                       child: Icon(
-                        isRecording ? Icons.stop : Icons.mic,
+                        isActive ? Icons.stop : Icons.mic,
                         color: Colors.white,
                         size: 48,
                       ),
@@ -274,6 +327,25 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
                 ),
               ),
             ),
+
+            // 일시정지/재개 버튼 (REQ-001)
+            if (isActive)
+              Padding(
+                padding: const EdgeInsets.only(top: 16),
+                child: IconButton.filled(
+                  onPressed: _togglePause,
+                  icon: Icon(
+                    isPaused ? Icons.play_arrow : Icons.pause,
+                    size: 32,
+                  ),
+                  style: IconButton.styleFrom(
+                    backgroundColor: isPaused ? Colors.green : Colors.orange,
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size(56, 56),
+                  ),
+                  tooltip: isPaused ? '재개' : '일시정지',
+                ),
+              ),
           ],
         ),
       ),

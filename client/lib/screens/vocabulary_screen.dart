@@ -218,7 +218,8 @@ class _VocabularyListItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dateStr = DateFormat('yyyy.MM.dd HH:mm').format(vocabulary.createdAt.toLocal());
+    // updatedAt 표시 (REQ-008)
+    final dateStr = DateFormat('yyyy.MM.dd HH:mm').format(vocabulary.updatedAt.toLocal());
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),

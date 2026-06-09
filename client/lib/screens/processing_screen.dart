@@ -15,6 +15,7 @@ import 'package:voice_to_textnote/services/sse_service.dart';
 import 'package:voice_to_textnote/config/app_config.dart';
 import 'package:voice_to_textnote/widgets/pipeline_progress.dart';
 import 'package:voice_to_textnote/widgets/error_dialog.dart';
+import 'package:voice_to_textnote/widgets/partial_result_panel.dart';
 
 class ProcessingScreen extends ConsumerStatefulWidget {
   final String meetingId;
@@ -279,6 +280,29 @@ class _ProcessingScreenState extends ConsumerState<ProcessingScreen>
             // 파이프라인 진행 표시
             PipelineProgress(pipelineState: pipelineState),
             const SizedBox(height: 24),
+
+            // SPEC-APP-005: 부분 결과 패널 + 재시도 (REQ-009~012)
+            PartialResultPanel(
+              pipelineState: pipelineState,
+              onRetryFailed: pipelineState.canRetry
+                  ? () => ref.read(pipelineProvider.notifier).retryStage()
+                  : null,
+            ),
+
+            // SPEC-APP-005: 전체 재시도 버튼 (실패 상태 시)
+            if (pipelineState.currentStep == PipelineStep.failed) ...[
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                onPressed: () => ref.read(pipelineProvider.notifier).retryStage(),
+                icon: const Icon(Icons.refresh),
+                label: const Text('재시도'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ],
+
             // 진행률 퍼센트 표시
             Text(
               '${(pipelineState.progress * 100).toInt()}%',

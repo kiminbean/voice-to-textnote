@@ -1,12 +1,14 @@
 // 백그라운드 녹음 서비스
 // @MX:ANCHOR: iOS/Android 플랫폼별 백그라운드 녹음 처리의 중앙 서비스
 // @MX:REASON: recording_provider에서 의존하며, iOS audio_session 및 Android Foreground Service 통신 포함
+// @MX:NOTE: SPEC-APP-005 — pause/resume, amplitude, RecordingConfig 지원 추가
 
 import 'dart:async';
 import 'dart:io';
 import 'package:audio_session/audio_session.dart';
 import 'package:flutter/services.dart';
 import 'package:record/record.dart';
+import 'package:voice_to_textnote/models/recording_config.dart';
 
 /// 백그라운드 녹음 설정
 class BackgroundRecordingConfig {
@@ -100,7 +102,11 @@ class BackgroundRecordingService {
   }
 
   /// 백그라운드 녹음 시작
-  Future<void> startRecording(BackgroundRecordingConfig config) async {
+  /// [recordingConfig] 녹음 품질 설정 (기본: standard)
+  Future<void> startRecording(
+    BackgroundRecordingConfig config, {
+    RecordingConfig recordingConfig = RecordingConfig.standard,
+  }) async {
     _recorder = AudioRecorder();
 
     // 플랫폼별 초기화
@@ -115,14 +121,43 @@ class BackgroundRecordingService {
       throw Exception('마이크 권한이 거부됨');
     }
 
-    // 녹음 시작
+    // 녹음 시작 — RecordingConfig의 RecordConfig 사용
     await _recorder!.start(
-      const RecordConfig(encoder: AudioEncoder.aacLc),
+      recordingConfig.toRecordConfig(),
       path: config.filePath,
     );
 
     // 주기적 플러시 타이머 시작 (크래시 방지)
     _startFlushTimer(config.flushInterval);
+  }
+
+  /// 녹음 일시정지 (REQ-001)
+  Future<void> pause() async {
+    if (_recorder != null) {
+      await _recorder!.pause();
+    }
+  }
+
+  /// 녹음 재개 (REQ-001)
+  Future<void> resume() async {
+    if (_recorder != null) {
+      await _recorder!.resume();
+    }
+  }
+
+  /// 현재 오디오 진폭(amplitude) 조회 (REQ-002)
+  /// dB 값을 0.0~1.0 범위로 정규화하여 반환
+  Future<double> getAmplitude() async {
+    if (_recorder == null) return 0.0;
+    try {
+      final amp = await _recorder!.getAmplitude();
+      // amp.current는 dB 값 (-160 ~ 0) → 0.0~1.0으로 변환
+      // -60dB 이하를 0으로 간주, 0dB를 1.0으로 매핑
+      final normalized = ((amp.current + 60) / 60).clamp(0.0, 1.0);
+      return normalized;
+    } catch (_) {
+      return 0.0;
+    }
   }
 
   /// 백그라운드 녹음 중지

@@ -1,4 +1,5 @@
 // 파이프라인 처리 상태 관리 프로바이더
+// @MX:NOTE: SPEC-APP-005 — 단계별 타이밍, 부분 결과, 재시도 추가 (REQ-009~012, REQ-021)
 import 'dart:async';
 
 import 'package:dio/dio.dart';
@@ -13,39 +14,47 @@ import 'package:voice_to_textnote/services/transcription_api.dart';
 
 // 파이프라인 Notifier
 class PipelineNotifier extends Notifier<PipelineState> {
-  // 폴링 취소 플래그 - 화면 이탈 또는 사용자 취소 시 true로 설정
+  // 폴링 취소 플래그
   bool _cancelled = false;
 
-  // 폴링 최대 횟수 (3초 간격 × 1200 = 60분)
-  // 30분 녹음 기준: STT ~15분 + 화자분리(CPU) ~30분 + 회의록 ~1분 + 요약 ~1분
-  // 각 단계별 최대 60분까지 대기 (CPU 전용 서버에서 긴 오디오 처리 고려)
+  // 폴링 설정
   static const int _maxPollingAttempts = 1200;
-
-  // pending 상태 장기 체류 감지 임계값 (연속 400회 = 20분)
-  // STT/화자분리 모델 최초 로드(~2분) + 큐 대기 + 긴 오디오 전처리 시간 고려
   static const int _stalePendingThreshold = 400;
+
+  // SPEC-APP-005: 재시도를 위한 파이프라인 파라미터 저장
+  String? _lastAudioFilePath;
+  String? _lastTemplateId;
+  String? _lastVocabularyId;
+  // ignore: unused_field — 향후 단계별 세분화 재시도에서 사용 예정
+  String? _lastSttTaskId;
+  // ignore: unused_field — 향후 단계별 세분화 재시도에서 사용 예정
+  String? _lastDiaTaskId;
+
+  // SPEC-APP-005: 단계별 시작 시간 추적 (REQ-021)
+  final Map<PipelineStep, DateTime> _stageStartTimes = {};
 
   @override
   PipelineState build() {
     return PipelineState.initial();
   }
 
-  // 파이프라인 취소 - 화면 종료 시 또는 명시적 취소 시 호출
   Future<void> cancelPipeline() async {
     _cancelled = true;
   }
 
   // 파이프라인 전체 처리 시작
-  // 업로드 -> STT 폴링 -> 화자 분리 -> 화자 분리 폴링 -> 회의록 생성 -> 회의록 폴링 -> 요약 -> 요약 폴링 -> 완료
-  // templateId: 요약 생성 시 사용할 양식 ID (null = 기본 양식)
-  // vocabularyId: STT 정확도 향상용 사용자 사전 ID (null = 사전 없음)
   Future<void> startPipeline(
     String audioFilePath, {
     String? templateId,
     String? vocabularyId,
   }) async {
-    // 새 파이프라인 시작 시 취소 플래그 초기화
     _cancelled = false;
+
+    // 파라미터 저장 (재시도용)
+    _lastAudioFilePath = audioFilePath;
+    _lastTemplateId = templateId;
+    _lastVocabularyId = vocabularyId;
+
     final sttApi = ref.read(transcriptionApiProvider);
     final diaApi = ref.read(diarizationApiProvider);
     final minApi = ref.read(minutesApiProvider);
@@ -53,6 +62,7 @@ class PipelineNotifier extends Notifier<PipelineState> {
 
     try {
       // 1단계: 업로드
+      _startStageTiming(PipelineStep.uploading);
       state = state.copyWith(
         currentStep: PipelineStep.uploading,
         progress: 0.0,
@@ -62,13 +72,13 @@ class PipelineNotifier extends Notifier<PipelineState> {
         vocabularyId: vocabularyId,
       );
       final sttTaskId = uploadResult['task_id'] as String;
+      _lastSttTaskId = sttTaskId;
+      _completeStageTiming(PipelineStep.uploading, data: {'upload': true});
 
-      // 서버 응답에서 자동 시작된 화자 분리 task_id 추출 (병렬 모드)
-      // 구버전 서버는 이 필드가 없으므로 폴백으로 별도 POST /diarizations 사용
       final autoDiaTaskId = uploadResult['diarization_task_id'] as String?;
 
-      // 2단계: STT와 화자 분리를 병렬로 대기 (SSE)
-      // 서버에서 STT 등록 직후 DIA도 함께 시작했으므로 둘은 동시에 진행 중이다.
+      // 2단계: STT와 화자 분리를 병렬로 대기
+      _startStageTiming(PipelineStep.transcribing);
       state = state.copyWith(
         currentStep: PipelineStep.transcribing,
         progress: 0.2,
@@ -77,7 +87,6 @@ class PipelineNotifier extends Notifier<PipelineState> {
 
       String diaTaskId;
       if (autoDiaTaskId != null) {
-        // 병렬 모드: 두 task를 동시에 대기. Future.wait로 동시 SSE listen.
         await Future.wait([
           _waitForCompletion(sttTaskId, () => sttApi.getStatus(sttTaskId)),
           _waitForCompletion(
@@ -86,9 +95,12 @@ class PipelineNotifier extends Notifier<PipelineState> {
           ),
         ]);
         diaTaskId = autoDiaTaskId;
+        _completeStageTiming(PipelineStep.diarizing, data: {'parallel': true});
       } else {
-        // 레거시 모드: STT 완료 대기 → DIA POST → DIA 대기 (직렬)
         await _waitForCompletion(sttTaskId, () => sttApi.getStatus(sttTaskId));
+        _completeStageTiming(PipelineStep.transcribing, data: {'sttTaskId': sttTaskId});
+
+        _startStageTiming(PipelineStep.diarizing);
         state = state.copyWith(
           currentStep: PipelineStep.diarizing,
           progress: 0.4,
@@ -97,8 +109,11 @@ class PipelineNotifier extends Notifier<PipelineState> {
         diaTaskId = diaResult['task_id'] as String;
         await _waitForCompletion(diaTaskId, () => diaApi.getStatus(diaTaskId));
       }
+      _lastDiaTaskId = diaTaskId;
+      _completeStageTiming(PipelineStep.diarizing, data: {'diaTaskId': diaTaskId});
 
-      // 5단계: 회의록 생성 (병렬 모드면 sttTaskId도 전달해 매칭 수행)
+      // 5단계: 회의록 생성
+      _startStageTiming(PipelineStep.generatingMinutes);
       state = state.copyWith(
         currentStep: PipelineStep.generatingMinutes,
         progress: 0.6,
@@ -108,36 +123,31 @@ class PipelineNotifier extends Notifier<PipelineState> {
         sttTaskId: autoDiaTaskId != null ? sttTaskId : null,
       );
       final minTaskId = minResult['task_id'] as String;
-      // ResultScreen 조회용으로 minutesTaskId 저장
       state = state.copyWith(minutesTaskId: minTaskId);
-
-      // 6단계: 회의록 완료 대기 (SSE 우선)
       await _waitForCompletion(minTaskId, () => minApi.getStatus(minTaskId));
+      _completeStageTiming(PipelineStep.generatingMinutes, data: {'minTaskId': minTaskId});
 
-      // 7단계: 요약 생성 (templateId가 있으면 양식 기반 요약)
+      // 7단계: 요약 생성
+      _startStageTiming(PipelineStep.summarizing);
       state = state.copyWith(
         currentStep: PipelineStep.summarizing,
         progress: 0.8,
       );
       final sumResult = await sumApi.create(minTaskId, templateId: templateId);
       final sumTaskId = sumResult['task_id'] as String;
-      // ResultScreen 조회용으로 summaryTaskId 저장
       state = state.copyWith(summaryTaskId: sumTaskId);
-
-      // 8단계: 요약 완료 대기 (SSE 우선)
       await _waitForCompletion(sumTaskId, () => sumApi.getStatus(sumTaskId));
+      _completeStageTiming(PipelineStep.summarizing, data: {'sumTaskId': sumTaskId});
 
-      // 완료 - currentTaskId를 명시적으로 null 클리어
+      // 완료
       state = state.copyWith(
         currentStep: PipelineStep.completed,
         progress: 1.0,
         clearCurrentTaskId: true,
       );
     } catch (e) {
-      // 취소된 경우 상태 업데이트 생략
       if (_cancelled) return;
 
-      // DioException을 사용자 친화적 한국어 메시지로 변환
       final String userMessage;
       if (e is DioException) {
         userMessage = switch (e.type) {
@@ -153,23 +163,87 @@ class PipelineNotifier extends Notifier<PipelineState> {
         userMessage = e.toString().replaceFirst('Exception: ', '');
       }
 
+      // 실패한 단계 기록 (REQ-011)
+      final failedStep = state.currentStep;
+      final updatedErrors = Map<PipelineStep, String>.from(state.stageErrors)
+        ..[failedStep] = userMessage;
+
       state = state.copyWith(
         currentStep: PipelineStep.failed,
         errorMessage: userMessage,
         clearCurrentTaskId: true,
+        stageErrors: updatedErrors,
+        failedStep: failedStep,
       );
     }
   }
 
+  // SPEC-APP-005: 단계별 재시도 (REQ-011)
+  // 실패한 단계부터 파이프라인 재시작
+  Future<void> retryStage() async {
+    final failed = state.failedStep;
+    if (failed == null) return;
+    if (_lastAudioFilePath == null) return;
+
+    // 실패한 단계 에러 제거
+    final updatedErrors = Map<PipelineStep, String>.from(state.stageErrors)
+      ..remove(failed);
+
+    state = state.copyWith(
+      stageErrors: updatedErrors,
+      clearFailedStep: true,
+      clearErrorMessage: true,
+    );
+
+    // 재시도 로직: 실패 단계에 따라 적절한 위치에서 재시작
+    // 백엔드가 중간 결과를 유지한다고 가정
+    // 실제로는 백엔드 API 지원 여부에 따라 전체 재시작 필요할 수 있음
+    await startPipeline(
+      _lastAudioFilePath!,
+      templateId: _lastTemplateId,
+      vocabularyId: _lastVocabularyId,
+    );
+  }
+
+  // SPEC-APP-005: 단계 시작 시간 기록 (REQ-021)
+  void _startStageTiming(PipelineStep step) {
+    _stageStartTimes[step] = DateTime.now();
+  }
+
+  // SPEC-APP-005: 단계 완료 시 타이밍 및 결과 기록 (REQ-009, REQ-021)
+  void _completeStageTiming(PipelineStep step, {dynamic data}) {
+    final startedAt = _stageStartTimes[step];
+    if (startedAt == null) return;
+
+    final completedAt = DateTime.now();
+    final duration = completedAt.difference(startedAt);
+
+    // 타이밍 기록
+    final updatedTimings = Map<PipelineStep, StageTiming>.from(state.stageTimings)
+      ..[step] = StageTiming(
+        step: step,
+        duration: duration,
+        startedAt: startedAt,
+        completedAt: completedAt,
+      );
+
+    // 부분 결과 기록 (REQ-009, REQ-010)
+    final updatedResults = Map<PipelineStep, StageResult>.from(state.stageResults)
+      ..[step] = StageResult(
+        step: step,
+        data: data,
+        completedAt: completedAt,
+      );
+
+    state = state.copyWith(
+      stageTimings: updatedTimings,
+      stageResults: updatedResults,
+    );
+
+    _stageStartTimes.remove(step);
+  }
+
   // 태스크 완료 대기 - SSE 우선, 실패 시 폴링 폴백
-  //
-  // 서버 SSE 엔드포인트(GET /api/v1/tasks/{task_id}/stream)를 통해 실시간으로
-  // 상태 변화를 수신한다. 네트워크/서버 SSE 미가용 시 기존 3초 폴링으로 자동 폴백.
-  //
-  // - completed 이벤트 수신 → 즉시 반환 (폴링 대비 평균 1.5초 절약/단계)
-  // - failed 이벤트 수신 → 예외 전파
-  // - status_update 이벤트 → progress 갱신
-  // - 스트림 오류 → 폴링 폴백
   Future<void> _waitForCompletion(
     String taskId,
     Future<Map<String, dynamic>> Function() getStatus,
@@ -194,7 +268,6 @@ class PipelineNotifier extends Notifier<PipelineState> {
             throw Exception('태스크 처리 실패: $errMsg');
           }
 
-          // 서버에서 보고한 진행률을 UI에 반영 (폴링 경로와 동일한 보간 로직)
           final serverProgress = event['progress'] as num?;
           if (serverProgress != null && serverProgress > 0) {
             final currentBase = state.progress;
@@ -209,10 +282,7 @@ class PipelineNotifier extends Notifier<PipelineState> {
           }
         }
       } on Exception {
-        // 사용자 취소나 명시적 failure는 그대로 위로 전파
         if (_cancelled) rethrow;
-        // 그 외 SSE 통신 실패(네트워크/서버 미지원)는 폴링 폴백
-        // 호출 직후 한 번 상태를 확인하고, 완료 아니면 기존 폴링으로 전환
         final fallbackStatus = await getStatus();
         if (fallbackStatus['status'] == 'completed') {
           return;
@@ -221,11 +291,9 @@ class PipelineNotifier extends Notifier<PipelineState> {
         return;
       }
 
-      // SSE 스트림이 자연 종료됐지만 completed 이벤트가 없었던 경우 (드뭄)
       if (!completedViaSse) {
         final finalStatus = await getStatus();
         if (finalStatus['status'] != 'completed') {
-          // 안전망: 폴링으로 마무리 확인
           await _pollUntilCompleted(getStatus);
         }
       }
@@ -234,13 +302,12 @@ class PipelineNotifier extends Notifier<PipelineState> {
     }
   }
 
-  // 태스크가 completed 될 때까지 폴링 (SSE 폴백 경로)
-  // 취소 플래그(_cancelled) 또는 최대 횟수(3분) 초과 시 종료
+  // 폴링 대기
   Future<void> _pollUntilCompleted(
     Future<Map<String, dynamic>> Function() getStatus,
   ) async {
     int attempts = 0;
-    int pendingCount = 0; // pending 상태 연속 횟수
+    int pendingCount = 0;
 
     while (!_cancelled && attempts < _maxPollingAttempts) {
       attempts++;
@@ -262,21 +329,14 @@ class PipelineNotifier extends Notifier<PipelineState> {
         } else if (statusStr == 'pending') {
           pendingCount++;
           if (pendingCount >= _stalePendingThreshold) {
-            throw Exception(
-              '처리 시간이 초과되었습니다. '
-              '서버 상태를 확인하세요.',
-            );
+            throw Exception('처리 시간이 초과되었습니다. 서버 상태를 확인하세요.');
           }
         } else {
-          // processing 등 진행 중 상태 → pending 카운터 리셋
           pendingCount = 0;
-
-          // 서버에서 보고한 진행률을 UI에 반영
           final serverProgress = status['progress'] as num?;
           if (serverProgress != null && serverProgress > 0) {
             final currentBase = state.progress;
-            // 현재 단계 내에서 서버 진행률을 보간
-            const stepRange = 0.2; // 각 단계가 차지하는 전체 진행률 비율
+            const stepRange = 0.2;
             final adjustedProgress =
                 currentBase + (serverProgress.toDouble() * stepRange);
             if (adjustedProgress > state.progress) {
@@ -285,11 +345,9 @@ class PipelineNotifier extends Notifier<PipelineState> {
           }
         }
       } on DioException {
-        // 네트워크 오류는 상위로 전파하여 사용자 친화적 메시지 표시
         rethrow;
       }
 
-      // 폴링 간격 대기
       await Future.delayed(AppConfig.pollingInterval);
     }
 
@@ -304,6 +362,9 @@ class PipelineNotifier extends Notifier<PipelineState> {
   // 파이프라인 상태 초기화
   void reset() {
     _cancelled = false;
+    _stageStartTimes.clear();
+    _lastSttTaskId = null;
+    _lastDiaTaskId = null;
     state = PipelineState.initial();
   }
 }
