@@ -26,6 +26,7 @@ from backend.app.api.v1.admin import (
     history,
     templates,
 )
+from backend.app.api.v1.templates import enhanced
 from backend.app.api.v1.analytics import (
     advanced_search,
     dashboard,
@@ -90,6 +91,7 @@ ROUTER_REGISTRY: list[tuple[APIRouter, bool]] = [
     # ── 관리 / 설정 (API Key 필수) ──────────────────────────────────────────────
     (admin.router, True),  # SPEC-RETENTION-001
     (templates.router, True),  # REQ-TMPL-001/003
+    (enhanced.router, True),  # Enhanced template system
     (search.router, True),  # SPEC-SEARCH-001
     (export.router, True),  # SPEC-EXPORT-001
     (statistics.router, True),  # SPEC-STATS-001
