@@ -13,6 +13,7 @@ import 'package:voice_to_textnote/models/meeting.dart';
 import 'package:voice_to_textnote/models/mind_map_result.dart';
 import 'package:voice_to_textnote/models/summary_result.dart';
 import 'package:voice_to_textnote/providers/meeting_list_provider.dart';
+import 'package:voice_to_textnote/providers/pipeline_provider.dart';
 import 'package:voice_to_textnote/providers/result_provider.dart';
 import 'package:voice_to_textnote/services/export_api.dart';
 import 'package:voice_to_textnote/services/statistics_api.dart';
@@ -26,6 +27,8 @@ import 'package:voice_to_textnote/widgets/shimmer_text.dart';
 import 'package:voice_to_textnote/widgets/speaker_segment.dart';
 import 'package:voice_to_textnote/widgets/find_replace_bar.dart';
 import 'package:voice_to_textnote/widgets/audio_player_bar.dart';
+import 'package:voice_to_textnote/widgets/improved_result_badge.dart';
+import 'package:voice_to_textnote/widgets/offline_result_badge.dart';
 import 'package:voice_to_textnote/providers/audio_player_provider.dart';
 import 'package:voice_to_textnote/providers/qa_provider.dart';
 
@@ -149,6 +152,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     final meeting = meetings.where((m) => m.id == widget.meetingId).firstOrNull;
     final minutesTaskId = meeting?.minutesTaskId;
     final summaryTaskId = meeting?.summaryTaskId;
+    final pipelineState = ref.watch(pipelineProvider);
 
     return DefaultTabController(
       length: 7,
@@ -224,6 +228,24 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         ),
         body: Column(
           children: [
+            if (pipelineState.isOfflineResult || pipelineState.isImprovedResult)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: pipelineState.isImprovedResult
+                      ? const ImprovedResultBadge()
+                      : OfflineResultBadge(
+                          onRetry: pipelineState.currentTaskId == null
+                              ? null
+                              : () => ref
+                                  .read(pipelineProvider.notifier)
+                                  .retryOfflineReprocess(
+                                    pipelineState.currentTaskId!,
+                                  ),
+                        ),
+                ),
+              ),
             Expanded(
               child: TabBarView(
                 children: [

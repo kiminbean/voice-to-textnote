@@ -28,6 +28,12 @@ class PipelineState {
   final String? minutesTaskId;
   final String? summaryTaskId;
 
+  // 오프라인 STT 결과 여부
+  final bool isOfflineResult;
+
+  // 네트워크 복구 후 온라인 결과로 개선되었는지 여부
+  final bool isImprovedResult;
+
   const PipelineState({
     required this.currentStep,
     required this.progress,
@@ -35,6 +41,8 @@ class PipelineState {
     this.currentTaskId,
     this.minutesTaskId,
     this.summaryTaskId,
+    this.isOfflineResult = false,
+    this.isImprovedResult = false,
   });
 
   // 특정 필드만 변경한 복사본 반환
@@ -48,6 +56,8 @@ class PipelineState {
     bool clearCurrentTaskId = false,
     String? minutesTaskId,
     String? summaryTaskId,
+    bool? isOfflineResult,
+    bool? isImprovedResult,
   }) {
     return PipelineState(
       currentStep: currentStep ?? this.currentStep,
@@ -58,6 +68,8 @@ class PipelineState {
           clearCurrentTaskId ? null : (currentTaskId ?? this.currentTaskId),
       minutesTaskId: minutesTaskId ?? this.minutesTaskId,
       summaryTaskId: summaryTaskId ?? this.summaryTaskId,
+      isOfflineResult: isOfflineResult ?? this.isOfflineResult,
+      isImprovedResult: isImprovedResult ?? this.isImprovedResult,
     );
   }
 

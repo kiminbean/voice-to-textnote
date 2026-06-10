@@ -1,9 +1,9 @@
 ---
 id: SPEC-MOBILE-002
 version: "1.0.0"
-status: draft
+status: implementation-complete
 created: "2026-06-10"
-updated: "2026-06-10"
+updated: "2026-06-11"
 author: kisoo
 priority: medium
 ---
@@ -15,6 +15,7 @@ priority: medium
 | 버전 | 날짜 | 변경 내용 | 작성자 |
 |------|------|----------|--------|
 | 1.0.0 | 2026-06-10 | 초안 작성 | kisoo |
+| 1.0.1 | 2026-06-11 | 코드 기준 구현 완료 상태 반영 및 실제 파일명 정정 | Codex |
 
 ---
 
@@ -203,7 +204,7 @@ priority: medium
 | 파일 | 변경 범위 | 변경 내용 |
 |------|----------|----------|
 | `client/lib/providers/pipeline_provider.dart` | MODERATE | 하이브리드 파이프라인 분기 로직 추가 (오프라인 감지 시 로컬 STT 경로) |
-| `client/lib/models/stt_result.dart` | MINOR | `offline: bool` 필드 추가 |
+| `client/lib/models/transcription_result.dart` | MINOR | `offline: bool` 필드 추가 |
 | `client/lib/screens/recording_screen.dart` | MINOR | 오프라인 STT 트리거 로직 추가 |
 | `client/pubspec.yaml` | MINOR | 의존성 4개 추가 (path_provider, crypto, sqflite, 추가) |
 | `client/lib/services/connectivity_service.dart` | MINOR | 하이브리드 파이프라인을 위한 상태 이벤트 확장 |

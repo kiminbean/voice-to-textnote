@@ -1,9 +1,9 @@
 ---
 id: SPEC-MOBILE-002
 version: "1.0.0"
-status: in-progress
+status: implementation-complete
 created: "2026-06-10"
-updated: "2026-06-10"
+updated: "2026-06-11"
 author: kisoo
 priority: medium
 ---
@@ -138,7 +138,7 @@ priority: medium
 | File | Change Scope |
 |------|-------------|
 | `client/lib/providers/pipeline_provider.dart` | MODERATE — 하이브리드 파이프라인 분기 |
-| `client/lib/models/stt_result.dart` | MINOR — `offline` 필드 추가 |
+| `client/lib/models/transcription_result.dart` | MINOR — `offline` 필드 추가 |
 | `client/lib/screens/recording_screen.dart` | MINOR — 오프라인 STT 트리거 |
 | `client/pubspec.yaml` | MINOR — 의존성 4개 추가 |
 | `client/lib/services/connectivity_service.dart` | MINOR — 상태 이벤트 확장 |

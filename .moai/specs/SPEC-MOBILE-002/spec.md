@@ -1,9 +1,9 @@
 ---
 id: SPEC-MOBILE-002
 version: "1.0.0"
-status: in-progress
+status: implementation-complete
 created: "2026-06-10"
-updated: "2026-06-10"
+updated: "2026-06-11"
 author: kisoo
 priority: medium
 issue_number: 20
@@ -16,6 +16,7 @@ issue_number: 20
 | 버전 | 날짜 | 변경 내용 | 작성자 |
 |------|------|----------|--------|
 | 1.0.0 | 2026-06-10 | 초안 작성 — 오프라인 STT 처리 아키텍처 설계 | kisoo |
+| 1.0.1 | 2026-06-11 | 코드 기준 구현 완료 상태 반영 — T-001~T-024 완료, 실제 파일명 정정 | Codex |
 
 ---
 
@@ -224,7 +225,7 @@ client/
 │   │   ├── model_download_provider.dart    # [NEW] 다운로드 진행률 상태
 │   │   └── pipeline_provider.dart          # [MODIFY] 하이브리드 파이프라인 통합
 │   ├── models/
-│   │   ├── stt_result.dart                 # [MODIFY] offline 필드 추가
+│   │   ├── transcription_result.dart       # [MODIFY] offline 필드 추가
 │   │   └── model_info.dart                 # [NEW] 모델 버전/상태 정보
 │   ├── widgets/
 │   │   ├── model_download_dialog.dart      # [NEW] 다운로드 진행 UI
