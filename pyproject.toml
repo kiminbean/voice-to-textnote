@@ -24,6 +24,12 @@ dependencies = [
     # Python 3.13+에서 표준 audioop 모듈이 PEP 594로 제거됨. pydub가 audioop을 import하므로 백포트 필요.
     "audioop-lts>=0.2.2; python_version >= '3.13'",
     "python-multipart>=0.0.9",
+    # AI 기반 오디오 증강을 위한 의존성
+    "librosa>=0.10.0",
+    "scipy>=1.13.0",
+    "scikit-learn>=1.5.0",
+    "soundfile>=0.12.0",
+    "numpy>=1.24.0",
     "structlog>=24.0",
     "psutil>=5.9",
     "aiofiles>=24.0",

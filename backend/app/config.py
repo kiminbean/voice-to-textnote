@@ -48,6 +48,11 @@ class Settings(BaseSettings):
     chunk_duration_minutes: int = 30
     chunk_overlap_seconds: int = 5
 
+    # AI 오디오 증강 설정
+    audio_enhancement_enabled: bool = True
+    audio_enhancement_max_concurrent: int = Field(default=2, ge=1, le=5)
+    audio_enhancement_max_file_mb: int = Field(default=100, ge=1, le=500)
+
     # Redis 캐시 TTL (초)
     cache_ttl_seconds: int = 604800  # 7일
 

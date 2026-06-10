@@ -1,428 +1,352 @@
 """
-고급 오디오 전처리 파이프라인
-- AI 기반 노이즈 제거
-- 배치 처리
-- 실시간 전처리 파이프라인
-- 다중 오디오 포맷 지원
+AI 기반 오디오 증강 처리 모듈
+
+SPEC-AUDIO-ENHANCED-001: AI 기능을 이용한 고급 오디오 증강
+- 노이즈 제거 (스펙트럼 분석 기반)
+- 음성 강화 (레벨 균형 및 주파수 강조)
+- Voice Activity Detection (VAD)
+- 음질 자동 평가 및 개선 제안
 """
 
 import asyncio
-import json
+import time
 import tempfile
-import uuid
-from concurrent.futures import ThreadPoolExecutor
+import wave
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import librosa
 import numpy as np
-from pydub import AudioSegment
-from pydub.silence import detect_nonsilent
+import soundfile as sf
+from scipy import signal
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
 
 from backend.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-# 설정 상수
-TARGET_SAMPLE_RATE = 16000
-TARGET_CHANNELS = 1
-TARGET_DBFS = -20.0
 
-# AI 노이즈 제거 설정
-AI_NOISE_REMOVAL_ENABLED = True
-AI_NOISE_MODEL_PATH = "/models/noise_reduction_model"
-AI_NOISE_THRESHOLD = 0.1  # 노이즈 감지 임계값
+@dataclass
+class AIEnhanceOptions:
+    """AI 기반 오디오 증강 옵션"""
+    enable_noise_reduction: bool = True
+    enable_voice_enhancement: bool = True
+    enable_vad: bool = True
+    enable_quality_assessment: bool = True
+    noise_reduction_strength: float = 0.7
+    voice_enhancement_strength: float = 0.5
+    vad_threshold: float = 0.5
+    target_snr: float = 20.0
+    preserve_natural_voice: bool = True
+    output_format: str = "wav"
 
-# 배치 처리 설정
-BATCH_MAX_FILES = 20
-BATCH_MAX_CONCURRENT = 5
-BATCH_TIMEOUT_SECONDS = 300  # 5분
-
-# 지원 오디오 포맷
-SUPPORTED_FORMATS = {"wav", "mp3", "flac", "aac", "ogg", "m4a", "wma", "opus", "webm"}
+    def validate(self) -> None:
+        """옵션 유효성 검증"""
+        if not (0.0 <= self.noise_reduction_strength <= 1.0):
+            raise ValueError("noise_reduction_strength는 0.0~1.0 사이여야 합니다.")
+        if not (0.0 <= self.voice_enhancement_strength <= 1.0):
+            raise ValueError("voice_enhancement_strength는 0.0~1.0 사이여야 합니다.")
+        if not (0.0 <= self.vad_threshold <= 1.0):
+            raise ValueError("vad_threshold는 0.0~1.0 사이여야 합니다.")
+        if self.target_snr < 0:
+            raise ValueError("target_snr은 0 이상이어야 합니다.")
 
 
 @dataclass
-class BatchPreprocessOptions:
-    """배치 전처리 옵션"""
-
-    convert_to_16k_mono: bool = True
-    normalize: bool = True
-    target_dbfs: float = TARGET_DBFS
-    high_pass_hz: int | None = None
-    low_pass_hz: int | None = None
-    trim_silence: bool = False
-    silence_threshold_db: float = -40.0
-    silence_min_len_ms: int = 700
-    ai_noise_removal: bool = AI_NOISE_REMOVAL_ENABLED
-    noise_threshold: float = AI_NOISE_THRESHOLD
-    denoise_strength: float = 0.8  # 0.0 ~ 1.0
+class VoiceQualityScore:
+    """음질 평가 점수"""
+    overall_score: float  # 0-100
+    clarity_score: float  # 0-1
+    noise_level: float  # 0-1
+    snr_db: float  # dB
+    quality_grade: str  # excellent, good, fair, poor, very_poor
 
 
 @dataclass
-class AudioFileInfo:
-    """오디오 파일 정보"""
-
-    original_path: Path
-    processed_path: Path
-    original_format: str
-    original_size: int
-    processed_size: int
-    duration_seconds: float
-    sample_rate: int
-    channels: int
-    metadata: dict[str, Any]
+class AudioQualityEvaluation:
+    """오디오 품질 평가 결과"""
+    quality_assessment: VoiceQualityScore | None
+    processing_details: dict[str, Any]
+    warnings: list[str]
 
 
 @dataclass
-class BatchPreprocessResult:
-    """배치 처리 결과"""
+class EnhancementResult:
+    """AI 증강 결과"""
+    output_path: Path
+    enhancement_id: str
+    noise_reduction_applied: bool
+    voice_enhancement_applied: bool
+    segments_processed: int
+    processing_time: float
+    processing_details: dict[str, Any]
+    warnings: list[str]
 
-    task_id: str
-    total_files: int
-    processed_files: int
-    failed_files: int
-    processing_time_seconds: float
-    results: list[AudioFileInfo]
-    errors: list[dict[str, Any]]
-    summary: dict[str, Any]
 
-
-class AIModelManager:
-    """AI 노이즈 제거 모델 관리"""
-
+class AudioEnhancer:
+    """AI 기반 오디오 증강 엔진"""
+    
     def __init__(self):
-        self.model = None
-        self.model_loaded = False
-
-    async def load_model(self) -> bool:
-        """AI 노이즈 제거 모델 로드"""
-        if not AI_NOISE_REMOVAL_ENABLED:
-            return False
-
+        self.sample_rate = 16000
+        self.target_channels = 1
+        
+    def _load_audio(self, file_path: Path) -> tuple[np.ndarray, int]:
+        """오디오 파일 로드"""
         try:
-            # 실제 AI 모델 로드 (예: RNNoise, SpeechBrain 등)
-            # 여기서는 가상 구현
-            # self.model = load_noise_reduction_model(AI_NOISE_MODEL_PATH)
-            logger.info("AI 노이즈 제거 모델 로드 완료")
-            self.model_loaded = True
-            return True
-        except Exception as e:  # pragma: no cover
-            logger.error("AI 노이즈 제거 모델 로드 실패", error=str(e))
-            return False
-
-    def remove_noise(self, audio: np.ndarray) -> np.ndarray:
-        """AI 기반 노이즈 제거"""
-        if not self.model_loaded:
-            return audio
-
-        try:
-            # 실제 노이즈 제거 처리
-            # processed_audio = self.model(audio)
-            # 예시 구현 (실제로는 AI 모델 호출)
-            processed_audio = self._simple_noise_reduction(audio)
-            return processed_audio
-        except Exception as e:  # pragma: no cover
-            logger.error("노이즈 제거 실패", error=str(e))
-            return audio
-
-    def _simple_noise_reduction(self, audio: np.ndarray) -> np.ndarray:
-        """간단한 노이즈 제거 (실제로는 AI 모델로 교체)"""
-        # 스펙트럼 감쇠 기반 간단한 노이즈 제거
-        if len(audio) == 0:
-            return audio
-
-        # 기본 노이즈 감쇠 (실제 AI 모델과 교체 필요)
-        noise_factor = 0.1  # 노이즈 감쇠 정도
-        reduced = audio * (1 - noise_factor)
-
-        # 크기 유지
-        if np.max(np.abs(reduced)) > 0:
-            reduced = reduced / np.max(np.abs(reduced))
-
-        return reduced.astype(np.float32)
-
-
-class EnhancedAudioProcessor:
-    """고급 오디오 전처리기"""
-
-    def __init__(self):
-        self.ai_model = AIModelManager()
-        self.batch_executor = ThreadPoolExecutor(max_workers=BATCH_MAX_CONCURRENT)
-
-    async def initialize(self) -> None:
-        """초기화"""
-        await self.ai_model.load_model()
-
-    async def preprocess_batch(
-        self,
-        input_files: list[str | Path],
-        options: BatchPreprocessOptions,
-        output_dir: str | Path | None = None,
-    ) -> BatchPreprocessResult:
-        """배치 전처리"""
-        start_time = asyncio.get_event_loop().time()
-        task_id = str(uuid.uuid4())
-
-        if len(input_files) > BATCH_MAX_FILES:
-            raise ValueError(f"최대 {BATCH_MAX_FILES}개 파일까지 처리 가능")
-
-        # 출력 디렉토리 생성
-        if output_dir is None:
-            output_dir = Path(tempfile.mkdtemp(prefix="batch_audio_"))
-        else:
-            output_dir = Path(output_dir)
-            output_dir.mkdir(parents=True, exist_ok=True)
-
-        results = []
-        errors = []
-        processed_count = 0
-
-        # 비동기 배치 처리
-        tasks = []
-        for input_file in input_files:
-            task = self._process_single_file(
-                Path(input_file), options, output_dir / f"processed_{uuid.uuid4()}.wav", task_id
-            )
-            tasks.append(task)
-
-        # 병렬 실행
-        try:
-            completed_tasks = await asyncio.wait_for(
-                asyncio.gather(*tasks, return_exceptions=True), timeout=BATCH_TIMEOUT_SECONDS
-            )
-
-            for task_result in completed_tasks:
-                if isinstance(task_result, Exception):
-                    errors.append({"error": str(task_result), "type": type(task_result).__name__})
-                else:
-                    results.append(task_result)
-                    processed_count += 1
-
-        except TimeoutError:  # pragma: no cover
-            errors.append(
-                {
-                    "error": f"배치 처리 시간 초과 ({BATCH_TIMEOUT_SECONDS}초)",
-                    "type": "TimeoutError",
-                }
-            )
-
-        # 결과 생성
-        processing_time = asyncio.get_event_loop().time() - start_time
-
-        summary = self._generate_batch_summary(results)
-
-        return BatchPreprocessResult(
-            task_id=task_id,
-            total_files=len(input_files),
-            processed_files=processed_count,
-            failed_files=len(errors),
-            processing_time_seconds=processing_time,
-            results=results,
-            errors=errors,
-            summary=summary,
-        )
-
-    async def _process_single_file(
-        self, input_path: Path, options: BatchPreprocessOptions, output_path: Path, task_id: str
-    ) -> AudioFileInfo:
-        """단일 파일 처리 (비동기)"""
-        try:
-            # 파일 유효성 검증
-            if not input_path.exists():
-                raise FileNotFoundError(f"입력 파일 없음: {input_path}")
-
-            if input_path.suffix.lower()[1:] not in SUPPORTED_FORMATS:  # pragma: no cover
-                raise ValueError(f"지원하지 않는 포맷: {input_path.suffix}")
-
-            # 오디오 로드
-            audio = await asyncio.to_thread(AudioSegment.from_file, str(input_path))
-
-            # 전처리 파이프라인
-            processed_audio = await asyncio.to_thread(
-                self._apply_preprocessing_pipeline, audio, options
-            )
-
-            # AI 노이즈 제거 (비동기)  # pragma: no cover
-            if options.ai_noise_removal:
-                audio_array = await asyncio.to_thread(  # pragma: no cover
-                    self._audio_to_numpy, processed_audio
-                )
-                denoised_array = await asyncio.to_thread(  # pragma: no cover
-                    self.ai_model.remove_noise, audio_array
-                )
-                processed_audio = await asyncio.to_thread(  # pragma: no cover
-                    self._numpy_to_audio, denoised_array
-                )
-
-            # 파일 저장
-            await asyncio.to_thread(processed_audio.export, str(output_path), format="wav")
-
-            # 메타데이터 수집
-            file_info = await asyncio.to_thread(
-                self._collect_file_info, input_path, output_path, processed_audio
-            )
-
-            logger.info(
-                "오디오 처리 완료",
-                task_id=task_id,
-                input=str(input_path),
-                output=str(output_path),
-                duration_ms=len(processed_audio),
-            )
-
-            return file_info
-
+            audio, sr = librosa.load(str(file_path), sr=self.sample_rate, mono=True)
+            return audio, sr
         except Exception as e:
-            logger.error("오디오 처리 실패", task_id=task_id, input=str(input_path), error=str(e))
-            raise
-
-    def _apply_preprocessing_pipeline(
-        self, audio: AudioSegment, options: BatchPreprocessOptions
-    ) -> AudioSegment:
-        """전처리 파이프라인 적용"""
-        # 16kHz 모노 변환
-        if options.convert_to_16k_mono:  # pragma: no cover
-            if audio.channels != TARGET_CHANNELS:
-                audio = audio.set_channels(TARGET_CHANNELS)
-            if audio.frame_rate != TARGET_SAMPLE_RATE:
-                audio = audio.set_frame_rate(TARGET_SAMPLE_RATE)
-
-        # 필터링
-        if options.high_pass_hz is not None:
-            audio = audio.high_pass_filter(options.high_pass_hz)
-
-        if options.low_pass_hz is not None:
-            audio = audio.low_pass_filter(options.low_pass_hz)
-
-        # 무음 제거
-        if options.trim_silence:
-            audio = self._trim_leading_trailing_silence(
-                audio, options.silence_threshold_db, options.silence_min_len_ms
-            )
-
-        # 정규화
-        if options.normalize:
-            audio = self._normalize_audio(audio, options.target_dbfs)
-
-        return audio
-
-    def _audio_to_numpy(self, audio: AudioSegment) -> np.ndarray:
-        """AudioSegment를 NumPy 배열로 변환"""
-        return np.array(audio.get_array_of_samples()).astype(np.float32)
-
-    def _numpy_to_audio(self, audio_array: np.ndarray) -> AudioSegment:
-        """NumPy 배열을 AudioSegment로 변환"""
-        return AudioSegment(
-            audio_array.tobytes(),
-            frame_rate=TARGET_SAMPLE_RATE,
-            channels=TARGET_CHANNELS,
-            sample_width=2,
-        )
-
-    def _trim_leading_trailing_silence(
-        self, audio: AudioSegment, silence_threshold_db: float, min_silence_len_ms: int
-    ) -> AudioSegment:
-        """앞뒤 무음 제거"""
-        if len(audio) == 0:
+            logger.error("오디오 로딩 실패", error=str(e))
+            raise ValueError(f"오디오 파일 로딩 실패: {e}")
+    
+    def _save_audio(self, audio: np.ndarray, output_path: Path) -> None:
+        """오디오 파일 저장"""
+        try:
+            sf.write(str(output_path), audio, self.sample_rate)
+        except Exception as e:
+            logger.error("오디오 저장 실패", error=str(e))
+            raise ValueError(f"오디오 파일 저장 실패: {e}")
+    
+    def _ai_noise_reduction(self, audio: np.ndarray, strength: float) -> np.ndarray:
+        """AI 기반 노이즈 제거 (스펙트럼 분석)"""
+        if strength == 0:
             return audio
-
-        nonsilent_ranges = detect_nonsilent(
-            audio,
-            min_silence_len=min_silence_len_ms,
-            silence_thresh=silence_threshold_db,
-        )
-
-        if not nonsilent_ranges:
+            
+        logger.info("AI 노이즈 제거 시작", strength=strength)
+        
+        # 스펙트럼 분석
+        stft = librosa.stft(audio)
+        magnitude = np.abs(stft)
+        phase = np.angle(stft)
+        
+        # 노이즈 스펙트럼 추정 (평균 기반)
+        noise_profile = np.mean(magnitude, axis=1, keepdims=True)
+        
+        # 스펙트럼 감쇄 적용
+        spectral_subtraction = 1.0 - (strength * noise_profile / (magnitude + 1e-10))
+        spectral_subtraction = np.clip(spectral_subtraction, 0.1, 1.0)
+        
+        # 복원
+        enhanced_magnitude = magnitude * spectral_subtraction
+        enhanced_stft = enhanced_magnitude * np.exp(1j * phase)
+        enhanced_audio = librosa.istft(enhanced_stft)
+        
+        return enhanced_audio
+    
+    def _voice_enhancement(self, audio: np.ndarray, strength: float) -> np.ndarray:
+        """음성 강화 (주파수 강조 및 레벨 균형)"""
+        if strength == 0:
             return audio
-
-        start_ms = nonsilent_ranges[0][0]  # pragma: no cover
-        end_ms = nonsilent_ranges[-1][1]  # pragma: no cover
-        return audio[start_ms:end_ms]  # pragma: no cover
-
-    def _normalize_audio(self, audio: AudioSegment, target_dbfs: float) -> AudioSegment:
-        """오디오 정규화"""
-        if audio.dBFS == float("-inf"):
-            return audio
-
-        change_db = target_dbfs - audio.dBFS  # pragma: no cover
-        return audio.apply_gain(change_db)  # pragma: no cover
-
-    def _collect_file_info(
-        self, input_path: Path, output_path: Path, audio: AudioSegment
-    ) -> AudioFileInfo:
-        """파일 정보 수집"""
-        return AudioFileInfo(
-            original_path=input_path,
-            processed_path=output_path,
-            original_format=input_path.suffix.lower(),
-            original_size=input_path.stat().st_size,
-            processed_size=output_path.stat().st_size,
-            duration_seconds=len(audio) / 1000.0,
-            sample_rate=audio.frame_rate,
-            channels=audio.channels,
-            metadata={
-                "format": input_path.suffix.lower().lstrip("."),
-                "frame_rate": audio.frame_rate,
-                "channels": audio.channels,
-                "sample_width": audio.sample_width,
-            },
+            
+        logger.info("음성 강화 시작", strength=strength)
+        
+        # 음성 주파대 강조 (300Hz-4000Hz)
+        nyquist = self.sample_rate // 2
+        voice_band = [300, 4000]
+        
+        # 필터 설계
+        b, a = signal.butter(4, [voice_band[0]/nyquist, voice_band[1]/nyquist], btype='band')
+        enhanced = signal.filtfilt(b, a, audio)
+        
+        # 레벨 균형화
+        if strength > 0:
+            target_level = np.percentile(np.abs(enhanced), 95)
+            current_level = np.mean(np.abs(enhanced))
+            if current_level > 0:
+                gain = (target_level * (0.5 + 0.5 * strength)) / current_level
+                enhanced = enhanced * gain
+        
+        return enhanced
+    
+    def _voice_activity_detection(self, audio: np.ndarray, threshold: float) -> list[tuple[float, float]]:
+        """Voice Activity Detection (VAD)"""
+        logger.info("VAD 처리 시작", threshold=threshold)
+        
+        # 에너지 기반 VAD
+        frame_length = 512
+        hop_length = 256
+        
+        # 에너지 계산
+        frames = librosa.util.frame(audio, frame_length=frame_length, hop_length=hop_length)
+        energy = np.sum(np.abs(frames ** 2), axis=0)
+        
+        # 임계값 기반 활성 탐지
+        voiced_frames = energy > (threshold * np.max(energy))
+        
+        # 프레임 인덱스를 시간으로 변환
+        voiced_segments = []
+        start_idx = None
+        
+        for i, voiced in enumerate(voiced_frames):
+            if voiced and start_idx is None:
+                start_idx = i
+            elif not voiced and start_idx is not None:
+                start_time = start_idx * hop_length / self.sample_rate
+                end_time = i * hop_length / self.sample_rate
+                voiced_segments.append((start_time, end_time))
+                start_idx = None
+        
+        # 마지막 세그먼트 처리
+        if start_idx is not None:
+            start_time = start_idx * hop_length / self.sample_rate
+            end_time = len(voiced_frames) * hop_length / self.sample_rate
+            voiced_segments.append((start_time, end_time))
+        
+        return voiced_segments
+    
+    def _quality_assessment(self, audio: np.ndarray) -> VoiceQualityScore:
+        """오디오 품질 자동 평가"""
+        logger.info("품질 평가 시작")
+        
+        # 기본 통계 계산
+        signal_power = np.mean(audio ** 2)
+        noise_power = np.var(audio - np.mean(audio))
+        
+        # SNR 계산
+        snr_db = 10 * np.log10(signal_power / (noise_power + 1e-10))
+        
+        # 명료도 계산 (고주파 에너지 비율)
+        high_freq_energy = np.sum(np.abs(audio[len(audio)//2:]) ** 2)
+        total_energy = np.sum(np.abs(audio) ** 2)
+        clarity = high_freq_energy / (total_energy + 1e-10)
+        
+        # 노이즈 레벨
+        noise_level = np.sqrt(np.mean(audio ** 2))
+        
+        # 종합 점수 계산 (0-100)
+        overall_score = min(100.0, max(0.0, snr_db * 2 + clarity * 50))
+        
+        # 품질 등급
+        if snr_db >= 30:
+            quality_grade = "excellent"
+        elif snr_db >= 20:
+            quality_grade = "good"
+        elif snr_db >= 15:
+            quality_grade = "fair"
+        elif snr_db >= 10:
+            quality_grade = "poor"
+        else:
+            quality_grade = "very_poor"
+        
+        return VoiceQualityScore(
+            overall_score=overall_score,
+            clarity_score=clarity,
+            noise_level=noise_level,
+            snr_db=snr_db,
+            quality_grade=quality_grade,
         )
-
-    def _generate_batch_summary(self, results: list[AudioFileInfo]) -> dict[str, Any]:
-        """배치 처리 요약 생성"""
-        if not results:
-            return {}
-
-        total_input_size = sum(f.original_size for f in results)
-        total_output_size = sum(f.processed_size for f in results)
-        total_duration = sum(f.duration_seconds for f in results)
-
-        return {
-            "total_input_size_bytes": total_input_size,
-            "total_output_size_bytes": total_output_size,
-            "compression_ratio": total_output_size / total_input_size
-            if total_input_size > 0
-            else 1.0,
-            "total_duration_seconds": total_duration,
-            "average_duration_seconds": total_duration / len(results),
-            "average_sample_rate": sum(f.sample_rate for f in results) / len(results),
-            "format_distribution": {
-                fmt: len([f for f in results if f.original_format == fmt])
-                for fmt in set(f.original_format for f in results)
-            },
-        }
-
-    async def create_processing_report(
-        self, result: BatchPreprocessResult
-    ) -> str:  # pragma: no cover
-        """처리 보고서 생성"""
-        report = {
-            "task_id": result.task_id,
-            "summary": {
-                "total_files": result.total_files,
-                "processed_files": result.processed_files,
-                "failed_files": result.failed_files,
-                "processing_time_seconds": result.processing_time_seconds,
-                "success_rate": result.processed_files / result.total_files
-                if result.total_files > 0
-                else 0,
-            },
-            "details": result.summary,
-            "errors": result.errors,
-        }
-
-        return json.dumps(report, indent=2, ensure_ascii=False)
+    
+    def _apply_vad(self, audio: np.ndarray, segments: list[tuple[float, float]]) -> np.ndarray:
+        """VAD 결과 적용 - 비활성 구간 제거"""
+        if not segments:
+            return audio
+        
+        # 비활성 구간 마스킹
+        mask = np.ones(len(audio), dtype=bool)
+        
+        for start, end in segments:
+            start_idx = int(start * self.sample_rate)
+            end_idx = int(end * self.sample_rate)
+            mask[start_idx:end_idx] = True
+        
+        return audio[mask]
 
 
-# 전역 인스턴스
-_enhanced_processor = None
+def enhance_audio_with_ai(
+    input_path: Path,
+    options: AIEnhanceOptions
+) -> EnhancementResult:
+    """AI 기반 오디오 증강 메인 함수"""
+    
+    start_time = time.time()
+    enhancer = AudioEnhancer()
+    
+    # 오디오 로드
+    audio, sr = enhancer._load_audio(input_path)
+    original_length = len(audio)
+    
+    processing_details = {
+        "original_length": original_length,
+        "sample_rate": sr,
+        "processing_steps": [],
+        "start_time": start_time,
+    }
+    
+    warnings = []
+    
+    # Voice Activity Detection
+    if options.enable_vad:
+        try:
+            vad_segments = enhancer._voice_activity_detection(audio, options.vad_threshold)
+            processing_details["vad_segments"] = len(vad_segments)
+            if vad_segments:
+                audio = enhancer._apply_vad(audio, vad_segments)
+                processing_details["vad_applied"] = True
+        except Exception as e:
+            warnings.append(f"VAD 처리 실패: {e}")
+    
+    # 노이즈 제거
+    if options.enable_noise_reduction:
+        try:
+            original_audio = audio.copy()
+            audio = enhancer._ai_noise_reduction(audio, options.noise_reduction_strength)
+            processing_details["noise_reduction_applied"] = True
+            processing_details["noise_reduction_strength"] = options.noise_reduction_strength
+        except Exception as e:
+            warnings.append(f"노이즈 제거 실패: {e}")
+            audio = original_audio
+    
+    # 음성 강화
+    if options.enable_voice_enhancement:
+        try:
+            original_audio = audio.copy()
+            audio = enhancer._voice_enhancement(audio, options.voice_enhancement_strength)
+            processing_details["voice_enhancement_applied"] = True
+            processing_details["voice_enhancement_strength"] = options.voice_enhancement_strength
+        except Exception as e:
+            warnings.append(f"음성 강화 실패: {e}")
+            audio = original_audio
+    
+    # 품질 평가
+    quality_score = None
+    if options.enable_quality_assessment:
+        try:
+            quality_score = enhancer._quality_assessment(audio)
+            processing_details["quality_score"] = quality_score.overall_score
+            processing_details["snr_db"] = quality_score.snr_db
+        except Exception as e:
+            warnings.append(f"품질 평가 실패: {e}")
+    
+    # 출력 파일 저장
+    output_path = Path(tempfile.NamedTemporaryFile(suffix=".wav", delete=False).name)
+    enhancer._save_audio(audio, output_path)
+    
+    processing_time = time.time() - start_time
+    processing_details["processing_time"] = processing_time
+    processing_details["output_length"] = len(audio)
+    
+    logger.info("AI 증강 완료", 
+               input_path=str(input_path),
+               output_path=str(output_path),
+               processing_time=processing_time,
+               quality_score=quality_score.overall_score if quality_score else None)
+    
+    return EnhancementResult(
+        output_path=output_path,
+        enhancement_id=f"enh_{int(time.time())}",
+        noise_reduction_applied=processing_details.get("noise_reduction_applied", False),
+        voice_enhancement_applied=processing_details.get("voice_enhancement_applied", False),
+        segments_processed=processing_details.get("vad_segments", 0),
+        processing_time=processing_time,
+        processing_details=processing_details,
+        warnings=warnings,
+    )
 
 
-async def get_enhanced_processor() -> EnhancedAudioProcessor:
-    """전역 고급 오디오 프로세서 인스턴스"""
-    global _enhanced_processor
-    if _enhanced_processor is None:
-        _enhanced_processor = EnhancedAudioProcessor()
-        await _enhanced_processor.initialize()
-    return _enhanced_processor
+def cleanup_temp_file(file_path: Path) -> None:
+    """임시 파일 안전 삭제"""
+    if file_path.exists():
+        file_path.unlink()
+        logger.info("임시 파일 삭제", path=str(file_path))

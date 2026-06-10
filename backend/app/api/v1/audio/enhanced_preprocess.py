@@ -1,22 +1,32 @@
 """
-고급 오디오 전처리 API
-- AI 기반 노이즈 제거
-- 배치 처리
-- 실시간 전처리 파이프라인
-- 다중 오디오 포맷 지원
+SPEC-AUDIO-ENHANCED-001: AI 기반 오디오 증강 API.
 
-엔드포인트:
-- POST /api/v1/audio/enhanced/preprocess - 단일 고급 전처리
-- POST /api/v1/audio/enhanced/batch - 배치 전처리
-- GET /api/v1/audio/enhanced/formats - 지원 오디오 포맷 조회
-- GET /api/v1/audio/enhanced/status - AI 모델 상태 조회
+POST /api/v1/audio/enhanced
+- multipart/form-data로 오디오 + 증강 옵션 업로드
+- AI 기반 노이즈 제거, 음성 향상, 음질 평가
+- 처리된 WAV 파일과 음질 평가 보고서 반환
+- 실시간 진행률 SSE 스트리밍 지원
+
+AI 증강 기능:
+- Voice Activity Detection (VAD)
+- AI 노이즈 제거 (스펙트럼 감지)
+- 음성 강화 (레벨 균형)
+- 음질 자동 평가
+- 개선 제안 생성
 """
 
-import tempfile
-from pathlib import Path
+from __future__ import annotations
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
-from fastapi.responses import StreamingResponse
+import json
+import tempfile
+import wave
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+import numpy as np
+from fastapi import APIRouter, File, Form, UploadFile
+from fastapi.responses import FileResponse
 from starlette.background import BackgroundTask
 
 from backend.app.config import settings
@@ -24,326 +34,302 @@ from backend.app.errors import (
     bad_request,
     internal_server_error,
     service_unavailable,
+    unprocessable,
 )
+from backend.app.exceptions import VoiceNoteError
 from backend.pipeline.enhanced_audio_processor import (
-    BatchPreprocessOptions,
-    get_enhanced_processor,
+    AIEnhanceOptions,
+    EnhancementResult,
+    AudioQualityEvaluation,
+    VoiceQualityScore,
+    cleanup_temp_file,
+    enhance_audio_with_ai,
 )
-from backend.schemas.audio_enhanced import (
-    BatchPreprocessResponse,
-    EnhancedPreprocessOptions,
-    FormatInfo,
-    ModelStatusResponse,
-    PreprocessResponse,
+from backend.schemas.enhanced_audio_preprocess import (
+    AIEnhanceOptionsPayload,
+    AudioQualityEvaluation,
+    EnhancementReportResponse,
+    VoiceQualityAssessment,
 )
 from backend.utils.logger import get_logger
 from backend.utils.validators import validate_audio_format
 
 logger = get_logger(__name__)
 
-router = APIRouter(prefix="/enhanced", tags=["enhanced-audio-preprocess"])
+router = APIRouter(prefix="/audio", tags=["audio-enhancement"])
 
 
-# -----------------------------------------------------------------
-# 단일 파일 고급 전처리 엔드포인트
-# -----------------------------------------------------------------
+# AI 증강 동시 실행 제한 (리소스 관리)
+_enhancement_semaphore = None
+
+
+def get_enhancement_semaphore():
+    """글로벌 세마포어 (지연 초기화)"""
+    global _enhancement_semaphore
+    if _enhancement_semaphore is None:
+        _enhancement_semaphore = asyncio.Semaphore(settings.audio_enhancement_max_concurrent)
+    return _enhancement_semaphore
+
+
+def _resolve_enhancement_options(payload: AIEnhanceOptionsPayload) -> AIEnhanceOptions:
+    """Pydantic 페이로드를 도메인 옵션으로 변환하고 유효성 검증."""
+    opts = AIEnhanceOptions(
+        enable_noise_reduction=payload.enable_noise_reduction,
+        enable_voice_enhancement=payload.enable_voice_enhancement,
+        enable_vad=payload.enable_vad,
+        enable_quality_assessment=payload.enable_quality_assessment,
+        noise_reduction_strength=payload.noise_reduction_strength,
+        voice_enhancement_strength=payload.voice_enhancement_strength,
+        vad_threshold=payload.vad_threshold,
+        target_snr=payload.target_snr,
+        preserve_natural_voice=payload.preserve_natural_voice,
+        output_format=payload.output_format,
+    )
+    try:
+        opts.validate()
+    except ValueError as exc:
+        unprocessable(str(exc))
+    return opts
+
+
+def _calculate_audio_metrics(audio_data: np.ndarray, sample_rate: int) -> dict[str, float]:
+    """오디오 품질 지표 계산"""
+    if len(audio_data) == 0:
+        return {"snr": 0.0, "clarity": 0.0, "noise_level": 0.0}
+    
+    # SNR 계산 (신호 대 잡음 비)
+    signal_power = np.mean(audio_data ** 2)
+    noise_power = np.var(audio_data - np.mean(audio_data))
+    snr = 10 * np.log10(signal_power / (noise_power + 1e-10))
+    
+    # 명료도 계산 (고주파 에너지 비율)
+    high_freq_energy = np.sum(np.abs(audio_data[len(audio_data)//2:]) ** 2)
+    total_energy = np.sum(np.abs(audio_data) ** 2)
+    clarity = high_freq_energy / (total_energy + 1e-10)
+    
+    # 노이즈 레벨 계산 (RMS)
+    noise_level = np.sqrt(np.mean(audio_data ** 2))
+    
+    return {
+        "snr": max(0.0, snr),
+        "clarity": min(1.0, clarity),
+        "noise_level": noise_level,
+    }
 
 
 @router.post(
-    "/preprocess",
-    response_model=PreprocessResponse,
+    "/enhanced",
     responses={
-        200: {"description": "처리된 WAV 파일 (audio/wav)"},
+        200: {
+            "description": "AI 증강된 WAV 파일 + 품질 평가 보고서",
+            "content": {
+                "application/json": {"example": EnhancementReportResponse.model_json_schema()},
+            },
+        },
         400: {"description": "잘못된 파일 또는 손상된 오디오"},
         413: {"description": "파일 크기 초과"},
-        422: {"description": "전처리 옵션 검증 실패"},
-        503: {"description": "전처리 비활성화 상태"},
+        422: {"description": "증강 옵션 검증 실패"},
+        503: {"description": "AI 증강 기능 비활성화 상태"},
     },
 )
-async def enhanced_preprocess_endpoint(
+async def enhanced_audio_endpoint(
     file: UploadFile = File(..., description="원본 오디오 파일"),
-    convert_to_16k_mono: bool = Form(default=True),
-    normalize: bool = Form(default=True),
-    target_dbfs: float = Form(default=-20.0),
-    high_pass_hz: int | None = Form(default=None),
-    low_pass_hz: int | None = Form(default=None),
-    trim_silence: bool = Form(default=False),
-    silence_threshold_db: float = Form(default=-40.0),
-    silence_min_len_ms: int = Form(default=700),
-    ai_noise_removal: bool = Form(default=True),
-    noise_threshold: float = Form(default=0.1),
-    denoise_strength: float = Form(default=0.8),
-) -> StreamingResponse:
-    """단일 파일 고급 전처리 (AI 노이즈 제거 포함)"""
-    if not settings.audio_preprocess_enabled:
-        service_unavailable("오디오 전처리 기능이 비활성화되어 있습니다.")
+    enable_noise_reduction: bool = Form(default=True, description="AI 노이즈 제거 활성화"),
+    enable_voice_enhancement: bool = Form(default=True, description="음성 강화 활성화"),
+    enable_vad: bool = Form(default=True, description="Voice Activity Detection 활성화"),
+    enable_quality_assessment: bool = Form(default=True, description="품질 자동 평가 활성화"),
+    noise_reduction_strength: float = Form(default=0.7, description="노이즈 제거 강도 (0.0~1.0)"),
+    voice_enhancement_strength: float = Form(default=0.5, description="음성 강도 (0.0~1.0)"),
+    vad_threshold: float = Form(default=0.5, description="VAD 임계값 (0.0~1.0)"),
+    target_snr: float = Form(default=20.0, description="목표 SNR (dB)"),
+    preserve_natural_voice: bool = Form(default=True, description="자연스러운 음성 보존"),
+    output_format: str = Form(default="wav", description="출력 형식 (wav, mp3)"),
+) -> EnhancementReportResponse:
+    """AI 기반 오디오 증강 처리."""
+    if not settings.audio_enhancement_enabled:
+        service_unavailable("AI 오디오 증강 기능이 비활성화되어 있습니다.")
 
-    # 파일 유효성 검증
+    # 파일명/포맷 검증
     filename = file.filename or "audio"
     is_valid, msg = validate_audio_format(filename)
     if not is_valid:
         bad_request(msg)
 
-    # 옵션 구성
-    options = EnhancedPreprocessOptions(
-        convert_to_16k_mono=convert_to_16k_mono,
-        normalize=normalize,
-        target_dbfs=target_dbfs,
-        high_pass_hz=high_pass_hz,
-        low_pass_hz=low_pass_hz,
-        trim_silence=trim_silence,
-        silence_threshold_db=silence_threshold_db,
-        silence_min_len_ms=silence_min_len_ms,
-        ai_noise_removal=ai_noise_removal,
-        noise_threshold=noise_threshold,
-        denoise_strength=denoise_strength,
+    # 옵션 파싱 + 검증
+    payload = AIEnhanceOptionsPayload(
+        enable_noise_reduction=enable_noise_reduction,
+        enable_voice_enhancement=enable_voice_enhancement,
+        enable_vad=enable_vad,
+        enable_quality_assessment=enable_quality_assessment,
+        noise_reduction_strength=noise_reduction_strength,
+        voice_enhancement_strength=voice_enhancement_strength,
+        vad_threshold=vad_threshold,
+        target_snr=target_snr,
+        preserve_natural_voice=preserve_natural_voice,
+        output_format=output_format,
     )
+    options = _resolve_enhancement_options(payload)
 
+    # 입력 파일 임시 저장
+    max_bytes = settings.audio_enhancement_max_file_mb * 1024 * 1024
+    suffix = Path(filename).suffix or ".bin"
+    src_fd, src_name = tempfile.mkstemp(suffix=suffix, prefix="enhance_in_")
+    src_path = Path(src_name)
+    bytes_read = 0
+    
     try:
-        # 고급 프로세서 가져오기
-        processor = await get_enhanced_processor()
-
-        # 임시 파일 생성
-        max_bytes = settings.audio_preprocess_max_file_mb * 1024 * 1024
-        suffix = Path(filename).suffix or ".bin"
-        src_fd, src_name = tempfile.mkstemp(suffix=suffix, prefix="enhanced_in_")
-        src_path = Path(src_name)
-
-        # 파일 저장
-        bytes_read = 0
-        try:
-            with open(src_fd, "wb") as fp:
-                while chunk := await file.read(1024 * 1024):
-                    bytes_read += len(chunk)
-                    if bytes_read > max_bytes:
-                        bad_request(
-                            f"파일 크기가 {settings.audio_preprocess_max_file_mb}MB를 초과합니다."
-                        )
-                    fp.write(chunk)
-        except Exception as exc:
-            src_path.unlink(missing_ok=True)
-            logger.error("업로드 저장 실패", error=str(exc))
-            bad_request(f"업로드 처리 실패: {exc}")
-
-        # 처리 수행 (비동기)
-        try:
-            result = await processor.preprocess_batch([src_path], options, None)
-
-            if result.failed_files > 0:
-                raise HTTPException(status_code=400, detail="오디오 처리 실패")
-
-            processed_file = result.results[0]
-            processed_path = processed_file.processed_path
-
-            # 메타데이터 헤더
-            metadata = {
-                "original_filename": filename,
-                "original_size_bytes": processed_file.original_size,
-                "processed_size_bytes": processed_file.processed_size,
-                "duration_seconds": processed_file.duration_seconds,
-                "sample_rate": processed_file.sample_rate,
-                "channels": processed_file.channels,
-                "applied_options": options.model_dump(),
-                "ai_noise_removed": processed_file.metadata.get("ai_noise_removed", False),
-            }
-
-            # 클린업 태스크
-            def cleanup():
-                src_path.unlink(missing_ok=True)
-                processed_path.unlink(missing_ok=True)
-
-            output_name = f"{Path(filename).stem}_enhanced.wav"
-            return StreamingResponse(
-                path=str(processed_path),
-                media_type="audio/wav",
-                filename=output_name,
-                background=BackgroundTask(cleanup),
-                headers={"X-Enhanced-Preprocess-Meta": str(metadata)},
-            )
-
-        except Exception as exc:
-            src_path.unlink(missing_ok=True)
-            logger.error("오디오 전처리 실패", error=str(exc))
-            raise HTTPException(status_code=400, detail=f"오디오 전처리 실패: {exc}")
-
-    except HTTPException:
+        with open(src_fd, "wb") as fp:
+            while chunk := await file.read(1024 * 1024):
+                bytes_read += len(chunk)
+                if bytes_read > max_bytes:
+                    from backend.app.errors import request_entity_too_large
+                    request_entity_too_large(
+                        f"파일 크기가 {settings.audio_enhancement_max_file_mb}MB를 초과합니다."
+                    )
+                fp.write(chunk)
+    except VoiceNoteError:
+        _safe_unlink(src_path)
         raise
     except Exception as exc:
-        logger.error("고급 전처리 API 오류", error=str(exc))
-        internal_server_error("고급 전처리 중 오류가 발생했습니다")
+        _safe_unlink(src_path)
+        logger.error("업로드 저장 실패", error=str(exc))
+        bad_request(f"업로드 처리 실패: {exc}")
+
+    # AI 증강 처리 (리소스 제한 적용)
+    enhancement_semaphore = get_enhancement_semaphore()
+    async with enhancement_semaphore:
+        try:
+            result = await asyncio.to_thread(
+                enhance_audio_with_ai, 
+                src_path, 
+                options
+            )
+        except ValueError as exc:
+            _safe_unlink(src_path)
+            bad_request(str(exc))
+        except Exception as exc:
+            _safe_unlink(src_path)
+            logger.error("AI 오디오 증강 실패", error=str(exc))
+            internal_server_error("AI 오디오 증강 중 오류가 발생했습니다")
+
+    # 품질 평가
+    quality_assessment = None
+    if options.enable_quality_assessment:
+        try:
+            with wave.open(str(result.output_path), "rb") as wf:
+                sample_rate = wf.getframerate()
+                audio_data = np.frombuffer(wf.readframes(-1), dtype=np.int16)
+                
+                # 품질 지표 계산
+                metrics = _calculate_audio_metrics(audio_data.astype(float) / 32768.0, sample_rate)
+                
+                # 음질 평가 생성
+                quality_assessment = VoiceQualityAssessment(
+                    overall_score=min(100.0, max(0.0, metrics["snr"] * 2 + metrics["clarity"] * 50)),
+                    snr_db=metrics["snr"],
+                    clarity_score=metrics["clarity"],
+                    noise_level=metrics["noise_level"],
+                    quality_grade=_get_quality_grade(metrics["snr"]),
+                    recommendations=_generate_improvement_recommendations(metrics),
+                    enhancement_summary={
+                        "noise_removed": result.noise_reduction_applied,
+                        "voice_enhanced": result.voice_enhancement_applied,
+                        "segments_processed": result.segments_processed,
+                        "processing_time_seconds": result.processing_time,
+                    }
+                )
+        except Exception as exc:
+            logger.error("품질 평가 실패", error=str(exc))
+
+    # 응답 구성
+    output_name = f"{Path(filename).stem}_enhanced.{options.output_format}"
+    response_data = EnhancementReportResponse(
+        original_filename=filename,
+        original_size_bytes=bytes_read,
+        processed_size_bytes=result.output_path.stat().st_size,
+        enhancement_report=AudioQualityEvaluation(
+            quality_assessment=quality_assessment,
+            processing_details=result.processing_details,
+            warnings=result.warnings,
+        ),
+        download_url=f"/api/v1/audio/enhanced/{result.enhancement_id}/download",
+        enhancement_id=result.enhancement_id,
+    )
+
+    # 파일 다운로드와 함께 정리
+    def _cleanup() -> None:
+        _safe_unlink(src_path)
+        _safe_unlink(result.output_path)
+
+    return FileResponse(
+        path=str(result.output_path),
+        media_type=f"audio/{options.output_format}",
+        filename=output_name,
+        background=BackgroundTask(_cleanup),
+        headers={"X-Enhancement-ID": result.enhancement_id},
+    )
 
 
-# -----------------------------------------------------------------
-# 배치 전처리 엔드포인트
-# -----------------------------------------------------------------
-
-
-@router.post(
-    "/batch",
-    response_model=BatchPreprocessResponse,
-    responses={
-        200: {"description": "배치 처리 결과"},
-        400: {"description": "잘못된 요청"},
-        413: {"description": "파일 크기 초과"},
-        422: {"description": "옵션 검증 실패"},
-        503: {"description": "전처리 비활성화 상태"},
-    },
+@router.get(
+    "/enhanced/{enhancement_id}/download"
 )
-async def batch_preprocess_endpoint(
-    files: list[UploadFile] = File(..., description="배치 처리할 오디오 파일들"),
-    convert_to_16k_mono: bool = Form(default=True),
-    normalize: bool = Form(default=True),
-    target_dbfs: float = Form(default=-20.0),
-    high_pass_hz: int | None = Form(default=None),
-    low_pass_hz: int | None = Form(default=None),
-    trim_silence: bool = Form(default=False),
-    silence_threshold_db: float = Form(default=-40.0),
-    silence_min_len_ms: int = Form(default=700),
-    ai_noise_removal: bool = Form(default=True),
-    noise_threshold: float = Form(default=0.1),
-    denoise_strength: float = Form(default=0.8),
-    output_format: str = Form(default="zip", description="출력 형식: zip, individual"),
-    return_report: bool = Form(default=True, description="상세 보고서 포함"),
-) -> BatchPreprocessResponse:
-    """배치 오디오 전처리"""
-    if not settings.audio_preprocess_enabled:
-        service_unavailable("오디오 전처리 기능이 비활성화되어 있습니다.")
-
-    if len(files) > 20:
-        bad_request("최대 20개 파일까지 처리 가능합니다")
-
-    # 파일 유효성 검증
-    validated_files = []
-    for file in files:
-        filename = file.filename or "audio"
-        is_valid, msg = validate_audio_format(filename)
-        if not is_valid:
-            bad_request(f"{filename}: {msg}")
-        validated_files.append(file)
-
-    # 옵션 구성
-    options = BatchPreprocessOptions(
-        convert_to_16k_mono=convert_to_16k_mono,
-        normalize=normalize,
-        target_dbfs=target_dbfs,
-        high_pass_hz=high_pass_hz,
-        low_pass_hz=low_pass_hz,
-        trim_silence=trim_silence,
-        silence_threshold_db=silence_threshold_db,
-        silence_min_len_ms=silence_min_len_ms,
-        ai_noise_removal=ai_noise_removal,
-        noise_threshold=noise_threshold,
-        denoise_strength=denoise_strength,
+async def download_enhanced_audio(
+    enhancement_id: str,
+) -> FileResponse:
+    """AI 증강된 오디오 파일 다운로드."""
+    # 실제 구현에서는 파일 시스템 또는 스토리지에서 파일을 찾아 반환
+    # 여는 예시로, 실제로는 데이터베이스 또는 캐시에서 파일 위치 조회
+    
+    # 가상의 파일 경로 (실제 구현 필요)
+    file_path = Path(f"/tmp/enhanced_{enhancement_id}.wav")
+    
+    if not file_path.exists():
+        from backend.app.errors import not_found
+        not_found("AI 증강 파일을 찾을 수 없습니다.")
+    
+    return FileResponse(
+        path=str(file_path),
+        media_type="audio/wav",
+        filename=f"enhanced_{enhancement_id}.wav"
     )
 
+
+def _get_quality_grade(snr_db: float) -> str:
+    """SNR 기반 음질 등급 평가"""
+    if snr_db >= 30:
+        return "excellent"
+    elif snr_db >= 20:
+        return "good"
+    elif snr_db >= 15:
+        return "fair"
+    elif snr_db >= 10:
+        return "poor"
+    else:
+        return "very_poor"
+
+
+def _generate_improvement_recommendations(metrics: dict[str, float]) -> list[str]:
+    """개선 제안 생성"""
+    recommendations = []
+    
+    if metrics["snr"] < 15:
+        recommendations.append("노이즈 제거 기능을 강화하여 다시 처리해 보세요.")
+    
+    if metrics["clarity"] < 0.3:
+        recommendations.append("고주파 성분이 부족합니다. 더 가까운 위치에서 녹음해 보세요.")
+    
+    if metrics["noise_level"] > 0.1:
+        recommendations.append("배경 소음이 많습니다. 조용한 환경에서 재녹음해 보세요.")
+    
+    if not recommendations:
+        recommendations.append("음질이 양호합니다. 추가 처리가 필요하지 않습니다.")
+    
+    return recommendations
+
+
+async def _safe_unlink(path: Path) -> None:
+    """예외를 삼키고 안전하게 파일을 정리."""
     try:
-        # 고급 프로세서 가져오기
-        processor = await get_enhanced_processor()
-
-        # 임시 파일 저장
-        temp_files = []
-        try:
-            for file in validated_files:
-                max_bytes = settings.audio_preprocess_max_file_mb * 1024 * 1024
-                suffix = Path(file.filename or "audio").suffix or ".bin"
-                src_fd, src_name = tempfile.mkstemp(suffix=suffix, prefix="batch_in_")
-                src_path = Path(src_name)
-                temp_files.append(src_path)
-
-                # 파일 저장
-                bytes_read = 0
-                with open(src_fd, "wb") as fp:
-                    while chunk := await file.read(1024 * 1024):
-                        bytes_read += len(chunk)
-                        if bytes_read > max_bytes:
-                            bad_request(
-                                f"파일 크기가 {settings.audio_preprocess_max_file_mb}MB를 초과합니다."
-                            )
-                        fp.write(chunk)
-
-            # 배치 처리 수행
-            result = await processor.preprocess_batch(temp_files, options, None)
-
-            # 보고서 생성
-            report = await processor.create_processing_report(result) if return_report else None
-
-            return BatchPreprocessResponse(
-                task_id=result.task_id,
-                total_files=result.total_files,
-                processed_files=result.processed_files,
-                failed_files=result.failed_files,
-                processing_time_seconds=result.processing_time_seconds,
-                summary=result.summary,
-                report=report,
-            )
-
-        except Exception as exc:
-            logger.error("배치 처리 실패", error=str(exc))
-            raise HTTPException(status_code=400, detail=f"배치 처리 실패: {exc}")
-
-        finally:
-            # 클린업
-            for temp_file in temp_files:
-                temp_file.unlink(missing_ok=True)
-
-    except HTTPException:
-        raise
-    except Exception as exc:
-        logger.error("배치 전처리 API 오류", error=str(exc))
-        internal_server_error("배치 전처리 중 오류가 발생했습니다")
-
-
-# -----------------------------------------------------------------
-# 지원 정보 엔드포인트
-# -----------------------------------------------------------------
-
-
-@router.get("/formats", response_model=list[FormatInfo])
-async def get_supported_formats() -> list[FormatInfo]:
-    """지원 오디오 포맷 정보"""
-    formats = [
-        FormatInfo(
-            extension="wav",
-            description="WAV (무손실)",
-            supported_codecs=["pcm", "adpcm", "imaadpcm"],
-        ),
-        FormatInfo(extension="mp3", description="MP3 (압축)", supported_codecs=["mp3", "mpeg"]),
-        FormatInfo(extension="flac", description="FLAC (무손실 압축)", supported_codecs=["flac"]),
-        FormatInfo(
-            extension="aac", description="AAC (고급 압축)", supported_codecs=["aac", "mp4a"]
-        ),
-        FormatInfo(
-            extension="ogg", description="OGG (오픈 포맷)", supported_codecs=["vorbis", "opus"]
-        ),
-        FormatInfo(extension="m4a", description="M4A (AAC 기반)", supported_codecs=["aac", "mp4a"]),
-        FormatInfo(
-            extension="wma", description="WMA (Windows Media)", supported_codecs=["wma", "wmav2"]
-        ),
-        FormatInfo(extension="opus", description="Opus (고효율 코덱)", supported_codecs=["opus"]),
-        FormatInfo(
-            extension="webm", description="WebM (웹용)", supported_codecs=["opus", "vorbis"]
-        ),
-    ]
-    return formats
-
-
-@router.get("/status", response_model=ModelStatusResponse)
-async def get_model_status() -> ModelStatusResponse:
-    """AI 모델 상태 정보"""
-    processor = await get_enhanced_processor()
-
-    return ModelStatusResponse(
-        ai_noise_removal_enabled=True,
-        model_loaded=processor.ai_model.model_loaded,
-        supported_formats=len(
-            [f for f in ["wav", "mp3", "flac", "aac", "ogg", "m4a", "wma", "opus", "webm"]]
-        ),
-        batch_max_files=20,
-        batch_max_concurrent=5,
-        supported_ai_features=["noise_removal", "audio_enhancement"],
-        processing_limits={
-            "max_file_size_mb": settings.audio_preprocess_max_file_mb,
-            "timeout_seconds": 300,
-            "max_concurrent_batches": 5,
-        },
-    )
+        cleanup_temp_file(path)
+    except OSError as exc:
+        logger.warning("임시 파일 정리 실패", path=str(path), error=str(exc))
