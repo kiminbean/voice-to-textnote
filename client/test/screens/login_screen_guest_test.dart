@@ -12,6 +12,7 @@ import 'package:voice_to_textnote/services/auth_service.dart';
 
 // Mock 클래스
 class MockAuthApi extends Mock implements AuthApi {}
+
 class MockAuthService extends Mock implements AuthService {}
 
 // 테스트용 GoRouter 래퍼

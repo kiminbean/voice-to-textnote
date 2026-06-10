@@ -1,13 +1,13 @@
 // 파이프라인 처리 단계 열거형
 enum PipelineStep {
-  idle,              // 대기 중
-  uploading,         // 업로드 중
-  transcribing,      // 음성 인식 중 (STT)
-  diarizing,         // 화자 분리 중
+  idle, // 대기 중
+  uploading, // 업로드 중
+  transcribing, // 음성 인식 중 (STT)
+  diarizing, // 화자 분리 중
   generatingMinutes, // 회의록 생성 중
-  summarizing,       // AI 요약 중
-  completed,         // 완료
-  failed,            // 실패
+  summarizing, // AI 요약 중
+  completed, // 완료
+  failed, // 실패
 }
 
 // 파이프라인 처리 상태 모델
@@ -52,8 +52,10 @@ class PipelineState {
     return PipelineState(
       currentStep: currentStep ?? this.currentStep,
       progress: progress ?? this.progress,
-      errorMessage: clearErrorMessage ? null : (errorMessage ?? this.errorMessage),
-      currentTaskId: clearCurrentTaskId ? null : (currentTaskId ?? this.currentTaskId),
+      errorMessage:
+          clearErrorMessage ? null : (errorMessage ?? this.errorMessage),
+      currentTaskId:
+          clearCurrentTaskId ? null : (currentTaskId ?? this.currentTaskId),
       minutesTaskId: minutesTaskId ?? this.minutesTaskId,
       summaryTaskId: summaryTaskId ?? this.summaryTaskId,
     );

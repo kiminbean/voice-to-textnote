@@ -55,12 +55,14 @@ void main() {
 
     // RecordingStatus 열거형 테스트
     test('모든 RecordingStatus 값이 존재해야 함', () {
-      expect(RecordingStatus.values, containsAll([
-        RecordingStatus.idle,
-        RecordingStatus.recording,
-        RecordingStatus.paused,
-        RecordingStatus.stopped,
-      ]));
+      expect(
+          RecordingStatus.values,
+          containsAll([
+            RecordingStatus.idle,
+            RecordingStatus.recording,
+            RecordingStatus.paused,
+            RecordingStatus.stopped,
+          ]));
     });
 
     // RecordingState copyWith 테스트

@@ -47,8 +47,7 @@ void main() {
     });
 
     // 빈 상태 표시 테스트
-    testWidgets('미팅이 없을 때 빈 상태 메시지가 표시되어야 함',
-        (WidgetTester tester) async {
+    testWidgets('미팅이 없을 때 빈 상태 메시지가 표시되어야 함', (WidgetTester tester) async {
       await tester.pumpWidget(
         ProviderScope(
           overrides: _onlineOverrides(mockService),
@@ -72,8 +71,7 @@ void main() {
     });
 
     // 미팅 목록 표시 테스트
-    testWidgets('미팅이 있을 때 MeetingCard가 표시되어야 함',
-        (WidgetTester tester) async {
+    testWidgets('미팅이 있을 때 MeetingCard가 표시되어야 함', (WidgetTester tester) async {
       final testMeeting = Meeting(
         id: 'test-001',
         title: '테스트 미팅',
@@ -104,8 +102,7 @@ void main() {
     });
 
     // REQ-HSYNC-003: RefreshIndicator가 있어야 함
-    testWidgets('홈 화면에 RefreshIndicator가 있어야 함',
-        (WidgetTester tester) async {
+    testWidgets('홈 화면에 RefreshIndicator가 있어야 함', (WidgetTester tester) async {
       final testMeeting = Meeting(
         id: 'test-001',
         title: '테스트 미팅',

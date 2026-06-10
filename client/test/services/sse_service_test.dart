@@ -17,7 +17,8 @@ void main() {
   setUpAll(() {
     // Uri fallback 등록
     registerFallbackValue(Uri.parse('http://localhost:8000'));
-    registerFallbackValue(http.Request('GET', Uri.parse('http://localhost:8000')));
+    registerFallbackValue(
+        http.Request('GET', Uri.parse('http://localhost:8000')));
   });
 
   late MockHttpClient mockClient;
@@ -50,8 +51,7 @@ void main() {
       final mockResponse = MockStreamedResponse();
       when(() => mockResponse.stream).thenAnswer((_) => byteStream);
 
-      when(() => mockClient.send(any()))
-          .thenAnswer((_) async {
+      when(() => mockClient.send(any())).thenAnswer((_) async {
         // 비동기로 데이터 전송
         Future.microtask(() {
           for (final chunk in sseData) {
@@ -79,8 +79,7 @@ void main() {
     // 연결 실패 시 예외 전파 테스트
     test('SSE 연결 실패 시 예외를 던져야 함', () async {
       // Arrange
-      when(() => mockClient.send(any()))
-          .thenThrow(Exception('연결 실패'));
+      when(() => mockClient.send(any())).thenThrow(Exception('연결 실패'));
 
       // Act & Assert
       expect(
@@ -109,8 +108,7 @@ void main() {
       final mockResponse = MockStreamedResponse();
       when(() => mockResponse.stream).thenAnswer((_) => byteStream);
 
-      when(() => mockClient.send(any()))
-          .thenAnswer((_) async {
+      when(() => mockClient.send(any())).thenAnswer((_) async {
         Future.microtask(() {
           for (final chunk in sseData) {
             streamController.add(utf8.encode(chunk));

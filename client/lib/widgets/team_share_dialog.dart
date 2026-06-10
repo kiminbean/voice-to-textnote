@@ -112,9 +112,7 @@ class _TeamShareDialogState extends ConsumerState<TeamShareDialog> {
                     return CheckboxListTile(
                       value: isShared,
                       // 로딩 중에는 변경 불가
-                      onChanged: isLoading
-                          ? null
-                          : (_) => _toggleShare(team),
+                      onChanged: isLoading ? null : (_) => _toggleShare(team),
                       title: Text(team.name),
                       subtitle: team.description != null &&
                               team.description!.isNotEmpty

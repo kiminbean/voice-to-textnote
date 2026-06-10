@@ -110,7 +110,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         return '이메일을 입력해주세요.';
                       }
                       // 이메일 형식 검증
-                      final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+                      final emailRegex =
+                          RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
                       if (!emailRegex.hasMatch(value.trim())) {
                         return '올바른 이메일 형식을 입력해주세요.';
                       }
@@ -216,9 +217,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     children: [
                       const Text('계정이 없으신가요?'),
                       TextButton(
-                        onPressed: isLoading
-                            ? null
-                            : () => context.push('/register'),
+                        onPressed:
+                            isLoading ? null : () => context.push('/register'),
                         child: const Text('회원가입'),
                       ),
                     ],

@@ -1,9 +1,9 @@
 // 미팅 상태 열거형
 enum MeetingStatus {
-  recording,   // 녹음 중
-  processing,  // 처리 중 (파이프라인 실행)
-  completed,   // 완료
-  failed,      // 실패
+  recording, // 녹음 중
+  processing, // 처리 중 (파이프라인 실행)
+  completed, // 완료
+  failed, // 실패
 }
 
 // 미팅 데이터 모델

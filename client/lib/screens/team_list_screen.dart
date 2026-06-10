@@ -43,8 +43,7 @@ class TeamListScreen extends ConsumerWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.groups_outlined,
-                        size: 64, color: Colors.grey),
+                    Icon(Icons.groups_outlined, size: 64, color: Colors.grey),
                     SizedBox(height: 16),
                     Text(
                       '속한 팀이 없습니다',

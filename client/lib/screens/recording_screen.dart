@@ -223,9 +223,9 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
             Text(
               _formatTime(state.elapsedSeconds),
               style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                    fontFamily: 'monospace',
-                    fontFeatures: const [],
-                  ),
+                fontFamily: 'monospace',
+                fontFeatures: const [],
+              ),
             ),
             const SizedBox(height: 32),
             // 녹음 상태 텍스트
@@ -252,7 +252,9 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
                 button: true,
                 label: isRecording ? '녹음 중지' : '녹음 시작',
                 child: Material(
-                  color: isRecording ? Colors.red : Theme.of(context).colorScheme.primary,
+                  color: isRecording
+                      ? Colors.red
+                      : Theme.of(context).colorScheme.primary,
                   shape: const CircleBorder(),
                   clipBehavior: Clip.antiAlias,
                   child: InkWell(
@@ -320,12 +322,12 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
                   child: Text('사전 없음'),
                 ),
                 ...vocabularies.map((v) => DropdownMenuItem<String?>(
-                  value: v.id,
-                  child: Text(
-                    '${v.name} (${v.words.length}단어)',
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                )),
+                      value: v.id,
+                      child: Text(
+                        '${v.name} (${v.words.length}단어)',
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    )),
               ],
               onChanged: (value) {
                 setState(() => _selectedVocabularyId = value);

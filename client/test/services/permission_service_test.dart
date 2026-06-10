@@ -33,7 +33,8 @@ void main() {
       // Assert
       expect(PermissionStatus.granted.name, equals('granted'));
       expect(PermissionStatus.denied.name, equals('denied'));
-      expect(PermissionStatus.permanentlyDenied.name, equals('permanentlyDenied'));
+      expect(
+          PermissionStatus.permanentlyDenied.name, equals('permanentlyDenied'));
       expect(PermissionStatus.notDetermined.name, equals('notDetermined'));
     });
   });
@@ -49,7 +50,8 @@ void main() {
       expect(PermissionStatus.denied.index, equals(1));
     });
 
-    test('ph.PermissionStatus.permanentlyDenied는 내부 permanentlyDenied로 매핑되어야 함', () {
+    test('ph.PermissionStatus.permanentlyDenied는 내부 permanentlyDenied로 매핑되어야 함',
+        () {
       expect(PermissionStatus.permanentlyDenied.index, equals(2));
     });
 

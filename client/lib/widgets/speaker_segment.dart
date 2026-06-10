@@ -81,9 +81,8 @@ class SpeakerSegment extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: isHighlighted
-                    ? color.withAlpha(40)
-                    : color.withAlpha(15),
+                color:
+                    isHighlighted ? color.withAlpha(40) : color.withAlpha(15),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
                   color: isHighlighted ? color : color.withAlpha(50),
@@ -106,7 +105,9 @@ class SpeakerSegment extends StatelessWidget {
       );
     }
 
-    final matches = RegExp(RegExp.escape(searchQuery!), caseSensitive: false).allMatches(text).toList();
+    final matches = RegExp(RegExp.escape(searchQuery!), caseSensitive: false)
+        .allMatches(text)
+        .toList();
     if (matches.isEmpty) {
       return Text(
         text,
@@ -123,7 +124,8 @@ class SpeakerSegment extends StatelessWidget {
       }
       spans.add(TextSpan(
         text: text.substring(match.start, match.end),
-        style: const TextStyle(backgroundColor: Colors.yellow, color: Colors.black),
+        style: const TextStyle(
+            backgroundColor: Colors.yellow, color: Colors.black),
       ));
       lastMatchEnd = match.end;
     }
@@ -134,7 +136,9 @@ class SpeakerSegment extends StatelessWidget {
 
     return RichText(
       text: TextSpan(
-        style: DefaultTextStyle.of(context).style.copyWith(fontSize: 14, height: 1.5),
+        style: DefaultTextStyle.of(context)
+            .style
+            .copyWith(fontSize: 14, height: 1.5),
         children: spans,
       ),
     );

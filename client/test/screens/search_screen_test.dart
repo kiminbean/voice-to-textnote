@@ -100,8 +100,7 @@ void main() {
     });
 
     // 검색어 없을 때 최근 검색어 위젯 표시 (SPEC-SEARCH-002 Phase 5)
-    testWidgets('검색어가 없을 때 최근 검색어 영역이 표시되어야 함',
-        (WidgetTester tester) async {
+    testWidgets('검색어가 없을 때 최근 검색어 영역이 표시되어야 함', (WidgetTester tester) async {
       await tester.pumpWidget(
         const ProviderScope(
           child: MaterialApp(
@@ -164,8 +163,7 @@ void main() {
     });
 
     // <b>태그가 포함된 텍스트 검증 (위젯으로 렌더링)
-    testWidgets('<b>태그가 볼드 TextSpan으로 변환되어야 함',
-        (WidgetTester tester) async {
+    testWidgets('<b>태그가 볼드 TextSpan으로 변환되어야 함', (WidgetTester tester) async {
       final item = SearchResultItem(
         taskId: 'test-id',
         taskType: 'minutes',

@@ -35,8 +35,7 @@ void main() {
     });
 
     // 재시도 버튼 콜백 테스트
-    testWidgets('재시도 버튼 탭 시 onRetry 콜백이 호출되어야 함',
-        (WidgetTester tester) async {
+    testWidgets('재시도 버튼 탭 시 onRetry 콜백이 호출되어야 함', (WidgetTester tester) async {
       // Arrange
       var retryCalled = false;
 
@@ -71,8 +70,7 @@ void main() {
     });
 
     // 홈으로 버튼 표시 테스트
-    testWidgets('onGoHome 제공 시 홈으로 버튼이 표시되어야 함',
-        (WidgetTester tester) async {
+    testWidgets('onGoHome 제공 시 홈으로 버튼이 표시되어야 함', (WidgetTester tester) async {
       // Arrange & Act
       await tester.pumpWidget(
         MaterialApp(
@@ -101,8 +99,7 @@ void main() {
     });
 
     // onRetry 없을 때 재시도 버튼 미표시 테스트
-    testWidgets('onRetry 없을 때 재시도 버튼이 표시되지 않아야 함',
-        (WidgetTester tester) async {
+    testWidgets('onRetry 없을 때 재시도 버튼이 표시되지 않아야 함', (WidgetTester tester) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(

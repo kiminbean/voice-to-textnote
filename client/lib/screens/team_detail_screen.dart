@@ -112,9 +112,7 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen>
                     _changeRole(context, detail.id, member, newRole),
                 onRemove: (member) => _removeMember(context, detail.id, member),
                 onLeave: () => _leaveTeam(context, detail),
-                onDelete: isAdmin
-                    ? () => _deleteTeam(context, detail)
-                    : null,
+                onDelete: isAdmin ? () => _deleteTeam(context, detail) : null,
               ),
               // 공유 미팅 탭
               _TeamMeetingsTab(teamId: detail.id),
@@ -129,7 +127,8 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen>
   Future<void> _showEditTeamDialog(
       BuildContext context, TeamDetail detail) async {
     final nameController = TextEditingController(text: detail.name);
-    final descController = TextEditingController(text: detail.description ?? '');
+    final descController =
+        TextEditingController(text: detail.description ?? '');
     final formKey = GlobalKey<FormState>();
 
     await showDialog<void>(
@@ -665,7 +664,8 @@ class _MemberListTile extends StatelessWidget {
           Text(member.displayName),
           if (isSelf) ...[
             const SizedBox(width: 6),
-            const Text('(나)', style: TextStyle(color: Colors.grey, fontSize: 12)),
+            const Text('(나)',
+                style: TextStyle(color: Colors.grey, fontSize: 12)),
           ],
         ],
       ),

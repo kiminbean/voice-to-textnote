@@ -130,7 +130,8 @@ final fcmTokenProvider = Provider<String?>((ref) {
 });
 
 /// 푸시 서비스 프로바이더
-final pushNotificationServiceProvider = Provider<PushNotificationService>((ref) {
+final pushNotificationServiceProvider =
+    Provider<PushNotificationService>((ref) {
   return PushNotificationService();
 });
 

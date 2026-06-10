@@ -103,8 +103,7 @@ void main() {
 
   group('ResultScreen AppBar - 내보내기 버튼', () {
     // AppBar에 PopupMenuButton (ios_share 아이콘) 존재 확인
-    testWidgets('AppBar에 내보내기 버튼이 표시되어야 함',
-        (WidgetTester tester) async {
+    testWidgets('AppBar에 내보내기 버튼이 표시되어야 함', (WidgetTester tester) async {
       // Act
       await tester.pumpWidget(buildTestWidget(completedMeeting));
       await tester.pumpAndSettle();

@@ -114,12 +114,14 @@ void main() {
 
     // MeetingStatus 열거형 테스트
     test('모든 MeetingStatus 값이 존재해야 함', () {
-      expect(MeetingStatus.values, containsAll([
-        MeetingStatus.recording,
-        MeetingStatus.processing,
-        MeetingStatus.completed,
-        MeetingStatus.failed,
-      ]));
+      expect(
+          MeetingStatus.values,
+          containsAll([
+            MeetingStatus.recording,
+            MeetingStatus.processing,
+            MeetingStatus.completed,
+            MeetingStatus.failed,
+          ]));
     });
   });
 }

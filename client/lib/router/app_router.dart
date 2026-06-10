@@ -35,7 +35,8 @@ GoRouter createRouter(ProviderContainer container) {
       final isAuthenticated = authState.isAuthenticated;
       // SPEC-GUEST-001: 게스트 모드도 홈 접근 허용
       final isGuest = authState.isGuest;
-      final isLoading = authState.isLoading || authState.status == AuthStatus.initial;
+      final isLoading =
+          authState.isLoading || authState.status == AuthStatus.initial;
       final currentPath = state.uri.path;
 
       // 초기화/로딩 중에는 리다이렉트 없음

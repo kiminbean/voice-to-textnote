@@ -9,7 +9,9 @@ import 'package:voice_to_textnote/services/push_notification_service.dart';
 import 'package:voice_to_textnote/services/permission_service.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 
-class MockPushNotificationService extends Mock implements PushNotificationService {}
+class MockPushNotificationService extends Mock
+    implements PushNotificationService {}
+
 class MockPermissionService extends Mock implements PermissionService {}
 
 void main() {
@@ -92,12 +94,10 @@ void main() {
           .thenAnswer((_) async => PermissionStatus.granted);
       when(() => mockPermissionService.requestNotificationPermission())
           .thenAnswer((_) async => PermissionStatus.granted);
-      when(() => mockPushService.initializeFCM())
-          .thenAnswer((_) async => true);
+      when(() => mockPushService.initializeFCM()).thenAnswer((_) async => true);
       when(() => mockPushService.getFCMToken())
           .thenAnswer((_) async => const FcmTokenResult(token: 'test_token'));
-      when(() => mockPushService.onForegroundMessage(any()))
-          .thenAnswer((_) {});
+      when(() => mockPushService.onForegroundMessage(any())).thenAnswer((_) {});
       when(() => mockPushService.handleMessageOpenedApp())
           .thenAnswer((_) async {});
 
@@ -144,12 +144,10 @@ void main() {
           .thenAnswer((_) async => PermissionStatus.granted);
       when(() => mockPermissionService.requestNotificationPermission())
           .thenAnswer((_) async => PermissionStatus.granted);
-      when(() => mockPushService.initializeFCM())
-          .thenAnswer((_) async => true);
+      when(() => mockPushService.initializeFCM()).thenAnswer((_) async => true);
       when(() => mockPushService.getFCMToken())
           .thenAnswer((_) async => const FcmTokenResult(error: 'Token error'));
-      when(() => mockPushService.onForegroundMessage(any()))
-          .thenReturn(null);
+      when(() => mockPushService.onForegroundMessage(any())).thenReturn(null);
       when(() => mockPushService.handleMessageOpenedApp())
           .thenAnswer((_) async {});
 
@@ -174,13 +172,13 @@ void main() {
           .thenAnswer((_) async => PermissionStatus.granted);
       when(() => mockPermissionService.requestNotificationPermission())
           .thenAnswer((_) async => PermissionStatus.granted);
-      when(() => mockPushService.initializeFCM())
-          .thenAnswer((_) async => true);
+      when(() => mockPushService.initializeFCM()).thenAnswer((_) async => true);
       when(() => mockPushService.getFCMToken())
           .thenAnswer((_) async => const FcmTokenResult(token: 'test_token'));
       when(() => mockPushService.onForegroundMessage(captureAny()))
           .thenAnswer((invocation) {
-        capturedHandlers.add(invocation.positionalArguments[0] as Function(RemoteMessage));
+        capturedHandlers
+            .add(invocation.positionalArguments[0] as Function(RemoteMessage));
       });
       when(() => mockPushService.handleMessageOpenedApp())
           .thenAnswer((_) async {});
@@ -203,8 +201,7 @@ void main() {
           .thenAnswer((_) async => PermissionStatus.granted);
       when(() => mockPermissionService.requestNotificationPermission())
           .thenAnswer((_) async => PermissionStatus.granted);
-      when(() => mockPushService.initializeFCM())
-          .thenAnswer((_) async => true);
+      when(() => mockPushService.initializeFCM()).thenAnswer((_) async => true);
       when(() => mockPushService.getFCMToken())
           .thenAnswer((_) async => const FcmTokenResult(token: 'test_token'));
 
@@ -219,7 +216,8 @@ void main() {
       Function(RemoteMessage)? capturedHandler;
       when(() => mockPushService.onForegroundMessage(captureAny()))
           .thenAnswer((invocation) {
-        capturedHandler = invocation.positionalArguments[0] as Function(RemoteMessage);
+        capturedHandler =
+            invocation.positionalArguments[0] as Function(RemoteMessage);
       });
       when(() => mockPushService.handleMessageOpenedApp())
           .thenAnswer((_) async {});

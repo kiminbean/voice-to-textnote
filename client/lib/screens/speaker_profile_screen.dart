@@ -265,14 +265,16 @@ class _SpeakerFormDialog extends StatefulWidget {
 
 class _SpeakerFormDialogState extends State<_SpeakerFormDialog> {
   late final TextEditingController _labelCtl;
-  late final TextEditingController _nameCtl = TextEditingController(text: widget.initial?.displayName);
+  late final TextEditingController _nameCtl =
+      TextEditingController(text: widget.initial?.displayName);
   late final _roleCtl = TextEditingController(text: widget.initial?.role);
   late final _noteCtl = TextEditingController(text: widget.initial?.note);
 
   @override
   void initState() {
     super.initState();
-    _labelCtl = TextEditingController(text: widget.initial?.speakerLabel ?? 'SPEAKER_00');
+    _labelCtl = TextEditingController(
+        text: widget.initial?.speakerLabel ?? 'SPEAKER_00');
   }
 
   @override
@@ -340,8 +342,10 @@ class _SpeakerFormDialogState extends State<_SpeakerFormDialog> {
               _SpeakerFormData(
                 speakerLabel: _labelCtl.text.trim(),
                 displayName: _nameCtl.text.trim(),
-                role: _roleCtl.text.trim().isEmpty ? null : _roleCtl.text.trim(),
-                note: _noteCtl.text.trim().isEmpty ? null : _noteCtl.text.trim(),
+                role:
+                    _roleCtl.text.trim().isEmpty ? null : _roleCtl.text.trim(),
+                note:
+                    _noteCtl.text.trim().isEmpty ? null : _noteCtl.text.trim(),
               ),
             );
           },

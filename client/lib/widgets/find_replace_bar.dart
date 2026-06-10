@@ -67,7 +67,8 @@ class _FindReplaceBarState extends State<FindReplaceBar> {
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 ),
                 onChanged: widget.onSearchChanged,
               ),

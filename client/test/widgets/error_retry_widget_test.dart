@@ -39,8 +39,7 @@ void main() {
     });
 
     // 재시도 콜백 호출 테스트
-    testWidgets('재시도 버튼 탭 시 onRetry가 호출되어야 함',
-        (WidgetTester tester) async {
+    testWidgets('재시도 버튼 탭 시 onRetry가 호출되어야 함', (WidgetTester tester) async {
       // Arrange
       var retryCalled = false;
 

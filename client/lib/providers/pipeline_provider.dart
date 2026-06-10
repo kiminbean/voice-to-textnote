@@ -190,7 +190,8 @@ class PipelineNotifier extends Notifier<PipelineState> {
             return;
           }
           if (eventStatus == 'failed') {
-            final errMsg = event['error_message'] ?? event['error'] ?? '알 수 없는 오류';
+            final errMsg =
+                event['error_message'] ?? event['error'] ?? '알 수 없는 오류';
             throw Exception('태스크 처리 실패: $errMsg');
           }
 
@@ -280,7 +281,8 @@ class PipelineNotifier extends Notifier<PipelineState> {
             final adjustedProgress =
                 currentBase + (serverProgress.toDouble() * stepRange);
             if (adjustedProgress > state.progress) {
-              state = state.copyWith(progress: adjustedProgress.clamp(0.0, 0.99));
+              state =
+                  state.copyWith(progress: adjustedProgress.clamp(0.0, 0.99));
             }
           }
         }

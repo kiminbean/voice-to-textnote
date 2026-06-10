@@ -4,16 +4,25 @@ class GetMovieByIdVariablesBuilder {
   String id;
 
   final FirebaseDataConnect _dataConnect;
-  GetMovieByIdVariablesBuilder(this._dataConnect, {required  this.id,});
-  Deserializer<GetMovieByIdData> dataDeserializer = (dynamic json)  => GetMovieByIdData.fromJson(jsonDecode(json));
-  Serializer<GetMovieByIdVariables> varsSerializer = (GetMovieByIdVariables vars) => jsonEncode(vars.toJson());
-  Future<QueryResult<GetMovieByIdData, GetMovieByIdVariables>> execute({QueryFetchPolicy fetchPolicy = QueryFetchPolicy.preferCache}) {
+  GetMovieByIdVariablesBuilder(
+    this._dataConnect, {
+    required this.id,
+  });
+  Deserializer<GetMovieByIdData> dataDeserializer =
+      (dynamic json) => GetMovieByIdData.fromJson(jsonDecode(json));
+  Serializer<GetMovieByIdVariables> varsSerializer =
+      (GetMovieByIdVariables vars) => jsonEncode(vars.toJson());
+  Future<QueryResult<GetMovieByIdData, GetMovieByIdVariables>> execute(
+      {QueryFetchPolicy fetchPolicy = QueryFetchPolicy.preferCache}) {
     return ref().execute(fetchPolicy: fetchPolicy);
   }
 
   QueryRef<GetMovieByIdData, GetMovieByIdVariables> ref() {
-    GetMovieByIdVariables vars= GetMovieByIdVariables(id: id,);
-    return _dataConnect.query("GetMovieById", dataDeserializer, varsSerializer, vars);
+    GetMovieByIdVariables vars = GetMovieByIdVariables(
+      id: id,
+    );
+    return _dataConnect.query(
+        "GetMovieById", dataDeserializer, varsSerializer, vars);
   }
 }
 
@@ -25,37 +34,46 @@ class GetMovieByIdMovie {
   final String? genre;
   final GetMovieByIdMovieMetadata? metadata;
   final List<GetMovieByIdMovieReviews> reviews;
-  GetMovieByIdMovie.fromJson(dynamic json):
-  
-  id = nativeFromJson<String>(json['id']),
-  title = nativeFromJson<String>(json['title']),
-  imageUrl = nativeFromJson<String>(json['imageUrl']),
-  genre = json['genre'] == null ? null : nativeFromJson<String>(json['genre']),
-  metadata = json['metadata'] == null ? null : GetMovieByIdMovieMetadata.fromJson(json['metadata']),
-  reviews = (json['reviews'] as List<dynamic>)
-        .map((e) => GetMovieByIdMovieReviews.fromJson(e))
-        .toList();
+  GetMovieByIdMovie.fromJson(dynamic json)
+      : id = nativeFromJson<String>(json['id']),
+        title = nativeFromJson<String>(json['title']),
+        imageUrl = nativeFromJson<String>(json['imageUrl']),
+        genre = json['genre'] == null
+            ? null
+            : nativeFromJson<String>(json['genre']),
+        metadata = json['metadata'] == null
+            ? null
+            : GetMovieByIdMovieMetadata.fromJson(json['metadata']),
+        reviews = (json['reviews'] as List<dynamic>)
+            .map((e) => GetMovieByIdMovieReviews.fromJson(e))
+            .toList();
   @override
   bool operator ==(Object other) {
-    if(identical(this, other)) {
+    if (identical(this, other)) {
       return true;
     }
-    if(other.runtimeType != runtimeType) {
+    if (other.runtimeType != runtimeType) {
       return false;
     }
 
     final GetMovieByIdMovie otherTyped = other as GetMovieByIdMovie;
-    return id == otherTyped.id && 
-    title == otherTyped.title && 
-    imageUrl == otherTyped.imageUrl && 
-    genre == otherTyped.genre && 
-    metadata == otherTyped.metadata && 
-    reviews == otherTyped.reviews;
-    
+    return id == otherTyped.id &&
+        title == otherTyped.title &&
+        imageUrl == otherTyped.imageUrl &&
+        genre == otherTyped.genre &&
+        metadata == otherTyped.metadata &&
+        reviews == otherTyped.reviews;
   }
+
   @override
-  int get hashCode => Object.hashAll([id.hashCode, title.hashCode, imageUrl.hashCode, genre.hashCode, metadata.hashCode, reviews.hashCode]);
-  
+  int get hashCode => Object.hashAll([
+        id.hashCode,
+        title.hashCode,
+        imageUrl.hashCode,
+        genre.hashCode,
+        metadata.hashCode,
+        reviews.hashCode
+      ]);
 
   Map<String, dynamic> toJson() {
     Map<String, dynamic> json = {};
@@ -87,29 +105,35 @@ class GetMovieByIdMovieMetadata {
   final double? rating;
   final int? releaseYear;
   final String? description;
-  GetMovieByIdMovieMetadata.fromJson(dynamic json):
-  
-  rating = json['rating'] == null ? null : nativeFromJson<double>(json['rating']),
-  releaseYear = json['releaseYear'] == null ? null : nativeFromJson<int>(json['releaseYear']),
-  description = json['description'] == null ? null : nativeFromJson<String>(json['description']);
+  GetMovieByIdMovieMetadata.fromJson(dynamic json)
+      : rating = json['rating'] == null
+            ? null
+            : nativeFromJson<double>(json['rating']),
+        releaseYear = json['releaseYear'] == null
+            ? null
+            : nativeFromJson<int>(json['releaseYear']),
+        description = json['description'] == null
+            ? null
+            : nativeFromJson<String>(json['description']);
   @override
   bool operator ==(Object other) {
-    if(identical(this, other)) {
+    if (identical(this, other)) {
       return true;
     }
-    if(other.runtimeType != runtimeType) {
+    if (other.runtimeType != runtimeType) {
       return false;
     }
 
-    final GetMovieByIdMovieMetadata otherTyped = other as GetMovieByIdMovieMetadata;
-    return rating == otherTyped.rating && 
-    releaseYear == otherTyped.releaseYear && 
-    description == otherTyped.description;
-    
+    final GetMovieByIdMovieMetadata otherTyped =
+        other as GetMovieByIdMovieMetadata;
+    return rating == otherTyped.rating &&
+        releaseYear == otherTyped.releaseYear &&
+        description == otherTyped.description;
   }
+
   @override
-  int get hashCode => Object.hashAll([rating.hashCode, releaseYear.hashCode, description.hashCode]);
-  
+  int get hashCode => Object.hashAll(
+      [rating.hashCode, releaseYear.hashCode, description.hashCode]);
 
   Map<String, dynamic> toJson() {
     Map<String, dynamic> json = {};
@@ -138,31 +162,38 @@ class GetMovieByIdMovieReviews {
   final DateTime reviewDate;
   final int? rating;
   final GetMovieByIdMovieReviewsUser user;
-  GetMovieByIdMovieReviews.fromJson(dynamic json):
-  
-  reviewText = json['reviewText'] == null ? null : nativeFromJson<String>(json['reviewText']),
-  reviewDate = nativeFromJson<DateTime>(json['reviewDate']),
-  rating = json['rating'] == null ? null : nativeFromJson<int>(json['rating']),
-  user = GetMovieByIdMovieReviewsUser.fromJson(json['user']);
+  GetMovieByIdMovieReviews.fromJson(dynamic json)
+      : reviewText = json['reviewText'] == null
+            ? null
+            : nativeFromJson<String>(json['reviewText']),
+        reviewDate = nativeFromJson<DateTime>(json['reviewDate']),
+        rating =
+            json['rating'] == null ? null : nativeFromJson<int>(json['rating']),
+        user = GetMovieByIdMovieReviewsUser.fromJson(json['user']);
   @override
   bool operator ==(Object other) {
-    if(identical(this, other)) {
+    if (identical(this, other)) {
       return true;
     }
-    if(other.runtimeType != runtimeType) {
+    if (other.runtimeType != runtimeType) {
       return false;
     }
 
-    final GetMovieByIdMovieReviews otherTyped = other as GetMovieByIdMovieReviews;
-    return reviewText == otherTyped.reviewText && 
-    reviewDate == otherTyped.reviewDate && 
-    rating == otherTyped.rating && 
-    user == otherTyped.user;
-    
+    final GetMovieByIdMovieReviews otherTyped =
+        other as GetMovieByIdMovieReviews;
+    return reviewText == otherTyped.reviewText &&
+        reviewDate == otherTyped.reviewDate &&
+        rating == otherTyped.rating &&
+        user == otherTyped.user;
   }
+
   @override
-  int get hashCode => Object.hashAll([reviewText.hashCode, reviewDate.hashCode, rating.hashCode, user.hashCode]);
-  
+  int get hashCode => Object.hashAll([
+        reviewText.hashCode,
+        reviewDate.hashCode,
+        rating.hashCode,
+        user.hashCode
+      ]);
 
   Map<String, dynamic> toJson() {
     Map<String, dynamic> json = {};
@@ -189,27 +220,25 @@ class GetMovieByIdMovieReviews {
 class GetMovieByIdMovieReviewsUser {
   final String id;
   final String username;
-  GetMovieByIdMovieReviewsUser.fromJson(dynamic json):
-  
-  id = nativeFromJson<String>(json['id']),
-  username = nativeFromJson<String>(json['username']);
+  GetMovieByIdMovieReviewsUser.fromJson(dynamic json)
+      : id = nativeFromJson<String>(json['id']),
+        username = nativeFromJson<String>(json['username']);
   @override
   bool operator ==(Object other) {
-    if(identical(this, other)) {
+    if (identical(this, other)) {
       return true;
     }
-    if(other.runtimeType != runtimeType) {
+    if (other.runtimeType != runtimeType) {
       return false;
     }
 
-    final GetMovieByIdMovieReviewsUser otherTyped = other as GetMovieByIdMovieReviewsUser;
-    return id == otherTyped.id && 
-    username == otherTyped.username;
-    
+    final GetMovieByIdMovieReviewsUser otherTyped =
+        other as GetMovieByIdMovieReviewsUser;
+    return id == otherTyped.id && username == otherTyped.username;
   }
+
   @override
   int get hashCode => Object.hashAll([id.hashCode, username.hashCode]);
-  
 
   Map<String, dynamic> toJson() {
     Map<String, dynamic> json = {};
@@ -227,25 +256,25 @@ class GetMovieByIdMovieReviewsUser {
 @immutable
 class GetMovieByIdData {
   final GetMovieByIdMovie? movie;
-  GetMovieByIdData.fromJson(dynamic json):
-  
-  movie = json['movie'] == null ? null : GetMovieByIdMovie.fromJson(json['movie']);
+  GetMovieByIdData.fromJson(dynamic json)
+      : movie = json['movie'] == null
+            ? null
+            : GetMovieByIdMovie.fromJson(json['movie']);
   @override
   bool operator ==(Object other) {
-    if(identical(this, other)) {
+    if (identical(this, other)) {
       return true;
     }
-    if(other.runtimeType != runtimeType) {
+    if (other.runtimeType != runtimeType) {
       return false;
     }
 
     final GetMovieByIdData otherTyped = other as GetMovieByIdData;
     return movie == otherTyped.movie;
-    
   }
+
   @override
   int get hashCode => movie.hashCode;
-  
 
   Map<String, dynamic> toJson() {
     Map<String, dynamic> json = {};
@@ -263,26 +292,25 @@ class GetMovieByIdData {
 @immutable
 class GetMovieByIdVariables {
   final String id;
-  @Deprecated('fromJson is deprecated for Variable classes as they are no longer required for deserialization.')
-  GetMovieByIdVariables.fromJson(Map<String, dynamic> json):
-  
-  id = nativeFromJson<String>(json['id']);
+  @Deprecated(
+      'fromJson is deprecated for Variable classes as they are no longer required for deserialization.')
+  GetMovieByIdVariables.fromJson(Map<String, dynamic> json)
+      : id = nativeFromJson<String>(json['id']);
   @override
   bool operator ==(Object other) {
-    if(identical(this, other)) {
+    if (identical(this, other)) {
       return true;
     }
-    if(other.runtimeType != runtimeType) {
+    if (other.runtimeType != runtimeType) {
       return false;
     }
 
     final GetMovieByIdVariables otherTyped = other as GetMovieByIdVariables;
     return id == otherTyped.id;
-    
   }
+
   @override
   int get hashCode => id.hashCode;
-  
 
   Map<String, dynamic> toJson() {
     Map<String, dynamic> json = {};
@@ -294,4 +322,3 @@ class GetMovieByIdVariables {
     required this.id,
   });
 }
-

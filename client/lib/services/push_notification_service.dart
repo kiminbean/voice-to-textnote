@@ -76,7 +76,8 @@ class PushNotificationService {
 
   /// 로컬 알림 설정 (Android 포그라운드 지원)
   Future<void> _setupLocalNotifications() async {
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidSettings =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
 
     const iosSettings = DarwinInitializationSettings(
       requestAlertPermission: true,

@@ -24,8 +24,7 @@ class SpeakerStat {
 
   factory SpeakerStat.fromJson(Map<String, dynamic> json) => SpeakerStat(
         speaker: json['speaker'] as String,
-        speakingTimeSeconds:
-            (json['speaking_time_seconds'] as num).toDouble(),
+        speakingTimeSeconds: (json['speaking_time_seconds'] as num).toDouble(),
         speakingRatio: (json['speaking_ratio'] as num).toDouble(),
         segmentCount: json['segment_count'] as int,
         wordCount: json['word_count'] as int,
@@ -86,7 +85,6 @@ class StatisticsApi {
 
   Future<StatisticsResponse> getStatistics(String taskId) async {
     final response = await _dio.get('/statistics/$taskId');
-    return StatisticsResponse.fromJson(
-        response.data as Map<String, dynamic>);
+    return StatisticsResponse.fromJson(response.data as Map<String, dynamic>);
   }
 }

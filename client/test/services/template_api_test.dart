@@ -52,7 +52,9 @@ void main() {
             'template_id': 'tmpl-001',
             'name': '표준_회의록.pdf',
             'format': 'pdf',
-            'structure': {'sections': ['개요', '결정사항']},
+            'structure': {
+              'sections': ['개요', '결정사항']
+            },
             'created_at': '2026-03-22T10:00:00.000Z',
           },
           statusCode: 201,
@@ -160,7 +162,9 @@ void main() {
             'template_id': 'tmpl-001',
             'name': '표준 회의록.pdf',
             'format': 'pdf',
-            'structure': {'sections': ['개요', '결정사항', '다음 단계']},
+            'structure': {
+              'sections': ['개요', '결정사항', '다음 단계']
+            },
             'created_at': '2026-03-22T10:00:00.000Z',
           },
           statusCode: 200,

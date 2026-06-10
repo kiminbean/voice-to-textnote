@@ -36,14 +36,14 @@ void main() {
     test('upload이 성공적으로 동작해야 함', () async {
       // Arrange: 성공 응답 모킹
       when(() => mockDio.post(
-        any(),
-        data: any(named: 'data'),
-        options: any(named: 'options'),
-      )).thenAnswer((_) async => Response(
-        data: {'task_id': 'stt-task-001', 'status': 'pending'},
-        statusCode: 200,
-        requestOptions: RequestOptions(path: ''),
-      ));
+            any(),
+            data: any(named: 'data'),
+            options: any(named: 'options'),
+          )).thenAnswer((_) async => Response(
+            data: {'task_id': 'stt-task-001', 'status': 'pending'},
+            statusCode: 200,
+            requestOptions: RequestOptions(path: ''),
+          ));
 
       // Act
       final result = await transcriptionApi.upload(testFile.path);
@@ -57,10 +57,14 @@ void main() {
     test('getStatus가 올바르게 동작해야 함', () async {
       // Arrange
       when(() => mockDio.get(any())).thenAnswer((_) async => Response(
-        data: {'task_id': 'stt-task-001', 'status': 'processing', 'progress': 50},
-        statusCode: 200,
-        requestOptions: RequestOptions(path: ''),
-      ));
+            data: {
+              'task_id': 'stt-task-001',
+              'status': 'processing',
+              'progress': 50
+            },
+            statusCode: 200,
+            requestOptions: RequestOptions(path: ''),
+          ));
 
       // Act
       final result = await transcriptionApi.getStatus('stt-task-001');
@@ -74,14 +78,14 @@ void main() {
     test('getResult가 올바르게 동작해야 함', () async {
       // Arrange
       when(() => mockDio.get(any())).thenAnswer((_) async => Response(
-        data: {
-          'task_id': 'stt-task-001',
-          'status': 'completed',
-          'text': '안녕하세요. 오늘 회의를 시작하겠습니다.',
-        },
-        statusCode: 200,
-        requestOptions: RequestOptions(path: ''),
-      ));
+            data: {
+              'task_id': 'stt-task-001',
+              'status': 'completed',
+              'text': '안녕하세요. 오늘 회의를 시작하겠습니다.',
+            },
+            statusCode: 200,
+            requestOptions: RequestOptions(path: ''),
+          ));
 
       // Act
       final result = await transcriptionApi.getResult('stt-task-001');
@@ -94,10 +98,10 @@ void main() {
     test('delete가 오류 없이 동작해야 함', () async {
       // Arrange
       when(() => mockDio.delete(any())).thenAnswer((_) async => Response(
-        data: null,
-        statusCode: 204,
-        requestOptions: RequestOptions(path: ''),
-      ));
+            data: null,
+            statusCode: 204,
+            requestOptions: RequestOptions(path: ''),
+          ));
 
       // Act & Assert: 예외 없이 완료되어야 함
       await expectLater(
@@ -110,10 +114,10 @@ void main() {
     test('업로드 후 서버 오류 시 DioException을 던져야 함', () async {
       // Arrange: 업로드 자체는 성공하되 서버가 오류 반환
       when(() => mockDio.post(
-        any(),
-        data: any(named: 'data'),
-        options: any(named: 'options'),
-      )).thenThrow(DioException(
+            any(),
+            data: any(named: 'data'),
+            options: any(named: 'options'),
+          )).thenThrow(DioException(
         requestOptions: RequestOptions(path: ''),
         message: '서버 오류',
         type: DioExceptionType.badResponse,

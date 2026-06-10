@@ -13,9 +13,13 @@ import 'package:voice_to_textnote/services/transcription_api.dart';
 
 // Mock 클래스 정의
 class MockTranscriptionApi extends Mock implements TranscriptionApi {}
+
 class MockDiarizationApi extends Mock implements DiarizationApi {}
+
 class MockMinutesApi extends Mock implements MinutesApi {}
+
 class MockSummaryApi extends Mock implements SummaryApi {}
+
 class MockHealthApi extends Mock implements HealthApi {}
 
 void main() {
@@ -61,38 +65,38 @@ void main() {
       when(() => mockSttApi.upload(any()))
           .thenAnswer((_) async => {'task_id': 'stt-001'});
 
-      when(() => mockSttApi.getStatus('stt-001')).thenAnswer((_) async =>
-          {'status': 'completed'});
+      when(() => mockSttApi.getStatus('stt-001'))
+          .thenAnswer((_) async => {'status': 'completed'});
 
-      when(() => mockSttApi.getResult('stt-001')).thenAnswer((_) async =>
-          {'task_id': 'stt-001', 'text': '테스트 텍스트'});
+      when(() => mockSttApi.getResult('stt-001'))
+          .thenAnswer((_) async => {'task_id': 'stt-001', 'text': '테스트 텍스트'});
 
       when(() => mockDiaApi.create('stt-001'))
           .thenAnswer((_) async => {'task_id': 'dia-001'});
 
-      when(() => mockDiaApi.getStatus('dia-001')).thenAnswer((_) async =>
-          {'status': 'completed'});
+      when(() => mockDiaApi.getStatus('dia-001'))
+          .thenAnswer((_) async => {'status': 'completed'});
 
-      when(() => mockDiaApi.getResult('dia-001')).thenAnswer((_) async =>
-          {'task_id': 'dia-001', 'segments': []});
+      when(() => mockDiaApi.getResult('dia-001'))
+          .thenAnswer((_) async => {'task_id': 'dia-001', 'segments': []});
 
       when(() => mockMinApi.create('dia-001'))
           .thenAnswer((_) async => {'task_id': 'min-001'});
 
-      when(() => mockMinApi.getStatus('min-001')).thenAnswer((_) async =>
-          {'status': 'completed'});
+      when(() => mockMinApi.getStatus('min-001'))
+          .thenAnswer((_) async => {'status': 'completed'});
 
-      when(() => mockMinApi.getResult('min-001')).thenAnswer((_) async =>
-          {'task_id': 'min-001', 'minutes': '회의록 내용'});
+      when(() => mockMinApi.getResult('min-001'))
+          .thenAnswer((_) async => {'task_id': 'min-001', 'minutes': '회의록 내용'});
 
       when(() => mockSumApi.create('min-001'))
           .thenAnswer((_) async => {'task_id': 'sum-001'});
 
-      when(() => mockSumApi.getStatus('sum-001')).thenAnswer((_) async =>
-          {'status': 'completed'});
+      when(() => mockSumApi.getStatus('sum-001'))
+          .thenAnswer((_) async => {'status': 'completed'});
 
-      when(() => mockSumApi.getResult('sum-001')).thenAnswer((_) async =>
-          {'task_id': 'sum-001', 'summary': 'AI 요약 내용'});
+      when(() => mockSumApi.getResult('sum-001')).thenAnswer(
+          (_) async => {'task_id': 'sum-001', 'summary': 'AI 요약 내용'});
 
       // Act
       await container

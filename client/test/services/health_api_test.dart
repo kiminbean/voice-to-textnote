@@ -21,10 +21,10 @@ void main() {
     test('check가 서버 정상 시 true를 반환해야 함', () async {
       // Arrange
       when(() => mockDio.get(any())).thenAnswer((_) async => Response(
-        data: {'status': 'healthy'},
-        statusCode: 200,
-        requestOptions: RequestOptions(path: ''),
-      ));
+            data: {'status': 'healthy'},
+            statusCode: 200,
+            requestOptions: RequestOptions(path: ''),
+          ));
 
       // Act
       final result = await healthApi.check();
@@ -52,10 +52,10 @@ void main() {
     test('check가 500 응답 시 false를 반환해야 함', () async {
       // Arrange
       when(() => mockDio.get(any())).thenAnswer((_) async => Response(
-        data: {'status': 'error'},
-        statusCode: 500,
-        requestOptions: RequestOptions(path: ''),
-      ));
+            data: {'status': 'error'},
+            statusCode: 500,
+            requestOptions: RequestOptions(path: ''),
+          ));
 
       // Act
       final result = await healthApi.check();

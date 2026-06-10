@@ -16,23 +16,26 @@ class VocabularyListNotifier extends AsyncNotifier<List<Vocabulary>> {
   Future<void> createVocabulary(String name, List<String> words) async {
     final api = ref.read(vocabularyApiProvider);
     final newVocabulary = await api.createVocabulary(name, words);
-    
+
     state = state.whenData((vocabularies) => [newVocabulary, ...vocabularies]);
   }
 
-  Future<void> updateVocabulary(String id, String name, List<String> words) async {
+  Future<void> updateVocabulary(
+      String id, String name, List<String> words) async {
     final api = ref.read(vocabularyApiProvider);
     final updatedVocabulary = await api.updateVocabulary(id, name, words);
-    
+
     state = state.whenData((vocabularies) {
-      return vocabularies.map((v) => v.id == id ? updatedVocabulary : v).toList();
+      return vocabularies
+          .map((v) => v.id == id ? updatedVocabulary : v)
+          .toList();
     });
   }
 
   Future<void> deleteVocabulary(String id) async {
     final api = ref.read(vocabularyApiProvider);
     await api.deleteVocabulary(id);
-    
+
     state = state.whenData((vocabularies) {
       return vocabularies.where((v) => v.id != id).toList();
     });

@@ -22,7 +22,9 @@ class SpeakerApi {
 
     final res = await _dio.get('/speakers', queryParameters: params);
     final items = res.data['items'] as List<dynamic>;
-    return items.map((e) => SpeakerProfile.fromJson(e as Map<String, dynamic>)).toList();
+    return items
+        .map((e) => SpeakerProfile.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   /// 화자 프로필 생성
