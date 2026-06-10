@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-06-07T14:27:24.589Z",
+  "updatedAt": "2026-06-10T01:20:47.773Z",
   "missions": [
     {
       "id": "session:4a4d4748-68c9-4bbe-9b6e-b1298205579f:none",
@@ -230,6 +230,82 @@
           "agent": "Explore:adebdb7",
           "detail": "completed",
           "sourceKey": "session-stop:adebdb73845d12a52"
+        }
+      ]
+    },
+    {
+      "id": "session:d6b18068-f6c8-4a03-8c3e-d66be4336f27:none",
+      "source": "session",
+      "name": "none",
+      "objective": "Session mission",
+      "createdAt": "2026-06-09T15:46:18.238Z",
+      "updatedAt": "2026-06-10T01:20:47.773Z",
+      "status": "running",
+      "workerCount": 3,
+      "taskCounts": {
+        "total": 3,
+        "pending": 0,
+        "blocked": 0,
+        "inProgress": 1,
+        "completed": 2,
+        "failed": 0
+      },
+      "agents": [
+        {
+          "name": "Explore:ab97824",
+          "role": "Explore",
+          "ownership": "ab97824a83afed0d2",
+          "status": "done",
+          "currentStep": null,
+          "latestUpdate": "completed",
+          "completedSummary": null,
+          "updatedAt": "2026-06-09T15:50:12.715Z"
+        },
+        {
+          "name": "manager-spec:a7a7b9f",
+          "role": "manager-spec",
+          "ownership": "a7a7b9f409401ab85",
+          "status": "done",
+          "currentStep": null,
+          "latestUpdate": "completed",
+          "completedSummary": null,
+          "updatedAt": "2026-06-09T15:58:18.943Z"
+        },
+        {
+          "name": "manager-git:a9916a7",
+          "role": "manager-git",
+          "ownership": "a9916a790b40be783",
+          "status": "running",
+          "currentStep": null,
+          "latestUpdate": null,
+          "completedSummary": null,
+          "updatedAt": "2026-06-10T01:20:47.773Z"
+        }
+      ],
+      "timeline": [
+        {
+          "id": "session-start:a7a7b9f409401ab85:2026-06-09T15:50:59.007Z",
+          "at": "2026-06-09T15:50:59.007Z",
+          "kind": "update",
+          "agent": "manager-spec:a7a7b9f",
+          "detail": "started manager-spec:a7a7b9f",
+          "sourceKey": "session-start:a7a7b9f409401ab85"
+        },
+        {
+          "id": "session-stop:a7a7b9f409401ab85:2026-06-09T15:58:18.943Z",
+          "at": "2026-06-09T15:58:18.943Z",
+          "kind": "completion",
+          "agent": "manager-spec:a7a7b9f",
+          "detail": "completed",
+          "sourceKey": "session-stop:a7a7b9f409401ab85"
+        },
+        {
+          "id": "session-start:a9916a790b40be783:2026-06-10T01:20:47.773Z",
+          "at": "2026-06-10T01:20:47.773Z",
+          "kind": "update",
+          "agent": "manager-git:a9916a7",
+          "detail": "started manager-git:a9916a7",
+          "sourceKey": "session-start:a9916a790b40be783"
         }
       ]
     }
