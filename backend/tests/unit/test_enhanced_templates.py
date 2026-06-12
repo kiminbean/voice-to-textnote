@@ -9,6 +9,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from backend.app.api.v1.templates.enhanced import MeetingType, PREDEFINED_TEMPLATES
+from backend.app.dependencies import get_db_session, get_redis_client
 from backend.main import app
 
 client = TestClient(app)
@@ -61,7 +62,7 @@ class TestPredefinedTemplates:
             assert "template_id" in template
             assert "name" in template
             assert "meeting_type" in template
-            assert "meeting_type" in [mt.value for mt in MeetingType]
+            assert template["meeting_type"] in [mt.value for mt in MeetingType]
     
     def test_get_predefined_templates_filtered(self):
         """특정 회의 유형의 템플릿 필터링 테스트"""
@@ -133,11 +134,16 @@ class TestTemplateGeneration:
             "include_participants": True,
         }
         
-        response = client.post(
-            "/api/v1/templates/generate",
-            json=request_data,
-            headers={"X-API-Key": "test-api-key"}
-        )
+        app.dependency_overrides[get_redis_client] = lambda: mock_redis
+        app.dependency_overrides[get_db_session] = lambda: mock_db_session
+        try:
+            response = client.post(
+                "/api/v1/templates/generate",
+                json=request_data,
+                headers={"X-API-Key": "test-api-key"}
+            )
+        finally:
+            app.dependency_overrides.clear()
         
         # 테스트 결과 검증
         if response.status_code == 422:
@@ -162,7 +168,7 @@ class TestTemplateGeneration:
             
             # 템플릿 정보 검증
             template_info = structured["template_info"]
-            assert template_info["template_id"] == "general"
+            assert template_info["template_id"] == "general-meeting"
             assert template_info["meeting_type"] == "general"
             assert "applied_at" in template_info
     
@@ -183,7 +189,7 @@ class TestTemplateGeneration:
         # 잘못된 템플릿에 대한 에러 응답 검증
         assert response.status_code == 422
         data = response.json()
-        assert "지원하지 않는 템플릿" in data["detail"]
+        assert "지원하지 않는 템플릿" in data["message"]
 
 
 class TestTemplateHelperFunctions:

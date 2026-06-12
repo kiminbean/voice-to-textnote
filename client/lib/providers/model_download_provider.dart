@@ -88,6 +88,7 @@ class DownloadStatus {
 /// @MX:SPEC: REQ-MOBILE-010
 class ModelDownloadNotifier extends Notifier<DownloadStatus> {
   CancelToken? _cancelToken;
+  _DownloadRequest? _lastRequest;
   static const int maxRetries = 3;
 
   @override
@@ -105,24 +106,45 @@ class ModelDownloadNotifier extends Notifier<DownloadStatus> {
     required String url,
     required String savePath,
     required String expectedChecksum,
+    int? requiredBytes,
     bool isWifi = true,
   }) async {
+    _lastRequest = _DownloadRequest(
+      url: url,
+      savePath: savePath,
+      expectedChecksum: expectedChecksum,
+      requiredBytes: requiredBytes,
+      isWifi: isWifi,
+    );
+    _cancelToken = CancelToken();
+
     // checking 상태로 변경
     state = state.copyWith(
       state: DownloadState.checking,
       isWifi: isWifi,
+      errorMessage: null,
     );
 
     try {
-      // 저장소 공간 확인 (TODO: 실제 구현 필요)
-      // await hasSufficientStorage();
+      final service = ref.read(modelDownloadServiceProvider);
+      if (requiredBytes != null &&
+          !await service.hasSufficientStorage(requiredBytes)) {
+        throw StorageException('저장 공간이 부족합니다');
+      }
 
       // downloading 상태로 변경
       state = state.copyWith(state: DownloadState.downloading);
 
-      // TODO: 실제 다운로드 로직 구현 필요
-      // 여기서는 시뮬레이션만 수행
-      await Future.delayed(const Duration(milliseconds: 100));
+      await for (final progress in service.downloadWithResume(
+        url: url,
+        savePath: savePath,
+        cancelToken: _cancelToken,
+      )) {
+        state = state.copyWith(
+          state: DownloadState.downloading,
+          progress: progress,
+        );
+      }
 
       // verifying 상태로 변경
       state = state.copyWith(
@@ -130,11 +152,15 @@ class ModelDownloadNotifier extends Notifier<DownloadStatus> {
         progress: 1.0,
       );
 
-      // TODO: 체크섬 검증 구현 필요
-      await Future.delayed(const Duration(milliseconds: 50));
+      await service.verifyChecksum(savePath, expectedChecksum);
 
       // completed 상태로 변경
-      state = const DownloadStatus(state: DownloadState.completed);
+      state = DownloadStatus(
+        state: DownloadState.completed,
+        progress: 1.0,
+        retryCount: state.retryCount,
+        isWifi: state.isWifi,
+      );
     } catch (e) {
       // failed 상태로 변경
       state = DownloadStatus(
@@ -147,19 +173,22 @@ class ModelDownloadNotifier extends Notifier<DownloadStatus> {
 
   /// 재시도
   Future<void> retry() async {
-    if (state.retryCount >= maxRetries) {
+    final request = _lastRequest;
+    if (request == null || state.retryCount >= maxRetries) {
       return;
     }
 
-    state = state.copyWith(retryCount: state.retryCount + 1);
+    final retryCount = state.retryCount + 1;
+    state = state.copyWith(retryCount: retryCount);
 
-    // TODO: 이전 다운로드 파라미터로 재시도
-    // 현재는 단순 시뮬레이션
     await startDownload(
-      url: 'https://example.com/model.bin',
-      savePath: '/tmp/model.bin',
-      expectedChecksum: 'abc123',
+      url: request.url,
+      savePath: request.savePath,
+      expectedChecksum: request.expectedChecksum,
+      requiredBytes: request.requiredBytes,
+      isWifi: request.isWifi,
     );
+    state = state.copyWith(retryCount: retryCount);
   }
 
   /// 취소
@@ -173,6 +202,26 @@ class ModelDownloadNotifier extends Notifier<DownloadStatus> {
     state = DownloadStatus.initial();
   }
 }
+
+class _DownloadRequest {
+  final String url;
+  final String savePath;
+  final String expectedChecksum;
+  final int? requiredBytes;
+  final bool isWifi;
+
+  const _DownloadRequest({
+    required this.url,
+    required this.savePath,
+    required this.expectedChecksum,
+    required this.requiredBytes,
+    required this.isWifi,
+  });
+}
+
+final modelDownloadServiceProvider = Provider<ModelDownloadService>((ref) {
+  return ModelDownloadService(Dio());
+});
 
 /// 다운로드 상태 Provider
 ///

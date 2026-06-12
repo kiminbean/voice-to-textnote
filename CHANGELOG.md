@@ -4,13 +4,33 @@
 
 ## [Unreleased]
 
+### Added
+
+- **모바일 오프라인 STT 하드닝 일부 구현 (SPEC-MOBILE-003 T-011~T-019 부분)**:
+  - `client/lib/services/memory_checker.dart` 추가: macOS `vm_stat`, Linux `/proc/meminfo`, 기타 플랫폼 RSS fallback 기반 메모리 가용성 확인
+  - `OfflineSttService`에 5분 초과 WAV의 30초 PCM 청크 분할, WAV 헤더 생성, 순차 처리, 세그먼트 offset 병합, 임시 청크 삭제 추가
+  - `ModelDownloadService`에 CDN fallback URL, `.part` 이어받기, SHA-256 검증 유지, 저장공간 2배+64MB buffer 검사 추가
+  - `ModelDownloadNotifier`가 시뮬레이션 대신 실제 `ModelDownloadService` 다운로드/검증/저장공간 흐름을 사용
+  - 모델 다운로드 service/provider 테스트를 실제 서비스 흐름 검증 형태로 보강
+
+### Changed
+
+- 모바일 클라이언트 문서를 Flutter 기본 템플릿에서 현재 앱 구조, 오프라인 STT 흐름, 모델 다운로드 흐름, 알려진 제약 중심으로 갱신
+
+### Known Limitations
+
+- `ModelDownloadDialog`에는 아직 샘플 URL/경로/체크섬이 남아 있어 릴리스 전 실제 모델 메타데이터 주입이 필요
+- iOS/Android 저장공간과 가용 메모리는 네이티브 Platform Channel이 아니라 Dart fallback 기준
+- `WhisperSttServiceImpl.progressStream`은 아직 빈 스트림이며, 사용자 진행률은 `OfflineSttService`의 청크 단위 진행률로 제공
+- 현재 sandbox에서는 `.git/index.lock` 생성 권한 제한으로 커밋을 생성하지 못했고, Flutter SDK cache 쓰기/네트워크 제한으로 전체 테스트 실행이 차단됨
+
 ## [0.1.0] - 2026-06-06
 
 ### Added
 
 - **감성 분석 파이프라인 (ebb127f)**: 회의 음성 감성 분석 기능
   - `backend/pipeline/sentiment_analyzer.py`: 감성 분석 파이프라인
-  - `backend/ml/action_items_engine.py`: 고급 액션 아이템 추출 (Claude API 연동)
+  - `backend/ml/action_items_engine.py`: 고급 액션 아이템 추출 (OpenAI 호환 LLM API 연동)
   - `backend/services/sentiment_service.py`, `action_item_service.py`: 비즈니스 로직
   - 관련 API 엔드포인트, 스키마, 워커 태스크
 

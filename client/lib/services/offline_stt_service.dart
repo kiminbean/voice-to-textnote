@@ -1,7 +1,10 @@
 import 'dart:async';
 import 'dart:developer' as developer;
 import 'dart:io';
+import 'dart:math' as math;
+import 'dart:typed_data';
 import 'package:voice_to_textnote/models/transcription_result.dart';
+import 'package:voice_to_textnote/services/memory_checker.dart';
 import 'package:voice_to_textnote/services/platform_stt_service.dart';
 
 /// @MX:SPEC:REQ-MOBILE-008-01, REQ-MOBILE-008-05, REQ-MOBILE-008-06, REQ-MOBILE-008-07
@@ -18,6 +21,15 @@ class OfflineSttService {
 
   /// 청크 크기 (30초)
   static const Duration _chunkSize = Duration(seconds: 30);
+
+  /// WAV 헤더 크기 (PCM 데이터 시작 오프셋)
+  static const int _wavHeaderBytes = 44;
+
+  /// 16kHz, mono, 16-bit PCM 기준 초당 바이트 수
+  static const int _bytesPerSecond = 16000 * 1 * 2;
+
+  /// 30초 청크 PCM 바이트 수
+  static const int _chunkBytes = _bytesPerSecond * 30;
 
   OfflineSttService(this._platformService);
 
@@ -36,7 +48,10 @@ class OfflineSttService {
     }
 
     final result = await _platformService.transcribe(wavPath);
-    return result.copyWith(offline: true);
+    return result.copyWith(
+      offline: true,
+      engineInfo: _appendMemoryInfo(result.engineInfo),
+    );
   }
 
   /// WAV 파일을 청크 분할하여 텍스트로 변환 (진행률 포함)
@@ -84,10 +99,11 @@ class OfflineSttService {
       return;
     }
 
-    // 5분 초과 시 청크 분할 처리
-    final chunkCount =
-        (estimatedDuration.inSeconds / _chunkSize.inSeconds).ceil();
+    // 5분 초과 시 WAV PCM 데이터를 30초 단위 파일로 실제 분할 처리
+    final pcmSize = math.max(0, fileSize - _wavHeaderBytes);
+    final chunkCount = math.max(1, (pcmSize / _chunkBytes).ceil());
     final results = <TranscriptionResult>[];
+    final segments = <TranscriptionSegment>[];
 
     for (int i = 0; i < chunkCount; i++) {
       // 진행률 업데이트
@@ -109,10 +125,17 @@ class OfflineSttService {
         throw Exception('메모리 부족으로 처리 중단됨');
       }
 
-      // 청크 처리 (시뮬레이션: 실제로는 청크 분할 필요)
+      File? chunkFile;
       try {
-        final result = await transcribe(wavPath);
+        chunkFile = await _createChunkFile(file, i, _chunkBytes);
+        final result = await transcribe(chunkFile.path);
         results.add(result);
+        segments.addAll(
+          _offsetSegments(
+            result.segments,
+            Duration(seconds: i * _chunkSize.inSeconds),
+          ),
+        );
       } catch (e) {
         yield TranscriptionProgress(
           progress: progress,
@@ -121,13 +144,18 @@ class OfflineSttService {
           error: e.toString(),
         );
         rethrow;
+      } finally {
+        if (chunkFile != null) {
+          await _cleanupChunkFile(chunkFile);
+        }
       }
     }
 
-    // 최종 결과 병합 (시뮬레이션: 첫 번째 결과 반환)
+    // 최종 결과 병합
     final finalResult = results.isNotEmpty
         ? results.first.copyWith(
             text: results.map((r) => r.text).join(' '),
+            segments: segments,
           )
         : TranscriptionResult(
             text: '',
@@ -135,7 +163,7 @@ class OfflineSttService {
             language: 'en',
             offline: true,
             createdAt: DateTime.now(),
-            engineInfo: 'whisper-base',
+            engineInfo: 'whisper-base; ${MemoryChecker.engineInfoSuffix()}',
           );
 
     yield TranscriptionProgress(
@@ -159,22 +187,122 @@ class OfflineSttService {
     }
   }
 
-  /// 파일 크기에서 오디오 길이 추정 (시뮬레이션)
+  /// 파일 크기에서 오디오 길이 추정
   ///
   /// 16kHz, mono, 16-bit PCM 기준: 1초당 약 32KB
   Duration _estimateDuration(int fileSize) {
-    const bytesPerSecond = 32000; // 16kHz * 1 channel * 2 bytes
-    final seconds = fileSize / bytesPerSecond;
+    final seconds = math.max(0, fileSize - _wavHeaderBytes) / _bytesPerSecond;
     return Duration(seconds: seconds.round());
   }
 
-  /// 메모리 가용 여부 확인 (시뮬레이션)
+  /// 메모리 가용 여부 확인
   ///
-  /// 실제 구현에서는 플랫폰별 메모리 정보 조회 필요
+  /// TODO(SPEC-MOBILE-003): 향후 Platform Channel에서 iOS/Android 메모리 API를 연결합니다.
   Future<bool> _hasSufficientMemory() async {
-    // 시뮬레이션: 항상 true 반환
-    // 실제 구현에서는 Platform Channel 통해 메모리 확인
-    return true;
+    return MemoryChecker.hasSufficientMemory();
+  }
+
+  String _appendMemoryInfo(String? engineInfo) {
+    final baseInfo = engineInfo ?? 'whisper-base';
+    return '$baseInfo; ${MemoryChecker.engineInfoSuffix()}';
+  }
+
+  /// WAV 파일에서 지정된 PCM 청크를 잘라 새 WAV 파일로 생성
+  Future<File> _createChunkFile(
+    File wavFile,
+    int chunkIndex,
+    int chunkBytes,
+  ) async {
+    final wavLength = await wavFile.length();
+    if (wavLength <= _wavHeaderBytes) {
+      throw Exception('WAV 파일에 PCM 데이터가 없습니다');
+    }
+
+    final startByte = chunkIndex * chunkBytes;
+    final pcmLength = wavLength - _wavHeaderBytes;
+
+    if (startByte >= pcmLength) {
+      throw Exception('청크 인덱스가 범위를 벗어났습니다: $chunkIndex');
+    }
+
+    final bytesToRead = math.min(chunkBytes, pcmLength - startByte);
+    final input = await wavFile.open();
+    late final Uint8List chunkPcm;
+    try {
+      await input.setPosition(_wavHeaderBytes + startByte);
+      chunkPcm = await input.read(bytesToRead);
+    } finally {
+      await input.close();
+    }
+
+    final chunkWavHeader = _generateWavHeader(chunkPcm.length);
+
+    final tempDir = await Directory.systemTemp.createTemp('stt_chunk_');
+    final chunkFile = File('${tempDir.path}/chunk_$chunkIndex.wav');
+    await chunkFile.writeAsBytes([...chunkWavHeader, ...chunkPcm]);
+
+    return chunkFile;
+  }
+
+  /// 16kHz mono 16-bit PCM용 WAV 헤더 생성
+  Uint8List _generateWavHeader(int pcmDataLength) {
+    const channels = 1;
+    const sampleRate = 16000;
+    const bitsPerSample = 16;
+    const byteRate = sampleRate * channels * bitsPerSample ~/ 8;
+    const blockAlign = channels * bitsPerSample ~/ 8;
+    final totalDataLength = pcmDataLength + 36;
+
+    final header = ByteData(_wavHeaderBytes);
+    _writeAscii(header, 0, 'RIFF');
+    header.setUint32(4, totalDataLength, Endian.little);
+    _writeAscii(header, 8, 'WAVE');
+    _writeAscii(header, 12, 'fmt ');
+    header.setUint32(16, 16, Endian.little);
+    header.setUint16(20, 1, Endian.little);
+    header.setUint16(22, channels, Endian.little);
+    header.setUint32(24, sampleRate, Endian.little);
+    header.setUint32(28, byteRate, Endian.little);
+    header.setUint16(32, blockAlign, Endian.little);
+    header.setUint16(34, bitsPerSample, Endian.little);
+    _writeAscii(header, 36, 'data');
+    header.setUint32(40, pcmDataLength, Endian.little);
+    return header.buffer.asUint8List();
+  }
+
+  void _writeAscii(ByteData data, int offset, String value) {
+    for (int i = 0; i < value.length; i++) {
+      data.setUint8(offset + i, value.codeUnitAt(i));
+    }
+  }
+
+  List<TranscriptionSegment> _offsetSegments(
+    List<TranscriptionSegment> segments,
+    Duration offset,
+  ) {
+    return segments
+        .map(
+          (segment) => segment.copyWith(
+            startTime: segment.startTime + offset,
+            endTime: segment.endTime + offset,
+          ),
+        )
+        .toList();
+  }
+
+  /// 임시 청크 파일과 부모 임시 디렉터리 정리
+  Future<void> _cleanupChunkFile(File chunkFile) async {
+    try {
+      if (await chunkFile.exists()) {
+        await chunkFile.delete();
+      }
+      final parent = chunkFile.parent;
+      if (await parent.exists()) {
+        await parent.delete();
+      }
+    } catch (e) {
+      developer.log('청크 WAV 파일 정리 실패', error: e);
+    }
   }
 
   /// WAV 파일 정리

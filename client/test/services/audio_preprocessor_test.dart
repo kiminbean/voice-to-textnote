@@ -2,6 +2,80 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:voice_to_textnote/services/audio_preprocessor.dart';
 
+Future<String> _mockSuccessfulConverter(
+  String inputPath,
+  String outputPath, {
+  int sampleRate = 16000,
+  int channels = 1,
+  int bitDepth = 16,
+}) async {
+  final outputFile = File(outputPath);
+  await outputFile.create(recursive: true);
+  await outputFile.writeAsBytes(
+    _buildWavHeader(
+      sampleRate: sampleRate,
+      channels: channels,
+      bitDepth: bitDepth,
+      dataSize: 0,
+    ),
+  );
+  return outputPath;
+}
+
+Future<String> _mockFailingConverter(
+  String inputPath,
+  String outputPath, {
+  int sampleRate = 16000,
+  int channels = 1,
+  int bitDepth = 16,
+}) async {
+  await File(outputPath).writeAsBytes([0x00], flush: true);
+  throw const FormatException('mock conversion failed');
+}
+
+List<int> _buildWavHeader({
+  required int sampleRate,
+  required int channels,
+  required int bitDepth,
+  required int dataSize,
+}) {
+  final header = List<int>.filled(44, 0);
+  final byteRate = sampleRate * channels * bitDepth ~/ 8;
+  final blockAlign = channels * bitDepth ~/ 8;
+
+  void writeAscii(int offset, String value) {
+    header.setRange(offset, offset + value.length, value.codeUnits);
+  }
+
+  void writeUint16LE(int offset, int value) {
+    header[offset] = value & 0xff;
+    header[offset + 1] = (value >> 8) & 0xff;
+  }
+
+  void writeUint32LE(int offset, int value) {
+    header[offset] = value & 0xff;
+    header[offset + 1] = (value >> 8) & 0xff;
+    header[offset + 2] = (value >> 16) & 0xff;
+    header[offset + 3] = (value >> 24) & 0xff;
+  }
+
+  writeAscii(0, 'RIFF');
+  writeUint32LE(4, 36 + dataSize);
+  writeAscii(8, 'WAVE');
+  writeAscii(12, 'fmt ');
+  writeUint32LE(16, 16); // PCM fmt chunk size
+  writeUint16LE(20, 1); // PCM audio format
+  writeUint16LE(22, channels);
+  writeUint32LE(24, sampleRate);
+  writeUint32LE(28, byteRate);
+  writeUint16LE(32, blockAlign);
+  writeUint16LE(34, bitDepth);
+  writeAscii(36, 'data');
+  writeUint32LE(40, dataSize);
+
+  return header;
+}
+
 void main() {
   group('AudioPreprocessor', () {
     late AudioPreprocessor preprocessor;
@@ -38,6 +112,10 @@ void main() {
       });
 
       test('M4A 파일을 16kHz mono WAV로 변환', () async {
+        final preprocessor = AudioPreprocessor(
+          converter: _mockSuccessfulConverter,
+        );
+
         // Given: 테스트용 M4A 파일 생성 (시뮬레이션)
         final testFile = File('$testAssetsPath/test.m4a');
         await testFile.create(recursive: true);
@@ -55,6 +133,10 @@ void main() {
         final bytes = await result.readAsBytes();
         expect(bytes.sublist(0, 4), [0x52, 0x49, 0x46, 0x46]); // "RIFF"
         expect(bytes.sublist(8, 12), [0x57, 0x41, 0x56, 0x45]); // "WAVE"
+        expect(bytes.sublist(12, 16), [0x66, 0x6d, 0x74, 0x20]); // "fmt "
+        expect(bytes.sublist(24, 28), [0x80, 0x3e, 0x00, 0x00]); // 16kHz
+        expect(bytes.sublist(22, 24), [0x01, 0x00]); // mono
+        expect(bytes.sublist(34, 36), [0x10, 0x00]); // 16-bit
       });
 
       test('이미 WAV 파일일 때 복사만 수행', () async {
@@ -70,10 +152,25 @@ void main() {
         expect(result.path, equals(testFile.path));
       });
 
+      test('빈 파일(0 bytes) 입력 시 FormatException 발생', () async {
+        // Given: 비어있는 M4A 파일 생성
+        final testFile = File('$testAssetsPath/empty.m4a');
+        await testFile.create(recursive: true);
+
+        // When & Then: 변환 전 입력 검증에서 실패
+        await expectLater(
+          () => preprocessor.convertToWav(testFile.path),
+          throwsA(isA<FormatException>()),
+        );
+      });
+
       test('변환 실패 시 임시 파일 정리', () async {
+        final preprocessor = AudioPreprocessor(converter: _mockFailingConverter);
+
         // Given: 손상된 파일
         final testFile = File('$testAssetsPath/corrupted.m4a');
         await testFile.create(recursive: true);
+        await testFile.writeAsBytes([0x00, 0x01, 0x02]);
 
         // When & Then: 변환 실패 시 임시 파일 존재하지 않음
         try {
@@ -87,6 +184,10 @@ void main() {
       });
 
       test('변환 완료 후 원본 M4A 파일 유지', () async {
+        final preprocessor = AudioPreprocessor(
+          converter: _mockSuccessfulConverter,
+        );
+
         // Given: M4A 파일 생성
         final testFile = File('$testAssetsPath/test.m4a');
         await testFile.create(recursive: true);

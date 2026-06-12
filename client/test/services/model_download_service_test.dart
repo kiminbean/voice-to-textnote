@@ -1,11 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:dio/dio.dart';
-import 'package:path_provider/path_provider.dart';
+import 'package:flutter/services.dart';
 import 'package:crypto/crypto.dart';
 import 'dart:io';
 import 'package:voice_to_textnote/services/model_download_service.dart'
-    show ModelDownloadService, ModelIntegrityException, StorageException;
+    show ModelDownloadService, ModelIntegrityException;
 
 // Mock classes
 class MockDio extends Mock implements Dio {}
@@ -25,13 +25,32 @@ void main() {
     setUp(() {
       mockDio = MockDio();
       service = ModelDownloadService(mockDio);
+
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+        const MethodChannel('plugins.flutter.io/path_provider'),
+        (MethodCall methodCall) async {
+          if (methodCall.method == 'getApplicationDocumentsDirectory') {
+            return Directory.systemTemp.path;
+          }
+          return null;
+        },
+      );
+    });
+
+    tearDown(() {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+        const MethodChannel('plugins.flutter.io/path_provider'),
+        null,
+      );
     });
 
     group('downloadModel', () {
       test('성공적인 다운로드는 progress를 emit하고 완료되어야 함', () async {
         // Arrange
         const url = 'https://example.com/model.bin';
-        final savePath = '/tmp/model.bin';
+        const savePath = '/tmp/model.bin';
         final progressValues = <double>[];
 
         when(() => mockDio.download(
@@ -39,6 +58,7 @@ void main() {
               any(),
               onReceiveProgress: any(named: 'onReceiveProgress'),
               cancelToken: any(named: 'cancelToken'),
+              options: any(named: 'options'),
             )).thenAnswer((invocation) async {
           final onProgress = invocation.namedArguments[#onReceiveProgress]
               as Function(int, int)?;
@@ -69,7 +89,7 @@ void main() {
       test('다운로드 실패 시 예외를 throw해야 함', () async {
         // Arrange
         const url = 'https://example.com/model.bin';
-        final savePath = '/tmp/model.bin';
+        const savePath = '/tmp/model.bin';
 
         when(() => mockDio.download(
               any(),
@@ -93,7 +113,7 @@ void main() {
       test('CancelToken으로 다운로드 취소가 가능해야 함', () async {
         // Arrange
         const url = 'https://example.com/model.bin';
-        final savePath = '/tmp/model.bin';
+        const savePath = '/tmp/model.bin';
         final cancelToken = MockCancelToken();
 
         when(() => mockDio.download(
@@ -233,6 +253,7 @@ void main() {
               any(),
               onReceiveProgress: any(named: 'onReceiveProgress'),
               cancelToken: any(named: 'cancelToken'),
+              options: any(named: 'options'),
             )).thenAnswer((invocation) async {
           // Mock download immediately completes
           final onProgress = invocation.namedArguments[#onReceiveProgress]
@@ -272,6 +293,7 @@ void main() {
               any(),
               onReceiveProgress: any(named: 'onReceiveProgress'),
               cancelToken: any(named: 'cancelToken'),
+              options: any(named: 'options'),
             )).thenAnswer((invocation) async {
           // Mock download immediately completes
           final onProgress = invocation.namedArguments[#onReceiveProgress]
@@ -310,24 +332,52 @@ void main() {
       test('저장 공간이 부족하면 false를 반환해야 함', () async {
         // Arrange
         const requiredBytes = 100 * 1024 * 1024; // 100MB
+        final lowStorageService = ModelDownloadService(
+          mockDio,
+          availableBytesProvider: (_) async => 128 * 1024 * 1024,
+        );
 
         // Act
-        final result = await service.hasSufficientStorage(requiredBytes);
+        final result = await lowStorageService.hasSufficientStorage(
+          requiredBytes,
+        );
 
-        // Assert - 실제 구현에서는 파일 시스템 공간 확인 필요
-        // 테스트에서는 항상 true 반환을 가정 (안전한 기본값)
-        expect(result, isTrue);
+        // Assert
+        expect(result, isFalse);
       });
 
       test('저장 공간이 충분하면 true를 반환해야 함', () async {
         // Arrange
         const requiredBytes = 1024 * 1024; // 1MB
+        final highStorageService = ModelDownloadService(
+          mockDio,
+          availableBytesProvider: (_) async => 256 * 1024 * 1024,
+        );
 
         // Act
-        final result = await service.hasSufficientStorage(requiredBytes);
+        final result = await highStorageService.hasSufficientStorage(
+          requiredBytes,
+        );
 
         // Assert
         expect(result, isTrue);
+      });
+    });
+
+    group('resolveDownloadUrl', () {
+      test('HTTPS URL이 없으면 모델 CDN URL을 반환해야 함', () {
+        final url = service.resolveDownloadUrl(modelId: 'whisper-base');
+
+        expect(
+          url,
+          equals('${ModelDownloadService.defaultCdnBaseUrl}/whisper-base.bin'),
+        );
+      });
+
+      test('HTTPS URL이 있으면 그대로 사용해야 함', () {
+        const url = 'https://cdn.example.com/custom.bin';
+
+        expect(service.resolveDownloadUrl(url: url), equals(url));
       });
     });
 
@@ -335,8 +385,7 @@ void main() {
       test('.part 파일이 없으면 새로운 다운로드를 시작해야 함', () async {
         // Arrange
         const url = 'https://example.com/model.bin';
-        final savePath = '/tmp/model.bin';
-        final partPath = '$savePath.part';
+        const savePath = '/tmp/model.bin';
         final progressValues = <double>[];
 
         when(() => mockDio.download(
@@ -371,8 +420,8 @@ void main() {
       test('.part 파일이 있으면 이어서 다운로드해야 함', () async {
         // Arrange
         const url = 'https://example.com/model.bin';
-        final savePath = '/tmp/model_resume.bin';
-        final partPath = '$savePath.part';
+        const savePath = '/tmp/model_resume.bin';
+        const partPath = '$savePath.part';
 
         // Create partial file
         final partFile = File(partPath);
@@ -423,8 +472,8 @@ void main() {
       test('완료된 다운로드는 .part 파일을 제거해야 함', () async {
         // Arrange
         const url = 'https://example.com/model.bin';
-        final savePath = '/tmp/model_complete.bin';
-        final partPath = '$savePath.part';
+        const savePath = '/tmp/model_complete.bin';
+        const partPath = '$savePath.part';
 
         when(() => mockDio.download(
               any(),

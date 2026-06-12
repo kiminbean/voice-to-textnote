@@ -55,9 +55,11 @@ dependencies:
   firebase_messaging: ^15.1.0
   flutter_local_notifications: ^18.0.0
   audio_session: ^0.1.21
+  audio_decoder: ^0.8.1
   permission_handler: ^11.3.0
   url_launcher: ^6.3.0
   crypto: ^3.0.0
+  whisper_ggml_plus: ^1.5.2
 
 dev_dependencies:
   flutter_test:

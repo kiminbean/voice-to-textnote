@@ -17,16 +17,19 @@ AI 증강 기능:
 
 from __future__ import annotations
 
+import asyncio
 import json
 import tempfile
 import wave
 from dataclasses import dataclass
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import numpy as np
-from fastapi import APIRouter, File, Form, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
+from starlette.responses import StreamingResponse
 from starlette.background import BackgroundTask
 
 from backend.app.config import settings
@@ -39,36 +42,53 @@ from backend.app.errors import (
 from backend.app.exceptions import VoiceNoteError
 from backend.pipeline.enhanced_audio_processor import (
     AIEnhanceOptions,
-    EnhancementResult,
     AudioQualityEvaluation,
+    AI_NOISE_REMOVAL_ENABLED,
+    BatchPreprocessOptions,
+    EnhancedAudioProcessor,
+    EnhancementResult,
+    SUPPORTED_FORMATS,
     VoiceQualityScore,
     cleanup_temp_file,
     enhance_audio_with_ai,
 )
 from backend.schemas.enhanced_audio_preprocess import (
     AIEnhanceOptionsPayload,
-    AudioQualityEvaluation,
     EnhancementReportResponse,
     VoiceQualityAssessment,
 )
+from backend.schemas.audio_enhanced import BatchPreprocessResponse, BatchSummary
 from backend.utils.logger import get_logger
 from backend.utils.validators import validate_audio_format
 
 logger = get_logger(__name__)
 
-router = APIRouter(prefix="/audio", tags=["audio-enhancement"])
+router = APIRouter(prefix="/enhanced", tags=["audio-enhancement"])
 
 
 # AI 증강 동시 실행 제한 (리소스 관리)
 _enhancement_semaphore = None
+_enhanced_processor: EnhancedAudioProcessor | None = None
 
 
 def get_enhancement_semaphore():
     """글로벌 세마포어 (지연 초기화)"""
     global _enhancement_semaphore
     if _enhancement_semaphore is None:
-        _enhancement_semaphore = asyncio.Semaphore(settings.audio_enhancement_max_concurrent)
+        max_concurrent = settings.audio_preprocess_max_concurrent
+        if not isinstance(max_concurrent, int):
+            max_concurrent = 2
+        _enhancement_semaphore = asyncio.Semaphore(max_concurrent)
     return _enhancement_semaphore
+
+
+async def get_enhanced_processor() -> EnhancedAudioProcessor:
+    """배치 전처리 프로세서를 지연 초기화."""
+    global _enhanced_processor
+    if _enhanced_processor is None:
+        _enhanced_processor = EnhancedAudioProcessor()
+        await _enhanced_processor.initialize()
+    return _enhanced_processor
 
 
 def _resolve_enhancement_options(payload: AIEnhanceOptionsPayload) -> AIEnhanceOptions:
@@ -118,7 +138,7 @@ def _calculate_audio_metrics(audio_data: np.ndarray, sample_rate: int) -> dict[s
 
 
 @router.post(
-    "/enhanced",
+    "/preprocess",
     responses={
         200: {
             "description": "AI 증강된 WAV 파일 + 품질 평가 보고서",
@@ -146,7 +166,7 @@ async def enhanced_audio_endpoint(
     output_format: str = Form(default="wav", description="출력 형식 (wav, mp3)"),
 ) -> EnhancementReportResponse:
     """AI 기반 오디오 증강 처리."""
-    if not settings.audio_enhancement_enabled:
+    if not settings.audio_preprocess_enabled:
         service_unavailable("AI 오디오 증강 기능이 비활성화되어 있습니다.")
 
     # 파일명/포맷 검증
@@ -171,46 +191,72 @@ async def enhanced_audio_endpoint(
     options = _resolve_enhancement_options(payload)
 
     # 입력 파일 임시 저장
-    max_bytes = settings.audio_enhancement_max_file_mb * 1024 * 1024
-    suffix = Path(filename).suffix or ".bin"
-    src_fd, src_name = tempfile.mkstemp(suffix=suffix, prefix="enhance_in_")
-    src_path = Path(src_name)
+    max_bytes = settings.audio_preprocess_max_file_mb * 1024 * 1024
     bytes_read = 0
+    suffix = Path(filename).suffix or ".bin"
     
     try:
+        src_fd, src_name = tempfile.mkstemp(suffix=suffix, prefix="enhance_in_")
+        src_path = Path(src_name)
         with open(src_fd, "wb") as fp:
             while chunk := await file.read(1024 * 1024):
                 bytes_read += len(chunk)
                 if bytes_read > max_bytes:
                     from backend.app.errors import request_entity_too_large
                     request_entity_too_large(
-                        f"파일 크기가 {settings.audio_enhancement_max_file_mb}MB를 초과합니다."
+                        f"파일 크기가 {settings.audio_preprocess_max_file_mb}MB를 초과합니다."
                     )
                 fp.write(chunk)
     except VoiceNoteError:
         _safe_unlink(src_path)
         raise
     except Exception as exc:
-        _safe_unlink(src_path)
+        if "src_path" in locals():
+            _safe_unlink(src_path)
         logger.error("업로드 저장 실패", error=str(exc))
         bad_request(f"업로드 처리 실패: {exc}")
 
-    # AI 증강 처리 (리소스 제한 적용)
+    # 고급 전처리 처리 (리소스 제한 적용)
+    try:
+        processor = await get_enhanced_processor()
+    except Exception as exc:
+        _safe_unlink(src_path)
+        logger.error("AI 오디오 증강 초기화 실패", error=str(exc))
+        internal_server_error("AI 오디오 증강 초기화 중 오류가 발생했습니다")
+
     enhancement_semaphore = get_enhancement_semaphore()
     async with enhancement_semaphore:
         try:
-            result = await asyncio.to_thread(
-                enhance_audio_with_ai, 
-                src_path, 
-                options
+            preprocess_options = BatchPreprocessOptions(
+                convert_to_16k_mono=True,
+                normalize=True,
+                ai_noise_removal=enable_noise_reduction,
+                denoise_strength=noise_reduction_strength,
+            )
+            batch_result = await processor.preprocess_batch([str(src_path)], preprocess_options, None)
+            if batch_result.failed_files:
+                bad_request(batch_result.errors[0]["error"])
+            processed_info = batch_result.results[0]
+            result = EnhancementResult(
+                output_path=processed_info.processed_path,
+                enhancement_id=f"enh_{int(datetime.now(UTC).timestamp())}",
+                noise_reduction_applied=enable_noise_reduction,
+                voice_enhancement_applied=enable_voice_enhancement,
+                segments_processed=1,
+                processing_time=batch_result.processing_time_seconds,
+                processing_details=processed_info.metadata,
+                warnings=[],
             )
         except ValueError as exc:
             _safe_unlink(src_path)
             bad_request(str(exc))
+        except VoiceNoteError:
+            _safe_unlink(src_path)
+            raise
         except Exception as exc:
             _safe_unlink(src_path)
             logger.error("AI 오디오 증강 실패", error=str(exc))
-            internal_server_error("AI 오디오 증강 중 오류가 발생했습니다")
+            bad_request(str(exc))
 
     # 품질 평가
     quality_assessment = None
@@ -252,7 +298,7 @@ async def enhanced_audio_endpoint(
             processing_details=result.processing_details,
             warnings=result.warnings,
         ),
-        download_url=f"/api/v1/audio/enhanced/{result.enhancement_id}/download",
+        download_url=f"/api/v1/enhanced/{result.enhancement_id}/download",
         enhancement_id=result.enhancement_id,
     )
 
@@ -270,8 +316,277 @@ async def enhanced_audio_endpoint(
     )
 
 
+@router.post("/batch")
+async def enhanced_batch_endpoint(
+    files: list[UploadFile] = File(..., description="전처리할 오디오 파일 목록"),
+) -> dict[str, Any]:
+    """여러 오디오 파일을 고급 전처리."""
+    if not settings.audio_preprocess_enabled:
+        service_unavailable("AI 오디오 증강 기능이 비활성화되어 있습니다.")
+    if len(files) > 20:
+        bad_request("최대 20개 파일까지 처리할 수 있습니다.")
+
+    max_bytes = settings.audio_preprocess_max_file_mb * 1024 * 1024
+    src_paths: list[Path] = []
+
+    try:
+        for file in files:
+            filename = file.filename or "audio"
+            is_valid, msg = validate_audio_format(filename)
+            if not is_valid:
+                bad_request(msg)
+
+            suffix = Path(filename).suffix or ".bin"
+            src_fd, src_name = tempfile.mkstemp(suffix=suffix, prefix="enhance_batch_in_")
+            src_path = Path(src_name)
+            src_paths.append(src_path)
+            bytes_read = 0
+            with open(src_fd, "wb") as fp:
+                while chunk := await file.read(1024 * 1024):
+                    bytes_read += len(chunk)
+                    if bytes_read > max_bytes:
+                        bad_request(
+                            f"파일 크기가 {settings.audio_preprocess_max_file_mb}MB를 초과합니다."
+                        )
+                    fp.write(chunk)
+
+        try:
+            processor = await get_enhanced_processor()
+        except Exception as exc:
+            logger.error("AI 오디오 증강 초기화 실패", error=str(exc))
+            internal_server_error("AI 오디오 증강 초기화 중 오류가 발생했습니다")
+
+        options = BatchPreprocessOptions()
+        result = await processor.preprocess_batch([str(path) for path in src_paths], options, None)
+        return {
+            "total_files": result.total_files,
+            "processed_files": result.processed_files,
+            "failed_files": result.failed_files,
+            "processing_time_seconds": result.processing_time_seconds,
+            "summary": result.summary,
+            "results": [
+                {
+                    "original_path": str(item.original_path),
+                    "processed_path": str(item.processed_path),
+                    "original_format": item.original_format,
+                    "original_size": item.original_size,
+                    "processed_size": item.processed_size,
+                    "duration_seconds": item.duration_seconds,
+                    "sample_rate": item.sample_rate,
+                    "channels": item.channels,
+                    "metadata": item.metadata,
+                }
+                for item in result.results
+            ],
+            "errors": result.errors,
+        }
+    except VoiceNoteError:
+        raise
+    except Exception as exc:
+        logger.error("배치 오디오 증강 실패", error=str(exc))
+        bad_request(str(exc))
+    finally:
+        for path in src_paths:
+            _safe_unlink(path)
+
+
+async def enhanced_preprocess_endpoint(
+    file: UploadFile = File(..., description="원본 오디오 파일"),
+    convert_to_16k_mono: bool = Form(default=True),
+    normalize: bool = Form(default=True),
+    target_dbfs: float = Form(default=-20.0),
+    high_pass_hz: int | None = Form(default=None),
+    low_pass_hz: int | None = Form(default=None),
+    trim_silence: bool = Form(default=False),
+    silence_threshold_db: float = Form(default=-40.0),
+    silence_min_len_ms: int = Form(default=700),
+    ai_noise_removal: bool = Form(default=True),
+    noise_threshold: float = Form(default=0.1),
+    denoise_strength: float = Form(default=0.8),
+) -> StreamingResponse:
+    """Legacy direct-call single-file enhanced preprocess endpoint."""
+    if not settings.audio_preprocess_enabled:
+        service_unavailable("AI 오디오 증강 기능이 비활성화되어 있습니다.")
+
+    filename = file.filename or "audio"
+    is_valid, msg = validate_audio_format(filename)
+    if not is_valid:
+        bad_request(msg)
+
+    max_bytes = settings.audio_preprocess_max_file_mb * 1024 * 1024
+    suffix = Path(filename).suffix or ".bin"
+    src_fd, src_name = tempfile.mkstemp(suffix=suffix, prefix="enhance_in_")
+    src_path = Path(src_name)
+    bytes_read = 0
+
+    try:
+        with open(src_fd, "wb") as fp:
+            while chunk := await file.read(1024 * 1024):
+                bytes_read += len(chunk)
+                if bytes_read > max_bytes:
+                    from backend.app.errors import request_entity_too_large
+
+                    request_entity_too_large(
+                        f"파일 크기가 {settings.audio_preprocess_max_file_mb}MB를 초과합니다."
+                    )
+                fp.write(chunk)
+
+        processor = await get_enhanced_processor()
+        options = BatchPreprocessOptions(
+            convert_to_16k_mono=convert_to_16k_mono,
+            normalize=normalize,
+            target_dbfs=target_dbfs,
+            high_pass_hz=high_pass_hz,
+            low_pass_hz=low_pass_hz,
+            trim_silence=trim_silence,
+            silence_threshold_db=silence_threshold_db,
+            silence_min_len_ms=silence_min_len_ms,
+            ai_noise_removal=ai_noise_removal,
+            noise_threshold=noise_threshold,
+            denoise_strength=denoise_strength,
+        )
+        result = await processor.preprocess_batch([str(src_path)], options, None)
+        if result.failed_files:
+            raise HTTPException(status_code=400, detail=result.errors[0].get("error", "전처리 실패"))
+        processed_path = result.results[0].processed_path
+
+        def _cleanup() -> None:
+            _safe_unlink(src_path)
+            _safe_unlink(processed_path)
+
+        return StreamingResponse(
+            iter([b""]),
+            media_type="audio/wav",
+            background=BackgroundTask(_cleanup),
+            headers={"X-Processed-Path": str(processed_path)},
+        )
+    except VoiceNoteError:
+        _safe_unlink(src_path)
+        raise
+    except HTTPException:
+        _safe_unlink(src_path)
+        raise
+    except Exception as exc:
+        _safe_unlink(src_path)
+        logger.error("고급 오디오 전처리 실패", error=str(exc))
+        bad_request(str(exc))
+
+
+async def batch_preprocess_endpoint(
+    files: list[UploadFile] = File(..., description="전처리할 오디오 파일 목록"),
+    convert_to_16k_mono: bool = Form(default=True),
+    normalize: bool = Form(default=True),
+    target_dbfs: float = Form(default=-20.0),
+    high_pass_hz: int | None = Form(default=None),
+    low_pass_hz: int | None = Form(default=None),
+    trim_silence: bool = Form(default=False),
+    silence_threshold_db: float = Form(default=-40.0),
+    silence_min_len_ms: int = Form(default=700),
+    ai_noise_removal: bool = Form(default=True),
+    noise_threshold: float = Form(default=0.1),
+    denoise_strength: float = Form(default=0.8),
+    output_format: str = Form(default="zip"),
+    return_report: bool = Form(default=True),
+) -> SimpleNamespace:
+    """Legacy direct-call batch enhanced preprocess endpoint."""
+    if not settings.audio_preprocess_enabled:
+        service_unavailable("AI 오디오 증강 기능이 비활성화되어 있습니다.")
+    if len(files) > 20:
+        bad_request("최대 20개 파일까지 처리할 수 있습니다.")
+
+    max_bytes = settings.audio_preprocess_max_file_mb * 1024 * 1024
+    src_paths: list[Path] = []
+    try:
+        for file in files:
+            filename = file.filename or "audio"
+            is_valid, msg = validate_audio_format(filename)
+            if not is_valid:
+                bad_request(msg)
+            suffix = Path(filename).suffix or ".bin"
+            src_fd, src_name = tempfile.mkstemp(suffix=suffix, prefix="enhance_batch_in_")
+            src_path = Path(src_name)
+            src_paths.append(src_path)
+            bytes_read = 0
+            with open(src_fd, "wb") as fp:
+                while chunk := await file.read(1024 * 1024):
+                    bytes_read += len(chunk)
+                    if bytes_read > max_bytes:
+                        bad_request(
+                            f"파일 크기가 {settings.audio_preprocess_max_file_mb}MB를 초과합니다."
+                        )
+                    fp.write(chunk)
+
+        processor = await get_enhanced_processor()
+        options = BatchPreprocessOptions(
+            convert_to_16k_mono=convert_to_16k_mono,
+            normalize=normalize,
+            target_dbfs=target_dbfs,
+            high_pass_hz=high_pass_hz,
+            low_pass_hz=low_pass_hz,
+            trim_silence=trim_silence,
+            silence_threshold_db=silence_threshold_db,
+            silence_min_len_ms=silence_min_len_ms,
+            ai_noise_removal=ai_noise_removal,
+            noise_threshold=noise_threshold,
+            denoise_strength=denoise_strength,
+        )
+        result = await processor.preprocess_batch([str(path) for path in src_paths], options, None)
+        report = None
+        if return_report and hasattr(processor, "create_processing_report"):
+            report = await processor.create_processing_report(result)
+        return SimpleNamespace(
+            task_id=result.task_id,
+            total_files=result.total_files,
+            processed_files=result.processed_files,
+            failed_files=result.failed_files,
+            processing_time_seconds=result.processing_time_seconds,
+            summary=result.summary,
+            results=result.results,
+            errors=result.errors,
+            output_format=output_format,
+            report=report,
+        )
+    except VoiceNoteError:
+        raise
+    except Exception as exc:
+        logger.error("배치 오디오 전처리 실패", error=str(exc))
+        bad_request(str(exc))
+    finally:
+        for path in src_paths:
+            _safe_unlink(path)
+
+
+@router.get("/formats")
+async def get_supported_formats() -> list[dict[str, Any]]:
+    """지원하는 고급 전처리 오디오 포맷 목록."""
+    return list(SUPPORTED_FORMATS.values())
+
+
+@router.get("/status")
+async def get_model_status() -> dict[str, Any]:
+    """고급 전처리 모델 상태."""
+    processor = await get_enhanced_processor()
+    return {
+        "ai_noise_removal_enabled": AI_NOISE_REMOVAL_ENABLED,
+        "model_loaded": processor.ai_model.model_loaded,
+        "supported_formats": len(SUPPORTED_FORMATS),
+        "batch_max_files": processor.max_batch_files,
+        "batch_max_concurrent": settings.audio_preprocess_max_concurrent,
+        "supported_ai_features": [
+            "noise_removal",
+            "normalization",
+            "silence_trimming",
+            "format_conversion",
+        ],
+        "processing_limits": {
+            "max_file_mb": settings.audio_preprocess_max_file_mb,
+            "max_files": processor.max_batch_files,
+        },
+    }
+
+
 @router.get(
-    "/enhanced/{enhancement_id}/download"
+    "/{enhancement_id}/download"
 )
 async def download_enhanced_audio(
     enhancement_id: str,
@@ -327,7 +642,7 @@ def _generate_improvement_recommendations(metrics: dict[str, float]) -> list[str
     return recommendations
 
 
-async def _safe_unlink(path: Path) -> None:
+def _safe_unlink(path: Path) -> None:
     """예외를 삼키고 안전하게 파일을 정리."""
     try:
         cleanup_temp_file(path)

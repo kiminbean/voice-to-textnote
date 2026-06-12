@@ -1,17 +1,31 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:voice_to_textnote/providers/model_download_provider.dart';
+import 'package:voice_to_textnote/services/model_download_service.dart';
 
 // Mock classes
-class MockModelDownloadService extends Mock {}
+class MockModelDownloadService extends Mock implements ModelDownloadService {}
+
+class FakeCancelToken extends Fake implements CancelToken {}
 
 void main() {
+  setUpAll(() {
+    registerFallbackValue(FakeCancelToken());
+  });
+
   group('ModelDownloadProvider', () {
     late ProviderContainer container;
+    late MockModelDownloadService mockService;
 
     setUp(() {
-      container = ProviderContainer();
+      mockService = MockModelDownloadService();
+      container = ProviderContainer(
+        overrides: [
+          modelDownloadServiceProvider.overrideWithValue(mockService),
+        ],
+      );
     });
 
     tearDown(() {
@@ -68,6 +82,13 @@ void main() {
       test('다운로드 시작 시 상태가 checking으로 변경되어야 함', () async {
         // Arrange
         final notifier = container.read(modelDownloadProvider.notifier);
+        when(() => mockService.downloadWithResume(
+              url: any(named: 'url'),
+              savePath: any(named: 'savePath'),
+              cancelToken: any(named: 'cancelToken'),
+            )).thenAnswer((_) => Stream<double>.fromIterable([0.5, 1.0]));
+        when(() => mockService.verifyChecksum(any(), any()))
+            .thenAnswer((_) async => true);
 
         // Act
         await notifier.startDownload(
@@ -83,6 +104,13 @@ void main() {
       test('진행률 업데이트가 state에 반영되어야 함', () async {
         // Arrange
         final notifier = container.read(modelDownloadProvider.notifier);
+        when(() => mockService.downloadWithResume(
+              url: any(named: 'url'),
+              savePath: any(named: 'savePath'),
+              cancelToken: any(named: 'cancelToken'),
+            )).thenAnswer((_) => Stream<double>.fromIterable([0.25, 0.75]));
+        when(() => mockService.verifyChecksum(any(), any()))
+            .thenAnswer((_) async => true);
 
         // Act
         await notifier.startDownload(
@@ -91,14 +119,22 @@ void main() {
           expectedChecksum: 'abc123',
         );
 
-        // Note: 실제 구현에서는 progress stream을 통해 업데이트
-        // 테스트에서는 상태 전환만 확인
-        expect(notifier.state.progress, greaterThanOrEqualTo(0.0));
+        expect(notifier.state.state, equals(DownloadState.completed));
+        verify(() => mockService.downloadWithResume(
+              url: 'https://example.com/model.bin',
+              savePath: '/tmp/model.bin',
+              cancelToken: any(named: 'cancelToken'),
+            )).called(1);
       });
 
       test('다운로드 실패 시 failed 상태로 변경되어야 함', () async {
         // Arrange
         final notifier = container.read(modelDownloadProvider.notifier);
+        when(() => mockService.downloadWithResume(
+              url: any(named: 'url'),
+              savePath: any(named: 'savePath'),
+              cancelToken: any(named: 'cancelToken'),
+            )).thenAnswer((_) => Stream<double>.error(Exception('network')));
 
         // Act
         await notifier.startDownload(
@@ -107,23 +143,25 @@ void main() {
           expectedChecksum: 'abc123',
         );
 
-        // Note: 실패 시나리오는 실제 다운로드 시뮬레이션 필요
-        // 테스트에서는 state 변화 확인 가능
-        // 실패하면 failed 상태가 됨
-        if (notifier.state.state == DownloadState.failed) {
-          expect(notifier.state.errorMessage, isNotNull);
-        }
+        expect(notifier.state.state, equals(DownloadState.failed));
+        expect(notifier.state.errorMessage, contains('network'));
       });
 
       test('retry 시 retryCount가 증가해야 함', () async {
         // Arrange
         final notifier = container.read(modelDownloadProvider.notifier);
-        // 강제로 실패 상태로 변경 (테스트 목적)
-        // Note: 실제 환경에서는 다운로드 실패 시 자동으로 failed 상태가 됨
+        when(() => mockService.downloadWithResume(
+              url: any(named: 'url'),
+              savePath: any(named: 'savePath'),
+              cancelToken: any(named: 'cancelToken'),
+            )).thenAnswer((_) => Stream<double>.error(Exception('network')));
 
         // Act
-        // retry를 호출하면 retryCount가 증가
-        // 현재 구현에서는 startDownload 내부에서 실패 처리됨
+        await notifier.startDownload(
+          url: 'https://example.com/model.bin',
+          savePath: '/tmp/model.bin',
+          expectedChecksum: 'abc123',
+        );
         await notifier.retry();
 
         // Assert
@@ -134,22 +172,48 @@ void main() {
       test('maxRetries(3) 초과 시 더 이상 retry하지 않아야 함', () async {
         // Arrange
         final notifier = container.read(modelDownloadProvider.notifier);
-        // 강제로 retryCount를 3으로 설정
-        // (실제로는 provider 외부에서 state를 직접 수정할 수 없으므로 테스트는 상태 확인만)
+        when(() => mockService.downloadWithResume(
+              url: any(named: 'url'),
+              savePath: any(named: 'savePath'),
+              cancelToken: any(named: 'cancelToken'),
+            )).thenAnswer((_) => Stream<double>.error(Exception('network')));
 
         // Act
-        // 3회 실패 후 재시도 시도
+        await notifier.startDownload(
+          url: 'https://invalid-url.com/model.bin',
+          savePath: '/tmp/model.bin',
+          expectedChecksum: 'abc123',
+        );
         for (var i = 0; i < 4; i++) {
-          await notifier.startDownload(
-            url: 'https://invalid-url.com/model.bin',
-            savePath: '/tmp/model.bin',
-            expectedChecksum: 'abc123',
-          );
           await notifier.retry();
         }
 
         // Assert
         expect(notifier.state.retryCount, lessThanOrEqualTo(3));
+      });
+
+      test('저장공간이 부족하면 다운로드 전에 failed 상태가 되어야 함', () async {
+        // Arrange
+        final notifier = container.read(modelDownloadProvider.notifier);
+        when(() => mockService.hasSufficientStorage(any()))
+            .thenAnswer((_) async => false);
+
+        // Act
+        await notifier.startDownload(
+          url: 'https://example.com/model.bin',
+          savePath: '/tmp/model.bin',
+          expectedChecksum: 'abc123',
+          requiredBytes: 100 * 1024 * 1024,
+        );
+
+        // Assert
+        expect(notifier.state.state, equals(DownloadState.failed));
+        expect(notifier.state.errorMessage, contains('저장 공간'));
+        verifyNever(() => mockService.downloadWithResume(
+              url: any(named: 'url'),
+              savePath: any(named: 'savePath'),
+              cancelToken: any(named: 'cancelToken'),
+            ));
       });
 
       test('cancel 시 상태가 idle로 변경되어야 함', () {

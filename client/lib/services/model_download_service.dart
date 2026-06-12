@@ -34,8 +34,17 @@ class StorageException implements Exception {
 /// @MX:NOTE 이 클래스는 파일 다운로드와 관리를 담당합니다
 class ModelDownloadService {
   final Dio _dio;
+  final Future<int?> Function(String directoryPath)? _availableBytesProvider;
 
-  ModelDownloadService(this._dio);
+  static const String defaultCdnBaseUrl =
+      'https://cdn.voice-to-textnote.com/models';
+  static const int _storageSafetyMultiplier = 2;
+  static const int _minimumFreeBufferBytes = 64 * 1024 * 1024;
+
+  ModelDownloadService(
+    this._dio, {
+    Future<int?> Function(String directoryPath)? availableBytesProvider,
+  }) : _availableBytesProvider = availableBytesProvider;
 
   /// 모델 다운로드를 수행하고 진행률을 스트림으로 반환
   ///
@@ -55,20 +64,27 @@ class ModelDownloadService {
     final controller = StreamController<double>();
 
     // 다운로드 시작
-    _dio.download(
-      url,
-      savePath,
-      onReceiveProgress: (received, total) {
-        if (total > 0) {
-          controller.add(received / total);
-        }
-      },
-      cancelToken: cancelToken,
-    ).then((_) {
-      controller.close();
-    }).catchError((error) {
-      controller.addError(error);
-      controller.close();
+    Future<void>(() async {
+      await _ensureParentDirectory(savePath);
+      final downloadUrl = resolveDownloadUrl(url: url);
+      await _dio.download(
+        downloadUrl,
+        savePath,
+        onReceiveProgress: (received, total) {
+          if (total > 0) {
+            controller.add((received / total).clamp(0.0, 1.0));
+          }
+        },
+        cancelToken: cancelToken,
+      );
+      if (!controller.isClosed) {
+        controller.close();
+      }
+    }).catchError((Object error, StackTrace stackTrace) {
+      if (!controller.isClosed) {
+        controller.addError(error, stackTrace);
+        controller.close();
+      }
     });
 
     return controller.stream;
@@ -93,9 +109,43 @@ class ModelDownloadService {
   /// 모델 파일이 존재하면 경로를 반환하고, 없으면 null을 반환합니다
   /// @MX:SPEC: REQ-MOBILE-010-01
   Future<String?> getModelPath(String modelId) async {
-    final dir = await getApplicationDocumentsDirectory();
-    final file = File('${dir.path}/models/$modelId.bin');
+    final file = File(await getModelSavePath(modelId));
     return file.existsSync() ? file.path : null;
+  }
+
+  /// 모델 ID 기준 저장 경로를 반환합니다.
+  ///
+  /// @MX:SPEC: REQ-MOBILE-010-01
+  Future<String> getModelSavePath(String modelId) async {
+    final dir = await getApplicationDocumentsDirectory();
+    final modelDir = Directory('${dir.path}/models');
+    if (!await modelDir.exists()) {
+      await modelDir.create(recursive: true);
+    }
+    return '${modelDir.path}/$modelId.bin';
+  }
+
+  /// 명시 URL이 없거나 안전하지 않은 경우 CDN URL을 사용합니다.
+  ///
+  /// @MX:SPEC: REQ-MOBILE-010-01
+  String resolveDownloadUrl({
+    String? modelId,
+    String? url,
+    String cdnBaseUrl = defaultCdnBaseUrl,
+  }) {
+    final parsedUrl = url == null ? null : Uri.tryParse(url);
+    if (parsedUrl != null &&
+        parsedUrl.hasScheme &&
+        parsedUrl.scheme == 'https' &&
+        parsedUrl.host.isNotEmpty) {
+      return parsedUrl.toString();
+    }
+
+    final id = _sanitizeModelId(modelId ?? 'whisper-base');
+    final base = cdnBaseUrl.endsWith('/')
+        ? cdnBaseUrl.substring(0, cdnBaseUrl.length - 1)
+        : cdnBaseUrl;
+    return '$base/$id.bin';
   }
 
   /// 저장소에 충분한 공간이 있는지 확인
@@ -107,16 +157,14 @@ class ModelDownloadService {
   Future<bool> hasSufficientStorage(int requiredBytes) async {
     try {
       final dir = await getApplicationDocumentsDirectory();
-      final stat = await dir.stat();
+      final availableBytes = await _getAvailableBytes(dir.path);
+      if (availableBytes == null) {
+        return true;
+      }
 
-      // 플랫폼별로 사용 가능한 공간 확인 방법이 다름
-      // iOS/Android에서는 공간 확인이 제한적이므로
-      // 안전하게 2배의 여유 공간을 확인
-      final availableSpace = stat.size;
-
-      // 실제 사용 가능한 공간을 정확히 확인할 수 없으므로
-      // 안전한 기본값으로 true 반환 (실제 환경에서는 플랫폼 채널 필요)
-      return true;
+      final requiredWithBuffer =
+          (requiredBytes * _storageSafetyMultiplier) + _minimumFreeBufferBytes;
+      return availableBytes >= requiredWithBuffer;
     } catch (e) {
       // 오류 발생 시 안전하게 true 반환 (다운로드 시도)
       return true;
@@ -145,6 +193,7 @@ class ModelDownloadService {
 
     Future<void> performDownload() async {
       try {
+        await _ensureParentDirectory(savePath);
         int downloadedBytes = 0;
 
         // .part 파일이 존재하면 크기 확인
@@ -162,13 +211,14 @@ class ModelDownloadService {
 
         // 다운로드 시작
         await _dio.download(
-          url,
+          resolveDownloadUrl(url: url),
           partPath,
           onReceiveProgress: (received, total) {
             if (total > 0) {
               // 이어받기의 경우 진행률 계산
               final totalProgress = downloadedBytes + received;
-              final progress = totalProgress / total;
+              final expectedTotal = downloadedBytes + total;
+              final progress = totalProgress / expectedTotal;
               controller.add(progress.clamp(0.0, 1.0));
             }
           },
@@ -233,9 +283,14 @@ class ModelDownloadService {
     required String savePath,
     required String expectedChecksum,
     CancelToken? cancelToken,
+    int? requiredBytes,
   }) async {
+    if (requiredBytes != null && !await hasSufficientStorage(requiredBytes)) {
+      throw StorageException('저장 공간이 부족합니다');
+    }
+
     // 먼저 다운로드 진행률 스트림을 소비
-    await for (final _ in downloadModel(
+    await for (final _ in downloadWithResume(
       url: url,
       savePath: savePath,
       cancelToken: cancelToken,
@@ -247,5 +302,46 @@ class ModelDownloadService {
     await verifyChecksum(savePath, expectedChecksum);
 
     return savePath;
+  }
+
+  Future<void> _ensureParentDirectory(String savePath) async {
+    final parent = File(savePath).parent;
+    if (!await parent.exists()) {
+      await parent.create(recursive: true);
+    }
+  }
+
+  Future<int?> _getAvailableBytes(String directoryPath) async {
+    final injected = await _availableBytesProvider?.call(directoryPath);
+    if (injected != null) {
+      return injected;
+    }
+
+    if (!Platform.isMacOS && !Platform.isLinux) {
+      return null;
+    }
+
+    final result = await Process.run('df', ['-Pk', directoryPath]);
+    if (result.exitCode != 0) {
+      return null;
+    }
+
+    final lines = (result.stdout as String).trim().split('\n');
+    if (lines.length < 2) {
+      return null;
+    }
+
+    final columns = lines.last.trim().split(RegExp(r'\s+'));
+    if (columns.length < 4) {
+      return null;
+    }
+
+    final availableKb = int.tryParse(columns[3]);
+    return availableKb == null ? null : availableKb * 1024;
+  }
+
+  String _sanitizeModelId(String modelId) {
+    final sanitized = modelId.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '-');
+    return sanitized.isEmpty ? 'whisper-base' : sanitized;
   }
 }

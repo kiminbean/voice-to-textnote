@@ -5,6 +5,8 @@ REQ-STT-018: 30분 초과 오디오 청크 분할 처리
 """
 
 import tempfile
+import shutil
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -39,6 +41,12 @@ def split_audio(
     REQ-STT-018: 30분 단위, 5초 오버랩
     """
     file_path = Path(file_path)
+    if file_path.exists() and shutil.which("ffmpeg") and shutil.which("ffprobe"):
+        try:
+            return _split_audio_streaming(file_path, chunk_duration_ms, overlap_ms, output_dir)
+        except (OSError, subprocess.SubprocessError, ValueError) as exc:
+            logger.warning("스트리밍 청크 분할 실패, pydub 경로로 폴백", error=str(exc))
+
     audio = AudioSegment.from_file(str(file_path))
     total_ms = len(audio)
 
@@ -89,6 +97,110 @@ def split_audio(
         chunk_index += 1
 
     return chunks
+
+
+def _split_audio_streaming(
+    file_path: Path,
+    chunk_duration_ms: int,
+    overlap_ms: int,
+    output_dir: str | Path | None = None,
+) -> list[AudioChunk]:
+    """ffmpeg로 원본 전체 로드 없이 청크 WAV를 생성한다."""
+    total_ms = _probe_duration_ms(file_path)
+
+    if total_ms <= chunk_duration_ms:
+        return []
+
+    if output_dir is None:
+        output_dir = Path(tempfile.mkdtemp())
+    else:
+        output_dir = Path(output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+    chunks: list[AudioChunk] = []
+    chunk_index = 0
+    pos_ms = 0
+
+    while pos_ms < total_ms:
+        chunk_end_ms = min(pos_ms + chunk_duration_ms + overlap_ms, total_ms)
+        chunk_path = output_dir / f"chunk_{chunk_index:04d}.wav"
+        _export_chunk_with_ffmpeg(file_path, chunk_path, pos_ms, chunk_end_ms - pos_ms)
+
+        # 정규화는 청크 단위로만 pydub에 올려 전체 파일 메모리 로드를 피한다.
+        chunk_audio = AudioSegment.from_file(str(chunk_path))
+        normalize_audio(chunk_audio).export(str(chunk_path), format="wav")
+
+        chunks.append(
+            AudioChunk(
+                index=chunk_index,
+                file_path=chunk_path,
+                start_ms=pos_ms,
+                end_ms=chunk_end_ms,
+                overlap_ms=overlap_ms if pos_ms > 0 else 0,
+            )
+        )
+
+        logger.info(
+            "청크 생성",
+            index=chunk_index,
+            start_ms=pos_ms,
+            end_ms=chunk_end_ms,
+            path=str(chunk_path),
+        )
+
+        pos_ms += chunk_duration_ms
+        chunk_index += 1
+
+    return chunks
+
+
+def _probe_duration_ms(file_path: Path) -> int:
+    result = subprocess.run(
+        [
+            "ffprobe",
+            "-v",
+            "error",
+            "-show_entries",
+            "format=duration",
+            "-of",
+            "default=noprint_wrappers=1:nokey=1",
+            str(file_path),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    duration_seconds = float(result.stdout.strip())
+    return int(duration_seconds * 1000)
+
+
+def _export_chunk_with_ffmpeg(
+    input_path: Path,
+    output_path: Path,
+    start_ms: int,
+    duration_ms: int,
+) -> None:
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-y",
+            "-v",
+            "error",
+            "-ss",
+            f"{start_ms / 1000:.3f}",
+            "-t",
+            f"{duration_ms / 1000:.3f}",
+            "-i",
+            str(input_path),
+            "-vn",
+            "-acodec",
+            "pcm_s16le",
+            str(output_path),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
 
 
 def merge_segments(

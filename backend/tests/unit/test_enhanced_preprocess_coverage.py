@@ -85,8 +85,8 @@ class TestEnhancedPreprocess:
             )
         assert resp.status_code == 400
 
-    def test_file_too_large_returns_500(self, app_client):
-        """파일 크기 초과 -> bad_request가 except Exception에서 잡혀 500으로 승격."""
+    def test_file_too_large_returns_413(self, app_client):
+        """파일 크기 초과 -> 413."""
         with (
             patch("backend.app.api.v1.audio.enhanced_preprocess.settings") as mock_s,
             patch(
@@ -108,8 +108,7 @@ class TestEnhancedPreprocess:
                     "/api/v1/enhanced/preprocess",
                     files={"file": ("big.wav", b"x" * 100, "audio/wav")},
                 )
-        # bad_request(VoiceNoteError)가 except Exception에서 잡혀 500으로 승격
-        assert resp.status_code == 500
+        assert resp.status_code == 413
 
     def test_upload_save_failure_returns_400(self, app_client):
         """업로드 저장 실패 -> 400."""
@@ -137,12 +136,11 @@ class TestEnhancedPreprocess:
                     "backend.app.api.v1.audio.enhanced_preprocess.tempfile.mkstemp",
                     side_effect=OSError("디스크 공간 부족"),
                 ):
-                    # mkstemp 실패 시 내부 예외 → 500
                     resp = app_client.post(
                         "/api/v1/enhanced/preprocess",
                         files={"file": ("test.wav", wav_bytes, "audio/wav")},
                     )
-        assert resp.status_code == 500
+        assert resp.status_code == 400
 
     def test_preprocess_batch_failure_returns_400(self, app_client):
         """프로세서 실패 -> 400."""

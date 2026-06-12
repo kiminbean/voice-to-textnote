@@ -90,8 +90,8 @@ ROUTER_REGISTRY: list[tuple[APIRouter, bool]] = [
     (history.router, True),  # SPEC-HISTORY-001: 작업 이력 조회/삭제
     # ── 관리 / 설정 (API Key 필수) ──────────────────────────────────────────────
     (admin.router, True),  # SPEC-RETENTION-001
-    (templates.router, True),  # REQ-TMPL-001/003
     (enhanced.router, True),  # Enhanced template system
+    (templates.router, True),  # REQ-TMPL-001/003
     (search.router, True),  # SPEC-SEARCH-001
     (export.router, True),  # SPEC-EXPORT-001
     (statistics.router, True),  # SPEC-STATS-001

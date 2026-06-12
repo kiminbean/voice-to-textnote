@@ -1,6 +1,6 @@
 # Privacy Policy / 개인정보처리방침
 
-**Last Updated / 최종 수정일**: 2026-06-07  
+**Last Updated / 최종 수정일**: 2026-06-12
 **Effective Date / 시행일**: 2026-06-07
 
 ---
@@ -30,7 +30,7 @@ VoiceToTextNote ("we", "our", "the App") collects the following information to p
 We use collected information to:
 - Provide transcription, summarization, and meeting analysis services
 - Send push notifications about processing status and completed results
-- Improve our AI models and service quality
+- Improve service quality and reliability
 - Maintain account security and prevent fraud
 - Communicate service updates and support
 
@@ -61,7 +61,9 @@ We use the following third-party services:
 |---------|---------|-------------|
 | Google/Apple Sign-In | Authentication | Email, name |
 | Firebase Cloud Messaging | Push notifications | Device token, notification content |
-| OpenAI API | AI transcription & summarization | Audio recordings (processed, not stored by third party) |
+| OpenAI-compatible API | Summaries, Q&A, sentiment, tagging, and related text analysis | Transcriptions and meeting text needed for the requested AI feature |
+
+Note: Speech-to-text is handled by the app's on-device offline engine when offline mode is used, or by the VoiceToTextNote backend STT pipeline when server processing is selected. Raw audio is not sent to OpenAI-compatible APIs for the current text-analysis features.
 
 ### 5. Your Rights
 
@@ -117,7 +119,7 @@ VoiceToTextNote("당사", "본 앱")는 서비스 제공을 위해 다음 정보
 수집한 정보는 다음 목적으로 활용합니다:
 - 변환, 요약, 회의 분석 서비스 제공
 - 처리 상태 및 완료 결과에 대한 푸시 알림 발송
-- AI 모델 및 서비스 품질 개선
+- 서비스 품질 및 안정성 개선
 - 계정 보안 유지 및 부정 사용 방지
 - 서비스 업데이트 및 고객 지원
 
@@ -148,7 +150,9 @@ VoiceToTextNote("당사", "본 앱")는 서비스 제공을 위해 다음 정보
 |--------|------|------------|
 | Google/Apple 로그인 | 인증 | 이메일, 이름 |
 | Firebase Cloud Messaging | 푸시 알림 | 기기 토큰, 알림 내용 |
-| OpenAI API | AI 변환 및 요약 | 음성 녹음 (처리 후 제3자에 저장되지 않음) |
+| OpenAI 호환 API | 요약, Q&A, 감성 분석, 태깅 등 텍스트 분석 | 요청한 AI 기능 수행에 필요한 변환 텍스트 및 회의 텍스트 |
+
+참고: 오프라인 모드의 음성-텍스트 변환은 기기 내 STT 엔진에서 처리되고, 서버 처리 모드는 VoiceToTextNote 백엔드 STT 파이프라인에서 처리됩니다. 현재 텍스트 분석 기능을 위해 원본 음성 파일을 OpenAI 호환 API로 전송하지 않습니다.
 
 ### 5. 사용자 권리
 

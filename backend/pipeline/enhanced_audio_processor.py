@@ -18,14 +18,319 @@ from typing import Any
 
 import librosa
 import numpy as np
+from pydub import AudioSegment
+from pydub.effects import normalize as normalize_audio_segment
+from pydub.silence import detect_nonsilent
 import soundfile as sf
 from scipy import signal
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 
+from backend.schemas.audio_enhanced import EnhancedPreprocessOptions as BatchPreprocessOptions
 from backend.utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+SUPPORTED_FORMATS: dict[str, dict[str, Any]] = {
+    "wav": {
+        "extension": "wav",
+        "description": "WAV (무손실) 오디오",
+        "supported_codecs": ["pcm_s16le", "pcm_s24le", "pcm_f32le"],
+    },
+    "mp3": {
+        "extension": "mp3",
+        "description": "MP3 압축 오디오",
+        "supported_codecs": ["mp3"],
+    },
+    "m4a": {
+        "extension": "m4a",
+        "description": "M4A/AAC 오디오",
+        "supported_codecs": ["aac", "alac"],
+    },
+    "ogg": {
+        "extension": "ogg",
+        "description": "Ogg Vorbis/Opus 오디오",
+        "supported_codecs": ["vorbis", "opus"],
+    },
+    "flac": {
+        "extension": "flac",
+        "description": "FLAC 무손실 오디오",
+        "supported_codecs": ["flac"],
+    },
+    "aac": {
+        "extension": "aac",
+        "description": "AAC 오디오",
+        "supported_codecs": ["aac"],
+    },
+    "webm": {
+        "extension": "webm",
+        "description": "WebM 오디오",
+        "supported_codecs": ["opus", "vorbis"],
+    },
+    "mp4": {
+        "extension": "mp4",
+        "description": "MP4 컨테이너 오디오",
+        "supported_codecs": ["aac", "alac"],
+    },
+    "wma": {
+        "extension": "wma",
+        "description": "Windows Media Audio",
+        "supported_codecs": ["wmav2"],
+    },
+}
+
+AI_NOISE_REMOVAL_ENABLED = True
+
+
+@dataclass
+class AudioFileInfo:
+    """배치 전처리된 오디오 파일 정보."""
+
+    original_path: Path
+    processed_path: Path
+    original_format: str
+    original_size: int
+    processed_size: int
+    duration_seconds: float
+    sample_rate: int
+    channels: int
+    metadata: dict[str, Any]
+
+
+@dataclass
+class BatchPreprocessResult:
+    """배치 전처리 결과."""
+
+    total_files: int
+    processed_files: int
+    failed_files: int
+    processing_time_seconds: float
+    summary: dict[str, Any]
+    results: list[AudioFileInfo]
+    errors: list[dict[str, Any]]
+    task_id: str = ""
+    report: str | None = None
+
+
+class AIModelManager:
+    """전처리 파이프라인용 경량 AI 모델 관리자."""
+
+    def __init__(self) -> None:
+        self.model_loaded = False
+
+    async def load_model(self) -> bool:
+        if not AI_NOISE_REMOVAL_ENABLED:
+            self.model_loaded = False
+            return False
+        await asyncio.sleep(0)
+        self.model_loaded = True
+        return True
+
+    def remove_noise(self, audio: np.ndarray, strength: float = 0.8) -> np.ndarray:
+        if not self.model_loaded or audio.size == 0 or strength <= 0:
+            return audio
+        return self._simple_noise_reduction(audio, strength)
+
+    def _simple_noise_reduction(self, audio: np.ndarray, strength: float = 0.8) -> np.ndarray:
+        if audio.size == 0 or strength <= 0:
+            return audio
+        smoothed = np.convolve(audio, np.ones(3) / 3, mode="same")
+        return ((1.0 - strength) * audio + strength * smoothed).astype(audio.dtype, copy=False)
+
+
+class EnhancedAudioProcessor:
+    """고급 오디오 배치 전처리 프로세서."""
+
+    def __init__(self) -> None:
+        self.ai_model = AIModelManager()
+        self.batch_executor = None
+        self.max_batch_files = 20
+
+    async def initialize(self) -> None:
+        await self.ai_model.load_model()
+        self.batch_executor = asyncio.Semaphore(4)
+
+    async def preprocess_batch(
+        self,
+        file_paths: list[str],
+        options: BatchPreprocessOptions,
+        output_dir: str | None,
+    ) -> BatchPreprocessResult:
+        if len(file_paths) > self.max_batch_files:
+            raise ValueError(f"최대 {self.max_batch_files}개 파일까지 처리할 수 있습니다.")
+
+        if not self.ai_model.model_loaded:
+            await self.initialize()
+
+        start_time = time.time()
+        out_dir = Path(output_dir) if output_dir else None
+        if out_dir is not None:
+            out_dir.mkdir(parents=True, exist_ok=True)
+
+        results: list[AudioFileInfo] = []
+        errors: list[dict[str, Any]] = []
+
+        for file_path in file_paths:
+            try:
+                results.append(await asyncio.to_thread(self._preprocess_file, Path(file_path), options, out_dir))
+            except Exception as exc:  # noqa: BLE001 - per-file errors are returned in the batch report
+                logger.warning("오디오 배치 전처리 실패", file_path=file_path, error=str(exc))
+                errors.append({"file": file_path, "error": str(exc)})
+
+        summary = self._summarize_results(results)
+        return BatchPreprocessResult(
+            total_files=len(file_paths),
+            processed_files=len(results),
+            failed_files=len(errors),
+            processing_time_seconds=time.time() - start_time,
+            summary=summary,
+            results=results,
+            errors=errors,
+        )
+
+    def _preprocess_file(
+        self,
+        input_path: Path,
+        options: BatchPreprocessOptions,
+        output_dir: Path | None,
+    ) -> AudioFileInfo:
+        if not input_path.exists():
+            raise FileNotFoundError(f"파일을 찾을 수 없습니다: {input_path}")
+
+        suffix = input_path.suffix.lower().lstrip(".")
+        if suffix not in SUPPORTED_FORMATS:
+            raise ValueError(f"지원하지 않는 오디오 형식입니다: {suffix}")
+
+        audio = AudioSegment.from_file(input_path)
+        processed = self._apply_preprocessing_pipeline(audio, options)
+
+        if output_dir is None:
+            output_path = input_path.with_name(f"{input_path.stem}_processed.wav")
+        else:
+            output_path = output_dir / f"{input_path.stem}_processed.wav"
+        processed.export(output_path, format="wav")
+
+        return AudioFileInfo(
+            original_path=input_path,
+            processed_path=output_path,
+            original_format=suffix,
+            original_size=input_path.stat().st_size,
+            processed_size=output_path.stat().st_size,
+            duration_seconds=len(processed) / 1000.0,
+            sample_rate=processed.frame_rate,
+            channels=processed.channels,
+            metadata={
+                "frame_width": processed.frame_width,
+                "dBFS": processed.dBFS,
+                "applied_options": options.model_dump() if hasattr(options, "model_dump") else {},
+            },
+        )
+
+    def _apply_preprocessing_pipeline(
+        self,
+        audio: AudioSegment,
+        options: BatchPreprocessOptions,
+    ) -> AudioSegment:
+        processed = audio
+        if options.convert_to_16k_mono:
+            processed = processed.set_frame_rate(16000).set_channels(1)
+        if options.high_pass_hz:
+            processed = processed.high_pass_filter(options.high_pass_hz)
+        if options.low_pass_hz:
+            processed = processed.low_pass_filter(options.low_pass_hz)
+        if options.trim_silence:
+            processed = self._trim_silence(
+                processed,
+                options.silence_threshold_db,
+                options.silence_min_len_ms,
+            )
+        if options.normalize:
+            processed = self._normalize_audio(processed, options.target_dbfs)
+        if options.ai_noise_removal and AI_NOISE_REMOVAL_ENABLED and self.ai_model.model_loaded:
+            denoised = self.ai_model.remove_noise(
+                self._audio_to_numpy(processed),
+                options.denoise_strength,
+            )
+            processed = self._numpy_to_audio(denoised, processed)
+        return processed
+
+    def _normalize_audio(self, audio: AudioSegment, target_dbfs: float) -> AudioSegment:
+        if audio.dBFS == float("-inf"):
+            return audio
+        normalized = normalize_audio_segment(audio)
+        gain = target_dbfs - normalized.dBFS
+        return normalized.apply_gain(gain)
+
+    def _trim_silence(
+        self,
+        audio: AudioSegment,
+        silence_threshold_db: float,
+        silence_min_len_ms: int,
+    ) -> AudioSegment:
+        ranges = detect_nonsilent(
+            audio,
+            min_silence_len=silence_min_len_ms,
+            silence_thresh=silence_threshold_db,
+        )
+        if not ranges:
+            return audio
+        start, _ = ranges[0]
+        _, end = ranges[-1]
+        return audio[start:end]
+
+    def _trim_leading_trailing_silence(
+        self,
+        audio: AudioSegment,
+        silence_threshold_db: float,
+        silence_min_len_ms: int,
+    ) -> AudioSegment:
+        if len(audio) == 0:
+            return audio
+        return self._trim_silence(audio, silence_threshold_db, silence_min_len_ms)
+
+    def _audio_to_numpy(self, audio: AudioSegment) -> np.ndarray:
+        samples = np.array(audio.get_array_of_samples())
+        if audio.channels > 1:
+            samples = samples.reshape((-1, audio.channels)).mean(axis=1)
+        max_value = float(1 << (8 * audio.sample_width - 1))
+        return (samples.astype(np.float32) / max_value).clip(-1.0, 1.0)
+
+    def _numpy_to_audio(
+        self,
+        audio_array: np.ndarray,
+        template: AudioSegment | None = None,
+    ) -> AudioSegment:
+        clipped = np.clip(audio_array, -1.0, 1.0)
+        sample_width = template.sample_width if template is not None else 2
+        frame_rate = template.frame_rate if template is not None else 16000
+        max_value = float(1 << (8 * sample_width - 1))
+        samples = (clipped * max_value).astype(np.int16)
+        return AudioSegment(
+            samples.tobytes(),
+            frame_rate=frame_rate,
+            sample_width=2,
+            channels=1,
+        )
+
+    def _summarize_results(self, results: list[AudioFileInfo]) -> dict[str, Any]:
+        total_input = sum(item.original_size for item in results)
+        total_output = sum(item.processed_size for item in results)
+        total_duration = sum(item.duration_seconds for item in results)
+        format_distribution: dict[str, int] = {}
+        for item in results:
+            format_distribution[item.original_format] = format_distribution.get(item.original_format, 0) + 1
+
+        return {
+            "total_input_size_bytes": total_input,
+            "total_output_size_bytes": total_output,
+            "compression_ratio": (total_output / total_input) if total_input else 0.0,
+            "total_duration_seconds": total_duration,
+            "average_duration_seconds": (total_duration / len(results)) if results else 0.0,
+            "average_sample_rate": int(sum(item.sample_rate for item in results) / len(results))
+            if results
+            else 0,
+            "format_distribution": format_distribution,
+        }
 
 
 @dataclass

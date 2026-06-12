@@ -31,10 +31,11 @@
 ✅ **비동기 처리**: Celery 작업 큐로 장시간 처리 백그라운드 실행
 ✅ **PostgreSQL 영속성**: 회의록 및 이력 데이터 영구 저장
 ✅ **실시간 스트리밍**: SSE로 진행률 실시간 업데이트
+✅ **모바일 오프라인 STT**: Flutter 클라이언트에서 `whisper_ggml_plus` 기반 기기 내 전사 fallback
 ✅ **API 보안**: API Key 인증, 레이트 리미팅, CORS, Security Headers
 ✅ **모니터링**: Prometheus 메트릭, 요청 ID 추적, 구조화된 로깅
 ✅ **프로덕션 배포**: Ubuntu systemd + Redis + Tailscale 원격 접속
-✅ **완전한 테스트**: 2478 백엔드 테스트 (단위/통합/E2E) + Flutter 67, 97.35%+ 커버리지
+✅ **완전한 테스트**: 백엔드 단위/통합/E2E 테스트 + Flutter 테스트 파일 55개
 
 ## 주요 기능
 
@@ -65,7 +66,7 @@
 - **메타데이터**: 화자별 발화 시간, 횟수, 비율
 
 #### 5. AI 요약 생성
-- **모델**: Claude 3.5 Sonnet
+- **모델**: OpenAI 호환 Chat Completions 모델 (`SUMMARY_MODEL`, 기본 `gpt-4o-mini`)
 - **추출**: 핵심 결정사항, 액션 아이템
 - **포맷**: 구조화된 JSON
 - **폴백**: API 실패 시 원문 텍스트로 자동 대체
@@ -89,6 +90,27 @@
 
 #### 실시간 스트리밍
 - **SSE**: `GET /api/v1/stream/{task_id}` (진행률 실시간 푸시)
+
+### 모바일 클라이언트
+
+#### 오프라인 STT fallback
+- **전처리**: `audio_decoder`로 M4A를 16kHz mono 16-bit WAV로 변환
+- **엔진**: `whisper_ggml_plus`의 `whisper-base` 모델 사용
+- **청크 분할**: 5분 초과 WAV는 30초 PCM 청크로 분할 후 순차 처리
+- **메모리 확인**: macOS `vm_stat`, Linux `/proc/meminfo`, 기타 플랫폼 RSS 기반 fallback
+- **결과 병합**: 청크 텍스트 join, 세그먼트 타임스탬프 offset 적용, 임시 청크 삭제
+
+#### 모델 다운로드
+- **기본 CDN**: `https://cdn.voice-to-textnote.com/models`
+- **이어받기**: `<savePath>.part` 파일과 HTTP `Range` 헤더 사용
+- **검증**: SHA-256 체크섬 검증
+- **저장공간**: 필요 용량의 2배 + 64MB buffer 기준 확인
+
+#### 현재 제약
+- 네이티브 MethodChannel STT 플러그인은 deprecated skeleton이며 실제 전사는 `whisper_ggml_plus` 경로가 담당합니다.
+- iOS/Android 저장공간과 메모리 확인은 아직 OS 전용 Platform Channel이 아닌 Dart fallback입니다.
+- `ModelDownloadDialog`의 샘플 URL/경로/체크섬은 실제 릴리스 메타데이터로 교체해야 합니다.
+- `lib/dataconnect_generated/`와 `build/**`는 `client/analysis_options.yaml`에서 analyzer scope 제외 대상입니다. 전체 `flutter analyze lib test`는 generated 의존성 오류 없이 실행되지만 기존 lint debt가 남아 있습니다.
 
 #### 모니터링
 - **헬스체크**: `GET /api/v1/health` (API, Redis, Celery 상태)
@@ -115,6 +137,9 @@
 - **pytest** 8.0+: 테스트 프레임워크
 - **pytest-cov** 4.0+: 커버리지 측정
 - **ruff** 0.4+: 린터 (파이썬 코드 품질)
+- **Flutter/Dart** 3.4.4+: 모바일 클라이언트
+- **audio_decoder** 0.8+: 모바일 오디오 WAV 변환
+- **whisper_ggml_plus** 1.5+: 모바일 오프라인 STT
 
 ## 빠른 시작
 
@@ -140,7 +165,7 @@ cd voice-to-textnote
 
 # 환경 변수 설정
 cp .env.example .env.local
-# .env.local 파일 편집 (CLAUDE_API_KEY 등 설정)
+# .env.local 파일 편집 (OPENAI_API_KEY 등 설정)
 ```
 
 #### 2. Python 환경 설정
@@ -339,7 +364,7 @@ pytest backend/ --cov=backend --cov-report=html --cov-report=term-missing
 pytest backend/tests/unit/test_stt_engine.py -v
 pytest backend/tests/integration/test_api.py -v
 
-# Flutter 테스트 (67개)
+# Flutter 테스트
 cd client
 flutter test
 ```
@@ -373,8 +398,9 @@ REDIS_URL=redis://localhost:6379/0
 CELERY_BROKER_URL=redis://localhost:6379/0
 CELERY_RESULT_BACKEND=redis://localhost:6379/1
 
-# Claude API
-CLAUDE_API_KEY=sk-...
+# OpenAI-compatible API
+OPENAI_API_KEY=sk-...
+SUMMARY_MODEL=gpt-4o-mini
 
 # API Security
 API_KEY_SECRET=your-secret-key
@@ -446,6 +472,19 @@ backend/
 └── conftest.py              # pytest 설정
 ```
 
+```
+client/
+├── lib/
+│   ├── config/              # 앱/Firebase 설정
+│   ├── models/              # API 및 UI 모델
+│   ├── providers/           # Riverpod 상태 관리
+│   ├── router/              # GoRouter 라우팅
+│   ├── screens/             # 주요 화면
+│   ├── services/            # API, STT, 녹음, 다운로드, 알림 서비스
+│   └── widgets/             # 재사용 UI 컴포넌트
+└── test/                    # 55개 Flutter 테스트 파일
+```
+
 ## 설정 옵션
 
 ### 주요 설정 변수
@@ -462,7 +501,8 @@ backend/
 | `CHUNK_DURATION` | `1800` | 청크 크기 (초) = 30분 |
 | `LOG_LEVEL` | `INFO` | 로그 레벨 (DEBUG, INFO, WARNING, ERROR) |
 | `API_KEY_SECRET` | (필수) | API Key 암호화 시크릿 |
-| `CLAUDE_API_KEY` | (필수) | Anthropic Claude API 키 |
+| `OPENAI_API_KEY` | (요약/분석 기능 사용 시 필수) | OpenAI 호환 API 키 |
+| `SUMMARY_MODEL` | `gpt-4o-mini` | 요약/QA/태깅/감성 분석 모델 |
 | `RATE_LIMIT` | `60/minute` | IP당 분당 요청 제한 |
 | `DATA_RETENTION_DAYS` | `30` | DB 데이터 보유 기간 |
 | `TEMP_FILE_RETENTION_HOURS` | `24` | 임시 파일 보유 기간 |
@@ -474,7 +514,7 @@ backend/
 | STT (mlx-whisper) | 1~3개 | 메모리 사용 (6GB/개) |
 | Diarization | 2개 | CPU 기반 처리 |
 | Minutes 생성 | 3개 | 빠른 처리 |
-| 요약 생성 | 2개 | Claude API 비용 관리 |
+| 요약 생성 | 2개 | LLM API 비용 관리 |
 
 ## 성능 특성
 
@@ -486,7 +526,7 @@ backend/
 | STT 처리 (1시간) | 20~30분 | 0.3~0.5배 실시간 (mlx-whisper) |
 | Diarization (1시간) | 15~25분 | CPU 기반 (pyannote.audio) |
 | Minutes 생성 | 1~5초 | 세그먼트 병합 및 통계 |
-| AI 요약 생성 | 2~5초 | Claude API 응답 시간 |
+| AI 요약 생성 | 2~5초 | LLM API 응답 시간 |
 | 상태 조회 | < 100ms | Redis 캐시 활용 |
 
 ### 리소스 사용량
@@ -504,7 +544,7 @@ backend/
 | 항목 | 개수 | 커버리지 |
 |------|------|---------|
 | 백엔드 단위/통합 | 2400+개 | 98%+ |
-| Flutter 테스트 | 67개 | - |
+| Flutter 테스트 파일 | 55개 | - |
 | E2E 테스트 | 16개 | 전체 파이프라인 |
 | 총합 | 2480+개 | - |
 
@@ -644,7 +684,7 @@ celery -A backend.workers.celery_app worker --loglevel=info
         │   │          │     │       │
     ┌───▼──▼──┐  ┌──┬──┐ ┌──▼──┐ ┌─▼──────┐
     │모델 로드 │  │STT│DIA│MIN │ │요약   │
-    │(싱글톤) │  └──┴──┘ └─────┘ │(Claude)│
+    │(싱글톤) │  └──┴──┘ └─────┘ │(LLM)   │
     └────────┘                    └────────┘
 ```
 

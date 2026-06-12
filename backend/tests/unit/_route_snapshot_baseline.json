@@ -406,6 +406,20 @@
     "api_key": true
   },
   {
+    "path": "/api/v1/enhanced/{enhancement_id}/download",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/enhanced/{enhancement_id}/download",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
     "path": "/api/v1/export/docx/{minutes_task_id}",
     "methods": [
       "GET"
@@ -983,6 +997,27 @@
     "path": "/api/v1/templates",
     "methods": [
       "POST"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/templates/generate",
+    "methods": [
+      "POST"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/templates/predefined",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/templates/types",
+    "methods": [
+      "GET"
     ],
     "api_key": true
   },

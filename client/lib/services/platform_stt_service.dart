@@ -1,5 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import 'package:voice_to_textnote/models/transcription_result.dart';
+import 'package:whisper_ggml_plus/whisper_ggml_plus.dart';
 
 /// 플랫폼별 STT 엔진 정보
 class EngineInfo {
@@ -66,6 +70,7 @@ abstract class PlatformSttService {
 }
 
 /// MethodChannel 기반 STT 서비스 구현
+@Deprecated('Use WhisperSttServiceImpl instead. MethodChannel STT is legacy.')
 class PlatformSttServiceImpl implements PlatformSttService {
   static const _channelName = 'com.voicetextnote/whisper_stt';
   static const _eventChannelName = 'com.voicetextnote/whisper_stt_progress';
@@ -149,5 +154,125 @@ class PlatformSttServiceImpl implements PlatformSttService {
     } on Exception catch (e) {
       throw SttException('Failed to create progress stream: ${e.toString()}');
     }
+  }
+}
+
+/// whisper_ggml_plus 기반 STT 서비스 구현
+class WhisperSttServiceImpl implements PlatformSttService {
+  static const _model = WhisperModel.base;
+
+  WhisperController? _controller;
+  bool _isInitialized = false;
+
+  /// WhisperController를 지연 생성하여 앱 시작 비용을 줄입니다.
+  Future<WhisperController> _getController() async {
+    if (_isInitialized && _controller != null) {
+      return _controller!;
+    }
+
+    _controller = WhisperController();
+    _isInitialized = true;
+    return _controller!;
+  }
+
+  @override
+  Future<TranscriptionResult> transcribe(
+    String audioPath, {
+    String language = 'ko',
+  }) async {
+    final stopwatch = Stopwatch()..start();
+
+    try {
+      final controller = await _getController();
+
+      // 모델 파일이 없으면 최초 전사 시점에 다운로드합니다.
+      if (!await _isModelLoaded(controller, _model)) {
+        await controller.downloadModel(_model);
+      }
+
+      final result = await controller.transcribe(
+        model: _model,
+        audioPath: audioPath,
+        lang: language,
+        withTimestamps: true,
+      );
+
+      if (result == null) {
+        throw const SttException('Transcription returned null');
+      }
+
+      stopwatch.stop();
+      return TranscriptionResult(
+        text: result.transcription.text,
+        segments: result.transcription.segments
+                ?.map(
+                  (segment) => TranscriptionSegment(
+                    startTime: segment.fromTs,
+                    endTime: segment.toTs,
+                    text: segment.text,
+                  ),
+                )
+                .toList() ??
+            const [],
+        language: language,
+        // OfflineSttService wrapper에서 오프라인 여부를 최종 조정합니다.
+        offline: false,
+        createdAt: DateTime.now(),
+        processingDuration: stopwatch.elapsed,
+        engineInfo: 'whisper-base-ggml',
+      );
+    } on SttException {
+      rethrow;
+    } on Exception catch (e) {
+      throw SttException('Transcription failed: ${e.toString()}');
+    }
+  }
+
+  @override
+  Future<bool> isAvailable() async {
+    try {
+      final controller = await _getController();
+      return _isModelLoaded(controller, _model);
+    } on Exception {
+      return false;
+    }
+  }
+
+  @override
+  Future<EngineInfo> getEngineInfo() async {
+    return EngineInfo(
+      name: 'whisper_ggml_plus',
+      platform: _getPlatformName(),
+      modelVersion: 'whisper-base',
+      accelerator: 'auto',
+    );
+  }
+
+  @override
+  Stream<double> get progressStream => const Stream.empty();
+
+  /// 네이티브 리소스를 해제합니다.
+  Future<void> dispose() async {
+    await _controller?.dispose(model: _model);
+    _controller = null;
+    _isInitialized = false;
+  }
+
+  Future<bool> _isModelLoaded(
+    WhisperController controller,
+    WhisperModel model,
+  ) async {
+    final path = await controller.getPath(model);
+    return File(path).existsSync();
+  }
+
+  String _getPlatformName() {
+    if (kIsWeb) return 'web';
+    if (Platform.isIOS) return 'ios';
+    if (Platform.isAndroid) return 'android';
+    if (Platform.isMacOS) return 'macos';
+    if (Platform.isWindows) return 'windows';
+    if (Platform.isLinux) return 'linux';
+    return 'unknown';
   }
 }

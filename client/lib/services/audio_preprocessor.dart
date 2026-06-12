@@ -1,14 +1,27 @@
 import 'dart:developer' as developer;
 import 'dart:io';
-import 'dart:typed_data';
+
+import 'package:audio_decoder/audio_decoder.dart';
+
+typedef WavConverter = Future<String> Function(
+  String inputPath,
+  String outputPath, {
+  int sampleRate,
+  int channels,
+  int bitDepth,
+});
 
 /// @MX:SPEC:REQ-MOBILE-008-01
 ///
 /// M4A 오디오 파일을 16kHz mono WAV 형식으로 변환하는 전처리기
 ///
-/// 현재 구현은 시뮬레이션 패턴을 사용합니다. 실제 ffmpeg 변환은
-/// Native 플러그인 통합이 필요하므로 추후 구현 예정입니다.
+/// Native 플랫폼 API를 사용해 실제 오디오 디코딩과 WAV 변환을 수행합니다.
 class AudioPreprocessor {
+  final WavConverter _convertToWav;
+
+  AudioPreprocessor({WavConverter? converter})
+      : _convertToWav = converter ?? AudioDecoder.convertToWav;
+
   /// WAV 파일 샘플 레이트 (16kHz)
   static const int _sampleRate = 16000;
 
@@ -48,8 +61,7 @@ class AudioPreprocessor {
       throw const FormatException('입력 오디오 파일이 비어있습니다');
     }
 
-    // WAV 변환 (시뮬레이션)
-    // TODO: 실제 ffmpeg 통합 필요 (Native 플러그인)
+    // Native 디코더가 실제 PCM 변환을 수행하도록 출력 경로만 준비합니다.
     final outputPath = _getWavPath(m4aPath);
     final outputFile = await _createWavFile(inputFile, outputPath);
 
@@ -84,26 +96,20 @@ class AudioPreprocessor {
     return '$pathWithoutExt.wav';
   }
 
-  /// WAV 파일 생성 (시뮬레이션)
-  ///
-  /// 실제 구현에서는 ffmpeg를 사용하여:
-  /// - 16kHz 샘플 레이트 변환
-  /// - mono 채널 변환
-  /// - PCM 16-bit 인코딩
+  /// Native 플랫폼 API로 WAV 파일 생성
   Future<File> _createWavFile(File inputFile, String outputPath) async {
     final outputFile = File(outputPath);
 
     try {
-      // 원본 데이터 읽기 (실제로는 ffmpeg 처리)
-      final inputData = await inputFile.readAsBytes();
+      final wavPath = await _convertToWav(
+        inputFile.path,
+        outputPath,
+        sampleRate: _sampleRate,
+        channels: _channels,
+        bitDepth: _bitsPerSample,
+      );
 
-      // WAV 헤더 생성 (시뮬레이션)
-      final wavData = _generateWavHeader(inputData.length);
-
-      // WAV 파일 쓰기
-      await outputFile.writeAsBytes([...wavData, ...inputData]);
-
-      return outputFile;
+      return File(wavPath);
     } catch (e) {
       // 변환 실패 시 생성된 파일 정리
       if (await outputFile.exists()) {
@@ -111,36 +117,5 @@ class AudioPreprocessor {
       }
       throw FormatException('WAV 변환 실패: $e');
     }
-  }
-
-  /// WAV 파일 헤더 생성 (16kHz, mono, 16-bit PCM)
-  List<int> _generateWavHeader(int dataLength) {
-    final header = ByteData(44);
-    final bytes = header.buffer.asUint8List();
-
-    void writeAscii(int offset, String value) {
-      for (var i = 0; i < value.length; i++) {
-        bytes[offset + i] = value.codeUnitAt(i);
-      }
-    }
-
-    const byteRate = _sampleRate * _channels * _bitsPerSample ~/ 8;
-    const blockAlign = _channels * _bitsPerSample ~/ 8;
-
-    writeAscii(0, 'RIFF');
-    header.setUint32(4, 36 + dataLength, Endian.little);
-    writeAscii(8, 'WAVE');
-    writeAscii(12, 'fmt ');
-    header.setUint32(16, 16, Endian.little);
-    header.setUint16(20, 1, Endian.little);
-    header.setUint16(22, _channels, Endian.little);
-    header.setUint32(24, _sampleRate, Endian.little);
-    header.setUint32(28, byteRate, Endian.little);
-    header.setUint16(32, blockAlign, Endian.little);
-    header.setUint16(34, _bitsPerSample, Endian.little);
-    writeAscii(36, 'data');
-    header.setUint32(40, dataLength, Endian.little);
-
-    return bytes;
   }
 }

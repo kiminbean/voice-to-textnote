@@ -40,7 +40,7 @@ class TemplateSection(BaseModel):
     """템플릿 섹션 정의"""
     title: str
     required: bool = True
-    order: int
+    order: int | float
     placeholder: Optional[str] = None
     subsections: List["TemplateSection"] = Field(default_factory=list)
 
@@ -308,7 +308,7 @@ async def get_template_types() -> List[PredefinedTemplate]:
 
 @router.get("/predefined", response_model=List[PredefinedTemplate])
 async def get_predefined_templates(
-    meeting_type: Optional[MeetingType] = Query(
+    meeting_type: Optional[str] = Query(
         default=None,
         description="특정 회의 유형의 템플릿만 필터링",
     ),
@@ -317,9 +317,26 @@ async def get_predefined_templates(
     templates = list(PREDEFINED_TEMPLATES.values())
     
     if meeting_type:
-        templates = [t for t in templates if t.meeting_type == meeting_type]
+        try:
+            parsed_type = MeetingType(meeting_type)
+        except ValueError:
+            return []
+        templates = [t for t in templates if t.meeting_type == parsed_type]
     
     return templates
+
+
+def _resolve_template(template_id: str) -> PredefinedTemplate | None:
+    """회의 유형 값 또는 템플릿 ID로 미리 정의된 템플릿을 찾는다."""
+    try:
+        return PREDEFINED_TEMPLATES[MeetingType(template_id)]
+    except ValueError:
+        pass
+
+    for template in PREDEFINED_TEMPLATES.values():
+        if template.template_id == template_id:
+            return template
+    return None
 
 
 async def _get_minutes_data(redis_client: aioredis.Redis, db_session, task_id: str) -> dict:
@@ -419,18 +436,18 @@ async def generate_template_based_minutes(
     db_session = Depends(get_db_session),
 ) -> dict:
     """템플릿 기반 회의록 생성"""
-    
-    # 원본 회의록 데이터 조회
-    minutes_data = await _get_minutes_data(redis_client, db_session, request.minutes_task_id)
-    
     # 템플릿 확인
-    if request.template_id not in PREDEFINED_TEMPLATES:
-        available_templates = list(PREDEFINED_TEMPLATES.keys())
+    template = _resolve_template(request.template_id)
+    if template is None:
+        available_templates = [
+            template.meeting_type.value for template in PREDEFINED_TEMPLATES.values()
+        ] + [template.template_id for template in PREDEFINED_TEMPLATES.values()]
         unprocessable(
             f"지원하지 않는 템플릿입니다. 사용 가능한 템플릿: {available_templates}"
         )
-    
-    template = PREDEFINED_TEMPLATES[MeetingType(request.template_id)]
+
+    # 원본 회의록 데이터 조회
+    minutes_data = await _get_minutes_data(redis_client, db_session, request.minutes_task_id)
     
     # 템플릿 적용
     structured_minutes = _apply_template_to_minutes(

@@ -41,6 +41,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.11.0"
+  audio_decoder:
+    dependency: "direct main"
+    description:
+      name: audio_decoder
+      sha256: "116d71853a934ede4d2afe31a1dabfb9fe5bb50efe3df4d798dc546cf6604c9f"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.8.1"
   audio_session:
     dependency: "direct main"
     description:
@@ -376,6 +384,14 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
+  freezed_annotation:
+    dependency: transitive
+    description:
+      name: freezed_annotation
+      sha256: "7294967ff0a6d98638e7acb774aac3af2550777accd8149c90af5b014e6d44d8"
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.1.0"
   glob:
     dependency: transitive
     description:
@@ -1149,6 +1165,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.1.1"
+  whisper_ggml_plus:
+    dependency: "direct main"
+    description:
+      name: whisper_ggml_plus
+      sha256: "484950d7767078bd3256fbb256d663322e33de359537a3f3ae0c82607ebebc5c"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.5.2"
   win32:
     dependency: transitive
     description:
