@@ -111,11 +111,6 @@ class SentimentService:
         "원망",
         "불평",
         "불화",
-        "갈등",
-        "마찰",
-        "대립",
-        "갈등",
-        "문제",
         "장애",
         "핸디캡",
         "제약",
@@ -371,7 +366,7 @@ class SentimentService:
 
         sum_x = sum(x)
         sum_y = sum(sentiment_scores)
-        sum_xy = sum(xi * yi for xi, yi in zip(x, sentiment_scores))
+        sum_xy = sum(xi * yi for xi, yi in zip(x, sentiment_scores, strict=False))
         sum_x2 = sum(xi * xi for xi in x)
 
         # 기울기 계산: slope = (n*Σxy - Σx*Σy) / (n*Σx2 - (Σx)²)

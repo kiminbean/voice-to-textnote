@@ -37,11 +37,10 @@ def tags_client():
     app.dependency_overrides[get_db_session] = mock_db_session
     app.dependency_overrides[get_current_user] = mock_current_user
 
-    with patch("backend.app.main.WhisperEngine"):
-        with patch("backend.app.main.DiarizationEngine"):
-            with patch("backend.app.lifecycle.validate_startup", new_callable=AsyncMock):
-                with patch("backend.app.lifecycle.cleanup_shutdown", new_callable=AsyncMock):
-                    yield TestClient(app, raise_server_exceptions=False)
+    with patch("backend.app.main.WhisperEngine"), patch("backend.app.main.DiarizationEngine"):
+        with patch("backend.app.lifecycle.validate_startup", new_callable=AsyncMock):
+            with patch("backend.app.lifecycle.cleanup_shutdown", new_callable=AsyncMock):
+                yield TestClient(app, raise_server_exceptions=False)
 
     app.dependency_overrides.clear()
 

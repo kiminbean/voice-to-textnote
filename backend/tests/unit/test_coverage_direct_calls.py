@@ -179,13 +179,12 @@ class TestMinutesActionItemsDirectCalls:
         with patch(
             "backend.app.api.v1.minutes.action_items.extract_action_items",
             side_effect=RuntimeError("알 수 없는 오류"),
-        ):
-            with pytest.raises(Exception):
-                await extract_action_items_api(
-                    request=MagicMock(
-                        text="테스트", language="ko", include_deadlines=True, include_assignees=True
-                    ),
-                )
+        ), pytest.raises(Exception):
+            await extract_action_items_api(
+                request=MagicMock(
+                    text="테스트", language="ko", include_deadlines=True, include_assignees=True
+                ),
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -208,9 +207,8 @@ class TestAudioAnalysisDirectCalls:
         with patch(
             "backend.app.api.v1.audio.audio_analysis.analyze_audio",
             side_effect=OSError("디스크 오류"),
-        ):
-            with pytest.raises(Exception):
-                await analyze_audio_file(file=mock_file)
+        ), pytest.raises(Exception):
+            await analyze_audio_file(file=mock_file)
 
     @pytest.mark.asyncio
     async def test_value_error_size_kr(self):
@@ -224,9 +222,8 @@ class TestAudioAnalysisDirectCalls:
         with patch(
             "backend.app.api.v1.audio.audio_analysis.analyze_audio",
             side_effect=ValueError("파일 크기 초과"),
-        ):
-            with pytest.raises(Exception):
-                await analyze_audio_file(file=mock_file)
+        ), pytest.raises(Exception):
+            await analyze_audio_file(file=mock_file)
 
     @pytest.mark.asyncio
     async def test_value_error_size_en(self):
@@ -240,9 +237,8 @@ class TestAudioAnalysisDirectCalls:
         with patch(
             "backend.app.api.v1.audio.audio_analysis.analyze_audio",
             side_effect=ValueError("File size exceeded"),
-        ):
-            with pytest.raises(Exception):
-                await analyze_audio_file(file=mock_file)
+        ), pytest.raises(Exception):
+            await analyze_audio_file(file=mock_file)
 
     @pytest.mark.asyncio
     async def test_value_error_other(self):
@@ -256,9 +252,8 @@ class TestAudioAnalysisDirectCalls:
         with patch(
             "backend.app.api.v1.audio.audio_analysis.analyze_audio",
             side_effect=ValueError("잘못된 포맷"),
-        ):
-            with pytest.raises(Exception):
-                await analyze_audio_file(file=mock_file)
+        ), pytest.raises(Exception):
+            await analyze_audio_file(file=mock_file)
 
 
 # ---------------------------------------------------------------------------
@@ -283,10 +278,9 @@ class TestQualityAssessmentDirectCalls:
             patch(
                 "backend.app.api.v1.audio.quality_assessment._load_minutes_text_or_404",
                 new=AsyncMock(return_value="테스트"),
-            ),
+            ),pytest.raises(VoiceNoteError)
         ):
-            with pytest.raises(VoiceNoteError):
-                await get_live_quality_score(task_id="test-task")
+            await get_live_quality_score(task_id="test-task")
 
     @pytest.mark.asyncio
     async def test_live_score_generic(self):
@@ -302,10 +296,9 @@ class TestQualityAssessmentDirectCalls:
             patch(
                 "backend.app.api.v1.audio.quality_assessment._load_minutes_text_or_404",
                 new=AsyncMock(return_value="테스트"),
-            ),
+            ),pytest.raises(Exception)
         ):
-            with pytest.raises(Exception):
-                await get_live_quality_score(task_id="test-task")
+            await get_live_quality_score(task_id="test-task")
 
     @pytest.mark.asyncio
     async def test_submit_feedback_vne(self):
@@ -321,13 +314,12 @@ class TestQualityAssessmentDirectCalls:
         with patch(
             "backend.app.api.v1.audio.quality_assessment.get_quality_service",
             return_value=MagicMock(submit_feedback=AsyncMock(side_effect=vne)),
-        ):
-            with pytest.raises(VoiceNoteError):
-                await submit_quality_feedback(
-                    task_id="test-task",
-                    payload=MagicMock(),
-                    db=mock_db,
-                )
+        ), pytest.raises(VoiceNoteError):
+            await submit_quality_feedback(
+                task_id="test-task",
+                payload=MagicMock(),
+                db=mock_db,
+            )
 
     @pytest.mark.asyncio
     async def test_list_feedback_vne(self):
@@ -338,9 +330,8 @@ class TestQualityAssessmentDirectCalls:
         with patch(
             "backend.app.api.v1.audio.quality_assessment.get_quality_service",
             return_value=MagicMock(get_feedback_summary=AsyncMock(side_effect=vne)),
-        ):
-            with pytest.raises(VoiceNoteError):
-                await list_quality_feedback(task_id="test-task")
+        ), pytest.raises(VoiceNoteError):
+            await list_quality_feedback(task_id="test-task")
 
     @pytest.mark.asyncio
     async def test_quality_trends_vne(self):
@@ -351,9 +342,8 @@ class TestQualityAssessmentDirectCalls:
         with patch(
             "backend.app.api.v1.audio.quality_assessment.get_quality_service",
             return_value=MagicMock(analyze_quality_trends=AsyncMock(side_effect=vne)),
-        ):
-            with pytest.raises(VoiceNoteError):
-                await get_quality_trends(task_id="test-task")
+        ), pytest.raises(VoiceNoteError):
+            await get_quality_trends(task_id="test-task")
 
 
 # ---------------------------------------------------------------------------

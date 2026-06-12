@@ -31,11 +31,10 @@ def export_client():
     app.dependency_overrides[get_db_session] = mock_db_session
     app.dependency_overrides[get_redis_client] = mock_redis
 
-    with patch("backend.app.main.WhisperEngine"):
-        with patch("backend.app.main.DiarizationEngine"):
-            with patch("backend.app.lifecycle.validate_startup", new_callable=AsyncMock):
-                with patch("backend.app.lifecycle.cleanup_shutdown", new_callable=AsyncMock):
-                    yield TestClient(app, raise_server_exceptions=False)
+    with patch("backend.app.main.WhisperEngine"), patch("backend.app.main.DiarizationEngine"):
+        with patch("backend.app.lifecycle.validate_startup", new_callable=AsyncMock):
+            with patch("backend.app.lifecycle.cleanup_shutdown", new_callable=AsyncMock):
+                yield TestClient(app, raise_server_exceptions=False)
 
     app.dependency_overrides.clear()
 

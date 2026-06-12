@@ -3,6 +3,7 @@
 REQ-MIN-006~010: 비동기 회의록 생성 처리 워커
 """
 
+import contextlib
 import json
 import uuid
 from unittest.mock import MagicMock, patch
@@ -383,10 +384,8 @@ class TestMinutesTaskStatusTransitions:
 
         def track_setex(key, ttl, data):
             if "status" in key:
-                try:
+                with contextlib.suppress(Exception):
                     status_updates.append(json.loads(data))
-                except Exception:
-                    pass
             return True
 
         mock_redis.setex.side_effect = track_setex

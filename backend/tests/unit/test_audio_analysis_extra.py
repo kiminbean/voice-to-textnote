@@ -293,12 +293,11 @@ class TestAnalyzeAudio:
         mock_stat.return_value.st_size = 1024000
 
         # Create temp file mock
-        with patch("pathlib.Path.name", "test.mp3"):
-            with patch("pathlib.Path.suffix", ".mp3"):
-                # Act
-                result = analyze_audio("test.mp3", include_silence_detection=False)
+        with patch("pathlib.Path.name", "test.mp3"), patch("pathlib.Path.suffix", ".mp3"):
+            # Act
+            result = analyze_audio("test.mp3", include_silence_detection=False)
 
-                # Assert
-                assert result.sample_rate == 16000
-                assert result.channels == 1
-                assert result.bitrate == "128 kbps"
+            # Assert
+            assert result.sample_rate == 16000
+            assert result.channels == 1
+            assert result.bitrate == "128 kbps"

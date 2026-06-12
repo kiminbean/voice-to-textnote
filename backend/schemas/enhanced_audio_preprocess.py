@@ -2,15 +2,14 @@
 AI 기반 오디오 증강 API 스키마
 """
 
-from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field, confloat, constr
 
 
 class AIEnhanceOptionsPayload(BaseModel):
     """AI 증강 옵션 요청 스키마"""
-    
+
     enable_noise_reduction: bool = Field(
         default=True,
         description="AI 노이즈 제거 활성화"
@@ -55,7 +54,7 @@ class AIEnhanceOptionsPayload(BaseModel):
 
 class VoiceQualityScore(BaseModel):
     """음질 평가 점수"""
-    
+
     overall_score: float = Field(
         description="종합 점수 (0-100)"
     )
@@ -75,8 +74,8 @@ class VoiceQualityScore(BaseModel):
 
 class AudioQualityEvaluation(BaseModel):
     """오디오 품질 평가 결과"""
-    
-    quality_assessment: Optional[VoiceQualityScore] = Field(
+
+    quality_assessment: VoiceQualityScore | None = Field(
         description="음질 평가 결과"
     )
     processing_details: dict[str, Any] = Field(
@@ -89,7 +88,7 @@ class AudioQualityEvaluation(BaseModel):
 
 class EnhancementReportResponse(BaseModel):
     """AI 증강 응답"""
-    
+
     original_filename: str = Field(description="원본 파일명")
     original_size_bytes: int = Field(description="원본 파일 크기 (바이트)")
     processed_size_bytes: int = Field(description="처리된 파일 크기 (바이트)")
@@ -100,7 +99,7 @@ class EnhancementReportResponse(BaseModel):
 
 class VoiceQualityAssessment(BaseModel):
     """음질 평가 세부 정보"""
-    
+
     overall_score: float = Field(
         description="종합 점수 (0-100)"
     )

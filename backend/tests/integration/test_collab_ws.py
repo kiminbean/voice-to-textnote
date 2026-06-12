@@ -4,9 +4,9 @@ SPEC-COLLAB-001: AC-001~005, AC-050~053
 Redis 없이 InMemoryRedis로 동작.
 """
 
-import pytest
 from unittest.mock import MagicMock, patch
 
+import pytest
 
 # ── JWT mock 헬퍼 ────────────────────────────────────────────────────
 
@@ -24,8 +24,8 @@ def collab_client():
     """WebSocket 테스트용 FastAPI TestClient"""
     from fastapi.testclient import TestClient
 
-    from backend.app.main import app
     from backend.app.dependencies import get_redis_client
+    from backend.app.main import app
 
     # InMemoryRedis로 Redis 대체
     class InMemoryRedis:
@@ -97,11 +97,10 @@ class TestWSJWTAuth:
         )
         MockAuthService.return_value = mock_instance
 
-        with pytest.raises(Exception):
-            with collab_client.websocket_connect(
-                "/api/v1/collab/test-task/ws?token=expired-token"
-            ):
-                pass
+        with pytest.raises(Exception), collab_client.websocket_connect(
+            "/api/v1/collab/test-task/ws?token=expired-token"
+        ):
+            pass
 
 
 # ── AC-004: Room 최대 인원 ────────────────────────────────────────────

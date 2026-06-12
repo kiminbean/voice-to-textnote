@@ -5,7 +5,6 @@ SPEC-COLLAB-001: REQ-COLLAB-001~004, 050~053
 
 from __future__ import annotations
 
-import asyncio
 import collections
 import time
 from typing import Any
@@ -238,9 +237,10 @@ async def websocket_collab(websocket: WebSocket, task_id: str) -> None:
 
     # AC-053: 팀 멤버십 검증 — task_id가 속한 팀의 멤버인지 확인
     try:
-        from backend.db.engine import create_engine, get_session_factory
-        from backend.db.auth_models import MeetingOwnership, TeamMember
         import uuid
+
+        from backend.db.auth_models import MeetingOwnership, TeamMember
+        from backend.db.engine import create_engine, get_session_factory
 
         _engine = create_engine()
         _session_factory = get_session_factory(_engine)

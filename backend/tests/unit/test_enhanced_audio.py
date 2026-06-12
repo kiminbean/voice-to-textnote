@@ -49,7 +49,7 @@ def sample_audio_file():
 def sample_audio_files():
     """샘플 오디오 파일 목록 생성"""
     files = []
-    for i in range(3):
+    for _i in range(3):
         audio = AudioSegment.silent(duration=2000)  # 2초 무음
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp_file:
             audio.export(tmp_file.name, format="wav")

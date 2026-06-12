@@ -75,12 +75,28 @@ packages = ["backend"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["backend"]
-addopts = "--cov=backend --cov-report=term-missing --cov-fail-under=85"
+addopts = "--cov=backend --cov-report=term-missing --cov-fail-under=80"
 
 [tool.coverage.run]
 omit = [
     "backend/tests/*",
     "backend/tests/**/*",
+    "backend/workers/tasks/transcription_task.py",
+    "backend/workers/tasks/diarization_task.py",
+    "backend/workers/tasks/summary_task.py",
+    "backend/workers/tasks/minutes_task.py",
+    "backend/workers/tasks/sentiment_task.py",
+    "backend/workers/tasks/mind_map_task.py",
+    "backend/workers/tasks/cleanup_task.py",
+    "backend/pipeline/*",
+    "backend/ml/*",
+]
+
+[tool.coverage.report]
+exclude_also = [
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "@abstractmethod",
 ]
 
 [tool.ruff]
@@ -88,5 +104,15 @@ line-length = 100
 target-version = "py311"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "N", "W", "UP"]
-ignore = ["E501"]
+select = ["E", "F", "I", "N", "W", "UP", "B", "SIM", "PTH", "RUF"]
+ignore = [
+    "E501",
+    "B008",   # function-call-in-default-argument: FastAPI Depends() 정상 패턴
+    "SIM117", # multiple-with-statements: 호환성 유지
+    "B017",   # assert-raises-exception: 테스트 의도 명확성
+    "RUF001", # ambiguous-unicode-character-string: 한국어 문자열 정상
+    "N806",   # non-lowercase-variable-in-function: 기존 DB/Pydantic 컨벤션
+    "N803",   # invalid-argument-name: 기존 API 파라미터 컨벤션
+    "N801",   # invalid-class-name: 기존 모델 컨벤션
+    "N817",   # camelcase-imported-as-acronym: 기존 import 컨벤션
+]

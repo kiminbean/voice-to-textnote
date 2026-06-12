@@ -64,7 +64,7 @@ def test_webhook_runtime_validation_rejects_private_literal() -> None:
 
 
 def test_webhook_runtime_validation_rejects_private_dns_resolution(monkeypatch) -> None:
-    def fake_getaddrinfo(host, port, type=None):  # noqa: A002
+    def fake_getaddrinfo(host, port, type=None):
         return [(None, None, None, "", ("10.0.0.10", port))]
 
     monkeypatch.setattr("socket.getaddrinfo", fake_getaddrinfo)

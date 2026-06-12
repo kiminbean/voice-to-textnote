@@ -4,6 +4,7 @@ REQ-STT-005, 008, 009, 013, 018: STT 워커 내부 함수 검증
 TDD RED → GREEN cycle
 """
 
+import contextlib
 import json
 import math
 from pathlib import Path
@@ -428,7 +429,7 @@ class TestTranscriptionTaskMain:
 
         # Celery eager 모드에서 retry는 예외를 다시 발생시킴
         # max_retries 초과 시 원래 예외가 전파됨
-        try:
+        with contextlib.suppress(Exception):
             transcription_task.apply(
                 args=(),
                 kwargs={
@@ -437,8 +438,6 @@ class TestTranscriptionTaskMain:
                 },
                 throw=True,
             )
-        except Exception:
-            pass
 
         # failed 상태로 기록되었는지 확인
         mock_status.assert_called()

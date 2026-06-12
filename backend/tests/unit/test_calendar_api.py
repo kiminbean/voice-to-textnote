@@ -194,4 +194,4 @@ class TestSupportedCalendars:
         """google, outlook, apple 지원 확인"""
         from backend.app.api.v1.admin.calendar import SUPPORTED_CALENDARS
 
-        assert SUPPORTED_CALENDARS == {"google", "outlook", "apple"}
+        assert {"google", "outlook", "apple"} == SUPPORTED_CALENDARS

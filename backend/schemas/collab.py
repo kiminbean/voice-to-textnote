@@ -7,7 +7,6 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
-
 # ── 클라이언트 → 서버 메시지 ──────────────────────────────────────────
 
 

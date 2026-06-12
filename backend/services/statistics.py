@@ -66,7 +66,6 @@ _STOPWORDS: frozenset[str] = frozenset(
         "으로",
         "에서",
         "그리고요",
-        "그러면",
         "진짜",
         "정말",
         "좀더",

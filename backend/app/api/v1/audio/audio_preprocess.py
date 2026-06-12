@@ -147,7 +147,7 @@ async def preprocess_endpoint(
     except VoiceNoteError:
         _safe_unlink(src_path)
         raise
-    except Exception as exc:  # noqa: BLE001 - 업로드 실패는 다양함
+    except Exception as exc:
         _safe_unlink(src_path)
         logger.error("업로드 저장 실패", error=str(exc))
         bad_request(f"업로드 처리 실패: {exc}")
@@ -159,7 +159,7 @@ async def preprocess_endpoint(
         except ValueError as exc:
             _safe_unlink(src_path)
             bad_request(str(exc))
-        except Exception as exc:  # noqa: BLE001 - pydub/ffmpeg failure modes vary
+        except Exception as exc:
             _safe_unlink(src_path)
             logger.error("오디오 전처리 실패", error=str(exc))
             internal_server_error("오디오 전처리 중 오류가 발생했습니다")

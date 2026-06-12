@@ -3,7 +3,8 @@ AI 기반 오디오 증강 기능 테스트
 """
 
 import pytest
-from backend.pipeline.enhanced_audio_processor import AIEnhanceOptions, EnhancementResult
+
+from backend.pipeline.enhanced_audio_processor import AIEnhanceOptions
 
 
 def test_ai_enhance_options_validation():
@@ -22,12 +23,12 @@ def test_ai_enhance_options_validation():
         output_format="wav"
     )
     options.validate()
-    
+
     # 비정상 옵션 - noise_reduction_strength 범위 벗어남
     with pytest.raises(ValueError, match="noise_reduction_strength는 0.0~1.0 사이여야 합니다."):
         options = AIEnhanceOptions(noise_reduction_strength=1.5)
         options.validate()
-    
+
     # 비정상 옵션 - vad_threshold 범위 벗어남
     with pytest.raises(ValueError, match="vad_threshold는 0.0~1.0 사이여야 합니다."):
         options = AIEnhanceOptions(vad_threshold=1.5)
@@ -53,7 +54,7 @@ def test_enhancement_result_structure():
     """EnhancementResult 데이터 구조 테스트"""
     # 실제 구현에서는 enhance_audio_with_ai 함수를 통해 생성되는 결과를 테스트
     # 여기서는 구조 검증만 수행
-    
+
     # EnhancementResult가 필요한 필드를 모두 가지고 있는지 확인
     required_fields = [
         'output_path',
@@ -65,7 +66,7 @@ def test_enhancement_result_structure():
         'processing_details',
         'warnings'
     ]
-    
+
     # 이 테스트는 실제 구현과 함께 수정되어야 함
     # 지금은 테스트 파일을 생성할 수 있는 최소한의 구조만 확인
     assert isinstance(required_fields, list)
@@ -76,16 +77,16 @@ def test_enhancement_result_structure():
 async def test_enhanced_audio_endpoint_exists():
     """Enhanced Audio 엔드포인트 존재 확인"""
     from backend.app.api.v1.audio import enhanced_preprocess
-    
+
     # 라우터가 존재하는지 확인
     assert enhanced_preprocess.router is not None
     assert len(enhanced_preprocess.router.routes) > 0
-    
+
     # POST /enhanced 엔드포인트 존재 확인
     enhanced_route = None
     for route in enhanced_preprocess.router.routes:
         if hasattr(route, 'path') and '/enhanced' in route.path:
             enhanced_route = route
             break
-    
+
     assert enhanced_route is not None, "Enhanced Audio 엔드포인트가 라우터에 등록되지 않음"

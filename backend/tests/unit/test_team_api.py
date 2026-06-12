@@ -81,11 +81,10 @@ def team_client(admin_user):
 
     app.dependency_overrides[get_team_service] = override_svc
 
-    with patch("backend.app.main.WhisperEngine"):
-        with patch("backend.app.main.DiarizationEngine"):
-            with patch("backend.app.lifecycle.validate_startup", new_callable=AsyncMock):
-                with patch("backend.app.lifecycle.cleanup_shutdown", new_callable=AsyncMock):
-                    yield TestClient(app, raise_server_exceptions=False), svc_mock
+    with patch("backend.app.main.WhisperEngine"), patch("backend.app.main.DiarizationEngine"):
+        with patch("backend.app.lifecycle.validate_startup", new_callable=AsyncMock):
+            with patch("backend.app.lifecycle.cleanup_shutdown", new_callable=AsyncMock):
+                yield TestClient(app, raise_server_exceptions=False), svc_mock
 
     app.dependency_overrides.clear()
 
@@ -240,16 +239,15 @@ def test_update_team_non_admin_403(admin_user):
 
     team_id = str(uuid.uuid4())
 
-    with patch("backend.app.main.WhisperEngine"):
-        with patch("backend.app.main.DiarizationEngine"):
-            with patch("backend.app.lifecycle.validate_startup", new_callable=AsyncMock):
-                with patch("backend.app.lifecycle.cleanup_shutdown", new_callable=AsyncMock):
-                    client = TestClient(app, raise_server_exceptions=False)
-                    mock_svc.get_user_role = AsyncMock(return_value="member")
-                    response = client.put(
-                        f"/api/v1/teams/{team_id}",
-                        json={"name": "수정 시도"},
-                    )
+    with patch("backend.app.main.WhisperEngine"), patch("backend.app.main.DiarizationEngine"):
+        with patch("backend.app.lifecycle.validate_startup", new_callable=AsyncMock):
+            with patch("backend.app.lifecycle.cleanup_shutdown", new_callable=AsyncMock):
+                client = TestClient(app, raise_server_exceptions=False)
+                mock_svc.get_user_role = AsyncMock(return_value="member")
+                response = client.put(
+                    f"/api/v1/teams/{team_id}",
+                    json={"name": "수정 시도"},
+                )
 
     app.dependency_overrides.clear()
     assert response.status_code == 403
@@ -296,13 +294,12 @@ def test_delete_team_non_admin_403(admin_user):
 
     team_id = str(uuid.uuid4())
 
-    with patch("backend.app.main.WhisperEngine"):
-        with patch("backend.app.main.DiarizationEngine"):
-            with patch("backend.app.lifecycle.validate_startup", new_callable=AsyncMock):
-                with patch("backend.app.lifecycle.cleanup_shutdown", new_callable=AsyncMock):
-                    client = TestClient(app, raise_server_exceptions=False)
-                    mock_svc.get_user_role = AsyncMock(return_value="viewer")
-                    response = client.delete(f"/api/v1/teams/{team_id}")
+    with patch("backend.app.main.WhisperEngine"), patch("backend.app.main.DiarizationEngine"):
+        with patch("backend.app.lifecycle.validate_startup", new_callable=AsyncMock):
+            with patch("backend.app.lifecycle.cleanup_shutdown", new_callable=AsyncMock):
+                client = TestClient(app, raise_server_exceptions=False)
+                mock_svc.get_user_role = AsyncMock(return_value="viewer")
+                response = client.delete(f"/api/v1/teams/{team_id}")
 
     app.dependency_overrides.clear()
     assert response.status_code == 403
@@ -560,13 +557,12 @@ def test_remove_team_member_403_non_admin(team_client, admin_user):
     team_id = str(uuid.uuid4())
     other_user_id = str(uuid.uuid4())
 
-    with patch("backend.app.main.WhisperEngine"):
-        with patch("backend.app.main.DiarizationEngine"):
-            with patch("backend.app.lifecycle.validate_startup", new_callable=AsyncMock):
-                with patch("backend.app.lifecycle.cleanup_shutdown", new_callable=AsyncMock):
-                    client = TestClient(app, raise_server_exceptions=False)
-                    mock_svc_local.get_user_role = AsyncMock(return_value="member")
-                    response = client.delete(f"/api/v1/teams/{team_id}/members/{other_user_id}")
+    with patch("backend.app.main.WhisperEngine"), patch("backend.app.main.DiarizationEngine"):
+        with patch("backend.app.lifecycle.validate_startup", new_callable=AsyncMock):
+            with patch("backend.app.lifecycle.cleanup_shutdown", new_callable=AsyncMock):
+                client = TestClient(app, raise_server_exceptions=False)
+                mock_svc_local.get_user_role = AsyncMock(return_value="member")
+                response = client.delete(f"/api/v1/teams/{team_id}/members/{other_user_id}")
 
     app.dependency_overrides.clear()
     assert response.status_code == 403

@@ -78,13 +78,12 @@ class TestWhisperEngineLoad:
         """mlx-whisper 미설치 시 RuntimeError 발생"""
         from backend.ml.stt_engine import WhisperEngine
 
-        with patch.object(WhisperEngine, "_detect_device", return_value="cpu"):
-            with patch(
-                "builtins.__import__", side_effect=ImportError("No module named 'mlx_whisper'")
-            ):
-                engine = WhisperEngine()
-                with pytest.raises((RuntimeError, ImportError)):
-                    engine.load()
+        with patch.object(WhisperEngine, "_detect_device", return_value="cpu"), patch(
+            "builtins.__import__", side_effect=ImportError("No module named 'mlx_whisper'")
+        ):
+            engine = WhisperEngine()
+            with pytest.raises((RuntimeError, ImportError)):
+                engine.load()
 
 
 # ---------------------------------------------------------------------------
@@ -498,16 +497,15 @@ class TestFasterWhisperBackend:
         with patch.dict(
             sys.modules,
             {"faster_whisper": mock_fw, "torch": mock_torch, "mlx_whisper": None},
-        ):
-            with patch("platform.system", return_value="Linux"):
-                engine = WhisperEngine()
-                engine.load()
-                # WhisperModel() 호출 시 device, compute_type 확인
-                call_args = mock_fw.WhisperModel.call_args
-                kwargs = call_args.kwargs if hasattr(call_args, "kwargs") else {}
-                assert kwargs.get("device") == "cpu"
-                assert kwargs.get("compute_type") == "int8"
-                assert engine.device == "cpu"
+        ), patch("platform.system", return_value="Linux"):
+            engine = WhisperEngine()
+            engine.load()
+            # WhisperModel() 호출 시 device, compute_type 확인
+            call_args = mock_fw.WhisperModel.call_args
+            kwargs = call_args.kwargs if hasattr(call_args, "kwargs") else {}
+            assert kwargs.get("device") == "cpu"
+            assert kwargs.get("compute_type") == "int8"
+            assert engine.device == "cpu"
 
     def test_faster_whisper_uses_cuda_float16_when_available(self):
         """CUDA 가용 시 device='cuda', compute_type='float16' 선택"""
@@ -520,15 +518,14 @@ class TestFasterWhisperBackend:
         with patch.dict(
             sys.modules,
             {"faster_whisper": mock_fw, "torch": mock_torch, "mlx_whisper": None},
-        ):
-            with patch("platform.system", return_value="Linux"):
-                engine = WhisperEngine()
-                engine.load()
-                call_args = mock_fw.WhisperModel.call_args
-                kwargs = call_args.kwargs if hasattr(call_args, "kwargs") else {}
-                assert kwargs.get("device") == "cuda"
-                assert kwargs.get("compute_type") == "float16"
-                assert engine.device == "cuda"
+        ), patch("platform.system", return_value="Linux"):
+            engine = WhisperEngine()
+            engine.load()
+            call_args = mock_fw.WhisperModel.call_args
+            kwargs = call_args.kwargs if hasattr(call_args, "kwargs") else {}
+            assert kwargs.get("device") == "cuda"
+            assert kwargs.get("compute_type") == "float16"
+            assert engine.device == "cuda"
 
     def test_faster_whisper_model_name_mapping(self):
         """mlx-community 모델명을 faster-whisper 모델명으로 변환"""
@@ -557,11 +554,10 @@ class TestFasterWhisperBackend:
         with patch.dict(
             sys.modules,
             {"faster_whisper": mock_fw, "torch": mock_torch, "mlx_whisper": None},
-        ):
-            with patch("platform.system", return_value="Linux"):
-                engine = WhisperEngine()
-                engine.load()
-                result = engine.transcribe(test_audio_file)
+        ), patch("platform.system", return_value="Linux"):
+            engine = WhisperEngine()
+            engine.load()
+            result = engine.transcribe(test_audio_file)
 
         # openai-whisper 호환 키 확인
         assert "segments" in result
@@ -591,19 +587,18 @@ class TestFasterWhisperBackend:
         with patch.dict(
             sys.modules,
             {"faster_whisper": mock_fw, "torch": mock_torch, "mlx_whisper": None},
-        ):
-            with patch("platform.system", return_value="Linux"):
-                engine = WhisperEngine()
-                engine.load()
-                engine.transcribe(test_audio_file, language="ko")
+        ), patch("platform.system", return_value="Linux"):
+            engine = WhisperEngine()
+            engine.load()
+            engine.transcribe(test_audio_file, language="ko")
 
-                call_args = mock_model.transcribe.call_args
-                kwargs = call_args.kwargs if hasattr(call_args, "kwargs") else {}
-                # 속도 최적화 옵션 검증
-                assert kwargs.get("language") == "ko"
-                assert kwargs.get("word_timestamps") is False
-                assert kwargs.get("beam_size") == 1
-                assert kwargs.get("vad_filter") is True
+            call_args = mock_model.transcribe.call_args
+            kwargs = call_args.kwargs if hasattr(call_args, "kwargs") else {}
+            # 속도 최적화 옵션 검증
+            assert kwargs.get("language") == "ko"
+            assert kwargs.get("word_timestamps") is False
+            assert kwargs.get("beam_size") == 1
+            assert kwargs.get("vad_filter") is True
 
     def test_falls_back_to_openai_whisper_when_faster_unavailable(self):
         """faster-whisper 미설치 시 openai-whisper로 폴백"""
@@ -623,9 +618,8 @@ class TestFasterWhisperBackend:
                 "torch": mock_torch,
                 "mlx_whisper": None,
             },
-        ):
-            with patch("platform.system", return_value="Linux"):
-                engine = WhisperEngine()
-                engine.load()
-                # faster-whisper 실패 → openai-whisper 선택
-                assert engine.backend == "whisper"
+        ), patch("platform.system", return_value="Linux"):
+            engine = WhisperEngine()
+            engine.load()
+            # faster-whisper 실패 → openai-whisper 선택
+            assert engine.backend == "whisper"

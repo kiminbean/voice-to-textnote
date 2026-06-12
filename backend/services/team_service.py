@@ -242,7 +242,7 @@ class TeamService:
         team_id: uuid.UUID,
         email: str,
         role: str,
-        invited_by: uuid.UUID,  # noqa: ARG002 - SPEC에서 정의, 향후 audit 로깅용
+        invited_by: uuid.UUID,
     ) -> TeamMember:
         """
         이메일로 사용자를 찾아 팀에 추가.
@@ -350,7 +350,7 @@ class TeamService:
         session: AsyncSession,
         team_id: uuid.UUID,
         user_id: uuid.UUID,
-        requester_id: uuid.UUID,  # noqa: ARG002 - API 레이어에서 권한 검증, 향후 audit 로깅용
+        requester_id: uuid.UUID,
     ) -> bool:
         """
         팀 멤버 제거 (자기 자신 탈퇴 허용).

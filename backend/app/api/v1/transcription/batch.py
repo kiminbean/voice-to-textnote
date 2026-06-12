@@ -222,7 +222,7 @@ async def get_batch_status(
             pipe.get(f"task:status:{tid}")
         raw_results = await pipe.execute()
 
-        for tid, raw in zip(task_ids, raw_results):
+        for tid, raw in zip(task_ids, raw_results, strict=False):
             if raw is None:
                 counts["failed"] += 1
                 items.append(

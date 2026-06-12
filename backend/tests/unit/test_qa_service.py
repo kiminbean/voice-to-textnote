@@ -322,7 +322,7 @@ class TestHistoryIO:
         redis_mock.set.assert_called_once()
         saved_key = redis_mock.set.call_args[0][0]
         saved_value = redis_mock.set.call_args[0][1]
-        assert "qa:history:task1:thread1" == saved_key
+        assert saved_key == "qa:history:task1:thread1"
 
         # load: get → 저장된 값
         redis_mock.get.return_value = saved_value

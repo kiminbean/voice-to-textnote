@@ -56,19 +56,19 @@ async def validate_startup() -> dict:
     # REQ-LIFE-002: DB 연결 검증 + 개발 모드 테이블 자동 생성
     try:
         # SPEC-TEAM-001: auth 모델 import하여 Base.metadata에 등록
-        import backend.db.auth_models  # noqa: F401
+        import backend.db.auth_models
 
         # SPEC-BOOKMARK-001: 북마크 모델 import
-        import backend.db.bookmark_models  # noqa: F401
+        import backend.db.bookmark_models
 
         # SPEC-SPEAKER-001: 화자 프로필 모델 import
-        import backend.db.speaker_models  # noqa: F401
+        import backend.db.speaker_models
 
         # SPEC-TAG-001: 회의록 자동 태깅 모델 import
-        import backend.db.tag_models  # noqa: F401
+        import backend.db.tag_models
 
         # SPEC-VERSION-001: 회의록 버전 관리 모델 import
-        import backend.db.version_models  # noqa: F401
+        import backend.db.version_models
 
         # SPEC-WEBHOOK-001: 웹훅 엔드포인트 모델 import
         import backend.db.webhook_models  # noqa: F401

@@ -8,12 +8,11 @@ import time
 import pytest
 
 from backend.app.api.v1.collaboration.collab import (
-    _RateLimiter,
     _EDIT_RATE_LIMIT,
     _EDIT_RATE_WINDOW,
     _VIEWER_ROLE,
+    _RateLimiter,
 )
-
 
 # ── AC-050: 미인증 접근 차단 ──────────────────────────────────────────
 

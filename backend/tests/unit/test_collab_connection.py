@@ -8,7 +8,6 @@ import pytest
 from backend.app.api.v1.collaboration.collab import CollabConnectionManager
 from backend.schemas.collab import CollabUser
 
-
 # ── ConnectionManager 테스트 ─────────────────────────────────────────
 
 

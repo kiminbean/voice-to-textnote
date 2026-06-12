@@ -308,39 +308,37 @@ def client(mock_redis_client, tmp_path):
         mock_engine_inst.load.return_value = None
         mock_engine_cls.get_instance.return_value = mock_engine_inst
 
-        with patch("backend.app.api.v1.transcription.settings", test_settings):
+        with patch("backend.app.api.v1.transcription.settings", test_settings), patch(
+            "backend.pipeline.audio_processor.get_audio_duration_seconds", return_value=60.0
+        ), patch(
+            "backend.workers.tasks.transcription_task.transcription_task.delay"
+        ) as mock_delay:
+            mock_task_result = MagicMock()
+            mock_task_result.id = "mock-task-id"
+            mock_delay.return_value = mock_task_result
+
             with patch(
-                "backend.pipeline.audio_processor.get_audio_duration_seconds", return_value=60.0
-            ):
+                "backend.workers.tasks.diarization_task.diarization_celery_task.apply_async"
+            ) as mock_dia_delay:
+                mock_dia_result = MagicMock()
+                mock_dia_result.id = "mock-dia-task-id"
+                mock_dia_delay.return_value = mock_dia_result
+
                 with patch(
-                    "backend.workers.tasks.transcription_task.transcription_task.delay"
-                ) as mock_delay:
-                    mock_task_result = MagicMock()
-                    mock_task_result.id = "mock-task-id"
-                    mock_delay.return_value = mock_task_result
+                    "backend.workers.tasks.summary_task.summary_celery_task.delay"
+                ) as mock_summary_delay:
+                    mock_summary_result = MagicMock()
+                    mock_summary_result.id = "mock-summary-task-id"
+                    mock_summary_delay.return_value = mock_summary_result
 
                     with patch(
-                        "backend.workers.tasks.diarization_task.diarization_celery_task.apply_async"
-                    ) as mock_dia_delay:
-                        mock_dia_result = MagicMock()
-                        mock_dia_result.id = "mock-dia-task-id"
-                        mock_dia_delay.return_value = mock_dia_result
+                        "backend.workers.tasks.mind_map_task.mind_map_celery_task.delay"
+                    ) as mock_mind_map_delay:
+                        mock_mind_map_result = MagicMock()
+                        mock_mind_map_result.id = "mock-mind-map-task-id"
+                        mock_mind_map_delay.return_value = mock_mind_map_result
 
-                        with patch(
-                            "backend.workers.tasks.summary_task.summary_celery_task.delay"
-                        ) as mock_summary_delay:
-                            mock_summary_result = MagicMock()
-                            mock_summary_result.id = "mock-summary-task-id"
-                            mock_summary_delay.return_value = mock_summary_result
-
-                            with patch(
-                                "backend.workers.tasks.mind_map_task.mind_map_celery_task.delay"
-                            ) as mock_mind_map_delay:
-                                mock_mind_map_result = MagicMock()
-                                mock_mind_map_result.id = "mock-mind-map-task-id"
-                                mock_mind_map_delay.return_value = mock_mind_map_result
-
-                                yield TestClient(app, raise_server_exceptions=True)
+                        yield TestClient(app, raise_server_exceptions=True)
 
     app.dependency_overrides.clear()
     # cleanup: engine dispose (best-effort, ignore if loop unavailable)

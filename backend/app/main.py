@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-import backend.db.quality_feedback_models  # noqa: F401
+import backend.db.quality_feedback_models
 
 # SPEC-SPEAKER-VOICE-001 / SPEC-QUALITY-MONITOR-001: 신규 모델을 Base.metadata에 등록
 import backend.db.speaker_voice_models  # noqa: F401

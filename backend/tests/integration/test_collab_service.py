@@ -3,15 +3,13 @@ M2 통합 테스트: LWW 충돌 해결, Redis 상태 관리, DB 영속화
 SPEC-COLLAB-001: AC-010 ~ AC-022
 """
 
-import json
 import time
 
 import pytest
 
 from backend.app.api.v1.collaboration.collab import CollabConnectionManager
-from backend.schemas.collab import CollabUser, EditMessage, FieldState
+from backend.schemas.collab import CollabUser, EditMessage
 from backend.services.collab_service import CollabService
-
 
 # ── 픽스처 ───────────────────────────────────────────────────────────
 

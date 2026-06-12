@@ -25,10 +25,7 @@ from backend.app.middleware.auth import verify_api_key
 
 def _has_api_key_dep(route: fastapi.routing.APIRoute) -> bool:
     """해당 라우트의 의존성 트리에 verify_api_key가 포함되어 있는지 확인한다."""
-    for dep in route.dependant.dependencies:
-        if dep.call is verify_api_key:
-            return True
-    return False
+    return any(dep.call is verify_api_key for dep in route.dependant.dependencies)
 
 
 def _build_snapshot(app_routes: list) -> list[dict]:
@@ -69,7 +66,7 @@ def baseline() -> list[dict]:
 @pytest.fixture(scope="module")
 def live_snapshot() -> list[dict]:
     """현재 FastAPI 앱에서 라이브 스냅숏을 생성해 반환한다."""
-    from backend.app.main import app  # noqa: PLC0415 — 테스트 스코프 내 임포트
+    from backend.app.main import app
 
     return _build_snapshot(app.routes)
 

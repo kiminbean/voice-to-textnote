@@ -7,11 +7,9 @@ import pytest
 
 from backend.app.api.v1.collaboration.collab import (
     CollabConnectionManager,
-    _RateLimiter,
 )
 from backend.schemas.collab import CollabUser, EditMessage
 from backend.services.collab_service import CollabService
-
 
 # ── AC-P01: 편집 전파 지연 ──────────────────────────────────────────
 
@@ -25,7 +23,7 @@ class TestEditPropagation:
         service = CollabService()
         room_id = "task-e2e-001"
         user_a = CollabUser(user_id="a", display_name="Alice", color="#F00")
-        user_b = CollabUser(user_id="b", display_name="Bob", color="#0F0")
+        CollabUser(user_id="b", display_name="Bob", color="#0F0")
 
         # A가 편집
         broadcast = await service.apply_edit(

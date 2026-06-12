@@ -13,7 +13,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
-import backend.db.auth_models  # noqa: F401 - Base 메타데이터 등록용
+import backend.db.auth_models
 import backend.db.speaker_models  # noqa: F401
 from backend.db.auth_models import User
 from backend.db.models import Base, TaskResult

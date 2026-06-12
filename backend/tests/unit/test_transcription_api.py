@@ -218,13 +218,12 @@ class TestUploadTranscription:
                 raise OSError("Disk full")
             return original_open(self, *args, **kwargs)
 
-        with patch.object(Path, "open", mock_open):
-            with open(test_file, "rb") as f:
-                response = client.post(
-                    "/api/v1/transcriptions",
-                    files={"file": ("test.wav", f, "audio/wav")},
-                    data={"language": "ko"},
-                )
+        with patch.object(Path, "open", mock_open), open(test_file, "rb") as f:
+            response = client.post(
+                "/api/v1/transcriptions",
+                files={"file": ("test.wav", f, "audio/wav")},
+                data={"language": "ko"},
+            )
 
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 

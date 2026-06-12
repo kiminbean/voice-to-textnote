@@ -291,9 +291,11 @@ def _token_similarity(left: tuple[str, ...], right: tuple[str, ...]) -> float:
     left_text = " ".join(left)
     right_text = " ".join(right)
     substring = 0.0
-    if min(len(left_text), len(right_text)) >= 3:
-        if left_text in right_text or right_text in left_text:
-            substring = min(len(left_text), len(right_text)) / max(len(left_text), len(right_text))
+    if (
+        min(len(left_text), len(right_text)) >= 3
+        and (left_text in right_text or right_text in left_text)
+    ):
+        substring = min(len(left_text), len(right_text)) / max(len(left_text), len(right_text))
     return max(jaccard, substring)
 
 

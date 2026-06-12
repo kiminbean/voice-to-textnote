@@ -546,7 +546,7 @@ class TestRecommendFromHistory:
         """빈 현재 텍스트 처리."""
         service = KeywordService()
 
-        result = service.recommend_from_history(
+        service.recommend_from_history(
             "",
             history_texts=["history text"],
             task_id="test-task",
@@ -555,7 +555,7 @@ class TestRecommendFromHistory:
         )
 
         # 빈 텍스트는 최소 길이 검증에 실패할 수 있음
-        assert result is not None or True  # 구현에 따라 다름
+        assert True  # 구현에 따라 다름
 
     def test_handles_empty_history(self):
         """빈 히스토리 처리."""

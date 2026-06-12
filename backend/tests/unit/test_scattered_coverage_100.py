@@ -1,4 +1,3 @@
-# ruff: noqa: N801, N806
 """
 Comprehensive scattered coverage test — targets 1-5 line gaps across 59 files.
 
@@ -395,7 +394,7 @@ class TestSearchService:
 
     def test_search_suggestion_token_filter(self):
         prefix = "회"
-        words = "회의 회식 영회".split()
+        words = ["회의", "회식", "영회"]
         results = [w for w in words if w.startswith(prefix)]
         assert "회의" in results
         assert "영회" not in results
@@ -889,7 +888,7 @@ class TestMindMapGenerator:
         from backend.pipeline.mind_map_generator import _format_string_list
 
         result = _format_string_list(["a", "b"])
-        assert "- a\n- b" == result
+        assert result == "- a\n- b"
 
     def test_clean_json_response_with_code_block(self):
         from backend.pipeline.mind_map_generator import _clean_json_response

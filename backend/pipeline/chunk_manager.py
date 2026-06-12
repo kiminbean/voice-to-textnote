@@ -4,9 +4,9 @@ REQ-STT-018: 30분 초과 오디오 청크 분할 처리
 5초 오버랩으로 발화 경계 문제 완화
 """
 
-import tempfile
 import shutil
 import subprocess
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 

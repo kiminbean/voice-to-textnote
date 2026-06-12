@@ -18,10 +18,9 @@ AI 증강 기능:
 from __future__ import annotations
 
 import asyncio
-import json
 import tempfile
 import wave
-from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -29,8 +28,8 @@ from typing import Any
 import numpy as np
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
-from starlette.responses import StreamingResponse
 from starlette.background import BackgroundTask
+from starlette.responses import StreamingResponse
 
 from backend.app.config import settings
 from backend.app.errors import (
@@ -41,23 +40,20 @@ from backend.app.errors import (
 )
 from backend.app.exceptions import VoiceNoteError
 from backend.pipeline.enhanced_audio_processor import (
+    AI_NOISE_REMOVAL_ENABLED,
+    SUPPORTED_FORMATS,
     AIEnhanceOptions,
     AudioQualityEvaluation,
-    AI_NOISE_REMOVAL_ENABLED,
     BatchPreprocessOptions,
     EnhancedAudioProcessor,
     EnhancementResult,
-    SUPPORTED_FORMATS,
-    VoiceQualityScore,
     cleanup_temp_file,
-    enhance_audio_with_ai,
 )
 from backend.schemas.enhanced_audio_preprocess import (
     AIEnhanceOptionsPayload,
     EnhancementReportResponse,
     VoiceQualityAssessment,
 )
-from backend.schemas.audio_enhanced import BatchPreprocessResponse, BatchSummary
 from backend.utils.logger import get_logger
 from backend.utils.validators import validate_audio_format
 
@@ -116,20 +112,20 @@ def _calculate_audio_metrics(audio_data: np.ndarray, sample_rate: int) -> dict[s
     """오디오 품질 지표 계산"""
     if len(audio_data) == 0:
         return {"snr": 0.0, "clarity": 0.0, "noise_level": 0.0}
-    
+
     # SNR 계산 (신호 대 잡음 비)
     signal_power = np.mean(audio_data ** 2)
     noise_power = np.var(audio_data - np.mean(audio_data))
     snr = 10 * np.log10(signal_power / (noise_power + 1e-10))
-    
+
     # 명료도 계산 (고주파 에너지 비율)
     high_freq_energy = np.sum(np.abs(audio_data[len(audio_data)//2:]) ** 2)
     total_energy = np.sum(np.abs(audio_data) ** 2)
     clarity = high_freq_energy / (total_energy + 1e-10)
-    
+
     # 노이즈 레벨 계산 (RMS)
     noise_level = np.sqrt(np.mean(audio_data ** 2))
-    
+
     return {
         "snr": max(0.0, snr),
         "clarity": min(1.0, clarity),
@@ -194,7 +190,7 @@ async def enhanced_audio_endpoint(
     max_bytes = settings.audio_preprocess_max_file_mb * 1024 * 1024
     bytes_read = 0
     suffix = Path(filename).suffix or ".bin"
-    
+
     try:
         src_fd, src_name = tempfile.mkstemp(suffix=suffix, prefix="enhance_in_")
         src_path = Path(src_name)
@@ -265,10 +261,10 @@ async def enhanced_audio_endpoint(
             with wave.open(str(result.output_path), "rb") as wf:
                 sample_rate = wf.getframerate()
                 audio_data = np.frombuffer(wf.readframes(-1), dtype=np.int16)
-                
+
                 # 품질 지표 계산
                 metrics = _calculate_audio_metrics(audio_data.astype(float) / 32768.0, sample_rate)
-                
+
                 # 음질 평가 생성
                 quality_assessment = VoiceQualityAssessment(
                     overall_score=min(100.0, max(0.0, metrics["snr"] * 2 + metrics["clarity"] * 50)),
@@ -594,14 +590,14 @@ async def download_enhanced_audio(
     """AI 증강된 오디오 파일 다운로드."""
     # 실제 구현에서는 파일 시스템 또는 스토리지에서 파일을 찾아 반환
     # 여는 예시로, 실제로는 데이터베이스 또는 캐시에서 파일 위치 조회
-    
+
     # 가상의 파일 경로 (실제 구현 필요)
     file_path = Path(f"/tmp/enhanced_{enhancement_id}.wav")
-    
+
     if not file_path.exists():
         from backend.app.errors import not_found
         not_found("AI 증강 파일을 찾을 수 없습니다.")
-    
+
     return FileResponse(
         path=str(file_path),
         media_type="audio/wav",
@@ -626,19 +622,19 @@ def _get_quality_grade(snr_db: float) -> str:
 def _generate_improvement_recommendations(metrics: dict[str, float]) -> list[str]:
     """개선 제안 생성"""
     recommendations = []
-    
+
     if metrics["snr"] < 15:
         recommendations.append("노이즈 제거 기능을 강화하여 다시 처리해 보세요.")
-    
+
     if metrics["clarity"] < 0.3:
         recommendations.append("고주파 성분이 부족합니다. 더 가까운 위치에서 녹음해 보세요.")
-    
+
     if metrics["noise_level"] > 0.1:
         recommendations.append("배경 소음이 많습니다. 조용한 환경에서 재녹음해 보세요.")
-    
+
     if not recommendations:
         recommendations.append("음질이 양호합니다. 추가 처리가 필요하지 않습니다.")
-    
+
     return recommendations
 
 

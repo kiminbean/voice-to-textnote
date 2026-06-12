@@ -13,11 +13,11 @@ from backend.app.api.v1.analytics.statistics import router as statistics_router
 from backend.app.api.v1.analytics.vocabulary import router as vocabulary_router
 
 __all__ = [
-    "sentiment_router",
-    "search_router",
-    "dashboard_router",
-    "statistics_router",
     "advanced_search_router",
+    "dashboard_router",
     "enhanced_statistics_router",
+    "search_router",
+    "sentiment_router",
+    "statistics_router",
     "vocabulary_router",
 ]

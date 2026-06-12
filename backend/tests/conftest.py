@@ -21,7 +21,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 # ---------------------------------------------------------------------------
 # 1. Inject backend.schemas.action_item -> re-export from backend.app.schemas.action_item
 # ---------------------------------------------------------------------------
-import backend.app.schemas.action_item as _real_action_item_schema  # noqa: E402
+import backend.app.schemas.action_item as _real_action_item_schema
 
 sys.modules["backend.schemas.action_item"] = _real_action_item_schema
 

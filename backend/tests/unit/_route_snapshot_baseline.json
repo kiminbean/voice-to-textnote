@@ -560,6 +560,13 @@
     "api_key": true
   },
   {
+    "path": "/api/v1/minutes/{task_id}",
+    "methods": [
+      "PATCH"
+    ],
+    "api_key": true
+  },
+  {
     "path": "/api/v1/minutes/{task_id}/status",
     "methods": [
       "GET"

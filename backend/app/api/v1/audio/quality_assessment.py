@@ -142,7 +142,7 @@ async def get_quality_assessment(
         raise
     except Exception as e:
         logger.error(f"Quality assessment failed for task {task_id}", error=str(e))
-        internal_server_error(f"품질 평가 중 오류가 발생했습니다: {str(e)}")
+        internal_server_error(f"품질 평가 중 오류가 발생했습니다: {e!s}")
 
 
 @router.post(
@@ -188,7 +188,7 @@ async def request_quality_assessment(
         raise
     except Exception as e:
         logger.error(f"Custom quality assessment failed for task {task_id}", error=str(e))
-        internal_server_error(f"품질 평가 중 오류가 발생했습니다: {str(e)}")
+        internal_server_error(f"품질 평가 중 오류가 발생했습니다: {e!s}")
 
 
 @router.get(
@@ -233,7 +233,7 @@ async def get_improvement_suggestions(
         raise
     except Exception as e:
         logger.error(f"Improvement suggestions failed for task {task_id}", error=str(e))
-        internal_server_error(f"개선 제안 생성 중 오류가 발생했습니다: {str(e)}")
+        internal_server_error(f"개선 제안 생성 중 오류가 발생했습니다: {e!s}")
 
 
 @router.get("/health")

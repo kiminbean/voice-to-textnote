@@ -9,22 +9,19 @@ SPEC-AUDIO-ENHANCED-001: AI 기능을 이용한 고급 오디오 증강
 """
 
 import asyncio
-import time
 import tempfile
-import wave
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 import librosa
 import numpy as np
+import soundfile as sf
 from pydub import AudioSegment
 from pydub.effects import normalize as normalize_audio_segment
 from pydub.silence import detect_nonsilent
-import soundfile as sf
 from scipy import signal
-from sklearn.decomposition import PCA
-from sklearn.preprocessing import StandardScaler
 
 from backend.schemas.audio_enhanced import EnhancedPreprocessOptions as BatchPreprocessOptions
 from backend.utils.logger import get_logger
@@ -173,7 +170,7 @@ class EnhancedAudioProcessor:
         for file_path in file_paths:
             try:
                 results.append(await asyncio.to_thread(self._preprocess_file, Path(file_path), options, out_dir))
-            except Exception as exc:  # noqa: BLE001 - per-file errors are returned in the batch report
+            except Exception as exc:
                 logger.warning("오디오 배치 전처리 실패", file_path=file_path, error=str(exc))
                 errors.append({"file": file_path, "error": str(exc)})
 
@@ -392,11 +389,11 @@ class EnhancementResult:
 
 class AudioEnhancer:
     """AI 기반 오디오 증강 엔진"""
-    
+
     def __init__(self):
         self.sample_rate = 16000
         self.target_channels = 1
-        
+
     def _load_audio(self, file_path: Path) -> tuple[np.ndarray, int]:
         """오디오 파일 로드"""
         try:
@@ -405,7 +402,7 @@ class AudioEnhancer:
         except Exception as e:
             logger.error("오디오 로딩 실패", error=str(e))
             raise ValueError(f"오디오 파일 로딩 실패: {e}")
-    
+
     def _save_audio(self, audio: np.ndarray, output_path: Path) -> None:
         """오디오 파일 저장"""
         try:
@@ -413,48 +410,48 @@ class AudioEnhancer:
         except Exception as e:
             logger.error("오디오 저장 실패", error=str(e))
             raise ValueError(f"오디오 파일 저장 실패: {e}")
-    
+
     def _ai_noise_reduction(self, audio: np.ndarray, strength: float) -> np.ndarray:
         """AI 기반 노이즈 제거 (스펙트럼 분석)"""
         if strength == 0:
             return audio
-            
+
         logger.info("AI 노이즈 제거 시작", strength=strength)
-        
+
         # 스펙트럼 분석
         stft = librosa.stft(audio)
         magnitude = np.abs(stft)
         phase = np.angle(stft)
-        
+
         # 노이즈 스펙트럼 추정 (평균 기반)
         noise_profile = np.mean(magnitude, axis=1, keepdims=True)
-        
+
         # 스펙트럼 감쇄 적용
         spectral_subtraction = 1.0 - (strength * noise_profile / (magnitude + 1e-10))
         spectral_subtraction = np.clip(spectral_subtraction, 0.1, 1.0)
-        
+
         # 복원
         enhanced_magnitude = magnitude * spectral_subtraction
         enhanced_stft = enhanced_magnitude * np.exp(1j * phase)
         enhanced_audio = librosa.istft(enhanced_stft)
-        
+
         return enhanced_audio
-    
+
     def _voice_enhancement(self, audio: np.ndarray, strength: float) -> np.ndarray:
         """음성 강화 (주파수 강조 및 레벨 균형)"""
         if strength == 0:
             return audio
-            
+
         logger.info("음성 강화 시작", strength=strength)
-        
+
         # 음성 주파대 강조 (300Hz-4000Hz)
         nyquist = self.sample_rate // 2
         voice_band = [300, 4000]
-        
+
         # 필터 설계
         b, a = signal.butter(4, [voice_band[0]/nyquist, voice_band[1]/nyquist], btype='band')
         enhanced = signal.filtfilt(b, a, audio)
-        
+
         # 레벨 균형화
         if strength > 0:
             target_level = np.percentile(np.abs(enhanced), 95)
@@ -462,28 +459,28 @@ class AudioEnhancer:
             if current_level > 0:
                 gain = (target_level * (0.5 + 0.5 * strength)) / current_level
                 enhanced = enhanced * gain
-        
+
         return enhanced
-    
+
     def _voice_activity_detection(self, audio: np.ndarray, threshold: float) -> list[tuple[float, float]]:
         """Voice Activity Detection (VAD)"""
         logger.info("VAD 처리 시작", threshold=threshold)
-        
+
         # 에너지 기반 VAD
         frame_length = 512
         hop_length = 256
-        
+
         # 에너지 계산
         frames = librosa.util.frame(audio, frame_length=frame_length, hop_length=hop_length)
         energy = np.sum(np.abs(frames ** 2), axis=0)
-        
+
         # 임계값 기반 활성 탐지
         voiced_frames = energy > (threshold * np.max(energy))
-        
+
         # 프레임 인덱스를 시간으로 변환
         voiced_segments = []
         start_idx = None
-        
+
         for i, voiced in enumerate(voiced_frames):
             if voiced and start_idx is None:
                 start_idx = i
@@ -492,37 +489,37 @@ class AudioEnhancer:
                 end_time = i * hop_length / self.sample_rate
                 voiced_segments.append((start_time, end_time))
                 start_idx = None
-        
+
         # 마지막 세그먼트 처리
         if start_idx is not None:
             start_time = start_idx * hop_length / self.sample_rate
             end_time = len(voiced_frames) * hop_length / self.sample_rate
             voiced_segments.append((start_time, end_time))
-        
+
         return voiced_segments
-    
+
     def _quality_assessment(self, audio: np.ndarray) -> VoiceQualityScore:
         """오디오 품질 자동 평가"""
         logger.info("품질 평가 시작")
-        
+
         # 기본 통계 계산
         signal_power = np.mean(audio ** 2)
         noise_power = np.var(audio - np.mean(audio))
-        
+
         # SNR 계산
         snr_db = 10 * np.log10(signal_power / (noise_power + 1e-10))
-        
+
         # 명료도 계산 (고주파 에너지 비율)
         high_freq_energy = np.sum(np.abs(audio[len(audio)//2:]) ** 2)
         total_energy = np.sum(np.abs(audio) ** 2)
         clarity = high_freq_energy / (total_energy + 1e-10)
-        
+
         # 노이즈 레벨
         noise_level = np.sqrt(np.mean(audio ** 2))
-        
+
         # 종합 점수 계산 (0-100)
         overall_score = min(100.0, max(0.0, snr_db * 2 + clarity * 50))
-        
+
         # 품질 등급
         if snr_db >= 30:
             quality_grade = "excellent"
@@ -534,7 +531,7 @@ class AudioEnhancer:
             quality_grade = "poor"
         else:
             quality_grade = "very_poor"
-        
+
         return VoiceQualityScore(
             overall_score=overall_score,
             clarity_score=clarity,
@@ -542,20 +539,20 @@ class AudioEnhancer:
             snr_db=snr_db,
             quality_grade=quality_grade,
         )
-    
+
     def _apply_vad(self, audio: np.ndarray, segments: list[tuple[float, float]]) -> np.ndarray:
         """VAD 결과 적용 - 비활성 구간 제거"""
         if not segments:
             return audio
-        
+
         # 비활성 구간 마스킹
         mask = np.ones(len(audio), dtype=bool)
-        
+
         for start, end in segments:
             start_idx = int(start * self.sample_rate)
             end_idx = int(end * self.sample_rate)
             mask[start_idx:end_idx] = True
-        
+
         return audio[mask]
 
 
@@ -564,23 +561,23 @@ def enhance_audio_with_ai(
     options: AIEnhanceOptions
 ) -> EnhancementResult:
     """AI 기반 오디오 증강 메인 함수"""
-    
+
     start_time = time.time()
     enhancer = AudioEnhancer()
-    
+
     # 오디오 로드
     audio, sr = enhancer._load_audio(input_path)
     original_length = len(audio)
-    
+
     processing_details = {
         "original_length": original_length,
         "sample_rate": sr,
         "processing_steps": [],
         "start_time": start_time,
     }
-    
+
     warnings = []
-    
+
     # Voice Activity Detection
     if options.enable_vad:
         try:
@@ -591,7 +588,7 @@ def enhance_audio_with_ai(
                 processing_details["vad_applied"] = True
         except Exception as e:
             warnings.append(f"VAD 처리 실패: {e}")
-    
+
     # 노이즈 제거
     if options.enable_noise_reduction:
         try:
@@ -602,7 +599,7 @@ def enhance_audio_with_ai(
         except Exception as e:
             warnings.append(f"노이즈 제거 실패: {e}")
             audio = original_audio
-    
+
     # 음성 강화
     if options.enable_voice_enhancement:
         try:
@@ -613,7 +610,7 @@ def enhance_audio_with_ai(
         except Exception as e:
             warnings.append(f"음성 강화 실패: {e}")
             audio = original_audio
-    
+
     # 품질 평가
     quality_score = None
     if options.enable_quality_assessment:
@@ -623,21 +620,21 @@ def enhance_audio_with_ai(
             processing_details["snr_db"] = quality_score.snr_db
         except Exception as e:
             warnings.append(f"품질 평가 실패: {e}")
-    
+
     # 출력 파일 저장
     output_path = Path(tempfile.NamedTemporaryFile(suffix=".wav", delete=False).name)
     enhancer._save_audio(audio, output_path)
-    
+
     processing_time = time.time() - start_time
     processing_details["processing_time"] = processing_time
     processing_details["output_length"] = len(audio)
-    
-    logger.info("AI 증강 완료", 
+
+    logger.info("AI 증강 완료",
                input_path=str(input_path),
                output_path=str(output_path),
                processing_time=processing_time,
                quality_score=quality_score.overall_score if quality_score else None)
-    
+
     return EnhancementResult(
         output_path=output_path,
         enhancement_id=f"enh_{int(time.time())}",

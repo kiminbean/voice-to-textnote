@@ -143,7 +143,7 @@ class TestWebhooksCoverage:
 
         # from_orm_masked 메서드 존재 확인
         assert hasattr(WebhookEndpointResponse, "from_orm_masked")
-        assert callable(getattr(WebhookEndpointResponse, "from_orm_masked"))
+        assert callable(WebhookEndpointResponse.from_orm_masked)
 
     def test_pagination_offset_calculation(self):
         """

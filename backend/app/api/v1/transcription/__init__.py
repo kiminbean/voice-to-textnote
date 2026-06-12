@@ -16,4 +16,4 @@ from backend.app.api.v1.transcription.transcription import (
     settings,
 )
 
-__all__ = ["router", "settings", "diarization_router", "diarization_settings"]
+__all__ = ["diarization_router", "diarization_settings", "router", "settings"]

@@ -26,7 +26,6 @@ from backend.app.api.v1.admin import (
     history,
     templates,
 )
-from backend.app.api.v1.templates import enhanced
 from backend.app.api.v1.analytics import (
     advanced_search,
     dashboard,
@@ -65,6 +64,7 @@ from backend.app.api.v1.minutes import (
     summary,
     tags,
 )
+from backend.app.api.v1.templates import enhanced
 from backend.app.api.v1.transcription import (
     batch,
     diarization,

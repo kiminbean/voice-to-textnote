@@ -18,8 +18,8 @@ import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
-import backend.db.auth_models  # noqa: F401
-import backend.db.speaker_models  # noqa: F401
+import backend.db.auth_models
+import backend.db.speaker_models
 import backend.db.speaker_voice_models  # noqa: F401
 from backend.db.auth_models import User
 from backend.db.models import Base
@@ -304,17 +304,16 @@ class TestCreateOrReplaceFromSamples:
         with patch(
             "backend.services.speaker_voice_service._get_max_samples_per_profile",
             return_value=1,
-        ):
-            with pytest.raises(Exception) as exc_info:
-                await svc.create_or_replace_from_samples(
-                    session=db_session,
-                    speaker_id=seeded_speaker.id,
-                    user_id=seeded_speaker.user_id,
-                    payload=VoiceProfileCreateRequest(
-                        samples=[_make_sample(), _make_sample()],
-                        overwrite=False,
-                    ),
-                )
+        ), pytest.raises(Exception) as exc_info:
+            await svc.create_or_replace_from_samples(
+                session=db_session,
+                speaker_id=seeded_speaker.id,
+                user_id=seeded_speaker.user_id,
+                payload=VoiceProfileCreateRequest(
+                    samples=[_make_sample(), _make_sample()],
+                    overwrite=False,
+                ),
+            )
         assert exc_info.value.status_code == 409
 
     @pytest.mark.asyncio
@@ -485,14 +484,13 @@ class TestAnalyzeUpload:
         with patch(
             "backend.services.speaker_voice_service._get_max_sample_bytes",
             return_value=1,
-        ):
-            with pytest.raises(Exception) as exc_info:
-                await svc.analyze_upload(
-                    session=db_session,
-                    speaker_id=seeded_speaker.id,
-                    user_id=seeded_speaker.user_id,
-                    upload=upload,
-                )
+        ), pytest.raises(Exception) as exc_info:
+            await svc.analyze_upload(
+                session=db_session,
+                speaker_id=seeded_speaker.id,
+                user_id=seeded_speaker.user_id,
+                upload=upload,
+            )
         assert exc_info.value.status_code == 413
 
     @pytest.mark.asyncio
@@ -509,14 +507,13 @@ class TestAnalyzeUpload:
         with patch(
             "backend.ml.audio_analysis_engine.analyze_audio",
             side_effect=ValueError("오디오 디코딩 실패"),
-        ):
-            with pytest.raises(Exception) as exc_info:
-                await svc.analyze_upload(
-                    session=db_session,
-                    speaker_id=seeded_speaker.id,
-                    user_id=seeded_speaker.user_id,
-                    upload=upload,
-                )
+        ), pytest.raises(Exception) as exc_info:
+            await svc.analyze_upload(
+                session=db_session,
+                speaker_id=seeded_speaker.id,
+                user_id=seeded_speaker.user_id,
+                upload=upload,
+            )
         assert exc_info.value.status_code == 422
 
     @pytest.mark.asyncio
@@ -554,15 +551,14 @@ class TestAnalyzeUpload:
             patch(
                 "backend.ml.audio_analysis_engine.analyze_audio",
                 return_value=mock_result,
-            ),
+            ),pytest.raises(Exception) as exc_info
         ):
-            with pytest.raises(Exception) as exc_info:
-                await svc.analyze_upload(
-                    session=db_session,
-                    speaker_id=seeded_speaker.id,
-                    user_id=seeded_speaker.user_id,
-                    upload=upload,
-                )
+            await svc.analyze_upload(
+                session=db_session,
+                speaker_id=seeded_speaker.id,
+                user_id=seeded_speaker.user_id,
+                upload=upload,
+            )
         assert exc_info.value.status_code == 409
 
 

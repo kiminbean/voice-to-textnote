@@ -43,10 +43,7 @@ def init_sync_engine() -> tuple[Engine, sessionmaker]:
     url = settings.database_url or "sqlite:///./voice_to_textnote.db"
 
     # 비동기 드라이버를 동기 드라이버로 변환
-    if "+" in url:
-        sync_url = url.replace("+aiosqlite", "").replace("+asyncpg", "+psycopg2")
-    else:
-        sync_url = url
+    sync_url = url.replace("+aiosqlite", "").replace("+asyncpg", "+psycopg2") if "+" in url else url
 
     _initialized_engine = create_engine(sync_url, pool_pre_ping=True)
     _initialized_session_factory = sessionmaker(_initialized_engine)

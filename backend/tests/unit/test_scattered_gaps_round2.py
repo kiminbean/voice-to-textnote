@@ -1,4 +1,3 @@
-# ruff: noqa: N801, N806
 """
 Scattered coverage gap filler — Round 2.
 
@@ -422,9 +421,8 @@ class TestPushServiceCoverage:
         svc = PushService()
         with patch.object(
             svc, "_ensure_firebase_initialized", side_effect=InvalidArgumentError("bad token")
-        ):
-            with pytest.raises(InvalidArgumentError):
-                await svc.send_push("bad-token", "title", "body")
+        ), pytest.raises(InvalidArgumentError):
+            await svc.send_push("bad-token", "title", "body")
 
     @pytest.mark.asyncio
     async def test_send_push_firebase_error_returns_false(self):
