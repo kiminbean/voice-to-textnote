@@ -31,6 +31,10 @@ import 'package:voice_to_textnote/widgets/improved_result_badge.dart';
 import 'package:voice_to_textnote/widgets/offline_result_badge.dart';
 import 'package:voice_to_textnote/providers/audio_player_provider.dart';
 import 'package:voice_to_textnote/providers/qa_provider.dart';
+import 'package:voice_to_textnote/providers/collab_minutes_provider.dart';
+import 'package:voice_to_textnote/widgets/collab_presence_bar.dart';
+import 'package:voice_to_textnote/widgets/collab_editing_indicator.dart';
+import 'package:voice_to_textnote/services/auth_service.dart';
 
 // ConsumerStatefulWidget으로 변경: _isExporting 상태 관리 필요
 class ResultScreen extends ConsumerStatefulWidget {
@@ -977,6 +981,7 @@ class _MinutesTabState extends ConsumerState<_MinutesTab> {
   // 편집된 섹션 값 (원본 데이터 위에 오버레이)
   final Map<String, String> _editedSections = {};
   bool _isEditing = false;
+  bool _isCollabActive = false;
 
   Meeting? get meeting => widget.meeting;
   String? get taskId => widget.taskId;
@@ -1057,24 +1062,63 @@ class _MinutesTabState extends ConsumerState<_MinutesTab> {
         }
 
         // REQ-UI-002: 양식 구조 있으면 동적 테이블, 없으면 기본 테이블
+        // SPEC-COLLAB-001: AC-044, AC-045
+        final collabState = ref.watch(collabMinutesProvider);
+
         return Column(
           children: [
+            // 협업 PresenceBar (AC-042)
+            if (_isCollabActive)
+              CollabPresenceBar(activeUsers: collabState.activeUsers),
             // 편집 버튼
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
+                  // AC-044: 공동 편집 버튼 (팀 공유 시에만 표시)
+                  if (!_isCollabActive && meeting?.teamId != null)
+                    TextButton.icon(
+                      onPressed: () async {
+                        final authService = AuthService();
+                        final token = await authService.getAccessToken();
+                        if (token == null) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('로그인이 필요합니다')),
+                            );
+                          }
+                          return;
+                        }
+                        if (taskId == null) return;
+                        setState(() => _isCollabActive = true);
+                        await ref
+                            .read(collabMinutesProvider.notifier)
+                            .connect(taskId!, token);
+                      },
+                      icon: const Icon(Icons.group, size: 18),
+                      label: const Text('공동 편집'),
+                    ),
+                  if (_isCollabActive)
+                    TextButton.icon(
+                      onPressed: () {
+                        ref.read(collabMinutesProvider.notifier).disconnect();
+                        setState(() => _isCollabActive = false);
+                      },
+                      icon: const Icon(Icons.group_off, size: 18),
+                      label: const Text('편집 종료'),
+                    ),
                   IconButton(
                     icon: const Icon(Icons.copy),
                     onPressed: () => _copyToClipboard(result),
                     tooltip: '복사',
                   ),
-                  TextButton.icon(
-                    onPressed: () => setState(() => _isEditing = !_isEditing),
-                    icon: Icon(_isEditing ? Icons.check : Icons.edit, size: 18),
-                    label: Text(_isEditing ? '편집 완료' : '편집'),
-                  ),
+                  if (!_isCollabActive)
+                    TextButton.icon(
+                      onPressed: () => setState(() => _isEditing = !_isEditing),
+                      icon: Icon(_isEditing ? Icons.check : Icons.edit, size: 18),
+                      label: Text(_isEditing ? '편집 완료' : '편집'),
+                    ),
                 ],
               ),
             ),
@@ -1314,6 +1358,10 @@ class _MinutesTabState extends ConsumerState<_MinutesTab> {
       // async gap 후 mounted 체크 (위젯이 dispose된 경우 setState 방지)
       if (newValue != null && mounted) {
         setState(() => _editedSections[label] = newValue);
+        // SPEC-COLLAB-001: 협업 활성 시 서버에 편집 전송
+        if (_isCollabActive) {
+          ref.read(collabMinutesProvider.notifier).editField(label, newValue);
+        }
       }
     } catch (e) {
       // 다이얼로그 오류 시 사용자에게 알림 (위젯이 살아있을 때만)
