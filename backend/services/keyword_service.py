@@ -1,849 +1,541 @@
 """
-자동 키워드 추출/추천 서비스.
+키워드 검색 및 추출 서비스 - 비즈니스 로직
 
-외부 NLP 패키지 없이 TF-IDF와 TextRank를 결합하여 한/영 혼합 회의록에서
-핵심 단어와 구문을 추출한다.
+SPEC-KEYWORD-SEARCH-001: 고급 키워드 검색 서비스
+SPEC-KEYWORD-SEARCH-002: 자동 키워드 추천 및 통계
 """
 
-from __future__ import annotations
-
-import json
-import math
 import re
-from collections import Counter, defaultdict
+from collections import defaultdict
+from datetime import datetime
+from typing import Any, Dict, List, Optional, Tuple
 from dataclasses import dataclass
-from datetime import UTC, datetime
-from typing import Any
 
-import redis.asyncio as aioredis
-from fastapi import HTTPException, status
-from sqlalchemy import select
+import numpy as np
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import and_, or_, func, text
 
-from backend.app.config import settings
 from backend.db.models import TaskResult
-from backend.schemas.keyword import KeywordGroup, KeywordItem, KeywordResponse
-from backend.utils.logger import get_logger
-
-logger = get_logger(__name__)
-
-_WORD_RE = re.compile(
-    r"[A-Za-z][A-Za-z0-9_+#-]*|[가-힣]+|\d+(?:[./-]\d+)*",
-)
-_SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?。！？])\s+|[\n\r]+")
-
-_STOPWORDS: frozenset[str] = frozenset(
-    {
-        # Korean function words and common meeting filler
-        "그리고",
-        "그래서",
-        "하지만",
-        "그런데",
-        "그러면",
-        "그러나",
-        "또한",
-        "또는",
-        "제가",
-        "저는",
-        "나는",
-        "우리는",
-        "우리가",
-        "여러분",
-        "이것",
-        "저것",
-        "그것",
-        "여기",
-        "저기",
-        "거기",
-        "오늘",
-        "내일",
-        "이번",
-        "다음",
-        "지금",
-        "이제",
-        "정말",
-        "진짜",
-        "약간",
-        "그냥",
-        "계속",
-        "있는",
-        "없는",
-        "하는",
-        "되는",
-        "같은",
-        "하고",
-        "되고",
-        "이고",
-        "입니다",
-        "합니다",
-        "됩니다",
-        "있습니다",
-        "없습니다",
-        "같습니다",
-        "보입니다",
-        "해주세요",
-        "하겠습니다",
-        # English function words and meeting filler
-        "a",
-        "an",
-        "the",
-        "and",
-        "or",
-        "but",
-        "for",
-        "with",
-        "this",
-        "that",
-        "these",
-        "those",
-        "into",
-        "from",
-        "over",
-        "under",
-        "then",
-        "than",
-        "have",
-        "has",
-        "had",
-        "are",
-        "was",
-        "were",
-        "been",
-        "being",
-        "will",
-        "would",
-        "could",
-        "should",
-        "about",
-        "after",
-        "before",
-        "while",
-        "during",
-        "between",
-        "without",
-        "meeting",
-        "discussion",
-        "today",
-        "tomorrow",
-        "next",
-        "please",
-        "thanks",
-    }
-)
-
-_KOREAN_SUFFIXES: tuple[str, ...] = (
-    "으로부터",
-    "에서",
-    "으로",
-    "까지",
-    "부터",
-    "에게",
-    "께서",
-    "이라도",
-    "라도",
-    "마다",
-    "처럼",
-    "보다",
-    "에는",
-    "으로는",
-    "로는",
-    "은",
-    "는",
-    "이",
-    "가",
-    "을",
-    "를",
-    "에",
-    "로",
-    "와",
-    "과",
-    "도",
-    "만",
-)
-
-_KOREAN_VERB_ENDINGS: tuple[str, ...] = (
-    "하겠습니다",
-    "했습니다",
-    "합니다",
-    "됩니다",
-    "하죠",
-    "했죠",
-    "하고요",
-    "했고",
-    "하고",
-    "한다",
-    "했다",
-)
-
-_REDIS_RESULT_KEYS: tuple[tuple[str, str], ...] = (
-    ("task:min:result:{task_id}", "minutes"),
-    ("task:result:{task_id}", "transcription"),
-    ("task:sum:result:{task_id}", "summary"),
-    ("minutes:{task_id}", "minutes"),
+from backend.schemas.keyword import (
+    KeywordHit,
+    KeywordSearchFilter,
+    KeywordSearchResponse,
+    KeywordSuggestion,
+    KeywordSuggestResponse,
+    KeywordStatsResponse,
+    KeywordFrequency,
+    SortOption
 )
 
 
-@dataclass(frozen=True)
-class _Candidate:
-    keyword: str
-    tokens: tuple[str, ...]
-    score: float
-    tfidf_score: float
-    textrank_score: float
+@dataclass
+class KeywordSearchResult:
+    """키워드 검색 결과 데이터"""
+    task_id: str
+    task_type: str
+    title: str
+    content: str
+    created_at: datetime
+    speakers: List[str]
+    positions: List[int]
     frequency: int
-    source: str | None = None
-
-
-def _clamp01(value: float) -> float:
-    return max(0.0, min(1.0, value))
-
-
-def _round_score(value: float) -> float:
-    return round(_clamp01(value), 4)
-
-
-def _normalize_token(token: str) -> str:
-    token = token.strip(" \t\r\n'\".,!?;:()[]{}<>")
-    if not token:
-        return ""
-
-    has_latin = any("a" <= ch.lower() <= "z" for ch in token)
-    if has_latin:
-        normalized = token.lower()
-        if normalized.endswith("'s") and len(normalized) > 3:
-            normalized = normalized[:-2]
-        return normalized
-
-    normalized = token
-    if any("\uac00" <= ch <= "\ud7af" for ch in normalized):
-        for ending in _KOREAN_VERB_ENDINGS:
-            if normalized.endswith(ending) and len(normalized) - len(ending) >= 2:
-                normalized = normalized[: -len(ending)]
-                break
-        for suffix in _KOREAN_SUFFIXES:
-            if normalized.endswith(suffix) and len(normalized) - len(suffix) >= 2:
-                return normalized[: -len(suffix)]
-    return normalized
-
-
-def _detect_language(text: str, language_hint: str = "auto") -> str:
-    if language_hint != "auto":
-        return language_hint
-    korean = sum(1 for char in text if "\uac00" <= char <= "\ud7af")
-    latin = sum(1 for char in text if "a" <= char.lower() <= "z")
-    if korean and latin:
-        return "mixed"
-    if korean:
-        return "ko"
-    return "en"
-
-
-def _split_documents(text: str) -> list[str]:
-    parts = [part.strip() for part in _SENTENCE_SPLIT_RE.split(text) if part.strip()]
-    return parts or ([text.strip()] if text.strip() else [])
-
-
-def _tokenize(text: str, min_length: int) -> list[str]:
-    tokens: list[str] = []
-    for raw in _WORD_RE.findall(text):
-        normalized = _normalize_token(raw)  # pragma: no cover
-        if not normalized:
-            continue  # pragma: no cover
-        if normalized.isdigit():
-            continue
-        if len(normalized) < min_length:
-            continue
-        if normalized in _STOPWORDS:
-            continue
-        tokens.append(normalized)
-    return tokens
-
-
-def _candidate_terms(tokens: list[str], max_ngram: int = 3) -> list[tuple[str, tuple[str, ...]]]:
-    terms: list[tuple[str, tuple[str, ...]]] = []
-    for size in range(1, max_ngram + 1):
-        if len(tokens) < size:
-            continue
-        for index in range(0, len(tokens) - size + 1):
-            term_tokens = tuple(tokens[index : index + size])
-            if len(set(term_tokens)) == 1 and size > 1:
-                continue
-            terms.append((" ".join(term_tokens), term_tokens))
-    return terms
-
-
-def _normalize_values(values: dict[str, float]) -> dict[str, float]:
-    if not values:
-        return {}
-    maximum = max(values.values())
-    if maximum <= 0:
-        return {key: 0.0 for key in values}
-    return {key: value / maximum for key, value in values.items()}
-
-
-def _token_similarity(left: tuple[str, ...], right: tuple[str, ...]) -> float:
-    left_set = set(left)
-    right_set = set(right)
-    if not left_set or not right_set:
-        return 0.0
-    jaccard = len(left_set & right_set) / len(left_set | right_set)
-
-    left_text = " ".join(left)
-    right_text = " ".join(right)
-    substring = 0.0
-    if (
-        min(len(left_text), len(right_text)) >= 3
-        and (left_text in right_text or right_text in left_text)
-    ):
-        substring = min(len(left_text), len(right_text)) / max(len(left_text), len(right_text))
-    return max(jaccard, substring)
-
-
-def _extract_text_from_result(data: dict[str, Any]) -> str:
-    text_parts: list[str] = []
-
-    for key in ("text", "transcription", "summary_text", "markdown"):
-        value = data.get(key)
-        if isinstance(value, str) and value.strip():
-            text_parts.append(value)
-
-    segments = data.get("segments")
-    if isinstance(segments, list):
-        for segment in segments:
-            if isinstance(segment, dict):
-                text = segment.get("text")
-                if isinstance(text, str) and text.strip():
-                    text_parts.append(text)
-
-    sections = data.get("sections")
-    if isinstance(sections, dict):
-        for value in sections.values():
-            if isinstance(value, str) and value.strip():
-                text_parts.append(value)
-
-    action_items = data.get("action_items")
-    if isinstance(action_items, list):
-        for item in action_items:
-            if isinstance(item, dict):
-                task = item.get("task")
-                if isinstance(task, str) and task.strip():
-                    text_parts.append(task)
-            elif isinstance(item, str) and item.strip():
-                text_parts.append(item)
-
-    minutes = data.get("minutes")
-    if isinstance(minutes, str) and minutes.strip():
-        text_parts.append(minutes)
-    elif isinstance(minutes, dict):
-        content = minutes.get("content")
-        if isinstance(content, str) and content.strip():
-            text_parts.append(content)
-
-    return "\n".join(text_parts)
+    relevance_score: float
 
 
 class KeywordService:
-    """TF-IDF + TextRank 기반 키워드 추출/추천 서비스."""
-
-    def extract_from_text(
-        self,
-        text: str,
-        *,
-        language: str = "auto",
-        max_keywords: int | None = None,
-        min_score: float | None = None,
-        context_texts: list[str] | None = None,
-        source: str = "text",
-        task_id: str | None = None,
-        history_task_count: int | None = None,
-    ) -> KeywordResponse:
-        """텍스트에서 키워드를 추출한다."""
-        clean_text = text.strip()
-        if len(clean_text) < 10:
-            raise HTTPException(
-                status_code=422,
-                detail="키워드 추출에는 최소 10자 이상의 텍스트가 필요합니다.",
-            )
-        clean_text = clean_text[: settings.keyword_max_text_chars]
-
-        limit = max_keywords or settings.keyword_max_keywords
-        threshold = settings.keyword_min_score if min_score is None else min_score
-        detected_language = _detect_language(clean_text, language)
-
-        candidates = self._extract_candidates(
-            clean_text,
-            context_texts=context_texts or [],
-            max_keywords=limit,
-            min_score=threshold,
+    """키워드 검색 및 추천 서비스"""
+    
+    def __init__(self):
+        # 한글 및 영문 키워드 추출 패턴
+        self.korean_pattern = re.compile(
+            r'[가-힣ㄱ-ㅎㅏ-ㅣ]+|\b[A-Za-z]{2,}\b|\b\d{2,}\b',
+            re.IGNORECASE
         )
-        keyword_items, groups = self._build_items_and_groups(candidates)
-
-        return KeywordResponse(
-            task_id=task_id,
-            status="completed",
-            source=source,  # type: ignore[arg-type]
-            language=detected_language,
-            keywords=keyword_items,
-            groups=groups,
-            total_count=len(keyword_items),
-            history_task_count=history_task_count,
-            extracted_at=datetime.now(UTC).isoformat(),
-        )
-
-    async def extract_for_task(
-        self,
-        redis_client: aioredis.Redis,
-        db: AsyncSession,
-        task_id: str,
-        *,
-        max_keywords: int | None = None,
-        min_score: float | None = None,
-    ) -> KeywordResponse:
-        """저장된 회의 결과에서 키워드를 추출한다."""
-        if max_keywords is None and min_score is None:
-            cached = await self._fetch_cached_response(redis_client, task_id, "extract")
-            if cached:
-                return cached
-
-        data = await self._fetch_task_result(redis_client, db, task_id)
-        text = _extract_text_from_result(data)
-        response = self.extract_from_text(
-            text,
-            max_keywords=max_keywords,
-            min_score=min_score,
-            source="meeting",
-            task_id=task_id,
-        )
-        await self._cache_response(redis_client, task_id, "extract", response)
-        return response
-
-    async def recommend_for_task(
-        self,
-        redis_client: aioredis.Redis,
-        db: AsyncSession,
-        task_id: str,
-        *,
-        max_keywords: int | None = None,
-        min_score: float | None = None,
-        history_limit: int | None = None,
-    ) -> KeywordResponse:
-        """현재 회의와 최근 회의 히스토리를 함께 사용해 키워드를 추천한다."""
-        if max_keywords is None and min_score is None and history_limit is None:
-            cached = await self._fetch_cached_response(redis_client, task_id, "recommend")
-            if cached:
-                return cached
-
-        current_data = await self._fetch_task_result(redis_client, db, task_id)
-        current_text = _extract_text_from_result(current_data)
-        history_records = await self._fetch_history_records(
-            db,
-            exclude_task_id=task_id,
-            limit=history_limit or settings.keyword_history_limit,
-        )
-        history_texts = [
-            _extract_text_from_result(record.result_data or {})
-            for record in history_records
-            if record.result_data
-        ]
-        history_texts = [text for text in history_texts if len(text.strip()) >= 10]
-
-        response = self.recommend_from_history(
-            current_text,
-            history_texts=history_texts,
-            task_id=task_id,
-            max_keywords=max_keywords,
-            min_score=min_score,
-        )
-        await self._cache_response(redis_client, task_id, "recommend", response)
-        return response
-
-    def recommend_from_history(
-        self,
-        current_text: str,
-        *,
-        history_texts: list[str],
-        task_id: str | None = None,
-        max_keywords: int | None = None,
-        min_score: float | None = None,
-    ) -> KeywordResponse:
-        """테스트 가능한 히스토리 기반 추천 로직."""
-        limit = max_keywords or settings.keyword_max_keywords
-        threshold = settings.keyword_min_score if min_score is None else min_score
-
-        current = self._extract_candidates(
-            current_text,
-            context_texts=history_texts,
-            max_keywords=limit * 2,
-            min_score=0.0,
-            source="current",
-        )
-        history_text = "\n".join(history_texts)
-        history = (
-            self._extract_candidates(
-                history_text,
-                context_texts=[current_text],
-                max_keywords=limit * 2,
-                min_score=0.0,
-                source="history",
-            )
-            if history_text.strip()
-            else []
-        )
-
-        combined = self._combine_recommendations(current, history)
-        filtered = [candidate for candidate in combined if candidate.score >= threshold]
-        selected = sorted(filtered, key=lambda item: (-item.score, item.keyword))[:limit]
-        keyword_items, groups = self._build_items_and_groups(selected)
-
-        return KeywordResponse(
-            task_id=task_id,
-            status="completed",
-            source="history_recommendation",
-            language=_detect_language(current_text),
-            keywords=keyword_items,
-            groups=groups,
-            total_count=len(keyword_items),
-            history_task_count=len(history_texts),
-            extracted_at=datetime.now(UTC).isoformat(),
-        )
-
-    async def _fetch_task_result(
-        self,
-        redis_client: aioredis.Redis,
-        db: AsyncSession,
-        task_id: str,
-    ) -> dict[str, Any]:
-        for pattern, task_type in _REDIS_RESULT_KEYS:
-            key = pattern.format(task_id=task_id)
-            raw = await redis_client.get(key)
-            if raw:
-                logger.debug("키워드 원본 Redis 히트", key=key, task_type=task_type)
-                try:
-                    data = json.loads(raw)
-                except json.JSONDecodeError as exc:
-                    logger.debug("키워드 원본 Redis JSON 파싱 실패", key=key, error=str(exc))
-                    continue
-                if isinstance(data, dict):
-                    return data
-
-        stmt = select(TaskResult).where(
-            TaskResult.task_id == task_id,
-            TaskResult.status == "completed",
-        )
-        result = await db.execute(stmt)
-        record = result.scalars().first()
-        if record and record.result_data:
-            return record.result_data
-
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"회의 데이터를 찾을 수 없습니다: task_id={task_id}",
-        )
-
-    async def _fetch_cached_response(
-        self,
-        redis_client: aioredis.Redis,
-        task_id: str,
-        kind: str,
-    ) -> KeywordResponse | None:
-        try:
-            raw = await redis_client.get(f"task:kw:{kind}:{task_id}")
-            if not raw:
-                return None
-            data = json.loads(raw)  # pragma: no cover
-            if not isinstance(data, dict):
-                return None  # pragma: no cover
-            return KeywordResponse.model_validate(data)
-        except Exception as exc:
-            logger.debug("키워드 결과 캐시 조회 실패", task_id=task_id, kind=kind, error=str(exc))
-            return None
-
-    async def _fetch_history_records(
-        self,
-        db: AsyncSession,
-        *,
-        exclude_task_id: str,
-        limit: int,
-    ) -> list[TaskResult]:
-        stmt = (
-            select(TaskResult)
-            .where(
-                TaskResult.task_type == "minutes",
-                TaskResult.status == "completed",
-                TaskResult.task_id != exclude_task_id,
-            )
-            .order_by(TaskResult.completed_at.desc(), TaskResult.created_at.desc())
-            .limit(limit)
-        )
-        result = await db.execute(stmt)
-        return list(result.scalars().all())
-
-    async def _cache_response(
-        self,
-        redis_client: aioredis.Redis,
-        task_id: str,
-        kind: str,
-        response: KeywordResponse,
-    ) -> None:
-        try:
-            key = f"task:kw:{kind}:{task_id}"
-            await redis_client.setex(
-                key,
-                settings.keyword_result_ttl,
-                json.dumps(response.model_dump(mode="json"), ensure_ascii=False),
-            )
-        except Exception as exc:
-            logger.debug("키워드 결과 캐시 저장 실패", task_id=task_id, error=str(exc))
-
-    def _extract_candidates(
-        self,
-        text: str,
-        *,
-        context_texts: list[str],
-        max_keywords: int,
-        min_score: float,
-        source: str | None = None,
-    ) -> list[_Candidate]:
-        min_length = settings.keyword_min_term_length
-        target_docs = _split_documents(text)
-        context_docs: list[str] = []
-        for context in context_texts:
-            context_docs.extend(_split_documents(context))
-        all_docs = target_docs + context_docs
-
-        target_counts: Counter[str] = Counter()
-        token_by_term: dict[str, tuple[str, ...]] = {}
-        for doc in target_docs:
-            tokens = _tokenize(doc, min_length)
-            for term, term_tokens in _candidate_terms(tokens):
-                target_counts[term] += 1
-                token_by_term.setdefault(term, term_tokens)
-
-        if not target_counts:
+        
+        # 불용어 목록 (확장 가능)
+        self.stop_words = {
+            '그리고', '그러나', '또한', '때문에', '이러한', '모든', '우리', '저희',
+            '것', '이', '그', '저', '수', '때', '경우', '문제', '방법', '과정',
+            'the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of',
+            'that', 'this', 'with', 'have', 'has', 'are', 'is', 'was', 'were'
+        }
+    
+    def _extract_keywords(self, text: str, include_variations: bool = True) -> List[str]:
+        """텍스트에서 키워드 추출"""
+        if not text:
             return []
-
-        doc_freq: Counter[str] = Counter()
-        for doc in all_docs:
-            tokens = _tokenize(doc, min_length)
-            terms = {term for term, _ in _candidate_terms(tokens)}
-            doc_freq.update(terms)
-
-        doc_count = max(1, len(all_docs))
-        total_terms = sum(target_counts.values()) or 1
-        tfidf_raw: dict[str, float] = {}
-        for term, count in target_counts.items():
-            tf = count / total_terms
-            idf = math.log((1 + doc_count) / (1 + doc_freq.get(term, 0))) + 1
-            length_boost = 1.0 + (0.08 * (len(token_by_term.get(term, ())) - 1))
-            tfidf_raw[term] = tf * idf * length_boost
-
-        token_rank = self._textrank(target_docs)
-        textrank_raw: dict[str, float] = {}
-        for term, term_tokens in token_by_term.items():
-            ranks = [token_rank.get(token, 0.0) for token in term_tokens]  # pragma: no cover
-            if not ranks:
-                textrank_raw[term] = 0.0  # pragma: no cover
-                continue  # pragma: no cover
-            length_boost = 1.0 + (0.08 * (len(term_tokens) - 1))
-            textrank_raw[term] = (sum(ranks) / len(ranks)) * length_boost
-
-        tfidf_scores = _normalize_values(tfidf_raw)
-        textrank_scores = _normalize_values(textrank_raw)
-
-        tfidf_weight = settings.keyword_tfidf_weight
-        textrank_weight = settings.keyword_textrank_weight
-        total_weight = tfidf_weight + textrank_weight
-        if total_weight <= 0:
-            tfidf_weight = textrank_weight = 0.5
-            total_weight = 1.0
-        tfidf_weight = tfidf_weight / total_weight
-        textrank_weight = textrank_weight / total_weight
-
-        combined_raw: dict[str, float] = {}
-        for term, count in target_counts.items():
-            frequency_boost = min(0.08, math.log1p(count) / 40)
-            combined_raw[term] = (
-                tfidf_weight * tfidf_scores.get(term, 0.0)
-                + textrank_weight * textrank_scores.get(term, 0.0)
-                + frequency_boost
-            )
-
-        combined_scores = _normalize_values(combined_raw)
-        candidates: list[_Candidate] = []
-        for term, score in combined_scores.items():
-            rounded_score = _round_score(score)  # pragma: no cover
-            if rounded_score < min_score:
-                continue  # pragma: no cover
-            candidates.append(
-                _Candidate(
-                    keyword=term,
-                    tokens=token_by_term[term],
-                    score=rounded_score,
-                    tfidf_score=_round_score(tfidf_scores.get(term, 0.0)),
-                    textrank_score=_round_score(textrank_scores.get(term, 0.0)),
-                    frequency=target_counts[term],
-                    source=source,
-                )
-            )
-
-        return sorted(candidates, key=lambda item: (-item.score, item.keyword))[:max_keywords]
-
-    def _textrank(self, docs: list[str]) -> dict[str, float]:
-        min_length = settings.keyword_min_term_length
-        window = settings.keyword_textrank_window
-        graph: dict[str, Counter[str]] = defaultdict(Counter)
-
-        for doc in docs:
-            tokens = _tokenize(doc, min_length)
-            for token in tokens:
-                graph[token]
-            for index, token in enumerate(tokens):
-                for neighbor in tokens[index + 1 : index + window]:
-                    if token == neighbor:
-                        continue
-                    graph[token][neighbor] += 1
-                    graph[neighbor][token] += 1
-
-        if not graph:
-            return {}
-
-        ranks = {token: 1.0 for token in graph}
-        damping = 0.85
-        for _ in range(30):
-            next_ranks: dict[str, float] = {}
-            for token, neighbors in graph.items():
-                rank_sum = 0.0
-                for neighbor, weight in neighbors.items():
-                    outbound = sum(graph[neighbor].values()) or 1.0
-                    rank_sum += ranks[neighbor] * (weight / outbound)
-                next_ranks[token] = (1.0 - damping) + damping * rank_sum
-            ranks = next_ranks
-
-        return _normalize_values(ranks)
-
-    def _combine_recommendations(
-        self,
-        current: list[_Candidate],
-        history: list[_Candidate],
-    ) -> list[_Candidate]:
-        current_map = {candidate.keyword: candidate for candidate in current}
-        history_map = {candidate.keyword: candidate for candidate in history}
-        keywords = set(current_map) | set(history_map)
-
-        raw_scores: dict[str, float] = {}
+        
+        # 기본 키워드 추출
+        keywords = []
+        for match in self.korean_pattern.finditer(text):
+            word = match.group().lower()
+            if len(word) >= 2 and word not in self.stop_words:
+                keywords.append(word)
+        
+        # 변형어 생성 (예: '개발' -> '개발자', '개발하기')
+        if include_variations:
+            variations = self._generate_variations(keywords)
+            keywords.extend(variations)
+        
+        return list(set(keywords))  # 중복 제거
+    
+    def _generate_variations(self, keywords: List[str]) -> List[str]:
+        """키워드 변형어 생성"""
+        variations = []
+        
         for keyword in keywords:
-            current_score = current_map.get(keyword).score if keyword in current_map else 0.0
-            history_score = history_map.get(keyword).score if keyword in history_map else 0.0
-            if current_score and history_score:
-                raw_scores[keyword] = (current_score * 0.72) + (history_score * 0.28) + 0.08
-            elif current_score:
-                raw_scores[keyword] = current_score * 0.82
-            else:
-                raw_scores[keyword] = history_score * 0.35
-
-        normalized = _normalize_values(raw_scores)
-        combined: list[_Candidate] = []
-        for keyword, score in normalized.items():
-            current_candidate = current_map.get(keyword)
-            history_candidate = history_map.get(keyword)
-            base = current_candidate or history_candidate  # pragma: no cover
-            if base is None:
-                continue  # pragma: no cover
-            source = (
-                "current+history"
-                if current_candidate and history_candidate
-                else ("current" if current_candidate else "history")
-            )
-            frequency = 0
-            if current_candidate:
-                frequency += current_candidate.frequency
-            if history_candidate:
-                frequency += history_candidate.frequency
-            combined.append(
-                _Candidate(
-                    keyword=keyword,
-                    tokens=base.tokens,
-                    score=_round_score(score),
-                    tfidf_score=_round_score(
-                        max(
-                            current_candidate.tfidf_score if current_candidate else 0.0,
-                            history_candidate.tfidf_score if history_candidate else 0.0,
-                        )
-                    ),
-                    textrank_score=_round_score(
-                        max(
-                            current_candidate.textrank_score if current_candidate else 0.0,
-                            history_candidate.textrank_score if history_candidate else 0.0,
-                        )
-                    ),
-                    frequency=max(1, frequency),
-                    source=source,
-                )
-            )
-        return combined
-
-    def _build_items_and_groups(
+            # 명사화 (추가 가능)
+            if not keyword.endswith('기'):
+                variations.append(f"{keyword}기")
+            
+            # 집합형 추가
+            if not keyword.endswith('들'):
+                variations.append(f"{keyword}들")
+            
+            # 형용사/동사적 변형
+            if len(keyword) >= 3:
+                variations.append(f"{keyword}하는")
+                variations.append(f"{keyword}된")
+        
+        return variations
+    
+    def _calculate_relevance_score(
+        self, 
+        keyword: str, 
+        text_content: str, 
+        title: str,
+        frequency: int,
+        is_exact_match: bool = False
+    ) -> float:
+        """키워드 관련도 점수 계산"""
+        
+        # 기본 점수
+        score = 0.0
+        
+        # 제목에서 일치할 경우 높은 점수
+        if keyword.lower() in title.lower():
+            score += 0.4
+        
+        # 정확한 일치 추가 점수
+        if is_exact_match:
+            score += 0.2
+        
+        # 빈도 기반 점수 (로그 스케일)
+        score += min(0.3, math.log(frequency + 1) / 5)
+        
+        # 텍스트 길이 대비 비율
+        text_length = len(text_content)
+        if text_length > 0:
+            frequency_ratio = frequency / text_length
+            score += min(0.1, frequency_ratio * 1000)
+        
+        return min(1.0, score)
+    
+    async def search_keywords(
         self,
-        candidates: list[_Candidate],
-    ) -> tuple[list[KeywordItem], list[KeywordGroup]]:
-        groups: list[dict[str, Any]] = []
-        threshold = settings.keyword_cluster_similarity_threshold
-
-        item_data: list[dict[str, Any]] = []
-        for candidate in candidates:
-            best_index: int | None = None
-            best_similarity = 0.0
-            for index, group in enumerate(groups):
-                similarity = max(
-                    _token_similarity(candidate.tokens, member_tokens)
-                    for member_tokens in group["member_tokens"]
+        session: AsyncSession,
+        keywords: List[str],
+        filter: KeywordSearchFilter,
+        page: int,
+        page_size: int,
+        sort: SortOption
+    ) -> KeywordSearchResponse:
+        """키워드 검색 메인 메서드"""
+        
+        # 검색 시작 시간
+        start_time = datetime.utcnow()
+        
+        # 기본 쿼리
+        query = session.query(TaskResult)
+        
+        # 날짜 필터 적용
+        if filter.date_from and filter.date_to:
+            query = query.filter(
+                and_(
+                    TaskResult.created_at >= filter.date_from,
+                    TaskResult.created_at <= filter.date_to
                 )
-                if similarity > best_similarity:
-                    best_similarity = similarity
-                    best_index = index
-
-            if best_index is None or best_similarity < threshold:
-                group_id = f"kwg-{len(groups) + 1}"
-                groups.append(
-                    {
-                        "group_id": group_id,
-                        "label": candidate.keyword,
-                        "score": candidate.score,
-                        "keywords": [candidate.keyword],
-                        "tokens": candidate.tokens,
-                        "member_tokens": [candidate.tokens],
-                    }
+            )
+        elif filter.date_from:
+            query = query.filter(TaskResult.created_at >= filter.date_from)
+        elif filter.date_to:
+            query = query.filter(TaskResult.created_at <= filter.date_to)
+        
+        # 작업 유형 필터 적용
+        if filter.task_types:
+            query = query.filter(TaskResult.task_type.in_(filter.task_types))
+        
+        # 결과 조회
+        task_results = await session.execute(query.order_by(TaskResult.created_at.desc()))
+        task_results = task_results.scalars().all()
+        
+        # 검색 및 결과 처리
+        search_results = []
+        total_hits = 0
+        
+        for result in task_results:
+            result_data = result.result_data or {}
+            content = self._extract_text_from_result(result_data)
+            
+            if not content:
+                continue
+            
+            # 현재 결과에서 키워드 검색
+            result_hits = self._search_in_text(
+                keywords=keywords,
+                text=content,
+                result=result,
+                filter=filter
+            )
+            
+            if result_hits:
+                search_results.extend(result_hits)
+                total_hits += len(result_hits)
+        
+        # 정렬
+        search_results = self._sort_search_results(search_results, sort)
+        
+        # 페이지네이션
+        total_pages = (total_hits + page_size - 1) // page_size
+        start_idx = (page - 1) * page_size
+        end_idx = start_idx + page_size
+        paginated_results = search_results[start_idx:end_idx]
+        
+        # 키워드 통계 계산
+        keyword_stats = self._calculate_keyword_stats(search_results, keywords)
+        
+        # 응답 생성
+        search_time_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
+        
+        return KeywordSearchResponse(
+            keywords=keywords,
+            total_hits=total_hits,
+            total_documents=len(set(r.task_id for r in paginated_results)),
+            results=paginated_results,
+            page=page,
+            page_size=page_size,
+            total_pages=total_pages,
+            search_time_ms=search_time_ms,
+            keyword_stats=keyword_stats
+        )
+    
+    def _extract_text_from_result(self, result_data: Dict[str, Any]) -> str:
+        """결과 데이터에서 텍스트 추출"""
+        text_parts = []
+        
+        # minutes content
+        if 'minutes' in result_data:
+            minutes = result_data['minutes']
+            if isinstance(minutes, dict):
+                text_parts.append(minutes.get('content', ''))
+                text_parts.append(minutes.get('summary', ''))
+            elif isinstance(minutes, str):
+                text_parts.append(minutes)
+        
+        # summary content
+        if 'summary' in result_data:
+            summary = result_data['summary']
+            if isinstance(summary, str):
+                text_parts.append(summary)
+            elif isinstance(summary, dict):
+                text_parts.append(summary.get('content', ''))
+                text_parts.append(summary.get('summary', ''))
+        
+        # transcription content
+        if 'transcription' in result_data:
+            transcription = result_data['transcription']
+            if isinstance(transcription, dict):
+                segments = transcription.get('segments', [])
+                for segment in segments:
+                    if 'text' in segment:
+                        text_parts.append(segment['text'])
+        
+        # keywords/tags
+        if 'keywords' in result_data:
+            keywords = result_data['keywords']
+            if isinstance(keywords, list):
+                text_parts.extend(str(kw) for kw in keywords)
+        
+        return ' '.join(text_parts)
+    
+    def _search_in_text(
+        self,
+        keywords: List[str],
+        text: str,
+        result,
+        filter: KeywordSearchFilter
+    ) -> List[KeywordHit]:
+        """텍스트 내에서 키워드 검색"""
+        hits = []
+        
+        # 키워드별 위치 찾기
+        for keyword in keywords:
+            keyword_positions = []
+            
+            # 정확한 일치 검색
+            start_pos = 0
+            while True:
+                pos = text.lower().find(keyword.lower(), start_pos)
+                if pos == -1:
+                    break
+                
+                keyword_positions.append(pos)
+                start_pos = pos + 1
+            
+            if not keyword_positions:
+                continue
+            
+            # 컨텍스트 추출
+            contexts = []
+            for pos in keyword_positions[:5]:  # 최대 5개 컨텍스트
+                start = max(0, pos - 100)
+                end = min(len(text), pos + len(keyword) + 100)
+                context = text[start:end]
+                
+                # 키워드 강조
+                highlighted = context.replace(
+                    keyword, 
+                    f"**{keyword}**", 
+                    1
                 )
+                contexts.append({
+                    'full_text': context,
+                    'highlighted': highlighted,
+                    'position': pos
+                })
+            
+            # 관련도 점수 계산
+            relevance_score = self._calculate_relevance_score(
+                keyword=keyword,
+                text_content=text,
+                title=result.task_id,
+                frequency=len(keyword_positions),
+                is_exact_match=filter.exact_match
+            )
+            
+            hit = KeywordHit(
+                task_id=result.task_id,
+                task_type=result.task_type,
+                title=result.task_id,
+                positions=keyword_positions,
+                context_before=[c['full_text'] for c in contexts],
+                context_after=[c['full_text'] for c in contexts],
+                created_at=result.created_at,
+                speakers=[],  # TODO: 화자 정보 추출
+                duration=None,
+                relevance_score=relevance_score,
+                frequency=len(keyword_positions),
+                has_highlights=False
+            )
+            hits.append(hit)
+        
+        return hits
+    
+    def _sort_search_results(self, results: List[KeywordHit], sort: SortOption) -> List[KeywordHit]:
+        """검색 결과 정렬"""
+        if sort == SortOption.relevance:
+            return sorted(results, key=lambda x: x.relevance_score, reverse=True)
+        elif sort == SortOption.frequency:
+            return sorted(results, key=lambda x: x.frequency, reverse=True)
+        elif sort == SortOption.newest:
+            return sorted(results, key=lambda x: x.created_at, reverse=True)
+        elif sort == SortOption.oldest:
+            return sorted(results, key=lambda x: x.created_at)
+        else:
+            return results
+    
+    def _calculate_keyword_stats(
+        self, 
+        results: List[KeywordHit], 
+        keywords: List[str]
+    ) -> Dict[str, Any]:
+        """키워드 통계 계산"""
+        stats = {}
+        
+        for keyword in keywords:
+            keyword_results = [r for r in results if keyword in r.title.lower() or any(keyword.lower() in pos.lower() for pos in r.positions)]
+            
+            stats[keyword] = {
+                'total_hits': len(keyword_results),
+                'total_documents': len(set(r.task_id for r in keyword_results)),
+                'avg_relevance': sum(r.relevance_score for r in keyword_results) / len(keyword_results) if keyword_results else 0,
+                'avg_frequency': sum(r.frequency for r in keyword_results) / len(keyword_results) if keyword_results else 0
+            }
+        
+        return stats
+    
+    async def suggest_keywords(
+        self,
+        session: AsyncSession,
+        context: str,
+        limit: int,
+        include_synonyms: bool
+    ) -> KeywordSuggestResponse:
+        """키워드 추천 생성"""
+        
+        start_time = datetime.utcnow()
+        
+        # 문맥에서 키워드 추출
+        context_keywords = self._extract_keywords(context)
+        
+        # DB에서 관련 키워드 조회 (임시 구현)
+        # 실제로는 미리 인덱싱된 키워드 데이터를 조회해야 함
+        frequency_data = await self._get_keyword_frequency(session)
+        
+        # 추천 점수 계산
+        suggestions = []
+        for keyword, freq in frequency_data.items():
+            if keyword in context_keywords:
+                continue  # 이미 문맥에 있는 키워드
+                
+            # 점수 계산: 빈도 + 문맥 유사도
+            score = min(1.0, freq['frequency'] / 100)  # 정규화
+            
+            if include_synonyms:
+                # 동의어 추가 (임시)
+                synonyms = self._find_synonyms(keyword)
             else:
-                group = groups[best_index]
-                group_id = group["group_id"]
-                group["keywords"].append(candidate.keyword)
-                group["member_tokens"].append(candidate.tokens)  # pragma: no cover
-                if candidate.score > group["score"]:
-                    group["label"] = candidate.keyword  # pragma: no cover
-                    group["score"] = candidate.score  # pragma: no cover
-                    group["tokens"] = candidate.tokens  # pragma: no cover
-
-            item_data.append(
-                {
-                    "keyword": candidate.keyword,
-                    "score": candidate.score,
-                    "tfidf_score": candidate.tfidf_score,
-                    "textrank_score": candidate.textrank_score,
-                    "frequency": candidate.frequency,
-                    "group_id": group_id,
-                    "source": candidate.source,
-                }
+                synonyms = []
+            
+            suggestion = KeywordSuggestion(
+                keyword=keyword,
+                score=score,
+                frequency=freq['frequency'],
+                context_examples=[],  # TODO: 문맥 예시 추출
+                synonyms=synonyms,
+                related_keywords=self._find_related_keywords(keyword)
             )
-
-        keyword_items = [KeywordItem(**item) for item in item_data]
-        keyword_groups = [
-            KeywordGroup(
-                group_id=group["group_id"],
-                label=group["label"],
-                score=_round_score(group["score"]),
-                keywords=list(dict.fromkeys(group["keywords"])),
+            suggestions.append(suggestion)
+        
+        # 점수순 정렬 및 개수 제한
+        suggestions = sorted(suggestions, key=lambda x: x.score, reverse=True)[:limit]
+        
+        search_time_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
+        
+        return KeywordSuggestResponse(
+            original_context=context,
+            suggestions=suggestions,
+            recommendation_type="frequency",
+            context_keywords=context_keywords,
+            total_suggestions=len(suggestions),
+            search_time_ms=search_time_ms
+        )
+    
+    async def get_keyword_stats(
+        self,
+        session: AsyncSession,
+        start_date: datetime,
+        end_date: datetime,
+        top_n: int,
+        include_trends: bool
+    ) -> KeywordStatsResponse:
+        """키워드 통계 조회"""
+        
+        # 키워드 빈도 데이터 조회
+        frequency_data = await self._get_keyword_frequency(
+            session, 
+            start_date=start_date, 
+            end_date=end_date
+        )
+        
+        # 상위 N개 키워드 선택
+        sorted_keywords = sorted(
+            frequency_data.items(),
+            key=lambda x: x[1]['frequency'],
+            reverse=True
+        )[:top_n]
+        
+        top_keywords = [
+            KeywordFrequency(
+                keyword=k,
+                frequency=v['frequency'],
+                documents=v['documents'],
+                trend=v.get('trend')
             )
-            for group in groups
+            for k, v in sorted_keywords
         ]
-        return keyword_items, keyword_groups
+        
+        # 전체 통계 계산
+        total_keywords = len(frequency_data)
+        total_occurrences = sum(v['frequency'] for v in frequency_data.values())
+        avg_keywords_per_document = total_occurrences / 100 if total_occurrences > 0 else 0  # TODO: 실제 문서 수로 계산
+        
+        return KeywordStatsResponse(
+            period_start=start_date,
+            period_end=end_date,
+            top_keywords=top_keywords,
+            total_keywords=total_keywords,
+            total_occurrences=total_occurrences,
+            avg_keywords_per_document=avg_keywords_per_document,
+            trends={},  # TODO: 트렌드 데이터 추가
+            category_stats={}  # TODO: 카테고리별 통계 추가
+        )
+    
+    async def _get_keyword_frequency(
+        self,
+        session: AsyncSession,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None
+    ) -> Dict[str, Any]:
+        """키워드 빈도 데이터 조회 (임시 구현)"""
+        # 실제 구현에서는 DB FTS5 쿼리 또는 사전 인덱스된 데이터 사용
+        
+        frequency_data = {}
+        
+        # 최근 데이터 샘플링
+        query = session.query(TaskResult)
+        if start_date and end_date:
+            query = query.filter(
+                and_(
+                    TaskResult.created_at >= start_date,
+                    TaskResult.created_at <= end_date
+                )
+            )
+        
+        results = await session.execute(query.limit(100))
+        results = results.scalars().all()
+        
+        # 키워드 추출 및 빈도 계산
+        keyword_counter = Counter()
+        document_keywords = defaultdict(set)
+        
+        for result in results:
+            content = self._extract_text_from_result(result.result_data or {})
+            keywords = self._extract_keywords(content)
+            
+            for keyword in keywords:
+                keyword_counter[keyword] += 1
+                document_keywords[keyword].add(result.task_id)
+        
+        # 데이터 변환
+        for keyword, count in keyword_counter.items():
+            frequency_data[keyword] = {
+                'frequency': count,
+                'documents': len(document_keywords[keyword]),
+                'trend': None  # TODO: 트렌드 계산
+            }
+        
+        return frequency_data
+    
+    def _find_synonyms(self, keyword: str) -> List[str]:
+        """동의어 검색 (임시 구현)"""
+        # 실제 구현에서는 동의어 사전 또는 NLP 모델 사용
+        synonym_map = {
+            '개발': ['프로그래밍', '코딩', '구현'],
+            '설계': ['기획', '플래닝', '아키텍처'],
+            '테스트': ['검증', '확인', '검사'],
+            '의사결정': ['결정', '선택', '판단']
+        }
+        
+        return synonym_map.get(keyword, [])
+    
+    def _find_related_keywords(self, keyword: str) -> List[str]:
+        """관련 키워드 검색 (임시 구현)"""
+        # 실제 구현에서는 키워드 네트워크 또는 임베딩 사용
+        related_map = {
+            '개발': ['프로그래밍', '소스코드', '버그', '기능'],
+            '회의': ['발언', '논의', '결정', '액션아이템'],
+            '프로젝트': ['일정', '기간', '예산', '팀원']
+        }
+        
+        return related_map.get(keyword, [])

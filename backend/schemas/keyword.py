@@ -1,103 +1,162 @@
 """
-자동 키워드 추출/추천 스키마
-SPEC-KEYWORD-001: TF-IDF + TextRank 기반 회의 키워드 추천
+키워드 검색 및 추천 API 스키마
 """
 
-from typing import Literal
-
+from datetime import datetime
+from enum import Enum
+from typing import Any, List, Optional
 from pydantic import BaseModel, Field
 
-LanguageCode = Literal["auto", "ko", "en", "mixed"]
-KeywordSource = Literal["text", "meeting", "history_recommendation"]
+
+class SortOption(str, Enum):
+    """정렬 옵션"""
+    relevance = "relevance"
+    frequency = "frequency"
+    newest = "newest"
+    oldest = "oldest"
 
 
-class KeywordExtractRequest(BaseModel):
-    """POST /api/v1/keywords/extract 요청."""
-
-    text: str = Field(
-        ...,
-        min_length=10,
-        max_length=1000000,
-        description="키워드를 추출할 회의 텍스트. 실제 분석 길이는 KEYWORD_MAX_TEXT_CHARS 설정을 따릅니다.",
-    )
-    language: LanguageCode = Field(
-        default="auto",
-        description="언어 힌트. auto는 한/영 혼합 여부를 자동 감지합니다.",
-    )
-    max_keywords: int | None = Field(
+class KeywordSearchFilter(BaseModel):
+    """키워드 검색 필터"""
+    
+    # 날짜 필터
+    date_from: Optional[datetime] = Field(None, description="시작 날짜")
+    date_to: Optional[datetime] = Field(None, description="종료 날짜")
+    
+    # 문서 유형 필터
+    task_types: Optional[List[str]] = Field(
         default=None,
-        ge=1,
-        le=100,
-        description="반환할 최대 키워드 수. 미지정 시 KEYWORD_MAX_KEYWORDS 사용",
+        description="검색할 문서 유형 목록 (예: ['minutes', 'summary'])"
     )
-    min_score: float | None = Field(
+    
+    # 화자 필터
+    speakers: Optional[List[str]] = Field(
         default=None,
-        ge=0.0,
-        le=1.0,
-        description="최소 중요도 점수. 미지정 시 KEYWORD_MIN_SCORE 사용",
+        description="특정 화자의 키워드만 검색"
+    )
+    
+    # 키워드 속성 필터
+    has_action_items: Optional[bool] = Field(
+        None,
+        description="액션 아이템이 포함된 문서만 검색"
+    )
+    has_decisions: Optional[bool] = Field(
+        None,
+        description="의사결정이 포함된 문서만 검색"
+    )
+    has_issues: Optional[bool] = Field(
+        None,
+        description="이슈/문제점이 포함된 문서만 검색"
+    )
+    
+    # 키워드 유형 필터
+    exact_match: Optional[bool] = Field(
+        default=False,
+        description="정확한 일치만 검색"
+    )
+    include_variations: Optional[bool] = Field(
+        default=True,
+        description="변형어 포함 (예: '개발' -> '개발자', '개발하기')"
     )
 
 
-class KeywordRecommendRequest(BaseModel):
-    """POST /api/v1/keywords/{task_id}/recommend 요청."""
-
-    max_keywords: int | None = Field(
-        default=None,
-        ge=1,
-        le=100,
-        description="반환할 최대 추천 키워드 수",
-    )
-    min_score: float | None = Field(
-        default=None,
-        ge=0.0,
-        le=1.0,
-        description="최소 추천 중요도 점수",
-    )
-    history_limit: int | None = Field(
-        default=None,
-        ge=1,
-        le=200,
-        description="참조할 최근 회의록 개수. 미지정 시 KEYWORD_HISTORY_LIMIT 사용",
-    )
-
-
-class KeywordItem(BaseModel):
-    """개별 키워드."""
-
-    keyword: str = Field(..., min_length=1, description="키워드 또는 핵심 구문")
-    score: float = Field(..., ge=0.0, le=1.0, description="최종 중요도 점수")
-    tfidf_score: float = Field(..., ge=0.0, le=1.0, description="정규화된 TF-IDF 점수")
-    textrank_score: float = Field(..., ge=0.0, le=1.0, description="정규화된 TextRank 점수")
-    frequency: int = Field(..., ge=1, description="분석 대상 텍스트 내 출현 횟수")
-    group_id: str | None = Field(default=None, description="연관 키워드 그룹 ID")
-    source: str | None = Field(
-        default=None,
-        description="추천 시 키워드 출처(current/history/current+history)",
-    )
+class KeywordHit(BaseModel):
+    """키워드 검색 결과 한 건"""
+    
+    task_id: str = Field(..., description="작업 ID")
+    task_type: str = Field(..., description="작업 유형")
+    title: str = Field(..., description="문서 제목")
+    
+    # 키워드 위치 정보
+    positions: List[int] = Field(..., description="키워드 시작 위치 인덱스 목록")
+    context_before: List[str] = Field(..., description="키워드 앞 문맥")
+    context_after: List[str] = Field(..., description="키워드 뒷 문맥")
+    
+    # 문서 정보
+    created_at: datetime = Field(..., description="작성 시간")
+    speakers: List[str] = Field(default_factory=list, description="화자 목록")
+    duration: Optional[float] = Field(None, description="오디오 길이 (초)")
+    
+    # 메타 정보
+    relevance_score: float = Field(..., description="관련도 점수 (0.0-1.0)")
+    frequency: int = Field(..., description="문서 내 출현 횟수")
+    has_highlights: bool = Field(default=False, description="하이라이트 포함 여부")
 
 
-class KeywordGroup(BaseModel):
-    """유사 키워드 묶음."""
+class KeywordSearchResponse(BaseModel):
+    """키워드 검색 응답"""
+    
+    keywords: List[str] = Field(..., description="검색된 키워드 목록")
+    total_hits: int = Field(..., description="전체 검색 결과 수")
+    total_documents: int = Field(..., description="검색된 문서 수")
+    
+    # 검색 결과
+    results: List[KeywordHit] = Field(..., description="검색 결과 목록")
+    
+    # 페이지 정보
+    page: int = Field(..., description="현재 페이지")
+    page_size: int = Field(..., description="페이지당 항목 수")
+    total_pages: int = Field(..., description="전체 페이지 수")
+    
+    # 검색 시간
+    search_time_ms: float = Field(..., description="검색 소요 시간 (ms)")
+    
+    # 통계 정보
+    keyword_stats: dict[str, Any] = Field(default_factory=dict, description="키워드별 통계")
 
-    group_id: str = Field(..., description="키워드 그룹 ID")
-    label: str = Field(..., description="그룹 대표 키워드")
-    score: float = Field(..., ge=0.0, le=1.0, description="그룹 중요도 점수")
-    keywords: list[str] = Field(default_factory=list, description="그룹에 속한 키워드")
+
+class KeywordSuggestion(BaseModel):
+    """추천 키워드 한 건"""
+    
+    keyword: str = Field(..., description="추천 키워드")
+    score: float = Field(..., description="추천 점수 (0.0-1.0)")
+    frequency: int = Field(..., description="전체 빈도")
+    context_examples: List[str] = Field(default_factory=list, description="문맥 예시")
+    synonyms: List[str] = Field(default_factory=list, description="동의어 목록")
+    related_keywords: List[str] = Field(default_factory=list, description="관련 키워드")
 
 
-class KeywordResponse(BaseModel):
-    """키워드 추출/추천 응답."""
+class KeywordSuggestResponse(BaseModel):
+    """키워드 추천 응답"""
+    
+    original_context: str = Field(..., description="원본 문맥")
+    suggestions: List[KeywordSuggestion] = Field(..., description="추천 키워드 목록")
+    
+    # 추천 기준
+    recommendation_type: str = Field(..., description="추천 유형 (frequency, context, similarity)")
+    context_keywords: List[str] = Field(default_factory=list, description="문맥에서 추출된 키워드")
+    
+    # 통계
+    total_suggestions: int = Field(..., description="총 추천 개수")
+    search_time_ms: float = Field(..., description="추천 생성 시간 (ms)")
 
-    task_id: str | None = Field(default=None, description="회의 task_id")
-    status: str = Field(default="completed", description="처리 상태")
-    source: KeywordSource = Field(..., description="키워드 생성 경로")
-    language: str = Field(..., description="감지 또는 요청된 언어")
-    keywords: list[KeywordItem] = Field(default_factory=list)
-    groups: list[KeywordGroup] = Field(default_factory=list)
-    total_count: int = Field(default=0, ge=0)
-    history_task_count: int | None = Field(
-        default=None,
-        ge=0,
-        description="추천에 사용한 과거 회의록 수",
-    )
-    extracted_at: str = Field(..., description="추출 시각 (ISO 8601)")
+
+class KeywordFrequency(BaseModel):
+    """키워드 빈도 정보"""
+    
+    keyword: str = Field(..., description="키워드")
+    frequency: int = Field(..., description="출현 횟수")
+    documents: int = Field(..., description="포함된 문서 수")
+    trend: Optional[float] = Field(None, description="트렌드 (변화율)")
+
+
+class KeywordStatsResponse(BaseModel):
+    """키워드 통계 응답"""
+    
+    # 기간 정보
+    period_start: datetime = Field(..., description="통계 시작 시간")
+    period_end: datetime = Field(..., description="통계 종료 시간")
+    
+    # 상위 키워드
+    top_keywords: List[KeywordFrequency] = Field(..., description="상위 키워드 목록")
+    
+    # 전체 통계
+    total_keywords: int = Field(..., description="전체 고유 키워드 수")
+    total_occurrences: int = Field(..., description="전체 키워드 발생 횟수")
+    avg_keywords_per_document: float = Field(..., description="문서당 평균 키워드 수")
+    
+    # 트렌드 데이터 (선택적)
+    trends: Optional[dict[str, List[Any]]] = Field(None, description="키워드 트렌드 데이터")
+    
+    # 카테고리별 통계
+    category_stats: Optional[dict[str, Any]] = Field(None, description="카테고리별 통계")
