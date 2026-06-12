@@ -115,4 +115,9 @@ ignore = [
     "N803",   # invalid-argument-name: 기존 API 파라미터 컨벤션
     "N801",   # invalid-class-name: 기존 모델 컨벤션
     "N817",   # camelcase-imported-as-acronym: 기존 import 컨벤션
+    "PTH123", # builtin-open: pathlib 마이그레이션 위험
+    "PTH108", # os-unlink: pathlib 마이그레이션 위험
+    "PTH122", # os-path-splitext: pathlib 마이그레이션 위험
+    "SIM115", # open-file-without-context-handler: 기존 패턴 유지
+    "RUF006", # asyncio-dangling-task: conftest 정리 의도적
 ]

@@ -401,7 +401,7 @@ class AudioEnhancer:
             return audio, sr
         except Exception as e:
             logger.error("오디오 로딩 실패", error=str(e))
-            raise ValueError(f"오디오 파일 로딩 실패: {e}")
+            raise ValueError(f"오디오 파일 로딩 실패: {e}") from e
 
     def _save_audio(self, audio: np.ndarray, output_path: Path) -> None:
         """오디오 파일 저장"""
@@ -409,7 +409,7 @@ class AudioEnhancer:
             sf.write(str(output_path), audio, self.sample_rate)
         except Exception as e:
             logger.error("오디오 저장 실패", error=str(e))
-            raise ValueError(f"오디오 파일 저장 실패: {e}")
+            raise ValueError(f"오디오 파일 저장 실패: {e}") from e
 
     def _ai_noise_reduction(self, audio: np.ndarray, strength: float) -> np.ndarray:
         """AI 기반 노이즈 제거 (스펙트럼 분석)"""

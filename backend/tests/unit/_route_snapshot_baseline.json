@@ -420,6 +420,13 @@
     "api_key": true
   },
   {
+    "path": "/api/v1/export/batch",
+    "methods": [
+      "POST"
+    ],
+    "api_key": true
+  },
+  {
     "path": "/api/v1/export/docx/{minutes_task_id}",
     "methods": [
       "GET"
@@ -434,7 +441,21 @@
     "api_key": true
   },
   {
+    "path": "/api/v1/export/minutes/{task_id}",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
     "path": "/api/v1/export/pdf/{minutes_task_id}",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/export/templates",
     "methods": [
       "GET"
     ],

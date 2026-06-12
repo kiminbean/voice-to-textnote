@@ -6,28 +6,24 @@ SPEC-KEYWORD-SEARCH-002: 자동 키워드 추천 및 통계
 
 엔드포인트:
 - GET /keywords/search - 고급 키워드 검색
-- GET /keywords/suggest - 키워드 추천  
+- GET /keywords/suggest - 키워드 추천
 - GET /keywords/stats - 키워드 통계
 """
 
 import re
-from collections import Counter
 from datetime import datetime, timedelta
-from typing import Any
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import func, and_, or_
 
 from backend.app.dependencies import get_db_session
 from backend.app.errors import unprocessable
-from backend.db.models import TaskResult
 from backend.schemas.keyword import (
-    KeywordSearchResponse,
-    KeywordSuggestResponse,
-    KeywordStatsResponse,
     KeywordSearchFilter,
-    SortOption
+    KeywordSearchResponse,
+    KeywordStatsResponse,
+    KeywordSuggestResponse,
+    SortOption,
 )
 from backend.services.keyword_service import KeywordService
 
@@ -51,7 +47,7 @@ async def search_keywords(
 ) -> KeywordSearchResponse:
     """
     SPEC-KEYWORD-SEARCH-001: 고급 키워드 검색
-    
+
     - 전체 문서에서 키워드 위치 및 컨텍스트 검색
     - 다중 필터링 (날짜, 화자, 문서 유형 등)
     - 정렬 옵션 (관련도, 빈도, 최신순 등)
@@ -61,10 +57,10 @@ async def search_keywords(
     q = q.strip()
     if not q or len(q) < 1:
         unprocessable("검색 키워드는 1글자 이상이어야 합니다.")
-    
+
     # 자연어 처리: 여러 키워드 분리
     keywords = [kw.strip() for kw in re.split(r'[\s,，、]+', q) if kw.strip()]
-    
+
     return await svc.search_keywords(
         session=db,
         keywords=keywords,
@@ -85,7 +81,7 @@ async def suggest_keywords(
 ) -> KeywordSuggestResponse:
     """
     SPEC-KEYWORD-SEARCH-002: 자동 키워드 추천
-    
+
     - 문맥 기반 키워드 추천
     - 빈도 기반 추천
     - 동의어 포련 옵션
@@ -94,7 +90,7 @@ async def suggest_keywords(
     context = context.strip()
     if len(context) < 3:
         unprocessable("문맥은 최소 3글자 이상이어야 합니다.")
-    
+
     return await svc.suggest_keywords(
         session=db,
         context=context,
@@ -113,7 +109,7 @@ async def get_keyword_statistics(
 ) -> KeywordStatsResponse:
     """
     키워드 사용 통계 API
-    
+
     - 기간별 키워드 빈도 통계
     - 트렌드 분석
     - 인기 키워드 순위
@@ -123,10 +119,10 @@ async def get_keyword_statistics(
     period_match = re.match(r'^(\d+)([hdwm])$', period)
     if not period_match:
         unprocessable("기간 형식이 올바르지 않습니다. 예: 7d, 2w, 1m")
-    
+
     value, unit = period_match.groups()
     value = int(value)
-    
+
     # 기간 계산
     now = datetime.utcnow()
     if unit == 'd':  # days
@@ -137,7 +133,7 @@ async def get_keyword_statistics(
         start_date = now - timedelta(weeks=value)
     elif unit == 'm':  # months (approximate)
         start_date = now - timedelta(days=value * 30)
-    
+
     return await svc.get_keyword_stats(
         session=db,
         start_date=start_date,

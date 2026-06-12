@@ -18,6 +18,8 @@ __all__ = [
     "advanced_search_router",
     "dashboard_router",
     "enhanced_statistics_router",
+    "export_router",
+    "keyword_search_router",
     "search_router",
     "sentiment_router",
     "statistics_router",

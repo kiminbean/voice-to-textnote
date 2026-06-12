@@ -108,7 +108,7 @@ class TestTranscriptionTaskFinalCoverage:
         if isinstance(result, Exception):
             # SoftTimeLimitExceeded가 FileNotFoundError보다 먼저 발생하지 않은 경우
             # 예외가 propagate된 것이므로 timeout 처리 경로 커버로 간주
-            assert isinstance(result, (SoftTimeLimitExceeded, FileNotFoundError))
+            assert isinstance(result, SoftTimeLimitExceeded | FileNotFoundError)
         else:
             assert result["status"] == "failed"
             assert "초과" in result.get("error", "")
@@ -237,7 +237,7 @@ class TestTranscriptionTaskFinalCoverage:
             mock_settings.cache_ttl_seconds = 604800
 
             with contextlib.suppress(Exception):
-                transcription_task.apply(
+                _result = transcription_task.apply(
                     args=(),
                     kwargs={
                         "task_id": task_id,

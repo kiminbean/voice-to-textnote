@@ -515,7 +515,7 @@ def test_record_task_completed():
     assert transcription_sample.value > 0
 
     # 활성 태스크 감소 확인 (이전 테스트에서 증가했음)
-    next(iter(ACTIVE_TASKS.collect())).samples
+    _sample = next(iter(ACTIVE_TASKS.collect())).samples
     # 감소했으므로 0 또는 음수 (실제로는 0 이상이어야 함)
     # Note: 테스트 순서에 따라 값이 다를 수 있음
 

@@ -347,7 +347,7 @@ def client(mock_redis_client, tmp_path):
 
         loop = asyncio.get_event_loop()
         if loop.is_running():
-            loop.create_task(_test_engine.dispose())
+            _dispose_task = loop.create_task(_test_engine.dispose())
         else:
             loop.run_until_complete(_test_engine.dispose())
     except RuntimeError:

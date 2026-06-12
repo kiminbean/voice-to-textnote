@@ -273,71 +273,29 @@ class TestCalendarService:
 
 
 class TestKeywordService:
-    """keyword_service.py lines 208, 251, 432, 553, 643-644, 674, 706, 749, 819-821."""
+    """keyword_service.py extract/recommend 기본 동작"""
 
-    def test_normalize_token_korean_verb_ending(self):
-        from backend.services.keyword_service import _normalize_token
+    def test_extract_from_text_korean(self):
+        from backend.services.keyword_service import KeywordService
 
-        result = _normalize_token("작성하기")
-        assert isinstance(result, str)
+        svc = KeywordService()
+        result = svc.extract_from_text("프로젝트 일정 관리 회의 진행", min_score=0.0)
+        assert result.source == "text"
+        assert result.language == "ko"
 
-    def test_normalize_token_empty(self):
-        from backend.services.keyword_service import _normalize_token
+    def test_extract_from_text_empty(self):
+        from backend.services.keyword_service import KeywordService
 
-        assert _normalize_token("   ") == ""
+        svc = KeywordService()
+        result = svc.extract_from_text("", min_score=0.0)
+        assert result.total_count == 0
 
-    def test_normalize_token_english_possessive(self):
-        from backend.services.keyword_service import _normalize_token
+    def test_extract_from_text_respects_max(self):
+        from backend.services.keyword_service import KeywordService
 
-        result = _normalize_token("test's")
-        assert result == "test"
-
-    def test_normalize_token_korean_suffix(self):
-        from backend.services.keyword_service import _normalize_token
-
-        result = _normalize_token("회의에서")
-        assert isinstance(result, str)
-
-    def test_detect_language_korean(self):
-        from backend.services.keyword_service import _detect_language
-
-        assert _detect_language("한국어 텍스트") == "ko"
-
-    def test_detect_language_english(self):
-        from backend.services.keyword_service import _detect_language
-
-        assert _detect_language("English text") == "en"
-
-    def test_detect_language_mixed(self):
-        from backend.services.keyword_service import _detect_language
-
-        assert _detect_language("한국어 English") == "mixed"
-
-    def test_detect_language_hint(self):
-        from backend.services.keyword_service import _detect_language
-
-        assert _detect_language("anything", language_hint="ko") == "ko"
-
-    def test_round_score(self):
-        from backend.services.keyword_service import _round_score
-
-        assert _round_score(1.5) == 1.0
-        assert _round_score(-0.5) == 0.0
-        assert _round_score(0.12345) == 0.1235
-
-    def test_split_documents(self):
-        from backend.services.keyword_service import _split_documents
-
-        result = _split_documents("Hello. World!")
-        assert isinstance(result, list)
-        assert len(result) > 0
-
-    def test_tokenize_filters(self):
-        from backend.services.keyword_service import _tokenize
-
-        result = _tokenize("123 456 hello", min_length=2)
-        assert "123" not in result
-        assert "hello" in result
+        svc = KeywordService()
+        result = svc.extract_from_text("a b c d e f g h i j k", max_keywords=3, min_score=0.0)
+        assert len(result.keywords) <= 3
 
 
 class TestMeetingShareService:

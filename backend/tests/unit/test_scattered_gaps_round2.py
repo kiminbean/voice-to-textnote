@@ -346,55 +346,32 @@ class TestEnhancedStatisticsCoverage:
 
 
 class TestKeywordServiceCoverage:
-    """services/keyword_service.py — various edge cases."""
+    """services/keyword_service.py — extract/recommend 실제 구현 테스트."""
 
-    @pytest.mark.asyncio
-    async def test_recommend_returns_cached(self):
-        """Line 432 — cached recommendation returned."""
+    def test_extract_from_text_returns_keyword_response(self):
+        from backend.schemas.keyword import KeywordResponse
         from backend.services.keyword_service import KeywordService
 
-        svc = KeywordService.__new__(KeywordService)
-        cached_response = MagicMock()
-        svc._fetch_cached_response = AsyncMock(return_value=cached_response)
+        svc = KeywordService()
+        result = svc.extract_from_text("회의 프로젝트 일정 관리", min_score=0.0)
+        assert isinstance(result, KeywordResponse)
+        assert result.source == "text"
 
-        redis_client = AsyncMock()
-        session = AsyncMock()
-        result = await svc.recommend_for_task(redis_client, session, "task-1")
-        assert result == cached_response
-
-    def test_textrank_empty_graph(self):
-        """Line 706 — empty graph returns {}."""
+    def test_extract_from_text_filters_by_min_score(self):
         from backend.services.keyword_service import KeywordService
 
-        svc = KeywordService.__new__(KeywordService)
-        result = svc._textrank([])
-        assert result == {}
+        svc = KeywordService()
+        result = svc.extract_from_text("짧은 텍스트", min_score=1.0)
+        assert result.total_count == 0
 
-    def test_textrank_no_ranks_for_term(self):
-        """Lines 643-644 — empty ranks sets 0.0."""
-        token_rank = {}
-        term_tokens = []
-        ranks = [token_rank.get(t, 0.0) for t in term_tokens]
-        textrank_raw = {}
-        if not ranks:
-            textrank_raw["term"] = 0.0
-        assert textrank_raw["term"] == 0.0
+    def test_score_keywords_basic(self):
+        from backend.services.keyword_service import KeywordService
 
-    def test_group_update_label_and_score(self):
-        """Lines 819-821."""
-        group = {"label": "old", "score": 0.5, "tokens": set(), "member_tokens": []}
-        candidate = MagicMock()
-        candidate.keyword = "new label"
-        candidate.score = 0.9
-        candidate.tokens = {"new", "label"}
-
-        if candidate.score > group["score"]:
-            group["label"] = candidate.keyword
-            group["score"] = candidate.score
-            group["tokens"] = candidate.tokens
-
-        assert group["label"] == "new label"
-        assert group["score"] == 0.9
+        svc = KeywordService()
+        items = svc._score_keywords("test test test hello", ["test", "test", "test", "hello"])
+        assert len(items) > 0
+        assert items[0].keyword == "test"
+        assert items[0].frequency == 3
 
     def test_merge_candidates_skips_none_base(self):
         """Line 749 — base is None -> continue."""

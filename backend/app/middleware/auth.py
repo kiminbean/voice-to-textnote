@@ -52,7 +52,7 @@ async def _verify_guest_token(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="유효하지 않거나 만료된 게스트 토큰입니다.",
-        )
+        ) from None
 
     # type 클레임 검증
     if payload.get("type") != "guest":
@@ -107,7 +107,7 @@ async def _verify_access_token(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="유효하지 않거나 만료된 토큰입니다.",
-        )
+        ) from None
 
     if payload.get("type") != "access":
         raise HTTPException(

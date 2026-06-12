@@ -4,7 +4,7 @@
 
 import re
 from collections import defaultdict
-from typing import Literal
+from typing import ClassVar, Literal
 
 import numpy as np
 
@@ -17,7 +17,7 @@ class SentimentService:
     """회의 감성 분석 서비스"""
 
     # 감성 단어 사전 (한국어)
-    POSITIVE_WORDS = {
+    POSITIVE_WORDS: ClassVar[set[str]] = {
         "좋아",
         "훌륭",
         "대단",
@@ -69,7 +69,7 @@ class SentimentService:
         "특별한",
     }
 
-    NEGATIVE_WORDS = {
+    NEGATIVE_WORDS: ClassVar[set[str]] = {
         "나쁘",
         "싫어",
         "실망",
@@ -125,9 +125,9 @@ class SentimentService:
     }
 
     # 감성 강도 조정어
-    INTENSIFIERS = {"매우", "아주", "정말", "완전히", "극적으로", "특히", "더욱", "높게", "크게"}
+    INTENSIFIERS: ClassVar[set[str]] = {"매우", "아주", "정말", "완전히", "극적으로", "특히", "더욱", "높게", "크게"}
 
-    NEGATORS = {"안", "못", "지 않", "아니", "전혀", "조금도", "결코", "아예"}
+    NEGATORS: ClassVar[set[str]] = {"안", "못", "지 않", "아니", "전혀", "조금도", "결코", "아예"}
 
     def __init__(self):
         """초기화"""

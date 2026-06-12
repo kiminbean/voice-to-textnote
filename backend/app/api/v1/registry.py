@@ -30,11 +30,13 @@ from backend.app.api.v1.analytics import (
     advanced_search,
     dashboard,
     enhanced_statistics,
-    export,
     search,
     sentiment,
     statistics,
     vocabulary,
+)
+from backend.app.api.v1.analytics import (
+    export as analytics_export,
 )
 from backend.app.api.v1.audio import (
     audio,
@@ -99,7 +101,7 @@ ROUTER_REGISTRY: list[tuple[APIRouter, bool]] = [
     (statistics.router, True),  # SPEC-STATS-001
     (dashboard.router, True),  # SPEC-STATS-002
     (enhanced_statistics.router, True),  # SPEC-ENHANCED-STATS-001
-    (export.router, True),  # SPEC-EXPORT-001
+    (analytics_export.router, True),  # SPEC-EXPORT-001
     (advanced_search.router, True),  # SPEC-ADVANCED-SEARCH-001
     # ── 확장 오디오 처리 (API Key 필수) ──────────────────────────────────────────
     (enhanced_preprocess.router, True),  # 고급 오디오 전처리 (AI 기반)
