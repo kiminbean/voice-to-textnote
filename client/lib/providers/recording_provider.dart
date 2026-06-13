@@ -2,6 +2,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:voice_to_textnote/services/background_recording_service.dart';
+import 'package:voice_to_textnote/services/recording_recovery_service.dart';
 
 // 녹음 상태 열거형
 enum RecordingStatus {
@@ -38,12 +39,11 @@ class RecordingState {
 
 // 녹음 Notifier
 class RecordingNotifier extends Notifier<RecordingState> {
-  // 백그라운드 녹음 서비스
   final BackgroundRecordingService _backgroundService = BackgroundRecordingService();
+  final RecordingRecoveryService _recoveryService = RecordingRecoveryService();
 
   @override
   RecordingState build() {
-    // Notifier가 해제될 때 리소스 정리
     ref.onDispose(() {
       _backgroundService.dispose();
     });
@@ -53,33 +53,31 @@ class RecordingNotifier extends Notifier<RecordingState> {
     );
   }
 
-  // 녹음 시작 - 백그라운드 녹음 서비스 사용
   Future<void> startRecording() async {
-    // 앱 문서 디렉토리에 m4a 파일 경로 생성
     final dir = await getApplicationDocumentsDirectory();
     final filePath =
         '${dir.path}/meeting_${DateTime.now().millisecondsSinceEpoch}.m4a';
 
-    // 백그라운드 녹음 설정
     final config = BackgroundRecordingConfig(
       filePath: filePath,
       flushInterval: const Duration(seconds: 10),
     );
 
-    // 백그라운드 녹음 시작
     try {
       await _backgroundService.startRecording(config);
       state = state.copyWith(
         status: RecordingStatus.recording,
         filePath: filePath,
       );
+      await _recoveryService.saveActiveRecording(
+        filePath,
+        startedAt: DateTime.now().toUtc().toIso8601String(),
+      );
     } catch (e) {
-      print('녹음 시작 실패: $e');
       state = state.copyWith(status: RecordingStatus.idle);
     }
   }
 
-  // 녹음 중지 - 파일 저장 완료 후 상태 업데이트
   Future<void> stopRecording() async {
     try {
       final savedPath = await _backgroundService.stopRecording();
@@ -87,12 +85,43 @@ class RecordingNotifier extends Notifier<RecordingState> {
         status: RecordingStatus.stopped,
         filePath: savedPath ?? state.filePath,
       );
+      await _recoveryService.clearActiveRecording();
     } catch (e) {
-      print('녹음 중지 실패: $e');
+      state = state.copyWith(status: RecordingStatus.idle);
     }
   }
 
-  // 상태 초기화
+  Future<void> pauseRecording() async {
+    if (state.status != RecordingStatus.recording) return;
+    try {
+      await _backgroundService.pauseRecording();
+      state = state.copyWith(status: RecordingStatus.paused);
+    } catch (_) {}
+  }
+
+  Future<void> resumeRecording() async {
+    if (state.status != RecordingStatus.paused) return;
+    try {
+      await _backgroundService.resumeRecording();
+      state = state.copyWith(status: RecordingStatus.recording);
+    } catch (_) {}
+  }
+
+  Future<String?> checkInterruptedRecording() async {
+    if (await _recoveryService.hasActiveRecording()) {
+      return await _recoveryService.getActiveRecordingPath();
+    }
+    return null;
+  }
+
+  Future<void> discardInterruptedRecording() async {
+    await _recoveryService.clearActiveRecording();
+    state = const RecordingState(
+      status: RecordingStatus.idle,
+      elapsedSeconds: 0,
+    );
+  }
+
   void reset() {
     state = const RecordingState(
       status: RecordingStatus.idle,
@@ -100,12 +129,10 @@ class RecordingNotifier extends Notifier<RecordingState> {
     );
   }
 
-  // 경과 시간 업데이트 (타이머에서 호출)
   void updateElapsedSeconds(int seconds) {
     state = state.copyWith(elapsedSeconds: seconds);
   }
 
-  // 파일 경로 설정 (외부에서 직접 설정 시)
   void setFilePath(String path) {
     state = state.copyWith(filePath: path);
   }

@@ -26,6 +26,21 @@ class PermissionService {
     return _mapStatus(status);
   }
 
+  /// 저장공간 권한 요청 (T-013)
+  /// Android 12 이하: Permission.storage
+  /// Android 13+: Permission.videos / photos / audio (MANAGE_EXTERNAL_STORAGE 권한)
+  /// iOS: 미사용 (앱 샌드박스 내 저장)
+  Future<PermissionStatus> requestStoragePermission() async {
+    final status = await ph.Permission.storage.request();
+    return _mapStatus(status);
+  }
+
+  /// 저장공간 권한 확인 (T-013)
+  Future<PermissionStatus> checkStoragePermission() async {
+    final status = await ph.Permission.storage.status;
+    return _mapStatus(status);
+  }
+
   /// 마이크 권한 확인
   Future<PermissionStatus> checkMicrophonePermission() async {
     final status = await ph.Permission.microphone.status;

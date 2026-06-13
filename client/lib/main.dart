@@ -4,7 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:voice_to_textnote/config/firebase_config.dart';
 import 'package:voice_to_textnote/providers/auth_provider.dart';
 import 'package:voice_to_textnote/providers/notification_provider.dart';
+import 'package:voice_to_textnote/providers/permission_recheck_provider.dart';
 import 'package:voice_to_textnote/router/app_router.dart';
+import 'package:voice_to_textnote/services/deep_link_service.dart';
 
 import 'package:voice_to_textnote/services/push_notification_service.dart';
 
@@ -17,10 +19,6 @@ void main() async {
   // 백그라운드 메시지 핸들러 등록
   registerFCMBackgroundHandler();
 
-  // ProviderScope를 두지 않음: VoiceToTextNoteApp이 build에서
-  // UncontrolledProviderScope로 직접 만든 _container를 노출한다.
-  // (외부 ProviderScope와 내부 UncontrolledProviderScope 이중 중첩 시
-  //  !_dirty assertion 크래시가 발생하므로 단일 컨테이너로 통일)
   runApp(const VoiceToTextNoteApp());
 }
 
@@ -31,32 +29,28 @@ class VoiceToTextNoteApp extends StatefulWidget {
   State<VoiceToTextNoteApp> createState() => _VoiceToTextNoteAppState();
 }
 
-class _VoiceToTextNoteAppState extends State<VoiceToTextNoteApp> {
-  // ProviderContainer를 직접 관리하여 GoRouter에 전달
+class _VoiceToTextNoteAppState extends State<VoiceToTextNoteApp> with WidgetsBindingObserver {
   late final ProviderContainer _container;
   late final router = createRouter(_container);
 
   @override
   void initState() {
     super.initState();
-    // StatefulWidget은 ProviderScope 내부이므로 ProviderScope의 container를 가져올 수 없음
-    // UncontrolledProviderScope 패턴을 사용하여 해결
+    WidgetsBinding.instance.addObserver(this);
     _container = ProviderContainer();
-    // 앱 시작 시 저장된 토큰으로 인증 상태 복원
     _container.read(authStateProvider.notifier).checkAuth();
-    // FCM 초기화 및 토큰 등록
     _container.read(notificationProvider.notifier).initialize();
-    // 앱 시작 시 콜드 스타트 딥링크 확인
-    _checkDeepLink();
+
+    // SPEC-MOBILE-004 T-005: 딥링크 핸들러 연동
+    DeepLinkService.instance.handleBackgroundResume();
+    _checkColdStartDeepLink();
   }
 
-  /// 콜드 스타트 딥링크 확인 (앱 종료 상태에서 알림 탭)
-  Future<void> _checkDeepLink() async {
+  Future<void> _checkColdStartDeepLink() async {
     try {
       final notificationNotifier = _container.read(notificationProvider.notifier);
       final meetingId = await notificationNotifier.checkInitialMessage();
       if (meetingId != null) {
-        // 결과 화면으로 이동
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
             router.go('/result/$meetingId');
@@ -69,7 +63,17 @@ class _VoiceToTextNoteAppState extends State<VoiceToTextNoteApp> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _container.read(notificationProvider.notifier).checkInitialMessage();
+      // T-015: 설정 앱에서 권한 변경 후 복귀 시 UI 갱신 트리거
+      _container.read(permissionRecheckProvider.notifier).triggerRecheck();
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _container.dispose();
     super.dispose();
   }

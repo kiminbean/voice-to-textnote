@@ -25,8 +25,8 @@ class MainActivity: FlutterActivity() {
                         result.success(null)
                     }
                     "flushRecording" -> {
-                        // 주기적 플러시 (녹음 파일 갱신)
-                        result.success(null)
+                        val ok = RecordingService.flushRecording()
+                        result.success(ok)
                     }
                     else -> result.notImplemented()
                 }

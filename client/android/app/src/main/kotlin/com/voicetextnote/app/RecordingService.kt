@@ -18,6 +18,8 @@ class RecordingService : Service() {
     private val NOTIFICATION_ID = 1
 
     companion object {
+        private var instance: RecordingService? = null
+
         // Foreground Service 시작
         fun startForeground(context: Context) {
             val intent = Intent(context, RecordingService::class.java)
@@ -33,10 +35,22 @@ class RecordingService : Service() {
             val intent = Intent(context, RecordingService::class.java)
             context.stopService(intent)
         }
+
+        // 주기적 플러시 — 서비스 생존 확인 + 알림 갱신 (T-011)
+        fun flushRecording(): Boolean {
+            val svc = instance ?: return false
+            try {
+                svc.updateNotification()
+                return true
+            } catch (e: Exception) {
+                return false
+            }
+        }
     }
 
     override fun onCreate() {
         super.onCreate()
+        instance = this
         serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
         createNotificationChannel()
     }
@@ -51,6 +65,7 @@ class RecordingService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        instance = null
         serviceScope?.cancel()
     }
 
@@ -79,5 +94,10 @@ class RecordingService : Service() {
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
             .build()
+    }
+
+    fun updateNotification() {
+        val manager = getSystemService(NotificationManager::class.java)
+        manager?.notify(NOTIFICATION_ID, createNotification())
     }
 }

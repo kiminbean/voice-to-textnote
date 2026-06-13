@@ -10,6 +10,7 @@ import 'package:voice_to_textnote/providers/vocabulary_provider.dart';
 import 'package:voice_to_textnote/providers/notification_provider.dart';
 import 'package:voice_to_textnote/services/permission_service.dart';
 import 'package:voice_to_textnote/widgets/permission_dialog.dart';
+import 'package:voice_to_textnote/widgets/recording_recovery_dialog.dart';
 
 class RecordingScreen extends ConsumerStatefulWidget {
   const RecordingScreen({super.key});
@@ -42,6 +43,34 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
     );
     // 화면 진입 시 권한 체크
     _checkPermissions();
+    // T-010: 중단된 녹음 감지
+    _checkInterruptedRecording();
+  }
+
+  /// 중단된 녹음이 있는지 확인하고 다이얼로그 표시 (T-010)
+  Future<void> _checkInterruptedRecording() async {
+    final interruptedPath =
+        await ref.read(recordingProvider.notifier).checkInterruptedRecording();
+    if (interruptedPath != null && mounted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => RecordingRecoveryDialog(
+            recordingPath: interruptedPath,
+            onDiscard: () {
+              ref.read(recordingProvider.notifier).discardInterruptedRecording();
+              Navigator.of(context).pop();
+            },
+            onResume: () {
+              ref.read(recordingProvider.notifier).setFilePath(interruptedPath);
+              Navigator.of(context).pop();
+            },
+          ),
+        );
+      });
+    }
   }
 
   @override

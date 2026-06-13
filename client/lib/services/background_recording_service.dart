@@ -125,6 +125,26 @@ class BackgroundRecordingService {
     _startFlushTimer(config.flushInterval);
   }
 
+  /// 녹음 일시정지 (T-012)
+  Future<void> pauseRecording() async {
+    if (_recorder == null) return;
+    try {
+      await _recorder!.pause();
+    } catch (e) {
+      // 일부 플랫폼에서 pause 미지원 시 무시
+    }
+  }
+
+  /// 녹음 재개 (T-012)
+  Future<void> resumeRecording() async {
+    if (_recorder == null) return;
+    try {
+      await _recorder!.resume();
+    } catch (e) {
+      // 일부 플랫폼에서 resume 미지원 시 무시
+    }
+  }
+
   /// 백그라운드 녹음 중지
   Future<String?> stopRecording() async {
     _flushTimer?.cancel();
