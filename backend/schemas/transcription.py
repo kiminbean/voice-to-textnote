@@ -17,6 +17,13 @@ class TaskStatus(StrEnum):
     failed = "failed"
 
 
+class TranscriptionSource(StrEnum):
+    """SPEC-MOBILE-002: 전사 처리 출처 구분"""
+    server = "server"
+    local = "local"
+    hybrid = "hybrid"
+
+
 class SegmentResult(BaseModel):
     """단일 전사 세그먼트 (REQ-STT-008: 세그먼트별 타임스탬프 + 신뢰도)"""
 
@@ -80,6 +87,13 @@ class TranscriptionResponse(BaseModel):
     created_at: datetime
     completed_at: datetime | None = None
     error_message: str | None = None
+    # SPEC-MOBILE-002: 전사 출처 및 로컬 결과 (오프라인→온라인 재처리 추적용)
+    transcription_source: TranscriptionSource | None = Field(
+        default=None, description="전사 처리 출처 (server/local/hybrid)"
+    )
+    local_result: str | None = Field(
+        default=None, description="오프라인 로컬 STT 결과 텍스트 (재처리 전 임시)"
+    )
 
 
 class ValidationErrorDetail(BaseModel):
