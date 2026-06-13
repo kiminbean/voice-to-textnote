@@ -64,10 +64,29 @@ class _VoiceToTextNoteAppState extends State<VoiceToTextNoteApp> with WidgetsBin
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      _container.read(notificationProvider.notifier).checkInitialMessage();
-      // T-015: 설정 앱에서 권한 변경 후 복귀 시 UI 갱신 트리거
-      _container.read(permissionRecheckProvider.notifier).triggerRecheck();
+    // SPEC-MOBILE-005 REQ-005: 백그라운드 진입 시 녹음 상태 보존
+    switch (state) {
+      case AppLifecycleState.resumed:
+        _container.read(notificationProvider.notifier).checkInitialMessage();
+        // T-015: 설정 앱에서 권한 변경 후 복귀 시 UI 갱신 트리거
+        _container.read(permissionRecheckProvider.notifier).triggerRecheck();
+        break;
+      case AppLifecycleState.inactive:
+        // 포그라운드 비활성 (알림 센터 드래그 등) — 녹음은 유지됨
+        debugPrint('AppLifecycleState.inactive — 녹음 유지');
+        break;
+      case AppLifecycleState.paused:
+        // 백그라운드 진입 — audio session이 활성 상태면 녹음 계속됨
+        debugPrint('AppLifecycleState.paused — 백그라운드 녹음 모드');
+        break;
+      case AppLifecycleState.detached:
+        // 엔진 분리 (강제 종료 등) — 복구 데이터가 이미 SharedPreferences에 저장됨
+        debugPrint('AppLifecycleState.detached — 복구 데이터 저장됨');
+        break;
+      case AppLifecycleState.hidden:
+        // iOS 다중 태스크 전환 화면 — 녹음 유지
+        debugPrint('AppLifecycleState.hidden — 녹음 유지');
+        break;
     }
   }
 

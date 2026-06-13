@@ -1,4 +1,5 @@
 // 녹음 상태 관리 프로바이더
+// SPEC-MOBILE-005: 인터럽션 상태 전이 추가 (REQ-002)
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:voice_to_textnote/services/background_recording_service.dart';
@@ -8,8 +9,14 @@ import 'package:voice_to_textnote/services/recording_recovery_service.dart';
 enum RecordingStatus {
   idle,      // 대기 중
   recording, // 녹음 중
-  paused,    // 일시 정지
+  paused,    // 일시 정지 (수동)
   stopped,   // 중지됨
+}
+
+// 인터럽션 상태 열거형 (Provider 레벨에서 UI에 노출)
+enum InterruptionStatus {
+  none,        // 인터럽션 없음
+  interrupted, // 인터럽션 발생 (전화 수신 등)
 }
 
 // 녹음 상태 데이터 클래스
@@ -17,22 +24,26 @@ class RecordingState {
   final RecordingStatus status;
   final int elapsedSeconds;
   final String? filePath;
+  final InterruptionStatus interruptionStatus; // SPEC-MOBILE-005: 인터럽션 상태
 
   const RecordingState({
     required this.status,
     required this.elapsedSeconds,
     this.filePath,
+    this.interruptionStatus = InterruptionStatus.none,
   });
 
   RecordingState copyWith({
     RecordingStatus? status,
     int? elapsedSeconds,
     String? filePath,
+    InterruptionStatus? interruptionStatus,
   }) {
     return RecordingState(
       status: status ?? this.status,
       elapsedSeconds: elapsedSeconds ?? this.elapsedSeconds,
       filePath: filePath ?? this.filePath,
+      interruptionStatus: interruptionStatus ?? this.interruptionStatus,
     );
   }
 }
@@ -44,6 +55,9 @@ class RecordingNotifier extends Notifier<RecordingState> {
 
   @override
   RecordingState build() {
+    // SPEC-MOBILE-005 REQ-002: 인터럽션 콜백 등록
+    _backgroundService.onInterruptionChanged = _onInterruptionChanged;
+
     ref.onDispose(() {
       _backgroundService.dispose();
     });
@@ -51,6 +65,29 @@ class RecordingNotifier extends Notifier<RecordingState> {
       status: RecordingStatus.idle,
       elapsedSeconds: 0,
     );
+  }
+
+  /// SPEC-MOBILE-005 REQ-002: 인터럽션 상태 전이
+  /// BackgroundRecordingService에서 인터럽션 이벤트 수신 시 상태 갱신
+  void _onInterruptionChanged(InterruptionState state) {
+    if (state == InterruptionState.interrupted) {
+      // 인터럽션 발생 → paused 상태로 전이 (녹음은 service에서 pause됨)
+      if (this.state.status == RecordingStatus.recording) {
+        this.state = this.state.copyWith(
+              status: RecordingStatus.paused,
+              interruptionStatus: InterruptionStatus.interrupted,
+            );
+      }
+    } else {
+      // 인터럽션 종료 → recording 상태로 복귀
+      if (this.state.status == RecordingStatus.paused &&
+          this.state.interruptionStatus == InterruptionStatus.interrupted) {
+        this.state = this.state.copyWith(
+              status: RecordingStatus.recording,
+              interruptionStatus: InterruptionStatus.none,
+            );
+      }
+    }
   }
 
   Future<void> startRecording() async {

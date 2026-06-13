@@ -1,9 +1,13 @@
 // RecordingProvider 상태 관리 테스트
+// SPEC-MOBILE-005: 인터럽션 상태 전이 검증 추가 (REQ-002)
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:voice_to_textnote/providers/recording_provider.dart';
 
 void main() {
+  // MethodChannel 사용을 위해 바인딩 초기화
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   group('RecordingProvider', () {
     late ProviderContainer container;
 
@@ -98,6 +102,62 @@ void main() {
       expect(updated.status, RecordingStatus.recording);
       expect(updated.elapsedSeconds, 20);
       expect(updated.filePath, '/test/file.m4a');
+    });
+  });
+
+  // SPEC-MOBILE-005 REQ-002: 인터럽션 상태 검증
+  group('REQ-002: 인터럽션 상태 관리', () {
+    late ProviderContainer container;
+
+    setUp(() {
+      container = ProviderContainer();
+    });
+
+    tearDown(() {
+      container.dispose();
+    });
+
+    test('초기 상태에서 interruptionStatus는 none이어야 함', () {
+      final state = container.read(recordingProvider);
+      expect(state.interruptionStatus, InterruptionStatus.none);
+    });
+
+    test('InterruptionStatus 열거형에 none과 interrupted가 존재해야 함', () {
+      expect(InterruptionStatus.values, contains(InterruptionStatus.none));
+      expect(InterruptionStatus.values, contains(InterruptionStatus.interrupted));
+    });
+
+    test('RecordingState copyWith로 interruptionStatus를 변경할 수 있어야 함', () {
+      const original = RecordingState(
+        status: RecordingStatus.recording,
+        elapsedSeconds: 10,
+      );
+
+      final updated = original.copyWith(
+        status: RecordingStatus.paused,
+        interruptionStatus: InterruptionStatus.interrupted,
+      );
+
+      expect(updated.status, RecordingStatus.paused);
+      expect(updated.interruptionStatus, InterruptionStatus.interrupted);
+      // 원본은 변경되지 않아야 함
+      expect(original.interruptionStatus, InterruptionStatus.none);
+    });
+
+    test('interruptionStatus 기본값은 none이어야 함', () {
+      const state = RecordingState(
+        status: RecordingStatus.idle,
+        elapsedSeconds: 0,
+      );
+      expect(state.interruptionStatus, InterruptionStatus.none);
+    });
+
+    test('reset 호출 시 interruptionStatus도 none으로 초기화되어야 함', () {
+      container.read(recordingProvider.notifier).updateElapsedSeconds(30);
+      container.read(recordingProvider.notifier).reset();
+
+      final state = container.read(recordingProvider);
+      expect(state.interruptionStatus, InterruptionStatus.none);
     });
   });
 }
