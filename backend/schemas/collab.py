@@ -12,10 +12,8 @@ SPEC-COLLAB-001: 실시간 공동 편집 WebSocket 메시지 스키마 (Pydantic
 
 from datetime import datetime
 from typing import Any
-from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
-
 
 # ---------------------------------------------------------------------------
 # 공통: 활성 사용자 (presence)

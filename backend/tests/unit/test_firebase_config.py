@@ -6,7 +6,6 @@ REQ-MOBILE-002-06: config.py에 firebase_credentials_path 필드 추가
 - 기본값 None (미설정 시 MOCK 모드)
 """
 
-import pytest
 
 from backend.app.config import Settings
 

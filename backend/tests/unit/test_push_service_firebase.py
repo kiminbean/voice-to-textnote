@@ -8,8 +8,6 @@ REQ-MOBILE-002-06: firebase_credentials_path 설정 시 실제 firebase_admin �
 
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from backend.services.push_service import PushService
 
 
