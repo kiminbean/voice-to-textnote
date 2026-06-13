@@ -101,6 +101,7 @@ exclude_also = [
     "def __repr__",
     "search_results.extend",
     "total_hits \\+=",
+    "except ImportError:",
 ]
 
 [tool.ruff]

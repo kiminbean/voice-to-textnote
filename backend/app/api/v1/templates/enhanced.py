@@ -432,7 +432,7 @@ def _apply_template_to_minutes(
 async def generate_template_based_minutes(
     request: TemplateGenerationRequest,
     redis_client: aioredis.Redis = Depends(get_redis_client),
-    db_session = Depends(get_db_session),
+    db_session=Depends(get_db_session),
 ) -> dict:
     """템플릿 기반 회의록 생성"""
     # 템플릿 확인

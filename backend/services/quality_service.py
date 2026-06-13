@@ -1018,7 +1018,7 @@ class QualityService:
             warning = None
         else:
             first_half = scores[: len(scores) // 2] or scores[:1]
-            second_half = scores[len(scores) // 2 :] or scores[-1:]
+            second_half = scores[len(scores) // 2:] or scores[-1:]
             first_avg = sum(first_half) / len(first_half)
             second_avg = sum(second_half) / len(second_half)
             delta = second_avg - first_avg

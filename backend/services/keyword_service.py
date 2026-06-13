@@ -356,13 +356,27 @@ class KeywordService:
         stats = {}
 
         for keyword in keywords:
-            keyword_results = [r for r in results if keyword in r.title.lower() or any(keyword.lower() in pos.lower() for pos in r.positions)]
+            # positions은 list[int] (문자 위치 인덱스)이므로 문자열 매칭 불가
+            keyword_results = [
+                r for r in results
+                if keyword in r.title.lower()
+                or any(
+                    keyword.lower() in ctx.lower()
+                    for ctx in r.context_before + r.context_after
+                )
+            ]
 
             stats[keyword] = {
                 'total_hits': len(keyword_results),
                 'total_documents': len(set(r.task_id for r in keyword_results)),
-                'avg_relevance': sum(r.relevance_score for r in keyword_results) / len(keyword_results) if keyword_results else 0,
-                'avg_frequency': sum(r.frequency for r in keyword_results) / len(keyword_results) if keyword_results else 0
+                'avg_relevance': (
+                    sum(r.relevance_score for r in keyword_results) / len(keyword_results)
+                    if keyword_results else 0
+                ),
+                'avg_frequency': (
+                    sum(r.frequency for r in keyword_results) / len(keyword_results)
+                    if keyword_results else 0
+                ),
             }
 
         return stats
