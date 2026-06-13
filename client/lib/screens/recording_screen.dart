@@ -20,7 +20,7 @@ class RecordingScreen extends ConsumerStatefulWidget {
 }
 
 class _RecordingScreenState extends ConsumerState<RecordingScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   Timer? _timer;
   late AnimationController _scaleController;
   late Animation<double> _scaleAnimation;
@@ -30,6 +30,8 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
   @override
   void initState() {
     super.initState();
+    // SPEC-MOBILE-005 REQ-005: 라이프사이클 관찰 등록
+    WidgetsBinding.instance.addObserver(this);
     _scaleController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 150),
@@ -73,8 +75,35 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
     }
   }
 
+  // SPEC-MOBILE-005 REQ-005: 라이프사이클 변화 처리
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final recordingStatus = ref.read(recordingProvider).status;
+
+    switch (state) {
+      case AppLifecycleState.paused:
+        // 백그라운드 진입 — 녹음 중이면 타이머 일시정지 (녹음 자체는 유지)
+        if (recordingStatus == RecordingStatus.recording) {
+          _stopTimer();
+        }
+        break;
+      case AppLifecycleState.resumed:
+        // 포그라운드 복귀 — 녹음 중이면 타이머 재개
+        if (recordingStatus == RecordingStatus.recording) {
+          _startTimer();
+        }
+        break;
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.hidden:
+      case AppLifecycleState.detached:
+        // 녹음은 background_recording_service에서 관리됨 — 여기서 추가 처리 불필요
+        break;
+    }
+  }
+
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _timer?.cancel();
     _scaleController.dispose();
     super.dispose();

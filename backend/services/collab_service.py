@@ -12,7 +12,7 @@ Redis 키 구조:
 
 import json
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import redis.asyncio as aioredis
@@ -49,7 +49,7 @@ def _redis_key_presence(task_id: str) -> str:
 
 def _utcnow() -> datetime:
     """timezone-aware UTC 현재 시각."""
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class CollabService:
@@ -234,7 +234,7 @@ class CollabService:
         # client_timestamp 정규화 (tzinfo 없으면 UTC 가정)
         client_ts = client_timestamp
         if client_ts.tzinfo is None:
-            client_ts = client_ts.replace(tzinfo=timezone.utc)
+            client_ts = client_ts.replace(tzinfo=UTC)
 
         # 기존 타임스탬프 확인
         existing_ts_raw = await redis.hget(ts_key, field)
@@ -250,7 +250,7 @@ class CollabService:
         if existing_ts is not None:
             existing_ts_normalized = existing_ts
             if existing_ts_normalized.tzinfo is None:
-                existing_ts_normalized = existing_ts_normalized.replace(tzinfo=timezone.utc)
+                existing_ts_normalized = existing_ts_normalized.replace(tzinfo=UTC)
             if client_ts < existing_ts_normalized:
                 return False, existing_ts_normalized
 

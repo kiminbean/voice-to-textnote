@@ -3,21 +3,19 @@ CollabService 단위 테스트
 SPEC-COLLAB-001: 실시간 공동 편집 서비스 (LWW, Presence, DB flush)
 """
 
-import json
 import uuid
-from datetime import datetime, timedelta, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from datetime import UTC, datetime, timedelta
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from backend.services.collab_service import (
-    CollabService,
     MAX_PARTICIPANTS,
+    CollabService,
     _redis_key_doc,
     _redis_key_presence,
     _redis_key_ts,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -114,7 +112,7 @@ def sample_user_id():
 
 @pytest.fixture
 def now_utc():
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 # ---------------------------------------------------------------------------
@@ -324,8 +322,8 @@ class TestApplyEdit:
     async def test_newer_edit_applied(
         self, collab_service, mock_redis, sample_task_id
     ):
-        old_ts = datetime(2025, 1, 1, tzinfo=timezone.utc)
-        new_ts = datetime(2025, 6, 13, tzinfo=timezone.utc)
+        old_ts = datetime(2025, 1, 1, tzinfo=UTC)
+        new_ts = datetime(2025, 6, 13, tzinfo=UTC)
 
         await collab_service.apply_edit(mock_redis, sample_task_id, "f1", "old", old_ts)
         applied, _ = await collab_service.apply_edit(
@@ -340,8 +338,8 @@ class TestApplyEdit:
     async def test_stale_edit_rejected(
         self, collab_service, mock_redis, sample_task_id
     ):
-        old_ts = datetime(2025, 1, 1, tzinfo=timezone.utc)
-        new_ts = datetime(2025, 6, 13, tzinfo=timezone.utc)
+        old_ts = datetime(2025, 1, 1, tzinfo=UTC)
+        new_ts = datetime(2025, 6, 13, tzinfo=UTC)
 
         await collab_service.apply_edit(mock_redis, sample_task_id, "f1", "new", new_ts)
         applied, returned_ts = await collab_service.apply_edit(

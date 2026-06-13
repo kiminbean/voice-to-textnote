@@ -20,7 +20,7 @@ from datetime import datetime
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.dependencies import get_db_session, get_redis_client
+from backend.app.dependencies import get_redis_client
 from backend.db.auth_models import User
 from backend.schemas.collab import (
     WS_CLOSE_AUTH_FAILED,
@@ -273,7 +273,6 @@ async def _handle_edit(
     payload: dict,
 ) -> None:
     """edit 메시지 처리: LWW 판정 → ack + broadcast."""
-    from backend.app.dependencies import _session_factory
 
     redis = get_redis_client()
     svc = get_collab_service()
