@@ -54,7 +54,15 @@
 - Updated SPEC support documents (`spec.md`, `tasks.md`, `plan.md`, `acceptance.md`, `spec-compact.md`) to `implementation-complete`.
 - Current implementation scope is complete for the checked-in Flutter/Dart orchestration, UI badges, and native MethodChannel skeletons. Full native whisper.cpp / mlx-whisper / TFLite engine linking remains outside the current skeleton scope.
 
+### Backend Coverage 100% (2026-06-13)
+- 3387 tests passed, 0 failed, 20 skipped, 100.00% coverage (9151 lines)
+- Lint: 0 errors on changed files
+- 주요 작업: batch1-9 테스트 추가 (keyword_service, export_service, enhanced_preprocess, collab 등 전 영역 커버)
+- 버그 발견: `keyword_service.py:359` — `_calculate_keyword_stats`에서 positions(int list)에 `.lower()` 호출 (별도 이슈 필요)
+- Commit: `900b002` (test: 백엔드 커버리지 100% 달성)
+
 ### Current Status
 - Completed: T-001~T-024 (24/24, 100%)
-- Remaining: none
+- Backend Coverage: 100% (3387/3387 passed)
+- Remaining: keyword_service.py:359 버그 수정 (별도 이슈)
 - SPEC Status: implementation-complete
