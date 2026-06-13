@@ -3,7 +3,7 @@
 // @MX:REASON: recording_screen에서 사용하며, 영구 거부 시 설정 안내 포함
 
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:permission_handler/permission_handler.dart' as ph;
 
 /// 권한 타입
 enum PermissionType {
@@ -142,28 +142,12 @@ class PermanentlyDeniedDialog extends StatelessWidget {
 }
 
 /// 설정 열기 헬퍼 함수
+/// permission_handler 패키지의 openAppSettings를 래핑한다.
 Future<bool> openAppSettings() async {
   try {
-    final url = 'app-settings:';
-    final canLaunch = await canLaunchUrl(Uri.parse(url));
-    if (canLaunch) {
-      return await launchUrl(Uri.parse(url));
-    } else {
-      // iOS 설정 열기 (fallback)
-      return await openAppSettingsIOS();
-    }
+    return await ph.openAppSettings();
   } catch (e) {
-    print('설정 열기 실패: $e');
-    return false;
-  }
-}
-
-/// iOS 설정 열기 (fallback)
-Future<bool> openAppSettingsIOS() async {
-  try {
-    return await openAppSettings();
-  } catch (e) {
-    print('iOS 설정 열기 실패: $e');
+    debugPrint('설정 열기 실패: $e');
     return false;
   }
 }

@@ -113,6 +113,7 @@ def summary_task(
     minutes_task_id: str,
     max_tokens: int = 4096,
     template_id: str | None = None,
+    user_id: str | None = None,
 ) -> dict:
     """
     메인 AI 요약 생성 처리 함수 (Celery 워커에서 호출)
@@ -279,6 +280,17 @@ def summary_task(
             task_id=task_id,
             generation_time=generation_time,
         )
+
+        if user_id:
+            from backend.app.workers.hooks.celery_push_hooks import fire_push_sync
+
+            fire_push_sync(
+                user_id=user_id,
+                meeting_id=minutes_task_id,
+                task_id=task_id,
+                status="completed",
+            )
+
         return final_result
 
     except FileNotFoundError as exc:
@@ -309,6 +321,17 @@ def summary_task(
         except Exception:  # pragma: no cover
             pass  # DB 저장 실패는 무시
 
+        if user_id:
+            from backend.app.workers.hooks.celery_push_hooks import fire_push_sync
+
+            fire_push_sync(
+                user_id=user_id,
+                meeting_id=minutes_task_id,
+                task_id=task_id,
+                status="failed",
+                error_message=error_msg,
+            )
+
         return failed_result
 
     except Exception as exc:
@@ -338,6 +361,17 @@ def summary_task(
         except Exception:  # pragma: no cover
             pass  # DB 저장 실패는 무시
 
+        if user_id:
+            from backend.app.workers.hooks.celery_push_hooks import fire_push_sync
+
+            fire_push_sync(
+                user_id=user_id,
+                meeting_id=minutes_task_id,
+                task_id=task_id,
+                status="failed",
+                error_message=error_msg,
+            )
+
         return failed_result
 
     finally:
@@ -356,6 +390,7 @@ def summary_celery_task(
     minutes_task_id: str,
     max_tokens: int = 4096,
     template_id: str | None = None,
+    user_id: str | None = None,
 ) -> dict:
     """
     Celery 래퍼: summary_task 호출 + 재시도 처리 (REQ-SUM-009)
@@ -365,6 +400,7 @@ def summary_celery_task(
         minutes_task_id: 회의록 작업 UUID
         max_tokens: OpenAI API 최대 응답 토큰
         template_id: 양식 ID (REQ-TMPL-004: None이면 기본 요약)
+        user_id: 사용자 ID (Push 알림용, None이면 알림 없음)
     """
     try:
         return summary_task(
@@ -372,6 +408,7 @@ def summary_celery_task(
             minutes_task_id=minutes_task_id,
             max_tokens=max_tokens,
             template_id=template_id,
+            user_id=user_id,
         )
     except FileNotFoundError as exc:
         # 회의록 결과 없음 → 재시도 안 함 (REQ-SUM-010)

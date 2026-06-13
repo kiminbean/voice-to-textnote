@@ -21,6 +21,7 @@ except ImportError:
     FirebaseError = Exception  # type: ignore[misc,assignment]
     InvalidArgumentError = ValueError  # type: ignore[misc,assignment]
 
+from backend.app.config import settings
 from backend.utils.logger import get_logger
 
 # 로거 설정
@@ -43,23 +44,38 @@ class PushService:
     """
 
     def __init__(self) -> None:
-        """Push Service 초기화 (인메모리 저장소)"""
-        # MVP: 인메모리 디바이스 저장 {device_id: fcm_token}
+        """Push Service 초기화"""
         self._devices: dict[str, str] = {}
-        # Firebase 초기화 상태 (MVP: 항상 False)
         self._firebase_initialized = False
+        self._is_mock_mode = True
 
     def _ensure_firebase_initialized(self) -> None:
-        """
-        Firebase Admin SDK 초기화 확인
+        """Firebase Admin SDK 초기화 (credentials 있으면 실제, 없으면 MOCK)"""
+        if self._firebase_initialized:
+            return
 
-        MVP: mock 사용으로 초기화 불필요
-        프로덕션: FIREBASE_CREDENTIALS_PATH 환경변수로 초기화
-        """
-        if not self._firebase_initialized:
-            logger.info("Firebase Admin SDK 초기화 (MVP: mock 모드)")
-            # MVP: 실제 초기화 없이 mock 상태로 유지
-            # 프로덕션: credentials.Certificate(...)로 초기화
+        creds_path = settings.firebase_credentials_path
+        if not creds_path:
+            logger.info("Firebase Admin SDK 초기화 (MOCK 모드)")
+            self._is_mock_mode = True
+            self._firebase_initialized = True
+            return
+
+        try:
+            import firebase_admin
+            from firebase_admin import credentials
+
+            if not firebase_admin._apps:
+                cred = credentials.Certificate(creds_path)
+                firebase_admin.initialize_app(cred)
+                logger.info("Firebase Admin SDK 초기화 완료 (프로덕션 모드)")
+            else:
+                logger.info("Firebase Admin SDK 이미 초기화됨")
+            self._is_mock_mode = False
+            self._firebase_initialized = True
+        except Exception as e:
+            logger.warning(f"Firebase 초기화 실패, MOCK 모드로 폴백: {e}")
+            self._is_mock_mode = True
             self._firebase_initialized = True
 
     async def send_push(

@@ -52,6 +52,10 @@ void main() {
     test('getFCMToken 메서드가 존재해야 함', () {
       expect(service.getFCMToken, isA<Function>());
     });
+
+    test('registerFCMBackgroundHandler 함수가 존재해야 함', () {
+      expect(registerFCMBackgroundHandler, isA<Function>());
+    });
   });
 
   group('FcmTokenResult', () {

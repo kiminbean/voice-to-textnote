@@ -7,14 +7,17 @@ import 'package:mocktail/mocktail.dart';
 import 'package:voice_to_textnote/providers/notification_provider.dart';
 import 'package:voice_to_textnote/services/push_notification_service.dart';
 import 'package:voice_to_textnote/services/permission_service.dart';
+import 'package:voice_to_textnote/services/device_api.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 
 class MockPushNotificationService extends Mock implements PushNotificationService {}
 class MockPermissionService extends Mock implements PermissionService {}
+class MockDeviceApi extends Mock implements DeviceApi {}
 
 void main() {
   late MockPushNotificationService mockPushService;
   late MockPermissionService mockPermissionService;
+  late MockDeviceApi mockDeviceApi;
 
   setUpAll(() {
     registerFallbackValue(const Duration(seconds: 1));
@@ -23,6 +26,7 @@ void main() {
   setUp(() {
     mockPushService = MockPushNotificationService();
     mockPermissionService = MockPermissionService();
+    mockDeviceApi = MockDeviceApi();
   });
 
   group('NotificationState', () {
@@ -78,6 +82,7 @@ void main() {
       final notifier = NotificationNotifier(
         mockPushService,
         mockPermissionService,
+        mockDeviceApi,
       );
 
       // Assert
@@ -86,7 +91,7 @@ void main() {
       expect(notifier.state.error, isNull);
     });
 
-    test('initialize 성공 시 FCM 토큰을 저장해야 함', () async {
+    test('initialize 성공 시 FCM 토큰을 저장하고 백엔드에 등록해야 함', () async {
       // Arrange
       when(() => mockPermissionService.requestMicrophonePermission())
           .thenAnswer((_) async => PermissionStatus.granted);
@@ -98,12 +103,16 @@ void main() {
           .thenAnswer((_) async => const FcmTokenResult(token: 'test_token'));
       when(() => mockPushService.onForegroundMessage(any()))
           .thenAnswer((_) {});
+      when(() => mockDeviceApi.registerDeviceToken(any())).thenAnswer((_) async {});
       when(() => mockPushService.handleMessageOpenedApp())
+          .thenAnswer((_) async {});
+      when(() => mockDeviceApi.registerDeviceToken(any()))
           .thenAnswer((_) async {});
 
       final notifier = NotificationNotifier(
         mockPushService,
         mockPermissionService,
+        mockDeviceApi,
       );
 
       // Act
@@ -113,6 +122,7 @@ void main() {
       expect(notifier.state.fcmToken, equals('test_token'));
       expect(notifier.state.isInitialized, isTrue);
       expect(notifier.state.error, isNull);
+      verify(() => mockDeviceApi.registerDeviceToken('test_token')).called(1);
     });
 
     test('initialize 실패 시 에러를 저장해야 함', () async {
@@ -127,6 +137,7 @@ void main() {
       final notifier = NotificationNotifier(
         mockPushService,
         mockPermissionService,
+        mockDeviceApi,
       );
 
       // Act
@@ -150,12 +161,14 @@ void main() {
           .thenAnswer((_) async => const FcmTokenResult(error: 'Token error'));
       when(() => mockPushService.onForegroundMessage(any()))
           .thenReturn(null);
+      when(() => mockDeviceApi.registerDeviceToken(any())).thenAnswer((_) async {});
       when(() => mockPushService.handleMessageOpenedApp())
           .thenAnswer((_) async {});
 
       final notifier = NotificationNotifier(
         mockPushService,
         mockPermissionService,
+        mockDeviceApi,
       );
 
       // Act
@@ -182,12 +195,14 @@ void main() {
           .thenAnswer((invocation) {
         capturedHandlers.add(invocation.positionalArguments[0] as Function(RemoteMessage));
       });
+      when(() => mockDeviceApi.registerDeviceToken(any())).thenAnswer((_) async {});
       when(() => mockPushService.handleMessageOpenedApp())
           .thenAnswer((_) async {});
 
       final notifier = NotificationNotifier(
         mockPushService,
         mockPermissionService,
+        mockDeviceApi,
       );
 
       // Act
@@ -221,12 +236,14 @@ void main() {
           .thenAnswer((invocation) {
         capturedHandler = invocation.positionalArguments[0] as Function(RemoteMessage);
       });
+      when(() => mockDeviceApi.registerDeviceToken(any())).thenAnswer((_) async {});
       when(() => mockPushService.handleMessageOpenedApp())
           .thenAnswer((_) async {});
 
       final notifier = NotificationNotifier(
         mockPushService,
         mockPermissionService,
+        mockDeviceApi,
       );
 
       // Act
@@ -251,6 +268,7 @@ void main() {
       final notifier = NotificationNotifier(
         mockPushService,
         mockPermissionService,
+        mockDeviceApi,
       );
 
       // Act
@@ -268,6 +286,7 @@ void main() {
       final notifier = NotificationNotifier(
         mockPushService,
         mockPermissionService,
+        mockDeviceApi,
       );
 
       // Act
@@ -285,6 +304,7 @@ void main() {
       final notifier = NotificationNotifier(
         mockPushService,
         mockPermissionService,
+        mockDeviceApi,
       );
 
       // Act
@@ -299,6 +319,7 @@ void main() {
       final notifier = NotificationNotifier(
         mockPushService,
         mockPermissionService,
+        mockDeviceApi,
       );
       // 내부 상태 설정 (리플렉션 또는 테스트 전용 메서드로 설정 필요)
       // 여기서는 초기 상태에서 시작
@@ -320,6 +341,7 @@ void main() {
       final notifier = NotificationNotifier(
         mockPushService,
         mockPermissionService,
+        mockDeviceApi,
       );
 
       // Act
@@ -337,6 +359,7 @@ void main() {
         overrides: [
           pushNotificationServiceProvider.overrideWithValue(mockPushService),
           permissionServiceProvider.overrideWithValue(mockPermissionService),
+          deviceApiProvider.overrideWithValue(mockDeviceApi),
         ],
       );
       addTearDown(container.dispose);
@@ -354,6 +377,7 @@ void main() {
         overrides: [
           pushNotificationServiceProvider.overrideWithValue(mockPushService),
           permissionServiceProvider.overrideWithValue(mockPermissionService),
+          deviceApiProvider.overrideWithValue(mockDeviceApi),
         ],
       );
       addTearDown(container.dispose);
@@ -378,6 +402,7 @@ void main() {
         overrides: [
           pushNotificationServiceProvider.overrideWithValue(mockPushService),
           permissionServiceProvider.overrideWithValue(mockPermissionService),
+          deviceApiProvider.overrideWithValue(mockDeviceApi),
         ],
       );
       addTearDown(container.dispose);

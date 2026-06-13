@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:voice_to_textnote/services/push_notification_service.dart';
 import 'package:voice_to_textnote/services/permission_service.dart';
+import 'package:voice_to_textnote/services/device_api.dart';
 
 /// 알림 상태
 class NotificationState {
@@ -41,11 +42,12 @@ class NotificationState {
 class NotificationNotifier extends StateNotifier<NotificationState> {
   final PushNotificationService _pushService;
   final PermissionService _permissionService;
+  final DeviceApi _deviceApi;
 
   // 마지막 알림 데이터 저장 (딥링크용)
   String? _lastMeetingId;
 
-  NotificationNotifier(this._pushService, this._permissionService)
+  NotificationNotifier(this._pushService, this._permissionService, this._deviceApi)
       : super(const NotificationState.initial());
 
   /// FCM 초기화 및 토큰 요청
@@ -69,6 +71,13 @@ class NotificationNotifier extends StateNotifier<NotificationState> {
           fcmToken: tokenResult.token,
           isInitialized: true,
         );
+        
+        // 백엔드에 디바이스 토큰 등록
+        try {
+          await _deviceApi.registerDeviceToken(tokenResult.token!);
+        } catch (e) {
+          debugPrint('디바이스 토큰 등록 실패: $e');
+        }
       } else {
         state = state.copyWith(error: tokenResult.error);
       }
@@ -121,6 +130,7 @@ final notificationProvider =
   return NotificationNotifier(
     ref.watch(pushNotificationServiceProvider),
     ref.watch(permissionServiceProvider),
+    ref.watch(deviceApiProvider),
   );
 });
 

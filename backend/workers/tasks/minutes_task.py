@@ -115,6 +115,7 @@ def minutes_task(
     output_format: str = "json",
     speaker_names: dict[str, str] | None = None,
     stt_task_id: str | None = None,
+    user_id: str | None = None,
 ) -> dict:
     """
     메인 회의록 생성 처리 함수 (Celery 워커에서 호출)
@@ -290,6 +291,17 @@ def minutes_task(
             segments=len(minutes_segments),
             speakers=len(speaker_stats),
         )
+
+        if user_id:
+            from backend.app.workers.hooks.celery_push_hooks import fire_push_sync
+
+            fire_push_sync(
+                user_id=user_id,
+                meeting_id=task_id,
+                task_id=task_id,
+                status="completed",
+            )
+
         return final_result
 
     except FileNotFoundError as exc:
@@ -320,6 +332,17 @@ def minutes_task(
         except Exception:  # pragma: no cover
             pass  # DB 저장 실패는 무시
 
+        if user_id:
+            from backend.app.workers.hooks.celery_push_hooks import fire_push_sync
+
+            fire_push_sync(
+                user_id=user_id,
+                meeting_id=task_id,
+                task_id=task_id,
+                status="failed",
+                error_message=error_msg,
+            )
+
         return failed_result
 
     except Exception as exc:
@@ -349,6 +372,17 @@ def minutes_task(
         except Exception:  # pragma: no cover
             pass  # DB 저장 실패는 무시
 
+        if user_id:
+            from backend.app.workers.hooks.celery_push_hooks import fire_push_sync
+
+            fire_push_sync(
+                user_id=user_id,
+                meeting_id=task_id,
+                task_id=task_id,
+                status="failed",
+                error_message=error_msg,
+            )
+
         return failed_result
 
     finally:
@@ -368,6 +402,7 @@ def minutes_celery_task(
     output_format: str = "json",
     speaker_names: dict[str, str] | None = None,
     stt_task_id: str | None = None,
+    user_id: str | None = None,
 ) -> dict:
     """
     Celery 래퍼: minutes_task 호출 + 재시도 처리 (REQ-MIN-009)
@@ -378,6 +413,7 @@ def minutes_celery_task(
         output_format: 출력 형식 ("json" 또는 "markdown")
         speaker_names: 화자 이름 매핑
         stt_task_id: STT 작업 UUID (병렬 모드 - dia가 matched=False일 때 매칭에 사용)
+        user_id: 사용자 ID (Push 알림용, None이면 알림 없음)
     """
     try:
         return minutes_task(
@@ -386,6 +422,7 @@ def minutes_celery_task(
             output_format=output_format,
             speaker_names=speaker_names,
             stt_task_id=stt_task_id,
+            user_id=user_id,
         )
     except FileNotFoundError as exc:
         # 화자 분리 결과 없음 → 재시도 안 함 (REQ-MIN-010)

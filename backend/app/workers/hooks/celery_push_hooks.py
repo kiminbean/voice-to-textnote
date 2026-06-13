@@ -10,11 +10,63 @@ REQ-MOBILE-002-09: on_failure hook — 에러 정보 포함 Push 전송
 - MVP: user_id를 Redis에서 조회하거나 직접 전달받는 구조
 """
 
+import asyncio
 from typing import Any
 
 from backend.utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+
+def _fire_push_async(
+    user_id: str,
+    meeting_id: str,
+    task_id: str,
+    status: str,
+    error_message: str = "",
+) -> None:
+    """비동기 Push 훅을 새 이벤트 루프에서 실행 (Celery 동기 컨텍스트용)"""
+    try:
+        loop = asyncio.new_event_loop()
+        try:
+            if status == "completed":
+                loop.run_until_complete(
+                    on_pipeline_success(
+                        user_id=user_id,
+                        meeting_id=meeting_id,
+                        task_id=task_id,
+                    )
+                )
+            elif status == "failed":
+                loop.run_until_complete(
+                    on_pipeline_failure(
+                        user_id=user_id,
+                        meeting_id=meeting_id,
+                        task_id=task_id,
+                        error_message=error_message,
+                    )
+                )
+        finally:
+            loop.close()
+    except Exception as e:
+        logger.error(f"Push 훅 실행 오류 (무시): {e}")
+
+
+def fire_push_sync(
+    user_id: str | None,
+    meeting_id: str,
+    task_id: str,
+    status: str,
+    error_message: str = "",
+) -> None:
+    """Celery 워커 동기 컨텍스트에서 호출하는 Push 훅 진입점 (best-effort)"""
+    if user_id is None:
+        return
+
+    try:
+        _fire_push_async(user_id, meeting_id, task_id, status, error_message)
+    except Exception as e:
+        logger.error(f"fire_push_sync 오류 (파이프라인 영향 없음): {e}")
 
 
 async def on_pipeline_success(

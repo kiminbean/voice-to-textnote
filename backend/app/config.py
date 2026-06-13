@@ -145,6 +145,12 @@ class Settings(BaseSettings):
     # REQ-ERR-007: 범위 유효성 검사 (1-1000)
     rate_limit_per_minute: int = Field(default=60, ge=1, le=1000)
 
+    # -------------------------------------------------------------------------
+    # SPEC-MOBILE-004: Firebase Push 알림 설정 (REQ-MOBILE-002-06)
+    # -------------------------------------------------------------------------
+    # Firebase 서비스 계정 키 JSON 파일 경로 (미설정 시 MOCK 모드)
+    firebase_credentials_path: str | None = None
+
     # SPEC-BOOKMARK-001: 회의록 북마크/하이라이트 설정
     # 한 회의록당 최대 북마크 수 (무분별한 생성 방지)
     bookmark_max_per_meeting: int = Field(default=200, ge=1, le=10000)

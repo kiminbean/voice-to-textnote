@@ -6,11 +6,16 @@ import 'package:voice_to_textnote/providers/auth_provider.dart';
 import 'package:voice_to_textnote/providers/notification_provider.dart';
 import 'package:voice_to_textnote/router/app_router.dart';
 
+import 'package:voice_to_textnote/services/push_notification_service.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Firebase 초기화 (우회 지원)
   await FirebaseConfig.initializeFirebase();
+
+  // 백그라운드 메시지 핸들러 등록
+  registerFCMBackgroundHandler();
 
   // ProviderScope를 두지 않음: VoiceToTextNoteApp이 build에서
   // UncontrolledProviderScope로 직접 만든 _container를 노출한다.
@@ -39,6 +44,8 @@ class _VoiceToTextNoteAppState extends State<VoiceToTextNoteApp> {
     _container = ProviderContainer();
     // 앱 시작 시 저장된 토큰으로 인증 상태 복원
     _container.read(authStateProvider.notifier).checkAuth();
+    // FCM 초기화 및 토큰 등록
+    _container.read(notificationProvider.notifier).initialize();
     // 앱 시작 시 콜드 스타트 딥링크 확인
     _checkDeepLink();
   }
