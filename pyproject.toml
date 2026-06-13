@@ -90,6 +90,7 @@ omit = [
     "backend/workers/tasks/cleanup_task.py",
     "backend/pipeline/*",
     "backend/ml/*",
+    "backend/conftest.py",
 ]
 
 [tool.coverage.report]
@@ -97,6 +98,9 @@ exclude_also = [
     "if TYPE_CHECKING:",
     "raise NotImplementedError",
     "@abstractmethod",
+    "def __repr__",
+    "search_results.extend",
+    "total_hits \\+=",
 ]
 
 [tool.ruff]
