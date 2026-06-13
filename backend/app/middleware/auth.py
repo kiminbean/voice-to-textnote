@@ -52,7 +52,7 @@ async def _verify_guest_token(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="유효하지 않거나 만료된 게스트 토큰입니다.",
-        )
+        ) from None
 
     # type 클레임 검증
     if payload.get("type") != "guest":
@@ -107,7 +107,7 @@ async def _verify_access_token(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="유효하지 않거나 만료된 토큰입니다.",
-        )
+        ) from None
 
     if payload.get("type") != "access":
         raise HTTPException(
@@ -151,10 +151,10 @@ async def verify_api_key(
     if request is not None:
         auth_header = request.headers.get("Authorization", "")
         if auth_header.startswith("Bearer "):
-            token_str = auth_header[len("Bearer ") :]
+            token_str = auth_header[len("Bearer "):]
             # 게스트 토큰: "guest:" 접두사
             if token_str.startswith("guest:"):
-                return await _verify_guest_token(request, token_str[len("guest:") :], redis_client)
+                return await _verify_guest_token(request, token_str[len("guest:"):], redis_client)
             # JWT 액세스 토큰 (SPEC-TEAM-001)
             return await _verify_access_token(request, token_str, redis_client)
 

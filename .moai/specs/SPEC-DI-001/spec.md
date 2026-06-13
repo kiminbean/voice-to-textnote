@@ -10,7 +10,7 @@ title: "Dependency Injection 패턴 전환 — Global State 제거"
 tags: [refactoring, architecture, dependency-injection, testing, fastapi]
 related_specs:
   - SPEC-REFACTOR-001
-  - SPEC-ERR-002
+  - SPEC-ERR-001
   - SPEC-LIFECYCLE-001
 depends_on:
   - SPEC-REFACTOR-001

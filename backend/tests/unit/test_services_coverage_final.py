@@ -27,9 +27,6 @@ from backend.services.enhanced_statistics import (
 from backend.services.keyword_service import (
     KeywordResponse,
     KeywordService,
-    _detect_language,
-    _normalize_token,
-    _normalize_values,
 )
 from backend.services.oauth_service import verify_apple_token
 from backend.services.quality_service import (
@@ -502,156 +499,48 @@ class TestQualityServiceCoverage:
 # KeywordService
 # ---------------------------------------------------------------------------
 class TestKeywordServiceCoverage:
-    """Tests for keyword_service.py uncovered lines"""
+    """Tests for keyword_service.py extract/recommend methods"""
 
-    def test_normalize_token_korean_verb_endings(self):
-        """Test _normalize_token with Korean verb endings (line 208-221)"""
-        # "진행합니다" - "합니다" is in verb endings, len("진행")=2 >= 2
-        result = _normalize_token("진행합니다")
-        assert result == "진행"
-
-    def test_normalize_token_korean_suffixes(self):
-        """Test _normalize_token with Korean suffixes (line 223-225)"""
-        # "회의는" - "는" is in suffixes, len("회의")=2 >= 2
-        result = _normalize_token("회의는")
-        assert result == "회의"
-
-    def test_normalize_token_latin_apostrophe_s(self):
-        """Test _normalize_token with Latin 's ending (line 213-214)"""
-        result = _normalize_token("meeting's")
-        assert result == "meeting"
-
-    def test_detect_language_mixed_script(self):
-        """Test _detect_language with mixed Korean and Latin (lines 234-235)"""
-        result = _detect_language("회의 meeting 진행")
-        assert result == "mixed"
-
-    def test_normalize_values_empty_dict(self):
-        """Test _normalize_values with empty dict (line 277-278)"""
-        result = _normalize_values({})
-        assert result == {}
-
-    def test_normalize_values_non_positive_max(self):
-        """Test _normalize_values when max <= 0 (lines 279-280)"""
-        result = _normalize_values({"a": 0.0, "b": -1.0})
-        # max is 0.0, which is <= 0, so all values become 0.0
-        assert result == {"a": 0.0, "b": 0.0}
-
-    def test_recommend_from_history_basic(self):
-        """Test recommend_from_history basic functionality (line 458+)"""
+    def test_extract_from_text_basic(self):
+        """extract_from_text 기본 동작"""
         service = KeywordService()
-
-        result = service.recommend_from_history(
-            "FastAPI 성능 최적화",
-            history_texts=["Redis 캐시 전략"],
-            task_id="test-task",
-        )
-
-        assert isinstance(result, KeywordResponse)
-
-    def test_recommend_from_history_weight_normalization(self):
-        """Test recommend_from_history weight normalization (lines 654-655)"""
-        service = KeywordService()
-
-        # Build a complete settings mock that returns sensible defaults
-        mock_settings = MagicMock()
-        mock_settings.keyword_tfidf_weight = 0.0
-        mock_settings.keyword_textrank_weight = 0.0
-        mock_settings.keyword_max_keywords = 10
-        mock_settings.keyword_min_score = 0.0
-        mock_settings.keyword_min_length = 2
-        mock_settings.keyword_min_term_length = 2
-        mock_settings.keyword_max_ngram = 3
-        mock_settings.keyword_stop_words = []
-        mock_settings.keyword_yake_threshold = 0.8
-        mock_settings.keyword_min_freq = 1
-        mock_settings.keyword_cluster_similarity_threshold = 0.5
-
-        with patch("backend.services.keyword_service.settings", mock_settings):
-            result = service.recommend_from_history(
-                "test content data analysis",
-                history_texts=["another document text"],
-                task_id="test-task",
-            )
-
-            assert isinstance(result, KeywordResponse)
-
-    def test_recommend_combines_current_and_history(self):
-        """Test recommend_from_history combines current + history sources (line 750-751)"""
-        service = KeywordService()
-
-        current_text = "FastAPI 성능 최적화"
-        history_texts = ["Redis 캐시 전략", "FastAPI 마이그레이션"]
-
-        result = service.recommend_from_history(
-            current_text=current_text,
-            history_texts=history_texts,
-            task_id="test-task",
+        result = service.extract_from_text(
+            "프로젝트 일정 관리 회의 프로젝트 진행 상황",
+            language="ko",
             max_keywords=10,
+            min_score=0.0,
         )
+        assert isinstance(result, KeywordResponse)
+        assert result.source == "text"
+        assert result.language == "ko"
+        assert result.total_count > 0
 
-        fastapi_items = [item for item in result.keywords if "fastapi" in item.keyword.lower()]
-        if fastapi_items:
-            assert fastapi_items[0].source in ["current", "history", "current+history"]
-
-    def test_recommend_groups_clustering_logic(self):
-        """Test recommend_from_history clustering logic (lines 819-821)"""
+    def test_extract_from_text_respects_max_keywords(self):
+        """max_keywords 제한 준수"""
         service = KeywordService()
-
-        current_text = "API gateway 성능 API gateway 배포 API gateway 최적화"
-        history_texts = ["API gateway 설계", "API gateway 테스트"]
-
-        result = service.recommend_from_history(
-            current_text=current_text,
-            history_texts=history_texts,
-            task_id="test-task",
-            max_keywords=15,
+        result = service.extract_from_text(
+            "프로젝트 일정 관리 회의 진행 상황 결과 분석",
+            max_keywords=3,
+            min_score=0.0,
         )
+        assert len(result.keywords) <= 3
 
-        if result.groups:
-            assert result.groups[0].label
-            assert result.groups[0].group_id is not None
-
-    @pytest.mark.asyncio
-    async def test_fetch_task_result_redis_json_decode_error(self):
-        """Test _fetch_task_result with JSON decode error (lines 519-523)"""
+    def test_extract_from_text_respects_min_score(self):
+        """min_score 필터링"""
         service = KeywordService()
+        result = service.extract_from_text(
+            "짧은 텍스트 테스트",
+            max_keywords=10,
+            min_score=0.9,
+        )
+        for item in result.keywords:
+            assert item.score >= 0.9
 
-        redis_client = AsyncMock()
-        redis_client.get.return_value = b"invalid json"
-
-        db = AsyncMock()
-        mock_record = MagicMock()
-        mock_record.result_data = {"segments": []}
-
-        mock_db_result = MagicMock()
-        mock_db_result.scalars.return_value.first.return_value = mock_record
-        db.execute.return_value = mock_db_result
-
-        result = await service._fetch_task_result(redis_client, db, "test-task")
-        assert isinstance(result, dict)
-
-    @pytest.mark.asyncio
-    async def test_fetch_cached_response_none_raw(self):
-        """Test _fetch_cached_response when Redis returns None (line 549-550)"""
+    def test_extract_from_text_empty_result(self):
+        """빈 텍스트 처리"""
         service = KeywordService()
-
-        redis_client = AsyncMock()
-        redis_client.get.return_value = None
-
-        result = await service._fetch_cached_response(redis_client, "test-task", "extract")
-        assert result is None
-
-    @pytest.mark.asyncio
-    async def test_fetch_cached_response_invalid_json(self):
-        """Test _fetch_cached_response with invalid JSON (line 551-554)"""
-        service = KeywordService()
-
-        redis_client = AsyncMock()
-        redis_client.get.return_value = b"not a dict"
-
-        result = await service._fetch_cached_response(redis_client, "test-task", "extract")
-        assert result is None
+        result = service.extract_from_text("   ", min_score=0.0)
+        assert result.total_count == 0
 
 
 # ---------------------------------------------------------------------------

@@ -1,4 +1,3 @@
-# ruff: noqa: N801
 """
 Test Coverage 100% - 커버리지 100% 달성을 위한 테스트
 

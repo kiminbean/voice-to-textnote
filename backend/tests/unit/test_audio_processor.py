@@ -68,7 +68,7 @@ class TestConvertToWav16k:
         """손상된 파일 변환 시 ValueError 발생 (REQ-STT-017)"""
         from backend.pipeline.audio_processor import convert_to_wav_16k
 
-        with pytest.raises(ValueError, match="파일 손상|지원되지 않는 오디오 코덱|디코딩 실패"):
+        with pytest.raises(ValueError, match=r"파일 손상|지원되지 않는 오디오 코덱|디코딩 실패"):
             convert_to_wav_16k(corrupted_audio_file)
 
     def test_temp_file_created_when_no_output_path(self, test_audio_file: Path):
@@ -327,7 +327,7 @@ class TestPreprocessOptions:
         from backend.pipeline.audio_processor import MAX_HIGH_PASS_HZ, PreprocessOptions
 
         opts = PreprocessOptions(high_pass_hz=MAX_HIGH_PASS_HZ + 1)
-        with pytest.raises(ValueError, match="high_pass_hz.*1~"):
+        with pytest.raises(ValueError, match=r"high_pass_hz.*1~"):
             opts.validate()
 
     def test_validation_raises_for_low_pass_below_minimum(self):
@@ -356,11 +356,11 @@ class TestPreprocessOptions:
 
         # -60.0 ~ 0.0 범위를 벗어나는 값들
         opts1 = PreprocessOptions(target_dbfs=-70.0)
-        with pytest.raises(ValueError, match="target_dbfs.*-60\\.0.*0\\.0"):
+        with pytest.raises(ValueError, match=r"target_dbfs.*-60\.0.*0\.0"):
             opts1.validate()
 
         opts2 = PreprocessOptions(target_dbfs=10.0)
-        with pytest.raises(ValueError, match="target_dbfs.*-60\\.0.*0\\.0"):
+        with pytest.raises(ValueError, match=r"target_dbfs.*-60\.0.*0\.0"):
             opts2.validate()
 
     def test_validation_raises_for_silence_min_len_too_small(self):
@@ -368,7 +368,7 @@ class TestPreprocessOptions:
         from backend.pipeline.audio_processor import PreprocessOptions
 
         opts = PreprocessOptions(silence_min_len_ms=99)
-        with pytest.raises(ValueError, match="silence_min_len_ms.*100ms"):
+        with pytest.raises(ValueError, match=r"silence_min_len_ms.*100ms"):
             opts.validate()
 
     def test_validation_pass_boundary_values(self):
@@ -707,7 +707,7 @@ class TestPreprocessAudio:
         """손상 파일 처리 시 ValueError 발생"""
         from backend.pipeline.audio_processor import preprocess_audio
 
-        with pytest.raises(ValueError, match="파일 손상|디코딩 실패"):
+        with pytest.raises(ValueError, match=r"파일 손상|디코딩 실패"):
             preprocess_audio(corrupted_audio_file)
 
     def test_temp_file_created_when_no_output_path(self, test_audio_file: Path):

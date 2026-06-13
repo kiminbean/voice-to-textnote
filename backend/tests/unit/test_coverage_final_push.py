@@ -51,14 +51,13 @@ class TestQualityAssessmentFull:
         with patch(
             "backend.app.api.v1.audio.quality_assessment._load_minutes_text_or_404",
             new=AsyncMock(return_value="회의 내용"),
-        ):
-            with pytest.raises(VoiceNoteError):
-                await get_live_quality_score(
-                    task_id="test-task",
-                    persist=True,
-                    db=AsyncMock(),
-                    svc=mock_svc,
-                )
+        ), pytest.raises(VoiceNoteError):
+            await get_live_quality_score(
+                task_id="test-task",
+                persist=True,
+                db=AsyncMock(),
+                svc=mock_svc,
+            )
 
     @pytest.mark.asyncio
     async def test_submit_feedback_voice_note_error_reraise(self):

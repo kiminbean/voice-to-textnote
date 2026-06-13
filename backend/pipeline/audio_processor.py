@@ -173,14 +173,12 @@ class PreprocessOptions:
 
     def validate(self) -> None:
         """옵션 안전 범위 검증. 위반 시 ValueError."""
-        if self.high_pass_hz is not None:
-            if not (1 <= self.high_pass_hz <= MAX_HIGH_PASS_HZ):
-                raise ValueError(f"high_pass_hz는 1~{MAX_HIGH_PASS_HZ}Hz 사이여야 합니다.")
-        if self.low_pass_hz is not None:
-            if not (MIN_LOW_PASS_HZ <= self.low_pass_hz <= MAX_LOW_PASS_HZ):
-                raise ValueError(
-                    f"low_pass_hz는 {MIN_LOW_PASS_HZ}~{MAX_LOW_PASS_HZ}Hz 사이여야 합니다."
-                )
+        if self.high_pass_hz is not None and not (1 <= self.high_pass_hz <= MAX_HIGH_PASS_HZ):
+            raise ValueError(f"high_pass_hz는 1~{MAX_HIGH_PASS_HZ}Hz 사이여야 합니다.")
+        if self.low_pass_hz is not None and not (MIN_LOW_PASS_HZ <= self.low_pass_hz <= MAX_LOW_PASS_HZ):
+            raise ValueError(
+                f"low_pass_hz는 {MIN_LOW_PASS_HZ}~{MAX_LOW_PASS_HZ}Hz 사이여야 합니다."
+            )
         if not (-60.0 <= self.target_dbfs <= 0.0):
             raise ValueError("target_dbfs는 -60.0 ~ 0.0 범위여야 합니다.")
         if self.silence_min_len_ms < 100:
@@ -262,7 +260,7 @@ def preprocess_audio(
         audio = AudioSegment.from_file(str(input_path))
     except CouldntDecodeError as e:
         raise ValueError(f"파일 손상 또는 지원되지 않는 오디오 코덱: {e}") from e
-    except Exception as e:  # noqa: BLE001 - pydub은 다양한 예외를 던짐
+    except Exception as e:
         raise ValueError(f"오디오 파일 디코딩 실패: {e}") from e
 
     audio = _apply_preprocess_options(audio, opts)

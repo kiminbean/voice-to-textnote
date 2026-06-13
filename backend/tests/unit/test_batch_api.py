@@ -67,7 +67,7 @@ class TestUploadBatch:
 
     def test_single_valid_file(self, app_client):
         """정상 파일 1개 → 201 + accepted=1."""
-        client, redis_mock, tmp_path = app_client
+        client, _redis_mock, tmp_path = app_client
 
         with (
             patch(
@@ -106,7 +106,7 @@ class TestUploadBatch:
 
     def test_invalid_format_file_accepted_as_failed(self, app_client):
         """포맷 검증 실패 파일은 failed로 기록, 나머지는 계속."""
-        client, redis_mock, tmp_path = app_client
+        client, _redis_mock, tmp_path = app_client
 
         with (
             patch("backend.app.api.v1.transcription.batch.validate_audio_format") as mock_validate,
@@ -146,7 +146,7 @@ class TestUploadBatch:
 
     def test_file_too_large_marked_failed(self, app_client):
         """파일 크기 초과 → failed."""
-        client, redis_mock, tmp_path = app_client
+        client, _redis_mock, tmp_path = app_client
 
         with (
             patch(
@@ -174,7 +174,7 @@ class TestUploadBatch:
 
     def test_duration_exceeds_limit_marked_failed(self, app_client):
         """재생 시간 초과 → failed."""
-        client, redis_mock, tmp_path = app_client
+        client, _redis_mock, tmp_path = app_client
 
         with (
             patch(
@@ -208,7 +208,7 @@ class TestUploadBatch:
 
     def test_audio_read_error_marked_failed(self, app_client):
         """오디오 읽기 실패 → failed."""
-        client, redis_mock, tmp_path = app_client
+        client, _redis_mock, tmp_path = app_client
 
         with (
             patch(

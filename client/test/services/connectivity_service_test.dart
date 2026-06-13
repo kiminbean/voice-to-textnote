@@ -154,5 +154,75 @@ void main() {
     test('dispose 후 오류 없이 종료되어야 함', () {
       expect(() => service.dispose(), returnsNormally);
     });
+
+    // 새로운 기능: connectivityStatus getter
+    test('connectivityStatus는 현재 상태를 반환해야 함', () {
+      expect(service.connectivityStatus, ConnectivityStatus.online);
+    });
+
+    // 새로운 기능: onConnectivityStatusChange stream
+    test('onConnectivityStatusChange는 ConnectivityStatus를 emit 해야 함', () async {
+      // Arrange: 오프라인 상태로 전환
+      when(() => mockDio.get(any())).thenThrow(
+        DioException(
+          requestOptions: RequestOptions(path: ''),
+          type: DioExceptionType.connectionError,
+        ),
+      );
+
+      final statuses = <ConnectivityStatus>[];
+      final subscription =
+          service.onConnectivityStatusChange.listen(statuses.add);
+
+      // Act: 온라인 → 오프라인
+      await service.checkHealth();
+      subscription.cancel();
+
+      // Assert: offline 상태 발행 확인
+      expect(statuses, contains(ConnectivityStatus.offline));
+    });
+
+    // BACKWARD COMPAT: 기존 isOnline getter 여전히 작동
+    test('BACKWARD COMPAT: isOnline getter는 여전히 작동해야 함', () {
+      expect(service.isOnline, isA<bool>());
+      expect(service.isOnline, isTrue);
+    });
+
+    // BACKWARD COMPAT: 기존 onStatusChange stream 여전히 작동
+    test('BACKWARD COMPAT: onStatusChange stream은 여전히 bool를 emit 해야 함',
+        () async {
+      // Arrange: 오프라인 상태로 전환
+      when(() => mockDio.get(any())).thenThrow(
+        DioException(
+          requestOptions: RequestOptions(path: ''),
+          type: DioExceptionType.connectionError,
+        ),
+      );
+
+      final events = <bool>[];
+      final subscription = service.onStatusChange.listen(events.add);
+
+      // Act: 온라인 → 오프라인
+      await service.checkHealth();
+      subscription.cancel();
+
+      // Assert: false 이벤트 발행 확인
+      expect(events, contains(false));
+    });
+  });
+
+  group('ConnectivityStatus', () {
+    test('enum의 모든 값이 존재해야 함', () {
+      expect(ConnectivityStatus.online, isA<ConnectivityStatus>());
+      expect(ConnectivityStatus.offline, isA<ConnectivityStatus>());
+      expect(ConnectivityStatus.reconnecting, isA<ConnectivityStatus>());
+    });
+
+    test('enum 값들은 서로 달라야 함', () {
+      expect(ConnectivityStatus.online, isNot(ConnectivityStatus.offline));
+      expect(
+          ConnectivityStatus.offline, isNot(ConnectivityStatus.reconnecting));
+      expect(ConnectivityStatus.reconnecting, isNot(ConnectivityStatus.online));
+    });
   });
 }

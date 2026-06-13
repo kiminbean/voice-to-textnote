@@ -40,11 +40,10 @@ def auth_client():
     app.dependency_overrides[get_redis_client] = mock_redis
     app.dependency_overrides[get_auth_service] = override_svc
 
-    with patch("backend.app.main.WhisperEngine"):
-        with patch("backend.app.main.DiarizationEngine"):
-            with patch("backend.app.lifecycle.validate_startup", new_callable=AsyncMock):
-                with patch("backend.app.lifecycle.cleanup_shutdown", new_callable=AsyncMock):
-                    yield TestClient(app, raise_server_exceptions=False), svc_mock
+    with patch("backend.app.main.WhisperEngine"), patch("backend.app.main.DiarizationEngine"):
+        with patch("backend.app.lifecycle.validate_startup", new_callable=AsyncMock):
+            with patch("backend.app.lifecycle.cleanup_shutdown", new_callable=AsyncMock):
+                yield TestClient(app, raise_server_exceptions=False), svc_mock
 
     app.dependency_overrides.clear()
 

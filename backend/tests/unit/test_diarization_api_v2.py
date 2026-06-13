@@ -48,11 +48,10 @@ def diarization_client():
     app.dependency_overrides[get_db_session] = mock_db_session
     app.dependency_overrides[get_redis_client] = mock_redis
 
-    with patch("backend.app.main.WhisperEngine"):
-        with patch("backend.app.main.DiarizationEngine"):
-            with patch("backend.app.lifecycle.validate_startup", new_callable=AsyncMock):
-                with patch("backend.app.lifecycle.cleanup_shutdown", new_callable=AsyncMock):
-                    yield TestClient(app, raise_server_exceptions=False), mock_redis_instance
+    with patch("backend.app.main.WhisperEngine"), patch("backend.app.main.DiarizationEngine"):
+        with patch("backend.app.lifecycle.validate_startup", new_callable=AsyncMock):
+            with patch("backend.app.lifecycle.cleanup_shutdown", new_callable=AsyncMock):
+                yield TestClient(app, raise_server_exceptions=False), mock_redis_instance
 
     app.dependency_overrides.clear()
 
@@ -324,7 +323,7 @@ class TestGetDiarizationResultAPI:
 
     def test_get_diarization_result_not_found(self, diarization_client):
         """화자 분리 작업을 찾을 수 없음 (404)"""
-        client, mock_redis = diarization_client
+        client, _mock_redis = diarization_client
         task_id = str(uuid.uuid4())
 
         # get_result_with_fallback mock - None 반환

@@ -161,7 +161,8 @@ void main() {
             summaryTaskId: any(named: 'summaryTaskId'),
           )).thenThrow(
         DioException(
-          requestOptions: RequestOptions(path: '/export/pdf/min-task-loading-001'),
+          requestOptions:
+              RequestOptions(path: '/export/pdf/min-task-loading-001'),
           type: DioExceptionType.connectionError,
           message: '연결 오류',
         ),
@@ -207,15 +208,15 @@ void main() {
     });
 
     // 에러 후 버튼이 다시 활성화되어야 함
-    testWidgets('다운로드 실패 후 내보내기 버튼이 다시 표시되어야 함',
-        (WidgetTester tester) async {
+    testWidgets('다운로드 실패 후 내보내기 버튼이 다시 표시되어야 함', (WidgetTester tester) async {
       // Arrange
       when(() => mockExportApi.downloadPdf(
             any(),
             summaryTaskId: any(named: 'summaryTaskId'),
           )).thenThrow(
         DioException(
-          requestOptions: RequestOptions(path: '/export/pdf/min-task-loading-001'),
+          requestOptions:
+              RequestOptions(path: '/export/pdf/min-task-loading-001'),
           type: DioExceptionType.connectionError,
         ),
       );

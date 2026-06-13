@@ -8,6 +8,7 @@ REQ-SUM-010: 회의록 결과 없음 → 즉시 실패 (재시도 없음)
 REQ-SUM-011: ANTHROPIC_API_KEY 빈 값 → 즉시 실패 (재시도 없음)
 """
 
+import contextlib
 import json
 import uuid
 from unittest.mock import MagicMock, patch
@@ -534,10 +535,8 @@ class TestSummaryTaskStatusTransitions:
 
         def track_setex(key, ttl, data):
             if "status" in key:
-                try:
+                with contextlib.suppress(Exception):
                     status_updates.append(json.loads(data))
-                except Exception:
-                    pass
             return True
 
         mock_redis.setex.side_effect = track_setex

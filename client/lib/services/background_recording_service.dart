@@ -41,8 +41,7 @@ class BackgroundRecordingService {
           avAudioSessionMode: AVAudioSessionMode.defaultMode,
           avAudioSessionRouteSharingPolicy:
               AVAudioSessionRouteSharingPolicy.defaultPolicy,
-          avAudioSessionSetActiveOptions:
-              AVAudioSessionSetActiveOptions.none,
+          avAudioSessionSetActiveOptions: AVAudioSessionSetActiveOptions.none,
           androidAudioAttributes: AndroidAudioAttributes(
             contentType: AndroidAudioContentType.speech,
             flags: AndroidAudioFlags.none,

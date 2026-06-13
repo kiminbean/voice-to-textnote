@@ -52,7 +52,7 @@ class TestQualityEvaluationRms:
         mock_audio.sample_width = 2
         mock_audio.rms = 0
 
-        score, issues, recommendation = _evaluate_quality(
+        score, _issues, _recommendation = _evaluate_quality(
             audio=mock_audio,
             duration_seconds=60.0,
             sample_rate=16000,
@@ -72,7 +72,7 @@ class TestQualityEvaluationRms:
         mock_audio.dBFS = float("-inf")
         mock_audio.rms = 1000
 
-        score, issues, recommendation = _evaluate_quality(
+        score, _issues, _recommendation = _evaluate_quality(
             audio=mock_audio,
             duration_seconds=60.0,
             sample_rate=16000,
@@ -94,7 +94,7 @@ class TestQualityEvaluationBoundary:
         mock_audio.frame_rate = 8000  # 경계값
         mock_audio.channels = 1
 
-        score, issues, recommendation = _evaluate_quality(
+        score, issues, _recommendation = _evaluate_quality(
             audio=mock_audio,
             duration_seconds=60.0,
             sample_rate=8000,
@@ -112,7 +112,7 @@ class TestQualityEvaluationBoundary:
         mock_audio.frame_rate = 16000
         mock_audio.channels = 3  # 경계 초과
 
-        score, issues, recommendation = _evaluate_quality(
+        score, issues, _recommendation = _evaluate_quality(
             audio=mock_audio,
             duration_seconds=60.0,
             sample_rate=16000,
@@ -301,7 +301,7 @@ class TestQualityEvaluationExtremes:
         mock_audio.dBFS = -1.0  # 매우 높음
         mock_audio.rms = 10000
 
-        score, issues, recommendation = _evaluate_quality(
+        score, issues, _recommendation = _evaluate_quality(
             audio=mock_audio,
             duration_seconds=60.0,
             sample_rate=16000,
@@ -319,7 +319,7 @@ class TestQualityEvaluationExtremes:
         mock_audio.frame_rate = 16000
         mock_audio.channels = 1
 
-        score, issues, recommendation = _evaluate_quality(
+        score, issues, _recommendation = _evaluate_quality(
             audio=mock_audio,
             duration_seconds=0.5,
             sample_rate=16000,

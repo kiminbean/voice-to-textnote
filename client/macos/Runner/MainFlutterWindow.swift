@@ -9,6 +9,9 @@ class MainFlutterWindow: NSWindow {
     self.setFrame(windowFrame, display: true)
 
     RegisterGeneratedPlugins(registry: flutterViewController)
+    MlxWhisperPlugin.register(
+      with: flutterViewController.registrar(forPlugin: "MlxWhisperPlugin")
+    )
 
     super.awakeFromNib()
   }

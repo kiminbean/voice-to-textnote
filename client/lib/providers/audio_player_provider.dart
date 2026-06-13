@@ -67,12 +67,10 @@ class AudioPlayerNotifier extends StateNotifier<AudioState> {
         ProcessingState.loading => AudioPlaybackState.loading,
         ProcessingState.buffering => AudioPlaybackState.loading,
         ProcessingState.completed => AudioPlaybackState.stopped,
-        ProcessingState.idle => ps.playing
-            ? AudioPlaybackState.loading
-            : AudioPlaybackState.stopped,
-        ProcessingState.ready => ps.playing
-            ? AudioPlaybackState.playing
-            : AudioPlaybackState.paused,
+        ProcessingState.idle =>
+          ps.playing ? AudioPlaybackState.loading : AudioPlaybackState.stopped,
+        ProcessingState.ready =>
+          ps.playing ? AudioPlaybackState.playing : AudioPlaybackState.paused,
       };
       state = state.copyWith(playbackState: playback);
     });

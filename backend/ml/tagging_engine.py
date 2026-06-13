@@ -205,8 +205,6 @@ def _rule_based_tags(content: str, max_tags: int) -> list[dict]:
         "같은",
         "다른",
         "새로운",
-        "이런",
-        "그런",
         "있습니다",
         "있어요",
         "습니다",

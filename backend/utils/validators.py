@@ -45,10 +45,13 @@ def validate_audio_format(filename: str, content_type: str | None = None) -> tup
             f"지원하지 않는 파일 형식입니다. 허용: WAV, MP3, M4A, OGG (받은 형식: {suffix})"
         )
 
-    if content_type and content_type not in ALLOWED_MIME_TYPES:
-        # content_type이 명시적으로 오디오가 아닌 경우만 거부
-        if not content_type.startswith("audio/") and content_type != "application/octet-stream":
-            return False, f"지원하지 않는 MIME 타입입니다: {content_type}"
+    if (
+        content_type
+        and content_type not in ALLOWED_MIME_TYPES
+        and not content_type.startswith("audio/")
+        and content_type != "application/octet-stream"
+    ):
+        return False, f"지원하지 않는 MIME 타입입니다: {content_type}"
 
     return True, ""
 

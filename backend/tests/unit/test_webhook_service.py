@@ -430,7 +430,7 @@ class TestPing:
                     return_value="https://example.com/webhook",
                 ):
                     # Execute
-                    status, success, message = await webhook_service.ping(
+                    _status, success, _message = await webhook_service.ping(
                         mock_session, sample_webhook_endpoint.id, sample_webhook_endpoint.user_id
                     )
 
@@ -476,68 +476,16 @@ class TestPing:
         # Setup
         with patch.object(
             webhook_service, "get_by_id", AsyncMock(return_value=sample_webhook_endpoint)
-        ):
-            with patch("httpx.AsyncClient") as mock_client_cls:
-                mock_client = AsyncMock()
-                mock_client.post.side_effect = httpx.TimeoutException("Timeout")
-                mock_client.__aenter__.return_value = mock_client
-                mock_client.__aexit__.return_value = None
-                mock_client_cls.return_value = mock_client
+        ), patch("httpx.AsyncClient") as mock_client_cls:
+            mock_client = AsyncMock()
+            mock_client.post.side_effect = httpx.TimeoutException("Timeout")
+            mock_client.__aenter__.return_value = mock_client
+            mock_client.__aexit__.return_value = None
+            mock_client_cls.return_value = mock_client
 
-                with patch(
-                    "backend.services.webhook_service.validate_webhook_url",
-                    return_value="https://example.com/webhook",
-                ):
-                    # Execute
-                    status, success, message = await webhook_service.ping(
-                        mock_session, sample_webhook_endpoint.id, sample_webhook_endpoint.user_id
-                    )
-
-                    # Assert
-                    assert status is None
-                    assert success is False
-                    assert "타임아웃" in message
-
-    @pytest.mark.asyncio
-    async def test_ping_connection_error(
-        self, webhook_service, mock_session, sample_webhook_endpoint
-    ):
-        """핑 전송 연결 오류"""
-        # Setup
-        with patch.object(
-            webhook_service, "get_by_id", AsyncMock(return_value=sample_webhook_endpoint)
-        ):
-            with patch("httpx.AsyncClient") as mock_client_cls:
-                mock_client = AsyncMock()
-                mock_client.post.side_effect = Exception("Connection refused")
-                mock_client.__aenter__.return_value = mock_client
-                mock_client.__aexit__.return_value = None
-                mock_client_cls.return_value = mock_client
-
-                with patch(
-                    "backend.services.webhook_service.validate_webhook_url",
-                    return_value="https://example.com/webhook",
-                ):
-                    # Execute
-                    status, success, message = await webhook_service.ping(
-                        mock_session, sample_webhook_endpoint.id, sample_webhook_endpoint.user_id
-                    )
-
-                    # Assert
-                    assert status is None
-                    assert success is False
-                    assert "연결 오류" in message
-
-    @pytest.mark.asyncio
-    async def test_ping_invalid_url(self, webhook_service, mock_session, sample_webhook_endpoint):
-        """잘못된 URL로 핑 전송 시도"""
-        # Setup
-        with patch.object(
-            webhook_service, "get_by_id", AsyncMock(return_value=sample_webhook_endpoint)
-        ):
             with patch(
                 "backend.services.webhook_service.validate_webhook_url",
-                side_effect=ValueError("Invalid URL"),
+                return_value="https://example.com/webhook",
             ):
                 # Execute
                 status, success, message = await webhook_service.ping(
@@ -547,4 +495,53 @@ class TestPing:
                 # Assert
                 assert status is None
                 assert success is False
-                assert "Invalid URL" in message
+                assert "타임아웃" in message
+
+    @pytest.mark.asyncio
+    async def test_ping_connection_error(
+        self, webhook_service, mock_session, sample_webhook_endpoint
+    ):
+        """핑 전송 연결 오류"""
+        # Setup
+        with patch.object(
+            webhook_service, "get_by_id", AsyncMock(return_value=sample_webhook_endpoint)
+        ), patch("httpx.AsyncClient") as mock_client_cls:
+            mock_client = AsyncMock()
+            mock_client.post.side_effect = Exception("Connection refused")
+            mock_client.__aenter__.return_value = mock_client
+            mock_client.__aexit__.return_value = None
+            mock_client_cls.return_value = mock_client
+
+            with patch(
+                "backend.services.webhook_service.validate_webhook_url",
+                return_value="https://example.com/webhook",
+            ):
+                # Execute
+                status, success, message = await webhook_service.ping(
+                    mock_session, sample_webhook_endpoint.id, sample_webhook_endpoint.user_id
+                )
+
+                # Assert
+                assert status is None
+                assert success is False
+                assert "연결 오류" in message
+
+    @pytest.mark.asyncio
+    async def test_ping_invalid_url(self, webhook_service, mock_session, sample_webhook_endpoint):
+        """잘못된 URL로 핑 전송 시도"""
+        # Setup
+        with patch.object(
+            webhook_service, "get_by_id", AsyncMock(return_value=sample_webhook_endpoint)
+        ), patch(
+            "backend.services.webhook_service.validate_webhook_url",
+            side_effect=ValueError("Invalid URL"),
+        ):
+            # Execute
+            status, success, message = await webhook_service.ping(
+                mock_session, sample_webhook_endpoint.id, sample_webhook_endpoint.user_id
+            )
+
+            # Assert
+            assert status is None
+            assert success is False
+            assert "Invalid URL" in message

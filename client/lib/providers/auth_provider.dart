@@ -20,14 +20,27 @@ class AuthState {
     this.errorMessage,
   });
 
-  const AuthState.initial() : status = AuthStatus.initial, user = null, errorMessage = null;
-  const AuthState.loading() : status = AuthStatus.loading, user = null, errorMessage = null;
+  const AuthState.initial()
+      : status = AuthStatus.initial,
+        user = null,
+        errorMessage = null;
+  const AuthState.loading()
+      : status = AuthStatus.loading,
+        user = null,
+        errorMessage = null;
   const AuthState.authenticated(AuthUser u)
-      : status = AuthStatus.authenticated, user = u, errorMessage = null;
+      : status = AuthStatus.authenticated,
+        user = u,
+        errorMessage = null;
   const AuthState.unauthenticated([String? msg])
-      : status = AuthStatus.unauthenticated, user = null, errorMessage = msg;
+      : status = AuthStatus.unauthenticated,
+        user = null,
+        errorMessage = msg;
   // SPEC-GUEST-001: 게스트 상태 - authenticated와 동일하게 홈 접근 허용
-  const AuthState.guest() : status = AuthStatus.guest, user = null, errorMessage = null;
+  const AuthState.guest()
+      : status = AuthStatus.guest,
+        user = null,
+        errorMessage = null;
 
   bool get isAuthenticated => status == AuthStatus.authenticated;
   bool get isLoading => status == AuthStatus.loading;
@@ -41,7 +54,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
   final AuthApi _authApi;
   final AuthService _authService;
 
-  AuthNotifier(this._authApi, this._authService) : super(const AuthState.initial());
+  AuthNotifier(this._authApi, this._authService)
+      : super(const AuthState.initial());
 
   // 앱 시작 시 저장된 토큰으로 인증 상태 복원
   // SPEC-GUEST-001: 게스트 토큰이 있으면 게스트 상태로 복원
@@ -91,7 +105,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
     state = const AuthState.loading();
     try {
       final response = await _authApi.login(email: email, password: password);
-      await _authService.saveTokens(response.accessToken, response.refreshToken);
+      await _authService.saveTokens(
+          response.accessToken, response.refreshToken);
       // 토큰으로 사용자 정보 조회
       final user = await _authApi.getMe(response.accessToken);
       state = AuthState.authenticated(user);
@@ -101,7 +116,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   // 회원가입 (성공 시 자동 로그인)
-  Future<void> register(String email, String password, String displayName) async {
+  Future<void> register(
+      String email, String password, String displayName) async {
     state = const AuthState.loading();
     try {
       final response = await _authApi.register(
@@ -109,7 +125,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
         password: password,
         displayName: displayName,
       );
-      await _authService.saveTokens(response.accessToken, response.refreshToken);
+      await _authService.saveTokens(
+          response.accessToken, response.refreshToken);
       // 토큰으로 사용자 정보 조회
       final user = await _authApi.getMe(response.accessToken);
       state = AuthState.authenticated(user);
@@ -188,7 +205,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
       }
 
       final response = await _authApi.loginWithGoogle(idToken: idToken);
-      await _authService.saveTokens(response.accessToken, response.refreshToken);
+      await _authService.saveTokens(
+          response.accessToken, response.refreshToken);
       final user = await _authApi.getMe(response.accessToken);
       state = AuthState.authenticated(user);
     } on Exception catch (e) {
@@ -222,7 +240,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
         idToken: idToken,
         displayName: displayName.isEmpty ? null : displayName,
       );
-      await _authService.saveTokens(response.accessToken, response.refreshToken);
+      await _authService.saveTokens(
+          response.accessToken, response.refreshToken);
       final user = await _authApi.getMe(response.accessToken);
       state = AuthState.authenticated(user);
     } on Exception catch (e) {
@@ -236,7 +255,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
       final refreshToken = await _authService.getRefreshToken();
       if (refreshToken == null) return false;
       final response = await _authApi.refresh(refreshToken);
-      await _authService.saveTokens(response.accessToken, response.refreshToken);
+      await _authService.saveTokens(
+          response.accessToken, response.refreshToken);
       return true;
     } catch (_) {
       await _authService.clearTokens();

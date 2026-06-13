@@ -34,7 +34,9 @@ void main() {
       // Assert
       expect(result['task_id'], 'sum-001');
       expect(result['status'], 'pending');
-      verify(() => mockDio.post('/summaries', data: {'minutes_task_id': 'min-001'})).called(1);
+      verify(() =>
+              mockDio.post('/summaries', data: {'minutes_task_id': 'min-001'}))
+          .called(1);
     });
 
     // create: 네트워크 오류 시 예외 전파 테스트
@@ -72,7 +74,8 @@ void main() {
     });
 
     // getResult: 요약 결과 조회 성공 테스트 (key_decisions, next_steps 포함)
-    test('getResult가 summary_text, key_decisions, next_steps를 포함한 결과를 반환해야 함', () async {
+    test('getResult가 summary_text, key_decisions, next_steps를 포함한 결과를 반환해야 함',
+        () async {
       // Arrange
       when(() => mockDio.get(any())).thenAnswer(
         (_) async => Response(
@@ -114,7 +117,8 @@ void main() {
       );
 
       // Act & Assert
-      expect(() => summaryApi.getResult('unknown-id'), throwsA(isA<DioException>()));
+      expect(() => summaryApi.getResult('unknown-id'),
+          throwsA(isA<DioException>()));
     });
 
     // delete: 태스크 삭제 성공 테스트

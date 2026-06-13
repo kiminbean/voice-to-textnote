@@ -49,7 +49,8 @@ void main() {
   });
 
   group('ExportApi - downloadPdf 메서드', () {
-    test('summaryTaskId 없으면 queryParameters를 null로 Dio.download 호출해야 함', () async {
+    test('summaryTaskId 없으면 queryParameters를 null로 Dio.download 호출해야 함',
+        () async {
       // Arrange: Dio download 성공 응답
       when(
         () => mockDio.download(
@@ -79,7 +80,8 @@ void main() {
       ).called(1);
     });
 
-    test('summaryTaskId가 있으면 summary_task_id를 queryParameters에 포함해야 함', () async {
+    test('summaryTaskId가 있으면 summary_task_id를 queryParameters에 포함해야 함',
+        () async {
       // Arrange
       when(
         () => mockDio.download(
@@ -120,8 +122,7 @@ void main() {
           queryParameters: any(named: 'queryParameters'),
         ),
       ).thenAnswer((_) async => Response(
-            requestOptions:
-                RequestOptions(path: '/export/pdf/$testTaskId'),
+            requestOptions: RequestOptions(path: '/export/pdf/$testTaskId'),
             statusCode: 200,
           ));
 

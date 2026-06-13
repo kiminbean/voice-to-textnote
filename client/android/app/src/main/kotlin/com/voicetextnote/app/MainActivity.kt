@@ -11,6 +11,7 @@ class MainActivity: FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        WhisperSttPlugin.registerWith(flutterEngine)
 
         // MethodChannel 핸들러 등록
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)

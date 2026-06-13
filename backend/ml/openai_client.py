@@ -37,7 +37,7 @@ def get_openai_client() -> AsyncOpenAI:
         logger.info("OpenAI 클라이언트가 성공적으로 초기화되었습니다.")
         return client
     except Exception as e:
-        logger.error(f"OpenAI 클라이언트 초기화 실패: {str(e)}")
+        logger.error(f"OpenAI 클라이언트 초기화 실패: {e!s}")
         # 실패 시 대체 클라이언트 반환
         return AsyncOpenAI(
             api_key="dummy-key", base_url=os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")

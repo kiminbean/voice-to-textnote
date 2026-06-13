@@ -182,7 +182,7 @@ class MinutesPDFGenerator:
         pdf.set_draw_color(*self.COLOR_BORDER)
         pdf.set_font("NotoSansKR", "B", 9)
         pdf.set_text_color(*self.COLOR_TEXT)
-        for i, (header, width) in enumerate(zip(headers, col_widths)):
+        for _i, (header, width) in enumerate(zip(headers, col_widths, strict=False)):
             pdf.cell(width, row_height, header, border=1, align="C", fill=True)
         pdf.ln()
 
@@ -197,7 +197,7 @@ class MinutesPDFGenerator:
 
             values = [name, count, speaking_time, ratio]
             aligns = ["L", "C", "C", "C"]
-            for val, width, align in zip(values, col_widths, aligns):
+            for val, width, align in zip(values, col_widths, aligns, strict=False):
                 pdf.cell(width, row_height, val, border=1, align=align)
             pdf.ln()
 
@@ -324,7 +324,7 @@ class MinutesPDFGenerator:
         pdf.set_draw_color(*self.COLOR_BORDER)
         pdf.set_font("NotoSansKR", "B", 9)
         pdf.set_text_color(*self.COLOR_TEXT)
-        for header, width in zip(headers, col_widths):
+        for header, width in zip(headers, col_widths, strict=False):
             pdf.cell(width, row_height, header, border=1, align="C", fill=True)
         pdf.ln()
 
@@ -344,7 +344,7 @@ class MinutesPDFGenerator:
 
             values = [assignee, task, deadline, priority]
             aligns = ["C", "L", "C", "C"]
-            for val, width, align in zip(values, col_widths, aligns):
+            for val, width, align in zip(values, col_widths, aligns, strict=False):
                 pdf.cell(width, row_height, val, border=1, align=align)
             pdf.ln()
 

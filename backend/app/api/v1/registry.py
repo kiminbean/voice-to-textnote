@@ -35,6 +35,9 @@ from backend.app.api.v1.analytics import (
     statistics,
     vocabulary,
 )
+from backend.app.api.v1.analytics import (
+    export as analytics_export,
+)
 from backend.app.api.v1.audio import (
     audio,
     audio_analysis,
@@ -49,6 +52,7 @@ from backend.app.api.v1.auth import (
 )
 from backend.app.api.v1.collaboration import (
     bookmarks,
+    collab,
     meetings,
     speakers,
     teams,
@@ -63,6 +67,7 @@ from backend.app.api.v1.minutes import (
     summary,
     tags,
 )
+from backend.app.api.v1.templates import enhanced
 from backend.app.api.v1.transcription import (
     batch,
     diarization,
@@ -89,12 +94,14 @@ ROUTER_REGISTRY: list[tuple[APIRouter, bool]] = [
     (history.router, True),  # SPEC-HISTORY-001: 작업 이력 조회/삭제
     # ── 관리 / 설정 (API Key 필수) ──────────────────────────────────────────────
     (admin.router, True),  # SPEC-RETENTION-001
+    (enhanced.router, True),  # Enhanced template system
     (templates.router, True),  # REQ-TMPL-001/003
     (search.router, True),  # SPEC-SEARCH-001
     (export.router, True),  # SPEC-EXPORT-001
     (statistics.router, True),  # SPEC-STATS-001
     (dashboard.router, True),  # SPEC-STATS-002
     (enhanced_statistics.router, True),  # SPEC-ENHANCED-STATS-001
+    (analytics_export.router, True),  # SPEC-EXPORT-001
     (advanced_search.router, True),  # SPEC-ADVANCED-SEARCH-001
     # ── 확장 오디오 처리 (API Key 필수) ──────────────────────────────────────────
     (enhanced_preprocess.router, True),  # 고급 오디오 전처리 (AI 기반)
@@ -107,6 +114,7 @@ ROUTER_REGISTRY: list[tuple[APIRouter, bool]] = [
     (speakers.router, False),  # SPEC-SPEAKER-001
     (webhooks.router, False),  # SPEC-WEBHOOK-001
     (versions.router, False),  # SPEC-VERSION-001
+    (collab.router, False),  # SPEC-COLLAB-001: WebSocket 직접 JWT 처리
     # ── AI 분석 (API Key 필수) ──────────────────────────────────────────────────
     (sentiment.router, True),
     (tags.router, True),  # SPEC-TAG-001

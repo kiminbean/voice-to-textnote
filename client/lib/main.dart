@@ -46,7 +46,8 @@ class _VoiceToTextNoteAppState extends State<VoiceToTextNoteApp> {
   /// 콜드 스타트 딥링크 확인 (앱 종료 상태에서 알림 탭)
   Future<void> _checkDeepLink() async {
     try {
-      final notificationNotifier = _container.read(notificationProvider.notifier);
+      final notificationNotifier =
+          _container.read(notificationProvider.notifier);
       final meetingId = await notificationNotifier.checkInitialMessage();
       if (meetingId != null) {
         // 결과 화면으로 이동

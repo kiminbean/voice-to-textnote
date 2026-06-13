@@ -67,7 +67,8 @@ void main() {
       );
 
       // Act & Assert
-      expect(() => diarizationApi.getResult('dia-001'), throwsA(isA<DioException>()));
+      expect(() => diarizationApi.getResult('dia-001'),
+          throwsA(isA<DioException>()));
     });
 
     // getResult: 500 오류 시 예외 전파 테스트
@@ -85,7 +86,8 @@ void main() {
       );
 
       // Act & Assert
-      expect(() => diarizationApi.getResult('dia-001'), throwsA(isA<DioException>()));
+      expect(() => diarizationApi.getResult('dia-001'),
+          throwsA(isA<DioException>()));
     });
   });
 }

@@ -357,7 +357,7 @@ class TestVADCompression:
 
         waveform = torch.zeros((1, 16000))
         with patch.dict(sys.modules, {"silero_vad": vad_mock}):
-            compressed, mapping = engine._compress_with_vad(waveform, 16000)
+            _compressed, mapping = engine._compress_with_vad(waveform, 16000)
 
             # 빈 timestamp → 빈 mapping
             assert mapping == []
@@ -386,7 +386,7 @@ class TestVADCompression:
 
         waveform = torch.zeros((1, 16000))
         with patch.dict(sys.modules, {"silero_vad": vad_mock}):
-            compressed, mapping = engine._compress_with_vad(waveform, 16000)
+            compressed, _mapping = engine._compress_with_vad(waveform, 16000)
 
             # 예외 시 원본 반환
             assert compressed is waveform
@@ -401,7 +401,7 @@ class TestVADCompression:
         # 모노 waveform (1D 텐서)
         waveform = torch.zeros(16000)
         with patch.dict(sys.modules, {"silero_vad": vad_mock}):
-            compressed, mapping = engine._compress_with_vad(waveform, 16000)
+            _compressed, mapping = engine._compress_with_vad(waveform, 16000)
 
             # 매핑 생성됨
             assert len(mapping) == 1

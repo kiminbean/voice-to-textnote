@@ -231,9 +231,8 @@ class TestAudioAnalysisGaps:
         with patch(
             "backend.app.api.v1.audio.audio_analysis.analyze_audio",
             side_effect=OSError("디스크 꽉참"),
-        ):
-            with pytest.raises(Exception):
-                await analyze_audio_file(file=mock_file)
+        ), pytest.raises(Exception):
+            await analyze_audio_file(file=mock_file)
 
     @pytest.mark.asyncio
     async def test_audio_analysis_value_error_with_size(self):
@@ -247,9 +246,8 @@ class TestAudioAnalysisGaps:
         with patch(
             "backend.app.api.v1.audio.audio_analysis.analyze_audio",
             side_effect=ValueError("파일 크기 초과"),
-        ):
-            with pytest.raises(Exception):
-                await analyze_audio_file(file=mock_file)
+        ), pytest.raises(Exception):
+            await analyze_audio_file(file=mock_file)
 
     @pytest.mark.asyncio
     async def test_audio_analysis_value_error_with_size_en(self):
@@ -263,9 +261,8 @@ class TestAudioAnalysisGaps:
         with patch(
             "backend.app.api.v1.audio.audio_analysis.analyze_audio",
             side_effect=ValueError("File size exceeds limit"),
-        ):
-            with pytest.raises(Exception):
-                await analyze_audio_file(file=mock_file)
+        ), pytest.raises(Exception):
+            await analyze_audio_file(file=mock_file)
 
     @pytest.mark.asyncio
     async def test_audio_analysis_value_error_other(self):
@@ -279,9 +276,8 @@ class TestAudioAnalysisGaps:
         with patch(
             "backend.app.api.v1.audio.audio_analysis.analyze_audio",
             side_effect=ValueError("잘못된 포맷"),
-        ):
-            with pytest.raises(Exception):
-                await analyze_audio_file(file=mock_file)
+        ), pytest.raises(Exception):
+            await analyze_audio_file(file=mock_file)
 
 
 # ---------------------------------------------------------------------------
@@ -490,7 +486,7 @@ class TestSentimentServiceGaps:
         x = list(range(1, n + 1))
         sum_x = sum(x)
         sum_y = sum(values)
-        sum_xy = sum(xi * yi for xi, yi in zip(x, values))
+        sum_xy = sum(xi * yi for xi, yi in zip(x, values, strict=False))
         sum_x2 = sum(xi * xi for xi in x)
         n * sum_xy - sum_x * sum_y
         denominator = n * sum_x2 - sum_x * sum_x
@@ -662,19 +658,13 @@ class TestEnhancedStatisticsGaps:
     def test_no_speakers_balance_is_zero(self):
         """speaker_durations가 비어있으면 participation_balance=0.0"""
         speaker_durations: dict[str, float] = {}
-        if len(speaker_durations) >= 2:
-            participation_balance = 1.0
-        else:
-            participation_balance = 0.0
+        participation_balance = 1.0 if len(speaker_durations) >= 2 else 0.0
         assert participation_balance == 0.0
 
     def test_single_speaker_balance_is_zero(self):
         """화자가 1명이면 participation_balance=0.0"""
         speaker_durations = {"speaker1": 100.0}
-        if len(speaker_durations) >= 2:
-            participation_balance = 1.0
-        else:
-            participation_balance = 0.0
+        participation_balance = 1.0 if len(speaker_durations) >= 2 else 0.0
         assert participation_balance == 0.0
 
 

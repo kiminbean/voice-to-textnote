@@ -129,7 +129,7 @@ class TestErrorHelpers:
 
     def test_all_helpers_raise_voicenote_error(self):
         """모든 헬퍼가 VoiceNoteError 서브클래스를 발생시키는지 확인"""
-        for helper, expected_cls in [
+        for helper, _expected_cls in [
             (not_found, NotFoundError),
             (unauthorized, UnauthorizedError),
             (forbidden, ForbiddenError),

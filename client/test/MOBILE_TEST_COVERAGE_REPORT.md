@@ -205,6 +205,22 @@ SPEC-MOBILE-001의 새로운 Flutter 서비스 파일들에 대한 포괄적인 
 
 ## 전체 커버리지 요약
 
+### SPEC-MOBILE-003 추가 테스트 상태
+
+2026-06-12 기준 코드에는 SPEC-MOBILE-003 관련 테스트가 추가/갱신되어 있습니다.
+
+| 영역 | 테스트 파일 | 커버 내용 | 상태 |
+|------|------------|-----------|------|
+| 오프라인 STT | `test/services/offline_stt_service_test.dart` | 단일 처리, 5분 초과 청크 처리, 결과 병합, 진행률 stream | ✅ |
+| 모델 다운로드 서비스 | `test/services/model_download_service_test.dart` | progress stream, 취소/실패, checksum, CDN fallback, 저장공간 seam, `.part` 이어받기 | ✅ |
+| 모델 다운로드 provider | `test/providers/model_download_provider_test.dart` | 실제 service 호출 흐름, 실패 상태, retry, 저장공간 부족 차단 | ✅ |
+
+검증 메모:
+- 변경 파일 단위 `dart analyze`는 `No issues found!`로 통과했습니다.
+- `analysis_options.yaml`은 generated/build 산출물(`lib/dataconnect_generated/**`, `build/**`)을 분석 범위에서 제외합니다.
+- 전체 `flutter analyze lib test`는 generated 의존성 오류 없이 실행되지만 기존 lint 127건 때문에 실패합니다.
+- `flutter test test/services/model_download_service_test.dart test/providers/model_download_provider_test.dart test/services/audio_preprocessor_test.dart`는 39개 테스트 `All tests passed!`로 통과했습니다.
+
 ### 서비스별 추정 커버리지
 
 | 서비스 | 라인 수 | 테스트 케이스 | 추정 커버리지 |

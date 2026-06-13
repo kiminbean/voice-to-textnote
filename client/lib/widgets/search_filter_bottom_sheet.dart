@@ -56,7 +56,8 @@ class _SearchFilterBottomSheetState
       }
     }
 
-    _speakerController = TextEditingController(text: widget.initialFilter.speaker ?? '');
+    _speakerController =
+        TextEditingController(text: widget.initialFilter.speaker ?? '');
     _hasActionItems = widget.initialFilter.hasActionItems;
     _hasKeyDecisions = widget.initialFilter.hasKeyDecisions;
   }
@@ -248,9 +249,8 @@ class _SearchFilterBottomSheetState
   Future<void> _selectDate({required bool from}) async {
     final picked = await showDatePicker(
       context: context,
-      initialDate: from
-          ? _dateFrom ?? DateTime.now()
-          : _dateTo ?? DateTime.now(),
+      initialDate:
+          from ? _dateFrom ?? DateTime.now() : _dateTo ?? DateTime.now(),
       firstDate: DateTime(2020),
       lastDate: DateTime.now().add(const Duration(days: 365)),
     );

@@ -203,7 +203,7 @@ class TestListItems:
         db_result = _mock_db_result(items=[])
         session.execute = AsyncMock(side_effect=[db_result, db_result])
 
-        items, total = await svc.list_items(
+        _items, total = await svc.list_items(
             session=session,
             user_id=FAKE_USER_ID,
             status=ActionItemStatus.completed,

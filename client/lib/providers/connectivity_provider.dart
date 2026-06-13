@@ -17,7 +17,8 @@ final connectivityServiceProvider = Provider<ConnectivityService>((ref) {
 });
 
 // 온라인 여부 상태 프로바이더 (StreamProvider로 실시간 업데이트)
-final connectivityProvider = StateNotifierProvider<_ConnectivityNotifier, bool>((ref) {
+final connectivityProvider =
+    StateNotifierProvider<_ConnectivityNotifier, bool>((ref) {
   final service = ref.watch(connectivityServiceProvider);
   return _ConnectivityNotifier(service);
 });

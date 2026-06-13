@@ -18,7 +18,9 @@ import 'package:voice_to_textnote/services/connectivity_service.dart';
 
 // Mock 클래스
 class MockAuthApi extends Mock implements AuthApi {}
+
 class MockAuthService extends Mock implements AuthService {}
+
 class MockConnectivityService extends Mock implements ConnectivityService {}
 
 // 온라인 상태 Override 헬퍼

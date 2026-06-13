@@ -72,7 +72,7 @@ async def advanced_search(
     except VoiceNoteError:
         raise
     except Exception as e:
-        internal_server_error(f"고급 검색 중 오류가 발생했습니다: {str(e)}")
+        internal_server_error(f"고급 검색 중 오류가 발생했습니다: {e!s}")
 
 
 @router.get("/history", response_model=SearchHistoryResponse)
@@ -142,7 +142,7 @@ async def get_search_history(
     except VoiceNoteError:
         raise
     except Exception as e:
-        internal_server_error(f"검색 기록 조회 중 오류가 발생했습니다: {str(e)}")
+        internal_server_error(f"검색 기록 조회 중 오류가 발생했습니다: {e!s}")
 
 
 @router.post("/save-search")
@@ -178,7 +178,7 @@ async def save_search(
     except VoiceNoteError:
         raise  # pragma: no cover
     except Exception as e:
-        internal_server_error(f"검색 저장 중 오류가 발생했습니다: {str(e)}")
+        internal_server_error(f"검색 저장 중 오류가 발생했습니다: {e!s}")
 
 
 @router.delete("/history/{history_id}")
@@ -202,4 +202,4 @@ async def delete_search_history(
     except VoiceNoteError:
         raise
     except Exception as e:
-        internal_server_error(f"검색 기록 삭제 중 오류가 발생했습니다: {str(e)}")
+        internal_server_error(f"검색 기록 삭제 중 오류가 발생했습니다: {e!s}")

@@ -490,12 +490,12 @@ def test_record_task_started():
     record_task_started("transcription")
 
     # 카운터 증가 확인
-    samples = list(TASKS_STARTED.collect())[0].samples
-    transcription_sample = [s for s in samples if s.labels.get("task_type") == "transcription"][0]
+    samples = next(iter(TASKS_STARTED.collect())).samples
+    transcription_sample = next(s for s in samples if s.labels.get("task_type") == "transcription")
     assert transcription_sample.value > 0
 
     # 활성 태스크 증가 확인
-    active_samples = list(ACTIVE_TASKS.collect())[0].samples
+    active_samples = next(iter(ACTIVE_TASKS.collect())).samples
     assert active_samples[0].value > 0
 
 
@@ -510,12 +510,12 @@ def test_record_task_completed():
     record_task_completed("transcription", 5.5)
 
     # 완료 카운터 증가 확인
-    samples = list(TASKS_COMPLETED.collect())[0].samples
-    transcription_sample = [s for s in samples if s.labels.get("task_type") == "transcription"][0]
+    samples = next(iter(TASKS_COMPLETED.collect())).samples
+    transcription_sample = next(s for s in samples if s.labels.get("task_type") == "transcription")
     assert transcription_sample.value > 0
 
     # 활성 태스크 감소 확인 (이전 테스트에서 증가했음)
-    list(ACTIVE_TASKS.collect())[0].samples
+    _sample = next(iter(ACTIVE_TASKS.collect())).samples
     # 감소했으므로 0 또는 음수 (실제로는 0 이상이어야 함)
     # Note: 테스트 순서에 따라 값이 다를 수 있음
 
@@ -531,12 +531,12 @@ def test_record_task_failed():
     record_task_failed("transcription")
 
     # 실패 카운터 증가 확인
-    samples = list(TASKS_FAILED.collect())[0].samples
-    transcription_sample = [s for s in samples if s.labels.get("task_type") == "transcription"][0]
+    samples = next(iter(TASKS_FAILED.collect())).samples
+    transcription_sample = next(s for s in samples if s.labels.get("task_type") == "transcription")
     assert transcription_sample.value > 0
 
     # 전체 실패 카운터 증가 확인
-    failure_samples = list(TASK_FAILURES.collect())[0].samples
+    failure_samples = next(iter(TASK_FAILURES.collect())).samples
     assert failure_samples[0].value > 0
 
 

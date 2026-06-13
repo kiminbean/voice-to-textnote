@@ -74,7 +74,8 @@ void main() {
       );
 
       // Act & Assert
-      expect(() => minutesApi.getResult('min-001'), throwsA(isA<DioException>()));
+      expect(
+          () => minutesApi.getResult('min-001'), throwsA(isA<DioException>()));
     });
   });
 }

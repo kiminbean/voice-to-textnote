@@ -79,12 +79,11 @@ def meeting_client(current_user):
     app.dependency_overrides[get_team_svc] = override_team_svc
     app.dependency_overrides[get_teams_meeting_svc] = override_teams_meeting_svc
 
-    with patch("backend.app.main.WhisperEngine"):
-        with patch("backend.app.main.DiarizationEngine"):
-            with patch("backend.app.lifecycle.validate_startup", new_callable=AsyncMock):
-                with patch("backend.app.lifecycle.cleanup_shutdown", new_callable=AsyncMock):
-                    with TestClient(app) as client:
-                        yield client, meeting_svc_mock, team_svc_mock, teams_meeting_svc_mock
+    with patch("backend.app.main.WhisperEngine"), patch("backend.app.main.DiarizationEngine"):
+        with patch("backend.app.lifecycle.validate_startup", new_callable=AsyncMock):
+            with patch("backend.app.lifecycle.cleanup_shutdown", new_callable=AsyncMock):
+                with TestClient(app) as client:
+                    yield client, meeting_svc_mock, team_svc_mock, teams_meeting_svc_mock
 
     app.dependency_overrides.clear()
 

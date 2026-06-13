@@ -434,7 +434,7 @@ class ActionItemService:
             except Exception as e:
                 failure_count += 1
                 failed_ids.append(item_id)
-                errors.append(f"액션 아이템 업데이트 오류: {str(e)}")
+                errors.append(f"액션 아이템 업데이트 오류: {e!s}")
 
         return {
             "success_count": success_count,
@@ -511,16 +511,13 @@ class ActionItemService:
 
         for i, segment in enumerate(segments):
             text = str(segment.get("text", "") or "")
-            if text:
-                # 간단한 키워드 기반 추출
-                if any(keyword in text for keyword in action_keywords):
-                    # 액션 아이템 생성
-                    action_item = ActionItemCreate(
-                        title=f"회의 내용 {i + 1}: {text[:50]}...",
-                        description=text,
-                        meeting_id=meeting_id,
-                        priority=ActionItemPriority.medium,
-                    )
-                    action_items.append(action_item)
+            if text and any(keyword in text for keyword in action_keywords):
+                action_item = ActionItemCreate(
+                    title=f"회의 내용 {i + 1}: {text[:50]}...",
+                    description=text,
+                    meeting_id=meeting_id,
+                    priority=ActionItemPriority.medium,
+                )
+                action_items.append(action_item)
 
         return action_items

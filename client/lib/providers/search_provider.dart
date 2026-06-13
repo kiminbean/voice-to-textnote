@@ -61,8 +61,9 @@ class SearchFilterState {
       speaker: clearSpeaker ? null : (speaker ?? this.speaker),
       hasActionItems:
           clearHasActionItems ? null : (hasActionItems ?? this.hasActionItems),
-      hasKeyDecisions:
-          clearHasKeyDecisions ? null : (hasKeyDecisions ?? this.hasKeyDecisions),
+      hasKeyDecisions: clearHasKeyDecisions
+          ? null
+          : (hasKeyDecisions ?? this.hasKeyDecisions),
     );
   }
 

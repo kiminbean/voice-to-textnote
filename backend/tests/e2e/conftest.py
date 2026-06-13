@@ -382,37 +382,36 @@ def e2e_client(e2e_redis: InMemoryRedis, tmp_path):
         with patch(
             "backend.app.api.v1.transcription.transcription.settings",
             test_settings,
+        ), patch(
+            "backend.pipeline.audio_processor.get_audio_duration_seconds",
+            return_value=60.0,
         ):
+            # 4개 Celery task delay 모두 mock
             with patch(
-                "backend.pipeline.audio_processor.get_audio_duration_seconds",
-                return_value=60.0,
-            ):
-                # 4개 Celery task delay 모두 mock
+                "backend.workers.tasks.transcription_task.transcription_task.delay"
+            ) as mock_stt_delay:
+                mock_stt_delay.return_value = mock_stt_result
+
                 with patch(
-                    "backend.workers.tasks.transcription_task.transcription_task.delay"
-                ) as mock_stt_delay:
-                    mock_stt_delay.return_value = mock_stt_result
+                    "backend.workers.tasks.diarization_task.diarization_celery_task.delay"
+                ) as mock_dia_delay:
+                    mock_dia_delay.return_value = mock_dia_result
 
                     with patch(
-                        "backend.workers.tasks.diarization_task.diarization_celery_task.delay"
-                    ) as mock_dia_delay:
-                        mock_dia_delay.return_value = mock_dia_result
+                        "backend.workers.tasks.diarization_task.diarization_celery_task.apply_async"
+                    ) as mock_dia_apply:
+                        mock_dia_apply.return_value = mock_dia_result
 
                         with patch(
-                            "backend.workers.tasks.diarization_task.diarization_celery_task.apply_async"
-                        ) as mock_dia_apply:
-                            mock_dia_apply.return_value = mock_dia_result
+                            "backend.workers.tasks.minutes_task.minutes_celery_task.delay"
+                        ) as mock_min_delay:
+                            mock_min_delay.return_value = mock_min_result
 
                             with patch(
-                                "backend.workers.tasks.minutes_task.minutes_celery_task.delay"
-                            ) as mock_min_delay:
-                                mock_min_delay.return_value = mock_min_result
+                                "backend.workers.tasks.summary_task.summary_celery_task.delay"
+                            ) as mock_sum_delay:
+                                mock_sum_delay.return_value = mock_sum_result
 
-                                with patch(
-                                    "backend.workers.tasks.summary_task.summary_celery_task.delay"
-                                ) as mock_sum_delay:
-                                    mock_sum_delay.return_value = mock_sum_result
-
-                                    yield TestClient(app, raise_server_exceptions=True)
+                                yield TestClient(app, raise_server_exceptions=True)
 
     app.dependency_overrides.clear()

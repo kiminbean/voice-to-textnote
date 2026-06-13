@@ -4,8 +4,10 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:voice_to_textnote/config/app_config.dart';
+import 'package:voice_to_textnote/models/offline_task.dart';
 import 'package:voice_to_textnote/models/pipeline_state.dart';
 import 'package:voice_to_textnote/services/diarization_api.dart';
+import 'package:voice_to_textnote/services/hybrid_pipeline_service.dart';
 import 'package:voice_to_textnote/services/minutes_api.dart';
 import 'package:voice_to_textnote/services/sse_service.dart';
 import 'package:voice_to_textnote/services/summary_api.dart';
@@ -50,8 +52,29 @@ class PipelineNotifier extends Notifier<PipelineState> {
     final diaApi = ref.read(diarizationApiProvider);
     final minApi = ref.read(minutesApiProvider);
     final sumApi = ref.read(summaryApiProvider);
+    final hybridService = ref.read(hybridPipelineServiceProvider);
+    final reprocessTask = ref.read(offlineTaskReprocessorProvider);
+    hybridService.watchNetworkRecovery((task) async {
+      final onlineTaskId = await reprocessTask(task);
+      if (!_cancelled) {
+        state = state.copyWith(
+          currentTaskId: onlineTaskId,
+          minutesTaskId: onlineTaskId,
+          summaryTaskId: onlineTaskId,
+          isOfflineResult: false,
+          isImprovedResult: true,
+          clearErrorMessage: true,
+        );
+      }
+      return onlineTaskId;
+    });
 
     try {
+      if (!hybridService.isOnline) {
+        await _startOfflinePipeline(audioFilePath, hybridService);
+        return;
+      }
+
       // 1단계: 업로드
       state = state.copyWith(
         currentStep: PipelineStep.uploading,
@@ -161,6 +184,57 @@ class PipelineNotifier extends Notifier<PipelineState> {
     }
   }
 
+  Future<void> _startOfflinePipeline(
+    String audioFilePath,
+    HybridPipelineService hybridService,
+  ) async {
+    state = state.copyWith(
+      currentStep: PipelineStep.transcribing,
+      progress: 0.2,
+      isOfflineResult: true,
+      isImprovedResult: false,
+      clearErrorMessage: true,
+    );
+
+    final result = await hybridService.processOffline(audioFilePath);
+
+    state = state.copyWith(
+      currentStep: PipelineStep.completed,
+      progress: 1.0,
+      currentTaskId: result.task.id,
+      minutesTaskId: result.task.id,
+      summaryTaskId: result.task.id,
+      isOfflineResult: true,
+      isImprovedResult: false,
+    );
+  }
+
+  Future<void> retryOfflineReprocess(String taskId) async {
+    final hybridService = ref.read(hybridPipelineServiceProvider);
+    final reprocessTask = ref.read(offlineTaskReprocessorProvider);
+    final task = await hybridService.retryTask(taskId, reprocessTask);
+    if (task == null) return;
+
+    if (task.status == OfflineTaskStatus.completed) {
+      state = state.copyWith(
+        currentStep: PipelineStep.completed,
+        currentTaskId: task.onlineTranscriptionTaskId,
+        minutesTaskId: task.onlineTranscriptionTaskId,
+        summaryTaskId: task.onlineTranscriptionTaskId,
+        isOfflineResult: false,
+        isImprovedResult: true,
+        clearErrorMessage: true,
+      );
+    } else if (task.status == OfflineTaskStatus.failed) {
+      state = state.copyWith(
+        currentStep: PipelineStep.completed,
+        errorMessage: task.errorMessage,
+        isOfflineResult: true,
+        isImprovedResult: false,
+      );
+    }
+  }
+
   // 태스크 완료 대기 - SSE 우선, 실패 시 폴링 폴백
   //
   // 서버 SSE 엔드포인트(GET /api/v1/tasks/{task_id}/stream)를 통해 실시간으로
@@ -190,7 +264,8 @@ class PipelineNotifier extends Notifier<PipelineState> {
             return;
           }
           if (eventStatus == 'failed') {
-            final errMsg = event['error_message'] ?? event['error'] ?? '알 수 없는 오류';
+            final errMsg =
+                event['error_message'] ?? event['error'] ?? '알 수 없는 오류';
             throw Exception('태스크 처리 실패: $errMsg');
           }
 
@@ -280,7 +355,8 @@ class PipelineNotifier extends Notifier<PipelineState> {
             final adjustedProgress =
                 currentBase + (serverProgress.toDouble() * stepRange);
             if (adjustedProgress > state.progress) {
-              state = state.copyWith(progress: adjustedProgress.clamp(0.0, 0.99));
+              state =
+                  state.copyWith(progress: adjustedProgress.clamp(0.0, 0.99));
             }
           }
         }

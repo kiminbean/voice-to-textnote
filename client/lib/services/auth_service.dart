@@ -20,9 +20,10 @@ final authServiceProvider = Provider<AuthService>((ref) {
 class AuthService {
   final FlutterSecureStorage _storage;
 
-  AuthService() : _storage = const FlutterSecureStorage(
-    aOptions: AndroidOptions(encryptedSharedPreferences: true),
-  );
+  AuthService()
+      : _storage = const FlutterSecureStorage(
+          aOptions: AndroidOptions(encryptedSharedPreferences: true),
+        );
 
   // 토큰 쌍 저장
   Future<void> saveTokens(String accessToken, String refreshToken) async {

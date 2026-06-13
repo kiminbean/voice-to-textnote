@@ -3,6 +3,7 @@
 기존 test_minutes_task.py에서 커버하지 않는 경로 테스트
 """
 
+import contextlib
 import json
 import uuid
 from pathlib import Path
@@ -288,14 +289,12 @@ class TestMinutesTaskActiveJobManagement:
             mock_settings.minutes_result_ttl = 86400
             mock_settings.max_concurrent_minutes = 3
 
-            try:
+            with contextlib.suppress(Exception):
                 minutes_task(
                     task_id=task_id,
                     diarization_task_id=dia_task_id,
                     output_format="json",
                 )
-            except Exception:
-                pass
 
         # 성공해도 zrem 호출 확인 (활성 작업 해제)
         assert mock_redis.zrem.called

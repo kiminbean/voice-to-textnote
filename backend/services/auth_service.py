@@ -116,7 +116,7 @@ class AuthService:
             raise HTTPException(
                 status_code=401,
                 detail="유효하지 않거나 만료된 토큰입니다",
-            )
+            ) from None
 
         if payload.get("type") != "access":
             raise HTTPException(  # pragma: no cover

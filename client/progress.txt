@@ -40,3 +40,52 @@
 - All changes are syntactically minimal and surgical
 - No API interfaces changed, no tests affected
 - Korean text and labels preserved
+
+---
+
+## Date: 2026-06-12
+
+### SPEC-MOBILE-003 Offline STT Hardening Status
+
+| Task | Title | Status | Notes |
+|------|-------|--------|-------|
+| T-011~T-014 | Memory monitoring | ✅ Partial | `MemoryChecker` added. macOS uses `vm_stat`, Linux uses `/proc/meminfo`, other platforms use RSS-based conservative fallback. Native iOS/Android Platform Channel memory APIs remain future work. |
+| T-015 | Native progress EventChannel | ⏳ Deferred | `WhisperSttServiceImpl.progressStream` is still empty. User-visible offline progress comes from `OfflineSttService.transcribeWithProgress()` chunk progress. |
+| T-016 | Real audio chunk split | ✅ Done | `OfflineSttService` now splits long WAV files into 30-second PCM chunks, prepends WAV headers, offsets segments, merges text, and deletes temp chunks. |
+| T-017 | CDN URL + checksum | ✅ Partial | `ModelDownloadService` resolves HTTPS URLs or falls back to `https://cdn.voice-to-textnote.com/models/<modelId>.bin`; SHA-256 verification remains wired. Actual production model manifest/checksum still needed. |
+| T-018 | Dialog hardcoding removal | ⏳ Pending | `ModelDownloadProvider` uses real service flow, but `ModelDownloadDialog` still passes sample URL/path/checksum. |
+| T-019 | Disk storage check | ✅ Partial | Service checks available disk on macOS/Linux via `df -Pk` with 2x+64MB buffer. iOS/Android native storage APIs remain future work. |
+
+### Code Updated
+
+1. **lib/services/memory_checker.dart**
+   - Added memory availability helper and engine info suffix.
+
+2. **lib/services/offline_stt_service.dart**
+   - Added memory check integration.
+   - Replaced simulated chunking with PCM byte-range chunk file creation.
+   - Added WAV header generation, segment timestamp offsetting, and temp chunk cleanup.
+
+3. **lib/services/model_download_service.dart**
+   - Added CDN fallback URL resolution.
+   - Added resumable `.part` downloads and corrected resume progress calculation.
+   - Added storage headroom check and parent directory creation.
+
+4. **lib/providers/model_download_provider.dart**
+   - Added `modelDownloadServiceProvider`.
+   - Replaced simulated download/verify delays with real service calls.
+   - Preserves retry request parameters.
+
+5. **Tests**
+   - Updated `test/services/model_download_service_test.dart`.
+   - Updated `test/providers/model_download_provider_test.dart`.
+
+### Verification
+
+- `flutter analyze lib/services/memory_checker.dart lib/services/offline_stt_service.dart lib/services/model_download_service.dart lib/providers/model_download_provider.dart test/services/model_download_service_test.dart test/providers/model_download_provider_test.dart test/services/audio_preprocessor_test.dart` → `No issues found!`
+- `analysis_options.yaml` now excludes generated/build artifacts (`lib/dataconnect_generated/**`, `build/**`) from analyzer scope.
+- `flutter analyze lib test` still fails on 127 existing lint findings outside this change.
+- `flutter test test/services/model_download_service_test.dart test/providers/model_download_provider_test.dart test/services/audio_preprocessor_test.dart` → `39 tests passed`
+- `flutter test` could not run in this sandbox because Flutter SDK cache writes under `/opt/homebrew/share/flutter/bin/cache` are denied.
+- `dart test` could not run because build hooks attempted network access to `pub.dev`.
+- `git add`/commit could not run because `.git/index.lock` creation is denied by the current filesystem permission profile.

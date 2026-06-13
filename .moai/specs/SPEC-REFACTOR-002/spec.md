@@ -1,9 +1,9 @@
 ---
 id: SPEC-REFACTOR-002
-version: 0.2.0
-status: draft
+version: 1.0.0
+status: completed
 created: 2026-06-06
-updated: 2026-06-06
+updated: 2026-06-13
 decisions_resolved: true
 author: MoAI
 priority: medium
@@ -269,3 +269,22 @@ tests/unit/test_tags_api_v5.py:112                 from backend.app.api.v1.minut
 | D-1 (action_items 분리 등록) | REQ-R2-002 | AC-R2-1, AC-R2-4, AC-R2-7 |
 | D-2 (sentiment 통합) | REQ-R2-003 | AC-R2-4, AC-R2-7 |
 | 라우트 baseline 재생성 (delta) | REQ-R2-005 | AC-R2-2, AC-R2-7, AC-R2-8 |
+
+---
+
+## 9. 구현 노트 (Implementation Notes)
+
+### 상태 갱신 (2026-06-13)
+
+| 항목 | SPEC (v0.2.0 draft) | 실제 구현 (2026-06-13) |
+|------|---------------------|----------------------|
+| 상태 | draft | **completed** |
+| AC-R2-1 (flat 라우터 0건) | 미충족 | **충족** — `api/v1/*.py`에 `__init__.py`, `registry.py`만 존재 |
+| AC-R2-4 (action_items 분리) | 미구현 | **충족** — `minutes/action_items.py`(추출) + `minutes/action_items_crud.py`(CRUD) 공존 |
+| D-2 (sentiment 통합) | 미구현 | **충족** — `minutes/sentiment.py` 삭제됨, `analytics/sentiment.py`만 존재 |
+
+**검증 소스**:
+- `ls backend/app/api/v1/*.py` → `__init__.py`, `registry.py`만 존재 (flat 라우터 0건)
+- `backend/app/api/v1/minutes/action_items_crud.py` 존재 (D-1 분리 등록 완료)
+- `backend/app/api/v1/minutes/sentiment.py` 존재하지 않음 (D-2 통합으로 고아 삭제 완료)
+- `backend/app/api/v1/analytics/sentiment.py` 단일 sentiment 라우터 존재

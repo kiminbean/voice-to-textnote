@@ -220,8 +220,7 @@ class SearchResponse {
     return SearchResponse(
       items: (json['items'] as List<dynamic>)
           .map(
-            (item) =>
-                SearchResultItem.fromJson(item as Map<String, dynamic>),
+            (item) => SearchResultItem.fromJson(item as Map<String, dynamic>),
           )
           .toList(),
       total: json['total'] as int? ?? 0,

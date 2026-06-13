@@ -70,13 +70,14 @@
 - **Files:** `alembic/__init__.py`, `alembic/versions/__init__.py`
 - **Fix:** Removed empty package marker files so `from alembic import context/op` resolves to the installed Alembic library. Verified `alembic heads` returns `001 (head)`.
 
+### BUG-007 ✅ chunk_manager split_audio loads entire audio into memory
+- **File:** `backend/pipeline/chunk_manager.py`
+- **Fix:** Added a real-file ffprobe/ffmpeg streaming split path so long recordings are segmented without loading the whole source into `AudioSegment`. Existing pydub behavior remains as a fallback for mocked tests and environments without ffmpeg/ffprobe. Normalization now happens per generated chunk instead of on the full source audio.
+
 ## Not Fixed (documented/triaged)
 
-### BUG-007 chunk_manager split_audio loads entire audio into memory
-- **Status:** Documented limitation. For 4-hour audio at 16kHz mono, ~460MB is loaded. pydub AudioSegment requires full in-memory load. Streaming chunking would require switching to pydub-less chunking (e.g., ffmpeg subprocess). Marked as future optimization.
-
 ### BUG-009 Redundant SoftTimeLimitExceeded handler
-- **Status:** Defensive code — the inner handler returns a dict, the outer wrapper's handler would only trigger if the inner function somehow re-raised. Left as-is (not harmful).
+- **Status:** Verified defensive wrapper behavior, not removed. Unit coverage patches `diarization_task` itself to raise `SoftTimeLimitExceeded`, which bypasses the inner handler; the outer Celery wrapper handler is therefore still reachable and intentional.
 
 ### QUAL-001 Class-level Lock for singletons
 - **Status:** Not a bug — Python class-level mutable attributes are shared across all references. The double-checked locking pattern works correctly.
@@ -86,11 +87,29 @@
 
 ---
 
+## 2026-06-12 모바일 오프라인 STT 문서/구현 동기화
+
+### SPEC-MOBILE-003 T-011~T-019 부분 진행
+- **Files:** `client/lib/services/memory_checker.dart`, `client/lib/services/offline_stt_service.dart`, `client/lib/services/model_download_service.dart`, `client/lib/providers/model_download_provider.dart`
+- **내용:** 오프라인 STT 메모리 모니터링 fallback, 실제 WAV PCM 청크 분할, 모델 다운로드 CDN fallback/이어받기/저장공간 확인, provider 실제 서비스 연결 반영.
+- **문서:** `client/README.md`, `README.md`, `CHANGELOG.md`, `client/progress.txt`, `.moai/specs/SPEC-MOBILE-003/{spec,tasks}.md`를 코드 기준으로 갱신.
+
+### 현재 제약
+- iOS/Android 네이티브 메모리/저장공간 Platform Channel은 아직 미구현이며 Dart fallback을 사용.
+- 네이티브 진행률 EventChannel은 아직 미구현이며, 현재 진행률은 `OfflineSttService`의 청크 단위 진행률.
+- `ModelDownloadDialog`는 아직 샘플 URL/경로/체크섬을 넘기므로 실제 모델 메타데이터 연결 필요.
+- `client/analysis_options.yaml`에서 generated/build 산출물(`lib/dataconnect_generated/**`, `build/**`)을 analyzer scope에서 제외.
+- 전체 `flutter analyze lib test`는 기존 lint 127건 때문에 실패.
+- 관련 Flutter 테스트 `test/services/model_download_service_test.dart`, `test/providers/model_download_provider_test.dart`, `test/services/audio_preprocessor_test.dart`는 39개 모두 통과.
+- `git add`/commit은 `.git/index.lock` 생성 권한 제한으로 실행 불가.
+
+---
+
 ## 2026-06-05 ~ 2026-06-06 작업 내역
 
 ### 감성 분석 & 고급 액션 아이템 (ebb127f)
 - **Files:** `backend/pipeline/sentiment_analyzer.py`, `backend/ml/action_items_engine.py`, `backend/services/sentiment_service.py`, `backend/services/action_item_service.py`
-- **내용:** 감성 분석 파이프라인 및 고급 액션 아이템 추출 기능 추가. Claude API 연동.
+- **내용:** 감성 분석 파이프라인 및 고급 액션 아이템 추출 기능 추가. OpenAI 호환 LLM API 연동.
 
 ### 프로덕션 롰칭 준비 (c4efc3b, bc23a68)
 - **Files:** 다수의 테스트 파일, 설정 파일

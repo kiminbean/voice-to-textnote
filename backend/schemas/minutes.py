@@ -73,3 +73,10 @@ class MinutesStatusResponse(BaseModel):
     progress: float = Field(default=0.0, ge=0.0, le=1.0, description="진행률 (0.0~1.0)")
     message: str | None = Field(default=None, description="상태 메시지")
     error_message: str | None = Field(default=None, description="실패 시 오류 메시지")
+
+
+class MinutesPatchRequest(BaseModel):
+    """PATCH /api/v1/minutes/{task_id} 요청 본문 — 협업 편집 결과 영속화"""
+
+    # field_name → new_value (예: {"summary_text": "새 요약", "action_items": "..."})
+    fields: dict[str, str] = Field(..., description="업데이트할 필드 맵")

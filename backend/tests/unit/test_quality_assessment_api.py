@@ -16,7 +16,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
-import backend.db.auth_models  # noqa: F401
+import backend.db.auth_models
 import backend.db.quality_feedback_models  # noqa: F401
 from backend.app.dependencies import get_db_session
 from backend.app.error_handlers import register_exception_handlers

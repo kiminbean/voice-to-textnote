@@ -127,7 +127,7 @@ class TestQualityAssessmentTextExtraction:
                 {"text": "두 번째 발언"},
             ],
         }
-        content, title = _extract_minutes_content(task)
+        content, _title = _extract_minutes_content(task)
         assert "첫 번째 발언" in content
         assert "두 번째 발언" in content
 
@@ -140,7 +140,7 @@ class TestQualityAssessmentTextExtraction:
             "title": "제목",
             "summary_text": "요약 내용입니다",
         }
-        content, title = _extract_minutes_content(task)
+        content, _title = _extract_minutes_content(task)
         assert "요약 내용입니다" in content
 
     def test_extract_minutes_content_empty_result(self):

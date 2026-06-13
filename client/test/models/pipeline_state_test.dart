@@ -65,16 +65,18 @@ void main() {
 
     // 파이프라인 단계 순서 테스트
     test('PipelineStep이 올바른 순서로 정의되어야 함', () {
-      expect(PipelineStep.values, containsAll([
-        PipelineStep.idle,
-        PipelineStep.uploading,
-        PipelineStep.transcribing,
-        PipelineStep.diarizing,
-        PipelineStep.generatingMinutes,
-        PipelineStep.summarizing,
-        PipelineStep.completed,
-        PipelineStep.failed,
-      ]));
+      expect(
+          PipelineStep.values,
+          containsAll([
+            PipelineStep.idle,
+            PipelineStep.uploading,
+            PipelineStep.transcribing,
+            PipelineStep.diarizing,
+            PipelineStep.generatingMinutes,
+            PipelineStep.summarizing,
+            PipelineStep.completed,
+            PipelineStep.failed,
+          ]));
     });
 
     // 진행률 범위 테스트

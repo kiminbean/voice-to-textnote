@@ -20,6 +20,7 @@ from backend.app.dependencies import get_redis_client
 from backend.app.errors import not_found, too_many_requests
 from backend.schemas.minutes import (
     MinutesCreateRequest,
+    MinutesPatchRequest,
     MinutesResponse,
     MinutesSegment,
     MinutesStatusResponse,
@@ -206,3 +207,47 @@ async def delete_minutes(
     )
 
     logger.info("회의록 작업 삭제", task_id=task_id)
+
+
+@router.patch(
+    "/{task_id}",
+    status_code=status.HTTP_200_OK,
+    responses={404: {"description": "작업 없음"}},
+)
+async def patch_minutes(
+    task_id: str,
+    request: MinutesPatchRequest,
+    redis_client: aioredis.Redis = Depends(get_redis_client),
+) -> dict:
+    """
+    협업 편집 결과 부분 업데이트 (SPEC-COLLAB-001, REQ-COLLAB-020)
+    PATCH /api/v1/minutes/{task_id}
+    """
+    result_key = f"task:min:result:{task_id}"
+    raw = await redis_client.get(result_key)
+
+    if raw is None:
+        not_found("회의록 작업을 찾을 수 없습니다.")
+
+    data = json.loads(raw)
+    updated_fields = []
+
+    for field, value in request.fields.items():
+        if field in ("segments", "speakers", "total_duration", "total_speakers"):
+            continue
+        data[field] = value
+        updated_fields.append(field)
+
+    await redis_client.setex(
+        result_key,
+        settings.minutes_result_ttl,
+        json.dumps(data, ensure_ascii=False),
+    )
+
+    logger.info(
+        "회의록 부분 업데이트",
+        task_id=task_id,
+        fields=updated_fields,
+    )
+
+    return {"task_id": task_id, "updated_fields": updated_fields}

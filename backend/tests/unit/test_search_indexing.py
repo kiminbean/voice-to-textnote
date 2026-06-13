@@ -17,29 +17,34 @@ class TestPersistTaskResultIndexing:
 
     @pytest.fixture(autouse=True)
     def setup_in_memory_db(self):
-        """각 테스트마다 인메모리 SQLite DB 세팅"""
         from sqlalchemy import create_engine as sa_create_engine
         from sqlalchemy.orm import sessionmaker
 
         import backend.db.sync_engine as sync_engine_module
         from backend.db.models import Base
 
-        # 인메모리 SQLite 엔진
+        old_init_engine = sync_engine_module._initialized_engine
+        old_init_factory = sync_engine_module._initialized_session_factory
+        old_sync_engine = sync_engine_module._sync_engine
+        old_session_local = sync_engine_module._SessionLocal
+
         engine = sa_create_engine("sqlite:///:memory:", echo=False)
         Base.metadata.create_all(engine)
         session_local = sessionmaker(engine)
 
-        # 모듈 수준 변수를 테스트용으로 교체
         sync_engine_module._sync_engine = engine
         sync_engine_module._SessionLocal = session_local
+        sync_engine_module._initialized_engine = engine
+        sync_engine_module._initialized_session_factory = session_local
 
         self.engine = engine
         yield engine
 
-        # 정리
         engine.dispose()
-        sync_engine_module._sync_engine = None
-        sync_engine_module._SessionLocal = None
+        sync_engine_module._sync_engine = old_sync_engine
+        sync_engine_module._SessionLocal = old_session_local
+        sync_engine_module._initialized_engine = old_init_engine
+        sync_engine_module._initialized_session_factory = old_init_factory
 
     def test_persist_task_result_indexes_minutes(self):
         """minutes 작업 완료 시 검색 인덱스에 자동 추가되어야 함"""

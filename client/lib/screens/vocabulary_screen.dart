@@ -28,7 +28,8 @@ class VocabularyScreen extends ConsumerWidget {
               ? const _VocabularyEmptyView()
               : _VocabularyListView(
                   vocabularies: vocabularies,
-                  onEdit: (vocabulary) => _showVocabularyDialog(context, ref, vocabulary: vocabulary),
+                  onEdit: (vocabulary) => _showVocabularyDialog(context, ref,
+                      vocabulary: vocabulary),
                 ),
         ),
       ),
@@ -40,9 +41,11 @@ class VocabularyScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _showVocabularyDialog(BuildContext context, WidgetRef ref, {Vocabulary? vocabulary}) async {
+  Future<void> _showVocabularyDialog(BuildContext context, WidgetRef ref,
+      {Vocabulary? vocabulary}) async {
     final nameController = TextEditingController(text: vocabulary?.name ?? '');
-    final wordsController = TextEditingController(text: vocabulary?.words.join(', ') ?? '');
+    final wordsController =
+        TextEditingController(text: vocabulary?.words.join(', ') ?? '');
     final isEdit = vocabulary != null;
 
     final result = await showDialog<bool>(
@@ -80,7 +83,8 @@ class VocabularyScreen extends ConsumerWidget {
           ),
           ElevatedButton(
             onPressed: () {
-              if (nameController.text.trim().isEmpty || wordsController.text.trim().isEmpty) {
+              if (nameController.text.trim().isEmpty ||
+                  wordsController.text.trim().isEmpty) {
                 ScaffoldMessenger.of(ctx).showSnackBar(
                   const SnackBar(content: Text('이름과 단어 목록을 모두 입력해주세요.')),
                 );
@@ -104,14 +108,18 @@ class VocabularyScreen extends ConsumerWidget {
 
       try {
         if (isEdit) {
-          await ref.read(vocabularyListProvider.notifier).updateVocabulary(vocabulary.id, name, words);
+          await ref
+              .read(vocabularyListProvider.notifier)
+              .updateVocabulary(vocabulary.id, name, words);
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('사전이 수정되었습니다')),
             );
           }
         } else {
-          await ref.read(vocabularyListProvider.notifier).createVocabulary(name, words);
+          await ref
+              .read(vocabularyListProvider.notifier)
+              .createVocabulary(name, words);
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('새 사전이 추가되었습니다')),
@@ -218,7 +226,8 @@ class _VocabularyListItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dateStr = DateFormat('yyyy.MM.dd HH:mm').format(vocabulary.createdAt.toLocal());
+    final dateStr =
+        DateFormat('yyyy.MM.dd HH:mm').format(vocabulary.createdAt.toLocal());
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),

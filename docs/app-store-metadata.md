@@ -49,6 +49,7 @@ VoiceToTextNote - AI가 만나는 회의의 새로운 경험
   - 정확한 음성-텍스트 자동 변환
   - 화자 분리(Diarization)로 누가 말했는지 식별
   - 다국어 지원
+  - 오프라인 모드에서 기기 내 Whisper STT 지원
 
 • 스마트 회의 요약
   - AI가 핵심 내용을 자동 요약
@@ -70,6 +71,7 @@ VoiceToTextNote - AI가 만나는 회의의 새로운 경험
 
 🔒 보안
 - 모든 데이터는 암호화되어 안전하게 저장
+- 오프라인 STT 사용 시 음성 변환은 기기 내에서 처리
 - 개인정보 보호 정책 준수
 - 소셜 로그인(Google, Apple) 지원
 
@@ -96,6 +98,7 @@ Record any meeting, lecture, or interview and let AI automatically transcribe it
   - Accurate automatic speech-to-text conversion
   - Speaker diarization to identify who said what
   - Multi-language support
+  - On-device Whisper STT support in offline mode
 
 • Smart Meeting Summaries
   - AI automatically generates concise summaries
@@ -117,6 +120,7 @@ Record any meeting, lecture, or interview and let AI automatically transcribe it
 
 🔒 Security
 - All data encrypted and securely stored
+- Offline STT can transcribe audio on device
 - Privacy policy compliant
 - Social login support (Google, Apple)
 
@@ -148,6 +152,7 @@ meeting,recording,transcription,AI summary,STT,conference,convert,speaker,collab
 🎉 VoiceToTextNote 첫 출시!
 
 • AI 음성-텍스트 변환 및 회의 요약
+• 오프라인 Whisper STT 지원
 • 백그라운드 녹음 지원
 • 화자 분리 (Diarization)
 • 팀 협업 스페이스
@@ -161,6 +166,7 @@ meeting,recording,transcription,AI summary,STT,conference,convert,speaker,collab
 🎉 VoiceToTextNote First Release!
 
 • AI speech-to-text transcription & meeting summaries
+• Offline Whisper STT support
 • Background recording support
 • Speaker diarization
 • Team collaboration spaces

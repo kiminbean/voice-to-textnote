@@ -4,7 +4,7 @@
 
 import re
 from collections import defaultdict
-from typing import Literal
+from typing import ClassVar, Literal
 
 import numpy as np
 
@@ -17,7 +17,7 @@ class SentimentService:
     """회의 감성 분석 서비스"""
 
     # 감성 단어 사전 (한국어)
-    POSITIVE_WORDS = {
+    POSITIVE_WORDS: ClassVar[set[str]] = {
         "좋아",
         "훌륭",
         "대단",
@@ -69,7 +69,7 @@ class SentimentService:
         "특별한",
     }
 
-    NEGATIVE_WORDS = {
+    NEGATIVE_WORDS: ClassVar[set[str]] = {
         "나쁘",
         "싫어",
         "실망",
@@ -111,11 +111,6 @@ class SentimentService:
         "원망",
         "불평",
         "불화",
-        "갈등",
-        "마찰",
-        "대립",
-        "갈등",
-        "문제",
         "장애",
         "핸디캡",
         "제약",
@@ -130,9 +125,9 @@ class SentimentService:
     }
 
     # 감성 강도 조정어
-    INTENSIFIERS = {"매우", "아주", "정말", "완전히", "극적으로", "특히", "더욱", "높게", "크게"}
+    INTENSIFIERS: ClassVar[set[str]] = {"매우", "아주", "정말", "완전히", "극적으로", "특히", "더욱", "높게", "크게"}
 
-    NEGATORS = {"안", "못", "지 않", "아니", "전혀", "조금도", "결코", "아예"}
+    NEGATORS: ClassVar[set[str]] = {"안", "못", "지 않", "아니", "전혀", "조금도", "결코", "아예"}
 
     def __init__(self):
         """초기화"""
@@ -371,7 +366,7 @@ class SentimentService:
 
         sum_x = sum(x)
         sum_y = sum(sentiment_scores)
-        sum_xy = sum(xi * yi for xi, yi in zip(x, sentiment_scores))
+        sum_xy = sum(xi * yi for xi, yi in zip(x, sentiment_scores, strict=False))
         sum_x2 = sum(xi * xi for xi in x)
 
         # 기울기 계산: slope = (n*Σxy - Σx*Σy) / (n*Σx2 - (Σx)²)

@@ -119,7 +119,7 @@ async def get_current_user(
     try:
         user_uuid = _uuid.UUID(user_id)
     except ValueError:
-        raise HTTPException(status_code=401, detail="유효하지 않은 토큰입니다")
+        raise HTTPException(status_code=401, detail="유효하지 않은 토큰입니다") from None
 
     result = await db.execute(select(User).where(User.id == user_uuid))
     user = result.scalar_one_or_none()

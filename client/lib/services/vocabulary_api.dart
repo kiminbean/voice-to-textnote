@@ -32,7 +32,8 @@ class VocabularyApi {
     return Vocabulary.fromJson(response.data as Map<String, dynamic>);
   }
 
-  Future<Vocabulary> updateVocabulary(String id, String name, List<String> words) async {
+  Future<Vocabulary> updateVocabulary(
+      String id, String name, List<String> words) async {
     final response = await _dio.put(
       '/vocabulary/$id',
       data: {

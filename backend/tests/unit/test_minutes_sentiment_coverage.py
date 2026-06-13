@@ -57,7 +57,7 @@ class TestCreateSentiment:
 
     def test_create_success(self, app_client):
         """정상 작업 등록."""
-        client, mock_redis = app_client
+        client, _mock_redis = app_client
 
         mock_task = MagicMock()
         with patch(
@@ -79,7 +79,7 @@ class TestCreateSentiment:
 
     def test_create_with_max_tokens(self, app_client):
         """max_tokens 포함 요청."""
-        client, mock_redis = app_client
+        client, _mock_redis = app_client
 
         mock_task = MagicMock()
         with patch(

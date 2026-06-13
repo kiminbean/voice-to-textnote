@@ -74,7 +74,8 @@ class SummaryResult {
         // 중첩 JSON에서 sections도 추출
         if (nested.containsKey('sections') && nested['sections'] is Map) {
           for (final entry in (nested['sections'] as Map).entries) {
-            nestedSections[entry.key.toString()] = entry.value?.toString() ?? '';
+            nestedSections[entry.key.toString()] =
+                entry.value?.toString() ?? '';
           }
         }
       } catch (_) {
@@ -117,7 +118,8 @@ class SummaryResult {
     }
 
     // REQ-UI-001: template_structure 파싱
-    final templateStructure = json['template_structure'] as Map<String, dynamic>?;
+    final templateStructure =
+        json['template_structure'] as Map<String, dynamic>?;
 
     return SummaryResult(
       summaryText: summaryText,
@@ -160,7 +162,10 @@ class SummaryResult {
     return value
         .map((e) {
           if (e is String) return e;
-          if (e is Map) return e['decision'] as String? ?? e['step'] as String? ?? e.toString();
+          if (e is Map)
+            return e['decision'] as String? ??
+                e['step'] as String? ??
+                e.toString();
           return e.toString();
         })
         .cast<String>()

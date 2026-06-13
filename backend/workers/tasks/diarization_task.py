@@ -7,6 +7,7 @@ REQ-DIA-016: WAV 파일/STT 결과 없음 → 즉시 실패
 REQ-DIA-017: 오류 시 failed 상태 저장
 """
 
+import contextlib
 import json
 import time
 from datetime import UTC, datetime
@@ -444,10 +445,8 @@ def diarization_task(
         # DIA가 소유한다. STT는 이 파일을 삭제하지 않으므로(순차 실행 시 race 방지)
         # DIA 완료/실패 후 여기서 정리한다.
         if audio_path:
-            try:
+            with contextlib.suppress(OSError):
                 Path(audio_path).unlink(missing_ok=True)
-            except OSError:
-                pass
 
 
 @celery_app.task(

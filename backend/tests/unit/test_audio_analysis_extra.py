@@ -138,7 +138,7 @@ class TestEvaluateQuality:
         """낮은 볼륨 품질 저하"""
         mock_audio = MagicMock()
 
-        score, issues, recommendation = _evaluate_quality(
+        score, issues, _recommendation = _evaluate_quality(
             audio=mock_audio,
             duration_seconds=60.0,
             sample_rate=16000,
@@ -154,7 +154,7 @@ class TestEvaluateQuality:
         """높은 볼륨 (클리핑 가능성)"""
         mock_audio = MagicMock()
 
-        score, issues, recommendation = _evaluate_quality(
+        score, issues, _recommendation = _evaluate_quality(
             audio=mock_audio,
             duration_seconds=60.0,
             sample_rate=16000,
@@ -170,7 +170,7 @@ class TestEvaluateQuality:
         """낮은 샘플레이트 품질 저하"""
         mock_audio = MagicMock()
 
-        score, issues, recommendation = _evaluate_quality(
+        score, issues, _recommendation = _evaluate_quality(
             audio=mock_audio,
             duration_seconds=60.0,
             sample_rate=8000,  # 낮음
@@ -186,7 +186,7 @@ class TestEvaluateQuality:
         """높은 무음 비율 품질 저하"""
         mock_audio = MagicMock()
 
-        score, issues, recommendation = _evaluate_quality(
+        score, issues, _recommendation = _evaluate_quality(
             audio=mock_audio,
             duration_seconds=60.0,
             sample_rate=16000,
@@ -202,7 +202,7 @@ class TestEvaluateQuality:
         """짧은 녹음 품질 저하"""
         mock_audio = MagicMock()
 
-        score, issues, recommendation = _evaluate_quality(
+        score, issues, _recommendation = _evaluate_quality(
             audio=mock_audio,
             duration_seconds=3.0,  # 5초 미만
             sample_rate=16000,
@@ -218,7 +218,7 @@ class TestEvaluateQuality:
         """다중 채널 품질 저하"""
         mock_audio = MagicMock()
 
-        score, issues, recommendation = _evaluate_quality(
+        score, issues, _recommendation = _evaluate_quality(
             audio=mock_audio,
             duration_seconds=60.0,
             sample_rate=16000,
@@ -234,7 +234,7 @@ class TestEvaluateQuality:
         """silence_ratio가 None인 경우"""
         mock_audio = MagicMock()
 
-        score, issues, recommendation = _evaluate_quality(
+        _score, issues, _recommendation = _evaluate_quality(
             audio=mock_audio,
             duration_seconds=60.0,
             sample_rate=16000,
@@ -293,12 +293,11 @@ class TestAnalyzeAudio:
         mock_stat.return_value.st_size = 1024000
 
         # Create temp file mock
-        with patch("pathlib.Path.name", "test.mp3"):
-            with patch("pathlib.Path.suffix", ".mp3"):
-                # Act
-                result = analyze_audio("test.mp3", include_silence_detection=False)
+        with patch("pathlib.Path.name", "test.mp3"), patch("pathlib.Path.suffix", ".mp3"):
+            # Act
+            result = analyze_audio("test.mp3", include_silence_detection=False)
 
-                # Assert
-                assert result.sample_rate == 16000
-                assert result.channels == 1
-                assert result.bitrate == "128 kbps"
+            # Assert
+            assert result.sample_rate == 16000
+            assert result.channels == 1
+            assert result.bitrate == "128 kbps"

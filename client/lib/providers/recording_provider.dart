@@ -5,10 +5,10 @@ import 'package:voice_to_textnote/services/background_recording_service.dart';
 
 // 녹음 상태 열거형
 enum RecordingStatus {
-  idle,      // 대기 중
+  idle, // 대기 중
   recording, // 녹음 중
-  paused,    // 일시 정지
-  stopped,   // 중지됨
+  paused, // 일시 정지
+  stopped, // 중지됨
 }
 
 // 녹음 상태 데이터 클래스
@@ -39,7 +39,8 @@ class RecordingState {
 // 녹음 Notifier
 class RecordingNotifier extends Notifier<RecordingState> {
   // 백그라운드 녹음 서비스
-  final BackgroundRecordingService _backgroundService = BackgroundRecordingService();
+  final BackgroundRecordingService _backgroundService =
+      BackgroundRecordingService();
 
   @override
   RecordingState build() {

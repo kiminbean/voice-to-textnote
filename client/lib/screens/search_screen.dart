@@ -429,9 +429,8 @@ class _SearchResultTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // 태스크 유형별 아이콘 설정
-    final icon = item.taskType == 'minutes'
-        ? Icons.description
-        : Icons.summarize;
+    final icon =
+        item.taskType == 'minutes' ? Icons.description : Icons.summarize;
     final typeLabel = item.taskType == 'minutes' ? '회의록' : '요약';
 
     return ListTile(
@@ -527,9 +526,7 @@ class _FilterChip extends StatelessWidget {
         label,
         style: const TextStyle(fontSize: 12),
       ),
-      deleteIcon: onDeleted != null
-          ? const Icon(Icons.close, size: 16)
-          : null,
+      deleteIcon: onDeleted != null ? const Icon(Icons.close, size: 16) : null,
       onDeleted: onDeleted,
       backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
       deleteIconColor: Theme.of(context).colorScheme.onSecondaryContainer,

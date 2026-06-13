@@ -27,7 +27,7 @@ class TestValidateAudioFormat:
         assert msg == ""
 
     def test_valid_mp3_with_mime(self):
-        ok, msg = validate_audio_format("song.mp3", "audio/mpeg")
+        ok, _msg = validate_audio_format("song.mp3", "audio/mpeg")
         assert ok is True
 
     def test_valid_m4a(self):
@@ -55,11 +55,11 @@ class TestValidateAudioFormat:
 
     def test_application_octet_stream_allowed(self):
         # application/octet-stream은 예외적으로 허용
-        ok, msg = validate_audio_format("test.wav", "application/octet-stream")
+        ok, _msg = validate_audio_format("test.wav", "application/octet-stream")
         assert ok is True
 
     def test_no_mime_type_passes(self):
-        ok, msg = validate_audio_format("test.mp3", None)
+        ok, _msg = validate_audio_format("test.mp3", None)
         assert ok is True
 
     def test_audio_mime_allowed(self):
@@ -81,7 +81,7 @@ class TestValidateFileSize:
         assert "빈 파일" in msg
 
     def test_negative_size(self):
-        ok, msg = validate_file_size(-1, 500 * 1024 * 1024)
+        ok, _msg = validate_file_size(-1, 500 * 1024 * 1024)
         assert ok is False
 
     def test_oversized_file(self):

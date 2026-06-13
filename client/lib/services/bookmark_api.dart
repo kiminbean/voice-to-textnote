@@ -74,7 +74,8 @@ class BookmarkApi {
     return Bookmark.fromJson(response.data as Map<String, dynamic>);
   }
 
-  Future<Bookmark> update(String bookmarkId, {String? note, String? color}) async {
+  Future<Bookmark> update(String bookmarkId,
+      {String? note, String? color}) async {
     final response = await _dio.patch('/bookmarks/$bookmarkId', data: {
       if (note != null) 'note': note,
       if (color != null) 'color': color,

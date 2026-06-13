@@ -149,27 +149,26 @@ class TestAudioPreprocessRemaining:
             with patch(
                 "backend.app.api.v1.audio.audio_preprocess.validate_audio_format",
                 return_value=(True, "ok"),
-            ):
-                with patch("backend.app.api.v1.audio.audio_preprocess._safe_unlink"):
-                    with patch("backend.app.api.v1.audio.audio_preprocess.logger"):
-                        with pytest.raises(BadRequestError) as exc_info:
-                            await preprocess_endpoint(
-                                file=mock_file,
-                                convert_to_16k_mono=True,
-                                normalize=True,
-                                target_dbfs=-20.0,
-                                high_pass_hz=None,
-                                low_pass_hz=None,
-                                trim_silence=False,
-                                silence_threshold_db=-40.0,
-                                silence_min_len_ms=700,
-                            )
-                        assert exc_info.value.status_code == 400
+            ), patch("backend.app.api.v1.audio.audio_preprocess._safe_unlink"):
+                with patch("backend.app.api.v1.audio.audio_preprocess.logger"):
+                    with pytest.raises(BadRequestError) as exc_info:
+                        await preprocess_endpoint(
+                            file=mock_file,
+                            convert_to_16k_mono=True,
+                            normalize=True,
+                            target_dbfs=-20.0,
+                            high_pass_hz=None,
+                            low_pass_hz=None,
+                            trim_silence=False,
+                            silence_threshold_db=-40.0,
+                            silence_min_len_ms=700,
+                        )
+                    assert exc_info.value.status_code == 400
 
     @pytest.mark.asyncio
     async def test_oserror_during_wave_metadata(self):
         """Lines 188-192: OSError during wave.open triggers InternalServerError(500)"""
-        from pathlib import Path as P  # noqa: N817
+        from pathlib import Path as P
         from unittest.mock import mock_open
 
         from backend.app.api.v1.audio.audio_preprocess import preprocess_endpoint
@@ -187,41 +186,39 @@ class TestAudioPreprocessRemaining:
             with patch(
                 "backend.app.api.v1.audio.audio_preprocess.validate_audio_format",
                 return_value=(True, "ok"),
-            ):
-                with patch("backend.app.api.v1.audio.audio_preprocess._safe_unlink"):
-                    with patch("backend.app.api.v1.audio.audio_preprocess.logger"):
+            ), patch("backend.app.api.v1.audio.audio_preprocess._safe_unlink"):
+                with patch("backend.app.api.v1.audio.audio_preprocess.logger"):
+                    with patch(
+                        "backend.app.api.v1.audio.audio_preprocess.preprocess_audio",
+                        return_value=P("/fake/out.wav"),
+                    ):
+                        # wave.open raises OSError (not wave.Error/EOFError)
                         with patch(
-                            "backend.app.api.v1.audio.audio_preprocess.preprocess_audio",
-                            return_value=P("/fake/out.wav"),
+                            "backend.app.api.v1.audio.audio_preprocess.wave.open",
+                            side_effect=OSError("file access error"),
                         ):
-                            # wave.open raises OSError (not wave.Error/EOFError)
                             with patch(
-                                "backend.app.api.v1.audio.audio_preprocess.wave.open",
-                                side_effect=OSError("file access error"),
-                            ):
+                                "backend.app.api.v1.audio.audio_preprocess._preprocess_semaphore"
+                            ) as sema:
+                                sema.__aenter__ = AsyncMock(return_value=None)
+                                sema.__aexit__ = AsyncMock(return_value=None)
                                 with patch(
-                                    "backend.app.api.v1.audio.audio_preprocess._preprocess_semaphore"
-                                ) as sema:
-                                    sema.__aenter__ = AsyncMock(return_value=None)
-                                    sema.__aexit__ = AsyncMock(return_value=None)
-                                    with patch(
-                                        "backend.app.api.v1.audio.audio_preprocess.tempfile.mkstemp",
-                                        return_value=(99, "/tmp/preprocess_in_test.wav"),
-                                    ):
-                                        with patch("builtins.open", mock_open()):
-                                            with pytest.raises(InternalServerError) as exc_info:
-                                                await preprocess_endpoint(
-                                                    file=mock_file,
-                                                    convert_to_16k_mono=True,
-                                                    normalize=True,
-                                                    target_dbfs=-20.0,
-                                                    high_pass_hz=None,
-                                                    low_pass_hz=None,
-                                                    trim_silence=False,
-                                                    silence_threshold_db=-40.0,
-                                                    silence_min_len_ms=700,
-                                                )
-                                            assert exc_info.value.status_code == 500
+                                    "backend.app.api.v1.audio.audio_preprocess.tempfile.mkstemp",
+                                    return_value=(99, "/tmp/preprocess_in_test.wav"),
+                                ), patch("builtins.open", mock_open()):
+                                    with pytest.raises(InternalServerError) as exc_info:
+                                        await preprocess_endpoint(
+                                            file=mock_file,
+                                            convert_to_16k_mono=True,
+                                            normalize=True,
+                                            target_dbfs=-20.0,
+                                            high_pass_hz=None,
+                                            low_pass_hz=None,
+                                            trim_silence=False,
+                                            silence_threshold_db=-40.0,
+                                            silence_min_len_ms=700,
+                                        )
+                                    assert exc_info.value.status_code == 500
 
 
 # ---------------------------------------------------------------------------

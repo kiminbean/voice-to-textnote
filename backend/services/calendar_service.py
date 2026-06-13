@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timedelta
-from typing import Any
+from typing import Any, ClassVar
 
 import redis.asyncio as aioredis
 from sqlalchemy import select
@@ -35,7 +35,7 @@ class CalendarService:
     """
 
     # 지원되는 캘린더 서비스
-    SUPPORTED_CALENDARS = {"google", "outlook", "apple"}
+    SUPPORTED_CALENDARS: ClassVar[set[str]] = {"google", "outlook", "apple"}
 
     # --- 조회 ---
 

@@ -15,7 +15,7 @@ import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
-import backend.db.auth_models  # noqa: F401
+import backend.db.auth_models
 import backend.db.quality_feedback_models  # noqa: F401
 from backend.db.models import Base, TaskResult
 from backend.schemas.quality import (

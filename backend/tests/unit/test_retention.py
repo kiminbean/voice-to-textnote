@@ -215,7 +215,7 @@ class TestCleanupTempFiles:
 
         os.utime(subdir, (old_mtime, old_mtime))
 
-        deleted_count, freed_bytes = cleanup_temp_files(tmp_path, retention_hours=24)
+        deleted_count, _freed_bytes = cleanup_temp_files(tmp_path, retention_hours=24)
 
         # 디렉토리는 삭제하지 않음
         assert deleted_count == 0
