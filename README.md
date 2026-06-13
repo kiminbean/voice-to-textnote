@@ -706,9 +706,9 @@ MIT License - 자유로운 상업적 사용 가능
 
 ---
 
-**마지막 업데이트**: 2026-06-06
-**버전**: 1.1.0
-**상태**: Production Ready (25/25 SPECs 완료, 커버리지 97.35%)
+**마지막 업데이트**: 2026-06-13
+**버전**: 1.2.0
+**상태**: Production Ready (28/28 SPECs 완료)
 
 ### 완료된 SPEC 목록
 
@@ -737,3 +737,6 @@ MIT License - 자유로운 상업적 사용 가능
 ✅ SPEC-EXPORT-001: PDF Export
 ✅ SPEC-TEAM-001: JWT Auth + Team CRUD + Member Management + Meeting Share + Flutter Auth/Team UI
 ✅ SPEC-MOBILE-001: Mobile Optimization
+✅ SPEC-MOBILE-004: 모바일 프로덕션 완성 (Push 알림, 백그라운드 녹음, 권한 재확인, 녹음 복구)
+✅ SPEC-COLLAB-001: 실시간 협업 편집 (WebSocket + LWW + Presence + Flutter 클라이언트)
+✅ SPEC-MOBILE-002: 오프라인 STT 하이브리드 파이프라인 (모델 관리 + 로컬 전사 + 재처리 큐)

@@ -353,11 +353,32 @@
 - **SPEC-GUEST-001**: Guest 모드 (24시간 임시 저장, 회원가입 없이 앱 사용)
 - **API 인증 활성화**: X-API-Key 헤더 인증 (Flutter + Backend 연동)
 
-## 다음 단계 (Phase 6 계획)
+### Phase 6 ✅ (완료): 모바일 프로덕션 & 실시간 협업 & 오프라인 STT
+
+- **SPEC-MOBILE-004**: 모바일 프로덕션 완성 (Push 알림, 백그라운드 녹음, 권한 재확인, 녹음 복구)
+- **SPEC-COLLAB-001**: 실시간 협업 편집 (WebSocket + LWW + Presence + Flutter 클라이언트)
+- **SPEC-MOBILE-002**: 오프라인 STT 하이브리드 파이프라인 (모델 관리 + 로컬 전사 + 재처리 큐)
+
+### 23. 실시간 협업 편집 (SPEC-COLLAB-001 ✅)
+
+- **WebSocket 기반 실시간 동기화**: FastAPI WebSocket 엔드포인트로 다중 사용자 실시간 공동 편집
+- **LWW (Last-Write-Wins) 충돌 해결**: 클라이언트 타임스탬프 기반으로 일관된 충돌 해결
+- **Redis 실시간 상태 캐싱**: 편집 세션, 타임스탬프, Presence 정보를 Redis에 캐싱 (TTL 24시간)
+- **Presence 오버레이**: Flutter 클라이언트에서 실시간으로 다른 편집자의 커서 및 활동 표시
+- **JWT 쿼리 파라미터 인증**: WebSocket 핸드셰이크에서 `?token=` 기반 JWT 인증
+
+### 24. 오프라인 STT 하이브리드 파이프라인 (SPEC-MOBILE-002 ✅)
+
+- **로컬 STT 모델 관리**: whisper.cpp 모델 다운로드, 검증, 삭제 (SharedPreferences 경로 관리)
+- **하이브리드 파이프라인**: 온라인 시 서버 STT 위임, 오프라인 시 로컬 STT → 재처리 큐
+- **재처리 큐**: 오프라인 중 로컬 처리된 작업을 연결 복구 시 서버로 재처리 (SharedPreferences 영속화)
+- **모델 다운로드 UI**: 상태 기반 UX (notDownloaded → downloading → verifying → ready → error)
+- **TranscriptionSource 메타데이터**: 서버/로컬/하이브리드 전사 출처 추적
+
+## 다음 단계 (Phase 7 계획)
 
 ### 향후 로드맵
 
-- **SPEC-MOBILE-001**: iOS/Android 네이티브 최적화 (Push 알림, 백그라운드 녹음)
 - **i18n**: 11개 언어 다국어 지원
 - **보안 강화**: ATS 프로덕션 설정, 파일 매직 바이트 검증
 - **클라우드 동기화**: 멀티 기기 지원
