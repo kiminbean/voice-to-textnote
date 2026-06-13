@@ -49,6 +49,7 @@ from backend.app.api.v1.auth import (
 )
 from backend.app.api.v1.collaboration import (
     bookmarks,
+    collab,
     meetings,
     speakers,
     teams,
@@ -107,6 +108,7 @@ ROUTER_REGISTRY: list[tuple[APIRouter, bool]] = [
     (speakers.router, False),  # SPEC-SPEAKER-001
     (webhooks.router, False),  # SPEC-WEBHOOK-001
     (versions.router, False),  # SPEC-VERSION-001
+    (collab.router, False),  # SPEC-COLLAB-001: WebSocket 실시간 공동 편집 (JWT in query param)
     # ── AI 분석 (API Key 필수) ──────────────────────────────────────────────────
     (sentiment.router, True),
     (tags.router, True),  # SPEC-TAG-001
