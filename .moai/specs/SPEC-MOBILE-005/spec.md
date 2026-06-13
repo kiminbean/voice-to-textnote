@@ -1,9 +1,9 @@
 ---
 id: SPEC-MOBILE-005
 version: "1.0.0"
-status: draft
+status: completed
 created: "2026-06-13"
-updated: "2026-06-13"
+updated: "2026-06-14"
 author: sisyphus
 priority: high
 issue_number: TBD
@@ -17,6 +17,7 @@ depends_on: SPEC-MOBILE-004
 | 버전 | 날짜 | 변경 내용 | 작성자 |
 |------|------|----------|--------|
 | 1.0.0 | 2026-06-13 | 초안 작성 — SPEC-MOBILE-004 후속, iOS 백그라운드 녹음 13개 갭 해결 | sisyphus |
+| 1.0.0 | 2026-06-14 | 구현 완료 — 13개 갭(G1-G13) 4배치 TDD 구현, 301 테스트 통과 | sisyphus |
 
 ---
 
