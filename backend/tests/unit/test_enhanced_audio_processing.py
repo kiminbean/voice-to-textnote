@@ -25,12 +25,12 @@ def test_ai_enhance_options_validation():
     options.validate()
 
     # 비정상 옵션 - noise_reduction_strength 범위 벗어남
-    with pytest.raises(ValueError, match="noise_reduction_strength는 0.0~1.0 사이여야 합니다."):
+    with pytest.raises(ValueError, match=r"noise_reduction_strength는 0.0~1.0 사이여야 합니다."):
         options = AIEnhanceOptions(noise_reduction_strength=1.5)
         options.validate()
 
     # 비정상 옵션 - vad_threshold 범위 벗어남
-    with pytest.raises(ValueError, match="vad_threshold는 0.0~1.0 사이여야 합니다."):
+    with pytest.raises(ValueError, match=r"vad_threshold는 0.0~1.0 사이여야 합니다."):
         options = AIEnhanceOptions(vad_threshold=1.5)
         options.validate()
 

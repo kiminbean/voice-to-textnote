@@ -3,7 +3,7 @@
 """
 
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -43,7 +43,7 @@ class KeywordResponse(BaseModel):
     language: str = Field(default="ko", description="감지된 언어")
 
 
-class SortOption(str, Enum):
+class SortOption(StrEnum):
     """정렬 옵션"""
     relevance = "relevance"
     frequency = "frequency"

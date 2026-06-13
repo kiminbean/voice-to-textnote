@@ -1,8 +1,6 @@
 """커버리지 gap 보충 배치8: WebSocket handler + enhanced_preprocess helpers"""
 
-import tempfile
 from pathlib import Path
-from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -63,7 +61,10 @@ class TestWebSocketCollab:
 
     @pytest.mark.asyncio
     async def test_room_full_closes(self):
-        from backend.app.api.v1.collaboration.collab import websocket_collab, CollabConnectionManager
+        from backend.app.api.v1.collaboration.collab import (
+            CollabConnectionManager,
+            websocket_collab,
+        )
         from backend.schemas.collab import CollabUser
         ws = AsyncMock()
         ws.query_params = {"token": "valid"}
@@ -83,8 +84,12 @@ class TestWebSocketCollab:
 
     @pytest.mark.asyncio
     async def test_successful_ping_pong(self):
-        from backend.app.api.v1.collaboration.collab import websocket_collab, CollabConnectionManager
         from fastapi import WebSocketDisconnect
+
+        from backend.app.api.v1.collaboration.collab import (
+            CollabConnectionManager,
+            websocket_collab,
+        )
         ws = AsyncMock()
         ws.query_params = {"token": "valid"}
         ws.receive_json = AsyncMock(side_effect=[{"type": "ping"}, WebSocketDisconnect()])
@@ -105,8 +110,12 @@ class TestWebSocketCollab:
 
     @pytest.mark.asyncio
     async def test_viewer_cannot_edit(self):
-        from backend.app.api.v1.collaboration.collab import websocket_collab, CollabConnectionManager
         from fastapi import WebSocketDisconnect
+
+        from backend.app.api.v1.collaboration.collab import (
+            CollabConnectionManager,
+            websocket_collab,
+        )
         ws = AsyncMock()
         ws.query_params = {"token": "valid"}
         ws.receive_json = AsyncMock(side_effect=[
@@ -129,8 +138,12 @@ class TestWebSocketCollab:
 
     @pytest.mark.asyncio
     async def test_edit_success_broadcasts(self):
-        from backend.app.api.v1.collaboration.collab import websocket_collab, CollabConnectionManager
         from fastapi import WebSocketDisconnect
+
+        from backend.app.api.v1.collaboration.collab import (
+            CollabConnectionManager,
+            websocket_collab,
+        )
         ws = AsyncMock()
         ws.query_params = {"token": "valid"}
         ws.receive_json = AsyncMock(side_effect=[
@@ -154,8 +167,12 @@ class TestWebSocketCollab:
 
     @pytest.mark.asyncio
     async def test_last_user_flush(self):
-        from backend.app.api.v1.collaboration.collab import websocket_collab, CollabConnectionManager
         from fastapi import WebSocketDisconnect
+
+        from backend.app.api.v1.collaboration.collab import (
+            CollabConnectionManager,
+            websocket_collab,
+        )
         ws = AsyncMock()
         ws.query_params = {"token": "valid"}
         ws.receive_json = AsyncMock(side_effect=[WebSocketDisconnect()])
@@ -189,8 +206,12 @@ class TestWebSocketCollab:
 
     @pytest.mark.asyncio
     async def test_team_member_valid_passes(self):
-        from backend.app.api.v1.collaboration.collab import websocket_collab, CollabConnectionManager
         from fastapi import WebSocketDisconnect
+
+        from backend.app.api.v1.collaboration.collab import (
+            CollabConnectionManager,
+            websocket_collab,
+        )
         ws = AsyncMock()
         ws.query_params = {"token": "valid"}
         ws.receive_json = AsyncMock(side_effect=[WebSocketDisconnect()])
@@ -219,22 +240,30 @@ class TestEnhancedPreprocessHelpers:
         assert _get_quality_grade(5) == "very_poor"
 
     def test_recommendations_low_snr(self):
-        from backend.app.api.v1.audio.enhanced_preprocess import _generate_improvement_recommendations
+        from backend.app.api.v1.audio.enhanced_preprocess import (
+            _generate_improvement_recommendations,
+        )
         recs = _generate_improvement_recommendations({"snr": 10, "clarity": 0.5, "noise_level": 0.05})
         assert any("노이즈 제거" in r for r in recs)
 
     def test_recommendations_low_clarity(self):
-        from backend.app.api.v1.audio.enhanced_preprocess import _generate_improvement_recommendations
+        from backend.app.api.v1.audio.enhanced_preprocess import (
+            _generate_improvement_recommendations,
+        )
         recs = _generate_improvement_recommendations({"snr": 20, "clarity": 0.2, "noise_level": 0.05})
         assert any("고주파" in r for r in recs)
 
     def test_recommendations_high_noise(self):
-        from backend.app.api.v1.audio.enhanced_preprocess import _generate_improvement_recommendations
+        from backend.app.api.v1.audio.enhanced_preprocess import (
+            _generate_improvement_recommendations,
+        )
         recs = _generate_improvement_recommendations({"snr": 20, "clarity": 0.5, "noise_level": 0.2})
         assert any("배경 소음" in r for r in recs)
 
     def test_recommendations_good_quality(self):
-        from backend.app.api.v1.audio.enhanced_preprocess import _generate_improvement_recommendations
+        from backend.app.api.v1.audio.enhanced_preprocess import (
+            _generate_improvement_recommendations,
+        )
         recs = _generate_improvement_recommendations({"snr": 25, "clarity": 0.6, "noise_level": 0.05})
         assert any("양호" in r for r in recs)
 

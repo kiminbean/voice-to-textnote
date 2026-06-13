@@ -74,7 +74,7 @@ class TestMeetingSentiment:
 
     def test_meeting_not_found_returns_500(self, app_client):
         """회의록 없음 -> ValueError -> 500."""
-        client, mock_session, mock_svc = app_client
+        client, mock_session, _mock_svc = app_client
 
         mock_result = MagicMock()
         mock_result.scalars.return_value.first.return_value = None
@@ -85,7 +85,7 @@ class TestMeetingSentiment:
 
     def test_meeting_no_result_data_returns_500(self, app_client):
         """회의록 result_data 없음 -> ValueError -> 500."""
-        client, mock_session, mock_svc = app_client
+        client, mock_session, _mock_svc = app_client
 
         record = _make_mock_task_result(result_data=None)
         mock_result = MagicMock()
@@ -208,7 +208,7 @@ class TestSpeakerSentiment:
 
     def test_speaker_no_segments_returns_500(self, app_client):
         """화자 발화 데이터 없음 -> ValueError -> 500."""
-        client, mock_session, mock_svc = app_client
+        client, _mock_session, mock_svc = app_client
 
         mock_svc.get_speaker_segments = AsyncMock(return_value=[])
 
@@ -218,7 +218,7 @@ class TestSpeakerSentiment:
 
     def test_speaker_sentiment_success(self, app_client):
         """정상 화자 감성 분석."""
-        client, mock_session, mock_svc = app_client
+        client, _mock_session, mock_svc = app_client
 
         speaker_analysis = MagicMock()
         speaker_analysis.speaker_name = "김철수"
@@ -241,7 +241,7 @@ class TestSpeakerSentiment:
 
     def test_speaker_with_meeting_filter(self, app_client):
         """특정 회의 내 화자 분석."""
-        client, mock_session, mock_svc = app_client
+        client, _mock_session, mock_svc = app_client
 
         speaker_analysis = MagicMock()
         speaker_analysis.speaker_name = "김철수"
@@ -267,7 +267,7 @@ class TestDashboardSummary:
 
     def test_no_records_returns_empty(self, app_client):
         """레코드 없을 때 빈 요약."""
-        client, mock_session, mock_svc = app_client
+        client, mock_session, _mock_svc = app_client
 
         mock_result = MagicMock()
         mock_result.scalars.return_value.all.return_value = []

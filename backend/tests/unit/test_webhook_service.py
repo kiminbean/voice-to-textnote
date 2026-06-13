@@ -430,7 +430,7 @@ class TestPing:
                     return_value="https://example.com/webhook",
                 ):
                     # Execute
-                    status, success, message = await webhook_service.ping(
+                    _status, success, _message = await webhook_service.ping(
                         mock_session, sample_webhook_endpoint.id, sample_webhook_endpoint.user_id
                     )
 

@@ -59,7 +59,7 @@ class TestAskQuestion:
 
     def test_ask_success(self, app_client):
         """정상 질문."""
-        client, mock_redis, mock_svc = app_client
+        client, _mock_redis, mock_svc = app_client
 
         mock_svc.ask = AsyncMock(
             return_value=MagicMock(
@@ -84,7 +84,7 @@ class TestAskQuestion:
 
     def test_ask_with_thread_id(self, app_client):
         """스레드 ID 포함 질문."""
-        client, mock_redis, mock_svc = app_client
+        client, _mock_redis, mock_svc = app_client
 
         mock_svc.ask = AsyncMock(
             return_value=MagicMock(
@@ -107,7 +107,7 @@ class TestAskQuestion:
 
     def test_ask_not_found_raises_value_error(self, app_client):
         """ValueError (회의록 없음) -> not_found 에러."""
-        client, mock_redis, mock_svc = app_client
+        client, _mock_redis, mock_svc = app_client
 
         mock_svc.ask = AsyncMock(side_effect=ValueError("회의록을 찾을 수 없습니다"))
 
@@ -123,7 +123,7 @@ class TestAskQuestion:
 
     def test_ask_voice_note_error_passes_through(self, app_client):
         """VoiceNoteError 예외 pass-through."""
-        client, mock_redis, mock_svc = app_client
+        client, _mock_redis, mock_svc = app_client
 
         mock_svc.ask = AsyncMock(
             side_effect=VoiceNoteError(
@@ -148,7 +148,7 @@ class TestAskQuestion:
 
     def test_ask_generic_exception_returns_500(self, app_client):
         """일반 예외 -> internal_error -> 500."""
-        client, mock_redis, mock_svc = app_client
+        client, _mock_redis, mock_svc = app_client
 
         mock_svc.ask = AsyncMock(side_effect=RuntimeError("예상치 못한 오류"))
 
@@ -191,7 +191,7 @@ class TestGetQAHistory:
 
     def test_history_success(self, app_client):
         """정상 이력 조회."""
-        client, mock_redis, mock_svc = app_client
+        client, _mock_redis, mock_svc = app_client
 
         mock_svc.get_history = AsyncMock(
             return_value=MagicMock(
@@ -206,7 +206,7 @@ class TestGetQAHistory:
 
     def test_history_with_items(self, app_client):
         """이력 항목 포함 조회."""
-        client, mock_redis, mock_svc = app_client
+        client, _mock_redis, mock_svc = app_client
 
         mock_history_item = MagicMock()
         mock_history_item.question = "질문1"

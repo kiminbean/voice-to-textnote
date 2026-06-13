@@ -3,13 +3,13 @@
 """
 
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field
 
 
-class ExportFormat(str, Enum):
+class ExportFormat(StrEnum):
     """내보내기 형식"""
     pdf = "pdf"
     docx = "docx"

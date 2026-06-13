@@ -1,8 +1,8 @@
 """그룹4: DB/dependencies/push/statistics/models/conftest 나머지 잔여 커버리지 테스트"""
 
 import uuid
-from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from datetime import UTC, datetime
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -82,7 +82,7 @@ class TestDbService:
         session.commit = AsyncMock()
         session.refresh = AsyncMock()
 
-        result = await svc.save_result(session, task_id="t1", task_type="minutes", status="completed", result_data={"k": "v"})
+        await svc.save_result(session, task_id="t1", task_type="minutes", status="completed", result_data={"k": "v"})
         assert session.add.called
         assert session.commit.called
 
@@ -97,7 +97,7 @@ class TestDbService:
         session.commit = AsyncMock()
         session.refresh = AsyncMock()
 
-        result = await svc.save_result(session, task_id="t1", task_type="minutes", status="completed", result_data={"k": "v"})
+        await svc.save_result(session, task_id="t1", task_type="minutes", status="completed", result_data={"k": "v"})
         assert existing.status == "completed"
         assert session.commit.called
 
@@ -303,7 +303,7 @@ class TestPushServiceErrors:
         assert result is False
 
     def test_get_push_service_singleton(self):
-        from backend.services.push_service import get_push_service, PushService
+        from backend.services.push_service import PushService, get_push_service
         svc = get_push_service()
         assert isinstance(svc, PushService)
 
@@ -355,14 +355,14 @@ class TestMinutesPartialUpdate:
 # ═══════════════════════════════════════════════════════════════════
 class TestAuthDevices:
     def test_device_response_creation(self):
-        from backend.schemas.device import DeviceResponse, DeviceListResponse
+        from backend.schemas.device import DeviceListResponse, DeviceResponse
         dr = DeviceResponse(
             id=uuid.uuid4(),
             fcm_token="token",
             platform="ios",
             device_id="dev1",
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
         assert dr.platform == "ios"
 
@@ -375,12 +375,12 @@ class TestAuthDevices:
 # ═══════════════════════════════════════════════════════════════════
 class TestAdminHistorySchemas:
     def test_history_items(self):
-        from backend.schemas.history import HistoryItem, HistoryDetailItem, HistoryListResponse
+        from backend.schemas.history import HistoryItem
         hi = HistoryItem(
             task_id="t1",
             task_type="minutes",
             status="completed",
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
         assert hi.task_id == "t1"
 
@@ -402,7 +402,7 @@ class TestCollabWebSocketHelpers:
         mock_ws = AsyncMock()
         mgr._rooms["r1"] = {
             "websockets": {"u1": mock_ws},
-            "metadata": {"u1": {"joined_at": datetime.now(timezone.utc).isoformat()}},
+            "metadata": {"u1": {"joined_at": datetime.now(UTC).isoformat()}},
         }
 
         assert hasattr(mgr, "broadcast_to_room") or hasattr(mgr, "_rooms")

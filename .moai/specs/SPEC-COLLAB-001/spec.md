@@ -4,7 +4,7 @@
 |------|-----|
 | SPEC ID | SPEC-COLLAB-001 |
 | 제목 | 회의록 실시간 공동 편집 |
-| 상태 | Planned |
+| 상태 | Completed |
 | 우선순위 | High |
 | 생성일 | 2026-06-12 |
 | 도메인 | COLLAB |
@@ -259,3 +259,22 @@ IF 회의록이 팀에 공유되어 있고 사용자에게 편집 권한(member 
 | Room 당 메모리 | < 1MB | 프로파일링 |
 | 동시 Room 수 | 최대 10개 | 서버 메모리 기준 |
 | DB 영속화 지연 | < 3초 | Redis → DB 타임스탬프 비교 |
+
+---
+
+## 9. 구현 노트 (Implementation Notes)
+
+### 상태 갱신 (2026-06-13)
+
+| 항목 | SPEC (v1.0) | 실제 구현 (2026-06-13) |
+|------|-------------|----------------------|
+| 상태 | Planned | **Completed** |
+| 백엔드 | 미구현 | `backend/app/api/v1/collaboration/collab.py`, `backend/services/collab_service.py` 구현됨 |
+| Flutter 클라이언트 | 미구현 | `client/lib/services/collab_socket_service.dart`, `client/lib/providers/collab_minutes_provider.dart` 구현됨 |
+| 테스트 | 3621 passed | coverage 100.00% |
+
+**검증 소스**:
+- `backend/app/api/v1/collaboration/collab.py` — WebSocket 엔드포인트 + ConnectionManager 존재
+- `backend/services/collab_service.py` — 협업 편집 비즈니스 로직 (LWW, room 관리) 존재
+- `client/lib/services/collab_socket_service.dart` — WebSocket 클라이언트 서비스 존재
+- `client/lib/providers/collab_minutes_provider.dart` — Riverpod AsyncNotifier 존재

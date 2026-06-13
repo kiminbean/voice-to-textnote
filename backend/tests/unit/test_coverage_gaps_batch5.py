@@ -1,11 +1,9 @@
 """커버리지 gap 보충 배치5: remaining 200 lines"""
 
-import json
-import re
 import uuid
 from datetime import UTC, datetime
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -101,7 +99,7 @@ class TestExportEdgeCases:
     async def test_export_meeting_not_found_in_batch(self):
         from backend.app.api.v1.analytics.export import export_batch_meetings
         from backend.app.exceptions import NotFoundError
-        from backend.schemas.export import ExportRequest, ExportFormat, ExportFile
+        from backend.schemas.export import ExportFormat, ExportRequest
         db = AsyncMock()
         db.get.return_value = None
         svc = MagicMock()
@@ -114,7 +112,7 @@ class TestExportEdgeCases:
     async def test_export_meeting_not_completed_in_batch(self):
         from backend.app.api.v1.analytics.export import export_batch_meetings
         from backend.app.exceptions import UnprocessableEntityError
-        from backend.schemas.export import ExportRequest, ExportFormat
+        from backend.schemas.export import ExportFormat, ExportRequest
         db = AsyncMock()
         task = MagicMock()
         task.status = "processing"
@@ -133,7 +131,6 @@ class TestBookmarkCreate:
     @pytest.mark.asyncio
     async def test_create_bookmark(self):
         from backend.app.api.v1.collaboration.bookmarks import create_bookmark
-        from types import SimpleNamespace
         svc = MagicMock()
         bookmark = SimpleNamespace(
             id=uuid.uuid4(), task_id="t1", user_id=uuid.uuid4(),
@@ -158,7 +155,6 @@ class TestSpeakerCreate:
     @pytest.mark.asyncio
     async def test_create_speaker(self):
         from backend.app.api.v1.collaboration.speakers import create_speaker
-        from types import SimpleNamespace
         svc = MagicMock()
         profile = SimpleNamespace(
             id=uuid.uuid4(), user_id=uuid.uuid4(), speaker_label="SPEAKER_00",

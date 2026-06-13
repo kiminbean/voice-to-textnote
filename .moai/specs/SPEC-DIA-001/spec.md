@@ -163,7 +163,7 @@ issue_number: 0
 | SPEC ID | 관계 | 설명 |
 |---------|------|------|
 | SPEC-STT-001 | 의존 (Upstream) | STT 전처리 파일(16kHz mono WAV) 및 세그먼트 결과(SegmentResult) 활용 |
-| SPEC-API-001 | 소비 (Downstream, 예정) | 회의록 생성에서 화자별 텍스트(DiarizedSegmentResult) 활용 |
+| SPEC-MIN-001 | 소비 (Downstream) | 회의록 생성에서 화자별 텍스트(DiarizedSegmentResult) 활용 |
 
 ---
 

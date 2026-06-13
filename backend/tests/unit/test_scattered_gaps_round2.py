@@ -282,7 +282,7 @@ class TestSpeakerServiceCoverage:
         mock_result.scalars.return_value.all.return_value = []
         session.execute = AsyncMock(return_value=mock_result)
 
-        items, total = await svc.list_for_user(
+        _items, total = await svc.list_for_user(
             session, uuid.uuid4(), task_id=None, speaker_label="S1", limit=10, offset=0
         )
         assert total == 0

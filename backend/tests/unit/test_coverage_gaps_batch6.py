@@ -1,8 +1,6 @@
 """커버리지 gap 보충 배치6: quality_assessment routes, export helpers, minutes/keywords"""
 
-from datetime import UTC, datetime
-from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -325,8 +323,8 @@ class TestMinutesKeywordsFactory:
 class TestKeywordServiceSearchBranches:
     @pytest.mark.asyncio
     async def test_search_with_empty_db_results(self):
-        from backend.services.keyword_service import KeywordService
         from backend.schemas.keyword import KeywordSearchFilter, SortOption
+        from backend.services.keyword_service import KeywordService
         svc = KeywordService()
         session = MagicMock()
         query_builder = MagicMock()
@@ -350,8 +348,8 @@ class TestKeywordServiceSearchBranches:
     @pytest.mark.asyncio
     async def test_search_with_no_content_result(self):
         """result_data가 빈 dict인 결과는 content 추출 실패 → continue 분기"""
-        from backend.services.keyword_service import KeywordService
         from backend.schemas.keyword import KeywordSearchFilter, SortOption
+        from backend.services.keyword_service import KeywordService
         svc = KeywordService()
         session = MagicMock()
         task_result = MagicMock()

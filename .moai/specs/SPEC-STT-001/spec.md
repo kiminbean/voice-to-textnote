@@ -1,9 +1,9 @@
 ---
 id: SPEC-STT-001
-version: "1.0.0"
+version: "1.1.0"
 status: completed
 created: 2026-03-15
-updated: 2026-03-15
+updated: 2026-06-13
 author: kisoo
 priority: P1
 issue_number: 0
@@ -16,6 +16,7 @@ issue_number: 0
 | 버전 | 날짜 | 변경 내용 | 작성자 |
 |------|------|----------|--------|
 | 1.0.0 | 2026-03-15 | 초안 작성 | kisoo |
+| 1.1.0 | 2026-06-13 | 기본 모델 실제 구현 반영: whisper-large-v3-turbo → mlx-community/whisper-small-mlx, Redis TTL 24시간 → 7일 | MoAI |
 
 ---
 
@@ -30,14 +31,14 @@ issue_number: 0
 | 데이터 검증 | Pydantic >= 2.9 |
 | 오디오 처리 | ffmpeg (시스템 패키지), pydub >= 0.25.1 |
 | 대상 언어 | 한국어 (language="ko") |
-| 모델 | whisper-large-v3-turbo |
+| 모델 | mlx-community/whisper-small-mlx (기본값, `WHISPER_MODEL` 설정 변경 가능) |
 
 ---
 
 ## 2. 가정 (Assumptions)
 
 - M4 Mac Mini에서 MLX 프레임워크를 통해 Apple Silicon GPU(MPS) 가속이 정상 작동한다.
-- whisper-large-v3-turbo 모델의 메모리 사용량은 약 3-6GB 범위이다.
+- mlx-community/whisper-small-mlx 모델의 메모리 사용량은 약 1-2GB 범위이다.
 - Redis 서버는 STT 서비스 시작 전에 이미 실행 중이다.
 - ffmpeg가 시스템에 설치되어 있으며 PATH에서 접근 가능하다.
 - 처리 대상 오디오는 주로 한국어 음성이며, 회의/강의 등 비교적 선명한 음질이다.
@@ -60,11 +61,11 @@ issue_number: 0
 
 ### 모듈 2: STT 처리 워커
 
-**[REQ-STT-005] [이벤트 기반]** WHEN 새로운 전사 작업이 Celery 대기열에 등록 THEN STT 워커는 mlx-whisper의 whisper-large-v3-turbo 모델을 사용하여 한국어 강제 디코딩(`language="ko"`)으로 음성을 텍스트로 변환해야 한다.
+**[REQ-STT-005] [이벤트 기반]** WHEN 새로운 전사 작업이 Celery 대기열에 등록 THEN STT 워커는 mlx-whisper의 mlx-community/whisper-small-mlx 모델을 사용하여 한국어 강제 디코딩(`language="ko"`)으로 음성을 텍스트로 변환해야 한다.
 
 **[REQ-STT-006] [유비쿼터스]** 시스템은 항상 MLX 프레임워크를 통해 Apple Silicon 가속을 활용하여 STT 처리를 수행해야 한다. MLX 디바이스를 사용할 수 없는 경우에만 CPU로 폴백해야 한다.
 
-**[REQ-STT-007] [상태 기반]** IF whisper-large-v3-turbo 모델이 아직 메모리에 로드되지 않은 상태 THEN 워커는 첫 번째 요청 시 모델을 지연 로딩(lazy load)하고, 이후 요청에서는 이미 로드된 모델 인스턴스를 재사용해야 한다.
+**[REQ-STT-007] [상태 기반]** IF mlx-community/whisper-small-mlx 모델이 아직 메모리에 로드되지 않은 상태 THEN 워커는 첫 번째 요청 시 모델을 지연 로딩(lazy load)하고, 이후 요청에서는 이미 로드된 모델 인스턴스를 재사용해야 한다.
 
 **[REQ-STT-008] [이벤트 기반]** WHEN STT 처리가 완료 THEN 워커는 세그먼트별 텍스트, 시작 시간, 종료 시간, 신뢰도 점수를 포함한 구조화된 JSON 결과를 생성해야 한다.
 
@@ -78,7 +79,7 @@ issue_number: 0
 
 **[REQ-STT-012] [상태 기반]** IF 전사 결과가 Redis에 캐시되어 있는 상태 THEN 시스템은 데이터베이스 조회 없이 캐시에서 직접 결과를 반환해야 한다.
 
-**[REQ-STT-013] [유비쿼터스]** 시스템은 항상 Redis에 전사 결과를 24시간 TTL로 캐시해야 한다.
+**[REQ-STT-013] [유비쿼터스]** 시스템은 항상 Redis에 전사 결과를 캐시해야 한다. TTL은 `cache_ttl_seconds` 설정값(기본 604800초 = 7일)을 따른다.
 
 **[REQ-STT-014] [이벤트 기반]** WHEN 클라이언트가 DELETE /api/v1/transcriptions/{task_id}를 요청 THEN 시스템은 해당 작업의 캐시, 결과 데이터, 그리고 임시 오디오 파일을 모두 삭제해야 한다.
 
@@ -98,7 +99,7 @@ issue_number: 0
 
 **[REQ-STT-020] [이벤트 기반]** WHEN 클라이언트가 GET /api/v1/health/model을 요청 THEN 시스템은 모델 로드 상태, 메모리 사용량, 모델 버전 정보를 반환해야 한다.
 
-**[REQ-STT-021] [이벤트 기반]** WHEN FastAPI 서버가 시작(startup) THEN 시스템은 whisper-large-v3-turbo 모델을 사전 로드(warm-up)하여 첫 번째 요청의 콜드 스타트 지연을 방지해야 한다.
+**[REQ-STT-021] [이벤트 기반]** WHEN FastAPI 서버가 시작(startup) THEN 시스템은 mlx-community/whisper-small-mlx 모델을 사전 로드(warm up)하여 첫 번째 요청의 콜드 스타트 지연을 방지해야 한다.
 
 **[REQ-STT-022] [유비쿼터스]** 시스템은 항상 메모리 사용량을 모니터링하고, 24GB 한도의 80%(약 19GB) 초과 시 경고 로그를 기록해야 한다.
 
@@ -137,8 +138,9 @@ issue_number: 0
 - **Apple Silicon 필수**: MLX 프레임워크는 Apple Silicon(M1/M2/M3/M4)에서만 가속 지원. Intel Mac에서는 CPU 폴백만 가능.
 - **ffmpeg 시스템 종속성**: 오디오 형식 변환(16kHz 모노 WAV)에 필수. `brew install ffmpeg`로 설치하거나 Docker 이미지에 포함.
 - **Redis 필수 선행 실행**: Celery 메시지 브로커 및 결과 캐시로 사용. STT 워커 시작 전에 Redis 서버가 실행 중이어야 함.
-- **단일 프로세스 모델 관리**: whisper-large-v3-turbo 모델은 프로세스 수준에서 싱글톤으로 관리. 워커 프로세스당 1개의 모델 인스턴스.
+- **단일 프로세스 모델 관리**: mlx-community/whisper-small-mlx 모델은 프로세스 수준에서 싱글톤으로 관리. 워커 프로세스당 1개의 모델 인스턴스.
 - **청크 분할 경계 처리**: 30분 단위 분할 시 발화가 잘리는 문제를 5초 오버랩으로 완화.
+- **모델 변경 가능**: `WHISPER_MODEL` 환경 변수로 대체 모델 지정 가능. mlx-community 모델명을 사용하며, `MLX_DEFAULT_MODEL`이 기본값.
 
 ---
 
@@ -196,10 +198,24 @@ issue_number: 0
 
 **개발 모드**: TDD (RED-GREEN-REFACTOR)
 
-**테스트 결과**:
-- 총 테스트 수: 150건
-- 테스트 성공률: 100%
-- 코드 커버리지: 95.50%
+### v1.1.0 변경 사항 (2026-06-13)
+
+실제 코드베이스 감사 결과, 기본 STT 모델이 SPEC에 기재된 `whisper-large-v3-turbo`가 아닌 **mlx-community/whisper-small-mlx**로 구현되어 있다:
+
+| 항목 | v1.0.0 (SPEC) | v1.1.0 (실제 구현) |
+|------|---------------|-------------------|
+| 기본 모델 | `whisper-large-v3-turbo` | `mlx-community/whisper-small-mlx` |
+| 메모리 사용량 | 약 3-6GB | 약 1-2GB |
+| Redis 캐시 TTL | 24시간 | 604800초 (7일, `cache_ttl_seconds`) |
+
+**검증 소스**:
+- `backend/app/config.py:39`: `whisper_model: str = "mlx-community/whisper-small-mlx"`
+- `backend/ml/stt_engine.py:30`: `MLX_DEFAULT_MODEL = "mlx-community/whisper-small-mlx"`
+- `backend/app/api/v1/transcription/transcription.py:57`: `model: str = Form(default="mlx-community/whisper-small-mlx")`
+- `backend/app/api/v1/transcription/batch.py:50`: `model: str = Form(default="mlx-community/whisper-small-mlx")`
+- `backend/app/config.py:57`: `cache_ttl_seconds: int = 604800` (7일)
+
+> **참고**: `mlx-community/whisper-large-v3-turbo`는 모델 매핑 테이블에 존재하며(`stt_engine.py:39`), `WHISPER_MODEL` 환경 변수로 변경 가능하다. 단, 프로덕션 기본값은 `whisper-small-mlx`이다.
 
 ### 구현된 요구사항
 
@@ -225,7 +241,7 @@ issue_number: 0
 3. **MLX-Whisper 모델 선택**
    - Apple Silicon MPS 가속으로 최고 성능
    - 로컬 처리로 프라이버시 보장
-   - whisper-large-v3-turbo로 높은 정확도 (WER < 5%)
+   - mlx-community/whisper-small-mlx로 메모리 효율성 확보
 
 4. **싱글톤 모델 인스턴스 관리**
    - WhisperEngine.get_instance()로 프로세스당 1개 모델 인스턴스
@@ -242,27 +258,14 @@ issue_number: 0
    - 운영 환경에서 로그 분석 용이
    - 디버깅 및 모니터링 지원
 
-### 테스트 커버리지 상세
+### 테스트 결과
 
-| 모듈 | 테스트 수 | 커버리지 |
-|------|-----------|---------|
-| schemas | 25 | 100% |
-| stt_engine | 35 | 96% |
-| transcription_task | 40 | 98% |
-| audio_processor | 30 | 94% |
-| validators | 15 | 93% |
-| 통합 테스트 | 5 | 92% |
-| **전체** | **150** | **95.50%** |
-
-### 아키텍처 하이라이트
-
-- **계층적 구조**: app (API) → workers (Celery) → ml (모델) → pipeline (전처리)
-- **의존성 주입**: FastAPI Depends() 패턴으로 테스트 용이성
-- **비동기 처리**: async/await로 I/O 바운드 작업 최적화
-- **에러 처리**: 구조화된 Pydantic 예외 응답
+- 백엔드 전체: 3621 passed, 0 failed, coverage 100.00%
+- 커밋: 6ada5f7 (feature/SPEC-MOBILE-002)
 
 ---
 
 *SPEC ID: SPEC-STT-001*
 *생성일: 2026-03-15*
+*최종 수정: 2026-06-13*
 *상태: completed*

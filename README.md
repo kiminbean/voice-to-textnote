@@ -48,7 +48,7 @@
 - **응답**: 고유 task_id 및 상태 조회 URL
 
 #### 2. STT 처리 (mlx-whisper)
-- **모델**: whisper-large-v3-turbo (WER < 5%)
+- **모델**: mlx-community/whisper-small-mlx (기본값, `WHISPER_MODEL`로 변경 가능)
 - **언어**: 한국어 고정 또는 자동 감지
 - **처리**: Apple Silicon MPS 가속
 - **속도**: 약 0.3~0.5배 실시간
@@ -342,7 +342,7 @@ GET /api/v1/health/model
 ```json
 {
   "model_loaded": true,
-  "model_name": "whisper-large-v3-turbo",
+  "model_name": "mlx-community/whisper-small-mlx",
   "memory_usage_mb": 3200,
   "memory_limit_mb": 19200,
   "device": "mps"
@@ -354,7 +354,7 @@ GET /api/v1/health/model
 ### 테스트 실행
 
 ```bash
-# 백엔드 전체 테스트 (3387개)
+# 백엔드 전체 테스트 (3621개)
 pytest backend/
 
 # 커버리지 리포트 생성 (목표: 100%)
@@ -406,7 +406,7 @@ SUMMARY_MODEL=gpt-4o-mini
 API_KEY_SECRET=your-secret-key
 
 # Model Paths (선택사항)
-WHISPER_MODEL_PATH=/models/whisper/whisper-large-v3-turbo
+WHISPER_MODEL_PATH=/models/whisper/whisper-small-mlx
 PYANNOTE_MODEL_PATH=/models/pyannote
 ```
 
@@ -494,7 +494,7 @@ client/
 | `DATABASE_URL` | `sqlite:///voice_textnote.db` | 데이터베이스 연결 (개발: SQLite, 프로덕션: PostgreSQL) |
 | `REDIS_URL` | `redis://localhost:6379/0` | Redis 연결 URL |
 | `CELERY_BROKER_URL` | `redis://localhost:6379/0` | Celery 메시지 브로커 |
-| `WHISPER_MODEL` | `whisper-large-v3-turbo` | Whisper 모델 이름 |
+| `WHISPER_MODEL` | `mlx-community/whisper-small-mlx` | Whisper 모델 이름 |
 | `LANGUAGE` | `ko` | 전사 언어 코드 |
 | `MAX_FILE_SIZE` | `500` | 최대 파일 크기 (MB) |
 | `MAX_DURATION` | `14400` | 최대 재생 시간 (초) = 4시간 |
@@ -543,7 +543,7 @@ client/
 
 | 항목 | 개수 | 커버리지 |
 |------|------|---------|
-| 백엔드 단위/통합 | 3387개 | 100% |
+| 백엔드 단위/통합 | 3621개 | 100% |
 | Flutter 테스트 파일 | 55개 | - |
 | E2E 테스트 | 16개 | 전체 파이프라인 |
 | 총합 | 3467+개 | - |
@@ -746,34 +746,83 @@ MIT License - 자유로운 상업적 사용 가능
 
 ---
 
-**마지막 업데이트**: 2026-06-06
-**버전**: 1.1.0
-**상태**: Production Ready (25/25 SPECs 완료, 백엔드 커버리지 100%)
+**마지막 업데이트**: 2026-06-13
+**버전**: 1.2.0
+**상태**: Production Ready (57/57 SPECs 문서화 완료, 백엔드 커버리지 100%)
 
 ### 완료된 SPEC 목록
 
-✅ SPEC-STT-001: Speech-to-Text (mlx-whisper)
+**핵심 파이프라인**
+✅ SPEC-STT-001: Speech-to-Text (mlx-whisper, whisper-small-mlx)
 ✅ SPEC-DIA-001: Speaker Diarization (pyannote.audio)
 ✅ SPEC-MIN-001: Minutes Generation
-✅ SPEC-SUM-001: AI Summary & Action Items
+✅ SPEC-SUM-001: AI Summary & Action Items (OpenAI gpt-4o-mini)
+
+**클라이언트**
 ✅ SPEC-APP-001: Flutter Client (Web + macOS)
-✅ SPEC-SEC-001: API Security
-✅ SPEC-INFRA-001: Monitoring & Metrics
-✅ SPEC-ERR-001: Error Handling
-✅ SPEC-LOG-001: Audit Logging
-✅ SPEC-DEPLOY-001: Ubuntu systemd 배포
-✅ SPEC-DB-001: PostgreSQL & Alembic
-✅ SPEC-SSE-001: Real-time Streaming
-✅ SPEC-PERSIST-001: Data Persistence
-✅ SPEC-LIFECYCLE-001: App Lifecycle
-✅ SPEC-HISTORY-001: Meeting History API
-✅ SPEC-RETENTION-001: Data Retention Policy
-✅ SPEC-E2E-001: E2E Integration Tests
 ✅ SPEC-APP-002: Flutter Enhancement
-✅ CI/CD: GitHub Actions Pipeline
-✅ SPEC-TMPL-001: Meeting Templates
-✅ SPEC-SEARCH-001: Full-text Search
-✅ SPEC-SEARCH-002: Advanced Search (Filters/Sort/Autocomplete)
-✅ SPEC-EXPORT-001: PDF Export
-✅ SPEC-TEAM-001: JWT Auth + Team CRUD + Member Management + Meeting Share + Flutter Auth/Team UI
+✅ SPEC-APP-003: Flutter Polishing
+✅ SPEC-APP-004: Flutter Accessibility
 ✅ SPEC-MOBILE-001: Mobile Optimization
+✅ SPEC-MOBILE-002: Mobile STT Enhancement
+✅ SPEC-MOBILE-003: Mobile UI Polish
+✅ SPEC-UI-001: UI/UX Design System
+
+**보안 & 인증**
+✅ SPEC-SEC-001: API Security
+✅ SPEC-TEAM-001: JWT Auth + Team CRUD + RBAC
+✅ SPEC-GUEST-001: Guest Mode
+✅ SPEC-BOOKMARK-001: Bookmark CRUD (P1 신규)
+
+**인프라 & 배포**
+✅ SPEC-INFRA-001: Monitoring & Metrics
+✅ SPEC-LOG-001: Audit Logging
+✅ SPEC-DOCKER-001: Docker & Ubuntu systemd 배포
+✅ SPEC-DB-001: PostgreSQL & Alembic
+✅ SPEC-OPS-001: Operations & Maintenance
+✅ SPEC-ENV-001: Environment Configuration
+
+**데이터 & 영속성**
+✅ SPEC-PERSIST-001: Data Persistence
+✅ SPEC-SSE-001: Real-time Streaming
+✅ SPEC-HISTORY-001: Meeting History API
+✅ SPEC-HISTSYNC-001: History Sync
+✅ SPEC-RETENTION-001: Data Retention Policy
+
+**협업 & 공유**
+✅ SPEC-COLLAB-001: Real-time Collaborative Editing (WebSocket)
+✅ SPEC-SPEAKER-001: Speaker Profile Management (P1 신규)
+✅ SPEC-VERSION-001: Meeting Minutes Versioning (P1 신규)
+✅ SPEC-WEBHOOK-001: Webhook Endpoint Management (P1 신규)
+
+**분석 & 검색**
+✅ SPEC-SEARCH-001: Full-text Search
+✅ SPEC-SEARCH-002: Advanced Search
+✅ SPEC-ADVANCED-SEARCH-001: Advanced Filtered Search & History (P1 신규)
+✅ SPEC-KEYWORD-001: Keyword Search & Recommendation (P1 신규)
+✅ SPEC-STATS-001: Meeting Statistics Dashboard (P1 신규)
+✅ SPEC-ENHANCED-STATS-001: Enhanced Statistics (P1 신규)
+✅ SPEC-QUALITY-001: Meeting Quality Assessment (P1 신규)
+✅ SPEC-SENTIMENT-001: Sentiment Analysis (P1 신규)
+✅ SPEC-VOCAB-001: Custom Vocabulary Management (P1 신규)
+
+**기능 확장**
+✅ SPEC-EXPORT-001: PDF Export
+✅ SPEC-TMPL-001: Meeting Templates
+✅ SPEC-ACTION-001: Action Item Management (P1 신규)
+✅ SPEC-QA-001: Meeting Q&A (OpenAI) (P1 신규)
+✅ SPEC-CAL-001: Calendar Integration (P1 신규)
+✅ SPEC-OAUTH-001: Google/Apple OAuth (P1 신규)
+✅ SPEC-AUDIO-ENHANCE-001: Audio Preprocessing & Enhancement (P1 신규)
+✅ SPEC-TAG-001: Tag CRUD (P1 신규)
+
+**품질 & 리팩토링**
+✅ SPEC-ERR-001: Error Handling
+✅ SPEC-LIFECYCLE-001: App Lifecycle
+✅ SPEC-E2E-001: E2E Integration Tests
+✅ SPEC-BUGFIX-001: Bug Fixes
+✅ SPEC-REFACTOR-001: API Router Domain Grouping
+✅ SPEC-REFACTOR-002: Router Cleanup Completion
+✅ SPEC-DI-001: Dependency Injection Pattern
+✅ SPEC-PERF-001: Performance Optimization
+🔄 SPEC-TYPING-001: Mypy Type Error Resolution (진행 중, 219 errors)

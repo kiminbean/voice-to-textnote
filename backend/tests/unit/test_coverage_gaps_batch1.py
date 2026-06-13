@@ -1,6 +1,6 @@
 """커버리지 gap 보충 배치1: utils, workers, db, conftest"""
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -29,22 +29,22 @@ class TestValidators:
 
     def test_validate_audio_format_no_mime_ok(self):
         from backend.utils.validators import validate_audio_format
-        ok, msg = validate_audio_format("test.mp3", None)
+        ok, _msg = validate_audio_format("test.mp3", None)
         assert ok is True
 
     def test_validate_audio_format_octet_stream(self):
         from backend.utils.validators import validate_audio_format
-        ok, msg = validate_audio_format("test.wav", "application/octet-stream")
+        ok, _msg = validate_audio_format("test.wav", "application/octet-stream")
         assert ok is True
 
     def test_validate_audio_format_audio_wildcard(self):
         from backend.utils.validators import validate_audio_format
-        ok, msg = validate_audio_format("test.wav", "audio/custom")
+        ok, _msg = validate_audio_format("test.wav", "audio/custom")
         assert ok is True
 
     def test_validate_file_size_ok(self):
         from backend.utils.validators import validate_file_size
-        ok, msg = validate_file_size(1024, 500 * 1024 * 1024)
+        ok, _msg = validate_file_size(1024, 500 * 1024 * 1024)
         assert ok is True
 
     def test_validate_file_size_empty(self):
@@ -86,7 +86,7 @@ class TestValidators:
 
     def test_validate_webhook_url_loopback_ip(self):
         from backend.utils.validators import validate_webhook_url
-        with pytest.raises(ValueError, match="사설|로컬"):
+        with pytest.raises(ValueError, match=r"사설|로컬"):
             validate_webhook_url("http://127.0.0.1/webhook")
 
     def test_validate_webhook_url_with_credentials(self):
@@ -96,6 +96,7 @@ class TestValidators:
 
     def test_is_forbidden_webhook_ip_private(self):
         import ipaddress
+
         from backend.utils.validators import _is_forbidden_webhook_ip
         assert _is_forbidden_webhook_ip(ipaddress.ip_address("10.0.0.1")) is True
         assert _is_forbidden_webhook_ip(ipaddress.ip_address("172.16.0.1")) is True
@@ -103,11 +104,13 @@ class TestValidators:
 
     def test_is_forbidden_webhook_ip_loopback(self):
         import ipaddress
+
         from backend.utils.validators import _is_forbidden_webhook_ip
         assert _is_forbidden_webhook_ip(ipaddress.ip_address("127.0.0.1")) is True
 
     def test_is_forbidden_webhook_ip_public(self):
         import ipaddress
+
         from backend.utils.validators import _is_forbidden_webhook_ip
         assert _is_forbidden_webhook_ip(ipaddress.ip_address("8.8.8.8")) is False
 
@@ -169,8 +172,8 @@ class TestEngineRegistry:
     @patch("backend.workers.engine_registry._worker_whisper_engine", None)
     @patch("backend.workers.engine_registry.WhisperEngine")
     def test_get_worker_whisper_engine_creates(self, mock_whisper_cls):
-        from backend.workers.engine_registry import get_worker_whisper_engine
         import backend.workers.engine_registry as mod
+        from backend.workers.engine_registry import get_worker_whisper_engine
 
         mod._worker_whisper_engine = None
         mock_instance = MagicMock()
@@ -182,8 +185,8 @@ class TestEngineRegistry:
     @patch("backend.workers.engine_registry._worker_diarization_engine", None)
     @patch("backend.workers.engine_registry.DiarizationEngine")
     def test_get_worker_diarization_engine_creates(self, mock_dia_cls):
-        from backend.workers.engine_registry import get_worker_diarization_engine
         import backend.workers.engine_registry as mod
+        from backend.workers.engine_registry import get_worker_diarization_engine
 
         mod._worker_diarization_engine = None
         mock_instance = MagicMock()
@@ -193,8 +196,8 @@ class TestEngineRegistry:
         assert engine is mock_instance
 
     def test_get_worker_whisper_engine_cached(self):
-        from backend.workers.engine_registry import get_worker_whisper_engine
         import backend.workers.engine_registry as mod
+        from backend.workers.engine_registry import get_worker_whisper_engine
 
         mock_cached = MagicMock()
         mod._worker_whisper_engine = mock_cached
@@ -203,8 +206,8 @@ class TestEngineRegistry:
         mod._worker_whisper_engine = None  # cleanup
 
     def test_get_worker_diarization_engine_cached(self):
-        from backend.workers.engine_registry import get_worker_diarization_engine
         import backend.workers.engine_registry as mod
+        from backend.workers.engine_registry import get_worker_diarization_engine
 
         mock_cached = MagicMock()
         mod._worker_diarization_engine = mock_cached
@@ -221,8 +224,8 @@ class TestWorkerRedis:
     @patch("backend.workers.redis_client.ConnectionPool")
     @patch("backend.workers.redis_client.redis.Redis")
     def test_get_worker_redis_creates_pool(self, mock_redis_cls, mock_pool_cls):
-        from backend.workers.redis_client import get_worker_redis
         import backend.workers.redis_client as mod
+        from backend.workers.redis_client import get_worker_redis
 
         mod._pool = None
         mock_pool_instance = MagicMock()
@@ -235,8 +238,8 @@ class TestWorkerRedis:
         mock_pool_cls.from_url.assert_called_once()
 
     def test_get_worker_redis_reuses_pool(self):
-        from backend.workers.redis_client import get_worker_redis
         import backend.workers.redis_client as mod
+        from backend.workers.redis_client import get_worker_redis
 
         mock_pool = MagicMock()
         mod._pool = mock_pool
@@ -279,8 +282,8 @@ class TestSyncEngineFallback:
     @patch("backend.db.sync_engine._SessionLocal", None)
     @patch("backend.db.sync_engine.settings")
     def test_get_sync_engine_fallback_path(self, mock_settings):
-        from backend.db.sync_engine import _get_sync_engine
         import backend.db.sync_engine as mod
+        from backend.db.sync_engine import _get_sync_engine
 
         mod._initialized_engine = None
         mod._initialized_session_factory = None
@@ -301,8 +304,8 @@ class TestSyncEngineFallback:
     @patch("backend.db.sync_engine._SessionLocal", None)
     @patch("backend.db.sync_engine.settings")
     def test_get_sync_engine_async_url_fallback(self, mock_settings):
-        from backend.db.sync_engine import _get_sync_engine
         import backend.db.sync_engine as mod
+        from backend.db.sync_engine import _get_sync_engine
 
         mod._initialized_engine = None
         mod._initialized_session_factory = None
@@ -310,7 +313,7 @@ class TestSyncEngineFallback:
         mod._SessionLocal = None
         mock_settings.database_url = "sqlite+aiosqlite:///./test.db"
 
-        engine, factory = _get_sync_engine()
+        engine, _factory = _get_sync_engine()
         assert engine is not None
         # Cleanup
         mod._sync_engine = None

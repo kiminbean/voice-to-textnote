@@ -547,7 +547,7 @@ class TestFasterWhisperBackend:
             _make_fw_segment(0, 0.0, 5.6, "지금부터 회의 시작하겠습니다."),
             _make_fw_segment(1, 6.68, 15.4, "노트 준비해 주시기 바랍니다."),
         ]
-        mock_fw, mock_model = _make_mock_faster_whisper(segments=segments, language="ko")
+        mock_fw, _mock_model = _make_mock_faster_whisper(segments=segments, language="ko")
         mock_torch = MagicMock()
         mock_torch.cuda.is_available.return_value = False
 

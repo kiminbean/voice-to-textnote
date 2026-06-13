@@ -74,7 +74,7 @@ class TestBulkBookmarkOperations:
 
     def test_bulk_delete_success(self, app_client):
         """대량 삭제 성공."""
-        client, mock_session, mock_svc = app_client
+        client, _mock_session, mock_svc = app_client
 
         mock_svc.bulk_operation = AsyncMock(
             return_value={
@@ -102,7 +102,7 @@ class TestBulkBookmarkOperations:
 
     def test_bulk_update_category(self, app_client):
         """대량 카테고리 업데이트."""
-        client, mock_session, mock_svc = app_client
+        client, _mock_session, mock_svc = app_client
 
         mock_svc.bulk_operation = AsyncMock(
             return_value={
@@ -164,7 +164,7 @@ class TestBookmarkCleanup:
 
     def test_cleanup_success(self, app_client):
         """정리 성공."""
-        client, mock_session, mock_svc = app_client
+        client, _mock_session, mock_svc = app_client
 
         mock_svc.cleanup_bookmarks = AsyncMock(
             return_value={
@@ -189,7 +189,7 @@ class TestBookmarkCleanup:
 
     def test_cleanup_dry_run(self, app_client):
         """dry_run 모드 (기본값)."""
-        client, mock_session, mock_svc = app_client
+        client, _mock_session, mock_svc = app_client
 
         mock_svc.cleanup_bookmarks = AsyncMock(
             return_value={
@@ -212,7 +212,7 @@ class TestBookmarkCleanup:
 
     def test_cleanup_with_category_filter(self, app_client):
         """카테고리 필터 정리."""
-        client, mock_session, mock_svc = app_client
+        client, _mock_session, mock_svc = app_client
 
         mock_svc.cleanup_bookmarks = AsyncMock(
             return_value={
@@ -244,7 +244,7 @@ class TestBookmarkExport:
 
     def test_export_json_format(self, app_client):
         """JSON 형식 내보내기."""
-        client, mock_session, mock_svc = app_client
+        client, _mock_session, mock_svc = app_client
 
         mock_svc.export_bookmarks = AsyncMock(
             return_value={
@@ -260,7 +260,7 @@ class TestBookmarkExport:
 
     def test_export_with_task_id_filter(self, app_client):
         """task_id 필터 내보내기."""
-        client, mock_session, mock_svc = app_client
+        client, _mock_session, mock_svc = app_client
 
         mock_svc.export_bookmarks = AsyncMock(
             return_value={
@@ -276,7 +276,7 @@ class TestBookmarkExport:
 
     def test_export_csv_format(self, app_client):
         """CSV 형식 내보내기."""
-        client, mock_session, mock_svc = app_client
+        client, _mock_session, mock_svc = app_client
 
         mock_svc.export_bookmarks = AsyncMock(
             return_value={

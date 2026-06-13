@@ -128,7 +128,7 @@ issue_number: 0
 |---------|------|------|
 | SPEC-STT-001 | 간접 의존 (Upstream) | STT 결과가 DIA를 통해 Minutes에 전달 |
 | SPEC-DIA-001 | 직접 의존 (Upstream) | DiarizedSegmentResult + SpeakerInfo 활용 |
-| SPEC-API-001 | 소비 (Downstream, 예정) | 회의록 + AI 요약 통합 |
+| SPEC-HISTORY-001 | 소비 (Downstream) | 작업 이력 조회에서 회의록 결과 활용 |
 
 ---
 

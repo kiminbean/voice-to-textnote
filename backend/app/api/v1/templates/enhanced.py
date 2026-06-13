@@ -7,7 +7,7 @@ REQ-TMPL-005: GET /api/v1/templates/predefined - 미리 정의된 템플릿 조�
 
 import json
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 import redis.asyncio as aioredis
@@ -24,7 +24,7 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/templates", tags=["templates"])
 
 
-class MeetingType(str, Enum):
+class MeetingType(StrEnum):
     """회의 유형 정의"""
     GENERAL = "general"  # 일반 회의
     ONE_ON_ONE = "one_on_one"  # 1:1 미팅

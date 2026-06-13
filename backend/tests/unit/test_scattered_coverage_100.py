@@ -581,7 +581,7 @@ class TestAudioAnalysisEngine:
     def test_evaluate_quality_high_volume(self):
         from backend.ml.audio_analysis_engine import _evaluate_quality
 
-        score, issues, _ = _evaluate_quality(
+        _score, issues, _ = _evaluate_quality(
             audio=None,
             duration_seconds=60,
             sample_rate=16000,
@@ -594,7 +594,7 @@ class TestAudioAnalysisEngine:
     def test_evaluate_quality_high_silence(self):
         from backend.ml.audio_analysis_engine import _evaluate_quality
 
-        score, issues, _ = _evaluate_quality(
+        _score, issues, _ = _evaluate_quality(
             audio=None,
             duration_seconds=60,
             sample_rate=16000,

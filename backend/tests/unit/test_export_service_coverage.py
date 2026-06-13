@@ -1,9 +1,7 @@
 """export_service.py 커버리지 100% 테스트"""
 
-import asyncio
-from datetime import datetime, timezone
-from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from datetime import UTC, datetime
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -17,7 +15,7 @@ def _make_task_result(**overrides):
     tr.task_id = overrides.get("task_id", "test-task-001")
     tr.task_type = overrides.get("task_type", "minutes")
     tr.status = overrides.get("status", "completed")
-    tr.created_at = overrides.get("created_at", datetime(2026, 1, 1, 12, 0, tzinfo=timezone.utc))
+    tr.created_at = overrides.get("created_at", datetime(2026, 1, 1, 12, 0, tzinfo=UTC))
     tr.result_data = overrides.get("result_data", {})
     return tr
 
@@ -212,7 +210,7 @@ class TestExportMeetingRouting:
         tr = _make_task_result()
         fake = _fake_export_result()
         with patch.object(svc, "_create_pdf_export", return_value=fake) as mock:
-            result = await svc.export_meeting(
+            await svc.export_meeting(
                 tr, ExportFormat.pdf, include_summary=False, include_action_items=False
             )
         _, kwargs = mock.call_args
@@ -225,7 +223,7 @@ class TestExportMeetingRouting:
         tr = _make_task_result(result_data=None)
         fake = _fake_export_result()
         with patch.object(svc, "_create_pdf_export", return_value=fake) as mock:
-            result = await svc.export_meeting(tr, ExportFormat.pdf)
+            await svc.export_meeting(tr, ExportFormat.pdf)
         # result_data가 {}로 처리되었는지 확인
         call_kwargs = mock.call_args
         assert call_kwargs[1]["result_data"] == {} or call_kwargs[0][1] == {}
@@ -240,7 +238,7 @@ class TestCreatePDFExportMocked:
             "action_items": [{"title": "T", "description": "d", "assignee": "A"}],
         })
         fake = _fake_export_result()
-        with patch.object(svc, "_create_pdf_export", return_value=fake) as m:
+        with patch.object(svc, "_create_pdf_export", return_value=fake):
             result = svc._create_pdf_export(
                 task_result=tr, result_data=tr.result_data,
                 include_summary=True, include_action_items=True,

@@ -1,21 +1,17 @@
 """그룹3: audio (enhanced_preprocess, quality_assessment) + templates + analytics routes 커버리지 테스트"""
 
-import json
 import uuid
 import wave
-import numpy as np
-import struct
-import tempfile
-import os
-from datetime import datetime, timezone
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
+import numpy as np
 import pytest
 
+from backend.app.api.v1.analytics import export as analytics_export
+from backend.app.api.v1.analytics import keyword_search, vocabulary
 from backend.app.api.v1.audio import enhanced_preprocess, quality_assessment
 from backend.app.api.v1.templates import enhanced as enhanced_templates
-from backend.app.api.v1.analytics import export as analytics_export, keyword_search, vocabulary
 
 
 # ── helpers ──────────────────────────────────────────────────────────
@@ -159,8 +155,9 @@ class TestQualityAssessmentRoutes:
 
         with pytest.raises(Exception) as exc_info:
             # 직접 라우트 핸들러 로직 흉내
-            from backend.db.models import TaskResult
             from sqlalchemy import select
+
+            from backend.db.models import TaskResult
             stmt = select(TaskResult).where(TaskResult.task_id == "missing")
             result = await db.execute(stmt)
             task = result.scalar_one_or_none()
@@ -202,7 +199,6 @@ class TestEnhancedTemplates:
         mock_result.scalars.return_value = mock_scalars
         db.execute.return_value = mock_result
 
-        from backend.app.errors import not_found
         with pytest.raises(Exception):
             await enhanced_templates._get_minutes_data(redis, db, "missing-task")
 
@@ -235,7 +231,6 @@ class TestEnhancedTemplates:
         mock_result.scalars.return_value = mock_scalars
         db.execute.return_value = mock_result
 
-        from backend.app.errors import not_found
         with pytest.raises(Exception):
             await enhanced_templates._get_minutes_data(redis, db, "task-no-data")
 
@@ -323,21 +318,21 @@ class TestVocabularyService:
 
     @pytest.mark.asyncio
     async def test_create(self):
-        from backend.services.vocabulary_service import VocabularyService
         from backend.schemas.vocabulary import VocabularyCreate
+        from backend.services.vocabulary_service import VocabularyService
         svc = VocabularyService()
         session = AsyncMock()
         vocab = MagicMock()
         session.refresh.return_value = vocab
 
         payload = VocabularyCreate(name="test-vocab", words=["hello", "world"])
-        result = await svc.create(session, payload)
+        await svc.create(session, payload)
         assert session.add.called
 
     @pytest.mark.asyncio
     async def test_update(self):
-        from backend.services.vocabulary_service import VocabularyService
         from backend.schemas.vocabulary import VocabularyUpdate
+        from backend.services.vocabulary_service import VocabularyService
         svc = VocabularyService()
         session = AsyncMock()
         vocab = MagicMock()
@@ -346,7 +341,7 @@ class TestVocabularyService:
         session.refresh.return_value = vocab
 
         payload = VocabularyUpdate(name="updated", words=["new", "words"])
-        result = await svc.update(session, uuid.uuid4(), payload)
+        await svc.update(session, uuid.uuid4(), payload)
         assert session.commit.called
 
     @pytest.mark.asyncio

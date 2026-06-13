@@ -1,9 +1,8 @@
 """커버리지 gap 보충 배치3: API route handlers, conftest fixtures"""
 
 import json
-import uuid
-from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from datetime import UTC, datetime
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -28,15 +27,15 @@ class TestAdminHistoryRoutes:
     @pytest.mark.asyncio
     async def test_list_history_with_records(self):
         from backend.app.api.v1.admin.history import list_history
-        from backend.db.service import ResultService
         from backend.db.models import TaskResult
+        from backend.db.service import ResultService
         svc = ResultService()
 
         record = MagicMock(spec=TaskResult)
         record.task_id = "t1"
         record.task_type = "minutes"
         record.status = "completed"
-        record.created_at = datetime.now(timezone.utc)
+        record.created_at = datetime.now(UTC)
         record.completed_at = None
         record.error_message = None
 
@@ -52,15 +51,15 @@ class TestAdminHistoryRoutes:
     @pytest.mark.asyncio
     async def test_get_history_found(self):
         from backend.app.api.v1.admin.history import get_history
-        from backend.db.service import ResultService
         from backend.db.models import TaskResult
+        from backend.db.service import ResultService
         svc = ResultService()
 
         record = MagicMock(spec=TaskResult)
         record.task_id = "t1"
         record.task_type = "minutes"
         record.status = "completed"
-        record.created_at = datetime.now(timezone.utc)
+        record.created_at = datetime.now(UTC)
         record.completed_at = None
         record.error_message = None
         record.result_data = {"segments": []}
@@ -147,15 +146,15 @@ class TestMinutesPartialUpdateFull:
 # ═══════════════════════════════════════════════════════════════════
 class TestTemplatesResolve:
     def test_resolve_template_valid_type(self):
-        from backend.app.api.v1.templates.enhanced import _resolve_template, MeetingType
+        from backend.app.api.v1.templates.enhanced import MeetingType, _resolve_template
         for mt in MeetingType:
             result = _resolve_template(mt.value)
             assert result is not None
             break
 
     def test_resolve_template_by_template_id(self):
-        from backend.app.api.v1.templates.enhanced import _resolve_template, PREDEFINED_TEMPLATES
-        for mt, tmpl in PREDEFINED_TEMPLATES.items():
+        from backend.app.api.v1.templates.enhanced import PREDEFINED_TEMPLATES, _resolve_template
+        for _mt, tmpl in PREDEFINED_TEMPLATES.items():
             result = _resolve_template(tmpl.template_id)
             assert result is not None
             assert result.template_id == tmpl.template_id
@@ -167,7 +166,11 @@ class TestTemplatesResolve:
         assert result is None
 
     def test_apply_template_to_minutes(self):
-        from backend.app.api.v1.templates.enhanced import _apply_template_to_minutes, PREDEFINED_TEMPLATES, MeetingType
+        from backend.app.api.v1.templates.enhanced import (
+            PREDEFINED_TEMPLATES,
+            MeetingType,
+            _apply_template_to_minutes,
+        )
         template = PREDEFINED_TEMPLATES.get(MeetingType.BUSINESS) if hasattr(MeetingType, 'BUSINESS') else None
         if template is None:
             template = next(iter(PREDEFINED_TEMPLATES.values()))
@@ -177,7 +180,10 @@ class TestTemplatesResolve:
         assert result["template_info"]["template_id"] == template.template_id
 
     def test_apply_template_with_custom(self):
-        from backend.app.api.v1.templates.enhanced import _apply_template_to_minutes, PREDEFINED_TEMPLATES
+        from backend.app.api.v1.templates.enhanced import (
+            PREDEFINED_TEMPLATES,
+            _apply_template_to_minutes,
+        )
         template = next(iter(PREDEFINED_TEMPLATES.values()))
         result = _apply_template_to_minutes(
             {"meeting_title": "Test", "summary": {"text": "hello"}, "action_items": ["item1"]},
@@ -228,7 +234,7 @@ class TestKeywordServiceSearchResult:
         result = MagicMock()
         result.task_id = "t1"
         result.task_type = "minutes"
-        result.created_at = datetime.now(timezone.utc)
+        result.created_at = datetime.now(UTC)
         result.result_data = {"transcription": [{"text": "test keyword search example"}]}
         hits = svc._search_in_text(
             keywords=["test"],
@@ -239,8 +245,8 @@ class TestKeywordServiceSearchResult:
         assert len(hits) >= 1
 
     def test_sort_search_results_by_relevance(self):
-        from backend.services.keyword_service import KeywordService
         from backend.schemas.keyword import SortOption
+        from backend.services.keyword_service import KeywordService
         svc = KeywordService()
         r1 = MagicMock()
         r1.relevance_score = 0.5
@@ -344,8 +350,11 @@ class TestCollabConnectionManagerMethods:
         assert count == 0
 
     def test_get_collab_manager(self):
-        from backend.app.api.v1.collaboration.collab import get_collab_manager, CollabConnectionManager
         import backend.app.api.v1.collaboration.collab as mod
+        from backend.app.api.v1.collaboration.collab import (
+            CollabConnectionManager,
+            get_collab_manager,
+        )
         old = mod._manager
         mod._manager = None
         mgr = get_collab_manager()
@@ -353,8 +362,8 @@ class TestCollabConnectionManagerMethods:
         mod._manager = old
 
     def test_get_collab_service(self):
-        from backend.app.api.v1.collaboration.collab import get_collab_service
         import backend.app.api.v1.collaboration.collab as mod
+        from backend.app.api.v1.collaboration.collab import get_collab_service
         old = mod._service
         mod._service = None
         svc = get_collab_service()

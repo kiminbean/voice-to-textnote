@@ -86,28 +86,28 @@ class TestQualityAssessmentHelpers:
         from backend.app.api.v1.audio.quality_assessment import _extract_minutes_content
         task = MagicMock()
         task.result_data = {"segments": [{"text": "발화1"}, {"text": "발화2"}]}
-        content, title = _extract_minutes_content(task)
+        content, _title = _extract_minutes_content(task)
         assert "발화1" in content
 
     def test_extract_minutes_content_summary_text(self):
         from backend.app.api.v1.audio.quality_assessment import _extract_minutes_content
         task = MagicMock()
         task.result_data = {"summary_text": "요약입니다"}
-        content, title = _extract_minutes_content(task)
+        content, _title = _extract_minutes_content(task)
         assert "요약입니다" in content
 
     def test_extract_minutes_content_empty(self):
         from backend.app.api.v1.audio.quality_assessment import _extract_minutes_content
         task = MagicMock()
         task.result_data = {}
-        content, title = _extract_minutes_content(task)
+        content, _title = _extract_minutes_content(task)
         assert content == ""
 
     def test_extract_minutes_content_meeting_title(self):
         from backend.app.api.v1.audio.quality_assessment import _extract_minutes_content
         task = MagicMock()
         task.result_data = {"meeting_title": "프로젝트 회의", "markdown": "내용"}
-        content, title = _extract_minutes_content(task)
+        _content, title = _extract_minutes_content(task)
         assert title == "프로젝트 회의"
 
     @pytest.mark.asyncio
@@ -123,6 +123,7 @@ class TestQualityAssessmentHelpers:
 class TestEnhancedPreprocessHelpers:
     def test_calculate_audio_metrics_empty(self):
         import numpy as np
+
         from backend.app.api.v1.audio.enhanced_preprocess import _calculate_audio_metrics
         result = _calculate_audio_metrics(np.array([]), 16000)
         assert result["snr"] == 0.0
@@ -130,6 +131,7 @@ class TestEnhancedPreprocessHelpers:
 
     def test_calculate_audio_metrics_signal(self):
         import numpy as np
+
         from backend.app.api.v1.audio.enhanced_preprocess import _calculate_audio_metrics
         data = np.sin(np.linspace(0, 2 * np.pi, 16000)).astype(np.float64)
         result = _calculate_audio_metrics(data, 16000)
@@ -155,7 +157,6 @@ class TestKeywordSearchRoutes:
     @pytest.mark.asyncio
     async def test_search_keywords_route(self):
         from backend.app.api.v1.analytics.keyword_search import search_keywords
-        from backend.schemas.keyword import KeywordSearchResponse
         svc = MagicMock()
         svc.search_keywords = AsyncMock(return_value=MagicMock(
             keywords=["test"],
@@ -245,7 +246,7 @@ class TestExportRoutes:
     @pytest.mark.asyncio
     async def test_export_batch_success(self):
         from backend.app.api.v1.analytics.export import export_batch_meetings
-        from backend.schemas.export import ExportRequest, ExportFormat, ExportFile
+        from backend.schemas.export import ExportFile, ExportFormat, ExportRequest
         db = AsyncMock()
         task = MagicMock()
         task.status = "completed"
@@ -596,7 +597,7 @@ class TestSpeakerRoutes:
     @pytest.mark.asyncio
     async def test_analyze_speaker_sample(self):
         from backend.app.api.v1.collaboration.speakers import analyze_speaker_sample
-        from backend.schemas.speaker import VoiceSampleAnalysis, VoiceCharacteristics
+        from backend.schemas.speaker import VoiceCharacteristics, VoiceSampleAnalysis
         svc = MagicMock()
         voice_svc = MagicMock()
 

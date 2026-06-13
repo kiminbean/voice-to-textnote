@@ -1,17 +1,13 @@
 """keyword_service.py 커버리지 100% 테스트"""
 
-import json
-from collections import Counter
-from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from datetime import UTC, datetime
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from backend.schemas.keyword import (
-    KeywordExtractRequest,
     KeywordHit,
     KeywordItem,
-    KeywordRecommendRequest,
     KeywordResponse,
     KeywordSearchFilter,
     KeywordSearchResponse,
@@ -32,7 +28,7 @@ def _mock_task_result(task_id="t1", task_type="minutes", result_data=None, creat
     tr.task_id = task_id
     tr.task_type = task_type
     tr.result_data = result_data or {}
-    tr.created_at = created_at or datetime(2026, 1, 1, 12, 0, tzinfo=timezone.utc)
+    tr.created_at = created_at or datetime(2026, 1, 1, 12, 0, tzinfo=UTC)
     return tr
 
 
@@ -122,8 +118,8 @@ class TestSearchKeywords:
         tr = _mock_task_result(result_data={"minutes": "test content here"})
         session = _async_session([tr])
         filt = KeywordSearchFilter(
-            date_from=datetime(2026, 1, 1, tzinfo=timezone.utc),
-            date_to=datetime(2026, 12, 31, tzinfo=timezone.utc),
+            date_from=datetime(2026, 1, 1, tzinfo=UTC),
+            date_to=datetime(2026, 12, 31, tzinfo=UTC),
         )
         resp = await svc.search_keywords(session, ["xyznotfound"], filt, page=1, page_size=10, sort=SortOption.newest)
         assert isinstance(resp, KeywordSearchResponse)
@@ -160,7 +156,7 @@ class TestSearchKeywords:
         svc = _svc()
         tr = _mock_task_result(result_data={"minutes": "test content"})
         session = _async_session([tr])
-        filt = KeywordSearchFilter(date_from=datetime(2026, 1, 1, tzinfo=timezone.utc))
+        filt = KeywordSearchFilter(date_from=datetime(2026, 1, 1, tzinfo=UTC))
         resp = await svc.search_keywords(session, ["xyznotfound"], filt, page=1, page_size=10, sort=SortOption.relevance)
         assert isinstance(resp, KeywordSearchResponse)
 
@@ -169,7 +165,7 @@ class TestSearchKeywords:
         svc = _svc()
         tr = _mock_task_result(result_data={"minutes": "test content"})
         session = _async_session([tr])
-        filt = KeywordSearchFilter(date_to=datetime(2026, 12, 31, tzinfo=timezone.utc))
+        filt = KeywordSearchFilter(date_to=datetime(2026, 12, 31, tzinfo=UTC))
         resp = await svc.search_keywords(session, ["xyznotfound"], filt, page=1, page_size=10, sort=SortOption.relevance)
         assert isinstance(resp, KeywordSearchResponse)
 
@@ -245,35 +241,35 @@ class TestSortSearchResults:
 
     def test_sort_relevance(self):
         svc = _svc()
-        h1 = self._make_hit(0.5, 1, datetime(2026, 1, 1, tzinfo=timezone.utc))
-        h2 = self._make_hit(0.9, 1, datetime(2026, 1, 1, tzinfo=timezone.utc))
+        h1 = self._make_hit(0.5, 1, datetime(2026, 1, 1, tzinfo=UTC))
+        h2 = self._make_hit(0.9, 1, datetime(2026, 1, 1, tzinfo=UTC))
         result = svc._sort_search_results([h1, h2], SortOption.relevance)
         assert result[0].relevance_score == 0.9
 
     def test_sort_frequency(self):
         svc = _svc()
-        h1 = self._make_hit(0.5, 3, datetime(2026, 1, 1, tzinfo=timezone.utc))
-        h2 = self._make_hit(0.9, 1, datetime(2026, 1, 1, tzinfo=timezone.utc))
+        h1 = self._make_hit(0.5, 3, datetime(2026, 1, 1, tzinfo=UTC))
+        h2 = self._make_hit(0.9, 1, datetime(2026, 1, 1, tzinfo=UTC))
         result = svc._sort_search_results([h1, h2], SortOption.frequency)
         assert result[0].frequency == 3
 
     def test_sort_newest(self):
         svc = _svc()
-        h1 = self._make_hit(0.5, 1, datetime(2026, 1, 1, tzinfo=timezone.utc))
-        h2 = self._make_hit(0.5, 1, datetime(2026, 6, 1, tzinfo=timezone.utc))
+        h1 = self._make_hit(0.5, 1, datetime(2026, 1, 1, tzinfo=UTC))
+        h2 = self._make_hit(0.5, 1, datetime(2026, 6, 1, tzinfo=UTC))
         result = svc._sort_search_results([h1, h2], SortOption.newest)
         assert result[0].created_at.month == 6
 
     def test_sort_oldest(self):
         svc = _svc()
-        h1 = self._make_hit(0.5, 1, datetime(2026, 6, 1, tzinfo=timezone.utc))
-        h2 = self._make_hit(0.5, 1, datetime(2026, 1, 1, tzinfo=timezone.utc))
+        h1 = self._make_hit(0.5, 1, datetime(2026, 6, 1, tzinfo=UTC))
+        h2 = self._make_hit(0.5, 1, datetime(2026, 1, 1, tzinfo=UTC))
         result = svc._sort_search_results([h1, h2], SortOption.oldest)
         assert result[0].created_at.month == 1
 
     def test_sort_default(self):
         svc = _svc()
-        hits = [self._make_hit(0.5, 1, datetime(2026, 1, 1, tzinfo=timezone.utc))]
+        hits = [self._make_hit(0.5, 1, datetime(2026, 1, 1, tzinfo=UTC))]
         result = svc._sort_search_results(hits, "unknown")
         assert result == hits
 
@@ -285,7 +281,7 @@ class TestCalculateKeywordStats:
         hit = KeywordHit(
             task_id="t1", task_type="minutes", title="test keyword",
             positions=[0], context_before=[], context_after=[],
-            created_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+            created_at=datetime(2026, 1, 1, tzinfo=UTC),
             speakers=[], duration=None, relevance_score=0.8, frequency=2, has_highlights=False,
         )
         stats = svc._calculate_keyword_stats([hit], ["test"])
@@ -321,8 +317,8 @@ class TestGetKeywordStats:
         session = _async_session([tr])
         resp = await svc.get_keyword_stats(
             session,
-            start_date=datetime(2026, 1, 1, tzinfo=timezone.utc),
-            end_date=datetime(2026, 12, 31, tzinfo=timezone.utc),
+            start_date=datetime(2026, 1, 1, tzinfo=UTC),
+            end_date=datetime(2026, 12, 31, tzinfo=UTC),
             top_n=10, include_trends=True,
         )
         assert isinstance(resp, KeywordStatsResponse)

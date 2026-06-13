@@ -2,7 +2,7 @@
 
 import json
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -163,7 +163,7 @@ class TestExportServicePDF:
         svc = ExportService()
         task_result = MagicMock()
         task_result.task_id = "t1"
-        task_result.created_at = datetime.now(timezone.utc)
+        task_result.created_at = datetime.now(UTC)
         task_result.task_type = "minutes"
         task_result.result_data = {
             "transcription": [{"text": "hello", "speaker": "SPK1"}],
@@ -193,7 +193,7 @@ class TestExportServicePDF:
         svc = ExportService()
         task_result = MagicMock()
         task_result.task_id = "t2"
-        task_result.created_at = datetime.now(timezone.utc)
+        task_result.created_at = datetime.now(UTC)
         task_result.task_type = "minutes"
         task_result.result_data = {}
 
@@ -220,13 +220,13 @@ class TestExportServicePDF:
 class TestCollabServiceLWW:
     @pytest.mark.asyncio
     async def test_apply_edit_past_edit_ignored(self):
-        from backend.services.collab_service import CollabService
-        from backend.schemas.collab import EditMessage, CollabUser
         import time
+
+        from backend.schemas.collab import CollabUser, EditMessage
+        from backend.services.collab_service import CollabService
 
         svc = CollabService()
         # 기존 상태 설정
-        from unittest.mock import MagicMock
         svc._state["room1"] = {}
         svc._dirty["room1"] = {}
         from backend.services.collab_service import FieldState
@@ -246,8 +246,8 @@ class TestCollabServiceLWW:
 
     @pytest.mark.asyncio
     async def test_apply_edit_with_redis(self):
+        from backend.schemas.collab import CollabUser, EditMessage
         from backend.services.collab_service import CollabService
-        from backend.schemas.collab import EditMessage, CollabUser
 
         redis = AsyncMock()
         svc = CollabService(redis_client=redis)
@@ -319,7 +319,7 @@ class TestBookmarkServiceColor:
         payload.color = "#ff0000"
 
         with patch.object(svc, "get_by_id", return_value=bookmark):
-            result = await svc.update(session, uuid.uuid4(), uuid.uuid4(), payload)
+            await svc.update(session, uuid.uuid4(), uuid.uuid4(), payload)
 
         assert bookmark.color == "#ff0000"
         assert bookmark.note == "new note"
@@ -387,9 +387,10 @@ class TestMinutesPartialUpdateRoute:
 class TestChunkManager:
     @patch("backend.pipeline.chunk_manager.AudioSegment")
     def test_split_audio_short_file(self, mock_audio_seg):
-        from backend.pipeline.chunk_manager import split_audio
-        from pathlib import Path
         import tempfile
+        from pathlib import Path
+
+        from backend.pipeline.chunk_manager import split_audio
 
         mock_audio = MagicMock()
         mock_audio.__len__ = MagicMock(return_value=2000)

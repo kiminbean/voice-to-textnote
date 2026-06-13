@@ -323,7 +323,7 @@ class TestGetDiarizationResultAPI:
 
     def test_get_diarization_result_not_found(self, diarization_client):
         """화자 분리 작업을 찾을 수 없음 (404)"""
-        client, mock_redis = diarization_client
+        client, _mock_redis = diarization_client
         task_id = str(uuid.uuid4())
 
         # get_result_with_fallback mock - None 반환

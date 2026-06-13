@@ -11,7 +11,6 @@ import pytest
 
 from backend.app.exceptions import VoiceNoteError
 
-
 # ─── enhanced_preprocess helpers ───────────────────────────────────
 
 
@@ -45,8 +44,9 @@ class TestDownloadEnhanced:
     @pytest.mark.asyncio
     async def test_file_exists_returns_file_response(self):
         """Line 601: FileResponse when file exists"""
-        from backend.app.api.v1.audio.enhanced_preprocess import download_enhanced_audio
         from fastapi.responses import FileResponse
+
+        from backend.app.api.v1.audio.enhanced_preprocess import download_enhanced_audio
 
         eid = "cov_test_exists"
         p = Path(f"/tmp/enhanced_{eid}.wav")
@@ -234,8 +234,9 @@ class TestEnhancedEndpoint:
         """Lines 258-306: quality assessment block + FileResponse return"""
         import contextlib
 
-        from backend.app.api.v1.audio.enhanced_preprocess import enhanced_audio_endpoint
         from fastapi.responses import FileResponse
+
+        from backend.app.api.v1.audio.enhanced_preprocess import enhanced_audio_endpoint
 
         mock_file = AsyncMock(filename="test.wav")
         mock_file.read = AsyncMock(side_effect=[b"audio", b""])
@@ -344,8 +345,9 @@ class TestEnhancedEndpoint:
         """Lines 283-284: quality assessment exception -> logger.error"""
         import contextlib
 
-        from backend.app.api.v1.audio.enhanced_preprocess import enhanced_audio_endpoint
         from fastapi.responses import FileResponse
+
+        from backend.app.api.v1.audio.enhanced_preprocess import enhanced_audio_endpoint
 
         mock_file = AsyncMock(filename="test.wav")
         mock_file.read = AsyncMock(side_effect=[b"audio", b""])
@@ -449,8 +451,9 @@ class TestEnhancedEndpoint:
         """Lines 303-304: _cleanup closure called via BackgroundTask"""
         import contextlib
 
-        from backend.app.api.v1.audio.enhanced_preprocess import enhanced_audio_endpoint
         from fastapi.responses import FileResponse
+
+        from backend.app.api.v1.audio.enhanced_preprocess import enhanced_audio_endpoint
 
         mock_file = AsyncMock(filename="test.wav")
         mock_file.read = AsyncMock(side_effect=[b"audio", b""])
@@ -791,11 +794,12 @@ class TestCollabRateLimitedAndCursor:
     @pytest.mark.asyncio
     async def test_rate_limited_response(self):
         """Lines 327-331: rate_limited response sent"""
-        from backend.app.api.v1.collaboration.collab import (
-            websocket_collab,
-            CollabConnectionManager,
-        )
         from fastapi import WebSocketDisconnect
+
+        from backend.app.api.v1.collaboration.collab import (
+            CollabConnectionManager,
+            websocket_collab,
+        )
 
         ws = AsyncMock()
         ws.query_params = {"token": "valid"}
@@ -832,11 +836,12 @@ class TestCollabRateLimitedAndCursor:
     @pytest.mark.asyncio
     async def test_cursor_message_passes(self):
         """Lines 341-343: cursor message received -> pass (no-op)"""
-        from backend.app.api.v1.collaboration.collab import (
-            websocket_collab,
-            CollabConnectionManager,
-        )
         from fastapi import WebSocketDisconnect
+
+        from backend.app.api.v1.collaboration.collab import (
+            CollabConnectionManager,
+            websocket_collab,
+        )
 
         ws = AsyncMock()
         ws.query_params = {"token": "valid"}

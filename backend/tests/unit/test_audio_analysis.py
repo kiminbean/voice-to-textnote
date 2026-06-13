@@ -173,7 +173,7 @@ class TestEvaluateQuality:
         from unittest.mock import MagicMock
 
         audio = MagicMock()
-        score, issues, recommendation = _evaluate_quality(
+        _score, issues, _recommendation = _evaluate_quality(
             audio=audio,
             duration_seconds=30.0,
             sample_rate=44100,
@@ -188,7 +188,7 @@ class TestEvaluateQuality:
         from unittest.mock import MagicMock
 
         audio = MagicMock()
-        score, issues, recommendation = _evaluate_quality(
+        _score, issues, _recommendation = _evaluate_quality(
             audio=audio,
             duration_seconds=30.0,
             sample_rate=8000,
@@ -203,7 +203,7 @@ class TestEvaluateQuality:
         from unittest.mock import MagicMock
 
         audio = MagicMock()
-        score, issues, recommendation = _evaluate_quality(
+        score, issues, _recommendation = _evaluate_quality(
             audio=audio,
             duration_seconds=30.0,
             sample_rate=7000,
@@ -219,7 +219,7 @@ class TestEvaluateQuality:
         from unittest.mock import MagicMock
 
         audio = MagicMock()
-        score, issues, recommendation = _evaluate_quality(
+        _score, issues, _recommendation = _evaluate_quality(
             audio=audio,
             duration_seconds=60.0,
             sample_rate=44100,

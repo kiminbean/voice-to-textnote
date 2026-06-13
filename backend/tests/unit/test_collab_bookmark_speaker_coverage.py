@@ -1,14 +1,13 @@
 """그룹2: collaboration (collab/bookmarks/speakers) + services 커버리지 테스트"""
 
 import uuid
-from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import HTTPException
 
 from backend.schemas.bookmark import BookmarkCreate, BookmarkUpdate
-from backend.schemas.collab import CollabUser, EditMessage, FieldState
+from backend.schemas.collab import CollabUser, EditMessage
 from backend.schemas.speaker import SpeakerProfileCreate, SpeakerProfileUpdate
 from backend.services.bookmark_service import BookmarkService
 from backend.services.collab_service import CollabService
@@ -134,7 +133,6 @@ class TestBookmarkService:
 
     @pytest.mark.asyncio
     async def test_enforce_per_meeting_limit_exceeded(self):
-        from unittest.mock import patch
         svc = BookmarkService()
         session = _mock_session()
         session.execute.return_value = MagicMock(scalar_one=MagicMock(return_value=999))
@@ -146,7 +144,6 @@ class TestBookmarkService:
 
     @pytest.mark.asyncio
     async def test_enforce_per_meeting_limit_ok(self):
-        from unittest.mock import patch
         svc = BookmarkService()
         session = _mock_session()
         session.execute.return_value = MagicMock(scalar_one=MagicMock(return_value=2))
@@ -165,7 +162,6 @@ class TestBookmarkService:
         svc._validate_segment_range(1.0, 5.0)
 
     def test_validate_note_length_too_long(self):
-        from unittest.mock import patch
         svc = BookmarkService()
         with patch("backend.services.bookmark_service.settings") as mock_settings:
             mock_settings.bookmark_note_max_length = 10
@@ -178,7 +174,6 @@ class TestBookmarkService:
         svc._validate_note_length(None)
 
     def test_validate_note_length_valid(self):
-        from unittest.mock import patch
         svc = BookmarkService()
         with patch("backend.services.bookmark_service.settings") as mock_settings:
             mock_settings.bookmark_note_max_length = 100
@@ -201,7 +196,7 @@ class TestBookmarkService:
             task_id="t1", segment_start=0.0, segment_end=5.0,
             text_snippet="hello", note="note", color="#fff",
         )
-        result = await svc.create(session, uuid.uuid4(), payload)
+        await svc.create(session, uuid.uuid4(), payload)
         assert session.add.called
         assert session.commit.called
 
@@ -248,7 +243,7 @@ class TestBookmarkService:
             MagicMock(scalar_one=MagicMock(return_value=1)),
             MagicMock(scalars=MagicMock(return_value=scalars_mock)),
         ]
-        items, total = await svc.list_for_user(session, uuid.uuid4(), None, 10, 0)
+        _items, total = await svc.list_for_user(session, uuid.uuid4(), None, 10, 0)
         assert total == 1
 
     @pytest.mark.asyncio
@@ -264,7 +259,7 @@ class TestBookmarkService:
         session.execute.return_value = MagicMock(scalar_one_or_none=MagicMock(return_value=bm))
 
         payload = BookmarkUpdate(segment_start=1.0, segment_end=9.0, note="updated")
-        result = await svc.update(session, uuid.uuid4(), uid, payload)
+        await svc.update(session, uuid.uuid4(), uid, payload)
         assert session.commit.called
 
     @pytest.mark.asyncio
@@ -337,7 +332,7 @@ class TestSpeakerService:
         payload = SpeakerProfileCreate(
             speaker_label="SPK1", display_name="Alice", role="PM", note="test", task_id=None,
         )
-        result = await svc.create(session, uuid.uuid4(), payload)
+        await svc.create(session, uuid.uuid4(), payload)
         assert session.add.called
 
     @pytest.mark.asyncio
@@ -383,7 +378,7 @@ class TestSpeakerService:
             MagicMock(scalar_one=MagicMock(return_value=1)),
             MagicMock(scalars=MagicMock(return_value=scalars_mock)),
         ]
-        items, total = await svc.list_for_user(session, uuid.uuid4(), None, None, 10, 0)
+        _items, total = await svc.list_for_user(session, uuid.uuid4(), None, None, 10, 0)
         assert total == 1
 
     @pytest.mark.asyncio
@@ -396,7 +391,7 @@ class TestSpeakerService:
             MagicMock(scalar_one=MagicMock(return_value=0)),
             MagicMock(scalars=MagicMock(return_value=scalars_mock)),
         ]
-        items, total = await svc.list_for_user(session, uuid.uuid4(), "task1", "SPK1", 10, 0)
+        _items, total = await svc.list_for_user(session, uuid.uuid4(), "task1", "SPK1", 10, 0)
         assert total == 0
 
     @pytest.mark.asyncio
@@ -409,7 +404,7 @@ class TestSpeakerService:
         session.execute.return_value = MagicMock(scalar_one_or_none=MagicMock(return_value=profile))
 
         payload = SpeakerProfileUpdate(display_name="Bob", role="Dev", note="updated")
-        result = await svc.update(session, uuid.uuid4(), uid, payload)
+        await svc.update(session, uuid.uuid4(), uid, payload)
         assert session.commit.called
 
     @pytest.mark.asyncio
