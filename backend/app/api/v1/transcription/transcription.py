@@ -116,10 +116,22 @@ async def upload_transcription(
         temp_path.unlink(missing_ok=True)
         unprocessable([{"field": "file", "message": f"파일 저장 실패: {e}", "type": "write_error"}])
 
+    # REQ-SEC-040~043: 매직 바이트 검증
+    with temp_path.open("rb") as f:
+        file_header = f.read(16)
+    is_valid_sig, sig_error = validate_audio_format(filename, file.content_type, file_header)
+    if not is_valid_sig:
+        errors.append(
+            ValidationErrorDetail(
+                field="file",
+                message=sig_error,
+                type="invalid_signature",
+            )
+        )
+
     file_size = temp_path.stat().st_size
     is_valid_size, size_error = validate_file_size(file_size, settings.max_file_size_bytes)
     if not is_valid_size:
-        temp_path.unlink(missing_ok=True)
         errors.append(
             ValidationErrorDetail(
                 field="file",
@@ -129,7 +141,8 @@ async def upload_transcription(
         )
 
     if errors:
-        # REQ-STT-004: 검증 실패 시 파일 저장 안 함
+        # REQ-STT-004: 검증 실패 시 임시 파일 삭제 후 422 응답
+        temp_path.unlink(missing_ok=True)
         unprocessable([e.model_dump() for e in errors])
 
     # --- 동시 처리 제한 확인 (REQ: 최대 N개) ---

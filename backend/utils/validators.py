@@ -11,6 +11,7 @@ from urllib.parse import urlsplit
 
 from pydantic import AnyHttpUrl, TypeAdapter, ValidationError
 
+from backend.utils.file_signature import verify_file_signature
 from backend.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -34,10 +35,19 @@ ALLOWED_MIME_TYPES = {
 }
 
 
-def validate_audio_format(filename: str, content_type: str | None = None) -> tuple[bool, str]:
+def validate_audio_format(
+    filename: str,
+    content_type: str | None = None,
+    file_header: bytes | None = None,
+) -> tuple[bool, str]:
     """
-    파일 확장자 및 MIME 타입 검증
+    파일 확장자, MIME 타입, 매직 바이트 검증
     Returns: (is_valid, error_message)
+
+    Args:
+        filename: 파일명
+        content_type: 클라이언트가 보고한 MIME 타입
+        file_header: 파일의 첫 16바이트 (매직 바이트 검증용, None이면 생략)
     """
     suffix = Path(filename).suffix.lower()
     if suffix not in ALLOWED_EXTENSIONS:
@@ -49,6 +59,11 @@ def validate_audio_format(filename: str, content_type: str | None = None) -> tup
         # content_type이 명시적으로 오디오가 아닌 경우만 거부
         if not content_type.startswith("audio/") and content_type != "application/octet-stream":
             return False, f"지원하지 않는 MIME 타입입니다: {content_type}"
+
+    # REQ-SEC-040~043: 매직 바이트 검증
+    if file_header is not None:
+        if not verify_file_signature(file_header, suffix):
+            return False, "파일 시그니처(매직 바이트)가 확장자와 일치하지 않습니다."
 
     return True, ""
 

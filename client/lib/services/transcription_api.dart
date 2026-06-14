@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:voice_to_textnote/config/app_config.dart';
+import 'package:voice_to_textnote/utils/file_validator.dart';
 import 'api_client.dart';
 
 // TranscriptionApi 프로바이더
@@ -22,6 +23,11 @@ class TranscriptionApi {
     String filePath, {
     String? vocabularyId,
   }) async {
+    final validation = await validateAudioFile(filePath);
+    if (!validation.isValid) {
+      throw Exception(validation.errorMessage);
+    }
+
     final formData = FormData.fromMap({
       'file': await MultipartFile.fromFile(
         filePath,

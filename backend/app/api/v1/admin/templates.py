@@ -20,6 +20,7 @@ from backend.app.dependencies import get_redis_client
 from backend.app.errors import internal_server_error, not_found, unprocessable
 from backend.pipeline.template_parser import TemplateParser
 from backend.schemas.template import TemplateDetail, TemplateListItem, TemplateUploadResponse
+from backend.utils.file_signature import verify_file_signature
 from backend.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -45,18 +46,18 @@ def _get_file_extension(filename: str) -> str:
     return Path(filename).suffix.lstrip(".").lower()
 
 
-def _validate_file(filename: str, file_size: int) -> tuple[bool, str]:
-    """
-    파일 형식 및 크기 검증.
-
-    Returns:
-        (is_valid, error_message)
-    """
+def _validate_file(filename: str, file_size: int, file_header: bytes | None = None) -> tuple[bool, str]:
     ext = _get_file_extension(filename)
     if ext not in _SUPPORTED_FORMATS:
         return False, f"지원하지 않는 파일 형식: .{ext}. PDF 또는 DOCX만 허용됩니다."
     if file_size > _MAX_FILE_SIZE_BYTES:
         return False, f"파일 크기 초과: {file_size} bytes. 최대 10MB까지 허용됩니다."
+
+    if file_header is not None:
+        ext_with_dot = f".{ext}"
+        if not verify_file_signature(file_header, ext_with_dot):
+            return False, "파일 시그니처(매직 바이트)가 확장자와 일치하지 않습니다."
+
     return True, ""
 
 
@@ -84,7 +85,7 @@ async def upload_template(
     file_size = len(raw_content)
 
     # --- 파일 검증 (형식 + 크기) ---
-    is_valid, error_msg = _validate_file(filename, file_size)
+    is_valid, error_msg = _validate_file(filename, file_size, raw_content[:16])
     if not is_valid:
         unprocessable(error_msg)
 

@@ -708,7 +708,7 @@ MIT License - 자유로운 상업적 사용 가능
 
 **마지막 업데이트**: 2026-06-13
 **버전**: 1.2.0
-**상태**: Production Ready (28/28 SPECs 완료)
+**상태**: Production Ready (29/29 SPECs 완료)
 
 ### 완료된 SPEC 목록
 
@@ -741,3 +741,4 @@ MIT License - 자유로운 상업적 사용 가능
 ✅ SPEC-COLLAB-001: 실시간 협업 편집 (WebSocket + LWW + Presence + Flutter 클라이언트)
 ✅ SPEC-MOBILE-002: 오프라인 STT 하이브리드 파이프라인 (모델 관리 + 로컬 전사 + 재처리 큐)
 ✅ SPEC-MOBILE-005: iOS 백그라운드 녹음 안정성 고도화 (인터럽션 처리 + 백그라운드 태스크 + 라이프사이클 + 복구)
+✅ SPEC-SEC-002: 보안 강화 — 매직 바이트 검증 + iOS ATS/Android Network Security + 보안 헤더 고도화

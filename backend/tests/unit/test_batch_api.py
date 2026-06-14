@@ -126,8 +126,8 @@ class TestUploadBatch:
             mock_settings.max_duration_seconds = 4 * 3600
             mock_task.delay = MagicMock()
 
-            # 첫 번째 파일: 실패, 두 번째 파일: 성공
-            mock_validate.side_effect = [(False, "지원하지 않는 포맷"), (True, "")]
+            # 첫 번째 파일: 포맷 검증 실패(1call), 두 번째 파일: 포맷 통과 + 매직바이트 통과(2calls)
+            mock_validate.side_effect = [(False, "지원하지 않는 포맷"), (True, ""), (True, "")]
 
             resp = client.post(
                 "/api/v1/transcriptions/batch",
