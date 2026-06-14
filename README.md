@@ -78,6 +78,13 @@
 - **레이블**: positive/neutral/negative + 세부 감정 (joy/satisfaction/frustration/anger/sadness/surprise)
 - **동시성**: 최대 3개 작업 (설정 가능)
 
+#### 7. 발화 톤/운율 분석 (Speech Tone/Prosody Analysis)
+- **엔진**: opensmile eGeMAPSv02 (88차원) + librosa (F0/RMS/speaking rate)
+- **분류**: 5-class (calm/excited/authoritative/hesitant/monotone) + unknown
+- **처리**: DIA wav 세그먼트 슬라이싱 후 prosody 특징 추출
+- **출력**: 세그먼트별 tone, 화자별 tone 분포, 전체 dominant tone
+- **비활성화**: tone_model 빈 값 시 503 Service Unavailable
+
 ### API 엔드포인트
 
 #### 상태 조회
@@ -692,7 +699,7 @@ sudo systemctl start voicenote-api voicenote-worker
 
 ### Phase 5 (진행 중)
 
-- **고급 분석**: 텍스트 감정 분석 완료 (SPEC-SENTIMENT-001, OpenAI gpt-4o-mini 기반), 향후 음성 톤 분석 계획
+- **고급 분석**: 텍스트 감정 분석 완료 (SPEC-SENTIMENT-001), 음성 톤/운율 분석 완료 (SPEC-TONE-001, opensmile eGeMAPSv02 + librosa)
 - **통합**: Slack, Teams, Google Calendar 연동
 - **OAuth**: Google/Apple 소셜 로그인
 - **실시간 협업**: 공동 편집, 댓글 기능 (SPEC-COLLAB-001 완료)
@@ -715,8 +722,8 @@ MIT License - 자유로운 상업적 사용 가능
 ---
 
 **마지막 업데이트**: 2026-06-14
-**버전**: 1.3.0
-**상태**: Production Ready (30/30 SPECs 완료)
+**버전**: 1.4.0
+**상태**: Production Ready (31/31 SPECs 완료)
 
 ### 완료된 SPEC 목록
 
@@ -751,3 +758,4 @@ MIT License - 자유로운 상업적 사용 가능
 ✅ SPEC-MOBILE-005: iOS 백그라운드 녹음 안정성 고도화 (인터럽션 처리 + 백그라운드 태스크 + 라이프사이클 + 복구)
 ✅ SPEC-SEC-002: 보안 강화 — 매직 바이트 검증 + iOS ATS/Android Network Security + 보안 헤더 고도화
 ✅ SPEC-SENTIMENT-001: 텍스트 감정 분석 — OpenAI gpt-4o-mini 기반 화자별/구간별 감정 분석 + 타임라인 + Flutter 전용 탭
+✅ SPEC-TONE-001: 발화 톤/운율 분석 — opensmile eGeMAPSv02 + librosa 기반 prosody 추출, 5-class 톤 분류, Flutter tone timeline

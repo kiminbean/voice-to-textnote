@@ -1,9 +1,10 @@
 ---
 id: SPEC-TONE-001
 version: "1.0.0"
-status: draft
+status: completed
 created: 2026-06-14
 updated: 2026-06-14
+completed: 2026-06-14
 author: MoAI
 priority: P2
 issue_number: 31
@@ -197,6 +198,41 @@ opensmile은 AGPL-3.0 라이선스로, 네트워크 서비스 형태 제공 시 
 
 ---
 
+## 9. 구현 노트 (Implementation Notes)
+
+### 구현 일자
+- 2026-06-14: Run Phase 완료 (TDD RED-GREEN-REFACTOR)
+
+### 구현된 모듈
+| 모듈 | 파일 | 상태 |
+|------|------|------|
+| M1: ToneEngine 싱글톤 | `backend/ml/tone_engine.py` | ✅ 구현 완료 |
+| M2: 오디오 보존 아키텍처 | `backend/workers/tasks/diarization_task.py` | ✅ DUAL-PATH 구현 |
+| M3: Celery 태스크 | `backend/workers/tasks/tone_task.py` | ✅ 구현 완료 |
+| M4: 스키마/API | `backend/schemas/tone.py`, `backend/app/api/v1/analytics/tone.py` | ✅ 4 엔드포인트 |
+| M5: Flutter 통합 | `client/lib/services/tone_api.dart`, `client/lib/widgets/tone_timeline.dart` | ✅ 구현 완료 |
+| M6: 설정 및 의존성 | `backend/app/config.py`, `pyproject.toml` | ✅ 구현 완료 |
+
+### 계획에서의 주요 편차 (Divergence from Plan)
+1. **Warm-up 위치**: plan.md는 `lifecycle.py` 예상했으나, 실제 WhisperEngine/DiarizationEngine warm-up은 `main.py`의 `lifespan()`에 위치. 기존 패턴 준수를 위해 `main.py`에 추가.
+2. **Flutter 파일 분리**: `tone_model.dart` (Dart 모델)와 `tone_timeline.dart` (위젯)을 별도 파일로 분리. 테스트 가능성과 에러 격리를 위해 `ToneSection`을 독립 ConsumerWidget으로 구현.
+3. **통합 테스트**: `test_tone_pipeline.py` 대신 단위 테스트 3개 파일 (`test_tone_engine.py`, `test_tone_task.py`, `test_tone_api.py`)로 동등 커버리지 달성.
+4. **추가 수정 파일**: `stream.py` (SSE prefix), `_route_snapshot_baseline.json` (라우트 베이스라인), `test_core_coverage_final.py` 및 `test_diarization_task_v2.py` (mock fixture tone_model 속성 추가).
+
+### 품질 메트릭
+- 백엔드 테스트: 3106 passed, 0 failed
+- Flutter 테스트: 318 passed, 0 failed
+- 커버리지: tone_engine.py 98%, tone_task.py 100%, schemas/tone.py 100%, API 93%
+- AC-TONE-001~006: 6/6 충족
+
+### 아키텍처 결정사항 요약
+- **A1 (오디오 보존)**: DUAL-PATH 구현 — tone 활성화 시 wav 삭제 이연, 비활성화 시 기존 동작 유지 (제로 회귀)
+- **A2 (싱글톤 패턴)**: WhisperEngine/DiarizationEngine 패턴 복제, 베이스 클래스 추출 안 함
+- **A3 (5-class 분류)**: F0 std/RMS/발화밀도 휴리스틱 기반, confidence < 0.4 시 unknown 반환
+- **MemoryError at 19.2GB**: STT/DIA보다 tone 우선순위 낮음 → 메모리 부족 시 tone만 포기
+
+---
+
 *SPEC ID: SPEC-TONE-001*
 *생성일: 2026-06-14*
-*상태: draft*
+*상태: completed*
