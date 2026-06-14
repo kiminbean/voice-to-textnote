@@ -139,11 +139,16 @@ depends_on: SPEC-SEC-001
 
 ### 2026-06-14 재검증
 
-- `client/test/config/network_security_config_test.dart` 추가: AndroidManifest 참조, base cleartext 차단, localhost/Tailscale staging 예외만 허용하는 정적 회귀 테스트.
-- `cd client && flutter test test/config/network_security_config_test.dart` -> `3 passed`
+- `client/android/app/src/main/res/xml/network_security_config.xml`: Release/Profile baseline으로 `base-config cleartextTrafficPermitted="false"`만 유지하며 cleartext domain 예외를 포함하지 않는다.
+- `client/android/app/src/debug/res/xml/network_security_config.xml`: Debug overlay에서만 localhost와 Tailscale staging IP(`100.110.255.105`) cleartext 예외를 허용한다.
+- `client/test/config/network_security_config_test.dart`: AndroidManifest 참조, Release/Profile cleartext 전면 차단, Debug 전용 localhost/Tailscale 예외를 정적 회귀 테스트로 고정한다.
+- `cd client && flutter test test/config/network_security_config_test.dart` -> `4 passed`
 - `cd client && flutter test` -> `324 passed`
 - `cd client && flutter analyze` -> `No issues found!`
 - `python3 client/scripts/verify_release_readiness.py` -> Android network security config와 App Store/Firebase release wiring 포함 `0 errors`
+- `cd client && flutter build apk --release` -> `✓ Built build/app/outputs/flutter-apk/app-release.apk`
+- `cd client && flutter build apk --debug` -> `✓ Built build/app/outputs/flutter-apk/app-debug.apk`
+- `python3 client/scripts/verify_release_readiness.py --strict` -> 외부 release secrets/physical devices 누락 시 `10 errors`로 실패하여 Firebase/APNs/App Store/실기기 E2E를 가짜로 통과시키지 않는다.
 - Android 에뮬레이터/실기기에서 실제 네트워크 차단/허용을 관측하는 AC-M02/AC-M03은 장비 기반 수동 검증으로 유지한다.
 
 ---
@@ -157,8 +162,8 @@ depends_on: SPEC-SEC-001
 - 단일 Info.plist + 환경 변수 기반 접근 (xcconfig 분리 대신 동적 예외 도메인 사용)
 
 ### 모듈 2: Android Network Security (REQ-SEC-030~032)
-- `network_security_config.xml` 신규 생성: `base-config cleartextTrafficPermitted="false"`
-- localhost + 100.110.255.105만 `domain-config` 예외
+- `src/main/res/xml/network_security_config.xml`: Release/Profile 공통 baseline. `base-config cleartextTrafficPermitted="false"`이며 cleartext `domain-config` 예외 없음.
+- `src/debug/res/xml/network_security_config.xml`: Debug variant 전용 overlay. localhost + 100.110.255.105만 `domain-config cleartextTrafficPermitted="true"` 예외.
 - AndroidManifest.xml에 `networkSecurityConfig` 참조 추가
 
 ### 모듈 3: 매직 바이트 검증 (REQ-SEC-040~043)

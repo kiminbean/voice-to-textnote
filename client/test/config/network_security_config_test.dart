@@ -14,7 +14,7 @@ void main() {
       );
     });
 
-    test('cleartext traffic is denied by default', () {
+    test('release/profile cleartext traffic is denied by default', () {
       final config = File('android/app/src/main/res/xml/network_security_config.xml');
 
       expect(config.existsSync(), isTrue);
@@ -24,8 +24,17 @@ void main() {
       );
     });
 
-    test('cleartext exceptions are limited to local and staging hosts', () {
+    test('release/profile config has no cleartext domain exceptions', () {
       final config = File('android/app/src/main/res/xml/network_security_config.xml');
+      final content = config.readAsStringSync();
+      final domainTags = RegExp(r'<domain\b[^>]*>.*?</domain>').allMatches(content);
+
+      expect(content, isNot(contains('<domain-config cleartextTrafficPermitted="true">')));
+      expect(domainTags, isEmpty);
+    });
+
+    test('debug cleartext exceptions are limited to local and staging hosts', () {
+      final config = File('android/app/src/debug/res/xml/network_security_config.xml');
       final content = config.readAsStringSync();
       final cleartextBlock = RegExp(
         r'<domain-config cleartextTrafficPermitted="true">[\s\S]*?</domain-config>',

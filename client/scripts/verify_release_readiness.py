@@ -180,10 +180,12 @@ def check_android_project(root: Path, reporter: Reporter) -> None:
     gradle_path = root / "client/android/app/build.gradle"
     manifest_path = root / "client/android/app/src/main/AndroidManifest.xml"
     network_path = root / "client/android/app/src/main/res/xml/network_security_config.xml"
+    debug_network_path = root / "client/android/app/src/debug/res/xml/network_security_config.xml"
     for path, label in [
         (gradle_path, "Android app Gradle file"),
         (manifest_path, "Android manifest"),
-        (network_path, "Android network security config"),
+        (network_path, "Android release/profile network security config"),
+        (debug_network_path, "Android debug network security config"),
     ]:
         if not require_file(reporter, path, label):
             return
@@ -199,11 +201,32 @@ def check_android_project(root: Path, reporter: Reporter) -> None:
     else:
         reporter.fail("Android manifest does not reference network security config")
 
-    network = read_text(network_path)
-    if '<base-config cleartextTrafficPermitted="false">' in network:
-        reporter.ok("Android cleartext traffic denied by default")
+    release_network = read_text(network_path)
+    if '<base-config cleartextTrafficPermitted="false">' in release_network:
+        reporter.ok("Android release/profile cleartext traffic denied by default")
     else:
-        reporter.fail("Android base cleartext denial missing")
+        reporter.fail("Android release/profile base cleartext denial missing")
+    if (
+        '<domain-config cleartextTrafficPermitted="true">' not in release_network
+        and "<domain " not in release_network
+    ):
+        reporter.ok("Android release/profile config has no cleartext domain exceptions")
+    else:
+        reporter.fail("Android release/profile config must not allow cleartext domain exceptions")
+
+    debug_network = read_text(debug_network_path)
+    if '<base-config cleartextTrafficPermitted="false">' in debug_network:
+        reporter.ok("Android debug cleartext traffic denied by default outside exceptions")
+    else:
+        reporter.fail("Android debug base cleartext denial missing")
+    debug_cleartext_hosts = set(
+        re.findall(r"<domain\b[^>]*>([^<]+)</domain>", debug_network)
+    )
+    expected_debug_hosts = {"localhost", "100.110.255.105"}
+    if debug_cleartext_hosts == expected_debug_hosts:
+        reporter.ok("Android debug cleartext exceptions are limited to local/staging hosts")
+    else:
+        reporter.fail("Android debug cleartext exceptions missing local/staging hosts")
 
 
 def check_backend_push(root: Path, reporter: Reporter) -> None:

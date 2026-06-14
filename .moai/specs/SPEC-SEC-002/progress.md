@@ -15,11 +15,17 @@
 - Flutter: 301 passed
 - ruff check: All passed
 - dart analyze: No issues found
+- 2026-06-14 Android release/profile cleartext split:
+  - `cd client && flutter test test/config/network_security_config_test.dart` -> `4 passed`
+  - `cd client && flutter build apk --release` -> `✓ Built build/app/outputs/flutter-apk/app-release.apk`
+  - `cd client && flutter build apk --debug` -> `✓ Built build/app/outputs/flutter-apk/app-debug.apk`
+  - `python3 client/scripts/verify_release_readiness.py` -> `0 errors, 2 warnings`
+  - `python3 client/scripts/verify_release_readiness.py --strict` -> expected failure without Firebase/APNs/App Store Connect secrets and physical device IDs
 
 ### AC Coverage
 
 - AC-001: Info.plist NSAllowsArbitraryLoads=false + NSExceptionDomains — PASS
-- AC-002: network_security_config.xml cleartext 기본 차단 + 예외 도메인 — PASS
+- AC-002: Android `src/main` Release/Profile cleartext 전면 차단 + `src/debug` localhost/Tailscale 전용 예외 — PASS
 - AC-003: 매직 바이트 불일치 시 422 반환 (file_signature.py + validators.py) — PASS
 - AC-004: 프로덕션 환경 HSTS 헤더 (settings.environment 기반) — PASS
 - AC-005: 클라이언트 매직 바이트 + 확장자 + 크기 사전 검증 — PASS

@@ -111,6 +111,13 @@ This path has now been executed locally.
   `cd client && flutter test` -> `324 passed`
 - Android network security static regression was added:
   `client/test/config/network_security_config_test.dart` -> AndroidManifest networkSecurityConfig reference, default cleartext denial, and localhost/Tailscale-only cleartext exceptions.
+- Android network security was split by variant:
+  `client/android/app/src/main/res/xml/network_security_config.xml` is now the Release/Profile baseline with no cleartext domain exceptions.
+  `client/android/app/src/debug/res/xml/network_security_config.xml` contains the only localhost/Tailscale cleartext exceptions.
+- Android release/profile split verification:
+  `cd client && flutter test test/config/network_security_config_test.dart` -> `4 passed`;
+  `cd client && flutter build apk --release` -> `✓ Built build/app/outputs/flutter-apk/app-release.apk`;
+  `cd client && flutter build apk --debug` -> `✓ Built build/app/outputs/flutter-apk/app-debug.apk`.
 - Release readiness preflight was added:
   `client/scripts/verify_release_readiness.py` -> default mode validates repo-local Firebase config, iOS APNs entitlement, App Store metadata, backend Push wiring, Android network policy, and E2E docs.
   `--strict` requires `FIREBASE_CREDENTIALS_PATH`, APNs key metadata, App Store Connect API key metadata, Android/iOS physical device IDs, and a Firebase test device token.
