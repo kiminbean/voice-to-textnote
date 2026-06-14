@@ -58,6 +58,26 @@ def write_evidence(tmp_path: Path, evidence: dict[str, object]) -> Path:
     return evidence_path
 
 
+def write_tone_policy_files(root: Path, *, tone_model_line: str = 'tone_model: str = ""') -> None:
+    (root / "backend/app").mkdir(parents=True)
+    (root / "backend/app/config.py").write_text(tone_model_line, encoding="utf-8")
+    (root / "pyproject.toml").write_text(
+        "\n".join(
+            [
+                "# opensmile은 AGPL-3.0",
+                "# 로컬 전용 처리 환경에서만 사용",
+                "# 네트워크 서비스 형태 외부 제공 금지",
+                '"opensmile>=2.6.0",',
+            ]
+        ),
+        encoding="utf-8",
+    )
+    (root / "README.md").write_text(
+        "로컬 전용 처리 opensmile AGPL-3.0 네트워크 서비스 SaaS",
+        encoding="utf-8",
+    )
+
+
 def test_release_e2e_evidence_accepts_complete_manual_proof(tmp_path, monkeypatch):
     module = load_release_readiness_module()
     evidence_path = write_evidence(tmp_path, make_evidence(tmp_path, module))
@@ -107,3 +127,34 @@ def test_release_e2e_example_lists_every_required_scenario():
     scenarios = example["scenarios"]
 
     assert set(scenarios) == set(module.REQUIRED_E2E_SCENARIOS)
+
+
+def test_tone_release_policy_accepts_current_repo_policy():
+    module = load_release_readiness_module()
+    root = Path(__file__).resolve().parents[2]
+
+    reporter = module.Reporter()
+    module.check_tone_release_policy(root, reporter)
+
+    assert reporter.errors == []
+
+
+def test_tone_release_policy_rejects_enabled_default(tmp_path):
+    module = load_release_readiness_module()
+    write_tone_policy_files(tmp_path, tone_model_line='tone_model: str = "egemaps-v2"')
+
+    reporter = module.Reporter()
+    module.check_tone_release_policy(tmp_path, reporter)
+
+    assert any("default to disabled" in error for error in reporter.errors)
+
+
+def test_tone_release_policy_rejects_missing_agpl_readme_warning(tmp_path):
+    module = load_release_readiness_module()
+    write_tone_policy_files(tmp_path)
+    (tmp_path / "README.md").write_text("MIT License", encoding="utf-8")
+
+    reporter = module.Reporter()
+    module.check_tone_release_policy(tmp_path, reporter)
+
+    assert any("README documents opensmile AGPL" in error for error in reporter.errors)

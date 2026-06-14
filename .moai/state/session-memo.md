@@ -154,7 +154,7 @@ This path has now been executed locally.
 - SPEC-TONE-001 release policy was hardened on 2026-06-15:
   `client/scripts/verify_release_readiness.py` now checks `backend/app/config.py` keeps `tone_model: str = ""`, `pyproject.toml` documents opensmile AGPL local-only constraints, and README documents the local-only/SaaS review policy.
   README license wording now distinguishes project MIT code from the AGPL-3.0 opensmile dependency constraint.
-  `python3 client/scripts/verify_release_readiness.py` -> `release_readiness: 0 errors, 2 warnings`; tone focused backend tests -> `49 passed, 6 warnings`.
+  `python3 client/scripts/verify_release_readiness.py` -> `release_readiness: 0 errors, 2 warnings`; tone focused backend tests -> `49 passed, 6 warnings`; release readiness policy regression tests -> `7 passed, 5 warnings`.
 - Strict release E2E evidence was hardened on 2026-06-15:
   `client/scripts/verify_release_readiness.py --strict` now requires `RELEASE_E2E_EVIDENCE_PATH` in addition to release secrets and connected devices.
   The evidence JSON must match Android/iOS device IDs from strict env, point to existing Android/iOS artifacts, and mark Push, deeplink, background recording, HTTP policy, foreground service, and PDF share scenarios as `pass: true` with evidence notes.
