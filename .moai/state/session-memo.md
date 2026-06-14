@@ -111,6 +111,9 @@ This path has now been executed locally.
   `cd client && flutter test` -> `324 passed`
 - Android network security static regression was added:
   `client/test/config/network_security_config_test.dart` -> AndroidManifest networkSecurityConfig reference, default cleartext denial, and localhost/Tailscale-only cleartext exceptions.
+- Release readiness preflight was added:
+  `client/scripts/verify_release_readiness.py` -> default mode validates repo-local Firebase config, iOS APNs entitlement, App Store metadata, backend Push wiring, Android network policy, and E2E docs.
+  `--strict` requires `FIREBASE_CREDENTIALS_PATH`, APNs key metadata, App Store Connect API key metadata, Android/iOS physical device IDs, and a Firebase test device token.
 
 ### Durable Fixes
 

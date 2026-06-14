@@ -15,6 +15,8 @@
 - [ ] 네이티브 빌드 게이트 통과: `cd client && ./scripts/verify_mobile.sh --native`
 - [ ] Android APK 산출물 확인: `client/build/app/outputs/flutter-apk/app-debug.apk`
 - [ ] iOS no-codesign 산출물 확인: `client/build/ios/iphoneos/Runner.app`
+- [ ] Release readiness 기본 사전검사 통과: `python3 client/scripts/verify_release_readiness.py`
+- [ ] Strict release readiness 통과(서비스 계정/APNs/App Store Connect/실기기 secret 포함): `python3 client/scripts/verify_release_readiness.py --strict`
 
 ### 네이티브 빌드 기준선
 
@@ -25,6 +27,19 @@
 | Flutter Android config | `flutter config --android-sdk /Users/ibkim/Library/Android/sdk` |
 | iOS CocoaPods | `pod install`이 `Pod installation complete!`로 종료 |
 | iOS Profile config | `client/ios/Flutter/Profile.xcconfig`가 `Pods-Runner.profile.xcconfig`를 include |
+
+### Strict release readiness 필수 입력
+
+| 환경 변수 | 목적 |
+|-----------|------|
+| `FIREBASE_CREDENTIALS_PATH` | Backend Firebase Admin SDK 서비스 계정 JSON |
+| `APNS_AUTH_KEY_PATH` | Firebase Console에 업로드한 APNs `.p8` 키 파일 |
+| `APNS_KEY_ID` / `APNS_TEAM_ID` | Apple Developer APNs 키 식별자 |
+| `APP_STORE_CONNECT_API_KEY_PATH` | App Store Connect API `.p8` 키 파일 |
+| `APP_STORE_CONNECT_KEY_ID` / `APP_STORE_CONNECT_ISSUER_ID` | App Store Connect API 식별자 |
+| `ANDROID_DEVICE_SERIAL` | `adb devices`에 표시되는 Android 실기기 serial |
+| `IOS_DEVICE_UDID` | Xcode/idevice_id에 표시되는 iOS 실기기 UDID |
+| `FIREBASE_TEST_DEVICE_TOKEN` | 앱이 서버에 등록한 테스트용 FCM token |
 
 > 참고: Kotlin Gradle Plugin의 Built-in Kotlin 마이그레이션 경고는 현재 빌드 실패가 아니라 미래 호환성 경고다. 경고가 오류로 승격되면 plugin 버전 업그레이드 또는 Flutter Built-in Kotlin 마이그레이션을 별도 작업으로 처리한다.
 

@@ -143,6 +143,7 @@ depends_on: SPEC-SEC-001
 - `cd client && flutter test test/config/network_security_config_test.dart` -> `3 passed`
 - `cd client && flutter test` -> `324 passed`
 - `cd client && flutter analyze` -> `No issues found!`
+- `python3 client/scripts/verify_release_readiness.py` -> Android network security config와 App Store/Firebase release wiring 포함 `0 errors`
 - Android 에뮬레이터/실기기에서 실제 네트워크 차단/허용을 관측하는 AC-M02/AC-M03은 장비 기반 수동 검증으로 유지한다.
 
 ---

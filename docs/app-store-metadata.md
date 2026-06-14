@@ -215,6 +215,8 @@ meeting,recording,transcription,AI summary,STT,conference,convert,speaker,collab
 - [ ] Provisioning Profile (App Store)
 - [ ] TestFlight 베타 테스트 (권장)
 - [ ] 앱 전송 (Transporter 또는 Xcode)
+- [ ] Strict release readiness 통과:
+  `python3 client/scripts/verify_release_readiness.py --strict`
 
 ### Post-Submission
 - [ ] Apple 리뷰 대기 (1-3일)

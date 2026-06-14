@@ -196,6 +196,7 @@ Then 로딩 인디케이터가 사라지고
 - Backend type check: `venv/bin/python -m mypy backend` -> `Success: no issues found in 394 source files`
 - Flutter export client tests are included in `cd client && flutter test` -> `324 passed`
 - Flutter analyze: `cd client && flutter analyze` -> `No issues found!`
+- Release readiness preflight: `python3 client/scripts/verify_release_readiness.py` -> `0 errors`; strict 실기기 공유 UX 검증은 실제 Android/iOS device inputs가 필요하다.
 - 실기기 공유 시트 UX는 시뮬레이터/자동화로 완전 증명할 수 없으므로 수동 E2E 체크리스트에 유지한다.
 
 ### 검증 명령어
