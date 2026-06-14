@@ -3,7 +3,7 @@ id: SPEC-MOBILE-002
 version: "1.0.0"
 status: completed
 created: "2026-06-13"
-updated: "2026-06-14"
+updated: "2026-06-15"
 author: Sisyphus
 priority: medium
 issue_number: 20
@@ -26,6 +26,7 @@ depends_on: SPEC-MOBILE-001
 | 1.0.7 | 2026-06-14 | Android Gradle wrapper와 Flutter Gradle includeBuild 복원, Android CI SDK setup 추가, 로컬 검증 스크립트 native 옵션 분리, Flutter 3.44 권장 Gradle 8.14/AGP 8.11.1/Kotlin 2.2.20 고정 | Codex |
 | 1.0.8 | 2026-06-14 | CocoaPods trunk 접근 재검증, Profile xcconfig Pods 연동, iOS Swift MethodChannel 컴파일 오류 수정, no-codesign iOS build 통과 | Codex |
 | 1.0.9 | 2026-06-14 | 로컬 Android SDK 설치, compileSdk 36 전환, CI Android SDK 36/build-tools 설치 경로 반영, Android core library desugaring 활성화, Java/Kotlin JVM target 17 정합화, Android notification icon 리소스 정합화 | Codex |
+| 1.0.10 | 2026-06-15 | release readiness에 `whisper_ggml_plus` FFI adapter/provider/Pod lock/smoke runner 게이트 추가 | Codex |
 
 ## 1. 환경 (Environment)
 
@@ -242,6 +243,17 @@ whisper_ggml_plus: ^1.5.2
 - `flutter doctor -v` → Android toolchain 인식: `Android SDK version 36.0.0`, `All Android licenses accepted.`
 - `flutter build apk --debug` → `✓ Built build/app/outputs/flutter-apk/app-debug.apk`
 - `flutter test test/services/local_stt_service_test.dart`는 이 sandbox에서 Flutter tester가 `127.0.0.1:0` server socket을 생성하지 못해 로딩 전 실패한다: `Failed to create server socket (OS Error: Operation not permitted, errno = 1)`. 동일 서비스 계약은 위 smoke runner로 검증했다.
+
+### 2026-06-15 릴리스 readiness 보강
+
+- `client/scripts/verify_release_readiness.py`는 `client/pubspec.yaml`과 `client/pubspec.lock`의 `whisper_ggml_plus 1.5.2` 고정을 확인한다.
+- `local_stt_runtime_whisper.dart`가 `whisper_ggml_plus` FFI package를 import하고 `WhisperGgmlLocalSttRuntime`, `getVersion()`, `Whisper.transcribe()`, `TranscribeRequest`, `WhisperModel.base`, `WhisperVadMode.auto`를 유지하는지 확인한다.
+- `local_stt_service.dart`가 모델 준비 상태와 FFI runtime availability를 둘 다 gate하고 한국어(`language: 'ko'`) 전사를 요청하는지 확인한다.
+- `local_stt_provider.dart`가 `modelManagerProvider`와 `WhisperGgmlLocalSttRuntime`을 실제 앱 provider에 주입하는지 확인한다.
+- `client/ios/Podfile.lock`과 `client/macos/Podfile.lock`의 `whisper_ggml_plus` native plugin symlink를 확인해 iOS/macOS native packaging 회귀를 릴리스 전에 차단한다.
+- `client/tool/local_stt_smoke.dart`의 `local_stt_smoke: PASS` sentinel을 확인해 fake runtime 기반 서비스 계약 smoke runner가 유지되는지 확인한다.
+- `python3 client/scripts/verify_release_readiness.py` → `release_readiness: 0 errors, 2 warnings`
+- `cd client && dart run tool/local_stt_smoke.dart` → `local_stt_smoke: PASS`
 
 ## 8. 기술 제약사항
 

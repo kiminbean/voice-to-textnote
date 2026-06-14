@@ -144,6 +144,9 @@ This path has now been executed locally.
 - SPEC-MOBILE-004 device token migration execution was hardened on 2026-06-15:
   `backend/tests/test_device_token_migration.py` now runs `python -m alembic upgrade head` against a temporary SQLite database and asserts `device_tokens.device_id`, `ix_device_tokens_device_id`, `ix_device_tokens_user_device_id`, and `alembic_version=003_add_device_id_to_device_tokens`.
   `venv/bin/python -m pytest -o addopts="" backend/tests/test_device_token_migration.py -q` -> `6 passed, 5 warnings`.
+- SPEC-MOBILE-002 local STT release readiness was hardened on 2026-06-15:
+  `client/scripts/verify_release_readiness.py` now checks the `whisper_ggml_plus 1.5.2` pubspec/lock contract, `WhisperGgmlLocalSttRuntime` FFI adapter, runtime availability gate, provider injection, iOS/macOS Pod locks, and `local_stt_smoke: PASS` sentinel.
+  This closes the stale "MethodChannel contract only" evidence gap for release preflight; physical offline transcription accuracy still depends on downloaded whisper-base model and real Android/iOS device runtime.
 
 ### Durable Fixes
 

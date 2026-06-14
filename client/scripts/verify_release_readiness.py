@@ -166,6 +166,114 @@ def check_flutter_options(root: Path, reporter: Reporter) -> None:
             reporter.fail(f"FlutterFire options missing {snippet}")
 
 
+def require_snippets(
+    reporter: Reporter,
+    content: str,
+    snippets: list[str],
+    label: str,
+) -> bool:
+    missing = [snippet for snippet in snippets if snippet not in content]
+    if not missing:
+        reporter.ok(label)
+        return True
+    reporter.fail(f"{label} missing: " + ", ".join(missing))
+    return False
+
+
+def check_local_stt(root: Path, reporter: Reporter) -> None:
+    pubspec_path = root / "client/pubspec.yaml"
+    lock_path = root / "client/pubspec.lock"
+    runtime_path = root / "client/lib/services/local_stt_runtime_whisper.dart"
+    service_path = root / "client/lib/services/local_stt_service.dart"
+    provider_path = root / "client/lib/services/local_stt_provider.dart"
+    smoke_path = root / "client/tool/local_stt_smoke.dart"
+    ios_pod_lock_path = root / "client/ios/Podfile.lock"
+    macos_pod_lock_path = root / "client/macos/Podfile.lock"
+    for path, label in [
+        (pubspec_path, "Flutter pubspec"),
+        (lock_path, "Flutter pubspec lock"),
+        (runtime_path, "Whisper runtime adapter"),
+        (service_path, "Local STT service"),
+        (provider_path, "Local STT provider"),
+        (smoke_path, "Local STT smoke runner"),
+        (ios_pod_lock_path, "iOS Podfile.lock"),
+        (macos_pod_lock_path, "macOS Podfile.lock"),
+    ]:
+        if not require_file(reporter, path, label):
+            return
+
+    pubspec = read_text(pubspec_path)
+    lock = read_text(lock_path)
+    runtime = read_text(runtime_path)
+    service = read_text(service_path)
+    provider = read_text(provider_path)
+    smoke = read_text(smoke_path)
+    ios_pod_lock = read_text(ios_pod_lock_path)
+    macos_pod_lock = read_text(macos_pod_lock_path)
+
+    require_snippets(
+        reporter,
+        pubspec,
+        ["whisper_ggml_plus: ^1.5.2"],
+        "Flutter pubspec pins whisper_ggml_plus dependency",
+    )
+    require_snippets(
+        reporter,
+        lock,
+        ["name: whisper_ggml_plus", 'version: "1.5.2"'],
+        "Flutter pubspec.lock resolves whisper_ggml_plus 1.5.2",
+    )
+    require_snippets(
+        reporter,
+        runtime,
+        [
+            "package:whisper_ggml_plus/whisper_ggml_plus.dart",
+            "class WhisperGgmlLocalSttRuntime implements LocalSttRuntime",
+            "getVersion()",
+            ".transcribe(",
+            "TranscribeRequest(",
+            "WhisperModel.base",
+            "WhisperVadMode.auto",
+        ],
+        "Local STT uses whisper_ggml_plus FFI runtime adapter",
+    )
+    require_snippets(
+        reporter,
+        service,
+        [
+            "abstract interface class LocalSttRuntime",
+            "Future<bool> isRuntimeAvailable()",
+            "throw StateError('오프라인 STT 런타임이 준비되지 않았습니다",
+            "language: 'ko'",
+        ],
+        "Local STT service gates model readiness and FFI runtime availability",
+    )
+    require_snippets(
+        reporter,
+        provider,
+        ["modelManagerProvider", "WhisperGgmlLocalSttRuntime"],
+        "Local STT provider injects model manager and whisper runtime",
+    )
+    require_snippets(
+        reporter,
+        smoke,
+        ["local_stt_smoke: PASS"],
+        "Local STT smoke runner has a deterministic pass sentinel",
+    )
+    require_snippets(
+        reporter,
+        ios_pod_lock,
+        ["whisper_ggml_plus", ".symlinks/plugins/whisper_ggml_plus/ios"],
+        "iOS Pod lock includes whisper_ggml_plus native plugin",
+    )
+    require_snippets(
+        reporter,
+        macos_pod_lock,
+        ["whisper_ggml_plus", ".symlinks/plugins/whisper_ggml_plus/macos"],
+        "macOS Pod lock includes whisper_ggml_plus native plugin",
+    )
+
+
 def check_ios_project(root: Path, reporter: Reporter) -> None:
     info_path = root / "client/ios/Runner/Info.plist"
     entitlements_path = root / "client/ios/Runner/Runner.entitlements"
@@ -617,6 +725,7 @@ def main() -> int:
     check_android_firebase(root, reporter)
     check_ios_firebase(root, reporter)
     check_flutter_options(root, reporter)
+    check_local_stt(root, reporter)
     check_ios_project(root, reporter)
     check_android_project(root, reporter)
     check_backend_push(root, reporter)
