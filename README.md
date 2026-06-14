@@ -65,10 +65,18 @@
 - **메타데이터**: 화자별 발화 시간, 횟수, 비율
 
 #### 5. AI 요약 생성
-- **모델**: Claude 3.5 Sonnet
+- **모델**: OpenAI `gpt-4o-mini`
 - **추출**: 핵심 결정사항, 액션 아이템
 - **포맷**: 구조화된 JSON
 - **폴백**: API 실패 시 원문 텍스트로 자동 대체
+
+#### 6. 감정 분석 (Sentiment Analysis)
+- **모델**: OpenAI `gpt-4o-mini`
+- **입력**: 회의록 세그먼트 (minutes 결과)
+- **처리**: 구간별/화자별 감정 분석, 감정 타임라인 추출
+- **출력**: 전체 감정 분포, 화자별 감정 통계, 감정 변화 타임라인
+- **레이블**: positive/neutral/negative + 세부 감정 (joy/satisfaction/frustration/anger/sadness/surprise)
+- **동시성**: 최대 3개 작업 (설정 가능)
 
 ### API 엔드포인트
 
@@ -140,7 +148,7 @@ cd voice-to-textnote
 
 # 환경 변수 설정
 cp .env.example .env.local
-# .env.local 파일 편집 (CLAUDE_API_KEY 등 설정)
+# .env.local 파일 편집 (OPENAI_API_KEY 등 설정)
 ```
 
 #### 2. Python 환경 설정
@@ -373,8 +381,8 @@ REDIS_URL=redis://localhost:6379/0
 CELERY_BROKER_URL=redis://localhost:6379/0
 CELERY_RESULT_BACKEND=redis://localhost:6379/1
 
-# Claude API
-CLAUDE_API_KEY=sk-...
+# OpenAI API
+OPENAI_API_KEY=sk-...
 
 # API Security
 API_KEY_SECRET=your-secret-key
@@ -462,7 +470,7 @@ backend/
 | `CHUNK_DURATION` | `1800` | 청크 크기 (초) = 30분 |
 | `LOG_LEVEL` | `INFO` | 로그 레벨 (DEBUG, INFO, WARNING, ERROR) |
 | `API_KEY_SECRET` | (필수) | API Key 암호화 시크릿 |
-| `CLAUDE_API_KEY` | (필수) | Anthropic Claude API 키 |
+| `OPENAI_API_KEY` | (필수) | OpenAI API 키 (gpt-4o-mini 모델 - 요약/감정분석) |
 | `RATE_LIMIT` | `60/minute` | IP당 분당 요청 제한 |
 | `DATA_RETENTION_DAYS` | `30` | DB 데이터 보유 기간 |
 | `TEMP_FILE_RETENTION_HOURS` | `24` | 임시 파일 보유 기간 |
@@ -474,7 +482,7 @@ backend/
 | STT (mlx-whisper) | 1~3개 | 메모리 사용 (6GB/개) |
 | Diarization | 2개 | CPU 기반 처리 |
 | Minutes 생성 | 3개 | 빠른 처리 |
-| 요약 생성 | 2개 | Claude API 비용 관리 |
+| 요약 생성 | 2개 | OpenAI API 비용 관리 |
 
 ## 성능 특성
 
@@ -486,7 +494,7 @@ backend/
 | STT 처리 (1시간) | 20~30분 | 0.3~0.5배 실시간 (mlx-whisper) |
 | Diarization (1시간) | 15~25분 | CPU 기반 (pyannote.audio) |
 | Minutes 생성 | 1~5초 | 세그먼트 병합 및 통계 |
-| AI 요약 생성 | 2~5초 | Claude API 응답 시간 |
+| AI 요약 생성 | 2~5초 | OpenAI API 응답 시간 |
 | 상태 조회 | < 100ms | Redis 캐시 활용 |
 
 ### 리소스 사용량
@@ -644,7 +652,7 @@ celery -A backend.workers.celery_app worker --loglevel=info
         │   │          │     │       │
     ┌───▼──▼──┐  ┌──┬──┐ ┌──▼──┐ ┌─▼──────┐
     │모델 로드 │  │STT│DIA│MIN │ │요약   │
-    │(싱글톤) │  └──┴──┘ └─────┘ │(Claude)│
+    │(싱글톤) │  └──┴──┘ └─────┘ │(OpenAI)│
     └────────┘                    └────────┘
 ```
 
@@ -682,12 +690,12 @@ sudo systemctl start voicenote-api voicenote-worker
 
 ## 다음 단계
 
-### Phase 5 (계획)
+### Phase 5 (진행 중)
 
-- **고급 분석**: 발화 톤 분석, 감정 분석
+- **고급 분석**: 텍스트 감정 분석 완료 (SPEC-SENTIMENT-001, OpenAI gpt-4o-mini 기반), 향후 음성 톤 분석 계획
 - **통합**: Slack, Teams, Google Calendar 연동
 - **OAuth**: Google/Apple 소셜 로그인
-- **실시간 협업**: 공동 편집, 댓글 기능
+- **실시간 협업**: 공동 편집, 댓글 기능 (SPEC-COLLAB-001 완료)
 
 ## 라이선스
 
@@ -706,9 +714,9 @@ MIT License - 자유로운 상업적 사용 가능
 
 ---
 
-**마지막 업데이트**: 2026-06-13
-**버전**: 1.2.0
-**상태**: Production Ready (29/29 SPECs 완료)
+**마지막 업데이트**: 2026-06-14
+**버전**: 1.3.0
+**상태**: Production Ready (30/30 SPECs 완료)
 
 ### 완료된 SPEC 목록
 
@@ -742,3 +750,4 @@ MIT License - 자유로운 상업적 사용 가능
 ✅ SPEC-MOBILE-002: 오프라인 STT 하이브리드 파이프라인 (모델 관리 + 로컬 전사 + 재처리 큐)
 ✅ SPEC-MOBILE-005: iOS 백그라운드 녹음 안정성 고도화 (인터럽션 처리 + 백그라운드 태스크 + 라이프사이클 + 복구)
 ✅ SPEC-SEC-002: 보안 강화 — 매직 바이트 검증 + iOS ATS/Android Network Security + 보안 헤더 고도화
+✅ SPEC-SENTIMENT-001: 텍스트 감정 분석 — OpenAI gpt-4o-mini 기반 화자별/구간별 감정 분석 + 타임라인 + Flutter 전용 탭

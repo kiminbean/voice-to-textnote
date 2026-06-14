@@ -150,7 +150,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     final summaryTaskId = meeting?.summaryTaskId;
 
     return DefaultTabController(
-      length: 7,
+      length: 8,
       child: Scaffold(
         appBar: AppBar(
           leading: IconButton(
@@ -218,6 +218,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
               Tab(text: '액션 아이템'),
               Tab(text: 'Q&A'),
               Tab(text: '통계'),
+              Tab(text: '감정 분석'),
             ],
           ),
         ),
@@ -239,6 +240,8 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                   // Q&A 탭: 회의 내용 질문/답변 (SPEC-QA-001)
                   _QATab(taskId: summaryTaskId ?? minutesTaskId),
                   _StatisticsTab(taskId: minutesTaskId),
+                  // SPEC-SENTIMENT-001: 감정 분석 전용 탭 (REQ-SEN-007)
+                  _SentimentTab(taskId: minutesTaskId),
                 ],
               ),
             ),
@@ -605,7 +608,6 @@ class _StatisticsTabState extends ConsumerState<_StatisticsTab> {
 
   Widget buildContent(BuildContext context, StatisticsResponse stats) {
     final theme = Theme.of(context);
-    final sentimentAsync = ref.watch(sentimentProvider(widget.taskId!));
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -697,170 +699,8 @@ class _StatisticsTabState extends ConsumerState<_StatisticsTab> {
             ),
           ),
         ],
-        // 감정 분석 카드
-        const SizedBox(height: 16),
-        sentimentAsync.when(
-          loading: () => const SizedBox.shrink(),
-          error: (_, __) => const SizedBox.shrink(),
-          data: (segments) {
-            if (segments.isEmpty) return const SizedBox.shrink();
-            return _buildSentimentCard(theme, segments);
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSentimentCard(ThemeData theme, List<SentimentSegment> segments) {
-    // 감정 분포 집계
-    final counts = <String, int>{};
-    final emotions = <String, int>{};
-    final speakerSentiment = <String, Map<String, int>>{};
-
-    for (final seg in segments) {
-      counts[seg.sentiment] = (counts[seg.sentiment] ?? 0) + 1;
-      emotions[seg.emotion] = (emotions[seg.emotion] ?? 0) + 1;
-      speakerSentiment
-          .putIfAbsent(seg.speaker, () => {'positive': 0, 'neutral': 0, 'negative': 0});
-      speakerSentiment[seg.speaker]![seg.sentiment] =
-          (speakerSentiment[seg.speaker]![seg.sentiment] ?? 0) + 1;
-    }
-
-    final total = segments.length;
-    final positiveRatio = (counts['positive'] ?? 0) / total;
-    final neutralRatio = (counts['neutral'] ?? 0) / total;
-    final negativeRatio = (counts['negative'] ?? 0) / total;
-
-    final sentimentColor = (String s) {
-      switch (s) {
-        case 'positive': return Colors.green;
-        case 'negative': return Colors.red;
-        default: return Colors.grey;
-      }
-    };
-
-    final emotionIcon = (String e) {
-      switch (e) {
-        case 'joy': return Icons.sentiment_very_satisfied;
-        case 'anger': return Icons.sentiment_very_dissatisfied;
-        case 'sadness': return Icons.sentiment_dissatisfied;
-        case 'surprise': return Icons.sentiment_neutral;
-        case 'fear': return Icons.warning_amber;
-        default: return Icons.sentiment_neutral;
-      }
-    };
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('감정 분석', style: theme.textTheme.titleMedium),
-            const SizedBox(height: 12),
-            // 감정 분포 바
-            Text('전체 분위기', style: theme.textTheme.bodySmall),
-            const SizedBox(height: 6),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: SizedBox(
-                height: 24,
-                child: Row(
-                  children: [
-                    if (positiveRatio > 0)
-                      Expanded(
-                        flex: (positiveRatio * 100).round().clamp(1, 100),
-                        child: Container(color: Colors.green, alignment: Alignment.center,
-                          child: Text('${(positiveRatio * 100).toStringAsFixed(0)}%',
-                            style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold))),
-                      ),
-                    if (neutralRatio > 0)
-                      Expanded(
-                        flex: (neutralRatio * 100).round().clamp(1, 100),
-                        child: Container(color: Colors.grey, alignment: Alignment.center,
-                          child: Text('${(neutralRatio * 100).toStringAsFixed(0)}%',
-                            style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold))),
-                      ),
-                    if (negativeRatio > 0)
-                      Expanded(
-                        flex: (negativeRatio * 100).round().clamp(1, 100),
-                        child: Container(color: Colors.red, alignment: Alignment.center,
-                          child: Text('${(negativeRatio * 100).toStringAsFixed(0)}%',
-                            style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold))),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                _legendDot(Colors.green, '긍정'),
-                const SizedBox(width: 12),
-                _legendDot(Colors.grey, '중립'),
-                const SizedBox(width: 12),
-                _legendDot(Colors.red, '부정'),
-              ],
-            ),
-            // 감정 종류
-            if (emotions.length > 1) ...[
-              const SizedBox(height: 12),
-              Text('감정 유형', style: theme.textTheme.bodySmall),
-              const SizedBox(height: 6),
-              Wrap(
-                spacing: 6,
-                runSpacing: 4,
-                children: emotions.entries.map((e) => Chip(
-                  avatar: Icon(emotionIcon(e.key), size: 16),
-                  label: Text('${e.key} (${e.value})'),
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                )).toList(),
-              ),
-            ],
-            // 화자별 감정
-            if (speakerSentiment.length > 1) ...[
-              const SizedBox(height: 12),
-              Text('화자별 감정', style: theme.textTheme.bodySmall),
-              const SizedBox(height: 6),
-              ...speakerSentiment.entries.map((entry) {
-                final sp = entry.key;
-                final sc = entry.value;
-                final spTotal = sc.values.fold(0, (a, b) => a + b);
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
-                  child: Row(
-                    children: [
-                      SizedBox(width: 80, child: Text(sp, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12))),
-                      Expanded(
-                        child: Row(
-                          children: ['positive', 'neutral', 'negative'].map((s) {
-                            final ratio = (sc[s] ?? 0) / spTotal;
-                            if (ratio == 0) return const SizedBox.shrink();
-                            return Expanded(
-                              flex: (ratio * 100).round().clamp(1, 100),
-                              child: Container(height: 8, color: sentimentColor(s)),
-                            );
-                          }).toList(),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _legendDot(Color color, String label) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(width: 10, height: 10, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
-        const SizedBox(width: 4),
-        Text(label, style: const TextStyle(fontSize: 11)),
+        // SPEC-SENTIMENT-001: 감정 분석은 전용 _SentimentTab으로 이관됨
+        // 기존 silent fallback (SizedBox.shrink on error) 제거됨 (REQ-SEN-010)
       ],
     );
   }
@@ -885,7 +725,410 @@ class _StatisticsTabState extends ConsumerState<_StatisticsTab> {
   String _formatDuration(double seconds) {
     final m = (seconds / 60).floor();
     final s = (seconds % 60).round();
-    return m > 0 ? '$m분 ${s}초' : '$s초';
+    return m > 0 ? '$m분 $s초' : '$s초';
+  }
+}
+
+// SPEC-SENTIMENT-001: 감정 분석 전용 탭 (REQ-SEN-007/008/009/010)
+// 전체 감정 분포, 화자별 precomputed 데이터, emotional_timeline, 오류 재시도 UI 제공
+class _SentimentTab extends ConsumerWidget {
+  final String? taskId;
+
+  const _SentimentTab({required this.taskId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (taskId == null || taskId!.isEmpty) {
+      return const Center(child: Text('감정 분석을 불러올 수 없습니다.'));
+    }
+
+    final sentimentAsync = ref.watch(sentimentFullProvider(taskId!));
+
+    return sentimentAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      // REQ-SEN-010: 오류를 숨기지 않고 ErrorRetryWidget으로 표시
+      error: (error, _) => ErrorRetryWidget(
+        message: '감정 분석을 불러올 수 없습니다',
+        onRetry: () => ref.invalidate(sentimentFullProvider(taskId!)),
+      ),
+      data: (response) => _SentimentContent(response: response),
+    );
+  }
+}
+
+class _SentimentContent extends StatelessWidget {
+  final SentimentFullResponse response;
+
+  const _SentimentContent({required this.response});
+
+  Color _sentimentColor(String sentiment) {
+    switch (sentiment) {
+      case 'positive':
+        return Colors.green;
+      case 'negative':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  IconData _emotionIcon(String emotion) {
+    switch (emotion) {
+      case 'joy':
+      case 'satisfaction':
+        return Icons.sentiment_very_satisfied;
+      case 'anger':
+        return Icons.sentiment_very_dissatisfied;
+      case 'sadness':
+        return Icons.sentiment_dissatisfied;
+      case 'surprise':
+        return Icons.sentiment_neutral;
+      case 'frustration':
+      case 'fear':
+        return Icons.warning_amber;
+      default:
+        return Icons.sentiment_neutral;
+    }
+  }
+
+  String _formatTime(double seconds) {
+    final m = (seconds / 60).floor();
+    final s = (seconds % 60).round();
+    return m > 0 ? '$m:${s.toString().padLeft(2, '0')}' : '$s초';
+  }
+
+  String _sentimentLabel(String sentiment) {
+    switch (sentiment) {
+      case 'positive':
+        return '긍정';
+      case 'negative':
+        return '부정';
+      default:
+        return '중립';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    // 빈 응답 처리 (segments도 speakers도 timeline도 없는 경우)
+    if (response.segments.isEmpty &&
+        response.speakers.isEmpty &&
+        response.emotionalTimeline.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.sentiment_neutral, size: 64, color: Colors.grey[400]),
+              const SizedBox(height: 16),
+              Text('감정 분석 데이터가 없습니다',
+                  style: theme.textTheme.titleMedium),
+              const SizedBox(height: 8),
+              Text(
+                '회의록이 완료된 후 감정 분석을 실행해 주세요.',
+                style: theme.textTheme.bodySmall,
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        // 1. 전체 감정 요약 카드 (REQ-SEN-008: overall_sentiment/emotion)
+        _buildOverallCard(theme),
+        const SizedBox(height: 16),
+
+        // 2. 전체 감정 분포 (REQ-SEN-008)
+        if (response.speakers.isNotEmpty) _buildDistributionCard(theme),
+        const SizedBox(height: 16),
+
+        // 3. 화자별 감정 (REQ-SEN-008: SpeakerSentiment precomputed 데이터)
+        if (response.speakers.isNotEmpty) ...[
+          _buildSpeakerSection(theme),
+          const SizedBox(height: 16),
+        ],
+
+        // 4. 감정 변화 타임라인 (REQ-SEN-009: emotional_timeline)
+        if (response.emotionalTimeline.isNotEmpty)
+          _buildTimelineSection(theme),
+      ],
+    );
+  }
+
+  Widget _buildOverallCard(ThemeData theme) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Icon(_emotionIcon(response.overallEmotion), size: 48),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('전체 분위기', style: theme.textTheme.bodySmall),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${_sentimentLabel(response.overallSentiment)} · ${response.overallEmotion}',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // REQ-SEN-008: 화자별 감정 비율 합산으로 전체 분포 계산
+  Widget _buildDistributionCard(ThemeData theme) {
+    double totalPositive = 0;
+    double totalNeutral = 0;
+    double totalNegative = 0;
+
+    for (final speaker in response.speakers) {
+      totalPositive += speaker.positiveRatio;
+      totalNeutral += speaker.neutralRatio;
+      totalNegative += speaker.negativeRatio;
+    }
+
+    final count = response.speakers.length;
+    if (count > 0) {
+      totalPositive /= count;
+      totalNeutral /= count;
+      totalNegative /= count;
+    }
+
+    final total = totalPositive + totalNeutral + totalNegative;
+    if (total == 0) return const SizedBox.shrink();
+
+    final positiveRatio = totalPositive / total;
+    final neutralRatio = totalNeutral / total;
+    final negativeRatio = totalNegative / total;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('감정 분포', style: theme.textTheme.titleMedium),
+            const SizedBox(height: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: SizedBox(
+                height: 28,
+                child: Row(
+                  children: [
+                    if (positiveRatio > 0)
+                      Expanded(
+                        flex: (positiveRatio * 100).round().clamp(1, 100),
+                        child: Container(
+                          color: Colors.green,
+                          alignment: Alignment.center,
+                          child: Text(
+                            '${(positiveRatio * 100).toStringAsFixed(0)}%',
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ),
+                    if (neutralRatio > 0)
+                      Expanded(
+                        flex: (neutralRatio * 100).round().clamp(1, 100),
+                        child: Container(
+                          color: Colors.grey,
+                          alignment: Alignment.center,
+                          child: Text(
+                            '${(neutralRatio * 100).toStringAsFixed(0)}%',
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ),
+                    if (negativeRatio > 0)
+                      Expanded(
+                        flex: (negativeRatio * 100).round().clamp(1, 100),
+                        child: Container(
+                          color: Colors.red,
+                          alignment: Alignment.center,
+                          child: Text(
+                            '${(negativeRatio * 100).toStringAsFixed(0)}%',
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                _legendDot(Colors.green, '긍정'),
+                const SizedBox(width: 12),
+                _legendDot(Colors.grey, '중립'),
+                const SizedBox(width: 12),
+                _legendDot(Colors.red, '부정'),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // REQ-SEN-008: 백엔드 SpeakerSentiment precomputed 데이터 사용 (클라이언트 재계산 금지)
+  Widget _buildSpeakerSection(ThemeData theme) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('화자별 감정', style: theme.textTheme.titleMedium),
+            const SizedBox(height: 12),
+            ...response.speakers.map((speaker) => _buildSpeakerRow(theme, speaker)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSpeakerRow(ThemeData theme, SpeakerSentiment speaker) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(_emotionIcon(speaker.dominantEmotion), size: 18),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  speaker.speaker,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ),
+              Text(
+                '주요 감정: ${speaker.dominantEmotion}',
+                style: theme.textTheme.bodySmall,
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              if (speaker.positiveRatio > 0)
+                Expanded(
+                  flex: (speaker.positiveRatio * 100).round().clamp(1, 100),
+                  child: Container(height: 8, color: Colors.green),
+                ),
+              if (speaker.neutralRatio > 0)
+                Expanded(
+                  flex: (speaker.neutralRatio * 100).round().clamp(1, 100),
+                  child: Container(height: 8, color: Colors.grey),
+                ),
+              if (speaker.negativeRatio > 0)
+                Expanded(
+                  flex: (speaker.negativeRatio * 100).round().clamp(1, 100),
+                  child: Container(height: 8, color: Colors.red),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // REQ-SEN-009: emotional_timeline 시간 순서 시각화
+  Widget _buildTimelineSection(ThemeData theme) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('감정 변화 타임라인', style: theme.textTheme.titleMedium),
+            const SizedBox(height: 12),
+            ...response.emotionalTimeline.map((entry) => _buildTimelineEntry(theme, entry)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTimelineEntry(
+      ThemeData theme, EmotionTimelineEntry entry) {
+    final color = _sentimentColor(entry.sentiment);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 56,
+            child: Text(
+              _formatTime(entry.time),
+              style: theme.textTheme.bodySmall?.copyWith(
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
+          ),
+          Container(width: 4, height: 24, color: color),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  entry.speaker,
+                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                ),
+                Text(
+                  '${_sentimentLabel(entry.sentiment)} · ${entry.emotion}',
+                  style: theme.textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+          Icon(_emotionIcon(entry.emotion), size: 18, color: color),
+        ],
+      ),
+    );
+  }
+
+  Widget _legendDot(Color color, String label) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 4),
+        Text(label, style: const TextStyle(fontSize: 11)),
+      ],
+    );
   }
 }
 

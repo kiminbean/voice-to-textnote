@@ -91,9 +91,6 @@ def _unregister_active_job(task_id: str) -> None:
     r.zrem("active_sentiment_jobs_ts", task_id)
 
 
-MAX_CONCURRENT_SENTIMENT = 3
-
-
 def sentiment_task(
     task_id: str,
     minutes_task_id: str,
@@ -118,10 +115,12 @@ def sentiment_task(
         _cache_result(task_id, failed_result)
         return failed_result
 
-    # 동시 작업 수 제한
+    # 동시 작업 수 제한 (REQ-SEN-004: settings.max_concurrent_sentiment 사용)
     active_count = _get_active_sentiment_count()
-    if active_count >= MAX_CONCURRENT_SENTIMENT:
-        error_msg = f"동시 감정 분석 작업 한도({MAX_CONCURRENT_SENTIMENT}개)를 초과했습니다."
+    if active_count >= settings.max_concurrent_sentiment:
+        error_msg = (
+            f"동시 감정 분석 작업 한도({settings.max_concurrent_sentiment}개)를 초과했습니다."
+        )
         _update_task_status(task_id, TaskStatus.failed, 0.0, error_message=error_msg)
         failed_result = {
             "task_id": task_id,

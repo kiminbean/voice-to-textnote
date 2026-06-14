@@ -174,6 +174,14 @@ final sentimentProvider =
   }
 });
 
+// SPEC-SENTIMENT-001: 감정 분석 전체 응답 프로바이더 (REQ-SEN-008/009/010)
+// 오류를 삼키지 않고 AsyncValue.error로 전파하여 ErrorRetryWidget이 표시되도록 함
+final sentimentFullProvider =
+    FutureProvider.family<SentimentFullResponse, String>((ref, taskId) async {
+  final api = ref.watch(sentimentApiProvider);
+  return api.getFullByMeeting(taskId);
+});
+
 // 기존 통합 프로바이더 (하위 호환성 유지 - 두 ID가 동일한 경우)
 // task_id 기반 결과 로딩 프로바이더 (family로 파라미터화)
 final resultProvider =

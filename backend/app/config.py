@@ -83,6 +83,10 @@ class Settings(BaseSettings):
     summary_max_tokens: int = 4096  # OpenAI API 최대 응답 토큰
     summary_model: str = "gpt-4o-mini"  # OpenAI 모델명
 
+    # SPEC-SENTIMENT-001: 감정 분석 동시 실행 제한 (REQ-SEN-004)
+    # 기존 MAX_CONCURRENT_SENTIMENT=3 하드코딩에서 설정 이관
+    max_concurrent_sentiment: int = Field(default=3, ge=1, le=10)
+
     # -------------------------------------------------------------------------
     # SPEC-DB-001: 데이터베이스 설정 (REQ-DB-001, REQ-DB-002, REQ-DB-003)
     # -------------------------------------------------------------------------
