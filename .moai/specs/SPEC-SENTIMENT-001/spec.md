@@ -1,9 +1,10 @@
 ---
 id: SPEC-SENTIMENT-001
 version: "1.0.0"
-status: draft
+status: completed
 created: 2026-06-14
 updated: 2026-06-14
+completed: 2026-06-14
 author: MoAI
 priority: P1
 issue_number: 29
@@ -17,6 +18,7 @@ related_specs: [SPEC-MIN-001, SPEC-SUM-001, SPEC-ANALYTICS-001]
 | 버전 | 날짜 | 변경 내용 | 작성자 |
 |------|------|----------|--------|
 | 1.0.0 | 2026-06-14 | 기존 구현을 역추적하여 요구사항, 구현 계획, 검수 기준 문서화 | MoAI |
+| 1.0.1 | 2026-06-14 | Run/Sync 완료 — status를 completed로 변경, Implementation Notes 추가 | GLM-5.2 |
 
 ---
 
@@ -176,4 +178,59 @@ related_specs: [SPEC-MIN-001, SPEC-SUM-001, SPEC-ANALYTICS-001]
 
 *SPEC ID: SPEC-SENTIMENT-001*  
 *생성일: 2026-06-14*  
-*상태: draft*
+*상태: completed*
+
+---
+
+## 10. Implementation Notes (As-Implemented)
+
+구현 완료일: 2026-06-14 / Issue: #29
+
+### 모듈 1: Celery 태스크 등록 및 실행 (REQ-SEN-001~004)
+
+- `backend/workers/celery_app.py`: `include` 목록에 `backend.workers.tasks.sentiment_task` 추가
+  - 기존 결함: 워커가 sentiment_celery_task를 발견하지 못해 작업이 pending에 영원히 머무름
+- `backend/app/config.py`: `max_concurrent_sentiment: int = Field(default=3, ge=1, le=10)` 설정 추가
+- `backend/workers/tasks/sentiment_task.py`: 모듈 수준 `MAX_CONCURRENT_SENTIMENT = 3` 상수 제거, `settings.max_concurrent_sentiment` 참조로 변경 (3곳)
+- **Deferred (OUT OF SCOPE)**: REQ-SEN-003 (minutes_task 완료 후 자동 트리거)는 plan.md에서 명시적으로 "선택 구현"으로 표기되었으며, 수동 `POST /api/v1/sentiment` 경로가 이미 동작하므로 이번 구현에서는 제외
+
+### 모듈 2: SSE 진행률 스트리밍 (REQ-SEN-005~006)
+
+- `backend/app/api/v1/transcription/stream.py`: `stream_task_status()`의 prefix 튜플에 `task:sentiment:status:` 추가
+  - 기존 결함: 감정 분석 태스크 진행 중 SSE 엔드포인트가 404 반환
+
+### 모듈 3: Flutter 감정 분석 UI (REQ-SEN-007~010)
+
+- `client/lib/services/sentiment_api.dart`: `SpeakerSentiment`, `EmotionTimelineEntry`, `SentimentFullResponse` 모델 추가. `getFullByMeeting(taskId)`, `getFullResult(taskId)` 메서드 추가. 기존 `getResult()`, `getByMeeting()` 시그니처/반환 타입 유지 (하위 호환성)
+- `client/lib/providers/result_provider.dart`: `sentimentFullProvider` 추가. 오류를 `AsyncValue.error`로 전파하여 `ErrorRetryWidget` 표시. 기존 `sentimentProvider`는 다른 소비자를 위해 유지
+- `client/lib/screens/result_screen.dart`: `_SentimentTab` 위젯 추가 (전체 분포 / 화자별 precomputed 데이터 / emotional_timeline / ErrorRetryWidget). `DefaultTabController length` 7→8. `_StatisticsTab`에서 silent error 감정 카드 제거, `_buildSentimentCard` 로직을 `_SentimentContent`로 이관
+
+### 모듈 4: API 스키마 및 하위 호환성 (REQ-SEN-011~013)
+
+- 기존 `SentimentResponse`, `SentimentSegment`, `SpeakerSentiment` 스키마 변경 없음
+- 모든 새 필드는 optional (Dart 모델에서 nullable/기본값 처리)
+- 기존 `/api/v1/sentiment/*` URL 구조 유지
+
+### 모듈 5: 문서 정합성 (REQ-SEN-014~015)
+
+- `README.md`: Claude 3.5 Sonnet → OpenAI `gpt-4o-mini` 정정 (7곳: 기능 설명, 환경변수, 비용, 성능, 아키텍처 다이어그램, 빠른 시작)
+- 감정 분석 기능 섹션 추가 (Section 6)
+- 완료된 SPEC 목록: 29/29 → 30/30
+- Phase 5를 "계획" → "진행 중"으로 변경
+
+### 검증 (Verification)
+
+- `ruff check`: All checks passed (0 errors)
+- `pytest` (sentiment/stream/celery 관련 112개): 112 passed
+- `flutter analyze`: 수정 파일 0 errors (기존 info 3개는 범위 밖)
+- `flutter test`: 301 passed, 0 failed
+
+### Divergence from plan.md
+
+- **Scope Expansion**: 없음
+- **Deferred**: REQ-SEN-003 (자동 트리거) — 선택 구현으로 명시됨, OUT OF SCOPE
+- **Unplanned Additions**:
+  - `test_sentiment_bugs_reproduction.py` (신규): TDD RED phase 재현 테스트 7개. 회고형 SPEC의 버그 수정 이력을 보존하기 위해 명시적 재현 테스트로 작성
+  - `test_sentiment_task.py`, `test_sentiment_task_coverage.py`: mock 설정에 `max_concurrent_sentiment` 추가 (기존 `MAX_CONCURRENT_SENTIMENT` 상수 참조가 `settings.max_concurrent_sentiment`로 변경되었으므로)
+- **New Dependencies**: 없음
+- **New Directories**: 없음
