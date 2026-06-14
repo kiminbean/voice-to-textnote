@@ -600,6 +600,8 @@ celery -A backend.workers.celery_app worker --loglevel=info
 | **Python** | 3.11 이상 |
 | **Node.js** | 20+ (Flutter 웹 빌드용) |
 | **의존성** | ffmpeg, PostgreSQL, Redis |
+| **Android 빌드** | Android SDK 36, Build Tools 36.0.0/28.0.3, NDK 27.0.12077973, CMake 3.22.1 |
+| **iOS 빌드** | Xcode 26.5+, CocoaPods 1.16.2+, iOS deployment target 15.0 |
 
 ### 지원 플랫폼
 
@@ -607,8 +609,8 @@ celery -A backend.workers.celery_app worker --loglevel=info
 |--------|------|------|
 | **Web** | ✅ 완료 | Chrome, Firefox, Safari 지원 |
 | **macOS** | ✅ 완료 | ARM64 (Apple Silicon) |
-| **iOS** | 🔜 계획 | Flutter iOS 네이티브 구현 필요 |
-| **Android** | 🔜 계획 | Flutter Android 네이티브 구현 필요 |
+| **iOS** | ✅ 완료 | `flutter build ios --debug --no-codesign` 검증 완료 |
+| **Android** | ✅ 완료 | `flutter build apk --debug` 검증 완료 |
 
 ### 기술 제약
 
@@ -636,7 +638,8 @@ celery -A backend.workers.celery_app worker --loglevel=info
 ```
 ┌─────────────────────────────────────┐
 │   클라이언트 계층                     │
-│   Flutter Web/macOS (Riverpod)      │
+│   Flutter Web/macOS/iOS/Android     │
+│   Riverpod + native mobile bridges  │
 └────────────────┬────────────────────┘
                  │ HTTP/REST
 ┌────────────────▼────────────────────┐
@@ -694,6 +697,20 @@ sudo systemctl start voicenote-api voicenote-worker
 
 - 서버/클라이언트에 Tailscale 설치 후 고정 IP로 접속
 - 포트 개방 불필요, VPN 메시 네트워크로 보안 접속
+
+### 모바일 네이티브 검증
+
+```bash
+cd client
+
+# 기본 게이트: pub get, analyze, test, local STT smoke
+./scripts/verify_mobile.sh
+
+# 네이티브 게이트: 기본 게이트 + Android APK + iOS no-codesign build
+./scripts/verify_mobile.sh --native
+```
+
+검증된 로컬 Android SDK 경로는 `/Users/ibkim/Library/Android/sdk`이며, Flutter 설정은 `flutter config --android-sdk /Users/ibkim/Library/Android/sdk`로 고정했다. CI는 `.github/workflows/mobile.yml`에서 Android SDK 36과 필요한 build tools를 설치한다. iOS는 `client/ios/Flutter/Profile.xcconfig`가 `Pods-Runner.profile.xcconfig`를 include해야 Profile 빌드에서 CocoaPods 설정이 누락되지 않는다.
 
 ## 다음 단계
 

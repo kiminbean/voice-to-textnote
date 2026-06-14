@@ -10,6 +10,23 @@
 - [ ] 클라이언트 디바이스 등록 (로그인 → FCM 토큰 등록)
 - [ ] Firebase 프로젝트 설정 완료 (T-019)
 - [ ] 테스트 기기 준비 (Android / iOS 각 1대)
+- [ ] Android SDK 확인: `flutter doctor -v`에서 Android toolchain이 `Android SDK version 36.0.0`으로 표시
+- [ ] CocoaPods 확인: `cd client/ios && pod install`
+- [ ] 네이티브 빌드 게이트 통과: `cd client && ./scripts/verify_mobile.sh --native`
+- [ ] Android APK 산출물 확인: `client/build/app/outputs/flutter-apk/app-debug.apk`
+- [ ] iOS no-codesign 산출물 확인: `client/build/ios/iphoneos/Runner.app`
+
+### 네이티브 빌드 기준선
+
+| 항목 | 기준 |
+|------|------|
+| Android SDK | `/Users/ibkim/Library/Android/sdk` 또는 CI의 `ANDROID_HOME` |
+| Android packages | `platforms;android-36`, `build-tools;36.0.0`, `build-tools;28.0.3`, `platform-tools`, `ndk;27.0.12077973`, `cmake;3.22.1` |
+| Flutter Android config | `flutter config --android-sdk /Users/ibkim/Library/Android/sdk` |
+| iOS CocoaPods | `pod install`이 `Pod installation complete!`로 종료 |
+| iOS Profile config | `client/ios/Flutter/Profile.xcconfig`가 `Pods-Runner.profile.xcconfig`를 include |
+
+> 참고: Kotlin Gradle Plugin의 Built-in Kotlin 마이그레이션 경고는 현재 빌드 실패가 아니라 미래 호환성 경고다. 경고가 오류로 승격되면 plugin 버전 업그레이드 또는 Flutter Built-in Kotlin 마이그레이션을 별도 작업으로 처리한다.
 
 ---
 
