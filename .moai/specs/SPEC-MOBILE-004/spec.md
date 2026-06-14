@@ -1,6 +1,6 @@
 ---
 id: SPEC-MOBILE-004
-version: "1.0.3"
+version: "1.0.4"
 status: completed
 created: "2026-06-13"
 updated: "2026-06-15"
@@ -20,6 +20,7 @@ depends_on: SPEC-MOBILE-001
 | 1.0.1 | 2026-06-15 | strict release readiness를 self-hosted GitHub Actions `workflow_dispatch` 게이트로 승격 | Codex |
 | 1.0.2 | 2026-06-15 | GitHub mobile release environment preflight 추가 | Codex |
 | 1.0.3 | 2026-06-15 | GitHub mobile release environment 구성 스크립트 추가 | Codex |
+| 1.0.4 | 2026-06-15 | self-hosted macOS runner 후보 장비 preflight 추가 | Codex |
 
 ---
 
@@ -362,6 +363,7 @@ firebase-admin>=6.0
 - GitHub Actions strict gate: `.github/workflows/mobile.yml`의 `workflow_dispatch` `release-strict` job은 `self-hosted`, `macOS`, `mobile-release` runner에서 `client/scripts/verify_mobile.sh --native` 후 `python3 client/scripts/verify_release_readiness.py --strict`를 실행한다. 필요한 Firebase/APNs/App Store Connect secrets, Android/iOS device vars, `evidence_path` 입력은 `docs/e2e-device-checklist.md`에 문서화되어 있으며, regression test가 workflow snippet을 고정한다.
 - GitHub release environment preflight: `python3 client/scripts/verify_github_mobile_release_env.py --repo kiminbean/voice-to-textnote`는 repository Environment, required secret/variable names, self-hosted runner labels를 확인한다. 현재 GitHub `mobile-release` Environment는 생성되어 통과하지만, self-hosted runner `0`개와 production secret/variable 미설정으로 strict CI 실행 전 외부 설정이 아직 필요하다.
 - GitHub release environment configure: `python3 client/scripts/configure_github_mobile_release_env.py --repo kiminbean/voice-to-textnote`는 같은 이름의 로컬 환경변수에서 GitHub Environment secrets/vars를 등록한 뒤 verifier를 실행한다. secret 값이 없는 현재 세션에서는 dry-run/unit tests로 명령 surface만 검증했고, 실제 production secret 등록은 외부 보안 입력이 필요하다.
+- Self-hosted runner 후보 장비 preflight: `ANDROID_DEVICE_SERIAL=<serial> IOS_DEVICE_UDID=<udid> python3 client/scripts/verify_mobile_release_runner.py`는 macOS, Flutter/Android SDK 36/Xcode/CocoaPods, Android `adb device`, iOS `devicectl available` 상태를 확인한다. 현재 로컬은 Flutter/Android/Xcode는 준비됐지만 Android 실기기 없음, iOS 기기는 `unavailable`로 strict runner 조건을 충족하지 못한다.
 
 ### 2026-06-15 DB 마이그레이션 실행 게이트 보강
 

@@ -728,6 +728,10 @@ python3 client/scripts/verify_release_readiness.py --strict
 GitHub Actions에서도 동일한 strict 게이트를 실행할 수 있다. `.github/workflows/mobile.yml`의 `workflow_dispatch`에 `evidence_path`를 입력하면 `mobile-release` GitHub Environment와 `self-hosted`, `macOS`, `mobile-release` 라벨을 가진 러너에서 `./scripts/verify_mobile.sh --native` 후 `python3 client/scripts/verify_release_readiness.py --strict`를 실행한다. 필요한 Firebase/APNs/App Store Connect secrets와 Android/iOS device vars는 `docs/e2e-device-checklist.md`의 GitHub Actions strict release gate 표를 따른다.
 
 ```bash
+# macOS runner candidate preflight: toolchain + physical Android/iOS availability
+ANDROID_DEVICE_SERIAL=<adb-device-serial> IOS_DEVICE_UDID=<ios-device-udid> \
+python3 client/scripts/verify_mobile_release_runner.py
+
 # GitHub Environment, self-hosted runner labels, secret/variable names preflight
 python3 client/scripts/verify_github_mobile_release_env.py --repo kiminbean/voice-to-textnote
 

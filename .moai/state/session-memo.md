@@ -179,6 +179,9 @@ This path has now been executed locally.
 - GitHub mobile release environment configure script was added on 2026-06-15:
   `client/scripts/configure_github_mobile_release_env.py` creates/updates the `mobile-release` GitHub Environment, registers GitHub Environment vars from local `ANDROID_DEVICE_SERIAL` / `IOS_DEVICE_UDID`, registers required secrets from same-named local environment variables, then runs the verifier.
   Regression tests assert the configure script uses the same required secret/variable names as `verify_github_mobile_release_env.py` and reports missing local values rather than silently claiming setup.
+- Self-hosted mobile release runner preflight was added on 2026-06-15:
+  `client/scripts/verify_mobile_release_runner.py` checks macOS, required commands, `flutter doctor -v` for Android SDK 36/Xcode/CocoaPods, Android `adb device` state for `ANDROID_DEVICE_SERIAL`, and iOS `devicectl available` state for `IOS_DEVICE_UDID`.
+  Current local probe: Flutter/Android SDK/Xcode/CocoaPods are installed, but Android has no attached device and iOS devices are visible only as `unavailable`; strict physical-device runner readiness is not proven.
 
 ### Durable Fixes
 
