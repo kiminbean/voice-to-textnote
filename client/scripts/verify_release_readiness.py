@@ -516,6 +516,29 @@ def check_tone_release_policy(root: Path, reporter: Reporter) -> None:
     )
 
 
+def check_readme_release_status(root: Path, reporter: Reporter) -> None:
+    path = root / "README.md"
+    if not require_file(reporter, path, "README"):
+        return
+    readme = read_text(path)
+    require_snippets(
+        reporter,
+        readme,
+        [
+            "Release Candidate",
+            "strict 실기기 release evidence 대기",
+            "RELEASE_E2E_EVIDENCE_PATH",
+        ],
+        "README distinguishes automated readiness from final physical release readiness",
+    )
+    if "Production Ready (31/31 SPECs 완료)" in readme:
+        reporter.fail(
+            "README must not claim Production Ready before strict release evidence passes"
+        )
+    else:
+        reporter.ok("README does not overclaim Production Ready before strict evidence")
+
+
 def check_docs(root: Path, reporter: Reporter) -> None:
     required = [
         (root / "docs/firebase-setup-guide.md", "Firebase setup guide"),
@@ -889,6 +912,7 @@ def main() -> int:
     check_android_project(root, reporter)
     check_backend_push(root, reporter)
     check_tone_release_policy(root, reporter)
+    check_readme_release_status(root, reporter)
     check_docs(root, reporter)
 
     if args.strict:

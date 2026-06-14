@@ -609,8 +609,8 @@ celery -A backend.workers.celery_app worker --loglevel=info
 |--------|------|------|
 | **Web** | ✅ 완료 | Chrome, Firefox, Safari 지원 |
 | **macOS** | ✅ 완료 | ARM64 (Apple Silicon) |
-| **iOS** | ✅ 완료 | `flutter build ios --debug --no-codesign` 검증 완료 |
-| **Android** | ✅ 완료 | `flutter build apk --debug` 검증 완료 |
+| **iOS** | RC | `flutter build ios --debug --no-codesign` 검증 완료, strict 실기기 release evidence 필요 |
+| **Android** | RC | `flutter build apk --debug` 검증 완료, strict 실기기 release evidence 필요 |
 
 ### 기술 제약
 
@@ -755,9 +755,11 @@ python3 client/scripts/verify_release_readiness.py --strict
 
 **마지막 업데이트**: 2026-06-14
 **버전**: 1.4.0
-**상태**: Production Ready (31/31 SPECs 완료)
+**상태**: Release Candidate — 자동화/빌드 게이트 통과, strict 실기기 release evidence 대기
 
-### 완료된 SPEC 목록
+### 구현 완료 SPEC 목록
+
+아래 SPEC은 코드와 자동화 게이트 기준으로 구현 완료 상태다. App Store Connect/APNs/Firebase 실계정, Android/iOS 실기기 Push/딥링크/백그라운드 녹음/공유/HTTP 정책 검증은 `python3 client/scripts/verify_release_readiness.py --strict`와 `RELEASE_E2E_EVIDENCE_PATH`가 통과해야 최종 release-ready로 본다.
 
 ✅ SPEC-STT-001: Speech-to-Text (mlx-whisper)
 ✅ SPEC-DIA-001: Speaker Diarization (pyannote.audio)

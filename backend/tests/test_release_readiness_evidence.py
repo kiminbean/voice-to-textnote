@@ -78,6 +78,10 @@ def write_tone_policy_files(root: Path, *, tone_model_line: str = 'tone_model: s
     )
 
 
+def write_readme_status(root: Path, content: str) -> None:
+    (root / "README.md").write_text(content, encoding="utf-8")
+
+
 def test_release_e2e_evidence_accepts_complete_manual_proof(tmp_path, monkeypatch):
     module = load_release_readiness_module()
     evidence_path = write_evidence(tmp_path, make_evidence(tmp_path, module))
@@ -158,3 +162,32 @@ def test_tone_release_policy_rejects_missing_agpl_readme_warning(tmp_path):
     module.check_tone_release_policy(tmp_path, reporter)
 
     assert any("README documents opensmile AGPL" in error for error in reporter.errors)
+
+
+def test_readme_release_status_accepts_release_candidate_language(tmp_path):
+    module = load_release_readiness_module()
+    write_readme_status(
+        tmp_path,
+        "Release Candidate strict 실기기 release evidence 대기 RELEASE_E2E_EVIDENCE_PATH",
+    )
+
+    reporter = module.Reporter()
+    module.check_readme_release_status(tmp_path, reporter)
+
+    assert reporter.errors == []
+
+
+def test_readme_release_status_rejects_production_ready_overclaim(tmp_path):
+    module = load_release_readiness_module()
+    write_readme_status(
+        tmp_path,
+        (
+            "Release Candidate strict 실기기 release evidence 대기 "
+            "RELEASE_E2E_EVIDENCE_PATH Production Ready (31/31 SPECs 완료)"
+        ),
+    )
+
+    reporter = module.Reporter()
+    module.check_readme_release_status(tmp_path, reporter)
+
+    assert any("must not claim Production Ready" in error for error in reporter.errors)
