@@ -103,12 +103,16 @@
 2. staging URL(100.110.255.105)로 API 요청
 **기대 결과**: 정상 연결 및 응답
 
+**2026-06-15 에뮬레이터 증거**: AVD `voice_to_textnote_api36`에서 `connectedDebugAndroidTest`를 실행하여 앱 런타임 `NetworkSecurityPolicy`가 `localhost`와 `100.110.255.105` cleartext만 허용하고 외부 HTTP host는 차단함을 확인했다. 실제 Tailscale staging API 응답은 Android 실기기/Tailscale 연결에서 최종 수동 확인한다.
+
 ### AC-M03: Android 실기기 Release 빌드 HTTP 차단
 **환경**: Android 실기기, Release 빌드
 **절차**:
 1. Release 빌드 앱 실행
 2. HTTP URL로 API 요청 시도
 **기대 결과**: 연결 실패, cleartext 차단
+
+**2026-06-15 산출물 증거**: `flutter build apk --release`로 생성한 `app-release.apk`에서 manifest `networkSecurityConfig=@0x7f110002`와 APK 내부 `network_security_config`의 `base-config cleartextTrafficPermitted=false`를 확인했다. 실제 HTTP 요청 실패 UX는 Android 실기기 Release 빌드에서 최종 수동 확인한다.
 
 ---
 

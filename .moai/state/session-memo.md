@@ -133,6 +133,10 @@ This path has now been executed locally.
   `client/scripts/verify_release_readiness.py` now checks `AppDelegate.swift` recording MethodChannel wiring, iOS background task handling, and `AVAudioSession` interruption/route-change observers.
   `cd client && flutter test test/services/app_delegate_method_channel_test.dart test/services/background_recording_service_test.dart` -> `30 passed`.
   Physical AC-M01~AC-M06 still require a connected iOS device plus phone call, lock-screen, Bluetooth route-change, and force-restart scenarios.
+- SPEC-SEC-002 Android network security was runtime-verified on 2026-06-15:
+  Installed Android emulator `36.6.11` and `system-images;android-36;google_apis;arm64-v8a`, created AVD `voice_to_textnote_api36`, and booted it to `sys.boot_completed=1`.
+  `cd client/android && ./gradlew :app:connectedDebugAndroidTest --no-daemon` -> `Finished 1 tests on voice_to_textnote_api36(AVD) - 16`, `BUILD SUCCESSFUL`.
+  Release APK resource dump confirmed `network_security_config` has `base-config cleartextTrafficPermitted=false`; real Tailscale staging response and Release HTTP failure UX still require Android physical-device/manual network scenario.
 
 ### Durable Fixes
 
