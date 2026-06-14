@@ -14,10 +14,10 @@ import os
 import plistlib
 import re
 import shutil
+import struct
 import subprocess
 import sys
 from pathlib import Path
-
 
 PROJECT_ID = "voice-to-textnote"
 ANDROID_PACKAGE = "com.voicetextnote.app"
@@ -52,6 +52,47 @@ def require_file(reporter: Reporter, path: Path, label: str) -> bool:
         return True
     reporter.fail(f"{label} missing: {path}")
     return False
+
+
+def read_png_size_and_color_type(path: Path) -> tuple[int, int, int] | None:
+    """Return PNG width, height, and color type without external dependencies."""
+    data = path.read_bytes()
+    if len(data) < 33 or not data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return None
+    chunk_type = data[12:16]
+    if chunk_type != b"IHDR":
+        return None
+    width, height = struct.unpack(">II", data[16:24])
+    color_type = data[25]
+    return width, height, color_type
+
+
+def check_png_icon(
+    reporter: Reporter,
+    path: Path,
+    label: str,
+    expected_size: tuple[int, int],
+    allow_alpha: bool,
+) -> None:
+    if not require_file(reporter, path, label):
+        return
+    png = read_png_size_and_color_type(path)
+    if png is None:
+        reporter.fail(f"{label} is not a valid PNG")
+        return
+    width, height, color_type = png
+    if (width, height) == expected_size:
+        reporter.ok(f"{label} size is {width}x{height}")
+    else:
+        reporter.fail(
+            f"{label} size is {width}x{height}, "
+            f"expected {expected_size[0]}x{expected_size[1]}"
+        )
+    has_alpha = color_type in {4, 6}
+    if allow_alpha or not has_alpha:
+        reporter.ok(f"{label} alpha channel policy is valid")
+    else:
+        reporter.fail(f"{label} must not include an alpha channel")
 
 
 def check_android_firebase(root: Path, reporter: Reporter) -> None:
@@ -308,6 +349,8 @@ def check_docs(root: Path, reporter: Reporter) -> None:
         (root / "docs/firebase-setup-guide.md", "Firebase setup guide"),
         (root / "docs/e2e-device-checklist.md", "Device E2E checklist"),
         (root / "docs/app-store-metadata.md", "App Store metadata"),
+        (root / "docs/privacy-policy.md", "Privacy policy"),
+        (root / "docs/screenshot-guide.md", "Screenshot guide"),
     ]
     for path, label in required:
         if not require_file(reporter, path, label):
@@ -330,11 +373,72 @@ def check_docs(root: Path, reporter: Reporter) -> None:
         else:
             reporter.fail(f"E2E checklist missing {label}")
     app_store_doc = read_text(root / "docs/app-store-metadata.md")
-    for snippet in ["App Store Connect", "Privacy Policy", "com.voicetextnote.app"]:
+    for snippet in [
+        "App Store Connect",
+        "Google Play Console",
+        "Privacy Policy",
+        "com.voicetextnote.app",
+        "iPhone 6.7",
+        "iPad Pro",
+        "Android",
+        "https://voicetextnote.com/privacy",
+    ]:
         if snippet in app_store_doc:
             reporter.ok(f"App Store metadata covers {snippet}")
         else:
             reporter.fail(f"App Store metadata missing {snippet}")
+    if re.search(r"to be configured|TBD|TODO", app_store_doc, re.IGNORECASE):
+        reporter.fail("App Store metadata contains unresolved store listing placeholder")
+    else:
+        reporter.ok("App Store metadata has no unresolved store listing placeholders")
+
+    screenshot_doc = read_text(root / "docs/screenshot-guide.md")
+    screenshot_requirements = [
+        "iPhone 6.7",
+        "iPhone 6.5",
+        "iPad 12.9",
+        "Phone",
+        "Tablet",
+        "홈 화면",
+        "녹음 화면",
+        "결과 화면",
+        "검색/내보내기",
+    ]
+    for snippet in screenshot_requirements:
+        if snippet in screenshot_doc:
+            reporter.ok(f"Screenshot guide covers {snippet}")
+        else:
+            reporter.fail(f"Screenshot guide missing {snippet}")
+
+    privacy_doc = read_text(root / "docs/privacy-policy.md")
+    privacy_requirements = [
+        "Audio Recordings",
+        "Push Notification Token",
+        "Firebase Cloud Messaging",
+        "OpenAI API",
+        "Data Used for Tracking: None",
+        "privacy@voicetextnote.com",
+    ]
+    for snippet in privacy_requirements:
+        if snippet in privacy_doc:
+            reporter.ok(f"Privacy policy covers {snippet}")
+        else:
+            reporter.fail(f"Privacy policy missing {snippet}")
+
+    check_png_icon(
+        reporter,
+        root / "client/assets/icon/app_icon_no_alpha.png",
+        "Store app icon",
+        (1024, 1024),
+        allow_alpha=False,
+    )
+    check_png_icon(
+        reporter,
+        root / "client/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-1024x1024@1x.png",
+        "iOS AppIcon 1024",
+        (1024, 1024),
+        allow_alpha=False,
+    )
 
 
 def check_release_doc_placeholders(root: Path, reporter: Reporter) -> None:

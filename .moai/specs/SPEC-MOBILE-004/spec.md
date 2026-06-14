@@ -349,6 +349,14 @@ firebase-admin>=6.0
 - Release readiness preflight: `python3 client/scripts/verify_release_readiness.py` -> `0 errors` (strict 외부 secret/device 검사는 별도 `--strict`; Android serial은 `adb devices -l`, iOS UDID는 `xcrun devicectl list devices`에서 실제 연결 상태까지 확인)
 - 실제 Firebase Console 프로젝트, APNs key, Apple Developer provisioning, 실기기 Push 수신 E2E는 외부 계정/장비 의존으로 남음.
 
+### 2026-06-15 App Store/Play 제출 자산 게이트 보강
+
+- `client/scripts/verify_release_readiness.py` 기본 모드가 `docs/screenshot-guide.md`, `docs/privacy-policy.md`, App Store/Google Play 메타데이터, Privacy Policy URL, 스크린샷 시나리오, 1024x1024 무알파 앱 아이콘을 정적으로 검증한다.
+- `docs/app-store-metadata.md`의 Privacy Policy URL은 제출 전 placeholder가 아닌 `https://voicetextnote.com/privacy`로 고정했다.
+- `docs/screenshot-guide.md`는 iPhone 6.7"/6.5", iPad 12.9", Android phone/tablet 산출물 체크와 샘플 데이터 사용 원칙을 포함한다.
+- 검증: `python3 -m py_compile client/scripts/verify_release_readiness.py && python3 client/scripts/verify_release_readiness.py` -> `release_readiness: 0 errors, 2 warnings`.
+- strict 검증: `python3 client/scripts/verify_release_readiness.py --strict` -> release 문서 placeholder와 제출 자산 checks는 통과하고, Firebase/APNs/App Store Connect/실기기 입력 누락 10건으로 예상 실패한다.
+
 ---
 
 *SPEC ID: SPEC-MOBILE-004*

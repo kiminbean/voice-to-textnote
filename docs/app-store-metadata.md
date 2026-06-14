@@ -239,4 +239,4 @@ meeting,recording,transcription,AI summary,STT,conference,convert,speaker,collab
 - Screenshots: Phone (2-8), Tablet 7" (optional), Tablet 10" (optional)
 
 ### Privacy Policy URL
-`https://voicetextnote.com/privacy` (to be configured)
+`https://voicetextnote.com/privacy`

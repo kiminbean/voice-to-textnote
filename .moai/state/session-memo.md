@@ -137,6 +137,10 @@ This path has now been executed locally.
   Installed Android emulator `36.6.11` and `system-images;android-36;google_apis;arm64-v8a`, created AVD `voice_to_textnote_api36`, and booted it to `sys.boot_completed=1`.
   `cd client/android && ./gradlew :app:connectedDebugAndroidTest --no-daemon` -> `Finished 1 tests on voice_to_textnote_api36(AVD) - 16`, `BUILD SUCCESSFUL`.
   Release APK resource dump confirmed `network_security_config` has `base-config cleartextTrafficPermitted=false`; real Tailscale staging response and Release HTTP failure UX still require Android physical-device/manual network scenario.
+- SPEC-MOBILE-001/004 App Store/Play readiness was hardened on 2026-06-15:
+  `client/scripts/verify_release_readiness.py` now checks `docs/screenshot-guide.md`, `docs/privacy-policy.md`, App Store/Google Play metadata, production Privacy Policy URL, screenshot scenario coverage, and 1024x1024 no-alpha store icons.
+  `python3 -m py_compile client/scripts/verify_release_readiness.py && python3 client/scripts/verify_release_readiness.py` -> `release_readiness: 0 errors, 2 warnings`.
+  Strict mode still fails without Firebase service account, APNs/App Store Connect keys, Firebase test token, and connected Android/iOS physical devices.
 
 ### Durable Fixes
 

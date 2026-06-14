@@ -420,6 +420,7 @@ firebase-admin>=6.5.0       # Firebase Admin SDK — FCM 전송용
 - Device token persistence 보강: `device_tokens.device_id` migration과 `(user_id, device_id)` 기반 unregister를 추가해 다중 기기에서 요청한 기기만 비활성화되도록 고정했다. `venv/bin/python -m pytest -o addopts="" backend/tests/unit/test_devices_api_coverage.py backend/tests/test_push_service_db.py backend/tests/test_device_token_migration.py -q` -> `25 passed`.
 - Release readiness 기본 사전검사 추가: `python3 client/scripts/verify_release_readiness.py`는 Firebase config, APNs entitlement, App Store metadata, backend Push wiring, E2E checklist를 정적 검증한다.
 - Strict release readiness: `python3 client/scripts/verify_release_readiness.py --strict`는 release 문서 placeholder 제거, `FIREBASE_CREDENTIALS_PATH`, APNs key, App Store Connect API key, Android/iOS 실기기 식별자, 테스트 FCM token을 요구하고, Android serial은 `adb devices -l`, iOS UDID는 `xcrun devicectl list devices`에서 실제 연결/available 상태인지 확인한다.
+- 2026-06-15 보강: 기본 release readiness는 `docs/screenshot-guide.md`, `docs/privacy-policy.md`, Privacy Policy URL, iOS/Android 스크린샷 가이드, Google Play metadata, 1024x1024 무알파 store icon까지 검증한다.
 - 실제 FCM/APNs Push 수신, cold-start 딥링크, 실기기 백그라운드 흐름은 Firebase 프로젝트, APNs key, 서비스 계정, iOS/Android 실기기 필요.
 
 **제외됨 (MVP 범위 초과)**:
