@@ -360,6 +360,11 @@
 - **SPEC-MOBILE-002**: 오프라인 STT 하이브리드 파이프라인 (모델 관리 + 로컬 전사 + 재처리 큐)
 - **SPEC-MOBILE-005**: iOS 백그라운드 녹음 안정성 고도화 (인터럽션 처리 + 백그라운드 태스크 + 라이프사이클 + 복구)
 
+### Phase 7 ✅ (완료): 보안 강화 & 감정 분석
+
+- **SPEC-SEC-002**: 보안 강화 — 매직 바이트 검증 + iOS ATS/Android Network Security + 보안 헤더 고도화
+- **SPEC-SENTIMENT-001**: 텍스트 감정 분석 — OpenAI gpt-4o-mini 기반 화자별/구간별 감정 분석 + emotional_timeline + Flutter 전용 탭
+
 ### 23. 실시간 협업 편집 (SPEC-COLLAB-001 ✅)
 
 - **WebSocket 기반 실시간 동기화**: FastAPI WebSocket 엔드포인트로 다중 사용자 실시간 공동 편집
@@ -376,11 +381,21 @@
 - **모델 다운로드 UI**: 상태 기반 UX (notDownloaded → downloading → verifying → ready → error)
 - **TranscriptionSource 메타데이터**: 서버/로컬/하이브리드 전사 출처 추적
 
-## 다음 단계 (Phase 7 계획)
+### 25. 텍스트 감정 분석 (SPEC-SENTIMENT-001 ✅)
+
+- **OpenAI gpt-4o-mini 기반 감정 분석**: 회의록 세그먼트 입력 → 구간별/화자별 감정 분석
+- **감정 레이블 체계**: positive/neutral/negative + 세부 감정 (joy/satisfaction/frustration/anger/sadness/surprise)
+- **화자별 precomputed 통계**: SpeakerSentiment (positive/neutral/negative 비율, dominant_emotion, emotion_distribution)을 백엔드에서 계산하여 클라이언트에 제공
+- **감정 변화 타임라인**: emotional_timeline ({time, sentiment, emotion, speaker}) 시계열 데이터
+- **Celery 비동기 처리**: sentiment_celery_task가 minutes_task 완료 후 실행, 동시성 제한 (settings.max_concurrent_sentiment, 기본 3)
+- **SSE 실시간 진행률**: task:sentiment:status:{task_id} Redis 키로 진행률 스트리밍
+- **Flutter 전용 탭**: _SentimentTab에서 전체 분포, 화자별 통계, 타임라인 시각화, ErrorRetryWidget 제공
+
+## 다음 단계 (Phase 8 계획)
 
 ### 향후 로드맵
 
 - **i18n**: 11개 언어 다국어 지원
-- **보안 강화**: ATS 프로덕션 설정, 파일 매직 바이트 검증
+- **음성 톤 분석**: 오디오 기반 감정/톤 분석 (텍스트 감정 분석은 Phase 7 완료)
 - **클라우드 동기화**: 멀티 기기 지원
-- **고급 분석**: 발화 톤 분석, 감정 분석
+- **Slack/Teams 연동**: 외부 협업 도구 통합

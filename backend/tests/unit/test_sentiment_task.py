@@ -93,6 +93,8 @@ def _configure_settings(mock_settings: MagicMock) -> None:
     mock_settings.summary_result_ttl = 86400
     mock_settings.openai_api_key = "sk-test-key"
     mock_settings.summary_model = "gpt-4o-mini"
+    # SPEC-SENTIMENT-001: 설정 기반 동시성 제한 (REQ-SEN-004)
+    mock_settings.max_concurrent_sentiment = 3
 
 
 class TestSentimentTaskHappyPath:

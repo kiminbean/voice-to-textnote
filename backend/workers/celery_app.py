@@ -17,6 +17,9 @@ celery_app = Celery(
         "backend.workers.tasks.diarization_task",
         "backend.workers.tasks.minutes_task",
         "backend.workers.tasks.summary_task",
+        # SPEC-SENTIMENT-001: 감정 분석 태스크 등록 (REQ-SEN-001)
+        # 누락 시 워커가 sentiment_celery_task를 발견하지 못해 작업이 pending에 머무름
+        "backend.workers.tasks.sentiment_task",
         "backend.workers.tasks.mind_map_task",
         "backend.workers.tasks.cleanup_task",
     ],

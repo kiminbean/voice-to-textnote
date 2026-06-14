@@ -89,6 +89,8 @@ async def stream_task_status(
         "task:dia:status:",
         "task:min:status:",
         "task:sum:status:",
+        # SPEC-SENTIMENT-001: 감정 분석 태스크 SSE 허용 (REQ-SEN-005/006)
+        "task:sentiment:status:",
         "task:mind:status:",
     ):
         if await redis_client.exists(f"{prefix}{task_id}"):
