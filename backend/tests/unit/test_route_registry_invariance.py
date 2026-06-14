@@ -71,8 +71,8 @@ def live_snapshot() -> list[dict]:
     """현재 FastAPI 앱에서 라이브 스냅숏을 생성해 반환한다."""
     import importlib
 
-    from backend.app.api.v1 import registry as route_registry  # noqa: PLC0415
     from backend.app import main as main_module  # noqa: PLC0415
+    from backend.app.api.v1 import registry as route_registry  # noqa: PLC0415
 
     importlib.reload(route_registry)
     main_module = importlib.reload(main_module)
