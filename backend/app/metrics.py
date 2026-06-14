@@ -11,6 +11,8 @@ from fastapi import FastAPI
 from prometheus_client import Counter, Gauge, Histogram
 from prometheus_client import registry as prom_registry
 from prometheus_fastapi_instrumentator import Instrumentator
+from prometheus_fastapi_instrumentator import routing as instrumentator_routing
+from starlette.routing import Match, Mount
 
 
 def _get_or_create_metric(metric_class, name: str, documentation: str, **kwargs):
@@ -162,6 +164,36 @@ def _record_system_metrics(_info) -> None:
     update_system_metrics()
 
 
+def _patch_instrumentator_route_matching() -> None:
+    """Prometheus instrumentator가 path 없는 내부 라우터를 건너뛰도록 보정"""
+
+    def _safe_get_route_name(scope, routes, route_name=None):
+        for route in routes:
+            route_path = getattr(route, "path", None)
+            route_matches = getattr(route, "matches", None)
+            if route_path is None or route_matches is None:
+                continue
+
+            match, child_scope = route.matches(scope)
+            if match == Match.FULL:
+                route_name = route_path
+                child_scope = {**scope, **child_scope}
+                if isinstance(route, Mount) and route.routes:
+                    child_route_name = _safe_get_route_name(
+                        child_scope, route.routes, route_name
+                    )
+                    if child_route_name is None:
+                        route_name = None
+                    else:
+                        route_name += child_route_name
+                return route_name
+            elif match == Match.PARTIAL and route_name is None:
+                route_name = route_path
+        return None
+
+    instrumentator_routing._get_route_name = _safe_get_route_name
+
+
 # ---------------------------------------------------------------------------
 # REQ-OPS-001/002: Prometheus 계측기 설정
 # ---------------------------------------------------------------------------
@@ -186,6 +218,8 @@ def setup_metrics(app: FastAPI) -> Instrumentator:
     # 이미 동일한 앱에 계측기가 적용됐는지 확인 (FastAPI state 활용)
     if getattr(app.state, "_metrics_setup_done", False):
         return getattr(app.state, "_instrumentator")
+
+    _patch_instrumentator_route_matching()
 
     # http_requests_inprogress 이미 등록된 경우 inprogress 비활성화
     inprogress_registered = (
