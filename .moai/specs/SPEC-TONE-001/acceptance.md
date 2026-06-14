@@ -179,45 +179,50 @@
 
 ### 백엔드
 
-- [ ] `backend/workers/celery_app.py`에 `backend.workers.tasks.tone_task`가 등록되어 있다.
-- [ ] `backend/ml/tone_engine.py`가 WhisperEngine/DiarizationEngine 싱글톤 패턴을 따른다.
-- [ ] `_check_memory_usage()`가 19.2GB 초과 시 예외를 발생시킨다.
-- [ ] 세그먼트 길이 < `tone_min_segment_duration_sec`(0.5초) 시 분석이 스킵된다.
-- [ ] `diarization_task.py` L446-450의 DIA wav 삭제가 tone_task 완료 후로 이연되었다.
-- [ ] tone_task 실패 시 DIA wav가 orphan 없이 정리된다.
-- [ ] DIA 완료 후 tone_task가 자동 트리거된다(tone_model 빈 값이면 스킵).
-- [ ] `backend/schemas/tone.py`에 ToneSegment, SpeakerTone, ToneResponse가 정의되어 있다.
-- [ ] `GET /api/v1/tone/{task_id}`가 ToneResponse를 반환한다.
-- [ ] tone_model 빈 값 시 API가 503을 반환한다.
-- [ ] 기존 `/api/v1/sentiment/*` 스키마가 변경되지 않았다.
-- [ ] `stream.py` SSE prefix 루프에 `task:tone:status:`가 추가되었다.
-- [ ] `lifecycle.py` startup warm-up에 ToneEngine이 추가되었다.
-- [ ] `config.py`에 tone_model, tone_min_segment_duration_sec 등이 추가되었다.
+- [x] `backend/workers/celery_app.py`에 `backend.workers.tasks.tone_task`가 등록되어 있다.
+- [x] `backend/ml/tone_engine.py`가 WhisperEngine/DiarizationEngine 싱글톤 패턴을 따른다.
+- [x] `_check_memory_usage()`가 19.2GB 초과 시 예외를 발생시킨다.
+- [x] 세그먼트 길이 < `tone_min_segment_duration_sec`(0.5초) 시 분석이 스킵된다.
+- [x] `diarization_task.py` L446-450의 DIA wav 삭제가 tone_task 완료 후로 이연되었다.
+- [x] tone_task 실패 시 DIA wav가 orphan 없이 정리된다.
+- [x] DIA 완료 후 tone_task가 자동 트리거된다(tone_model 빈 값이면 스킵).
+- [x] `backend/schemas/tone.py`에 ToneSegment, SpeakerTone, ToneResponse가 정의되어 있다.
+- [x] `GET /api/v1/tone/{task_id}`가 ToneResponse를 반환한다.
+- [x] tone_model 빈 값 시 API가 503을 반환한다.
+- [x] 기존 `/api/v1/sentiment/*` 스키마가 변경되지 않았다.
+- [x] `stream.py` SSE prefix 루프에 `task:tone:status:`가 추가되었다.
+- [x] `main.py` lifespan startup warm-up에 ToneEngine이 추가되었다.
+- [x] `config.py`에 tone_model, tone_min_segment_duration_sec 등이 추가되었다.
 
 ### Flutter
 
-- [ ] `client/lib/services/tone_api.dart`가 tone API 클라이언트를 제공한다.
-- [ ] 감정 분석 탭 내 tone timeline 섹션이 렌더링된다.
-- [ ] tone API 실패 시 에러 메시지와 재시도 버튼이 표시된다(silent failure 아님).
-- [ ] tone 섹션 에러 시 감정 분석 카드가 정상 렌더링된다.
-- [ ] tone 데이터 없을 시 EmptyStateWidget이 표시된다.
+- [x] `client/lib/services/tone_api.dart`가 tone API 클라이언트를 제공한다.
+- [x] 감정 분석 탭 내 tone timeline 섹션이 렌더링된다.
+- [x] tone API 실패 시 에러 메시지와 재시도 버튼이 표시된다(silent failure 아님).
+- [x] tone 섹션 에러 시 감정 분석 카드가 정상 렌더링된다.
+- [x] tone 데이터 없을 시 EmptyStateWidget이 표시된다.
 
 ### 의존성 및 라이선스
 
-- [ ] `pyproject.toml`에 `opensmile ^2.6.0`이 추가되었다.
-- [ ] `pyproject.toml`에 `librosa ^0.10.0`이 추가되었다.
-- [ ] opensmile AGPL-3.0 라이선스가 로컬 전용 사용으로 회피 가능함이 문서화되었다.
+- [x] `pyproject.toml`에 `opensmile >=2.6.0`이 추가되었다.
+- [x] `pyproject.toml`에 `librosa >=0.10.0`이 추가되었다.
+- [x] opensmile AGPL-3.0 라이선스가 로컬 전용 사용으로 회피 가능함이 문서화되었다.
 
 ### 품질 게이트
 
-- [ ] TDD RED-GREEN-REFACTOR 사이클 준수(테스트 먼저 작성)
-- [ ] 코드 커버리지 85% 이상(tone_engine.py, tone_task.py, tone.py)
-- [ ] TRUST 5 통과(0 에러, 0 타입 에러, 0 린트 에러)
-- [ ] 기존 회귀 테스트 전체 통과(sentiment 포함)
-- [ ] acceptance.md 시나리오 6개(AC-TONE-001~006) 전체 통과
+- [x] TDD RED-GREEN-REFACTOR 사이클 준수(테스트 먼저 작성)
+- [x] 코드 커버리지 85% 이상(tone_engine.py, tone_task.py, tone.py)
+  - 2026-06-14 추가 검증: API aggregate `2545/2545`, `100.00%`, `missing=[]`
+  - 대상 테스트: `backend/tests/unit/test_api_coverage_completion.py`, `backend/tests/unit/test_devices_api_coverage.py`
+- [x] TRUST 5 통과(0 에러, 0 타입 에러, 0 린트 에러)
+- [x] 기존 회귀 테스트 전체 통과(sentiment 포함)
+  - 2026-06-14 backend 전체 suite: `3323 passed, 16 skipped`, coverage `99.01%`
+  - `ruff check .` -> `All checks passed!`
+  - `mypy .` -> `Success: no issues found in 394 source files`
+- [x] acceptance.md 시나리오 6개(AC-TONE-001~006) 전체 통과
 
 ### 하위 호환성
 
-- [ ] 기존 `/api/v1/sentiment/*` 응답 스키마가 유지된다.
-- [ ] 기존 STT/DIA/Minutes/Sentiment/Summary 파이프라인 동작이 변경되지 않는다.
-- [ ] DIA wav 삭제 정책 변경이 기존 retention.py 동작에 영향을 주지 않는다.
+- [x] 기존 `/api/v1/sentiment/*` 응답 스키마가 유지된다.
+- [x] 기존 STT/DIA/Minutes/Sentiment/Summary 파이프라인 동작이 변경되지 않는다.
+- [x] DIA wav 삭제 정책 변경이 기존 retention.py 동작에 영향을 주지 않는다.

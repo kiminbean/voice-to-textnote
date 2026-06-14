@@ -185,7 +185,7 @@ def setup_metrics(app: FastAPI) -> Instrumentator:
     """
     # 이미 동일한 앱에 계측기가 적용됐는지 확인 (FastAPI state 활용)
     if getattr(app.state, "_metrics_setup_done", False):
-        return getattr(app.state, "_instrumentator", None)
+        return getattr(app.state, "_instrumentator")
 
     # http_requests_inprogress 이미 등록된 경우 inprogress 비활성화
     inprogress_registered = (

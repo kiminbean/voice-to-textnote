@@ -275,12 +275,19 @@ pip install "opensmile>=2.6.0" "librosa>=0.10.0"
 
 ## 8. 성공 기준
 
-- [ ] 모든 EARS 요구사항(REQ-TONE-001~014) 구현 및 테스트 통과
-- [ ] TDD RED-GREEN-REFACTOR 사이클 준수 (테스트 먼저 작성)
-- [ ] 코드 커버리지 85% 이상 (tone_engine.py, tone_task.py, tone.py)
-- [ ] 기존 /sentiment/* API 하위 호환성 유지 (회귀 테스트 통과)
-- [ ] DIA wav 삭제 시점 이연 후 디스크 정리 정상 동작
-- [ ] tone_model 빈 값 시 기능 비활성화 정상 동작
-- [ ] Flutter tone timeline 렌더링 및 에러 격리 정상 동작
-- [ ] acceptance.md 검수 시나리오 6개(AC-TONE-001~006) 전체 통과
-- [ ] TRUST 5 품질 게이트 통과 (0 에러, 0 타입 에러, 0 린트 에러)
+- [x] 모든 EARS 요구사항(REQ-TONE-001~014) 구현 및 테스트 통과
+- [x] TDD RED-GREEN-REFACTOR 사이클 준수 (테스트 먼저 작성)
+- [x] 코드 커버리지 85% 이상 (tone_engine.py, tone_task.py, tone.py)
+- [x] 기존 /sentiment/* API 하위 호환성 유지 (회귀 테스트 통과)
+- [x] DIA wav 삭제 시점 이연 후 디스크 정리 정상 동작
+- [x] tone_model 빈 값 시 기능 비활성화 정상 동작
+- [x] Flutter tone timeline 렌더링 및 에러 격리 정상 동작
+- [x] acceptance.md 검수 시나리오 6개(AC-TONE-001~006) 전체 통과
+- [x] TRUST 5 품질 게이트 통과 (0 에러, 0 타입 에러, 0 린트 에러)
+
+2026-06-14 재검증:
+- backend 전체 suite: `3323 passed, 16 skipped`, coverage `99.01%`
+- focused tone/e2e suite: `65 passed, 6 warnings`
+- `ruff check .` -> `All checks passed!`
+- `mypy .` -> `Success: no issues found in 394 source files`
+- Flutter SDK cache write restriction prevents re-running `flutter test` in this sandbox; previous documented Flutter evidence remains `318 passed, 0 failed`.

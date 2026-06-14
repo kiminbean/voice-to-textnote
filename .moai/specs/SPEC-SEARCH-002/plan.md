@@ -1,10 +1,11 @@
 ---
 id: SPEC-SEARCH-002
 version: "1.0.0"
-status: draft
+status: completed
 created: "2026-06-03"
 author: MoAI
 priority: medium
+completed: "2026-06-14"
 ---
 
 # SPEC-SEARCH-002: 구현 계획
@@ -15,29 +16,29 @@ priority: medium
 
 기존 `search_service.py`와 `search.py` 라우터에 날짜 범위, 정렬, 상세 필터 기능을 추가한다.
 
-- [ ] `search_service.py`: 동적 WHERE/ORDER BY 생성 로직 구현
-- [ ] `search_service.py`: rank 컬럼 SELECT 추가
-- [ ] `schemas/search.py`: SearchResponse에 sort 필드 추가
-- [ ] `search.py`: date_from, date_to, sort, speaker, has_action_items, has_key_decisions 파라미터 추가
-- [ ] 단위 테스트: 각 필터/정렬 조합에 대한 테스트 케이스
+- [x] `search_service.py`: 동적 WHERE/ORDER BY 생성 로직 구현
+- [x] `search_service.py`: rank 컬럼 SELECT 추가
+- [x] `schemas/search.py`: SearchResponse에 sort 필드 추가
+- [x] `search.py`: date_from, date_to, sort, speaker, has_action_items, has_key_decisions 파라미터 추가
+- [x] 단위 테스트: 각 필터/정렬 조합에 대한 테스트 케이스
 
 ### Primary Goal: 자동완성 API
 
 검색어 접두사 기반 제안 엔드포인트를 신규 구현한다.
 
-- [ ] `suggestion_service.py`: FTS5 MATCH 결과에서 키워드 추출 로직
-- [ ] `search.py`: `GET /api/v1/search/suggestions` 엔드포인트 추가
-- [ ] `schemas/search.py`: SuggestionResponse 스키마 정의
-- [ ] 단위 테스트: 제안 로직 테스트
+- [x] `suggestion_service.py`: FTS5 MATCH 결과에서 키워드 추출 로직
+- [x] `search.py`: `GET /api/v1/search/suggestions` 엔드포인트 추가
+- [x] `schemas/search.py`: SuggestionResponse 스키마 정의
+- [x] 단위 테스트: 제안 로직 테스트
 
 ### Secondary Goal: Flutter 검색 UI 확장
 
 백엔드 API 확장에 맞춰 Flutter 클라이언트를 업데이트한다.
 
-- [ ] `search_result.dart`: 모델 확장 (sort, SuggestionResponse)
-- [ ] `search_api.dart`: API 파라미터 확장, suggestions() 추가
-- [ ] `search_provider.dart`: SearchQuery 확장, 프로바이더 추가
-- [ ] `search_screen.dart`: 정렬 메뉴, 자동완성, 최근 검색어 UI
+- [x] `search_result.dart`: 모델 확장 (sort, SuggestionResponse)
+- [x] `search_api.dart`: API 파라미터 확장, suggestions() 추가
+- [x] `search_provider.dart`: SearchQuery 확장, 프로바이더 추가
+- [x] `search_screen.dart`: 정렬 메뉴, 자동완성, 최근 검색어 UI
 - [ ] `search_filter_sheet.dart`: 상세 필터 바텀시트 신규
 - [ ] `recent_search_service.dart`: 최근 검색어 로컬 관리 신규
 - [ ] 위젯 테스트: 필터 UI 동작 테스트

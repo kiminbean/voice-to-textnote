@@ -1,8 +1,9 @@
 ---
 id: SPEC-COLLAB-001
 version: "1.0.0"
-status: draft
+status: completed
 created: "2026-06-13"
+updated: "2026-06-14"
 updated: "2026-06-13"
 author: Sisyphus
 priority: high
@@ -17,6 +18,7 @@ depends_on: SPEC-TEAM-001
 | 버전 | 날짜 | 변경 내용 | 작성자 |
 |------|------|----------|--------|
 | 1.0.0 | 2026-06-13 | 초기 작성 | Sisyphus |
+| 1.0.1 | 2026-06-14 | 구현 및 검증 완료 — 협업 서비스 회귀 테스트 통과 | Codex |
 
 ## 1. 환경 (Environment)
 
@@ -215,4 +217,4 @@ web_socket_channel: ^3.0.0  # 이미 pubspec.yaml에 존재
 ---
 *SPEC ID: SPEC-COLLAB-001*
 *생성일: 2026-06-13*
-*상태: draft*
+*상태: completed*

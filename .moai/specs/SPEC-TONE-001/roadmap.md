@@ -18,13 +18,13 @@
 | 감정 분석 스키마 | ✅ 구현됨 | `backend/schemas/sentiment.py` (87 lines) |
 | Flutter 감정 카드 위젯 | ✅ 구현됨 | `client/lib/screens/result_screen.dart:714-855` |
 | Flutter 감정 API 서비스 | ✅ 구현됨 | `client/lib/services/sentiment_api.dart` |
-| **Celery 태스크 등록** | ❌ **누락됨** | `celery_app.py:14-22`에 sentiment_task 빠짐 → **실행 불가** |
+| **Celery 태스크 등록** | ✅ 구현됨 | `backend/workers/celery_app.py`에 tone/sentiment task 등록 |
 | **SPEC 문서** | ❌ **없음** | `.moai/specs/SPEC-SENTIMENT-001/` 디렉토리 미존재 |
-| **SSE 진행률 스트리밍** | ❌ **누락** | `stream.py:87-93`에 `task:sentiment:status:` prefix 빠짐 |
-| **emotional_timeline 렌더링** | ❌ **미구현** | Flutter에서 데이터 수신 후 표시 안 함 |
+| **SSE 진행률 스트리밍** | ✅ 구현됨 | `task:tone:status:` prefix 포함 |
+| **emotional_timeline 렌더링** | ✅ 구현됨 | tone timeline 위젯과 에러 격리 섹션 구현 |
 | 오디오 기반 감정 인식 (SER) | ❌ 미구현 | (새 기능) |
-| 발화 톤/운율 분석 (prosody) | ❌ 미구현 | (새 기능) |
-| 오디오 세그먼트 보존 | ❌ 미구현 | STT/DIA 완료 후 오디오 즉시 삭제 |
+| 발화 톤/운율 분석 (prosody) | ✅ 구현됨 | SPEC-TONE-001 M1~M6 완료 |
+| 오디오 세그먼트 보존 | ✅ 구현됨 | tone_task 완료 후 DIA wav 정리로 이연 |
 
 ### 1.2 README 부정확성
 

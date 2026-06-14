@@ -17,7 +17,7 @@ import statistics
 import uuid
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
-from typing import Literal
+from typing import Any, Literal
 
 import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends, Query, status
@@ -88,6 +88,28 @@ def get_sentiment_service() -> SentimentService:
     return SentimentService()
 
 
+def _sentiment_mapping(value: object) -> dict[str, Any]:
+    """Normalize service sentiment output from dict or Pydantic model."""
+    if isinstance(value, BaseModel):
+        return value.model_dump()
+    if isinstance(value, dict):
+        return value
+    return {
+        key: attr
+        for key in (
+            "speaker_name",
+            "overall_score",
+            "positive_ratio",
+            "negative_ratio",
+            "positive",
+            "neutral",
+            "negative",
+            "dominant",
+        )
+        if (attr := vars(value).get(key)) is not None
+    }
+
+
 @router.get(
     "/meeting/{meeting_id}",
     response_model=SentimentAnalysis,
@@ -116,19 +138,25 @@ async def analyze_meeting_sentiment(
     segments = data.get("segments", [])
 
     # 감성 분석 서비스 호출
-    analysis = await svc.analyze_meeting_sentiment(segments)
+    analysis = _sentiment_mapping(await svc.analyze_meeting_sentiment(segments))
 
     logger.info(
         "회의 감성 분석 완료",
         meeting_id=meeting_id,
         segments_count=len(segments),
-        overall_score=analysis.overall_score,
+        overall_score=analysis.get("overall_score", 0.0),
     )
 
     return SentimentAnalysis(
         meeting_id=meeting_id,
         segments_analyzed=len(segments),
-        sentiment_scores=analysis,
+        sentiment_scores=SentimentScore(
+            positive=float(analysis.get("positive", 0.0)),
+            neutral=float(analysis.get("neutral", 0.0)),
+            negative=float(analysis.get("negative", 0.0)),
+            dominant=SentimentLabel(str(analysis.get("dominant", "neutral"))),
+            overall_score=float(analysis.get("overall_score", 0.0)),
+        ),
         key_phrases=await svc.extract_key_phrases_with_sentiment(segments),
         trend_direction=svc.calculate_trend_direction(segments),
     )
@@ -143,7 +171,7 @@ async def analyze_sentiment_trends(
     days: int = Query(default=30, ge=7, le=365, description="분석 기간 (일)"),
     db: AsyncSession = Depends(get_db_session),
     svc: SentimentService = Depends(get_sentiment_service),
-) -> dict[str, list[dict]]:
+) -> dict[str, Any]:
     """시간별 감성 추이 분석"""
     # 지정된 기간 내의 완료된 회의록 조회
     since_date = datetime.utcnow() - timedelta(days=days)
@@ -199,22 +227,22 @@ async def analyze_speaker_sentiment(
     if not segments:
         raise ValueError(f"화자 발화 데이터를 찾을 수 없습니다: {speaker_id}")
 
-    analysis = await svc.analyze_speaker_sentiment(segments)
+    analysis = _sentiment_mapping(await svc.analyze_speaker_sentiment(segments))
 
     logger.info(
         "화자 감성 분석 완료",
         speaker_id=speaker_id,
         segments_count=len(segments),
-        sentiment_score=analysis.overall_score,
+        sentiment_score=analysis.get("overall_score", 0.0),
     )
 
     return SpeakerSentiment(
         speaker_id=speaker_id,
-        speaker_name=analysis.speaker_name,
-        sentiment_score=analysis.overall_score,
+        speaker_name=str(analysis.get("speaker_name", "알 수 없음")),
+        sentiment_score=float(analysis.get("overall_score", 0.0)),
         segments_count=len(segments),
-        positive_ratio=analysis.positive_ratio,
-        negative_ratio=analysis.negative_ratio,
+        positive_ratio=float(analysis.get("positive_ratio", 0.0)),
+        negative_ratio=float(analysis.get("negative_ratio", 0.0)),
     )
 
 
@@ -250,16 +278,16 @@ async def get_sentiment_dashboard_summary(
         }
 
     # 전체 감성 분석
-    all_segments = []
-    meeting_sentiments = []
+    all_segments: list[dict[str, Any]] = []
+    meeting_sentiments: list[float] = []
 
     for record in records:
         if record.result_data and record.result_data.get("segments"):
             segments = record.result_data.get("segments", [])
             all_segments.extend(segments)
 
-            meeting_analysis = await svc.analyze_meeting_sentiment(segments)
-            meeting_sentiments.append(meeting_analysis.overall_score)
+            meeting_analysis = _sentiment_mapping(await svc.analyze_meeting_sentiment(segments))
+            meeting_sentiments.append(float(meeting_analysis.get("overall_score", 0.0)))
 
     # 전체 평균 계산
     average_sentiment = statistics.mean(meeting_sentiments) if meeting_sentiments else 0.0

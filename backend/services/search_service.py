@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import re
 from datetime import UTC, datetime
+from typing import Any
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -91,7 +92,7 @@ class SearchService:
 
         # 동적 WHERE 조건 빌드
         where_conditions = ["search_index MATCH :query"]
-        params = {"query": match_query}
+        params: dict[str, Any] = {"query": match_query}
 
         # task_type 필터
         if task_type != "all":
@@ -162,8 +163,7 @@ class SearchService:
             total = count_result.scalar() or 0
 
             # 검색 결과 조회
-            params["limit"] = page_size
-            params["offset"] = offset
+            params = {**params, "limit": page_size, "offset": offset}
             rows_result = await session.execute(text(search_sql), params)
             rows = rows_result.fetchall()
 

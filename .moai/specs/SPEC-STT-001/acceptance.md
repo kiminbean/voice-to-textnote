@@ -203,16 +203,16 @@ author: kisoo
 
 ### Definition of Done
 
-- [ ] 모든 EARS 요구사항(REQ-STT-001 ~ REQ-STT-022)에 대한 구현 완료
-- [ ] 전체 테스트 커버리지 85% 이상
-- [ ] 모든 인수 시나리오(1~13) 통과
-- [ ] 성능 목표 달성 확인 (업로드 < 500ms, STT < 2x 실시간, 상태 조회 < 100ms)
-- [ ] API 문서 자동 생성 (FastAPI Swagger/ReDoc)
-- [ ] 구조화된 JSON 로깅 구현
-- [ ] Docker Compose 환경에서 정상 동작 확인
+- [x] 모든 EARS 요구사항(REQ-STT-001 ~ REQ-STT-022)에 대한 구현 완료
+- [x] 전체 테스트 커버리지 85% 이상
+- [x] 모든 인수 시나리오(1~13) 통과
+- [x] 성능 목표 달성 확인 (업로드 < 500ms, STT < 2x 실시간, 상태 조회 < 100ms)
+- [x] API 문서 자동 생성 (FastAPI Swagger/ReDoc)
+- [x] 구조화된 JSON 로깅 구현
+- [x] Docker Compose 환경에서 정상 동작 확인
 
 ---
 
 *SPEC ID: SPEC-STT-001*
 *생성일: 2026-03-15*
-*상태: draft*
+*상태: completed*

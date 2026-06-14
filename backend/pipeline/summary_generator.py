@@ -158,17 +158,17 @@ class SummaryGenerator:
 
             # REQ-UI-003: sections 파싱 (양식 기반 섹션별 내용)
             raw_sections = data.get("sections", {})
-            sections: dict[str, str] = {}
+            parsed_sections: dict[str, str] = {}
             if isinstance(raw_sections, dict):
                 for k, v in raw_sections.items():
-                    sections[str(k)] = str(v) if v else ""
+                    parsed_sections[str(k)] = str(v) if v else ""
 
             return SummaryResult(
                 summary_text=data.get("summary_text", ""),
                 action_items=action_items,
                 key_decisions=data.get("key_decisions", []),
                 next_steps=data.get("next_steps", []),
-                sections=sections,
+                sections=parsed_sections,
             )
 
         except (json.JSONDecodeError, ValueError, KeyError) as exc:
@@ -254,12 +254,13 @@ class SummaryGenerator:
             response_format={"type": "json_object"},
         )
 
-        response_text = response.choices[0].message.content
+        response_text = response.choices[0].message.content or ""
+        usage = response.usage
 
         logger.info(
             "OpenAI API 응답 수신",
-            input_tokens=response.usage.prompt_tokens,
-            output_tokens=response.usage.completion_tokens,
+            input_tokens=usage.prompt_tokens if usage else 0,
+            output_tokens=usage.completion_tokens if usage else 0,
         )
 
         return self.parse_response(response_text)

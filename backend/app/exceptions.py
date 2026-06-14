@@ -18,10 +18,10 @@ class VoiceNoteError(Exception):
         self,
         *,
         error_code: str,
-        message: str,
+        message: object,
         status_code: int,
     ) -> None:
-        super().__init__(message)
+        super().__init__(str(message))
         self.error_code = error_code
         self.message = message
         self.status_code = status_code
@@ -217,7 +217,7 @@ class UnprocessableEntityError(VoiceNoteError):
     def __init__(
         self,
         *,
-        message: str = "요청을 처리할 수 없습니다",
+        message: object = "요청을 처리할 수 없습니다",
         error_code: str = "UNPROCESSABLE_ENTITY",
         status_code: int = 422,
     ) -> None:

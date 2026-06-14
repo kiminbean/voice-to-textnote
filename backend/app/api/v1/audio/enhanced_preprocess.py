@@ -16,7 +16,7 @@ import tempfile
 from pathlib import Path
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse
 from starlette.background import BackgroundTask
 
 from backend.app.config import settings
@@ -30,7 +30,11 @@ from backend.pipeline.enhanced_audio_processor import (
     get_enhanced_processor,
 )
 from backend.schemas.audio_enhanced import (
+    AudioFileInfo as AudioFileInfoSchema,
+)
+from backend.schemas.audio_enhanced import (
     BatchPreprocessResponse,
+    BatchSummary,
     EnhancedPreprocessOptions,
     FormatInfo,
     ModelStatusResponse,
@@ -73,7 +77,7 @@ async def enhanced_preprocess_endpoint(
     ai_noise_removal: bool = Form(default=True),
     noise_threshold: float = Form(default=0.1),
     denoise_strength: float = Form(default=0.8),
-) -> StreamingResponse:
+) -> FileResponse:
     """단일 파일 고급 전처리 (AI 노이즈 제거 포함)"""
     if not settings.audio_preprocess_enabled:
         service_unavailable("오디오 전처리 기능이 비활성화되어 있습니다.")
@@ -127,7 +131,8 @@ async def enhanced_preprocess_endpoint(
 
         # 처리 수행 (비동기)
         try:
-            result = await processor.preprocess_batch([src_path], options, None)
+            batch_options = BatchPreprocessOptions(**options.model_dump())
+            result = await processor.preprocess_batch([src_path], batch_options, None)
 
             if result.failed_files > 0:
                 raise HTTPException(status_code=400, detail="오디오 처리 실패")
@@ -153,8 +158,8 @@ async def enhanced_preprocess_endpoint(
                 processed_path.unlink(missing_ok=True)
 
             output_name = f"{Path(filename).stem}_enhanced.wav"
-            return StreamingResponse(
-                path=str(processed_path),
+            return FileResponse(
+                path=processed_path,
                 media_type="audio/wav",
                 filename=output_name,
                 background=BackgroundTask(cleanup),
@@ -241,7 +246,7 @@ async def batch_preprocess_endpoint(
         processor = await get_enhanced_processor()
 
         # 임시 파일 저장
-        temp_files = []
+        temp_files: list[Path] = []
         try:
             for file in validated_files:
                 max_bytes = settings.audio_preprocess_max_file_mb * 1024 * 1024
@@ -262,7 +267,7 @@ async def batch_preprocess_endpoint(
                         fp.write(chunk)
 
             # 배치 처리 수행
-            result = await processor.preprocess_batch(temp_files, options, None)
+            result = await processor.preprocess_batch(list(temp_files), options, None)
 
             # 보고서 생성
             report = await processor.create_processing_report(result) if return_report else None
@@ -273,7 +278,12 @@ async def batch_preprocess_endpoint(
                 processed_files=result.processed_files,
                 failed_files=result.failed_files,
                 processing_time_seconds=result.processing_time_seconds,
-                summary=result.summary,
+                summary=BatchSummary.model_validate(result.summary),
+                results=[
+                    AudioFileInfoSchema.model_validate(item)
+                    for item in result.results
+                ],
+                errors=result.errors,
                 report=report,
             )
 

@@ -86,6 +86,18 @@
 
 ---
 
+## 2026-06-14 작업 내역
+
+### API 커버리지 100% 달성
+- **Files:** `backend/tests/unit/test_api_coverage_completion.py`, `backend/tests/unit/test_devices_api_coverage.py`
+- **내용:** API 라우터 및 직접 호출 경로의 잔여 미커버 라인을 보강. history/templates/tone/vocabulary/quality/bookmarks/speakers/batch/devices/collab WebSocket 경로 포함.
+- **검증:** `python -m pytest backend/tests/unit/test_api_coverage_completion.py backend/tests/unit/test_devices_api_coverage.py -q --no-cov` → `19 passed`
+- **검증:** `python -m ruff check backend/tests/unit/test_api_coverage_completion.py backend/tests/unit/test_devices_api_coverage.py` → `All checks passed!`
+- **결과:** Coverage JSON API aggregate `2545/2545`, `100.00%`, `missing=[]`
+- **남은 리스크:** 전체 `python -m pytest backend -q --cov-report=json:coverage.json`는 기존 비-API 실패 11건(OAuth/STT/ToneEngine/worker)으로 아직 전체 green 아님.
+
+---
+
 ## 2026-06-05 ~ 2026-06-06 작업 내역
 
 ### 감성 분석 & 고급 액션 아이템 (ebb127f)

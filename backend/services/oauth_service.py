@@ -105,17 +105,17 @@ async def verify_apple_token(id_token: str) -> OAuthUserInfo:
     if not settings.apple_client_id or not settings.apple_team_id:
         raise ValueError("Apple Sign-In 설정(APPLE_CLIENT_ID, APPLE_TEAM_ID)이 필요합니다")
 
+    unverified_header = jwt.get_unverified_header(id_token)
+    kid = unverified_header.get("kid")
+    if not kid:
+        raise ValueError("Apple ID token에 kid가 없습니다")
+
     apple_certs_url = "https://appleid.apple.com/auth/keys"
 
     async with httpx.AsyncClient() as client:
         resp = await client.get(apple_certs_url)
         resp.raise_for_status()
         certs = resp.json()
-
-    unverified_header = jwt.get_unverified_header(id_token)
-    kid = unverified_header.get("kid")
-    if not kid:
-        raise ValueError("Apple ID token에 kid가 없습니다")
 
     public_key = None
     for key in certs.get("keys", []):

@@ -11,6 +11,7 @@ REQ-MOBILE-003: GET /api/v1/devices/ - 등록된 디바이스 목록 조회
 
 import uuid
 from datetime import UTC, datetime
+from typing import Literal, cast
 
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -153,7 +154,7 @@ async def list_devices(
         DeviceResponse(
             id=dt.id,
             fcm_token=dt.fcm_token,
-            platform=dt.platform,
+            platform=cast(Literal["ios", "android"], dt.platform),
             device_id=None,  # MVP: device_id 필드 없음
             created_at=dt.created_at,
             updated_at=dt.updated_at,

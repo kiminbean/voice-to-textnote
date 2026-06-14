@@ -30,6 +30,7 @@ class BackgroundRecordingConfig {
 enum InterruptionState {
   /// 녹음 중 (인터럽션 없음)
   active,
+
   /// 인터럽션 발생으로 일시정지됨
   interrupted,
 }
@@ -74,8 +75,7 @@ class BackgroundRecordingService {
           avAudioSessionMode: AVAudioSessionMode.defaultMode,
           avAudioSessionRouteSharingPolicy:
               AVAudioSessionRouteSharingPolicy.defaultPolicy,
-          avAudioSessionSetActiveOptions:
-              AVAudioSessionSetActiveOptions.none,
+          avAudioSessionSetActiveOptions: AVAudioSessionSetActiveOptions.none,
           androidAudioAttributes: AndroidAudioAttributes(
             contentType: AndroidAudioContentType.speech,
             flags: AndroidAudioFlags.none,
@@ -240,9 +240,8 @@ class BackgroundRecordingService {
   /// - noiseSuppress (노이즈 억제)
   RecordConfig _buildSpeechOptimizedConfig() {
     return const RecordConfig(
-      encoder: AudioEncoder.aacLc,
-      bitRate: 128000,
-      sampleRate: 44100,
+      encoder: AudioEncoder.wav,
+      sampleRate: 16000,
       numChannels: 1, // mono — 음성 녹음에 최적
       autoGain: true,
       echoCancel: true,

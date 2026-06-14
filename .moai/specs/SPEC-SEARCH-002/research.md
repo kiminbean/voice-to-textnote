@@ -1,10 +1,11 @@
 ---
 id: SPEC-SEARCH-002
 version: "1.0.0"
-status: draft
+status: completed
 created: "2026-06-03"
 author: MoAI
 priority: medium
+completed: "2026-06-14"
 ---
 
 # SPEC-SEARCH-002: 코드베이스 분석 (Research)

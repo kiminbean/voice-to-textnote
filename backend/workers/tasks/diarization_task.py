@@ -75,7 +75,7 @@ def _update_task_status(
     existing_created_at = None
     existing_raw = r.get(status_key)
     if existing_raw:
-        existing_data = json.loads(existing_raw)
+        existing_data = json.loads(cast(str | bytes | bytearray, existing_raw))
         existing_created_at = existing_data.get("created_at")
 
     data: dict = {
@@ -224,7 +224,7 @@ def diarization_task(
             if stt_result_raw is None:
                 raise FileNotFoundError(f"STT 결과를 찾을 수 없습니다: stt_task_id={stt_task_id}")
 
-            stt_result = json.loads(stt_result_raw)
+            stt_result = json.loads(cast(str | bytes | bytearray, stt_result_raw))
             stt_status = stt_result.get("status")
             if stt_status and stt_status != TaskStatus.completed.value:
                 upstream_error = _extract_cached_error_message(stt_result) or (

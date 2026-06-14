@@ -172,13 +172,13 @@ class TestEnhancedPreprocessFull:
         mock_file.filename = "test.wav"
         mock_file.read = AsyncMock(side_effect=[b"RIFF" + b"\x00" * 100, b""])
 
-        # StreamingResponse가 path를 받지 않으므로 FileResponse로 교체 mock
+        # FileResponse background task를 캡처하여 cleanup 함수 실행
         mock_response = MagicMock()
         mock_response.media_type = "audio/wav"
 
         captured_calls = {}
 
-        def capture_streaming_response(*args, **kwargs):
+        def capture_file_response(*args, **kwargs):
             # background task 캡처하여 cleanup 함수 실행
             bg_task = kwargs.get("background")
             if bg_task and hasattr(bg_task, "func"):
@@ -200,8 +200,8 @@ class TestEnhancedPreprocessFull:
                 return_value=(True, ""),
             ),
             patch(
-                "backend.app.api.v1.audio.enhanced_preprocess.StreamingResponse",
-                side_effect=capture_streaming_response,
+                "backend.app.api.v1.audio.enhanced_preprocess.FileResponse",
+                side_effect=capture_file_response,
             ),
             patch.object(Path, "unlink"),
         ):

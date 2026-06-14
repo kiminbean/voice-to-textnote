@@ -28,9 +28,21 @@
 ### Phase 2.5: Quality Validation PASS
 - Backend: 3106 passed, 0 failed, 16 skipped
 - Flutter: 318 passed, 0 failed
-- Tone coverage: engine 98%, task 100%, schema 100%, API 93%
+- Tone coverage: engine 98%, task 100%, schema 100%, API 100% after Phase 2.6
 - LSP diagnostics: 0 errors all files
 - Route baseline updated: 161 → 165 routes
+
+### Phase 2.6: API Coverage Closure
+- Date: 2026-06-14
+- Added API coverage regression tests:
+  - `backend/tests/unit/test_api_coverage_completion.py`
+  - `backend/tests/unit/test_devices_api_coverage.py`
+- Covered remaining API route/direct-call paths across history, templates, tone, vocabulary, quality assessment, bookmarks, speakers, batch upload, devices, and collaboration WebSocket handling.
+- Verification:
+  - `python -m pytest backend/tests/unit/test_api_coverage_completion.py backend/tests/unit/test_devices_api_coverage.py -q --no-cov` → `19 passed`
+  - `python -m ruff check backend/tests/unit/test_api_coverage_completion.py backend/tests/unit/test_devices_api_coverage.py` → `All checks passed!`
+  - Coverage JSON API aggregate: `2545/2545` covered lines, `100.00%`, `missing=[]`
+- Known non-API suite risk: full `python -m pytest backend -q --cov-report=json:coverage.json` still has 11 existing non-API failures in OAuth/STT/ToneEngine/worker tests; these do not reduce API coverage but block claiming full-suite green.
 
 ### Acceptance Criteria
 - AC-TONE-001 ✅ Celery tone_task registered (celery_app include + test)

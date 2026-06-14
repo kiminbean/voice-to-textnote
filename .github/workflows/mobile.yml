@@ -1,0 +1,77 @@
+name: Mobile
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "client/**"
+      - ".github/workflows/mobile.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "client/**"
+      - ".github/workflows/mobile.yml"
+
+jobs:
+  android:
+    name: Flutter Analyze, Test, Android Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        working-directory: client
+        run: flutter pub get
+
+      - name: Analyze
+        working-directory: client
+        run: flutter analyze
+
+      - name: Test
+        working-directory: client
+        run: flutter test
+
+      - name: Build Android debug APK
+        working-directory: client
+        run: flutter build apk --debug
+
+  ios:
+    name: Flutter iOS No-Codesign Build
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        working-directory: client
+        run: flutter pub get
+
+      - name: Build iOS debug without codesigning
+        working-directory: client
+        run: flutter build ios --debug --no-codesign

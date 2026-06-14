@@ -3,15 +3,29 @@ SPEC-BOOKMARK-001: 북마크/하이라이트 CRUD 서비스
 """
 
 import uuid
+from datetime import UTC, datetime, timedelta
 
 from fastapi import HTTPException
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.config import settings
 from backend.db.bookmark_models import Bookmark
 from backend.db.models import TaskResult
-from backend.schemas.bookmark import BookmarkCreate, BookmarkUpdate
+from backend.schemas.bookmark import (
+    BookmarkBulkOperation,
+    BookmarkBulkResponse,
+    BookmarkCategory,
+    BookmarkCleanupRequest,
+    BookmarkCleanupResponse,
+    BookmarkCreate,
+    BookmarkPriority,
+    BookmarkResponse,
+    BookmarkSearchRequest,
+    BookmarkSearchResponse,
+    BookmarkSummaryResponse,
+    BookmarkUpdate,
+)
 
 
 class BookmarkService:
@@ -165,3 +179,128 @@ class BookmarkService:
         bookmark = await self.get_by_id(session, bookmark_id, user_id)
         await session.delete(bookmark)
         await session.commit()
+
+    async def bulk_operation(
+        self, session: AsyncSession, user_id: uuid.UUID, payload: BookmarkBulkOperation
+    ) -> BookmarkBulkResponse:
+        processed_count = 0
+        errors: list[dict[str, str]] = []
+        for bookmark_id in payload.bookmark_ids:
+            try:
+                bookmark = await self.get_by_id(session, bookmark_id, user_id)
+                if payload.operation == "delete":
+                    await session.delete(bookmark)
+                elif payload.operation == "update_category":
+                    bookmark.category = str((payload.data or {}).get("category", bookmark.category))
+                elif payload.operation == "update_priority":
+                    bookmark.priority = str((payload.data or {}).get("priority", bookmark.priority))
+                else:
+                    raise HTTPException(status_code=422, detail="지원하지 않는 북마크 작업입니다")
+                processed_count += 1
+            except Exception as exc:
+                errors.append({"id": str(bookmark_id), "error": str(exc)})
+        await session.commit()
+        return BookmarkBulkResponse(processed_count=processed_count, failed_count=len(errors), errors=errors)
+
+    async def get_summary(
+        self, session: AsyncSession, user_id: uuid.UUID, task_id: str | None = None
+    ) -> BookmarkSummaryResponse:
+        query = select(Bookmark).where(Bookmark.user_id == user_id)
+        if task_id is not None:
+            query = query.where(Bookmark.task_id == task_id)
+        result = await session.execute(query.order_by(Bookmark.created_at.desc()).limit(10))
+        recent = list(result.scalars().all())
+
+        all_result = await session.execute(query)
+        all_items = list(all_result.scalars().all())
+        category_counts: dict[BookmarkCategory, int] = {}
+        priority_counts: dict[BookmarkPriority, int] = {}
+        tag_counts: dict[str, int] = {}
+        for item in all_items:
+            category = BookmarkCategory(item.category)
+            priority = BookmarkPriority(item.priority)
+            category_counts[category] = category_counts.get(category, 0) + 1
+            priority_counts[priority] = priority_counts.get(priority, 0) + 1
+            for tag in item.tags or []:
+                tag_counts[str(tag)] = tag_counts.get(str(tag), 0) + 1
+        return BookmarkSummaryResponse(
+            total_count=len(all_items),
+            category_counts=category_counts,
+            priority_counts=priority_counts,
+            tag_counts=tag_counts,
+            recent_bookmarks=[BookmarkResponse.model_validate(item) for item in recent],
+        )
+
+    async def search_bookmarks(
+        self, session: AsyncSession, user_id: uuid.UUID, request: BookmarkSearchRequest
+    ) -> BookmarkSearchResponse:
+        query = select(Bookmark).where(Bookmark.user_id == user_id)
+        if request.task_id:
+            query = query.where(Bookmark.task_id == request.task_id)
+        if request.category:
+            query = query.where(Bookmark.category == request.category.value)
+        if request.priority:
+            query = query.where(Bookmark.priority == request.priority.value)
+        if request.date_from:
+            query = query.where(Bookmark.created_at >= request.date_from)
+        if request.date_to:
+            query = query.where(Bookmark.created_at <= request.date_to)
+
+        result = await session.execute(query)
+        items = list(result.scalars().all())
+        if request.query:
+            q = request.query.lower()
+            items = [
+                item
+                for item in items
+                if q in (item.text_snippet or "").lower() or q in (item.note or "").lower()
+            ]
+        if request.tags:
+            required = set(request.tags)
+            items = [item for item in items if required.intersection(set(item.tags or []))]
+        if request.has_tags is not None:
+            items = [item for item in items if bool(item.tags) is request.has_tags]
+
+        total = len(items)
+        start = (request.page - 1) * request.page_size
+        page_items = items[start : start + request.page_size]
+        return BookmarkSearchResponse(
+            items=[BookmarkResponse.model_validate(item) for item in page_items],
+            total=total,
+            page=request.page,
+            page_size=request.page_size,
+            total_pages=(total + request.page_size - 1) // request.page_size,
+        )
+
+    async def cleanup_bookmarks(
+        self, session: AsyncSession, user_id: uuid.UUID, payload: BookmarkCleanupRequest
+    ) -> BookmarkCleanupResponse:
+        cutoff = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=payload.older_than_days)
+        query = select(Bookmark).where(Bookmark.user_id == user_id, Bookmark.created_at < cutoff)
+        if payload.category:
+            query = query.where(Bookmark.category == payload.category.value)
+        if payload.priority:
+            query = query.where(Bookmark.priority == payload.priority.value)
+        result = await session.execute(query)
+        items = list(result.scalars().all())
+        preview = [BookmarkResponse.model_validate(item) for item in items[:20]]
+        deleted_count = 0
+        if not payload.dry_run and items:
+            await session.execute(delete(Bookmark).where(Bookmark.id.in_([item.id for item in items])))
+            await session.commit()
+            deleted_count = len(items)
+        return BookmarkCleanupResponse(
+            total_count=len(items),
+            deleted_count=deleted_count,
+            preview=preview,
+        )
+
+    async def export_bookmarks(
+        self, session: AsyncSession, user_id: uuid.UUID, task_id: str | None, format: str
+    ) -> dict[str, object]:
+        result = await self.search_bookmarks(
+            session,
+            user_id,
+            BookmarkSearchRequest(task_id=task_id, page=1, page_size=200),
+        )
+        return {"format": format, "count": result.total, "items": [item.model_dump() for item in result.items]}

@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:voice_to_textnote/services/local_stt_service.dart';
 
 final modelManagerProvider = Provider<SttModelManager>((ref) {
   return SttModelManager();
@@ -29,9 +30,11 @@ class SttModelInfo {
   static const whisperBase = SttModelInfo(
     id: 'whisper-base',
     displayName: 'Whisper Base (오프라인)',
-    downloadUrl: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin',
+    downloadUrl:
+        'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin',
     sizeBytes: 147951193,
-    sha256Checksum: '60ed5bc3dd14eea856493d334349b405782ddcaf0028d4b5df4088345fba2efe',
+    sha256Checksum:
+        '60ed5bc3dd14eea856493d334349b405782ddcaf0028d4b5df4088345fba2efe',
   );
 }
 
@@ -64,7 +67,7 @@ class SttModelStatus {
   }
 }
 
-class SttModelManager {
+class SttModelManager implements LocalSttModelSource {
   static const _kPrefsModelPath = 'stt_model_path';
   static const _kPrefsModelId = 'stt_model_id';
 
@@ -81,11 +84,13 @@ class SttModelManager {
     return modelsDir;
   }
 
+  @override
   Future<String?> getModelPath() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_kPrefsModelPath);
   }
 
+  @override
   Future<bool> isModelReady() async {
     final path = await getModelPath();
     if (path == null) return false;

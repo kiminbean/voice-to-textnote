@@ -211,7 +211,7 @@ void main() {
     // totalPages 계산 테스트
     test('totalPages가 올바르게 계산되어야 함', () {
       // Arrange
-      final response = SearchResponse(
+      const response = SearchResponse(
         items: [],
         total: 45,
         page: 1,
@@ -226,7 +226,7 @@ void main() {
     // isFirstPage 테스트
     test('isFirstPage가 첫 페이지를 올바르게 식별해야 함', () {
       // Arrange
-      final firstPage = SearchResponse(
+      const firstPage = SearchResponse(
         items: [],
         total: 10,
         page: 1,
@@ -234,7 +234,7 @@ void main() {
         query: '검색어',
       );
 
-      final secondPage = SearchResponse(
+      const secondPage = SearchResponse(
         items: [],
         total: 10,
         page: 2,
@@ -250,7 +250,7 @@ void main() {
     // isLastPage 테스트
     test('isLastPage가 마지막 페이지를 올바르게 식별해야 함', () {
       // Arrange
-      final response = SearchResponse(
+      const response = SearchResponse(
         items: [],
         total: 45,
         page: 3,

@@ -158,10 +158,10 @@
 
 ---
 
-## Deferred (Out of Scope — 이번 반복 제외)
+## 후속 완료 상태
 
-- **Phase 4 (REQ-ROUTE-001~003)**: 라우터 도메인 그룹핑(`transcription/`, `minutes/` 등), `registry.py` 도입, `main.py` 간소화. **다음 반복으로 연기.**
-- **e2e 이벤트 루프 이슈 (9건)**: `tests/e2e/test_pipeline_e2e.py`의 Python 3.14 `RuntimeError: no current event loop`. 환경/인프라 이슈로 별도 처리 권장.
+- **Phase 4 (REQ-ROUTE-001~003)**: SPEC-REFACTOR-002와 2026-06-14 재검증으로 완료. flat 라우터 0건, `registry.py` SSOT, `main.py` registry 루프 유지.
+- **e2e 이벤트 루프 이슈 (9건)**: 2026-06-14 현재 재현 안 됨. `tests/e2e/test_pipeline_e2e.py` 포함 전체 suite `3323 passed, 16 skipped`.
 
 ---
 

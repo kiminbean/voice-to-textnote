@@ -6,9 +6,11 @@ SPEC-QA-001: 회의 Q&A 서비스 — OpenAI 기반
 
 import json
 import uuid
+from typing import cast
 
 import redis.asyncio as aioredis
 from openai import OpenAI
+from openai.types.chat import ChatCompletionMessageParam
 
 from backend.app.config import settings
 from backend.schemas.qa import MeetingAskResponse, QAHistoryItem, QAHistoryResponse, QASource
@@ -68,7 +70,7 @@ class QAService:
         if raw is None:
             raise ValueError("회의록을 찾을 수 없습니다. 처리가 완료되었는지 확인하세요.")
 
-        minutes_data = json.loads(raw)
+        minutes_data = json.loads(cast(str | bytes | bytearray, raw))
         transcript = self._format_transcript(minutes_data)
 
         if not transcript.strip():
@@ -119,9 +121,9 @@ class QAService:
         thread_id: str,
         question: str,
         transcript: str,
-    ) -> list[dict]:
+    ) -> list[ChatCompletionMessageParam]:
         """대화 이력을 포함한 메시지 목록 생성"""
-        messages: list[dict] = [
+        messages: list[ChatCompletionMessageParam] = [
             {
                 "role": "system",
                 "content": "당신은 회의 내용을 분석하는 AI 어시스턴트입니다. 주어진 회의록을 바탕으로 정확하게 답변하세요.",
@@ -181,7 +183,7 @@ class QAService:
         """Q&A 이력을 Redis에 저장"""
         key = f"{_QA_KEY_PREFIX}{task_id}:{thread_id}"
         raw = await redis_client.get(key)
-        history = json.loads(raw) if raw else []
+        history = json.loads(cast(str | bytes | bytearray, raw)) if raw else []
         history.append(item.model_dump())
         # 24시간 TTL
         await redis_client.set(key, json.dumps(history, ensure_ascii=False), ex=86400)
@@ -197,7 +199,7 @@ class QAService:
         raw = await redis_client.get(key)
         if raw is None:
             return []
-        history = json.loads(raw)
+        history = json.loads(cast(str | bytes | bytearray, raw))
         return [QAHistoryItem(**item) for item in history]
 
     async def get_history(
@@ -212,7 +214,7 @@ class QAService:
         async for key in redis_client.scan_iter(match=pattern):
             raw = await redis_client.get(key)
             if raw:
-                items = json.loads(raw)
+                items = json.loads(cast(str | bytes | bytearray, raw))
                 all_items.extend(QAHistoryItem(**item) for item in items)
 
         # 시간순 정렬

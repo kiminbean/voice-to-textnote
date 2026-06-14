@@ -75,7 +75,7 @@ from backend.app.api.v1.transcription import (
 )
 
 # 각 튜플: (APIRouter, requires_api_key)
-# 총 35개 라우터 — 25개 True, 10개 False
+# 총 39개 라우터. 동일 router 중복 등록 금지.
 ROUTER_REGISTRY: list[tuple[APIRouter, bool]] = [
     # ── 핵심 STT/처리 파이프라인 (API Key 필수) ──────────────────────────────────
     # 주의: batch는 transcription 보다 반드시 먼저 와야 함 (경로 충돌 방지)
@@ -124,6 +124,5 @@ ROUTER_REGISTRY: list[tuple[APIRouter, bool]] = [
     (vocabulary.router, True),  # REQ-VOCAB-001
     # ── 오디오 파일 서빙 / QA (혼합 인증) ───────────────────────────────────────
     (audio.router, False),  # 공개 엔드포인트
-    (enhanced_preprocess.router, True),  # 고급 오디오 전처리
     (qa.router, True),
 ]

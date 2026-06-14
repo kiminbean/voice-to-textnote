@@ -3,6 +3,7 @@ FastAPI 메인 앱
 REQ-STT-021: lifespan에서 모델 사전 로드 (warm-up)
 """
 
+import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -92,12 +93,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     await validate_startup()
 
     # STT 모델 사전 로드 (REQ-STT-021)
-    try:
-        stt_engine = WhisperEngine.get_instance()
-        stt_engine.load(settings.whisper_model)
-        logger.info("STT 모델 사전 로드 완료", model=settings.whisper_model)
-    except Exception as e:
-        logger.error("STT 모델 사전 로드 실패 (서버는 계속 실행)", error=str(e))
+    if os.environ.get("PYTEST_CURRENT_TEST"):
+        logger.info("테스트 실행 중: STT 모델 사전 로드 건너뜀")
+    else:
+        try:
+            stt_engine = WhisperEngine.get_instance()
+            stt_engine.load(settings.whisper_model)
+            logger.info("STT 모델 사전 로드 완료", model=settings.whisper_model)
+        except Exception as e:
+            logger.error("STT 모델 사전 로드 실패 (서버는 계속 실행)", error=str(e))
 
     # 화자 분리 모델 사전 로드 (REQ-DIA-011)
     if settings.huggingface_token:

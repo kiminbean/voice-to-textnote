@@ -449,12 +449,12 @@ Iteration 2와 동일한 환경을 재사용한다.
 - venv Python 경로: `backend/../venv/bin/python` (예: `cd backend && ../venv/bin/python -m pytest ...`)
 - import 접두사는 `backend.` (예: `from backend.app.api.v1.registry import ROUTER_GROUPS`)
 - 커버리지 게이트가 실패 식별을 방해하면 `-o addopts=""`로 비활성화하여 실패 목록만 확인한다.
-- e2e 이벤트 루프 이슈 9건(`tests/e2e/test_pipeline_e2e.py`)은 Python 3.14 asyncio 환경 이슈로 **제외**하므로, 전체 게이트는 `--ignore=tests/e2e/test_pipeline_e2e.py`로 실행한다.
+- e2e 이벤트 루프 이슈 9건(`tests/e2e/test_pipeline_e2e.py`)은 과거 Python 3.14 asyncio 환경 이슈로 제외했으나, 2026-06-14 재검증에서는 재현되지 않는다. 현재 전체 게이트는 E2E 포함 `pytest tests/ -q`로 실행한다.
 
 ### 8.2 Scope C — 라우터 도메인 그룹핑 (Priority Low, 범위 축소됨)
 
 **2026-06-05 구현 완료 후 범위 축소 결정:**
-De-risker C-D1 정정(위 참조): ~40개 테스트가 27개 라우터 서브모듈을 직접 import하므로, 파일 이동(REQ-RM-C1) 수행 시 테스트 import 경로 대량 깨짐. 호환성 shim 불가능(shim 자체가 flat .py 파일). **따라서 Option B 채택: registry.py만 도입, 파일 이동 제외.** 결과적으로 AC-C1/AC-C2/AC-C3/AC-C5는 충족, AC-C4(flat 라우터 0건)만 Deferred. REQ-RM-C1은 다음 반복으로 연기.
+De-risker C-D1 정정(위 참조): 당시에는 ~40개 테스트가 27개 라우터 서브모듈을 직접 import하므로 파일 이동(REQ-RM-C1) 수행 시 테스트 import 대량 깨짐이 예상되어 Option B(registry-only)를 채택했다. 이후 SPEC-REFACTOR-002와 2026-06-14 재검증으로 도메인 그룹핑이 완료되었고, AC-C4(flat 라우터 0건)도 충족한다.
 
 #### 핵심 De-risker (검증됨, 2026-06-05)
 
@@ -554,7 +554,7 @@ REQ-ROUTE-001의 스케치는 ~24개만 명명했으나, 실제 인벤토리는 
 | AC-C1 | `cd backend && ../venv/bin/python -m pytest tests/ --ignore=tests/e2e/test_pipeline_e2e.py` | ✅ **충족** | **2478 passed, 4 skipped, 0 failed** (coverage 97.35%) |
 | AC-C2 | 라우트 테이블 스냅샷: 재배치 전 `app.routes`의 (path, methods) 집합을 기록 → 재배치 후 동일 집합인지 비교 | ✅ **충족** | **diff 0건** — `tests/unit/test_route_registry_invariance.py` + `_route_snapshot_baseline.json` (135 routes 불변 증명) |
 | AC-C3 | `main.py`의 `include_router` 호출 개수: 35개 정적 호출 → registry 순회 루프로 축소 | ✅ **충족** | **35 → 1** (`include_router` 직접 호출 대폭 감소, registry 루프로 집약) |
-| AC-C4 | flat 라우터 잔존 검사: `ls backend/app/api/v1/*.py` (registry.py, __init__.py 제외) | ❌ **미충족 (범위 축소)** | **Deferred** — REQ-RM-C1(도메인 그룹핑 파일 재배치) 미수행. 라우터는 flat 구조 유지. 대신 registry.py(SSOT) 도입 + 라우트 불변(AC-C2) + main.py 간소화(AC-C3) 달성. 파일 이동이 ~40개 테스트의 라우터 모듈 import를 깨뜨리므로(de-risker C-D1 refuted) Option B(registry-only) 채택. |
+| AC-C4 | flat 라우터 잔존 검사: `find backend/app/api/v1 -maxdepth 1 -type f -name '*.py' ! -name '__init__.py' ! -name 'registry.py' -print` | ✅ **충족 (후속 완료)** | 2026-06-14 재검증 출력 없음. SPEC-REFACTOR-002 후속으로 도메인 그룹핑 파일 재배치가 완료되었고, top-level은 `__init__.py`와 `registry.py`만 유지. |
 | AC-C5 | 인증 전략 보존: 재배치 후 api_key 라우터 레벨 의존성 / JWT·public 엔드포인트 레벨 의존성이 라우터별로 동일하게 유지 | ✅ **충족** | **78 api_key + 57 no-router-dep** 라우트 (AC-C1·AC-C2 통과로 간접 증명) |
 
 > AC-C2(라우트 스냅샷)는 이번 반복의 **핵심 게이트**다. URL/메서드 집합이 불변이면 제약 A-1(기존 API 계약 불변)이 기계적으로 증명된다.
@@ -564,7 +564,7 @@ REQ-ROUTE-001의 스케치는 ~24개만 명명했으나, 실제 인벤토리는 
 - **그룹 경계 결정 2건 (Plan Review에서 확정됨, 2026-06-05)**:
   - `core` 그룹(calendar, vocabulary, qa, search, stream): **별도 core 그룹 유지**로 확정(기존 그룹 분산 안 함).
   - `speakers.py`: **collaboration 그룹**으로 확정(JWT 엔드포인트 인증 패턴 일치).
-- **e2e 9건 (`test_pipeline_e2e.py`)**: `RuntimeError: There is no current event loop` (Python 3.14 asyncio 환경 이슈, 리팩토링 무관). **이번 Scope 제외**. 별도 SPEC 또는 테스트 픽스처 수정으로 후속 처리 권장.
+- **e2e 9건 (`test_pipeline_e2e.py`)**: 과거에는 Python 3.14 asyncio 이벤트 루프 이슈로 제외했으나, 2026-06-14 재검증에서 재현되지 않음. `tests/e2e/test_pipeline_e2e.py` 포함 backend 전체 suite `3323 passed, 16 skipped`, coverage `99.01%`.
 - **엔드포인트 동작 변경**: URL 이름 변경, 메서드 변경, 인증 전략 변경은 모두 **범위 밖**이다. 이번 반복은 파일 위치 이동 + registry 도입의 순수 구조 변경만 수행한다.
 - **`/statistics` 공유 (statistics.py + dashboard.py)**: 실제 충돌 아님(subpath 분리). 병합 금지, 위치 이동만. registry에서 두 라우터를 각각 등록하되 prefix는 불변 유지한다.
 

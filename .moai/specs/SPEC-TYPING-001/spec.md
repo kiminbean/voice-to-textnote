@@ -1,8 +1,9 @@
 ---
 id: SPEC-TYPING-001
 version: 1.0.0
-status: draft
+status: completed
 created: 2026-06-08
+updated: 2026-06-14
 author: MoAI
 priority: medium
 title: Mypy Static Type Error Resolution
@@ -11,6 +12,12 @@ related_specs:
   - SPEC-REFACTOR-001
   - SPEC-REFACTOR-002
 ---
+
+## Completion Evidence (2026-06-14)
+
+- `./venv/bin/python -m mypy backend/` -> `Success: no issues found in 394 source files`
+- `./venv/bin/python -m ruff check backend/app/api/v1/minutes/action_items_crud.py backend/services/action_item_service.py backend/db/models.py` -> `All checks passed!`
+- Focused backend regressions -> `177 passed, 7 warnings`
 
 # SPEC-TYPING-001: Mypy Static Type Error Resolution
 

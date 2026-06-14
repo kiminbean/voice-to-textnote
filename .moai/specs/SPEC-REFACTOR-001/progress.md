@@ -40,9 +40,11 @@
 - **AC-C2**: 라우트 테이블 스냅샷 — invariance test 3/3 PASS (count·full table·auth policy 모두 baseline 동일)
 - **AC-C3**: main.py `include_router` 직접 호출 35 → 1 (루프)
 - **AC-C5**: 라우터별 인증 정책(api_key 78 routes / no-router-dep 57 routes) 불변 증명
-- **AC-C4**: **미충족 (의도적 범위 축소)** — flat 라우터 0건은 파일 이동을 요구하나, de-risker 붕괴로 Option B 선택. REQ-RM-C1(도메인 그룹핑)도 deferred.
+- **AC-C4**: **충족 (2026-06-14 재검증)** — SPEC-REFACTOR-002 후속 완료로 flat 라우터 0건. `backend/app/api/v1` top-level에는 `__init__.py`, `registry.py`만 남음.
+- **Route 중복 정리**: `enhanced_preprocess` 중복 등록 제거 후 live route method entries 161 / unique 161 / duplicates 0.
+- **전체 회귀**: `pytest tests/ -q` → **3323 passed, 16 skipped**, coverage **99.01%**.
 
-### 후속 (sync 단계 권장)
-- spec.md Section 8: AC-C4/REQ-RM-C1 deferred 명시 + de-risker C-D1 정정 기록
-- research-iter3.md C-D1 정정 (grep 경로 오류 → 실제 40개 테스트 의존)
+### 후속 (sync 단계 완료)
+- spec.md Section 8: AC-C4/REQ-RM-C1 deferred 상태를 후속 완료 상태로 정정
+- research-iter3.md C-D1 정정 기록은 이력으로 유지하되 현재 상태는 SPEC-REFACTOR-002 및 본 progress.md를 기준으로 삼음
 - 잔여 cruft: `backend/fake.wav`(0바이트), `.omc/state/*.json`(런타임) — 커밋 제외

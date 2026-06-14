@@ -136,10 +136,7 @@ class TestSentimentTrends:
     """시간별 감성 추이."""
 
     def test_trends_no_records(self, app_client):
-        """레코드 없을 때 빈 추이.
-        참고: 엔드포인트 반환 타입(dict[str, list[dict]])이 실제 응답과 불일치하여
-        ResponseValidationError 발생 -> 500 반환 (소스 코드 타입 버그).
-        """
+        """레코드 없을 때 빈 추이."""
         client, mock_session, mock_svc = app_client
 
         mock_result = MagicMock()
@@ -150,13 +147,13 @@ class TestSentimentTrends:
 
         resp = client.get("/api/v1/sentiment/trends")
 
-        # ResponseValidationError로 인해 500 반환 (타입 버그)
-        assert resp.status_code == 500
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["trends"] == []
+        assert data["meetings_count"] == 0
 
     def test_trends_with_records(self, app_client):
-        """레코드 있을 때 추이 분석.
-        참고: ResponseValidationError로 인해 500 반환.
-        """
+        """레코드 있을 때 추이 분석."""
         client, mock_session, mock_svc = app_client
 
         records = [
@@ -173,13 +170,14 @@ class TestSentimentTrends:
 
         resp = client.get("/api/v1/sentiment/trends?days=30")
 
-        # ResponseValidationError로 인해 500 반환 (타입 버그)
-        assert resp.status_code == 500
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["trends"] == [{"date": "2024-01-01", "score": 0.5}]
+        assert data["period_days"] == 30
+        assert data["meetings_count"] == 2
 
     def test_trends_filters_none_result_data(self, app_client):
-        """result_data가 None인 레코드는 필터링.
-        참고: ResponseValidationError로 인해 500 반환.
-        """
+        """result_data가 None인 레코드는 필터링."""
         client, mock_session, mock_svc = app_client
 
         records = [
@@ -194,8 +192,8 @@ class TestSentimentTrends:
 
         resp = client.get("/api/v1/sentiment/trends")
 
-        # ResponseValidationError로 인해 500 반환 (타입 버그)
-        assert resp.status_code == 500
+        assert resp.status_code == 200
+        assert resp.json()["trends"] == []
 
 
 # ---------------------------------------------------------------------------

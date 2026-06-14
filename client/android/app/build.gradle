@@ -1,6 +1,13 @@
 // build.gradle - Android 모듈 수준 설정
 // Min SDK: 29, Target SDK: 34
 
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+    id 'dev.flutter.flutter-gradle-plugin'
+    id 'com.google.gms.google-services'
+}
+
 android {
     namespace 'com.voicetextnote.app'
     compileSdk 34

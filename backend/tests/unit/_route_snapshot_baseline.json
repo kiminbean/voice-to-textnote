@@ -357,20 +357,6 @@
     "api_key": true
   },
   {
-    "path": "/api/v1/enhanced/batch",
-    "methods": [
-      "POST"
-    ],
-    "api_key": true
-  },
-  {
-    "path": "/api/v1/enhanced/formats",
-    "methods": [
-      "GET"
-    ],
-    "api_key": true
-  },
-  {
     "path": "/api/v1/enhanced/formats",
     "methods": [
       "GET"
@@ -381,20 +367,6 @@
     "path": "/api/v1/enhanced/preprocess",
     "methods": [
       "POST"
-    ],
-    "api_key": true
-  },
-  {
-    "path": "/api/v1/enhanced/preprocess",
-    "methods": [
-      "POST"
-    ],
-    "api_key": true
-  },
-  {
-    "path": "/api/v1/enhanced/status",
-    "methods": [
-      "GET"
     ],
     "api_key": true
   },
@@ -1001,6 +973,34 @@
     "api_key": true
   },
   {
+    "path": "/api/v1/tone/meeting/{meeting_id}",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/tone/{task_id}",
+    "methods": [
+      "DELETE"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/tone/{task_id}",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/tone/{task_id}/status",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
     "path": "/api/v1/transcriptions",
     "methods": [
       "POST"
@@ -1125,33 +1125,5 @@
       "GET"
     ],
     "api_key": false
-  },
-  {
-    "path": "/api/v1/tone/meeting/{meeting_id}",
-    "methods": [
-      "GET"
-    ],
-    "api_key": true
-  },
-  {
-    "path": "/api/v1/tone/{task_id}",
-    "methods": [
-      "DELETE"
-    ],
-    "api_key": true
-  },
-  {
-    "path": "/api/v1/tone/{task_id}",
-    "methods": [
-      "GET"
-    ],
-    "api_key": true
-  },
-  {
-    "path": "/api/v1/tone/{task_id}/status",
-    "methods": [
-      "GET"
-    ],
-    "api_key": true
   }
 ]

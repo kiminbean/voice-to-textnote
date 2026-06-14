@@ -12,6 +12,7 @@ REQ-SUM-014: Redis 결과 캐싱 24h TTL (task:sum:result:{task_id})
 import json
 import time
 from datetime import UTC, datetime
+from typing import cast
 
 import redis
 
@@ -46,7 +47,7 @@ def _update_task_status(
     existing_created_at = None
     existing_raw = r.get(status_key)
     if existing_raw:
-        existing_data = json.loads(existing_raw)
+        existing_data = json.loads(cast(str | bytes | bytearray, existing_raw))
         existing_created_at = existing_data.get("created_at")
 
     data: dict = {
@@ -183,7 +184,7 @@ def summary_task(
                 f"회의록 결과를 찾을 수 없습니다: minutes_task_id={minutes_task_id}"
             )
 
-        min_result = json.loads(min_result_raw)
+        min_result = json.loads(cast(str | bytes | bytearray, min_result_raw))
         min_status = min_result.get("status")
         if min_status and min_status != TaskStatus.completed.value:
             # BUGFIX: 회의록 실패 결과를 그대로 요약 단계에 넘기면 빈 입력으로
@@ -204,7 +205,7 @@ def summary_task(
             tmpl_raw = r.get(tmpl_key)
             if tmpl_raw:
                 try:
-                    tmpl_meta = json.loads(tmpl_raw)
+                    tmpl_meta = json.loads(cast(str | bytes | bytearray, tmpl_raw))
                     template_structure = tmpl_meta.get("structure")
                     logger.info(
                         "양식 구조 로드 완료",

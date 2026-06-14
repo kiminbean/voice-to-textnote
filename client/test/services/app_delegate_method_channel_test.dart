@@ -69,7 +69,8 @@ void main() {
         return null;
       });
 
-      ServicesBinding.instance.defaultBinaryMessenger.handlePlatformMessage(
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .handlePlatformMessage(
         channelName,
         const StandardMethodCodec().encodeMethodCall(
           const MethodCall('onInterruptionBegin'),
@@ -91,7 +92,8 @@ void main() {
         return null;
       });
 
-      ServicesBinding.instance.defaultBinaryMessenger.handlePlatformMessage(
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .handlePlatformMessage(
         channelName,
         const StandardMethodCodec().encodeMethodCall(
           const MethodCall('onInterruptionEnd', true),
@@ -116,7 +118,8 @@ void main() {
         return null;
       });
 
-      ServicesBinding.instance.defaultBinaryMessenger.handlePlatformMessage(
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .handlePlatformMessage(
         channelName,
         const StandardMethodCodec().encodeMethodCall(
           const MethodCall('onRouteChange', {'reason': 'oldDeviceUnavailable'}),

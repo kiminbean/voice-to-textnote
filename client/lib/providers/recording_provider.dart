@@ -7,15 +7,15 @@ import 'package:voice_to_textnote/services/recording_recovery_service.dart';
 
 // 녹음 상태 열거형
 enum RecordingStatus {
-  idle,      // 대기 중
+  idle, // 대기 중
   recording, // 녹음 중
-  paused,    // 일시 정지 (수동)
-  stopped,   // 중지됨
+  paused, // 일시 정지 (수동)
+  stopped, // 중지됨
 }
 
 // 인터럽션 상태 열거형 (Provider 레벨에서 UI에 노출)
 enum InterruptionStatus {
-  none,        // 인터럽션 없음
+  none, // 인터럽션 없음
   interrupted, // 인터럽션 발생 (전화 수신 등)
 }
 
@@ -50,7 +50,8 @@ class RecordingState {
 
 // 녹음 Notifier
 class RecordingNotifier extends Notifier<RecordingState> {
-  final BackgroundRecordingService _backgroundService = BackgroundRecordingService();
+  final BackgroundRecordingService _backgroundService =
+      BackgroundRecordingService();
   final RecordingRecoveryService _recoveryService = RecordingRecoveryService();
 
   @override
@@ -93,7 +94,7 @@ class RecordingNotifier extends Notifier<RecordingState> {
   Future<void> startRecording() async {
     final dir = await getApplicationDocumentsDirectory();
     final filePath =
-        '${dir.path}/meeting_${DateTime.now().millisecondsSinceEpoch}.m4a';
+        '${dir.path}/meeting_${DateTime.now().millisecondsSinceEpoch}.wav';
 
     final config = BackgroundRecordingConfig(
       filePath: filePath,

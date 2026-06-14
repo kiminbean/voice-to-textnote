@@ -10,10 +10,11 @@ Redis 키 구조:
   collab:presence:{task_id}   → Hash {user_id: json_presence} (활성 사용자)
 """
 
+import inspect
 import json
 import uuid
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, cast
 
 import redis.asyncio as aioredis
 from sqlalchemy import select
@@ -33,6 +34,12 @@ DEBOUNCE_SECONDS = 3
 
 # Redis 키 TTL (비활성 세션 자동 정리, 24시간)
 SESSION_TTL_SECONDS = 86400
+
+async def _resolve(value: Any) -> Any:
+    """Redis test doubles may expose sync values while aioredis returns awaitables."""
+    if inspect.isawaitable(value):
+        return await value
+    return value
 
 
 def _redis_key_doc(task_id: str) -> str:
@@ -93,8 +100,8 @@ class CollabService:
         presence_key = _redis_key_presence(task_id)
 
         # 현재 참여자 수 확인
-        current_count = await redis.hlen(presence_key)
-        already_in = await redis.hexists(presence_key, user_id)
+        current_count = cast(int, await _resolve(redis.hlen(presence_key)))
+        already_in = cast(bool, await _resolve(redis.hexists(presence_key, user_id)))
 
         if not already_in and current_count >= MAX_PARTICIPANTS:
             return False, []
@@ -108,8 +115,8 @@ class CollabService:
             },
             ensure_ascii=False,
         )
-        await redis.hset(presence_key, user_id, presence_data)
-        await redis.expire(presence_key, SESSION_TTL_SECONDS)
+        await _resolve(redis.hset(presence_key, user_id, presence_data))
+        await _resolve(redis.expire(presence_key, SESSION_TTL_SECONDS))
 
         presence_list = await self.get_presence(redis, task_id)
         return True, presence_list
@@ -127,7 +134,7 @@ class CollabService:
             남은 presence 목록 (빈 리스트면 마지막 사용자였음)
         """
         presence_key = _redis_key_presence(task_id)
-        await redis.hdel(presence_key, user_id)
+        await _resolve(redis.hdel(presence_key, user_id))
         return await self.get_presence(redis, task_id)
 
     async def update_active_field(
@@ -139,13 +146,13 @@ class CollabService:
     ) -> list[dict[str, Any]]:
         """사용자의 현재 편집 필드 업데이트 (cursor presence)."""
         presence_key = _redis_key_presence(task_id)
-        raw = await redis.hget(presence_key, user_id)
+        raw = cast(str | None, await _resolve(redis.hget(presence_key, user_id)))
         if raw is None:
             return await self.get_presence(redis, task_id)
 
         data = json.loads(raw)
         data["active_field"] = active_field
-        await redis.hset(presence_key, user_id, json.dumps(data, ensure_ascii=False))
+        await _resolve(redis.hset(presence_key, user_id, json.dumps(data, ensure_ascii=False)))
         return await self.get_presence(redis, task_id)
 
     async def get_presence(
@@ -155,7 +162,7 @@ class CollabService:
     ) -> list[dict[str, Any]]:
         """현재 활성 사용자 전체 목록."""
         presence_key = _redis_key_presence(task_id)
-        raw_map = await redis.hgetall(presence_key)
+        raw_map = cast(dict[str, str], await _resolve(redis.hgetall(presence_key)))
         result: list[dict[str, Any]] = []
         for raw in raw_map.values():
             try:
@@ -170,7 +177,7 @@ class CollabService:
         task_id: str,
     ) -> int:
         """현재 활성 사용자 수."""
-        return await redis.hlen(_redis_key_presence(task_id))
+        return cast(int, await _resolve(redis.hlen(_redis_key_presence(task_id))))
 
     # ------------------------------------------------------------------
     # Document (field-level LWW)
@@ -190,8 +197,8 @@ class CollabService:
         doc_key = _redis_key_doc(task_id)
         ts_key = _redis_key_ts(task_id)
 
-        raw_doc = await redis.hgetall(doc_key)
-        raw_ts = await redis.hgetall(ts_key)
+        raw_doc = cast(dict[str, str], await _resolve(redis.hgetall(doc_key)))
+        raw_ts = cast(dict[str, str], await _resolve(redis.hgetall(ts_key)))
 
         document: dict[str, Any] = {}
         for field, raw_value in raw_doc.items():
@@ -237,7 +244,7 @@ class CollabService:
             client_ts = client_ts.replace(tzinfo=UTC)
 
         # 기존 타임스탬프 확인
-        existing_ts_raw = await redis.hget(ts_key, field)
+        existing_ts_raw = cast(str | None, await _resolve(redis.hget(ts_key, field)))
         if existing_ts_raw is not None:
             try:
                 existing_ts = datetime.fromisoformat(existing_ts_raw)
@@ -255,10 +262,10 @@ class CollabService:
                 return False, existing_ts_normalized
 
         # 반영: 클라이언트 타임스탬프를 LWW 기준 시각으로 저장
-        await redis.hset(doc_key, field, json.dumps(value, ensure_ascii=False))
-        await redis.hset(ts_key, field, client_ts.isoformat())
-        await redis.expire(doc_key, SESSION_TTL_SECONDS)
-        await redis.expire(ts_key, SESSION_TTL_SECONDS)
+        await _resolve(redis.hset(doc_key, field, json.dumps(value, ensure_ascii=False)))
+        await _resolve(redis.hset(ts_key, field, client_ts.isoformat()))
+        await _resolve(redis.expire(doc_key, SESSION_TTL_SECONDS))
+        await _resolve(redis.expire(ts_key, SESSION_TTL_SECONDS))
 
         return True, client_ts
 
@@ -277,7 +284,7 @@ class CollabService:
         ts_key = _redis_key_ts(task_id)
 
         # 이미 Redis에 데이터가 있으면 스킵
-        existing = await redis.hlen(doc_key)
+        existing = cast(int, await _resolve(redis.hlen(doc_key)))
         if existing > 0:
             document, _ = await self.get_document(redis, task_id)
             return document
@@ -290,10 +297,10 @@ class CollabService:
         if collab_session and collab_session.content:
             now = _utcnow().isoformat()
             for field, value in collab_session.content.items():
-                await redis.hset(doc_key, field, json.dumps(value, ensure_ascii=False))
-                await redis.hset(ts_key, field, now)
-            await redis.expire(doc_key, SESSION_TTL_SECONDS)
-            await redis.expire(ts_key, SESSION_TTL_SECONDS)
+                await _resolve(redis.hset(doc_key, field, json.dumps(value, ensure_ascii=False)))
+                await _resolve(redis.hset(ts_key, field, now))
+            await _resolve(redis.expire(doc_key, SESSION_TTL_SECONDS))
+            await _resolve(redis.expire(ts_key, SESSION_TTL_SECONDS))
 
         document, _ = await self.get_document(redis, task_id)
         return document
@@ -340,9 +347,9 @@ class CollabService:
 
         # Redis 데이터 정리 (참여자가 없으므로 세션 종료)
         if presence_count == 0:
-            await redis.delete(_redis_key_doc(task_id))
-            await redis.delete(_redis_key_ts(task_id))
-            await redis.delete(_redis_key_presence(task_id))
+            await _resolve(redis.delete(_redis_key_doc(task_id)))
+            await _resolve(redis.delete(_redis_key_ts(task_id)))
+            await _resolve(redis.delete(_redis_key_presence(task_id)))
 
         logger.info(
             "Flushed collab session to DB: task_id=%s, fields=%d",
