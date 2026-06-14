@@ -123,6 +123,9 @@ This path has now been executed locally.
   `--strict` requires `FIREBASE_CREDENTIALS_PATH`, APNs key metadata, App Store Connect API key metadata, Android/iOS physical device IDs, and a Firebase test device token.
   It also verifies release docs have no unresolved placeholders, `ANDROID_DEVICE_SERIAL` via `adb devices -l`, and `IOS_DEVICE_UDID` via `xcrun devicectl list devices`, so physical-device E2E cannot be marked ready by environment variables alone.
 - Privacy policy release placeholders were removed. The policy now uses `privacy@voicetextnote.com` for privacy inquiries and points legal mailing address disclosure to App Store Connect seller/store metadata instead of an unknown placeholder address.
+- SPEC-REFACTOR-001 e2e follow-up was revalidated on 2026-06-15:
+  `venv/bin/python -m pytest -o addopts="" backend/tests/e2e/test_pipeline_e2e.py -q` -> `16 passed, 6 warnings in 1.73s`.
+  The older Python 3.14 event-loop exclusion note is superseded by this focused pass.
 
 ### Durable Fixes
 

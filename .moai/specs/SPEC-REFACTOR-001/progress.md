@@ -11,7 +11,7 @@
 - [x] TASK-A3 batch audio read error
 - [x] TASK-A4 summary 픽스처 핸들러 등록
 - [x] TASK-A5 sentiment/rate_limit 404·429 재확인
-- [x] TASK-A6 전체 스위트 그린 (e2e 9건 제외)
+- [x] TASK-A6 전체 스위트 그린 (과거 e2e 9건 제외 기록은 후속 재검증으로 해소)
 
 ### Phase B — DI 완료 (21 싱글톤 → Depends)
 - [x] TASK-B1~B14 파일별 provider 전환 (18개 파일, 21개 싱글톤)
@@ -43,6 +43,7 @@
 - **AC-C4**: **충족 (2026-06-14 재검증)** — SPEC-REFACTOR-002 후속 완료로 flat 라우터 0건. `backend/app/api/v1` top-level에는 `__init__.py`, `registry.py`만 남음.
 - **Route 중복 정리**: `enhanced_preprocess` 중복 등록 제거 후 live route method entries 161 / unique 161 / duplicates 0.
 - **전체 회귀**: `venv/bin/python -m pytest backend -q` → **3323 passed, 16 skipped**, coverage **98.62%**.
+- **E2E 후속 재검증**: `venv/bin/python -m pytest -o addopts="" backend/tests/e2e/test_pipeline_e2e.py -q` → **16 passed, 6 warnings in 1.73s** (2026-06-15). 과거 Python 3.14 event loop 제외 조건은 현재 재현되지 않음.
 
 ### 후속 (sync 단계 완료)
 - spec.md Section 8: AC-C4/REQ-RM-C1 deferred 상태를 후속 완료 상태로 정정
