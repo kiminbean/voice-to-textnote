@@ -1,9 +1,9 @@
 ---
 id: SPEC-MOBILE-004
-version: "1.0.0"
+version: "1.0.1"
 status: completed
 created: "2026-06-13"
-updated: "2026-06-13"
+updated: "2026-06-15"
 author: sisyphus
 priority: high
 issue_number: 24
@@ -17,6 +17,7 @@ depends_on: SPEC-MOBILE-001
 | 버전 | 날짜 | 변경 내용 | 작성자 |
 |------|------|----------|--------|
 | 1.0.0 | 2026-06-13 | 초안 작성 — SPEC-MOBILE-001 Phase D/E 완성 + 심층 코드 분석 기반 결함 수정 | sisyphus |
+| 1.0.1 | 2026-06-15 | strict release readiness를 self-hosted GitHub Actions `workflow_dispatch` 게이트로 승격 | Codex |
 
 ---
 
@@ -356,6 +357,7 @@ firebase-admin>=6.0
 - `docs/screenshot-guide.md`는 iPhone 6.7"/6.5", iPad 12.9", Android phone/tablet 산출물 체크와 샘플 데이터 사용 원칙을 포함한다.
 - 검증: `python3 -m py_compile client/scripts/verify_release_readiness.py && python3 client/scripts/verify_release_readiness.py` -> `release_readiness: 0 errors, 2 warnings`.
 - strict 검증: `python3 client/scripts/verify_release_readiness.py --strict` -> release 문서 placeholder와 제출 자산 checks는 통과하고, Firebase/APNs/App Store Connect/실기기 입력 및 `RELEASE_E2E_EVIDENCE_PATH` 누락으로 예상 실패한다. 증거 파일은 `docs/release-e2e-evidence.example.json` 구조를 따라 Push/딥링크/백그라운드 녹음/HTTP 정책/PDF 공유 시나리오 pass 증거를 포함해야 한다.
+- GitHub Actions strict gate: `.github/workflows/mobile.yml`의 `workflow_dispatch` `release-strict` job은 `self-hosted`, `macOS`, `mobile-release` runner에서 `client/scripts/verify_mobile.sh --native` 후 `python3 client/scripts/verify_release_readiness.py --strict`를 실행한다. 필요한 Firebase/APNs/App Store Connect secrets, Android/iOS device vars, `evidence_path` 입력은 `docs/e2e-device-checklist.md`에 문서화되어 있으며, regression test가 workflow snippet을 고정한다.
 
 ### 2026-06-15 DB 마이그레이션 실행 게이트 보강
 

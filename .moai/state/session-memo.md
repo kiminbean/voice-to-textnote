@@ -167,6 +167,10 @@ This path has now been executed locally.
   CI trigger coverage: `.github/workflows/mobile.yml` path filters now include `docs/privacy-policy.md`, `docs/screenshot-guide.md`, `docs/release-e2e-evidence.example.json`, and `backend/tests/test_release_readiness_evidence.py`, so release-readiness input changes run mobile preflight.
   Operator docs now map every required evidence scenario key to the manual checklist, and README documents default vs strict release readiness usage. Regression coverage now also asserts `docs/release-e2e-evidence.example.json` contains exactly every `REQUIRED_E2E_SCENARIOS` key:
   `venv/bin/python -m pytest -o addopts="" backend/tests/test_release_readiness_evidence.py -q` -> `4 passed, 5 warnings`.
+- Strict release readiness has a manual GitHub Actions gate as of 2026-06-15:
+  `.github/workflows/mobile.yml` now exposes `workflow_dispatch` with `evidence_path` and a `release-strict` job for a `self-hosted`, `macOS`, `mobile-release` runner.
+  The job materializes Firebase/APNs/App Store Connect secrets into `$RUNNER_TEMP`, runs `client/scripts/verify_mobile.sh --native`, then runs `python3 client/scripts/verify_release_readiness.py --strict` with Android/iOS device vars and `RELEASE_E2E_EVIDENCE_PATH`.
+  `docs/e2e-device-checklist.md` and README document the required GitHub Environment secrets/vars. Regression coverage asserts the strict workflow snippets remain present.
 
 ### Durable Fixes
 

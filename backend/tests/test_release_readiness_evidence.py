@@ -191,3 +191,30 @@ def test_readme_release_status_rejects_production_ready_overclaim(tmp_path):
     module.check_readme_release_status(tmp_path, reporter)
 
     assert any("must not claim Production Ready" in error for error in reporter.errors)
+
+
+def test_mobile_workflow_exposes_manual_strict_release_gate():
+    workflow_path = Path(__file__).resolve().parents[2] / ".github/workflows/mobile.yml"
+    workflow = workflow_path.read_text(encoding="utf-8")
+
+    required_snippets = [
+        "workflow_dispatch:",
+        "evidence_path:",
+        "release-strict:",
+        "Strict Release Readiness With Physical Devices",
+        "- self-hosted",
+        "- macOS",
+        "- mobile-release",
+        "environment: mobile-release",
+        "FIREBASE_SERVICE_ACCOUNT_JSON",
+        "APNS_AUTH_KEY_P8",
+        "APP_STORE_CONNECT_API_KEY_P8",
+        "ANDROID_DEVICE_SERIAL",
+        "IOS_DEVICE_UDID",
+        "FIREBASE_TEST_DEVICE_TOKEN",
+        "./scripts/verify_mobile.sh --native",
+        "python3 client/scripts/verify_release_readiness.py --strict",
+    ]
+
+    for snippet in required_snippets:
+        assert snippet in workflow
