@@ -359,7 +359,7 @@ firebase-admin>=6.0
 - 검증: `python3 -m py_compile client/scripts/verify_release_readiness.py && python3 client/scripts/verify_release_readiness.py` -> `release_readiness: 0 errors, 2 warnings`.
 - strict 검증: `python3 client/scripts/verify_release_readiness.py --strict` -> release 문서 placeholder와 제출 자산 checks는 통과하고, Firebase/APNs/App Store Connect/실기기 입력 및 `RELEASE_E2E_EVIDENCE_PATH` 누락으로 예상 실패한다. 증거 파일은 `docs/release-e2e-evidence.example.json` 구조를 따라 Push/딥링크/백그라운드 녹음/HTTP 정책/PDF 공유 시나리오 pass 증거를 포함해야 한다.
 - GitHub Actions strict gate: `.github/workflows/mobile.yml`의 `workflow_dispatch` `release-strict` job은 `self-hosted`, `macOS`, `mobile-release` runner에서 `client/scripts/verify_mobile.sh --native` 후 `python3 client/scripts/verify_release_readiness.py --strict`를 실행한다. 필요한 Firebase/APNs/App Store Connect secrets, Android/iOS device vars, `evidence_path` 입력은 `docs/e2e-device-checklist.md`에 문서화되어 있으며, regression test가 workflow snippet을 고정한다.
-- GitHub release environment preflight: `python3 client/scripts/verify_github_mobile_release_env.py --repo kiminbean/voice-to-textnote`는 repository Environment, required secret/variable names, self-hosted runner labels를 확인한다. 현재 GitHub 상태는 private repo이나 `environments=[]`, self-hosted runner `0`개로 strict CI 실행 전 외부 설정이 아직 필요하다.
+- GitHub release environment preflight: `python3 client/scripts/verify_github_mobile_release_env.py --repo kiminbean/voice-to-textnote`는 repository Environment, required secret/variable names, self-hosted runner labels를 확인한다. 현재 GitHub `mobile-release` Environment는 생성되어 통과하지만, self-hosted runner `0`개와 production secret/variable 미설정으로 strict CI 실행 전 외부 설정이 아직 필요하다.
 
 ### 2026-06-15 DB 마이그레이션 실행 게이트 보강
 
