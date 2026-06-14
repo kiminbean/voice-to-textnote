@@ -180,7 +180,7 @@ class TestUploadTranscription:
 
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
         data = response.json()
-        assert any("invalid_audio" in e.get("type", "") for e in data["message"])
+        assert any("invalid_signature" in e.get("type", "") for e in data["message"])
 
     def test_upload_concurrent_limit_exceeded(self, client, test_audio_file, mock_redis_client):
         """

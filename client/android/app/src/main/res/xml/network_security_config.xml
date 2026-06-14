@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPEC-SEC-002: 네트워크 보안 설정
+     cleartext 트래픽은 개발/staging 환경의 localhost와 Tailscale IP만 허용.
+     프로덕션 도메인(api.voicetextnote.com)은 HTTPS 필수. -->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">localhost</domain>
+        <domain includeSubdomains="false">100.110.255.105</domain>
+    </domain-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

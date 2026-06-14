@@ -18,7 +18,7 @@ void main() {
     // 테스트용 임시 파일 생성
     tempDir = await Directory.systemTemp.createTemp('test_audio_');
     testFile = File('${tempDir.path}/test.m4a');
-    await testFile.writeAsBytes([0, 1, 2, 3]); // 더미 바이트
+    await testFile.writeAsBytes([0, 0, 0, 0x18, 0x66, 0x74, 0x79, 0x70, 0x4D, 0x34, 0x41, 0x20]);
   });
 
   tearDownAll(() async {

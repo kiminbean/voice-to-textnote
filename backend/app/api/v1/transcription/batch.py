@@ -70,7 +70,7 @@ async def upload_batch_transcription(
         task_id = uuid.uuid4()
         task_id_str = str(task_id)
 
-        # 파일 형식 검증
+        # 파일 형식 검증 (확장자 + MIME만 1차 통과)
         is_valid_format, format_error = validate_audio_format(filename, upload_file.content_type)
         if not is_valid_format:
             items.append(
@@ -85,6 +85,16 @@ async def upload_batch_transcription(
         if not is_valid_size:
             items.append(
                 BatchItemResult(filename=filename, status=TaskStatus.failed, error=size_error)
+            )
+            continue
+
+        # REQ-SEC-040~043: 매직 바이트 검증
+        is_valid_sig, sig_error = validate_audio_format(
+            filename, upload_file.content_type, raw_content[:16]
+        )
+        if not is_valid_sig:
+            items.append(
+                BatchItemResult(filename=filename, status=TaskStatus.failed, error=sig_error)
             )
             continue
 

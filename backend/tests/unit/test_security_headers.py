@@ -67,7 +67,6 @@ class TestSecurityHeaders:
         assert "x-xss-protection" in response.headers
 
     def test_security_headers_on_404_response(self):
-        """REQ-SEC-011: 404 응답에도 보안 헤더 포함"""
         from backend.app.middleware.security_headers import SecurityHeadersMiddleware
 
         app = FastAPI()
@@ -76,6 +75,52 @@ class TestSecurityHeaders:
 
         response = client.get("/nonexistent", follow_redirects=False)
         assert "x-content-type-options" in response.headers
+
+    def test_referrer_policy_header_present(self, app_with_security_headers):
+        response = app_with_security_headers.get("/test")
+        assert "referrer-policy" in response.headers
+        assert response.headers["referrer-policy"] == "strict-origin-when-cross-origin"
+
+    def test_permissions_policy_header_present(self, app_with_security_headers):
+        response = app_with_security_headers.get("/test")
+        assert "permissions-policy" in response.headers
+        pp = response.headers["permissions-policy"]
+        assert "geolocation=()" in pp
+        assert "microphone=()" in pp
+        assert "camera=()" in pp
+
+    def test_csp_header_present(self, app_with_security_headers):
+        response = app_with_security_headers.get("/test")
+        assert "content-security-policy" in response.headers
+        assert response.headers["content-security-policy"] == "default-src 'none'"
+
+
+class TestHstsHeader:
+    def test_hsts_present_in_production(self):
+        from backend.app.middleware.security_headers import SecurityHeadersMiddleware
+
+        app = FastAPI()
+        app.add_middleware(SecurityHeadersMiddleware)
+
+        @app.get("/test")
+        async def test_route():
+            return {"message": "ok"}
+
+        with patch("backend.app.middleware.security_headers.settings") as mock_settings:
+            mock_settings.environment = "production"
+            client = TestClient(app)
+            response = client.get("/test")
+            assert "strict-transport-security" in response.headers
+            hsts = response.headers["strict-transport-security"]
+            assert "max-age=63072000" in hsts
+            assert "includeSubDomains" in hsts
+            assert "preload" in hsts
+
+    def test_hsts_absent_in_development(self, app_with_security_headers):
+        with patch("backend.app.middleware.security_headers.settings") as mock_settings:
+            mock_settings.environment = "development"
+            response = app_with_security_headers.get("/test")
+            assert "strict-transport-security" not in response.headers
 
 
 # ---------------------------------------------------------------------------

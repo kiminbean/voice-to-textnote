@@ -179,7 +179,7 @@ class TestUploadTemplate:
         )
 
         async def mock_read():
-            return b"fake docx"
+            return b"PK\x03\x04 fake docx content"
 
         mock_file.read = mock_read
 
