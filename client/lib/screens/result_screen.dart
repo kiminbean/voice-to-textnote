@@ -26,6 +26,7 @@ import 'package:voice_to_textnote/widgets/shimmer_text.dart';
 import 'package:voice_to_textnote/widgets/speaker_segment.dart';
 import 'package:voice_to_textnote/widgets/find_replace_bar.dart';
 import 'package:voice_to_textnote/widgets/audio_player_bar.dart';
+import 'package:voice_to_textnote/widgets/tone_timeline.dart';
 import 'package:voice_to_textnote/providers/audio_player_provider.dart';
 import 'package:voice_to_textnote/providers/qa_provider.dart';
 
@@ -751,15 +752,19 @@ class _SentimentTab extends ConsumerWidget {
         message: '감정 분석을 불러올 수 없습니다',
         onRetry: () => ref.invalidate(sentimentFullProvider(taskId!)),
       ),
-      data: (response) => _SentimentContent(response: response),
+      // SPEC-TONE-001: meetingId 전달 → ToneSection 독립 watch (오류 격리, REQ-TONE-013)
+      data: (response) =>
+          _SentimentContent(response: response, meetingId: taskId!),
     );
   }
 }
 
 class _SentimentContent extends StatelessWidget {
   final SentimentFullResponse response;
+  // SPEC-TONE-001: ToneSection에 전달할 meetingId (minutesTaskId와 동일)
+  final String meetingId;
 
-  const _SentimentContent({required this.response});
+  const _SentimentContent({required this.response, required this.meetingId});
 
   Color _sentimentColor(String sentiment) {
     switch (sentiment) {
@@ -858,6 +863,12 @@ class _SentimentContent extends StatelessWidget {
         // 4. 감정 변화 타임라인 (REQ-SEN-009: emotional_timeline)
         if (response.emotionalTimeline.isNotEmpty)
           _buildTimelineSection(theme),
+
+        // 5. 톤 타임라인 (SPEC-TONE-001 REQ-TONE-012)
+        // @MX:NOTE: ToneSection은 별도 ConsumerWidget으로 toneProvider를 독립 watch
+        // → tone 실패 시 sentiment 카드에 영향 없음 (오류 격리, REQ-TONE-013)
+        const SizedBox(height: 16),
+        ToneSection(meetingId: meetingId),
       ],
     );
   }

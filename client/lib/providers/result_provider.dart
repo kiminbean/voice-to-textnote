@@ -8,6 +8,8 @@ import 'package:voice_to_textnote/services/statistics_api.dart';
 import 'package:voice_to_textnote/services/bookmark_api.dart';
 import 'package:voice_to_textnote/services/sentiment_api.dart';
 import 'package:voice_to_textnote/services/summary_api.dart';
+import 'package:voice_to_textnote/services/tone_api.dart';
+import 'package:voice_to_textnote/models/tone_model.dart';
 
 class TranscriptSegment {
   final String speakerName;
@@ -180,6 +182,16 @@ final sentimentFullProvider =
     FutureProvider.family<SentimentFullResponse, String>((ref, taskId) async {
   final api = ref.watch(sentimentApiProvider);
   return api.getFullByMeeting(taskId);
+});
+
+// SPEC-TONE-001: 톤 분석 응답 프로바이더 (REQ-TONE-012, REQ-TONE-013)
+// @MX:ANCHOR: ResultScreen _SentimentContent → ToneSection에서 meetingId로 톤 분석 로드
+// @MX:REASON: sentimentFullProvider와 동일한 패턴 - silent fallback 금지 (REQ-TONE-013)
+// 오류를 삼키지 않고 AsyncValue.error로 전파하여 ToneSection의 ErrorRetryWidget이 표시되도록 함
+final toneProvider =
+    FutureProvider.family<ToneResponse, String>((ref, meetingId) async {
+  final api = ref.watch(toneApiProvider);
+  return api.getToneByMeeting(meetingId);
 });
 
 // 기존 통합 프로바이더 (하위 호환성 유지 - 두 ID가 동일한 경우)

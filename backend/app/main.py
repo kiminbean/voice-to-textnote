@@ -26,6 +26,7 @@ from backend.app.middleware.security_headers import SecurityHeadersMiddleware
 from backend.app.middleware.validators import PathValidationMiddleware
 from backend.ml.diarization_engine import DiarizationEngine
 from backend.ml.stt_engine import WhisperEngine
+from backend.ml.tone_engine import ToneEngine
 from backend.utils.logger import get_logger, setup_logging
 
 setup_logging(settings.log_level)
@@ -111,6 +112,18 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             logger.error("화자 분리 모델 사전 로드 실패 (서버는 계속 실행)", error=str(e))
     else:
         logger.warning("HUGGINGFACE_TOKEN 미설정 - 화자 분리 모델 로드 건너뜀")
+
+    # SPEC-TONE-001: 톤 분석 엔진 사전 로드 (REQ-TONE-001)
+    # REQ-TONE-011: tone_model이 빈 문자열이면 기능 비활성화 — 웜업도 건너뜀
+    if settings.tone_model:
+        try:
+            tone_engine = ToneEngine.get_instance()
+            tone_engine._initialize()
+            logger.info("톤 분석 엔진 사전 로드 완료")
+        except Exception as e:
+            logger.error("톤 분석 엔진 사전 로드 실패 (서버는 계속 실행)", error=str(e))
+    else:
+        logger.info("tone_model 미설정 - 톤 분석 기능 비활성화")
 
     yield
 

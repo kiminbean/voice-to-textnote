@@ -1125,5 +1125,33 @@
       "GET"
     ],
     "api_key": false
+  },
+  {
+    "path": "/api/v1/tone/meeting/{meeting_id}",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/tone/{task_id}",
+    "methods": [
+      "DELETE"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/tone/{task_id}",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/tone/{task_id}/status",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
   }
 ]

@@ -33,6 +33,7 @@ from backend.app.api.v1.analytics import (
     search,
     sentiment,
     statistics,
+    tone,
     vocabulary,
 )
 from backend.app.api.v1.audio import (
@@ -111,6 +112,7 @@ ROUTER_REGISTRY: list[tuple[APIRouter, bool]] = [
     (collab.router, False),  # SPEC-COLLAB-001: WebSocket 실시간 공동 편집 (JWT in query param)
     # ── AI 분석 (API Key 필수) ──────────────────────────────────────────────────
     (sentiment.router, True),
+    (tone.router, True),  # SPEC-TONE-001: 발화 톤/운율 분석 API
     (tags.router, True),  # SPEC-TAG-001
     (keywords.router, True),  # SPEC-KEYWORD-001
     (action_items.router, True),  # SPEC-ACTION-001
