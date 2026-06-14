@@ -6,7 +6,7 @@ created: 2026-06-14
 updated: 2026-06-14
 author: MoAI
 priority: P2
-issue_number: 0
+issue_number: 31
 related_specs: [SPEC-SENTIMENT-001, SPEC-MIN-001, SPEC-DIA-001]
 ---
 
