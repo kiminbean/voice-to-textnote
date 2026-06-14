@@ -129,6 +129,10 @@ This path has now been executed locally.
 - Device token Push readiness was hardened on 2026-06-15:
   `device_tokens.device_id` migration/model support plus `(user_id, device_id)` unregister prevent multi-device deletion from invalidating the first active token.
   `venv/bin/python -m pytest -o addopts="" backend/tests/unit/test_devices_api_coverage.py backend/tests/test_push_service_db.py backend/tests/test_device_token_migration.py -q` -> `25 passed`.
+- SPEC-MOBILE-005 iOS recording readiness was hardened on 2026-06-15:
+  `client/scripts/verify_release_readiness.py` now checks `AppDelegate.swift` recording MethodChannel wiring, iOS background task handling, and `AVAudioSession` interruption/route-change observers.
+  `cd client && flutter test test/services/app_delegate_method_channel_test.dart test/services/background_recording_service_test.dart` -> `30 passed`.
+  Physical AC-M01~AC-M06 still require a connected iOS device plus phone call, lock-screen, Bluetooth route-change, and force-restart scenarios.
 
 ### Durable Fixes
 

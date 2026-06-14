@@ -132,10 +132,12 @@ def check_ios_project(root: Path, reporter: Reporter) -> None:
     info_path = root / "client/ios/Runner/Info.plist"
     entitlements_path = root / "client/ios/Runner/Runner.entitlements"
     xcodeproj_path = root / "client/ios/Runner.xcodeproj/project.pbxproj"
+    app_delegate_path = root / "client/ios/Runner/AppDelegate.swift"
     for path, label in [
         (info_path, "iOS Info.plist"),
         (entitlements_path, "iOS entitlements"),
         (xcodeproj_path, "iOS Xcode project"),
+        (app_delegate_path, "iOS AppDelegate"),
     ]:
         if not require_file(reporter, path, label):
             return
@@ -176,6 +178,32 @@ def check_ios_project(root: Path, reporter: Reporter) -> None:
         reporter.ok("iOS development team is configured in Xcode project")
     else:
         reporter.warn("iOS development team is not configured in Xcode project")
+
+    app_delegate = read_text(app_delegate_path)
+    recording_contract = [
+        'FlutterMethodChannel(\n      name: channelName',
+        'private let channelName = "com.voicetextnote.app/recording"',
+        'method == "startBackgroundTask"',
+        'method == "stopBackgroundTask"',
+        'method == "flushRecording"',
+        "UIApplication.shared.beginBackgroundTask",
+        "UIApplication.shared.endBackgroundTask",
+        "AVAudioSession.interruptionNotification",
+        "AVAudioSession.routeChangeNotification",
+        'method: "onInterruptionBegin"',
+        'method: "onInterruptionEnd"',
+        'method: "onRouteChange"',
+    ]
+    missing_recording_contract = [
+        snippet for snippet in recording_contract if snippet not in app_delegate
+    ]
+    if not missing_recording_contract:
+        reporter.ok("iOS AppDelegate implements recording MethodChannel and AVAudioSession observers")
+    else:
+        reporter.fail(
+            "iOS AppDelegate recording contract missing: "
+            + ", ".join(missing_recording_contract)
+        )
 
 
 def check_android_project(root: Path, reporter: Reporter) -> None:
