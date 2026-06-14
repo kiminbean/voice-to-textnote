@@ -182,6 +182,9 @@ This path has now been executed locally.
 - Self-hosted mobile release runner preflight was added on 2026-06-15:
   `client/scripts/verify_mobile_release_runner.py` checks macOS, required commands, `flutter doctor -v` for Android SDK 36/Xcode/CocoaPods, Android `adb device` state for `ANDROID_DEVICE_SERIAL`, and iOS `devicectl available` state for `IOS_DEVICE_UDID`.
   Current local probe: Flutter/Android SDK/Xcode/CocoaPods are installed, but Android has no attached device and iOS devices are visible only as `unavailable`; strict physical-device runner readiness is not proven.
+- Release E2E evidence scaffold was added on 2026-06-15:
+  `client/scripts/create_release_e2e_evidence.py --output docs/release-e2e-evidence.json` generates an editable JSON with current git revision, device env values, default Android/iOS artifact paths, and every `REQUIRED_E2E_SCENARIOS` key.
+  Generated scenarios default to `pass: false`, so scaffold output cannot accidentally satisfy strict readiness before physical-device observations are written.
 
 ### Durable Fixes
 

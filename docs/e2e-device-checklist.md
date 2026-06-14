@@ -17,7 +17,8 @@
 - [ ] Android APK 산출물 확인: `client/build/app/outputs/flutter-apk/app-debug.apk`
 - [ ] iOS no-codesign 산출물 확인: `client/build/ios/iphoneos/Runner.app`
 - [ ] Release readiness 기본 사전검사 통과: `python3 client/scripts/verify_release_readiness.py`
-- [ ] Release E2E evidence 작성: `docs/release-e2e-evidence.example.json`을 복사해 실제 기기/빌드/시나리오 증거로 채운 뒤 `RELEASE_E2E_EVIDENCE_PATH`에 지정
+- [ ] Release E2E evidence scaffold 생성: `python3 client/scripts/create_release_e2e_evidence.py --output docs/release-e2e-evidence.json`
+- [ ] Release E2E evidence 작성: 생성된 JSON을 실제 기기/빌드/시나리오 증거로 채운 뒤 `RELEASE_E2E_EVIDENCE_PATH`에 지정
 - [ ] Strict release readiness 통과(placeholder 없는 release 문서, 서비스 계정/APNs/App Store Connect/실기기 secret 및 실제 연결 기기 포함): `python3 client/scripts/verify_release_readiness.py --strict`
 - [ ] GitHub release environment 사전검사 통과: `python3 client/scripts/verify_github_mobile_release_env.py --repo kiminbean/voice-to-textnote`
 - [ ] GitHub Actions strict release gate 통과: `.github/workflows/mobile.yml`의 `workflow_dispatch`를 실행하고 `evidence_path`에 실제 evidence JSON 경로를 입력
@@ -90,6 +91,17 @@ python3 client/scripts/configure_github_mobile_release_env.py --repo kiminbean/v
 ```
 
 `--strict`는 환경변수 존재만 확인하지 않는다. `docs/app-store-metadata.md`, `docs/privacy-policy.md`, `docs/e2e-device-checklist.md`에 release placeholder가 없어야 한다. 또한 `ANDROID_DEVICE_SERIAL`은 `adb devices -l`에 `device` 상태로 표시되어야 하고, `IOS_DEVICE_UDID`는 `xcrun devicectl list devices`에서 `available` 상태로 표시되어야 한다. `RELEASE_E2E_EVIDENCE_PATH`는 JSON 파일이어야 하며 Android/iOS device id가 strict 환경변수와 일치하고, Push/딥링크/백그라운드 녹음/HTTP 정책/PDF 공유 시나리오가 모두 `pass: true`와 증거 문구를 가져야 한다. 따라서 Firebase/APNs/App Store Connect secret이 있어도 문서 placeholder가 남아 있거나 물리 기기가 연결되지 않았거나 trust/pairing이 완료되지 않았거나 실제 시나리오 증거가 없으면 E2E 진입 전 실패한다.
+
+### Release E2E evidence scaffold
+
+아래 명령은 현재 git revision, `ANDROID_DEVICE_SERIAL`, `IOS_DEVICE_UDID`, 기본 Android/iOS build artifact 경로, 모든 required scenario key를 포함한 JSON scaffold를 생성한다. 생성 직후 scenario는 모두 `pass: false`이며, 실제 실기기 관측 증거를 채우기 전에는 strict readiness가 실패해야 정상이다.
+
+```bash
+ANDROID_DEVICE_SERIAL=<adb-device-serial> \
+IOS_DEVICE_UDID=<ios-device-udid> \
+python3 client/scripts/create_release_e2e_evidence.py \
+  --output docs/release-e2e-evidence.json
+```
 
 > 참고: Kotlin Gradle Plugin의 Built-in Kotlin 마이그레이션 경고는 현재 빌드 실패가 아니라 미래 호환성 경고다. 경고가 오류로 승격되면 plugin 버전 업그레이드 또는 Flutter Built-in Kotlin 마이그레이션을 별도 작업으로 처리한다.
 

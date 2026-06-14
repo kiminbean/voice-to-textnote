@@ -725,6 +725,12 @@ python3 client/scripts/verify_release_readiness.py --strict
 
 `--strict`는 예제 파일을 그대로 통과시키는 용도가 아니다. `docs/release-e2e-evidence.example.json`을 복사해 실제 Android/iOS 기기 ID, 빌드 산출물, Push/딥링크/백그라운드 녹음/HTTP 정책/PDF 공유 시나리오 증거로 채운 뒤 실행한다. 필요한 환경 변수와 scenario key 매핑은 `docs/e2e-device-checklist.md`에 있다.
 
+```bash
+# Generate an editable scaffold with every required release E2E scenario key
+ANDROID_DEVICE_SERIAL=<adb-device-serial> IOS_DEVICE_UDID=<ios-device-udid> \
+python3 client/scripts/create_release_e2e_evidence.py --output docs/release-e2e-evidence.json
+```
+
 GitHub Actions에서도 동일한 strict 게이트를 실행할 수 있다. `.github/workflows/mobile.yml`의 `workflow_dispatch`에 `evidence_path`를 입력하면 `mobile-release` GitHub Environment와 `self-hosted`, `macOS`, `mobile-release` 라벨을 가진 러너에서 `./scripts/verify_mobile.sh --native` 후 `python3 client/scripts/verify_release_readiness.py --strict`를 실행한다. 필요한 Firebase/APNs/App Store Connect secrets와 Android/iOS device vars는 `docs/e2e-device-checklist.md`의 GitHub Actions strict release gate 표를 따른다.
 
 ```bash
