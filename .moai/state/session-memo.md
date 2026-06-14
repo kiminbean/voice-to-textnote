@@ -156,6 +156,7 @@ This path has now been executed locally.
   The evidence JSON must match Android/iOS device IDs from strict env, point to existing Android/iOS artifacts, and mark Push, deeplink, background recording, HTTP policy, foreground service, and PDF share scenarios as `pass: true` with evidence notes.
   `python3 client/scripts/verify_release_readiness.py` -> `release_readiness: 0 errors, 2 warnings`; strict without external inputs now fails with `11 errors`; direct evidence parser check against `docs/release-e2e-evidence.example.json` with matching fake IDs -> `evidence_check: 0 errors, 0 warnings`.
   Regression coverage: `venv/bin/python -m pytest -o addopts="" backend/tests/test_release_readiness_evidence.py -q` -> `3 passed, 5 warnings`.
+  CI trigger coverage: `.github/workflows/mobile.yml` path filters now include `docs/privacy-policy.md`, `docs/screenshot-guide.md`, `docs/release-e2e-evidence.example.json`, and `backend/tests/test_release_readiness_evidence.py`, so release-readiness input changes run mobile preflight.
 
 ### Durable Fixes
 

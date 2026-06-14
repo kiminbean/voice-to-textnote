@@ -12,6 +12,10 @@ on:
       - "docs/app-store-metadata.md"
       - "docs/e2e-device-checklist.md"
       - "docs/firebase-setup-guide.md"
+      - "docs/privacy-policy.md"
+      - "docs/release-e2e-evidence.example.json"
+      - "docs/screenshot-guide.md"
+      - "backend/tests/test_release_readiness_evidence.py"
       - ".github/workflows/mobile.yml"
   push:
     branches:
@@ -24,6 +28,10 @@ on:
       - "docs/app-store-metadata.md"
       - "docs/e2e-device-checklist.md"
       - "docs/firebase-setup-guide.md"
+      - "docs/privacy-policy.md"
+      - "docs/release-e2e-evidence.example.json"
+      - "docs/screenshot-guide.md"
+      - "backend/tests/test_release_readiness_evidence.py"
       - ".github/workflows/mobile.yml"
 
 jobs:
