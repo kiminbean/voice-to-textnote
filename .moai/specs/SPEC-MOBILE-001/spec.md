@@ -418,7 +418,7 @@ firebase-admin>=6.5.0       # Firebase Admin SDK — FCM 전송용
 **통합 테스트 (Phase E) — 코드/빌드 검증 완료 / Push E2E 대기**:
 - Firebase client/backend wiring과 테스트는 backend 전체 suite 및 Flutter 전체 suite에 포함되어 통과.
 - Release readiness 기본 사전검사 추가: `python3 client/scripts/verify_release_readiness.py`는 Firebase config, APNs entitlement, App Store metadata, backend Push wiring, E2E checklist를 정적 검증한다.
-- Strict release readiness: `python3 client/scripts/verify_release_readiness.py --strict`는 `FIREBASE_CREDENTIALS_PATH`, APNs key, App Store Connect API key, Android/iOS 실기기 식별자, 테스트 FCM token을 요구한다.
+- Strict release readiness: `python3 client/scripts/verify_release_readiness.py --strict`는 `FIREBASE_CREDENTIALS_PATH`, APNs key, App Store Connect API key, Android/iOS 실기기 식별자, 테스트 FCM token을 요구하고, Android serial은 `adb devices -l`, iOS UDID는 `xcrun devicectl list devices`에서 실제 연결/available 상태인지 확인한다.
 - 실제 FCM/APNs Push 수신, cold-start 딥링크, 실기기 백그라운드 흐름은 Firebase 프로젝트, APNs key, 서비스 계정, iOS/Android 실기기 필요.
 
 **제외됨 (MVP 범위 초과)**:

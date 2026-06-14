@@ -13,6 +13,8 @@ import json
 import os
 import plistlib
 import re
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -346,6 +348,59 @@ def require_env_value(reporter: Reporter, env_name: str, label: str, pattern: st
     reporter.ok(f"{label}: {env_name} is set")
 
 
+def read_command_output(command: list[str]) -> tuple[int, str]:
+    if shutil.which(command[0]) is None:
+        return 127, ""
+    completed = subprocess.run(
+        command,
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+    )
+    return completed.returncode, completed.stdout
+
+
+def require_android_device(reporter: Reporter) -> None:
+    serial = os.environ.get("ANDROID_DEVICE_SERIAL", "")
+    require_env_value(reporter, "ANDROID_DEVICE_SERIAL", "Android physical test device serial")
+    if not serial:
+        return
+
+    code, output = read_command_output(["adb", "devices", "-l"])
+    if code != 0:
+        reporter.fail("Android physical test device serial: adb devices failed or adb is unavailable")
+        return
+    connected_serials = {
+        line.split()[0]
+        for line in output.splitlines()
+        if line.strip() and "\tdevice" in line
+    }
+    if serial in connected_serials:
+        reporter.ok("Android physical test device serial is connected via adb")
+    else:
+        reporter.fail(f"Android physical test device serial {serial} is not connected via adb")
+
+
+def require_ios_device(reporter: Reporter) -> None:
+    udid = os.environ.get("IOS_DEVICE_UDID", "")
+    require_env_value(reporter, "IOS_DEVICE_UDID", "iOS physical test device UDID")
+    if not udid:
+        return
+
+    code, output = read_command_output(["xcrun", "devicectl", "list", "devices"])
+    if code != 0:
+        reporter.fail("iOS physical test device UDID: xcrun devicectl failed or Xcode tools are unavailable")
+        return
+    matching_lines = [line for line in output.splitlines() if udid in line]
+    if matching_lines and any(re.search(r"\savailable\s", line) for line in matching_lines):
+        reporter.ok("iOS physical test device UDID is connected and available")
+    elif matching_lines:
+        reporter.fail(f"iOS physical test device UDID {udid} is known but not available")
+    else:
+        reporter.fail(f"iOS physical test device UDID {udid} is not visible to xcrun devicectl")
+
+
 def check_strict_external(reporter: Reporter) -> None:
     credentials = os.environ.get("FIREBASE_CREDENTIALS_PATH", "")
     if credentials:
@@ -361,8 +416,8 @@ def check_strict_external(reporter: Reporter) -> None:
     require_env_value(reporter, "APP_STORE_CONNECT_KEY_ID", "App Store Connect key id", r"[A-Z0-9]{10}")
     require_env_value(reporter, "APP_STORE_CONNECT_ISSUER_ID", "App Store Connect issuer id")
 
-    require_env_value(reporter, "ANDROID_DEVICE_SERIAL", "Android physical test device serial")
-    require_env_value(reporter, "IOS_DEVICE_UDID", "iOS physical test device UDID")
+    require_android_device(reporter)
+    require_ios_device(reporter)
     require_env_value(reporter, "FIREBASE_TEST_DEVICE_TOKEN", "Firebase test device token")
 
 

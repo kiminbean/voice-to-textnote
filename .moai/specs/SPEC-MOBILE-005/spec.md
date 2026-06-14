@@ -375,7 +375,7 @@ dependencies:
 
 - 자동화 범위: `cd client && flutter test` -> `324 passed` (background recording, interruption state, recovery service tests 포함)
 - iOS build 범위: `cd client && ./scripts/verify_mobile.sh --native` -> `Built build/ios/iphoneos/Runner.app`
-- 실기기 검증 진입 전 사전검사: `python3 client/scripts/verify_release_readiness.py` -> `0 errors`; `--strict`는 `IOS_DEVICE_UDID` 등 실제 실기기 입력을 요구한다.
+- 실기기 검증 진입 전 사전검사: `python3 client/scripts/verify_release_readiness.py` -> `0 errors`; `--strict`는 `IOS_DEVICE_UDID` 입력뿐 아니라 `xcrun devicectl list devices`에서 해당 iOS 실기기가 `available` 상태인지 확인한다.
 - AC-M01~AC-M06은 전화 수신, 화면 잠금, Bluetooth route change, 강제 종료 복원 등 실기기 이벤트가 필요하므로 수동 검증으로 유지한다.
 
 ---
