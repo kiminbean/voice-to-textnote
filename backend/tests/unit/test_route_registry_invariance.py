@@ -69,9 +69,15 @@ def baseline() -> list[dict]:
 @pytest.fixture(scope="module")
 def live_snapshot() -> list[dict]:
     """현재 FastAPI 앱에서 라이브 스냅숏을 생성해 반환한다."""
-    from backend.app.main import create_app  # noqa: PLC0415 — 테스트 스코프 내 임포트
+    import importlib
 
-    return _build_snapshot(create_app().routes)
+    from backend.app.api.v1 import registry as route_registry  # noqa: PLC0415
+    from backend.app import main as main_module  # noqa: PLC0415
+
+    importlib.reload(route_registry)
+    main_module = importlib.reload(main_module)
+
+    return _build_snapshot(main_module.create_app().routes)
 
 
 # ─── 테스트 ───────────────────────────────────────────────────────────────────
