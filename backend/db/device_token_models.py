@@ -4,6 +4,7 @@ SPEC-MOBILE-001: FCM 디바이스 토큰 모델
 REQ-MOBILE-001~006: FCM 토큰 영속 저장 및 관리
 - user_id: 사용자 ID (String, auth system 호환)
 - fcm_token: FCM 등록 토큰 (Unique)
+- device_id: 클라이언트 디바이스 고유 식별자 (선택)
 - platform: 디바이스 플랫폼 (ios/android/web)
 - is_active: 토큰 활성화 여부
 """
@@ -45,6 +46,13 @@ class DeviceToken(Base):
         String(512),
         nullable=False,
         unique=True,
+        index=True,
+    )
+
+    # 클라이언트 디바이스 고유 식별자 (FCM token rotation 시 동일 기기 매핑)
+    device_id: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
         index=True,
     )
 

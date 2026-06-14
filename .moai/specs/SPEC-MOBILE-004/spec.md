@@ -343,6 +343,7 @@ firebase-admin>=6.0
 ### 2026-06-14 재검증
 
 - Backend Firebase/Push wiring 포함 전체 회귀: `venv/bin/python -m pytest backend -q` -> `3323 passed, 16 skipped`, coverage `98.62%`
+- Device token registration/unregistration focused gate: `venv/bin/python -m pytest -o addopts="" backend/tests/unit/test_devices_api_coverage.py backend/tests/test_push_service_db.py backend/tests/test_device_token_migration.py -q` -> `25 passed`; `device_tokens.device_id`와 `(user_id, device_id)` unregister로 요청한 기기만 비활성화.
 - Flutter notification/device client tests 포함 전체 회귀: `cd client && flutter test` -> `324 passed`
 - Native build readiness: `cd client && ./scripts/verify_mobile.sh --native` -> Android APK와 iOS no-codesign Runner.app 빌드 성공
 - Release readiness preflight: `python3 client/scripts/verify_release_readiness.py` -> `0 errors` (strict 외부 secret/device 검사는 별도 `--strict`; Android serial은 `adb devices -l`, iOS UDID는 `xcrun devicectl list devices`에서 실제 연결 상태까지 확인)

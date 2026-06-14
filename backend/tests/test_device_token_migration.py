@@ -85,3 +85,24 @@ class TestDeviceTokenMigration:
         # downgrade 함수에서 drop_table 호출 확인
         assert "op.drop_table" in content, "Downgrade must drop table"
         assert "op.drop_index" in content, "Downgrade must drop indexes"
+
+    def test_device_id_migration_adds_lookup_column(self):
+        """003 migration이 device_id 컬럼과 조회 인덱스를 추가하는지 검증"""
+        from pathlib import Path
+
+        migration_file = (
+            Path(__file__).parent.parent.parent
+            / "alembic"
+            / "versions"
+            / "003_add_device_id_to_device_tokens.py"
+        )
+
+        assert migration_file.exists(), f"Migration file not found: {migration_file}"
+        content = migration_file.read_text()
+
+        assert "revision: str = \"003_add_device_id_to_device_tokens\"" in content
+        assert "down_revision: str | None = \"002_add_device_tokens\"" in content
+        assert "op.add_column" in content
+        assert "\"device_id\"" in content
+        assert "ix_device_tokens_user_device_id" in content
+        assert "op.drop_column" in content

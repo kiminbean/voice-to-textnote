@@ -235,10 +235,16 @@ def check_backend_push(root: Path, reporter: Reporter) -> None:
     config_path = root / "backend/app/config.py"
     service_path = root / "backend/services/push_service.py"
     hook_path = root / "backend/app/workers/hooks/celery_push_hooks.py"
+    device_model_path = root / "backend/db/device_token_models.py"
+    device_api_path = root / "backend/app/api/v1/auth/devices.py"
+    device_migration_path = root / "alembic/versions/003_add_device_id_to_device_tokens.py"
     for path, label in [
         (config_path, "Backend config"),
         (service_path, "Backend push service"),
         (hook_path, "Celery push hooks"),
+        (device_model_path, "Device token model"),
+        (device_api_path, "Device registration API"),
+        (device_migration_path, "Device token device_id migration"),
     ]:
         if not require_file(reporter, path, label):
             return
@@ -256,6 +262,17 @@ def check_backend_push(root: Path, reporter: Reporter) -> None:
         reporter.ok("Celery success/failure push hooks are present")
     else:
         reporter.fail("Celery push hooks missing success/failure handlers")
+    device_model = read_text(device_model_path)
+    device_api = read_text(device_api_path)
+    device_migration = read_text(device_migration_path)
+    if "device_id" in device_model and "ix_device_tokens_user_device_id" in device_migration:
+        reporter.ok("Device tokens persist device_id with user/device lookup migration")
+    else:
+        reporter.fail("Device token device_id persistence or migration missing")
+    if "user_id=str(current_user.id)" in device_api and "device_id=device_id" in device_api:
+        reporter.ok("Device unregister uses requested user_id/device_id mapping")
+    else:
+        reporter.fail("Device unregister does not use requested user_id/device_id mapping")
 
 
 def check_docs(root: Path, reporter: Reporter) -> None:

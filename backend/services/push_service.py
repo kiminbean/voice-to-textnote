@@ -191,13 +191,13 @@ class PushService:
         TASK-003: 디바이스 등록 (DB-backed 또는 인메모리)
 
         새로운 DB-backed 방식 (권장):
-            await register_device(fcm_token=..., platform=..., db=..., user_id=...)
+            await register_device(fcm_token=..., platform=..., db=..., user_id=..., device_id=...)
 
         레거시 인메모리 방식 (하위 호환성):
             register_device(device_id, fcm_token) - 동기식, 반환값 없음
 
         Args:
-            device_id: 디바이스 고유 식별자 (인메모리 모드)
+            device_id: 디바이스 고유 식별자 (DB 모드에서는 선택, 인메모리 모드에서는 필수)
             fcm_token: FCM 등록 토큰
             db: AsyncSession (DB 모드, keyword-only)
             user_id: 사용자 ID (DB 모드, keyword-only)
@@ -212,23 +212,42 @@ class PushService:
         ):
             from backend.db.device_token_models import DeviceToken
 
-            # 기존 토큰 확인 (upsert)
-            result = await db.execute(select(DeviceToken).where(DeviceToken.fcm_token == fcm_token))
-            existing = result.scalar_one_or_none()
+            existing = None
+            if device_id:
+                result = await db.execute(
+                    select(DeviceToken)
+                    .where(DeviceToken.user_id == user_id)
+                    .where(DeviceToken.device_id == device_id)
+                )
+                existing = result.scalar_one_or_none()
+
+            token_result = await db.execute(
+                select(DeviceToken).where(DeviceToken.fcm_token == fcm_token)
+            )
+            existing_by_token = token_result.scalar_one_or_none()
+            if existing is None:
+                existing = existing_by_token
+            elif existing_by_token is not None and existing_by_token.id != existing.id:
+                existing.is_active = False
+                existing = existing_by_token
 
             if existing:
                 # 업데이트
                 existing.user_id = user_id
                 existing.platform = platform
+                existing.device_id = device_id
+                existing.fcm_token = fcm_token
                 existing.is_active = True
                 logger.info(
-                    f"디바이스 토큰 업데이트: user_id={user_id}, fcm_token={fcm_token[:20]}..."
+                    f"디바이스 토큰 업데이트: user_id={user_id}, "
+                    f"device_id={device_id}, fcm_token={fcm_token[:20]}..."
                 )
             else:
                 # 신규 생성
                 new_device = DeviceToken(
                     user_id=user_id,
                     fcm_token=fcm_token,
+                    device_id=device_id,
                     platform=platform,
                     is_active=True,
                 )
@@ -252,36 +271,51 @@ class PushService:
         *,
         db: AsyncSession | None = None,
         fcm_token: str | None = None,
+        user_id: str | None = None,
     ) -> None | bool:
         """
         TASK-003: 디바이스 해제 (DB-backed 또는 인메모리)
 
         새로운 DB-backed 방식 (권장):
             await unregister_device(db=..., fcm_token=...)
+            await unregister_device(db=..., user_id=..., device_id=...)
 
         레거시 인메모리 방식 (하위 호환성):
             unregister_device(device_id) - 동기식, bool 반환
 
         Args:
-            device_id: 디바이스 고유 식별자 (인메모리 모드)
+            device_id: 디바이스 고유 식별자 (DB 모드에서는 user_id와 함께 사용, 인메모리 모드)
             db: AsyncSession (DB 모드, keyword-only)
             fcm_token: FCM 등록 토큰 (DB 모드, keyword-only)
+            user_id: 사용자 ID (DB device_id 모드)
 
         Returns:
             None (DB 모드)
             bool (인메모리 모드 - 하위 호환성)
         """
         # DB 모드 (keyword-only 파라미터로 구분)
-        if db is not None and fcm_token is not None:
+        if db is not None and (fcm_token is not None or (user_id is not None and device_id is not None)):
             from backend.db.device_token_models import DeviceToken
 
-            result = await db.execute(select(DeviceToken).where(DeviceToken.fcm_token == fcm_token))
+            query = select(DeviceToken)
+            if fcm_token is not None:
+                query = query.where(DeviceToken.fcm_token == fcm_token)
+            else:
+                query = (
+                    query.where(DeviceToken.user_id == user_id)
+                    .where(DeviceToken.device_id == device_id)
+                    .where(DeviceToken.is_active)
+                )
+            result = await db.execute(query)
             device = result.scalar_one_or_none()
 
             if device:
                 device.is_active = False
                 await db.commit()
-                logger.info(f"디바이스 비활성화: fcm_token={fcm_token[:20]}...")
+                logger.info(
+                    f"디바이스 비활성화: user_id={device.user_id}, "
+                    f"device_id={device.device_id}, fcm_token={device.fcm_token[:20]}..."
+                )
             # 존재하지 않아도 멱등성으로 성공 (예외 없음)
             return None
 

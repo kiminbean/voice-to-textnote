@@ -26,6 +26,7 @@ class TestPushServiceDBBacked:
         # 디바이스 등록
         await service.register_device(
             fcm_token="test_fcm_token_123",
+            device_id="iphone-001",
             platform="ios",
             db=db_session,
             user_id="test-user-001",
@@ -40,6 +41,7 @@ class TestPushServiceDBBacked:
         assert device is not None
         assert device.user_id == "test-user-001"
         assert device.fcm_token == "test_fcm_token_123"
+        assert device.device_id == "iphone-001"
         assert device.platform == "ios"
         assert device.is_active is True
 
@@ -51,6 +53,7 @@ class TestPushServiceDBBacked:
         # 첫 번째 등록
         await service.register_device(
             fcm_token="same_token",
+            device_id="phone-1",
             platform="ios",
             db=db_session,
             user_id="user-001",
@@ -59,6 +62,7 @@ class TestPushServiceDBBacked:
         # 두 번째 등록 (다른 user_id, platform)
         await service.register_device(
             fcm_token="same_token",
+            device_id="phone-1",
             platform="android",
             db=db_session,
             user_id="user-002",
@@ -71,7 +75,37 @@ class TestPushServiceDBBacked:
         device = result.scalar_one()
 
         assert device.user_id == "user-002"  # 업데이트됨
+        assert device.device_id == "phone-1"
         assert device.platform == "android"
+
+    @pytest.mark.asyncio
+    async def test_register_device_rotates_token_for_same_device_id(self, db_session):
+        """동일 device_id가 새 FCM token으로 재등록되면 기존 row를 갱신"""
+        service = get_push_service()
+
+        await service.register_device(
+            fcm_token="old_token",
+            device_id="phone-rotate",
+            platform="ios",
+            db=db_session,
+            user_id="user-001",
+        )
+        await service.register_device(
+            fcm_token="new_token",
+            device_id="phone-rotate",
+            platform="ios",
+            db=db_session,
+            user_id="user-001",
+        )
+
+        result = await db_session.execute(
+            select(DeviceToken).where(DeviceToken.device_id == "phone-rotate")
+        )
+        devices = result.scalars().all()
+
+        assert len(devices) == 1
+        assert devices[0].fcm_token == "new_token"
+        assert devices[0].is_active is True
 
     @pytest.mark.asyncio
     async def test_unregister_device_deactivates_token(self, db_session):
@@ -81,6 +115,7 @@ class TestPushServiceDBBacked:
         # 디바이스 등록
         await service.register_device(
             fcm_token="token_to_delete",
+            device_id="phone-delete",
             platform="ios",
             db=db_session,
             user_id="user-001",
@@ -96,6 +131,36 @@ class TestPushServiceDBBacked:
         device = result.scalar_one()
 
         assert device.is_active is False
+
+    @pytest.mark.asyncio
+    async def test_unregister_device_deactivates_only_matching_device_id(self, db_session):
+        """device_id 해제는 같은 사용자의 요청한 기기만 비활성화"""
+        service = get_push_service()
+
+        await service.register_device(
+            fcm_token="token-a",
+            device_id="phone-a",
+            platform="ios",
+            db=db_session,
+            user_id="user-001",
+        )
+        await service.register_device(
+            fcm_token="token-b",
+            device_id="phone-b",
+            platform="android",
+            db=db_session,
+            user_id="user-001",
+        )
+
+        await service.unregister_device(db=db_session, user_id="user-001", device_id="phone-b")
+
+        result = await db_session.execute(
+            select(DeviceToken).where(DeviceToken.user_id == "user-001")
+        )
+        devices = {device.device_id: device for device in result.scalars().all()}
+
+        assert devices["phone-a"].is_active is True
+        assert devices["phone-b"].is_active is False
 
     @pytest.mark.asyncio
     async def test_unregister_nonexistent_token_succeeds(self, db_session):

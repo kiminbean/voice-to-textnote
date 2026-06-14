@@ -10,13 +10,14 @@ REQ-MOBILE-003: GET /api/v1/devices/ - 등록된 디바이스 목록 조회
 """
 
 import uuid
-from datetime import UTC, datetime
 from typing import Literal, cast
 
 from fastapi import APIRouter, Depends, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.dependencies import get_current_user, get_db_session
+from backend.db.device_token_models import DeviceToken
 from backend.schemas.device import (
     DeviceListResponse,
     DeviceRegisterRequest,
@@ -54,22 +55,19 @@ async def register_device(
 
     TASK-003: DB-backed 저장 (DeviceToken 모델 사용)
     """
-    # 디바이스 ID 생성 (UUID v4)
-    device_id_uuid = str(uuid.uuid4())
-
-    # MVP: device_id 필드가 없으면 UUID 사용
-    device_identifier = req.device_id or device_id_uuid
+    device_identifier = req.device_id or str(uuid.uuid4())
 
     # TASK-003: PushService에 DB-backed 등록
     await _get_push().register_device(
+        device_id=device_identifier,
         fcm_token=req.fcm_token,
         platform=req.platform,
         db=db,
         user_id=str(current_user.id),
     )
 
-    # 응답 생성
-    now = datetime.now(UTC)
+    result = await db.execute(select(DeviceToken).where(DeviceToken.fcm_token == req.fcm_token))
+    device_token = result.scalar_one()
 
     logger.info(
         f"디바이스 등록: user_id={current_user.id}, "
@@ -77,12 +75,12 @@ async def register_device(
     )
 
     return DeviceResponse(
-        id=uuid.UUID(device_id_uuid),
-        fcm_token=req.fcm_token,
-        platform=req.platform,
-        device_id=req.device_id,
-        created_at=now,
-        updated_at=now,
+        id=device_token.id,
+        fcm_token=device_token.fcm_token,
+        platform=cast(Literal["ios", "android"], device_token.platform),
+        device_id=device_token.device_id,
+        created_at=device_token.created_at,
+        updated_at=device_token.updated_at,
     )
 
 
@@ -101,24 +99,13 @@ async def unregister_device(
 
     - **device_id**: 디바이스 고유 식별자
 
-    TASK-003: DB-backed 해제 (fcm_token으로 조회해서 is_active=False)
+    TASK-003: DB-backed 해제 (user_id + device_id로 조회해서 is_active=False)
     """
-    # TASK-003: PushService에서 DB-backed 해제
-    # 기존: device_id로 인메모리에서 삭제
-    # 변경: fcm_token으로 DB에서 is_active=False로 설정
-    # NOTE: device_id 기반 삭제는 더 이상 지원하지 않음 (fcm_token 기반으로 변경)
-    # 현재 API에서 fcm_token을 받지 않으므로, user_id 기반으로 모든 토큰 조회 후 해제 필요
-
-    push_service = _get_push()
-
-    # 사용자의 모든 활성 토큰 조회
-    tokens = await push_service.get_user_tokens(db, str(current_user.id))
-
-    # device_id에 해당하는 토큰 찾기 (MVP: 첫 번째 토큰만 해제)
-    # TODO: device_id와 fcm_token 매핑 필요
-    if tokens:
-        # MVP: 첫 번째 토큰만 해제 (개선 필요)
-        await push_service.invalidate_token(db, tokens[0])
+    await _get_push().unregister_device(
+        db=db,
+        user_id=str(current_user.id),
+        device_id=device_id,
+    )
 
     logger.info(f"디바이스 해제: user_id={current_user.id}, device_id={device_id}")
 
@@ -137,10 +124,6 @@ async def list_devices(
 
     TASK-003: DB-backed 조회 (DeviceToken 모델 사용)
     """
-    from sqlalchemy import select
-
-    from backend.db.device_token_models import DeviceToken
-
     # TASK-003: DB에서 사용자의 활성 디바이스 조회
     result = await db.execute(
         select(DeviceToken)
@@ -155,7 +138,7 @@ async def list_devices(
             id=dt.id,
             fcm_token=dt.fcm_token,
             platform=cast(Literal["ios", "android"], dt.platform),
-            device_id=None,  # MVP: device_id 필드 없음
+            device_id=dt.device_id,
             created_at=dt.created_at,
             updated_at=dt.updated_at,
         )
