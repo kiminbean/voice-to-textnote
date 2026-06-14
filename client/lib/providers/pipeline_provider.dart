@@ -174,7 +174,7 @@ class PipelineNotifier extends Notifier<PipelineState> {
     String taskId,
     Future<Map<String, dynamic>> Function() getStatus,
   ) async {
-    final sseService = SseService(baseUrl: AppConfig.apiBaseUrl);
+    final sseService = ref.read(sseServiceProvider);
 
     try {
       bool completedViaSse = false;
@@ -311,4 +311,8 @@ class PipelineNotifier extends Notifier<PipelineState> {
 // 파이프라인 프로바이더
 final pipelineProvider = NotifierProvider<PipelineNotifier, PipelineState>(
   PipelineNotifier.new,
+);
+
+final sseServiceProvider = Provider<SseService>(
+  (_) => SseService(baseUrl: AppConfig.apiBaseUrl),
 );
