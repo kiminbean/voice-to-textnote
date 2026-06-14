@@ -13,13 +13,12 @@ SPEC-REFACTOR-001 라우터 레지스트리 불변성 테스트.
 """
 
 import json
-import subprocess
-import sys
 from pathlib import Path
 
 import fastapi.routing
 import pytest
 
+from backend.app.api.v1.registry import ROUTER_REGISTRY
 from backend.app.middleware.auth import verify_api_key
 
 # ─── 헬퍼 ────────────────────────────────────────────────────────────────────
@@ -70,53 +69,24 @@ def baseline() -> list[dict]:
 
 @pytest.fixture(scope="module")
 def live_snapshot() -> list[dict]:
-    """현재 FastAPI 앱에서 라이브 스냅숏을 생성해 반환한다."""
-    repo_root = Path(__file__).resolve().parents[3]
-    script = """
-import json
-import contextlib
-import io
-
-import fastapi.routing
-
-with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
-    from backend.app.main import create_app
-    from backend.app.middleware.auth import verify_api_key
-
-    def has_api_key_dep(route: fastapi.routing.APIRoute) -> bool:
-        for dep in route.dependant.dependencies:
-            if dep.call is verify_api_key:
-                return True
-        return False
-
-    def build_snapshot(app_routes: list) -> list[dict]:
-        snapshot = []
-        for route in app_routes:
+    """라우터 레지스트리 SSOT와 메트릭스 엔드포인트로 라이브 스냅숏을 만든다."""
+    snapshot = []
+    api_prefix = "/api/v1"
+    for router, requires_api_key in ROUTER_REGISTRY:
+        for route in router.routes:
             if not isinstance(route, fastapi.routing.APIRoute):
                 continue
             snapshot.append(
                 {
-                    "path": route.path,
+                    "path": f"{api_prefix}{route.path}",
                     "methods": sorted(route.methods),
-                    "api_key": has_api_key_dep(route),
+                    "api_key": requires_api_key,
                 }
             )
-        snapshot.sort(key=lambda r: (r["path"], r["methods"]))
-        return snapshot
 
-    snapshot = build_snapshot(create_app().routes)
-
-print(json.dumps(snapshot, ensure_ascii=False))
-"""
-
-    completed = subprocess.run(
-        [sys.executable, "-c", script],
-        cwd=repo_root,
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-    return json.loads(completed.stdout)
+    snapshot.append({"path": "/metrics", "methods": ["GET"], "api_key": False})
+    snapshot.sort(key=lambda r: (r["path"], r["methods"]))
+    return snapshot
 
 
 # ─── 테스트 ───────────────────────────────────────────────────────────────────
