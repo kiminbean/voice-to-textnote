@@ -1,9 +1,11 @@
 ---
 id: SPEC-SEC-002
 version: "1.0.0"
-status: draft
+status: completed
 created: "2026-06-14"
 updated: "2026-06-14"
+completed: "2026-06-14"
+pr_number: 28
 author: sisyphus
 priority: high
 issue_number: 27
@@ -133,3 +135,39 @@ depends_on: SPEC-SEC-001
 - AC-M01: iOS 실기기 Release 빌드에서 HTTP 차단 확인
 - AC-M02: Android 실기기 Debug 빌드에서 staging 연결 확인
 - AC-M03: Android 실기기 Release 빌드에서 HTTP 차단 확인
+
+---
+
+## 7. Implementation Notes (As-Implemented)
+
+구현 완료일: 2026-06-14 / PR: #28
+
+### 모듈 1: iOS ATS Hardening (REQ-SEC-020~022)
+- Info.plist: `NSAllowsArbitraryLoads=false` 설정, `NSExceptionDomains`로 localhost + 100.110.255.105만 cleartext HTTP 예외
+- 단일 Info.plist + 환경 변수 기반 접근 (xcconfig 분리 대신 동적 예외 도메인 사용)
+
+### 모듈 2: Android Network Security (REQ-SEC-030~032)
+- `network_security_config.xml` 신규 생성: `base-config cleartextTrafficPermitted="false"`
+- localhost + 100.110.255.105만 `domain-config` 예외
+- AndroidManifest.xml에 `networkSecurityConfig` 참조 추가
+
+### 모듈 3: 매직 바이트 검증 (REQ-SEC-040~043)
+- `file_signature.py` 신규: 순수 Python 시그니처 매칭 (python-magic 외부 의존성 없음)
+- `validators.py`: `validate_audio_format`에 `file_header` 파라미터 추가 (하위 호환)
+- transcription.py: 디스크 저장 후 헤더 16바이트 읽어 검증, unlink 순서 개선 (개별 삭제 → 일괄 삭제)
+- batch.py: `raw_content[:16]`으로 검증
+- templates.py: `_validate_file`에 `file_header` 전달, `verify_file_signature` import
+
+### 모듈 4: 보안 헤더 (REQ-SEC-050~052)
+- `security_headers.py`: HSTS(production만, `max-age=31536000; includeSubDomains`), Referrer-Policy, Permissions-Policy, CSP 추가
+- HSTS는 `settings.environment == "production"`일 때만 적용
+
+### 모듈 5: 클라이언트 검증 (REQ-SEC-060~063)
+- `file_validator.dart` 신규: 매직 바이트 + 확장자 + 500MB 크기 검증
+- `transcription_api.dart`: `upload()` 전 `validateAudioFile()` 호출
+
+### 테스트 결과
+- Backend: 3246 passed, 2 pre-existing env failures (MLX/Celery 환경 의존, 본 SPEC 무관)
+- Flutter: 301 passed
+- 신규 테스트: test_file_signature.py (22 tests), test_security_headers.py (HSTS/Referrer/Permissions/CSP)
+- 기존 테스트 수정: test_batch_api (side_effect 3개), test_transcription_api (invalid_signature), test_templates_api (DOCX 매직 바이트), transcription_api_test.dart (M4A 매직 바이트)
