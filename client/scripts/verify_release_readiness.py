@@ -292,6 +292,26 @@ def check_docs(root: Path, reporter: Reporter) -> None:
             reporter.fail(f"App Store metadata missing {snippet}")
 
 
+def check_release_doc_placeholders(root: Path, reporter: Reporter) -> None:
+    placeholder_patterns = (
+        r"\[To be updated",
+        r"\[App Store 제출 시 업데이트 예정\]",
+        r"\bTBD\b",
+        r"\bTODO\b",
+    )
+    for relative_path in [
+        "docs/app-store-metadata.md",
+        "docs/privacy-policy.md",
+        "docs/e2e-device-checklist.md",
+    ]:
+        path = root / relative_path
+        content = read_text(path)
+        if any(re.search(pattern, content, re.IGNORECASE) for pattern in placeholder_patterns):
+            reporter.fail(f"Release documentation contains unresolved placeholder: {relative_path}")
+        else:
+            reporter.ok(f"Release documentation has no unresolved placeholders: {relative_path}")
+
+
 def check_service_account(path: Path, reporter: Reporter) -> None:
     if not path.is_file():
         reporter.fail(f"FIREBASE_CREDENTIALS_PATH does not point to a file: {path}")
@@ -442,6 +462,7 @@ def main() -> int:
     check_docs(root, reporter)
 
     if args.strict:
+        check_release_doc_placeholders(root, reporter)
         check_strict_external(reporter)
     else:
         reporter.warn("Strict external checks skipped; run with --strict when release secrets/devices are available")

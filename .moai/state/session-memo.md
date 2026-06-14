@@ -121,7 +121,7 @@ This path has now been executed locally.
 - Release readiness preflight was added:
   `client/scripts/verify_release_readiness.py` -> default mode validates repo-local Firebase config, iOS APNs entitlement, App Store metadata, backend Push wiring, Android network policy, and E2E docs.
   `--strict` requires `FIREBASE_CREDENTIALS_PATH`, APNs key metadata, App Store Connect API key metadata, Android/iOS physical device IDs, and a Firebase test device token.
-  It also verifies `ANDROID_DEVICE_SERIAL` via `adb devices -l` and `IOS_DEVICE_UDID` via `xcrun devicectl list devices`, so physical-device E2E cannot be marked ready by environment variables alone.
+  It also verifies release docs have no unresolved placeholders, `ANDROID_DEVICE_SERIAL` via `adb devices -l`, and `IOS_DEVICE_UDID` via `xcrun devicectl list devices`, so physical-device E2E cannot be marked ready by environment variables alone.
 
 ### Durable Fixes
 
