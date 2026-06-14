@@ -23,6 +23,9 @@ depends_on: SPEC-MOBILE-001
 | 1.0.4 | 2026-06-14 | 서비스 코어/FFI runtime/provider 분리, `freezed_annotation` 전이 lock 정합화, copied Flutter SDK 검증 추가 | Codex |
 | 1.0.5 | 2026-06-14 | Flutter 전체 analyzer 게이트 정리, Android/iOS 모바일 CI workflow 및 로컬 검증 스크립트 추가 | Codex |
 | 1.0.6 | 2026-06-14 | Android Gradle plugin 적용 누락 보강, iOS Podfile 15.0 고정, CI Gradle setup 추가 | Codex |
+| 1.0.7 | 2026-06-14 | Android Gradle wrapper와 Flutter Gradle includeBuild 복원, Android CI SDK setup 추가, 로컬 검증 스크립트 native 옵션 분리, Flutter 3.44 권장 Gradle 8.14/AGP 8.11.1/Kotlin 2.2.20 고정 | Codex |
+| 1.0.8 | 2026-06-14 | CocoaPods trunk 접근 재검증, Profile xcconfig Pods 연동, iOS Swift MethodChannel 컴파일 오류 수정, no-codesign iOS build 통과 | Codex |
+| 1.0.9 | 2026-06-14 | 로컬 Android SDK 설치, compileSdk 36 전환, CI Android SDK 36/build-tools 설치 경로 반영, Android core library desugaring 활성화, Java/Kotlin JVM target 17 정합화, Android notification icon 리소스 정합화 | Codex |
 
 ## 1. 환경 (Environment)
 
@@ -198,8 +201,18 @@ whisper_ggml_plus: ^1.5.2
 - `.github/workflows/mobile.yml`은 PR/main push에서 Flutter `pub get`, `analyze`, `test`, Android debug APK build, iOS debug no-codesign build를 실행한다.
 - `client/scripts/verify_mobile.sh`는 로컬에서 동일한 모바일 게이트(`pub get`, `analyze`, `test`, Android build, macOS에서 iOS no-codesign build)를 순차 실행한다.
 - `client/android/app/build.gradle`은 `com.android.application`, `org.jetbrains.kotlin.android`, `dev.flutter.flutter-gradle-plugin`, `com.google.gms.google-services` 플러그인을 명시 적용한다.
+- `client/android/settings.gradle`은 Flutter Gradle plugin composite build(`includeBuild("$flutterSdkPath/packages/flutter_tools/gradle")`)와 Google Services plugin version을 명시한다.
+- `client/android/gradlew`, `client/android/gradlew.bat`, `client/android/gradle/wrapper/*`를 복원해 CI/로컬 Android build가 시스템 Gradle 설치에 의존하지 않는다.
+- `client/android/settings.gradle`과 `client/android/build.gradle`은 Flutter 3.44 경고 기준에 맞춰 Android Gradle Plugin 8.11.1과 Kotlin Gradle Plugin 2.2.20을 사용한다.
+- `client/android/app/build.gradle`은 release `minifyEnabled false`와 충돌하지 않도록 `shrinkResources false`를 명시한다.
+- `client/android/app/build.gradle`은 Flutter plugin 요구사항에 맞춰 `compileSdk 36`을 사용한다.
+- `client/android/app/build.gradle`은 `flutter_local_notifications` AAR metadata 요구사항에 맞춰 core library desugaring을 활성화한다.
+- `client/android/app/build.gradle`은 Kotlin debug target과 일치하도록 Java source/target compatibility를 17로 설정한다.
 - `client/ios/Podfile`은 SPEC 플랫폼 요구사항에 맞춰 `platform :ios, '15.0'`과 pod target `IPHONEOS_DEPLOYMENT_TARGET=15.0`을 고정한다.
-- `.github/workflows/mobile.yml`은 Android job에서 Java 17과 Gradle setup을 명시해 Gradle wrapper가 없는 현재 Android 프로젝트 구조에서도 CI build 경로를 확보한다.
+- `client/ios/Flutter/Profile.xcconfig`는 `Pods-Runner.profile.xcconfig`와 `Generated.xcconfig`를 include하며, Runner Profile build configuration은 이 파일을 base configuration으로 사용한다.
+- `client/ios/Runner/AppDelegate.swift`는 Swift `FlutterResult` 콜백 규약에 맞춰 MethodChannel no-op 응답을 `result(true)`로 반환한다.
+- `.github/workflows/mobile.yml`은 Android job에서 Java 17, Android SDK 36/build-tools packages, Gradle setup을 명시해 CI build 경로를 확보한다.
+- `client/scripts/verify_mobile.sh`는 기본 실행에서 Flutter pub/analyze/test/local STT smoke를 검증하고, `--native` 옵션에서는 Android SDK preflight 후 Android/iOS native build까지 실행한다.
 
 ### 2026-06-14 검증 증거
 
@@ -210,10 +223,18 @@ whisper_ggml_plus: ^1.5.2
 - `bash -n client/scripts/verify_mobile.sh` → 통과
 - `ruby -c client/ios/Podfile` → `Syntax OK`
 - `git diff --check -- .github/workflows/mobile.yml client/analysis_options.yaml client/scripts/verify_mobile.sh client/lib client/test client/tool .moai/specs/SPEC-MOBILE-002/spec.md` → 통과
+- `flutter test` → `All tests passed!`
+- `flutter analyze` → `No issues found!`
+- `cd client/android && ./gradlew help` → Flutter/AGP/Gradle 구성 평가 후 SDK preflight에서 중단: `SDK location not found. Define a valid SDK location with an ANDROID_HOME environment variable...`
+- `cd client && ./scripts/verify_mobile.sh` → `All tests passed!`, `local_stt_smoke: PASS`, native build skip 안내 출력
+- `cd client && ./scripts/verify_mobile.sh --native` → `No issues found!`, `All tests passed!`, `local_stt_smoke: PASS`, `✓ Built build/app/outputs/flutter-apk/app-debug.apk`, `✓ Built build/ios/iphoneos/Runner.app`
+- `curl -I https://cdn.cocoapods.org/` → `HTTP/2 200`
+- `cd client/ios && pod install` → `Pod installation complete! There are 5 dependencies from the Podfile and 5 total pods installed.`
+- `flutter build ios --debug --no-codesign` → `✓ Built build/ios/iphoneos/Runner.app`
+- `flutter config --android-sdk /Users/ibkim/Library/Android/sdk` → Android SDK path persisted in Flutter config
+- `flutter doctor -v` → Android toolchain 인식: `Android SDK version 36.0.0`, `All Android licenses accepted.`
+- `flutter build apk --debug` → `✓ Built build/app/outputs/flutter-apk/app-debug.apk`
 - `flutter test test/services/local_stt_service_test.dart`는 이 sandbox에서 Flutter tester가 `127.0.0.1:0` server socket을 생성하지 못해 로딩 전 실패한다: `Failed to create server socket (OS Error: Operation not permitted, errno = 1)`. 동일 서비스 계약은 위 smoke runner로 검증했다.
-- `flutter build apk --debug`는 코드/Gradle 단계 전 환경 문제로 중단된다: `No Android SDK found. Try setting the ANDROID_HOME environment variable.`
-- `cd client/ios && HOME=/private/tmp pod install`은 CocoaPods trunk repo를 네트워크로 클론하려다 중단된다: `Unable to add a source with url https://cdn.cocoapods.org/ named trunk`. Podfile iOS 15 설정은 구문 검증 완료.
-- `flutter build ios --debug --no-codesign`는 Xcode/CoreSimulator/SwiftPM cache 권한 문제로 중단된다: `CoreSimulatorService connection became invalid`, `Operation not permitted`. 코드 분석 단계는 통과했다.
 
 ## 8. 기술 제약사항
 
