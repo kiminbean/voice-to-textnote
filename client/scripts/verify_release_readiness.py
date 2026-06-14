@@ -85,8 +85,7 @@ def check_png_icon(
         reporter.ok(f"{label} size is {width}x{height}")
     else:
         reporter.fail(
-            f"{label} size is {width}x{height}, "
-            f"expected {expected_size[0]}x{expected_size[1]}"
+            f"{label} size is {width}x{height}, expected {expected_size[0]}x{expected_size[1]}"
         )
     has_alpha = color_type in {4, 6}
     if allow_alpha or not has_alpha:
@@ -109,9 +108,7 @@ def check_android_firebase(root: Path, reporter: Reporter) -> None:
         reporter.fail(f"Android Firebase project_id is not {PROJECT_ID}")
 
     package_names = {
-        client.get("client_info", {})
-        .get("android_client_info", {})
-        .get("package_name")
+        client.get("client_info", {}).get("android_client_info", {}).get("package_name")
         for client in clients
     }
     if ANDROID_PACKAGE in package_names:
@@ -192,9 +189,7 @@ def check_ios_project(root: Path, reporter: Reporter) -> None:
 
     url_types = info.get("CFBundleURLTypes", [])
     schemes = {
-        scheme
-        for url_type in url_types
-        for scheme in url_type.get("CFBundleURLSchemes", [])
+        scheme for url_type in url_types for scheme in url_type.get("CFBundleURLSchemes", [])
     }
     if URL_SCHEME in schemes:
         reporter.ok(f"iOS URL scheme is {URL_SCHEME}")
@@ -206,7 +201,9 @@ def check_ios_project(root: Path, reporter: Reporter) -> None:
     if aps_environment in {"development", "production"}:
         reporter.ok(f"iOS APNs entitlement is {aps_environment}")
         if aps_environment != "production":
-            reporter.warn("App Store distribution still requires production APNs entitlement from signing profile")
+            reporter.warn(
+                "App Store distribution still requires production APNs entitlement from signing profile"
+            )
     else:
         reporter.fail("iOS aps-environment entitlement missing")
 
@@ -222,7 +219,7 @@ def check_ios_project(root: Path, reporter: Reporter) -> None:
 
     app_delegate = read_text(app_delegate_path)
     recording_contract = [
-        'FlutterMethodChannel(\n      name: channelName',
+        "FlutterMethodChannel(\n      name: channelName",
         'private let channelName = "com.voicetextnote.app/recording"',
         'method == "startBackgroundTask"',
         'method == "stopBackgroundTask"',
@@ -239,11 +236,12 @@ def check_ios_project(root: Path, reporter: Reporter) -> None:
         snippet for snippet in recording_contract if snippet not in app_delegate
     ]
     if not missing_recording_contract:
-        reporter.ok("iOS AppDelegate implements recording MethodChannel and AVAudioSession observers")
+        reporter.ok(
+            "iOS AppDelegate implements recording MethodChannel and AVAudioSession observers"
+        )
     else:
         reporter.fail(
-            "iOS AppDelegate recording contract missing: "
-            + ", ".join(missing_recording_contract)
+            "iOS AppDelegate recording contract missing: " + ", ".join(missing_recording_contract)
         )
 
 
@@ -261,7 +259,10 @@ def check_android_project(root: Path, reporter: Reporter) -> None:
         if not require_file(reporter, path, label):
             return
     gradle = read_text(gradle_path)
-    if f'applicationId "{ANDROID_PACKAGE}"' in gradle and f"namespace '{ANDROID_PACKAGE}'" in gradle:
+    if (
+        f'applicationId "{ANDROID_PACKAGE}"' in gradle
+        and f"namespace '{ANDROID_PACKAGE}'" in gradle
+    ):
         reporter.ok(f"Android package/application id is {ANDROID_PACKAGE}")
     else:
         reporter.fail(f"Android package/application id {ANDROID_PACKAGE} missing")
@@ -290,9 +291,7 @@ def check_android_project(root: Path, reporter: Reporter) -> None:
         reporter.ok("Android debug cleartext traffic denied by default outside exceptions")
     else:
         reporter.fail("Android debug base cleartext denial missing")
-    debug_cleartext_hosts = set(
-        re.findall(r"<domain\b[^>]*>([^<]+)</domain>", debug_network)
-    )
+    debug_cleartext_hosts = set(re.findall(r"<domain\b[^>]*>([^<]+)</domain>", debug_network))
     expected_debug_hosts = {"localhost", "100.110.255.105"}
     if debug_cleartext_hosts == expected_debug_hosts:
         reporter.ok("Android debug cleartext exceptions are limited to local/staging hosts")
@@ -356,7 +355,12 @@ def check_docs(root: Path, reporter: Reporter) -> None:
         if not require_file(reporter, path, label):
             return
     firebase_doc = read_text(root / "docs/firebase-setup-guide.md")
-    for snippet in ["FIREBASE_CREDENTIALS_PATH", "APNs", "google-services.json", "GoogleService-Info.plist"]:
+    for snippet in [
+        "FIREBASE_CREDENTIALS_PATH",
+        "APNs",
+        "google-services.json",
+        "GoogleService-Info.plist",
+    ]:
         if snippet in firebase_doc:
             reporter.ok(f"Firebase guide documents {snippet}")
         else:
@@ -491,7 +495,9 @@ def check_service_account(path: Path, reporter: Reporter) -> None:
         reporter.fail("Firebase service account client_email missing or invalid")
 
 
-def require_env_file(reporter: Reporter, env_name: str, label: str, suffix: str | None = None) -> None:
+def require_env_file(
+    reporter: Reporter, env_name: str, label: str, suffix: str | None = None
+) -> None:
     value = os.environ.get(env_name, "")
     if not value:
         reporter.fail(f"{label}: {env_name} is not set")
@@ -506,7 +512,9 @@ def require_env_file(reporter: Reporter, env_name: str, label: str, suffix: str 
         reporter.fail(f"{label}: {env_name} file missing at {path}")
 
 
-def require_env_value(reporter: Reporter, env_name: str, label: str, pattern: str | None = None) -> None:
+def require_env_value(
+    reporter: Reporter, env_name: str, label: str, pattern: str | None = None
+) -> None:
     value = os.environ.get(env_name, "")
     if not value:
         reporter.fail(f"{label}: {env_name} is not set")
@@ -538,12 +546,12 @@ def require_android_device(reporter: Reporter) -> None:
 
     code, output = read_command_output(["adb", "devices", "-l"])
     if code != 0:
-        reporter.fail("Android physical test device serial: adb devices failed or adb is unavailable")
+        reporter.fail(
+            "Android physical test device serial: adb devices failed or adb is unavailable"
+        )
         return
     connected_serials = {
-        line.split()[0]
-        for line in output.splitlines()
-        if line.strip() and "\tdevice" in line
+        line.split()[0] for line in output.splitlines() if line.strip() and "\tdevice" in line
     }
     if serial in connected_serials:
         reporter.ok("Android physical test device serial is connected via adb")
@@ -559,7 +567,9 @@ def require_ios_device(reporter: Reporter) -> None:
 
     code, output = read_command_output(["xcrun", "devicectl", "list", "devices"])
     if code != 0:
-        reporter.fail("iOS physical test device UDID: xcrun devicectl failed or Xcode tools are unavailable")
+        reporter.fail(
+            "iOS physical test device UDID: xcrun devicectl failed or Xcode tools are unavailable"
+        )
         return
     matching_lines = [line for line in output.splitlines() if udid in line]
     if matching_lines and any(re.search(r"\savailable\s", line) for line in matching_lines):
@@ -582,7 +592,9 @@ def check_strict_external(reporter: Reporter) -> None:
     require_env_value(reporter, "APNS_TEAM_ID", "APNs team id", r"[A-Z0-9]{10}")
 
     require_env_file(reporter, "APP_STORE_CONNECT_API_KEY_PATH", "App Store Connect API key", ".p8")
-    require_env_value(reporter, "APP_STORE_CONNECT_KEY_ID", "App Store Connect key id", r"[A-Z0-9]{10}")
+    require_env_value(
+        reporter, "APP_STORE_CONNECT_KEY_ID", "App Store Connect key id", r"[A-Z0-9]{10}"
+    )
     require_env_value(reporter, "APP_STORE_CONNECT_ISSUER_ID", "App Store Connect issuer id")
 
     require_android_device(reporter)
@@ -614,12 +626,11 @@ def main() -> int:
         check_release_doc_placeholders(root, reporter)
         check_strict_external(reporter)
     else:
-        reporter.warn("Strict external checks skipped; run with --strict when release secrets/devices are available")
+        reporter.warn(
+            "Strict external checks skipped; run with --strict when release secrets/devices are available"
+        )
 
-    print(
-        f"release_readiness: {len(reporter.errors)} errors, "
-        f"{len(reporter.warnings)} warnings"
-    )
+    print(f"release_readiness: {len(reporter.errors)} errors, {len(reporter.warnings)} warnings")
     return 1 if reporter.errors else 0
 
 

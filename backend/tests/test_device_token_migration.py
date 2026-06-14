@@ -4,6 +4,11 @@ TASK-002: Alembic Migration 테스트
 DeviceToken 테이블 migration의 유효성 검증
 """
 
+import os
+import sqlite3
+import subprocess
+import sys
+
 
 class TestDeviceTokenMigration:
     """DeviceToken migration 테스트"""
@@ -100,9 +105,42 @@ class TestDeviceTokenMigration:
         assert migration_file.exists(), f"Migration file not found: {migration_file}"
         content = migration_file.read_text()
 
-        assert "revision: str = \"003_add_device_id_to_device_tokens\"" in content
-        assert "down_revision: str | None = \"002_add_device_tokens\"" in content
+        assert 'revision: str = "003_add_device_id_to_device_tokens"' in content
+        assert 'down_revision: str | None = "002_add_device_tokens"' in content
         assert "op.add_column" in content
-        assert "\"device_id\"" in content
+        assert '"device_id"' in content
         assert "ix_device_tokens_user_device_id" in content
         assert "op.drop_column" in content
+
+    def test_alembic_upgrade_head_creates_device_id_schema(self, tmp_path):
+        """alembic upgrade head가 device_id 컬럼과 조회 인덱스를 실제 생성한다."""
+        from pathlib import Path
+
+        repo_root = Path(__file__).parent.parent.parent
+        db_path = tmp_path / "alembic-device-token.sqlite"
+        env = {
+            **os.environ,
+            "DATABASE_URL": f"sqlite+aiosqlite:///{db_path}",
+        }
+
+        completed = subprocess.run(
+            [sys.executable, "-m", "alembic", "upgrade", "head"],
+            cwd=repo_root,
+            env=env,
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
+
+        assert completed.returncode == 0, completed.stdout
+
+        with sqlite3.connect(db_path) as connection:
+            columns = {row[1] for row in connection.execute("PRAGMA table_info(device_tokens)")}
+            indexes = {row[1] for row in connection.execute("PRAGMA index_list(device_tokens)")}
+            version = connection.execute("SELECT version_num FROM alembic_version").fetchone()
+
+        assert "device_id" in columns
+        assert "ix_device_tokens_device_id" in indexes
+        assert "ix_device_tokens_user_device_id" in indexes
+        assert version == ("003_add_device_id_to_device_tokens",)

@@ -418,6 +418,7 @@ firebase-admin>=6.5.0       # Firebase Admin SDK — FCM 전송용
 **통합 테스트 (Phase E) — 코드/빌드 검증 완료 / Push E2E 대기**:
 - Firebase client/backend wiring과 테스트는 backend 전체 suite 및 Flutter 전체 suite에 포함되어 통과.
 - Device token persistence 보강: `device_tokens.device_id` migration과 `(user_id, device_id)` 기반 unregister를 추가해 다중 기기에서 요청한 기기만 비활성화되도록 고정했다. `venv/bin/python -m pytest -o addopts="" backend/tests/unit/test_devices_api_coverage.py backend/tests/test_push_service_db.py backend/tests/test_device_token_migration.py -q` -> `25 passed`.
+- Device token migration 실행 보강: `backend/tests/test_device_token_migration.py`는 임시 SQLite DB에서 `python -m alembic upgrade head`를 실제 실행하고 `device_tokens.device_id` 및 `(user_id, device_id)` 인덱스 생성을 검증한다. `venv/bin/python -m pytest -o addopts="" backend/tests/test_device_token_migration.py -q` -> `6 passed`.
 - Release readiness 기본 사전검사 추가: `python3 client/scripts/verify_release_readiness.py`는 Firebase config, APNs entitlement, App Store metadata, backend Push wiring, E2E checklist를 정적 검증한다.
 - Strict release readiness: `python3 client/scripts/verify_release_readiness.py --strict`는 release 문서 placeholder 제거, `FIREBASE_CREDENTIALS_PATH`, APNs key, App Store Connect API key, Android/iOS 실기기 식별자, 테스트 FCM token을 요구하고, Android serial은 `adb devices -l`, iOS UDID는 `xcrun devicectl list devices`에서 실제 연결/available 상태인지 확인한다.
 - 2026-06-15 보강: 기본 release readiness는 `docs/screenshot-guide.md`, `docs/privacy-policy.md`, Privacy Policy URL, iOS/Android 스크린샷 가이드, Google Play metadata, 1024x1024 무알파 store icon까지 검증한다.

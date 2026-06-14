@@ -357,6 +357,12 @@ firebase-admin>=6.0
 - 검증: `python3 -m py_compile client/scripts/verify_release_readiness.py && python3 client/scripts/verify_release_readiness.py` -> `release_readiness: 0 errors, 2 warnings`.
 - strict 검증: `python3 client/scripts/verify_release_readiness.py --strict` -> release 문서 placeholder와 제출 자산 checks는 통과하고, Firebase/APNs/App Store Connect/실기기 입력 누락 10건으로 예상 실패한다.
 
+### 2026-06-15 DB 마이그레이션 실행 게이트 보강
+
+- `backend/tests/test_device_token_migration.py`가 임시 SQLite DB에 `DATABASE_URL=sqlite+aiosqlite:///...`를 주입하고 `python -m alembic upgrade head`를 실제 실행한다.
+- 실행 후 `device_tokens.device_id`, `ix_device_tokens_device_id`, `ix_device_tokens_user_device_id`, `alembic_version=003_add_device_id_to_device_tokens`를 SQLite PRAGMA/쿼리로 검증한다.
+- 검증: `venv/bin/python -m pytest -o addopts="" backend/tests/test_device_token_migration.py -q` -> `6 passed, 5 warnings`.
+
 ---
 
 *SPEC ID: SPEC-MOBILE-004*

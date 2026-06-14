@@ -141,6 +141,9 @@ This path has now been executed locally.
   `client/scripts/verify_release_readiness.py` now checks `docs/screenshot-guide.md`, `docs/privacy-policy.md`, App Store/Google Play metadata, production Privacy Policy URL, screenshot scenario coverage, and 1024x1024 no-alpha store icons.
   `python3 -m py_compile client/scripts/verify_release_readiness.py && python3 client/scripts/verify_release_readiness.py` -> `release_readiness: 0 errors, 2 warnings`.
   Strict mode still fails without Firebase service account, APNs/App Store Connect keys, Firebase test token, and connected Android/iOS physical devices.
+- SPEC-MOBILE-004 device token migration execution was hardened on 2026-06-15:
+  `backend/tests/test_device_token_migration.py` now runs `python -m alembic upgrade head` against a temporary SQLite database and asserts `device_tokens.device_id`, `ix_device_tokens_device_id`, `ix_device_tokens_user_device_id`, and `alembic_version=003_add_device_id_to_device_tokens`.
+  `venv/bin/python -m pytest -o addopts="" backend/tests/test_device_token_migration.py -q` -> `6 passed, 5 warnings`.
 
 ### Durable Fixes
 
