@@ -171,6 +171,9 @@ This path has now been executed locally.
   `.github/workflows/mobile.yml` now exposes `workflow_dispatch` with `evidence_path` and a `release-strict` job for a `self-hosted`, `macOS`, `mobile-release` runner.
   The job materializes Firebase/APNs/App Store Connect secrets into `$RUNNER_TEMP`, runs `client/scripts/verify_mobile.sh --native`, then runs `python3 client/scripts/verify_release_readiness.py --strict` with Android/iOS device vars and `RELEASE_E2E_EVIDENCE_PATH`.
   `docs/e2e-device-checklist.md` and README document the required GitHub Environment secrets/vars. Regression coverage asserts the strict workflow snippets remain present.
+- GitHub mobile release environment preflight was added on 2026-06-15:
+  `client/scripts/verify_github_mobile_release_env.py` checks the `mobile-release` GitHub Environment, required secret/variable names, and a self-hosted runner with `self-hosted`, `macOS`, `mobile-release` labels.
+  Current GitHub state is private repo but not strict-CI-ready: `gh api repos/kiminbean/voice-to-textnote/environments` -> `{"environments":[],"total_count":0}` and `gh api repos/kiminbean/voice-to-textnote/actions/runners` -> `runners=0`.
 
 ### Durable Fixes
 
