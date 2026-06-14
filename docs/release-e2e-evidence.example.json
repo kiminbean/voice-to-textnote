@@ -1,0 +1,92 @@
+{
+  "tested_at": "2026-06-15T09:00:00+09:00",
+  "tester": "release-operator",
+  "backend_version": "git:c9a6013",
+  "client_version": "git:c9a6013",
+  "devices": {
+    "android": {
+      "serial": "ANDROID_DEVICE_SERIAL_FROM_ADB",
+      "model": "Pixel 8",
+      "os_version": "Android 16"
+    },
+    "ios": {
+      "udid": "IOS_DEVICE_UDID_FROM_XCODE",
+      "model": "iPhone 15 Pro",
+      "os_version": "iOS 18"
+    }
+  },
+  "artifacts": {
+    "android_apk": "client/build/app/outputs/flutter-apk/app-debug.apk",
+    "ios_runner_app": "client/build/ios/iphoneos/Runner.app"
+  },
+  "scenarios": {
+    "permission_microphone_initial": {
+      "pass": true,
+      "evidence": "Fresh install showed microphone permission prompt before recording."
+    },
+    "permission_denied_recovery": {
+      "pass": true,
+      "evidence": "Permission denial showed settings recovery UI without crash."
+    },
+    "ios_background_recording_lock": {
+      "pass": true,
+      "evidence": "iPhone locked for 30 seconds during recording; recording continued after unlock."
+    },
+    "ios_interruption_resume": {
+      "pass": true,
+      "evidence": "Incoming call interrupted recording and recording resumed after call ended."
+    },
+    "ios_bluetooth_route_change": {
+      "pass": true,
+      "evidence": "Bluetooth route disconnect/reconnect was reflected without stopping recording."
+    },
+    "unfinished_recording_recovery": {
+      "pass": true,
+      "evidence": "Force-quit during recording, relaunched app, recovery dialog found saved file."
+    },
+    "push_stt_complete": {
+      "pass": true,
+      "evidence": "STT completion push received on registered Android and iOS test devices."
+    },
+    "push_summary_complete": {
+      "pass": true,
+      "evidence": "Summary completion push received on registered Android and iOS test devices."
+    },
+    "push_failure": {
+      "pass": true,
+      "evidence": "Forced processing failure generated error push."
+    },
+    "push_deeplink_background": {
+      "pass": true,
+      "evidence": "Tapped push while app was backgrounded; result screen opened."
+    },
+    "push_deeplink_cold_start": {
+      "pass": true,
+      "evidence": "Tapped push after force-closing app; app cold-started into result screen."
+    },
+    "android_foreground_service": {
+      "pass": true,
+      "evidence": "Android recording notification appeared, updated, and disappeared after stop."
+    },
+    "android_debug_tailscale_cleartext_allowed": {
+      "pass": true,
+      "evidence": "Debug build reached Tailscale staging HTTP endpoint successfully."
+    },
+    "android_release_cleartext_blocked": {
+      "pass": true,
+      "evidence": "Release build blocked external HTTP request and showed failure UI."
+    },
+    "ios_release_http_blocked": {
+      "pass": true,
+      "evidence": "iOS release build blocked non-HTTPS request with ATS failure path."
+    },
+    "export_share_android": {
+      "pass": true,
+      "evidence": "Android PDF export opened native share sheet and shared generated PDF."
+    },
+    "export_share_ios": {
+      "pass": true,
+      "evidence": "iOS PDF export opened native share sheet and shared generated PDF."
+    }
+  }
+}

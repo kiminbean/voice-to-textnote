@@ -375,7 +375,7 @@ dependencies:
 
 - 자동화 범위: `cd client && flutter test` -> `324 passed` (background recording, interruption state, recovery service tests 포함)
 - iOS build 범위: `cd client && ./scripts/verify_mobile.sh --native` -> `Built build/ios/iphoneos/Runner.app`
-- 실기기 검증 진입 전 사전검사: `python3 client/scripts/verify_release_readiness.py` -> `0 errors`; `--strict`는 `IOS_DEVICE_UDID` 입력뿐 아니라 `xcrun devicectl list devices`에서 해당 iOS 실기기가 `available` 상태인지 확인한다.
+- 실기기 검증 진입 전 사전검사: `python3 client/scripts/verify_release_readiness.py` -> `0 errors`; `--strict`는 `IOS_DEVICE_UDID` 입력뿐 아니라 `xcrun devicectl list devices`에서 해당 iOS 실기기가 `available` 상태인지 확인하고 `RELEASE_E2E_EVIDENCE_PATH`의 iOS 백그라운드/인터럽션/Bluetooth/공유 시나리오 pass 증거를 요구한다.
 - AC-M01~AC-M06은 전화 수신, 화면 잠금, Bluetooth route change, 강제 종료 복원 등 실기기 이벤트가 필요하므로 수동 검증으로 유지한다.
 
 ### 2026-06-15 네이티브 계약 게이트 보강
@@ -383,7 +383,7 @@ dependencies:
 - `client/scripts/verify_release_readiness.py`가 `client/ios/Runner/AppDelegate.swift`의 녹음 MethodChannel(`com.voicetextnote.app/recording`), iOS background task, `AVAudioSession` interruption/route-change observer, Dart 이벤트 전달(`onInterruptionBegin`, `onInterruptionEnd`, `onRouteChange`)을 정적으로 검증한다.
 - 집중 자동화: `cd client && flutter test test/services/app_delegate_method_channel_test.dart test/services/background_recording_service_test.dart` -> `30 passed`.
 - 기본 release readiness: `python3 -m py_compile client/scripts/verify_release_readiness.py && python3 client/scripts/verify_release_readiness.py` -> `release_readiness: 0 errors, 2 warnings`.
-- 이 보강은 iOS 네이티브 핸들러 누락을 실기기 E2E 전 단계에서 차단한다. AC-M01~AC-M06의 물리 이벤트 검증은 여전히 실제 iOS 기기와 전화/Bluetooth/잠금 시나리오가 필요하다.
+- 이 보강은 iOS 네이티브 핸들러 누락을 실기기 E2E 전 단계에서 차단한다. AC-M01~AC-M06의 물리 이벤트 검증은 여전히 실제 iOS 기기와 전화/Bluetooth/잠금 시나리오가 필요하며, strict release gate는 해당 수동 결과가 evidence JSON에 기록되지 않으면 통과하지 않는다.
 
 ---
 

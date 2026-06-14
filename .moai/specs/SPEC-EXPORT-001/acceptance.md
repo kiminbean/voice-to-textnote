@@ -203,7 +203,7 @@ Then 로딩 인디케이터가 사라지고
 
 - `cd client && flutter analyze` -> `No issues found!`
 - Export focused Flutter tests: `cd client && flutter test test/services/export_api_test.dart test/services/export_api_error_test.dart test/screens/result_screen_export_test.dart test/screens/export_button_test.dart`는 focused 41-test run에 포함되어 통과.
-- Release readiness preflight: `python3 client/scripts/verify_release_readiness.py` -> `release_readiness: 0 errors, 2 warnings`; strict 모드는 외부 release secrets/physical devices 누락 10건으로 예상 실패하여 실기기 공유 UX를 자동 통과로 오인하지 않는다.
+- Release readiness preflight: `python3 client/scripts/verify_release_readiness.py` -> `release_readiness: 0 errors, 2 warnings`; strict 모드는 외부 release secrets/physical devices와 `RELEASE_E2E_EVIDENCE_PATH` 누락으로 예상 실패하여 실기기 공유 UX를 자동 통과로 오인하지 않는다. Android/iOS PDF share sheet 수동 통과 증거는 evidence JSON의 `export_share_android` / `export_share_ios` 시나리오에 기록해야 한다.
 
 ### 검증 명령어
 

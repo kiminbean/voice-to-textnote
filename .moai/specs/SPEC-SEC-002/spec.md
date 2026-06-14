@@ -148,7 +148,7 @@ depends_on: SPEC-SEC-001
 - `python3 client/scripts/verify_release_readiness.py` -> Android network security config와 App Store/Firebase release wiring 포함 `0 errors`
 - `cd client && flutter build apk --release` -> `✓ Built build/app/outputs/flutter-apk/app-release.apk`
 - `cd client && flutter build apk --debug` -> `✓ Built build/app/outputs/flutter-apk/app-debug.apk`
-- `python3 client/scripts/verify_release_readiness.py --strict` -> 외부 release secrets/physical devices 누락 시 `10 errors`로 실패하여 Firebase/APNs/App Store/실기기 E2E를 가짜로 통과시키지 않는다.
+- `python3 client/scripts/verify_release_readiness.py --strict` -> 외부 release secrets/physical devices 및 `RELEASE_E2E_EVIDENCE_PATH` 누락 시 실패하여 Firebase/APNs/App Store/실기기 E2E를 가짜로 통과시키지 않는다. Android/iOS HTTP 정책 수동 결과는 evidence JSON의 `android_debug_tailscale_cleartext_allowed`, `android_release_cleartext_blocked`, `ios_release_http_blocked` 시나리오로 요구된다.
 - Android 에뮬레이터/실기기에서 실제 네트워크 차단/허용을 관측하는 AC-M02/AC-M03은 장비 기반 수동 검증으로 유지한다.
 
 ### 2026-06-15 Android 에뮬레이터 런타임 검증

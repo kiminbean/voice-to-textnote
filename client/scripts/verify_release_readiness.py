@@ -23,6 +23,25 @@ PROJECT_ID = "voice-to-textnote"
 ANDROID_PACKAGE = "com.voicetextnote.app"
 IOS_BUNDLE_ID = "com.voicetextnote.app"
 URL_SCHEME = "voicetextnote"
+REQUIRED_E2E_SCENARIOS = {
+    "permission_microphone_initial": "Initial microphone permission prompt",
+    "permission_denied_recovery": "Permission denial recovery UI",
+    "ios_background_recording_lock": "iOS background recording while locked",
+    "ios_interruption_resume": "iOS call interruption resume",
+    "ios_bluetooth_route_change": "iOS Bluetooth route change",
+    "unfinished_recording_recovery": "Unfinished recording recovery after restart",
+    "push_stt_complete": "Push received for STT completion",
+    "push_summary_complete": "Push received for summary completion",
+    "push_failure": "Push received for processing failure",
+    "push_deeplink_background": "Push deeplink while app is backgrounded",
+    "push_deeplink_cold_start": "Push deeplink from cold start",
+    "android_foreground_service": "Android foreground recording notification",
+    "android_debug_tailscale_cleartext_allowed": "Android debug Tailscale HTTP allowed",
+    "android_release_cleartext_blocked": "Android release HTTP blocked",
+    "ios_release_http_blocked": "iOS release HTTP blocked",
+    "export_share_android": "Android PDF share sheet",
+    "export_share_ios": "iOS PDF share sheet",
+}
 
 
 class Reporter:
@@ -478,6 +497,7 @@ def check_docs(root: Path, reporter: Reporter) -> None:
         ("Push/푸시 알림", ("Push", "푸시 알림")),
         ("백그라운드 녹음", ("백그라운드 녹음",)),
         ("./scripts/verify_mobile.sh --native", ("./scripts/verify_mobile.sh --native",)),
+        ("RELEASE_E2E_EVIDENCE_PATH", ("RELEASE_E2E_EVIDENCE_PATH",)),
     ]
     for label, snippets in e2e_requirements:
         if any(snippet in e2e_doc for snippet in snippets):
@@ -494,6 +514,7 @@ def check_docs(root: Path, reporter: Reporter) -> None:
         "iPad Pro",
         "Android",
         "https://voicetextnote.com/privacy",
+        "RELEASE_E2E_EVIDENCE_PATH",
     ]:
         if snippet in app_store_doc:
             reporter.ok(f"App Store metadata covers {snippet}")
@@ -688,6 +709,93 @@ def require_ios_device(reporter: Reporter) -> None:
         reporter.fail(f"iOS physical test device UDID {udid} is not visible to xcrun devicectl")
 
 
+def require_non_empty_mapping(
+    reporter: Reporter, data: dict[str, object], key: str, label: str
+) -> dict[str, object]:
+    value = data.get(key)
+    if isinstance(value, dict) and value:
+        reporter.ok(f"Release E2E evidence includes {label}")
+        return value
+    reporter.fail(f"Release E2E evidence missing {label}")
+    return {}
+
+
+def require_non_empty_string(
+    reporter: Reporter, data: dict[str, object], key: str, label: str
+) -> str:
+    value = data.get(key)
+    if isinstance(value, str) and value.strip():
+        reporter.ok(f"Release E2E evidence includes {label}")
+        return value.strip()
+    reporter.fail(f"Release E2E evidence missing {label}")
+    return ""
+
+
+def check_release_e2e_evidence(path: Path, reporter: Reporter) -> None:
+    if not path.is_file():
+        reporter.fail(f"RELEASE_E2E_EVIDENCE_PATH does not point to a file: {path}")
+        return
+    try:
+        data = json.loads(read_text(path))
+    except json.JSONDecodeError as exc:
+        reporter.fail(f"Release E2E evidence JSON is invalid: {exc}")
+        return
+    if not isinstance(data, dict):
+        reporter.fail("Release E2E evidence must be a JSON object")
+        return
+
+    require_non_empty_string(reporter, data, "tested_at", "test timestamp")
+    require_non_empty_string(reporter, data, "tester", "tester")
+    require_non_empty_string(reporter, data, "backend_version", "backend version")
+    require_non_empty_string(reporter, data, "client_version", "client version")
+
+    devices = require_non_empty_mapping(reporter, data, "devices", "device metadata")
+    for platform, expected_id in [
+        ("android", os.environ.get("ANDROID_DEVICE_SERIAL", "")),
+        ("ios", os.environ.get("IOS_DEVICE_UDID", "")),
+    ]:
+        device = devices.get(platform) if isinstance(devices, dict) else None
+        if not isinstance(device, dict):
+            reporter.fail(f"Release E2E evidence missing {platform} device metadata")
+            continue
+        id_key = "serial" if platform == "android" else "udid"
+        actual_id = str(device.get(id_key, "")).strip()
+        if actual_id and actual_id == expected_id:
+            reporter.ok(f"Release E2E evidence {platform} device matches strict env")
+        else:
+            reporter.fail(
+                f"Release E2E evidence {platform} device {id_key} does not match strict env"
+            )
+        for key in ["model", "os_version"]:
+            require_non_empty_string(reporter, device, key, f"{platform} device {key}")
+
+    artifacts = require_non_empty_mapping(reporter, data, "artifacts", "build artifacts")
+    for key in ["android_apk", "ios_runner_app"]:
+        artifact_path = str(artifacts.get(key, "")).strip() if artifacts else ""
+        if not artifact_path:
+            reporter.fail(f"Release E2E evidence missing artifact {key}")
+            continue
+        if Path(artifact_path).expanduser().exists():
+            reporter.ok(f"Release E2E evidence artifact exists: {key}")
+        else:
+            reporter.fail(f"Release E2E evidence artifact missing on disk: {key}")
+
+    scenarios = require_non_empty_mapping(reporter, data, "scenarios", "scenario results")
+    for key, label in REQUIRED_E2E_SCENARIOS.items():
+        scenario = scenarios.get(key) if isinstance(scenarios, dict) else None
+        if not isinstance(scenario, dict):
+            reporter.fail(f"Release E2E evidence missing scenario: {key} ({label})")
+            continue
+        passed = scenario.get("pass")
+        evidence = str(scenario.get("evidence", "")).strip()
+        if passed is True and evidence:
+            reporter.ok(f"Release E2E scenario passed: {key}")
+        elif passed is not True:
+            reporter.fail(f"Release E2E scenario not marked pass: {key}")
+        else:
+            reporter.fail(f"Release E2E scenario missing evidence note: {key}")
+
+
 def check_strict_external(reporter: Reporter) -> None:
     credentials = os.environ.get("FIREBASE_CREDENTIALS_PATH", "")
     if credentials:
@@ -708,6 +816,11 @@ def check_strict_external(reporter: Reporter) -> None:
     require_android_device(reporter)
     require_ios_device(reporter)
     require_env_value(reporter, "FIREBASE_TEST_DEVICE_TOKEN", "Firebase test device token")
+    evidence = os.environ.get("RELEASE_E2E_EVIDENCE_PATH", "")
+    if evidence:
+        check_release_e2e_evidence(Path(evidence).expanduser(), reporter)
+    else:
+        reporter.fail("Release E2E evidence: RELEASE_E2E_EVIDENCE_PATH is not set")
 
 
 def main() -> int:

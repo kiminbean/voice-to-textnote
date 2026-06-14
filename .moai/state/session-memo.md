@@ -120,8 +120,8 @@ This path has now been executed locally.
   `cd client && flutter build apk --debug` -> `✓ Built build/app/outputs/flutter-apk/app-debug.apk`.
 - Release readiness preflight was added:
   `client/scripts/verify_release_readiness.py` -> default mode validates repo-local Firebase config, iOS APNs entitlement, App Store metadata, backend Push wiring, Android network policy, and E2E docs.
-  `--strict` requires `FIREBASE_CREDENTIALS_PATH`, APNs key metadata, App Store Connect API key metadata, Android/iOS physical device IDs, and a Firebase test device token.
-  It also verifies release docs have no unresolved placeholders, `ANDROID_DEVICE_SERIAL` via `adb devices -l`, and `IOS_DEVICE_UDID` via `xcrun devicectl list devices`, so physical-device E2E cannot be marked ready by environment variables alone.
+  `--strict` requires `FIREBASE_CREDENTIALS_PATH`, APNs key metadata, App Store Connect API key metadata, Android/iOS physical device IDs, a Firebase test device token, and `RELEASE_E2E_EVIDENCE_PATH`.
+  It also verifies release docs have no unresolved placeholders, `ANDROID_DEVICE_SERIAL` via `adb devices -l`, `IOS_DEVICE_UDID` via `xcrun devicectl list devices`, and release E2E evidence scenarios, so physical-device E2E cannot be marked ready by environment variables alone.
 - Privacy policy release placeholders were removed. The policy now uses `privacy@voicetextnote.com` for privacy inquiries and points legal mailing address disclosure to App Store Connect seller/store metadata instead of an unknown placeholder address.
 - SPEC-REFACTOR-001 e2e follow-up was revalidated on 2026-06-15:
   `venv/bin/python -m pytest -o addopts="" backend/tests/e2e/test_pipeline_e2e.py -q` -> `16 passed, 6 warnings in 1.73s`.
@@ -151,6 +151,10 @@ This path has now been executed locally.
   `cd client && flutter analyze` -> `No issues found!`;
   `cd client && flutter test test/config/app_config_test.dart test/services/export_api_test.dart test/services/export_api_error_test.dart test/screens/result_screen_export_test.dart test/screens/export_button_test.dart test/services/tone_api_test.dart test/widgets/tone_timeline_test.dart` -> `41 passed`;
   `venv/bin/python -m pytest -o addopts="" backend/tests/unit/test_tone_engine.py backend/tests/unit/test_tone_task.py backend/tests/unit/test_tone_api.py -q` -> `49 passed, 6 warnings`.
+- Strict release E2E evidence was hardened on 2026-06-15:
+  `client/scripts/verify_release_readiness.py --strict` now requires `RELEASE_E2E_EVIDENCE_PATH` in addition to release secrets and connected devices.
+  The evidence JSON must match Android/iOS device IDs from strict env, point to existing Android/iOS artifacts, and mark Push, deeplink, background recording, HTTP policy, foreground service, and PDF share scenarios as `pass: true` with evidence notes.
+  `python3 client/scripts/verify_release_readiness.py` -> `release_readiness: 0 errors, 2 warnings`; strict without external inputs now fails with `11 errors`; direct evidence parser check against `docs/release-e2e-evidence.example.json` with matching fake IDs -> `evidence_check: 0 errors, 0 warnings`.
 
 ### Durable Fixes
 

@@ -20,7 +20,7 @@
   - `cd client && flutter build apk --release` -> `✓ Built build/app/outputs/flutter-apk/app-release.apk`
   - `cd client && flutter build apk --debug` -> `✓ Built build/app/outputs/flutter-apk/app-debug.apk`
   - `python3 client/scripts/verify_release_readiness.py` -> `0 errors, 2 warnings`
-  - `python3 client/scripts/verify_release_readiness.py --strict` -> expected failure without Firebase/APNs/App Store Connect secrets and physical device IDs
+  - `python3 client/scripts/verify_release_readiness.py --strict` -> expected failure without Firebase/APNs/App Store Connect secrets, physical device IDs, and release E2E evidence JSON
 - 2026-06-15 Android emulator runtime gate:
   - Android emulator `36.6.11` + `system-images;android-36;google_apis;arm64-v8a` installed; AVD `voice_to_textnote_api36` booted with `sys.boot_completed=1`
   - `cd client/android && ./gradlew :app:connectedDebugAndroidTest --no-daemon` -> `Finished 1 tests on voice_to_textnote_api36(AVD) - 16`, `BUILD SUCCESSFUL`

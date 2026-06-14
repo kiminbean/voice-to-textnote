@@ -355,7 +355,7 @@ firebase-admin>=6.0
 - `docs/app-store-metadata.md`의 Privacy Policy URL은 제출 전 placeholder가 아닌 `https://voicetextnote.com/privacy`로 고정했다.
 - `docs/screenshot-guide.md`는 iPhone 6.7"/6.5", iPad 12.9", Android phone/tablet 산출물 체크와 샘플 데이터 사용 원칙을 포함한다.
 - 검증: `python3 -m py_compile client/scripts/verify_release_readiness.py && python3 client/scripts/verify_release_readiness.py` -> `release_readiness: 0 errors, 2 warnings`.
-- strict 검증: `python3 client/scripts/verify_release_readiness.py --strict` -> release 문서 placeholder와 제출 자산 checks는 통과하고, Firebase/APNs/App Store Connect/실기기 입력 누락 10건으로 예상 실패한다.
+- strict 검증: `python3 client/scripts/verify_release_readiness.py --strict` -> release 문서 placeholder와 제출 자산 checks는 통과하고, Firebase/APNs/App Store Connect/실기기 입력 및 `RELEASE_E2E_EVIDENCE_PATH` 누락으로 예상 실패한다. 증거 파일은 `docs/release-e2e-evidence.example.json` 구조를 따라 Push/딥링크/백그라운드 녹음/HTTP 정책/PDF 공유 시나리오 pass 증거를 포함해야 한다.
 
 ### 2026-06-15 DB 마이그레이션 실행 게이트 보강
 

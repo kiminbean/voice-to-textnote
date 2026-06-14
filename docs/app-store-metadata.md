@@ -215,6 +215,7 @@ meeting,recording,transcription,AI summary,STT,conference,convert,speaker,collab
 - [ ] Provisioning Profile (App Store)
 - [ ] TestFlight 베타 테스트 (권장)
 - [ ] 앱 전송 (Transporter 또는 Xcode)
+- [ ] Release E2E evidence JSON 작성 및 `RELEASE_E2E_EVIDENCE_PATH` 지정
 - [ ] Strict release readiness 통과:
   `python3 client/scripts/verify_release_readiness.py --strict`
 
