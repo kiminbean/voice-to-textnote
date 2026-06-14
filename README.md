@@ -736,7 +736,9 @@ python3 client/scripts/verify_release_readiness.py --strict
 
 ## 라이선스
 
-MIT License - 자유로운 상업적 사용 가능
+프로젝트 자체 코드는 MIT License로 배포한다.
+
+단, SPEC-TONE-001의 발화 톤/운율 분석은 `opensmile`(AGPL-3.0)을 사용하므로 현재 제품 정책인 **로컬 전용 처리** 환경에서만 활성화한다. `tone_model` 기본값은 빈 문자열이며, 명시적으로 설정하지 않으면 tone API는 503으로 비활성화된다. 외부 사용자에게 네트워크 서비스/SaaS 형태로 tone 기능을 제공하려면 배포 전에 opensmile 대체 구현 또는 AGPL 소스 공개 의무를 별도로 검토해야 한다.
 
 ---
 

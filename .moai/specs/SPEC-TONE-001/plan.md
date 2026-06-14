@@ -298,3 +298,4 @@ pip install "opensmile>=2.6.0" "librosa>=0.10.0"
 - `venv/bin/python -m pytest -o addopts="" backend/tests/unit/test_tone_engine.py backend/tests/unit/test_tone_task.py backend/tests/unit/test_tone_api.py -q` -> `49 passed, 6 warnings`
 - `cd client && flutter test test/services/tone_api_test.dart test/widgets/tone_timeline_test.dart`는 focused 41-test run에 포함되어 통과.
 - `cd client && flutter analyze` -> `No issues found!`
+- `python3 client/scripts/verify_release_readiness.py` -> `tone_model` 기본 비활성화(`tone_model: str = ""`), `pyproject.toml` opensmile AGPL 로컬 전용 정책, README의 네트워크 서비스/SaaS 전환 검토 문구 포함 `release_readiness: 0 errors, 2 warnings`

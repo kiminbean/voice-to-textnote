@@ -470,6 +470,52 @@ def check_backend_push(root: Path, reporter: Reporter) -> None:
         reporter.fail("Device unregister does not use requested user_id/device_id mapping")
 
 
+def check_tone_release_policy(root: Path, reporter: Reporter) -> None:
+    config_path = root / "backend/app/config.py"
+    pyproject_path = root / "pyproject.toml"
+    readme_path = root / "README.md"
+    for path, label in [
+        (config_path, "Backend config"),
+        (pyproject_path, "Python project metadata"),
+        (readme_path, "README"),
+    ]:
+        if not require_file(reporter, path, label):
+            return
+
+    config = read_text(config_path)
+    if 'tone_model: str = ""' in config:
+        reporter.ok("Tone analysis is disabled by default when tone_model is empty")
+    else:
+        reporter.fail("Tone analysis must default to disabled with tone_model empty")
+
+    pyproject = read_text(pyproject_path)
+    require_snippets(
+        reporter,
+        pyproject,
+        [
+            "opensmile>=2.6.0",
+            "opensmile은 AGPL-3.0",
+            "로컬 전용 처리 환경에서만 사용",
+            "네트워크 서비스 형태 외부 제공 금지",
+        ],
+        "Python dependency policy documents opensmile AGPL local-only constraints",
+    )
+
+    readme = read_text(readme_path)
+    require_snippets(
+        reporter,
+        readme,
+        [
+            "로컬 전용 처리",
+            "opensmile",
+            "AGPL-3.0",
+            "네트워크 서비스",
+            "SaaS",
+        ],
+        "README documents opensmile AGPL local-only and SaaS review policy",
+    )
+
+
 def check_docs(root: Path, reporter: Reporter) -> None:
     required = [
         (root / "docs/firebase-setup-guide.md", "Firebase setup guide"),
@@ -842,6 +888,7 @@ def main() -> int:
     check_ios_project(root, reporter)
     check_android_project(root, reporter)
     check_backend_push(root, reporter)
+    check_tone_release_policy(root, reporter)
     check_docs(root, reporter)
 
     if args.strict:
