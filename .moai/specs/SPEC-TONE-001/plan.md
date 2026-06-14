@@ -293,3 +293,8 @@ pip install "opensmile>=2.6.0" "librosa>=0.10.0"
 - `venv/bin/python -m mypy backend` -> `Success: no issues found in 394 source files`
 - `cd client && flutter analyze` -> `No issues found!`
 - `cd client && flutter test` -> `324 passed`
+
+2026-06-15 focused 재검증:
+- `venv/bin/python -m pytest -o addopts="" backend/tests/unit/test_tone_engine.py backend/tests/unit/test_tone_task.py backend/tests/unit/test_tone_api.py -q` -> `49 passed, 6 warnings`
+- `cd client && flutter test test/services/tone_api_test.dart test/widgets/tone_timeline_test.dart`는 focused 41-test run에 포함되어 통과.
+- `cd client && flutter analyze` -> `No issues found!`

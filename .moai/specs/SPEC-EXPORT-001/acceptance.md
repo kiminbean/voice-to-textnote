@@ -199,6 +199,12 @@ Then 로딩 인디케이터가 사라지고
 - Release readiness preflight: `python3 client/scripts/verify_release_readiness.py` -> `0 errors`; strict 실기기 공유 UX 검증은 실제 Android/iOS device inputs가 필요하며 Android serial/iOS UDID가 로컬 device tooling에 연결 상태로 보여야 한다.
 - 실기기 공유 시트 UX는 시뮬레이터/자동화로 완전 증명할 수 없으므로 수동 E2E 체크리스트에 유지한다.
 
+### 2026-06-15 focused 재검증
+
+- `cd client && flutter analyze` -> `No issues found!`
+- Export focused Flutter tests: `cd client && flutter test test/services/export_api_test.dart test/services/export_api_error_test.dart test/screens/result_screen_export_test.dart test/screens/export_button_test.dart`는 focused 41-test run에 포함되어 통과.
+- Release readiness preflight: `python3 client/scripts/verify_release_readiness.py` -> `release_readiness: 0 errors, 2 warnings`; strict 모드는 외부 release secrets/physical devices 누락 10건으로 예상 실패하여 실기기 공유 UX를 자동 통과로 오인하지 않는다.
+
 ### 검증 명령어
 
 ```bash

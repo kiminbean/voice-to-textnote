@@ -72,6 +72,11 @@ The system shall NOT require `const` qualifier for `apiBaseUrl` (getter is accep
 - `cd client && flutter test` -> `324 passed`
 - `client/scripts/run_dev.sh`, `client/scripts/run_staging.sh`, `client/scripts/run_production.sh` 존재 및 실행 플래그 유지.
 
+### 2026-06-15 focused 재검증
+
+- `cd client && flutter analyze` -> `No issues found!`
+- `cd client && flutter test test/config/app_config_test.dart test/services/export_api_test.dart test/services/export_api_error_test.dart test/screens/result_screen_export_test.dart test/screens/export_button_test.dart test/services/tone_api_test.dart test/widgets/tone_timeline_test.dart` -> `41 passed`
+
 ## 기술 설계
 
 ### 파일 변경 목록

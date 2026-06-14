@@ -147,6 +147,10 @@ This path has now been executed locally.
 - SPEC-MOBILE-002 local STT release readiness was hardened on 2026-06-15:
   `client/scripts/verify_release_readiness.py` now checks the `whisper_ggml_plus 1.5.2` pubspec/lock contract, `WhisperGgmlLocalSttRuntime` FFI adapter, runtime availability gate, provider injection, iOS/macOS Pod locks, and `local_stt_smoke: PASS` sentinel.
   This closes the stale "MethodChannel contract only" evidence gap for release preflight; physical offline transcription accuracy still depends on downloaded whisper-base model and real Android/iOS device runtime.
+- SPEC-APP-001 / SPEC-ENV-001 / SPEC-EXPORT-001 / SPEC-TONE-001 focused verification was refreshed on 2026-06-15:
+  `cd client && flutter analyze` -> `No issues found!`;
+  `cd client && flutter test test/config/app_config_test.dart test/services/export_api_test.dart test/services/export_api_error_test.dart test/screens/result_screen_export_test.dart test/screens/export_button_test.dart test/services/tone_api_test.dart test/widgets/tone_timeline_test.dart` -> `41 passed`;
+  `venv/bin/python -m pytest -o addopts="" backend/tests/unit/test_tone_engine.py backend/tests/unit/test_tone_task.py backend/tests/unit/test_tone_api.py -q` -> `49 passed, 6 warnings`.
 
 ### Durable Fixes
 
