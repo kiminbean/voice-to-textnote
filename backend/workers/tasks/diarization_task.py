@@ -11,6 +11,7 @@ import json
 import time
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import cast
 
 import redis
 from celery.exceptions import SoftTimeLimitExceeded
@@ -25,6 +26,33 @@ from backend.workers.celery_app import celery_app
 from backend.workers.redis_client import get_worker_redis
 
 logger = get_logger(__name__)
+
+
+def _trigger_tone_task(dia_task_id: str, dia_wav_path: str, segments: list[dict]) -> None:
+    """SPEC-TONE-001: DIA 완료 후 tone_task 트리거 (REQ-TONE-007)
+
+    REQ-TONE-011: tone_model이 빈 문자열이면 트리거하지 않는다.
+    task_id에 dia_task_id를 사용 — 클라이언트가 DIA task_id로 tone 결과를 조회할 수 있도록.
+    """
+    if not settings.tone_model:
+        return
+
+    try:
+        from backend.workers.tasks.tone_task import tone_celery_task
+
+        tone_celery_task.delay(
+            task_id=dia_task_id,
+            dia_task_id=dia_task_id,
+            dia_wav_path=dia_wav_path,
+            segments=segments,
+        )
+        logger.info(
+            "톤 분석 태스크 트리거",
+            dia_task_id=dia_task_id,
+            wav_path=dia_wav_path,
+        )
+    except Exception as e:
+        logger.error("톤 분석 태스크 트리거 실패 (파이프라인 계속)", error=str(e))
 
 
 def _get_redis() -> redis.Redis:
@@ -47,7 +75,7 @@ def _update_task_status(
     existing_created_at = None
     existing_raw = r.get(status_key)
     if existing_raw:
-        existing_data = json.loads(existing_raw)
+        existing_data = json.loads(cast(str | bytes | bytearray, existing_raw))
         existing_created_at = existing_data.get("created_at")
 
     data: dict = {
@@ -196,7 +224,7 @@ def diarization_task(
             if stt_result_raw is None:
                 raise FileNotFoundError(f"STT 결과를 찾을 수 없습니다: stt_task_id={stt_task_id}")
 
-            stt_result = json.loads(stt_result_raw)
+            stt_result = json.loads(cast(str | bytes | bytearray, stt_result_raw))
             stt_status = stt_result.get("status")
             if stt_status and stt_status != TaskStatus.completed.value:
                 upstream_error = _extract_cached_error_message(stt_result) or (
@@ -352,12 +380,22 @@ def diarization_task(
 
         _update_task_status(task_id, TaskStatus.completed, 1.0, "화자 분리 완료")
 
+        # SPEC-TONE-001: tone_model 설정 시 tone_task 트리거 (REQ-TONE-007)
+        # tone_task의 finally가 DIA wav를 삭제하므로 tone 활성화 시 여기서 삭제하지 않는다.
+        final_segments = cast(list[dict], final_result["segments"])
+        if audio_path and settings.tone_model:
+            _trigger_tone_task(
+                dia_task_id=task_id,
+                dia_wav_path=str(audio_path),
+                segments=final_segments,
+            )
+
         # BUGFIX: 병렬 모드에서는 diarized_segments 변수가 정의되지 않으므로
         # final_result["segments"]를 참조해야 두 분기 모두에서 안전하다.
         logger.info(
             "화자 분리 작업 완료",
             task_id=task_id,
-            segments=len(final_result["segments"]),
+            segments=len(final_segments),
             speakers=len(speaker_stats),
             matched=final_result.get("matched", True),
         )
@@ -443,7 +481,9 @@ def diarization_task(
         # 병렬 모드에서 STT가 만든 DIA 전용 WAV 사본({task_id}_dia.wav)은
         # DIA가 소유한다. STT는 이 파일을 삭제하지 않으므로(순차 실행 시 race 방지)
         # DIA 완료/실패 후 여기서 정리한다.
-        if audio_path:
+        # SPEC-TONE-001 (REQ-TONE-005): tone_model이 설정된 경우 DIA wav 삭제를
+        # tone_task의 finally로 이연한다. tone 비활성화 시 기존 동작 유지 (AC-TONE-006).
+        if audio_path and not settings.tone_model:
             try:
                 Path(audio_path).unlink(missing_ok=True)
             except OSError:

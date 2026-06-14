@@ -12,6 +12,7 @@ SPEC-SPEAKER-VOICE-001: 화자 음성 프로파일 서비스 단위 테스트
 
 import uuid
 from datetime import UTC, datetime
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -40,7 +41,7 @@ from backend.services.speaker_voice_service import SpeakerVoiceService
 
 def _make_analysis_result(**overrides) -> AudioAnalysisResult:
     """테스트용 AudioAnalysisResult 기본값 생성."""
-    defaults = dict(
+    defaults: dict[str, Any] = dict(
         filename="test.wav",
         format="wav",
         duration_seconds=5.0,
@@ -65,7 +66,7 @@ def _make_analysis_result(**overrides) -> AudioAnalysisResult:
 
 def _make_sample(**overrides) -> VoiceSampleAnalysis:
     """테스트용 VoiceSampleAnalysis 기본값 생성."""
-    defaults = dict(
+    defaults: dict[str, Any] = dict(
         duration_seconds=5.0,
         sample_rate=16000,
         avg_dbfs=-12.5,

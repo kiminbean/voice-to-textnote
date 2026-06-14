@@ -89,9 +89,14 @@ class TestTranscriptionTaskFinalCoverage:
             patch(
                 "backend.workers.tasks.transcription_task.split_audio", side_effect=raise_timeout
             ),
+            patch("backend.workers.tasks.transcription_task.WhisperEngine") as mock_engine_cls,
             patch("backend.workers.tasks.transcription_task.settings") as mock_settings,
         ):
+            mock_settings.temp_dir = tmp_path
             mock_settings.cache_ttl_seconds = 604800
+            mock_engine = MagicMock()
+            mock_engine.is_loaded = True
+            mock_engine_cls.get_instance.return_value = mock_engine
 
             result = transcription_task.apply(
                 args=(),

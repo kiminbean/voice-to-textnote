@@ -199,6 +199,10 @@ MIN_DURATION_OFF = 0.097
 NUM_SPEAKERS = None  # 스피커 수 자동 추정
 ```
 
+### 음성 톤/운율 분석
+- **opensmile** ^2.6.0: eGeMAPSv02 88차원 감정 특화 음향 특징 추출 (AGPL-3.0, 로컬 전용)
+- **librosa** ^0.10.0: F0(pYIN), RMS energy, speaking rate 계산 (ISC)
+
 ---
 
 ### AI 기반 처리

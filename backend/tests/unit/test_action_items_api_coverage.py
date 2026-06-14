@@ -74,11 +74,11 @@ def _make_action_item_response(
 
 
 @pytest.fixture
-def api_client():
+def api_client(mock_service):
     """TestClient using a minimal FastAPI app with only the action_items router."""
     from fastapi import FastAPI
 
-    from backend.app.api.v1.minutes.action_items_crud import router
+    from backend.app.api.v1.minutes.action_items_crud import get_action_item_service, router
     from backend.app.dependencies import get_current_user, get_db_session
 
     app = FastAPI()
@@ -99,6 +99,7 @@ def api_client():
 
     app.dependency_overrides[get_db_session] = mock_db_session
     app.dependency_overrides[get_current_user] = mock_user
+    app.dependency_overrides[get_action_item_service] = lambda: mock_service
 
     yield TestClient(app, raise_server_exceptions=True)
 
@@ -508,13 +509,7 @@ class TestGetMeetingActionItems:
             app.dependency_overrides[get_db_session] = orig
 
     def test_meeting_not_found_raises_error(self, mock_service):
-        """존재하지 않는 회의 시 내부 에러 발생
-
-        BUG: The function parameter 'status' shadows the fastapi 'status' module.
-        When meeting not found, line 300 tries status.HTTP_404_NOT_FOUND but
-        'status' is the query param (None), causing AttributeError.
-        This test documents the current buggy behavior.
-        """
+        """존재하지 않는 회의 시 404 에러 발생"""
         from fastapi import FastAPI
         from fastapi.testclient import TestClient
 
@@ -539,8 +534,8 @@ class TestGetMeetingActionItems:
         client = TestClient(app, raise_server_exceptions=False)
 
         response = client.get("/api/v1/action-items/meeting/nonexistent")
-        # AttributeError from the status shadowing bug surfaces as 500
-        assert response.status_code == 500
+        assert response.status_code == 404
+        assert "회의록을 찾을 수 없습니다" in response.text
 
     def test_meeting_with_status_filter(self, api_client, mock_service):
         """회의 액션 아이템 상태 필터"""
@@ -758,13 +753,13 @@ class TestBatchUpdateActionItems:
     """POST /api/v1/action-items/batch-update 엔드포인트 테스트"""
 
     def _make_batch_result(self, success_count=0, failure_count=0, failed_ids=None, errors=None):
-        """Create a mock object with batch result attributes."""
-        result = MagicMock()
-        result.success_count = success_count
-        result.failure_count = failure_count
-        result.failed_ids = failed_ids or []
-        result.errors = errors or []
-        return result
+        """Create a service-style batch result mapping."""
+        return {
+            "success_count": success_count,
+            "failure_count": failure_count,
+            "failed_ids": failed_ids or [],
+            "errors": errors or [],
+        }
 
     def test_batch_update_success(self, api_client, mock_service):
         """정상 배치 업데이트"""

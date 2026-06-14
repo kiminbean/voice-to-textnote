@@ -82,7 +82,7 @@ async def test_webhook_ping_rejects_private_url_before_send(monkeypatch) -> None
         url="http://127.0.0.1:8000/hook",
         secret=None,
     )
-    service.get_by_id = AsyncMock(return_value=endpoint)
+    service.get_by_id = AsyncMock(return_value=endpoint)  # type: ignore[method-assign]
     post = AsyncMock()
     monkeypatch.setattr("httpx.AsyncClient.post", post)
 

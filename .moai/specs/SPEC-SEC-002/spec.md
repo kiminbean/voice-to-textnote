@@ -130,11 +130,34 @@ depends_on: SPEC-SEC-001
 - AC-003: 매직 바이트 불일치 시 422 반환
 - AC-004: 프로덕션 환경에서 HSTS 헤더 존재
 - AC-005: 클라이언트 오디오 업로드 전 크기/확장자 검증
+- AC-006: AndroidManifest가 `network_security_config`를 참조하고 cleartext 예외가 localhost/staging으로 제한됨
 
 ### 수동 기준
 - AC-M01: iOS 실기기 Release 빌드에서 HTTP 차단 확인
 - AC-M02: Android 실기기 Debug 빌드에서 staging 연결 확인
 - AC-M03: Android 실기기 Release 빌드에서 HTTP 차단 확인
+
+### 2026-06-14 재검증
+
+- `client/android/app/src/main/res/xml/network_security_config.xml`: Release/Profile baseline으로 `base-config cleartextTrafficPermitted="false"`만 유지하며 cleartext domain 예외를 포함하지 않는다.
+- `client/android/app/src/debug/res/xml/network_security_config.xml`: Debug overlay에서만 localhost와 Tailscale staging IP(`100.110.255.105`) cleartext 예외를 허용한다.
+- `client/test/config/network_security_config_test.dart`: AndroidManifest 참조, Release/Profile cleartext 전면 차단, Debug 전용 localhost/Tailscale 예외를 정적 회귀 테스트로 고정한다.
+- `cd client && flutter test test/config/network_security_config_test.dart` -> `4 passed`
+- `cd client && flutter test` -> `324 passed`
+- `cd client && flutter analyze` -> `No issues found!`
+- `python3 client/scripts/verify_release_readiness.py` -> Android network security config와 App Store/Firebase release wiring 포함 `0 errors`
+- `cd client && flutter build apk --release` -> `✓ Built build/app/outputs/flutter-apk/app-release.apk`
+- `cd client && flutter build apk --debug` -> `✓ Built build/app/outputs/flutter-apk/app-debug.apk`
+- `python3 client/scripts/verify_release_readiness.py --strict` -> 외부 release secrets/physical devices 및 `RELEASE_E2E_EVIDENCE_PATH` 누락 시 실패하여 Firebase/APNs/App Store/실기기 E2E를 가짜로 통과시키지 않는다. Android/iOS HTTP 정책 수동 결과는 evidence JSON의 `android_debug_tailscale_cleartext_allowed`, `android_release_cleartext_blocked`, `ios_release_http_blocked` 시나리오로 요구된다.
+- Android 에뮬레이터/실기기에서 실제 네트워크 차단/허용을 관측하는 AC-M02/AC-M03은 장비 기반 수동 검증으로 유지한다.
+
+### 2026-06-15 Android 에뮬레이터 런타임 검증
+
+- Android SDK emulator와 `system-images;android-36;google_apis;arm64-v8a`를 설치하고 AVD `voice_to_textnote_api36`를 생성했다.
+- 에뮬레이터 상태: `adb devices -l` -> `emulator-5554 device product:sdk_gphone64_arm64 model:sdk_gphone64_arm64 device:emu64a`; `adb shell getprop sys.boot_completed` -> `1`.
+- Debug 런타임 정책: `cd client/android && ./gradlew :app:connectedDebugAndroidTest --no-daemon` -> `Starting 1 tests on voice_to_textnote_api36(AVD) - 16`, `Finished 1 tests`, `BUILD SUCCESSFUL`. Instrumentation test는 앱 프로세스의 `NetworkSecurityPolicy`에서 `localhost`와 `100.110.255.105` cleartext만 허용되고 `api.voicetextnote.com`/`example.com`은 차단됨을 검증한다.
+- Release 산출물 정책: `cd client && flutter build apk --release` -> `✓ Built build/app/outputs/flutter-apk/app-release.apk`; `aapt2 dump xmltree --file res/8G.xml ...app-release.apk` -> `base-config cleartextTrafficPermitted=false`, cleartext domain exception 없음.
+- 남은 범위: AC-M02의 실제 Tailscale staging API 응답과 AC-M03의 실제 Release HTTP 요청 실패 UX는 Android 실기기/Tailscale 환경에서 최종 확인한다. 에뮬레이터 기준 런타임 정책과 Release APK 산출물 정책은 검증 완료.
 
 ---
 
@@ -147,8 +170,8 @@ depends_on: SPEC-SEC-001
 - 단일 Info.plist + 환경 변수 기반 접근 (xcconfig 분리 대신 동적 예외 도메인 사용)
 
 ### 모듈 2: Android Network Security (REQ-SEC-030~032)
-- `network_security_config.xml` 신규 생성: `base-config cleartextTrafficPermitted="false"`
-- localhost + 100.110.255.105만 `domain-config` 예외
+- `src/main/res/xml/network_security_config.xml`: Release/Profile 공통 baseline. `base-config cleartextTrafficPermitted="false"`이며 cleartext `domain-config` 예외 없음.
+- `src/debug/res/xml/network_security_config.xml`: Debug variant 전용 overlay. localhost + 100.110.255.105만 `domain-config cleartextTrafficPermitted="true"` 예외.
 - AndroidManifest.xml에 `networkSecurityConfig` 참조 추가
 
 ### 모듈 3: 매직 바이트 검증 (REQ-SEC-040~043)

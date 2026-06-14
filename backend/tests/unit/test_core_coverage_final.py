@@ -43,6 +43,7 @@ async def test_main_lifecycle_huggingface_token_not_set():
     mock_settings = MagicMock(spec=Settings)
     mock_settings.huggingface_token = None  # 토큰 미설정
     mock_settings.diarization_model = "test-model"
+    mock_settings.tone_model = ""  # SPEC-TONE-001: tone 비활성화 (lifespan warm-up 조건)
 
     # spy logger calls
     warning_calls = []
@@ -76,6 +77,7 @@ async def test_main_lifecycle_diarization_model_load_failure(client):
     mock_settings = MagicMock(spec=Settings)
     mock_settings.huggingface_token = "test-token"
     mock_settings.diarization_model = "test-model"
+    mock_settings.tone_model = ""  # SPEC-TONE-001: tone 비활성화 (lifespan warm-up 조건)
 
     with patch.object(DiarizationEngine, "get_instance") as mock_get:
         mock_engine = MagicMock()

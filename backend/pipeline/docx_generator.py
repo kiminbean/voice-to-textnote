@@ -71,7 +71,7 @@ class MinutesDOCXGenerator:
         doc.add_paragraph(f"총 발화 수: {total_segments}")
 
         # 화자별 시간 계산
-        speakers = {}
+        speakers: dict[str, float] = {}
         for seg in segments:
             speaker = str(seg.get("speaker", "UNKNOWN"))
             start = float(seg.get("start", 0) or 0)

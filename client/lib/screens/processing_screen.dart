@@ -117,9 +117,8 @@ class _ProcessingScreenState extends ConsumerState<ProcessingScreen>
 
     // 파이프라인 시작 (업로드 → STT → DIA → MIN → SUM)
     // templateId는 SUM 단계에서 summaryApi.create() 호출 시 사용
-    ref
-        .read(pipelineProvider.notifier)
-        .startPipeline(audioFilePath, templateId: templateId, vocabularyId: vocabularyId);
+    ref.read(pipelineProvider.notifier).startPipeline(audioFilePath,
+        templateId: templateId, vocabularyId: vocabularyId);
   }
 
   // currentTaskId 변경 감지 시 SSE 재연결
@@ -141,9 +140,7 @@ class _ProcessingScreenState extends ConsumerState<ProcessingScreen>
     final currentMeetings = ref.read(meetingListProvider).value ?? [];
     ref.read(meetingListProvider.notifier).updateMeeting(
           widget.meetingId,
-          currentMeetings
-              .firstWhere((m) => m.id == widget.meetingId)
-              .copyWith(
+          currentMeetings.firstWhere((m) => m.id == widget.meetingId).copyWith(
                 status: MeetingStatus.completed,
                 minutesTaskId: pipelineState.minutesTaskId,
                 summaryTaskId: pipelineState.summaryTaskId,
@@ -243,7 +240,7 @@ class _ProcessingScreenState extends ConsumerState<ProcessingScreen>
           TextButton(
             onPressed: () async {
               await ref.read(pipelineProvider.notifier).cancelPipeline();
-              if (mounted) context.go('/');
+              if (context.mounted) context.go('/');
             },
             child: const Text('취소'),
           ),

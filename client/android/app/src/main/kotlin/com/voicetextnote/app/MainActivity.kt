@@ -8,7 +8,6 @@ class MainActivity: FlutterActivity() {
     // Android 기본 설정 - Flutter 엔진 라이프사이클 관리
 
     private val CHANNEL = "com.voicetextnote.app/recording"
-
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 

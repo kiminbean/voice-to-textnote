@@ -3,6 +3,7 @@
 REQ-DIA-019~022: REST API 화자 분리 요청/조회/삭제
 """
 
+import inspect
 import json
 import uuid
 from datetime import UTC, datetime
@@ -28,6 +29,11 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/diarizations", tags=["diarizations"])
 
 
+async def _scard(redis_client: aioredis.Redis, key: str) -> int:
+    value = redis_client.scard(key)
+    return int(await value if inspect.isawaitable(value) else value)
+
+
 @router.post(
     "",
     status_code=status.HTTP_202_ACCEPTED,
@@ -45,7 +51,7 @@ async def create_diarization(
     POST /api/v1/diarizations
     """
     # --- 동시 처리 제한 확인 (REQ-DIA-014: 최대 2개) ---
-    active_count = await redis_client.scard("active_dia_jobs") or 0
+    active_count = await _scard(redis_client, "active_dia_jobs")
     if active_count >= settings.max_concurrent_diarizations:
         too_many_requests(
             f"동시 화자 분리 작업 한도({settings.max_concurrent_diarizations}개)를 "

@@ -53,8 +53,8 @@
 - **id**: TASK-A6
 - **req**: REQ-RM-A4
 - **변경**: 없음(검증 단계). 잔여 실패 발견 시 해당 카테고리 태스크로 회귀하여 수정.
-- **검증**: `cd backend && ../venv/bin/python -m pytest tests/ --ignore=tests/e2e/test_pipeline_e2e.py` → 0 failed
-- **참고**: `tests/e2e/test_pipeline_e2e.py` 9건(이벤트 루프 환경 이슈)은 이번 Scope 제외(spec 7.5).
+- **검증**: `venv/bin/python -m pytest backend -q` → 3323 passed, 16 skipped (2026-06-14); `venv/bin/python -m pytest -o addopts="" backend/tests/e2e/test_pipeline_e2e.py -q` → 16 passed (2026-06-15)
+- **참고**: `tests/e2e/test_pipeline_e2e.py` 9건(이벤트 루프 환경 이슈) 과거 제외 조건은 현재 재현되지 않으며 후속 재검증으로 해소됨(spec 7.5).
 
 ---
 
@@ -154,14 +154,15 @@
 - **변경**: 없음(검증).
 - **검증**:
   - `grep -rn "_service = .*Service()" backend/app/api/v1/ | wc -l` → **0**
-  - `cd backend && ../venv/bin/python -m pytest tests/ --ignore=tests/e2e/test_pipeline_e2e.py` → **0 failed**
+  - `venv/bin/python -m pytest backend -q` → **3323 passed, 16 skipped**
+  - `venv/bin/python -m pytest -o addopts="" backend/tests/e2e/test_pipeline_e2e.py -q` → **16 passed**
 
 ---
 
-## Deferred (Out of Scope — 이번 반복 제외)
+## 후속 완료 상태
 
-- **Phase 4 (REQ-ROUTE-001~003)**: 라우터 도메인 그룹핑(`transcription/`, `minutes/` 등), `registry.py` 도입, `main.py` 간소화. **다음 반복으로 연기.**
-- **e2e 이벤트 루프 이슈 (9건)**: `tests/e2e/test_pipeline_e2e.py`의 Python 3.14 `RuntimeError: no current event loop`. 환경/인프라 이슈로 별도 처리 권장.
+- **Phase 4 (REQ-ROUTE-001~003)**: SPEC-REFACTOR-002와 2026-06-14 재검증으로 완료. flat 라우터 0건, `registry.py` SSOT, `main.py` registry 루프 유지.
+- **e2e 이벤트 루프 이슈 (9건)**: 2026-06-15 현재 재현 안 됨. `tests/e2e/test_pipeline_e2e.py` focused suite `16 passed`; 전체 backend suite `3323 passed, 16 skipped`.
 
 ---
 

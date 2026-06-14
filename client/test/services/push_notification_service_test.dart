@@ -1,7 +1,6 @@
 // PushNotificationService 테스트
 // Firebase는 플랫폼 채널 기반이므로 mock 주입이 불가.
 // 테스트 가능한 범위: FcmTokenResult, extractMeetingId, 서비스 생성
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:voice_to_textnote/services/push_notification_service.dart';
 

@@ -45,21 +45,21 @@ import AVFAudio
       binaryMessenger: controller.binaryMessenger
     )
 
-    channel.setMethodCallHandler { [weak self] call, result in
-      switch call.method {
-      case "startBackgroundTask":
+    channel.setMethodCallHandler { [weak self] (call: FlutterMethodCall, result: @escaping FlutterResult) in
+      let method = call.method
+      if method == "startBackgroundTask" {
         self?.startBackgroundTask(result: result)
-      case "stopBackgroundTask":
+      } else if method == "stopBackgroundTask" {
         self?.stopBackgroundTask(result: result)
-      case "flushRecording":
+      } else if method == "flushRecording" {
         self?.flushRecording(result: result)
-      case "startForegroundService":
+      } else if method == "startForegroundService" {
         // iOS에서는 불필요 — 호환성을 위해 no-op 응답
-        result.success(true)
-      case "stopForegroundService":
+        result(true)
+      } else if method == "stopForegroundService" {
         // iOS에서는 불필요 — 호환성을 위해 no-op 응답
-        result.success(true)
-      default:
+        result(true)
+      } else {
         result(FlutterMethodNotImplemented)
       }
     }

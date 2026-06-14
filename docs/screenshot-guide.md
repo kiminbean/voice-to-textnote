@@ -16,7 +16,7 @@
 
 ### Android (Google Play)
 
-| 기기 | 해상수 | 필수 |
+| 기기 | 해상도 | 필수 |
 |------|--------|------|
 | Phone | 1080 x 1920 이상 | 필수 (최소 2장, 최대 8장) |
 | Tablet | 1200 x 1920 이상 | 권장 |
@@ -31,6 +31,15 @@
 4. **결과 화면**: 화자별 전사본 + AI 요약 — 핵심 정보 한눈에
 5. **검색/내보내기**: 전체 텍스트 검색 및 PDF 내보내기
 
+## 제출 전 산출물 체크
+
+- iPhone 6.7" 세트: 최소 3장, 권장 5장 이상
+- iPhone 6.5" 세트: 6.7" 세트로 대체 가능 여부 확인
+- iPad 12.9" 세트: iPad 지원 시 최소 3장
+- Android Phone 세트: 최소 2장, 권장 5장 이상
+- Android Tablet 세트: 태블릿 지원 시 최소 2장
+- 모든 스크린샷은 실제 앱 화면만 사용하고, 개인정보/실제 회의 내용은 샘플 데이터로 대체한다.
+
 ---
 
 ## Privacy Policy (T-017)
@@ -38,8 +47,8 @@
 기존 Privacy Policy: [`docs/privacy-policy.md`](privacy-policy.md)
 
 App Store / Google Play 제출 시 위 URL을 외부에서 접근 가능하도록 호스팅 필요:
-- GitHub Pages: `https://kiminbean.github.io/voice-to-textnote/privacy-policy.html`
-- 또는 앱 내 웹뷰로 표시
+- Production URL: `https://voicetextnote.com/privacy`
+- Backup static URL: `https://kiminbean.github.io/voice-to-textnote/privacy-policy.html`
 
 ### Policy 업데이트 필요사항
 - 백그라운드 녹음 데이터 처리 내용 명시

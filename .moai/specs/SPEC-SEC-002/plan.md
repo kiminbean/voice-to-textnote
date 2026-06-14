@@ -82,14 +82,14 @@
 **난이도**: Medium | **예상 변경 파일**: 3
 
 1. `client/android/app/src/main/res/xml/network_security_config.xml` (신규)
-   - Base config: HTTPS만 허용
-   - Debug overlay: localhost + 100.110.255.105 cleartext 허용
+   - Release/Profile baseline: HTTPS만 허용
+   - cleartext domain 예외 없음
 
 2. `client/android/app/src/main/AndroidManifest.xml` (수정)
    - `<application>` 태그에 `android:networkSecurityConfig="@xml/network_security_config"` 추가
 
-3. `client/android/app/src/debug/AndroidManifest.xml` (확인/수정)
-   - Debug 빌드용 cleartext 예외 오버레이 확인
+3. `client/android/app/src/debug/res/xml/network_security_config.xml` (신규)
+   - Debug 빌드용 localhost + 100.110.255.105 cleartext 예외 오버레이 확인
 
 **테스트**:
 - 클라이언트 통합 테스트 (HTTP 차단/허용 시나리오)

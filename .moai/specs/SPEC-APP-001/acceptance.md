@@ -94,11 +94,23 @@ Then 앱이 중단되지 않는다
 
 ## Quality Gates
 
-- [ ] Flutter 프로젝트 빌드 성공 (web + macOS)
-- [ ] 모든 위젯/단위 테스트 통과
-- [ ] API 서비스 레이어 mock 테스트 통과
-- [ ] 파이프라인 상태 관리 테스트 통과
-- [ ] flutter analyze 경고 0개
+- [x] Flutter 프로젝트 빌드 성공 (web + macOS)
+- [x] 모든 위젯/단위 테스트 통과
+- [x] API 서비스 레이어 mock 테스트 통과
+- [x] 파이프라인 상태 관리 테스트 통과
+- [x] flutter analyze 경고 0개
+
+### 2026-06-14 재검증
+
+- `cd client && flutter build web` -> `Built build/web`
+- `cd client && flutter build macos --debug` -> `Built build/macos/Build/Products/Debug/voice_to_textnote.app`
+- `cd client && flutter analyze` -> `No issues found!`
+- `cd client && flutter test` -> `324 passed`
+
+### 2026-06-15 focused 재검증
+
+- `cd client && flutter analyze` -> `No issues found!`
+- `cd client && flutter test test/config/app_config_test.dart test/services/export_api_test.dart test/services/export_api_error_test.dart test/screens/result_screen_export_test.dart test/screens/export_button_test.dart test/services/tone_api_test.dart test/widgets/tone_timeline_test.dart` -> `41 passed`
 
 ---
 

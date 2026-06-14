@@ -5,7 +5,7 @@
 - Mode: sub-agent (team tools unavailable, graceful fallback)
 - Development: TDD (Red-Green-Refactor)
 - Branch: feature/SPEC-MOBILE-005
-- Status: **COMPLETED** — 모든 AC 충족, 301/301 테스트 통과
+- Status: **AUTOMATION-COMPLETE / DEVICE-E2E-PENDING** — 자동화 AC와 네이티브 계약 게이트는 통과, AC-M01~AC-M06 실기기 검증은 외부 장비 필요
 
 ---
 
@@ -36,10 +36,11 @@
 
 | 항목 | 결과 |
 |------|------|
-| flutter test | 301/301 통과 |
+| flutter test | 2026-06-14 전체 `324 passed`; 2026-06-15 집중 `app_delegate_method_channel_test.dart` + `background_recording_service_test.dart` `30 passed` |
 | dart analyze (lib/ test/) | error 0, warning 0 (info 244개는 기존 코드 스타일) |
-| AC-001 ~ AC-014 | 모든 자동화 AC 충족 |
-| AC-M01 ~ AC-M06 | 수동 실기기 테스트 필요 (범위 외) |
+| release readiness | 2026-06-15 `python3 client/scripts/verify_release_readiness.py` -> `0 errors, 2 warnings`; AppDelegate 녹음 MethodChannel/AVAudioSession observer 정적 검증 포함 |
+| AC-001 ~ AC-014 | 자동화 AC 충족 |
+| AC-M01 ~ AC-M06 | 수동 실기기 테스트 필요 (전화 수신, 화면 잠금, Bluetooth route change, 강제 종료 복원) |
 
 ---
 

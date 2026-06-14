@@ -7,7 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:voice_to_textnote/models/transcription_source.dart';
 import 'package:voice_to_textnote/providers/connectivity_provider.dart';
 import 'package:voice_to_textnote/providers/pipeline_provider.dart';
-import 'package:voice_to_textnote/services/local_stt_service.dart';
+import 'package:voice_to_textnote/services/local_stt_provider.dart';
 import 'package:voice_to_textnote/services/reprocess_queue.dart';
 import 'package:voice_to_textnote/services/transcription_api.dart';
 
@@ -56,7 +56,8 @@ final hybridPipelineProvider =
 class HybridPipelineNotifier extends StateNotifier<HybridPipelineStatus> {
   final Ref _ref;
 
-  HybridPipelineNotifier(this._ref) : super(const HybridPipelineStatus.initial());
+  HybridPipelineNotifier(this._ref)
+      : super(const HybridPipelineStatus.initial());
 
   /// 하이브리드 전사 처리 진입점
   ///
@@ -104,7 +105,8 @@ class HybridPipelineNotifier extends StateNotifier<HybridPipelineStatus> {
         errorMessage: e.toString(),
       );
       return HybridPipelineResult(
-        source: isOnline ? TranscriptionSource.server : TranscriptionSource.local,
+        source:
+            isOnline ? TranscriptionSource.server : TranscriptionSource.local,
         errorMessage: e.toString(),
       );
     }

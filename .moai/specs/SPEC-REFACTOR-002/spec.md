@@ -1,9 +1,9 @@
 ---
 id: SPEC-REFACTOR-002
 version: 0.2.0
-status: draft
+status: completed
 created: 2026-06-06
-updated: 2026-06-06
+updated: 2026-06-14
 decisions_resolved: true
 author: MoAI
 priority: medium
@@ -15,6 +15,12 @@ related_specs:
   - SPEC-REFACTOR-001
   - SPEC-ACTION-001
 ---
+
+## Completion Evidence (2026-06-14)
+
+- `./venv/bin/python -m pytest backend/tests/unit/test_route_registry_invariance.py -q -o addopts=''` -> included in focused backend regression run.
+- Focused backend regressions -> `177 passed, 7 warnings`
+- `./venv/bin/python -m mypy backend/` -> `Success: no issues found in 394 source files`
 
 # SPEC-REFACTOR-002: API 라우터 도메인 그룹핑 완료 및 중복 정리
 

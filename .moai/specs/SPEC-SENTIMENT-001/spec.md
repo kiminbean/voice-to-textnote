@@ -8,7 +8,7 @@ completed: 2026-06-14
 author: MoAI
 priority: P1
 issue_number: 29
-related_specs: [SPEC-MIN-001, SPEC-SUM-001, SPEC-ANALYTICS-001]
+related_specs: [SPEC-MIN-001, SPEC-SUM-001, SPEC-TONE-001]
 ---
 
 # SPEC-SENTIMENT-001: 텍스트 감정 분석 통합 완료

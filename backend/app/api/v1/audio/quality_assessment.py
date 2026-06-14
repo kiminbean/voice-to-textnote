@@ -219,7 +219,10 @@ async def get_improvement_suggestions(
 
         # 개선 제안 가져오기
         improvements = await svc.get_improvement_suggestions(
-            task_id=task_id, improvement_type=improvement_type, priority=priority, db=db
+            task_id=task_id,
+            improvement_type=improvement_type or "all",
+            priority=priority or "high",
+            db=db,
         )
 
         return QualityImprovementResponse(

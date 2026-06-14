@@ -8,6 +8,7 @@ REQ-SUM-015: DELETE /api/v1/summaries/{task_id} → 204 No Content
 REQ-SUM-016: 존재하지 않는 task_id → 404
 """
 
+import inspect
 import json
 import uuid
 from datetime import UTC, datetime
@@ -36,6 +37,11 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/summaries", tags=["summaries"])
 
 
+async def _scard(redis_client: aioredis.Redis, key: str) -> int:
+    value = redis_client.scard(key)
+    return int(await value if inspect.isawaitable(value) else value)
+
+
 @router.post(
     "",
     status_code=status.HTTP_202_ACCEPTED,
@@ -52,7 +58,7 @@ async def create_summary(
     POST /api/v1/summaries
     """
     # --- 동시 처리 제한 확인 (REQ-SUM-008: 최대 2개) ---
-    active_count = await redis_client.scard("active_sum_jobs") or 0
+    active_count = await _scard(redis_client, "active_sum_jobs")
     if active_count >= settings.max_concurrent_summaries:
         too_many_requests(
             f"동시 요약 작업 한도({settings.max_concurrent_summaries}개)를 "

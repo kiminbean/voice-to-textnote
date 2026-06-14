@@ -5,6 +5,7 @@ Celery AI 마인드맵 생성 작업.
 
 import json
 from datetime import UTC, datetime
+from typing import cast
 
 import redis
 
@@ -39,7 +40,7 @@ def _update_mind_map_status(
     existing_created_at = None
     existing_raw = r.get(status_key)
     if existing_raw:
-        existing_data = json.loads(existing_raw)
+        existing_data = json.loads(cast(str | bytes | bytearray, existing_raw))
         existing_created_at = existing_data.get("created_at")
 
     data: dict = {
@@ -113,7 +114,7 @@ def mind_map_task(task_id: str, summary_task_id: str, max_tokens: int = 2048) ->
                 f"요약 결과를 찾을 수 없습니다: summary_task_id={summary_task_id}"
             )
 
-        summary_data = json.loads(summary_raw)
+        summary_data = json.loads(cast(str | bytes | bytearray, summary_raw))
         summary_status = summary_data.get("status")
         if summary_status != TaskStatus.completed.value:
             upstream_error = (

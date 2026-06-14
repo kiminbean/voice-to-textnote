@@ -43,6 +43,7 @@ def _get_sync_engine() -> tuple[Engine, sessionmaker]:
         _sync_engine = create_engine(sync_url, pool_pre_ping=True)
         _SessionLocal = sessionmaker(_sync_engine)
 
+    assert _SessionLocal is not None
     return _sync_engine, _SessionLocal
 
 

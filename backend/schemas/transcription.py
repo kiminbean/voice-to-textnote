@@ -19,6 +19,7 @@ class TaskStatus(StrEnum):
 
 class TranscriptionSource(StrEnum):
     """SPEC-MOBILE-002: 전사 처리 출처 구분"""
+
     server = "server"
     local = "local"
     hybrid = "hybrid"

@@ -8,6 +8,7 @@ REQ-MIN-014: DELETE /api/v1/minutes/{task_id} → 204 No Content
 REQ-MIN-015: 존재하지 않는 task_id → 404
 """
 
+import inspect
 import json
 import uuid
 from datetime import UTC, datetime
@@ -33,6 +34,11 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/minutes", tags=["minutes"])
 
 
+async def _scard(redis_client: aioredis.Redis, key: str) -> int:
+    value = redis_client.scard(key)
+    return int(await value if inspect.isawaitable(value) else value)
+
+
 @router.post(
     "",
     status_code=status.HTTP_202_ACCEPTED,
@@ -49,7 +55,7 @@ async def create_minutes(
     POST /api/v1/minutes
     """
     # --- 동시 처리 제한 확인 (REQ-MIN-008: 최대 3개) ---
-    active_count = await redis_client.scard("active_min_jobs") or 0
+    active_count = await _scard(redis_client, "active_min_jobs")
     if active_count >= settings.max_concurrent_minutes:
         too_many_requests(
             f"동시 회의록 생성 작업 한도({settings.max_concurrent_minutes}개)를 "

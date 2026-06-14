@@ -1,10 +1,14 @@
 ---
 id: SPEC-SEARCH-002
 version: "1.0.0"
-status: draft
+status: completed
 created: "2026-06-03"
 author: MoAI
 priority: medium
+completed: "2026-06-14"
+verification:
+  - "./venv/bin/python -m mypy backend/ -> Success: no issues found in 394 source files"
+  - "./venv/bin/python -m pytest backend/tests/unit/test_api_coverage_completion.py -q -o addopts='' -> included in 177 passed"
 ---
 
 # SPEC-SEARCH-002: 수락 기준 (Acceptance Criteria)

@@ -11,6 +11,7 @@ import tempfile
 import time
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import cast
 
 import redis
 from celery.exceptions import SoftTimeLimitExceeded
@@ -53,7 +54,7 @@ def _update_task_status(
     existing_raw = r.get(status_key)
     existing_created_at = None
     if existing_raw:
-        existing_data = json.loads(existing_raw)
+        existing_data = json.loads(cast(str | bytes | bytearray, existing_raw))
         existing_created_at = existing_data.get("created_at")
 
     data: dict = {

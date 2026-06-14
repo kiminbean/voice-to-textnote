@@ -41,7 +41,9 @@ class EditPayload(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    field: str = Field(..., description="편집 대상 필드 경로 (예: 'summary_text', 'sections.0.content')")
+    field: str = Field(
+        ..., description="편집 대상 필드 경로 (예: 'summary_text', 'sections.0.content')"
+    )
     value: Any = Field(..., description="새 값 (문자열·숫자·배열·객체 모두 허용)")
     client_timestamp: datetime = Field(..., description="클라이언트 편집 시각 (ISO 8601)")
 
@@ -72,9 +74,7 @@ class ClientMessage(BaseModel):
 class SnapshotPayload(BaseModel):
     """최초 연결 시 전체 문서 스냅샷."""
 
-    document: dict[str, Any] = Field(
-        default_factory=dict, description="field-level 문서 JSON"
-    )
+    document: dict[str, Any] = Field(default_factory=dict, description="field-level 문서 JSON")
     field_timestamps: dict[str, datetime] = Field(
         default_factory=dict,
         description="필드별 서버 최종 수정 시각 (LWW 기준 시각)",

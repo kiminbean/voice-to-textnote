@@ -42,6 +42,6 @@ class TestBookmarkColorValidation:
         from backend.schemas.bookmark import BookmarkBase
 
         with pytest.raises(ValidationError) as exc_info:
-            BookmarkBase(color="invalidcolor!")
+            BookmarkBase(segment_start=0.0, segment_end=1.0, color="invalidcolor!")
 
         assert "color 는 #RRGGBB 형식 또는 3~20자 알파벳 색상명이어야 합니다" in str(exc_info.value)

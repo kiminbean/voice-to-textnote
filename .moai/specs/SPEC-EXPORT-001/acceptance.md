@@ -183,11 +183,27 @@ Then 로딩 인디케이터가 사라지고
 
 ### TRUST 5 체크리스트
 
-- [ ] **Tested**: 모든 요구사항에 대한 테스트 존재 (REQ-EXPORT-001 ~ 005)
-- [ ] **Readable**: 코드 주석은 'Why' 중심, Google 스타일 docstring
-- [ ] **Unified**: ruff/black 포맷팅 통과, Flutter analyze 통과
-- [ ] **Secured**: 입력값 검증 (task_id 형식), 에러 메시지에 내부 정보 미노출
-- [ ] **Trackable**: Conventional Commits 형식, SPEC-EXPORT-001 참조
+- [x] **Tested**: 모든 요구사항에 대한 테스트 존재 (REQ-EXPORT-001 ~ 005)
+- [x] **Readable**: 코드 주석은 'Why' 중심, Google 스타일 docstring
+- [x] **Unified**: ruff/formatting 통과, Flutter analyze 통과
+- [x] **Secured**: 입력값 검증 (task_id 형식), 에러 메시지에 내부 정보 미노출
+- [x] **Trackable**: SPEC-EXPORT-001 참조 이력 유지
+
+### 2026-06-14 재검증
+
+- Backend 전체 회귀: `venv/bin/python -m pytest backend -q` -> `3323 passed, 16 skipped`, coverage `98.62%`
+- Backend lint/format: `venv/bin/python -m ruff check backend` -> `All checks passed!`; `venv/bin/python -m ruff format --check backend` -> `394 files already formatted`
+- Backend type check: `venv/bin/python -m mypy backend` -> `Success: no issues found in 394 source files`
+- Flutter export client tests are included in `cd client && flutter test` -> `324 passed`
+- Flutter analyze: `cd client && flutter analyze` -> `No issues found!`
+- Release readiness preflight: `python3 client/scripts/verify_release_readiness.py` -> `0 errors`; strict 실기기 공유 UX 검증은 실제 Android/iOS device inputs가 필요하며 Android serial/iOS UDID가 로컬 device tooling에 연결 상태로 보여야 한다.
+- 실기기 공유 시트 UX는 시뮬레이터/자동화로 완전 증명할 수 없으므로 수동 E2E 체크리스트에 유지한다.
+
+### 2026-06-15 focused 재검증
+
+- `cd client && flutter analyze` -> `No issues found!`
+- Export focused Flutter tests: `cd client && flutter test test/services/export_api_test.dart test/services/export_api_error_test.dart test/screens/result_screen_export_test.dart test/screens/export_button_test.dart`는 focused 41-test run에 포함되어 통과.
+- Release readiness preflight: `python3 client/scripts/verify_release_readiness.py` -> `release_readiness: 0 errors, 2 warnings`; strict 모드는 외부 release secrets/physical devices와 `RELEASE_E2E_EVIDENCE_PATH` 누락으로 예상 실패하여 실기기 공유 UX를 자동 통과로 오인하지 않는다. Android/iOS PDF share sheet 수동 통과 증거는 evidence JSON의 `export_share_android` / `export_share_ios` 시나리오에 기록해야 한다.
 
 ### 검증 명령어
 

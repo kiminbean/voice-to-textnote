@@ -78,6 +78,13 @@
 - **레이블**: positive/neutral/negative + 세부 감정 (joy/satisfaction/frustration/anger/sadness/surprise)
 - **동시성**: 최대 3개 작업 (설정 가능)
 
+#### 7. 발화 톤/운율 분석 (Speech Tone/Prosody Analysis)
+- **엔진**: opensmile eGeMAPSv02 (88차원) + librosa (F0/RMS/speaking rate)
+- **분류**: 5-class (calm/excited/authoritative/hesitant/monotone) + unknown
+- **처리**: DIA wav 세그먼트 슬라이싱 후 prosody 특징 추출
+- **출력**: 세그먼트별 tone, 화자별 tone 분포, 전체 dominant tone
+- **비활성화**: tone_model 빈 값 시 503 Service Unavailable
+
 ### API 엔드포인트
 
 #### 상태 조회
@@ -593,6 +600,8 @@ celery -A backend.workers.celery_app worker --loglevel=info
 | **Python** | 3.11 이상 |
 | **Node.js** | 20+ (Flutter 웹 빌드용) |
 | **의존성** | ffmpeg, PostgreSQL, Redis |
+| **Android 빌드** | Android SDK 36, Build Tools 36.0.0/28.0.3, NDK 27.0.12077973, CMake 3.22.1 |
+| **iOS 빌드** | Xcode 26.5+, CocoaPods 1.16.2+, iOS deployment target 15.0 |
 
 ### 지원 플랫폼
 
@@ -600,8 +609,8 @@ celery -A backend.workers.celery_app worker --loglevel=info
 |--------|------|------|
 | **Web** | ✅ 완료 | Chrome, Firefox, Safari 지원 |
 | **macOS** | ✅ 완료 | ARM64 (Apple Silicon) |
-| **iOS** | 🔜 계획 | Flutter iOS 네이티브 구현 필요 |
-| **Android** | 🔜 계획 | Flutter Android 네이티브 구현 필요 |
+| **iOS** | RC | `flutter build ios --debug --no-codesign` 검증 완료, strict 실기기 release evidence 필요 |
+| **Android** | RC | `flutter build apk --debug` 검증 완료, strict 실기기 release evidence 필요 |
 
 ### 기술 제약
 
@@ -629,7 +638,8 @@ celery -A backend.workers.celery_app worker --loglevel=info
 ```
 ┌─────────────────────────────────────┐
 │   클라이언트 계층                     │
-│   Flutter Web/macOS (Riverpod)      │
+│   Flutter Web/macOS/iOS/Android     │
+│   Riverpod + native mobile bridges  │
 └────────────────┬────────────────────┘
                  │ HTTP/REST
 ┌────────────────▼────────────────────┐
@@ -688,18 +698,67 @@ sudo systemctl start voicenote-api voicenote-worker
 - 서버/클라이언트에 Tailscale 설치 후 고정 IP로 접속
 - 포트 개방 불필요, VPN 메시 네트워크로 보안 접속
 
+### 모바일 네이티브 검증
+
+```bash
+cd client
+
+# 기본 게이트: pub get, analyze, test, local STT smoke
+./scripts/verify_mobile.sh
+
+# 네이티브 게이트: 기본 게이트 + Android APK + iOS no-codesign build
+./scripts/verify_mobile.sh --native
+```
+
+검증된 로컬 Android SDK 경로는 `/Users/ibkim/Library/Android/sdk`이며, Flutter 설정은 `flutter config --android-sdk /Users/ibkim/Library/Android/sdk`로 고정했다. CI는 `.github/workflows/mobile.yml`에서 Android SDK 36과 필요한 build tools를 설치한다. iOS는 `client/ios/Flutter/Profile.xcconfig`가 `Pods-Runner.profile.xcconfig`를 include해야 Profile 빌드에서 CocoaPods 설정이 누락되지 않는다.
+
+### 모바일 릴리스 readiness
+
+```bash
+# 로컬/CI 기본 사전검사: Firebase, App Store metadata, native wiring, release docs
+python3 client/scripts/verify_release_readiness.py
+
+# 실기기 릴리스 게이트: 외부 secret, 연결 기기, Push/딥링크/녹음/공유 evidence 필요
+RELEASE_E2E_EVIDENCE_PATH=docs/release-e2e-evidence.example.json \
+python3 client/scripts/verify_release_readiness.py --strict
+```
+
+`--strict`는 예제 파일을 그대로 통과시키는 용도가 아니다. `docs/release-e2e-evidence.example.json`을 복사해 실제 Android/iOS 기기 ID, 빌드 산출물, Push/딥링크/백그라운드 녹음/HTTP 정책/PDF 공유 시나리오 증거로 채운 뒤 실행한다. 필요한 환경 변수와 scenario key 매핑은 `docs/e2e-device-checklist.md`에 있다.
+
+```bash
+# Generate an editable scaffold with every required release E2E scenario key
+ANDROID_DEVICE_SERIAL=<adb-device-serial> IOS_DEVICE_UDID=<ios-device-udid> \
+python3 client/scripts/create_release_e2e_evidence.py --output docs/release-e2e-evidence.json
+```
+
+GitHub Actions에서도 동일한 strict 게이트를 실행할 수 있다. `.github/workflows/mobile.yml`의 `workflow_dispatch`에 `evidence_path`를 입력하면 `mobile-release` GitHub Environment와 `self-hosted`, `macOS`, `mobile-release` 라벨을 가진 러너에서 `./scripts/verify_mobile.sh --native` 후 `python3 client/scripts/verify_release_readiness.py --strict`를 실행한다. 필요한 Firebase/APNs/App Store Connect secrets와 Android/iOS device vars는 `docs/e2e-device-checklist.md`의 GitHub Actions strict release gate 표를 따른다.
+
+```bash
+# macOS runner candidate preflight: toolchain + physical Android/iOS availability
+ANDROID_DEVICE_SERIAL=<adb-device-serial> IOS_DEVICE_UDID=<ios-device-udid> \
+python3 client/scripts/verify_mobile_release_runner.py
+
+# GitHub Environment, self-hosted runner labels, secret/variable names preflight
+python3 client/scripts/verify_github_mobile_release_env.py --repo kiminbean/voice-to-textnote
+
+# Configure Environment secrets/vars from same-named local env vars, then verify
+python3 client/scripts/configure_github_mobile_release_env.py --repo kiminbean/voice-to-textnote
+```
+
 ## 다음 단계
 
 ### Phase 5 (진행 중)
 
-- **고급 분석**: 텍스트 감정 분석 완료 (SPEC-SENTIMENT-001, OpenAI gpt-4o-mini 기반), 향후 음성 톤 분석 계획
+- **고급 분석**: 텍스트 감정 분석 완료 (SPEC-SENTIMENT-001), 음성 톤/운율 분석 완료 (SPEC-TONE-001, opensmile eGeMAPSv02 + librosa)
 - **통합**: Slack, Teams, Google Calendar 연동
 - **OAuth**: Google/Apple 소셜 로그인
 - **실시간 협업**: 공동 편집, 댓글 기능 (SPEC-COLLAB-001 완료)
 
 ## 라이선스
 
-MIT License - 자유로운 상업적 사용 가능
+프로젝트 자체 코드는 MIT License로 배포한다.
+
+단, SPEC-TONE-001의 발화 톤/운율 분석은 `opensmile`(AGPL-3.0)을 사용하므로 현재 제품 정책인 **로컬 전용 처리** 환경에서만 활성화한다. `tone_model` 기본값은 빈 문자열이며, 명시적으로 설정하지 않으면 tone API는 503으로 비활성화된다. 외부 사용자에게 네트워크 서비스/SaaS 형태로 tone 기능을 제공하려면 배포 전에 opensmile 대체 구현 또는 AGPL 소스 공개 의무를 별도로 검토해야 한다.
 
 ---
 
@@ -715,10 +774,12 @@ MIT License - 자유로운 상업적 사용 가능
 ---
 
 **마지막 업데이트**: 2026-06-14
-**버전**: 1.3.0
-**상태**: Production Ready (30/30 SPECs 완료)
+**버전**: 1.4.0
+**상태**: Release Candidate — 자동화/빌드 게이트 통과, strict 실기기 release evidence 대기
 
-### 완료된 SPEC 목록
+### 구현 완료 SPEC 목록
+
+아래 SPEC은 코드와 자동화 게이트 기준으로 구현 완료 상태다. App Store Connect/APNs/Firebase 실계정, Android/iOS 실기기 Push/딥링크/백그라운드 녹음/공유/HTTP 정책 검증은 `python3 client/scripts/verify_release_readiness.py --strict`와 `RELEASE_E2E_EVIDENCE_PATH`가 통과해야 최종 release-ready로 본다.
 
 ✅ SPEC-STT-001: Speech-to-Text (mlx-whisper)
 ✅ SPEC-DIA-001: Speaker Diarization (pyannote.audio)
@@ -751,3 +812,4 @@ MIT License - 자유로운 상업적 사용 가능
 ✅ SPEC-MOBILE-005: iOS 백그라운드 녹음 안정성 고도화 (인터럽션 처리 + 백그라운드 태스크 + 라이프사이클 + 복구)
 ✅ SPEC-SEC-002: 보안 강화 — 매직 바이트 검증 + iOS ATS/Android Network Security + 보안 헤더 고도화
 ✅ SPEC-SENTIMENT-001: 텍스트 감정 분석 — OpenAI gpt-4o-mini 기반 화자별/구간별 감정 분석 + 타임라인 + Flutter 전용 탭
+✅ SPEC-TONE-001: 발화 톤/운율 분석 — opensmile eGeMAPSv02 + librosa 기반 prosody 추출, 5-class 톤 분류, Flutter tone timeline

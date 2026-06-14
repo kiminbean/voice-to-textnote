@@ -1,7 +1,7 @@
 ---
 id: SPEC-REFACTOR-001
 version: 1.0.0
-status: draft
+status: completed
 created: 2026-06-03
 author: MoAI
 ---

@@ -16,6 +16,8 @@ from backend.app.exceptions import VoiceNoteError
 from backend.schemas.advanced_search import (
     AdvancedSearchRequest,
     AdvancedSearchResponse,
+    SavedSearch,
+    SearchHistoryItem,
     SearchHistoryResponse,
 )
 from backend.services.advanced_search import AdvancedSearchService
@@ -137,7 +139,10 @@ async def get_search_history(
             },
         ]
 
-        return SearchHistoryResponse(history=history_items, saved_searches=saved_searches)
+        return SearchHistoryResponse(
+            history=[SearchHistoryItem.model_validate(item) for item in history_items],
+            saved_searches=[SavedSearch.model_validate(item) for item in saved_searches],
+        )
 
     except VoiceNoteError:
         raise

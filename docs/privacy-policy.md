@@ -88,7 +88,7 @@ We may update this Privacy Policy from time to time. We will notify you of signi
 
 For privacy-related inquiries:
 - Email: privacy@voicetextnote.com
-- Address: [To be updated upon App Store submission]
+- Legal mailing address: Provided through the App Store Connect seller profile and applicable store listing metadata.
 
 ---
 
@@ -175,7 +175,7 @@ VoiceToTextNote("당사", "본 앱")는 서비스 제공을 위해 다음 정보
 
 개인정보 관련 문의:
 - 이메일: privacy@voicetextnote.com
-- 주소: [App Store 제출 시 업데이트 예정]
+- 법적 우편 주소: App Store Connect 판매자 프로필 및 각 스토어 등록 메타데이터를 통해 제공됩니다.
 
 ---
 

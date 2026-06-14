@@ -112,7 +112,7 @@ class TestMinutesPDFGenerator:
 
         assert isinstance(result, bytes)
         # PDF 파일 시그니처 확인
-        assert result[:5] == b"%PDF-", f"PDF 시그니처 없음: {result[:10]}"
+        assert result[:5] == b"%PDF-", f"PDF 시그니처 없음: {result[:10]!r}"
 
     def test_pdf_header_contains_title(self, sample_minutes_data: dict) -> None:
         """

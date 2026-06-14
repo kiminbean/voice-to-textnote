@@ -10,6 +10,7 @@ import 'package:voice_to_textnote/services/health_api.dart';
 import 'package:voice_to_textnote/services/minutes_api.dart';
 import 'package:voice_to_textnote/services/summary_api.dart';
 import 'package:voice_to_textnote/services/transcription_api.dart';
+import 'package:voice_to_textnote/services/sse_service.dart';
 
 // Mock 클래스 정의
 class MockTranscriptionApi extends Mock implements TranscriptionApi {}
@@ -17,12 +18,14 @@ class MockDiarizationApi extends Mock implements DiarizationApi {}
 class MockMinutesApi extends Mock implements MinutesApi {}
 class MockSummaryApi extends Mock implements SummaryApi {}
 class MockHealthApi extends Mock implements HealthApi {}
+class MockSseService extends Mock implements SseService {}
 
 void main() {
   late MockTranscriptionApi mockSttApi;
   late MockDiarizationApi mockDiaApi;
   late MockMinutesApi mockMinApi;
   late MockSummaryApi mockSumApi;
+  late MockSseService mockSseService;
   late ProviderContainer container;
 
   setUp(() {
@@ -30,6 +33,11 @@ void main() {
     mockDiaApi = MockDiarizationApi();
     mockMinApi = MockMinutesApi();
     mockSumApi = MockSummaryApi();
+    mockSseService = MockSseService();
+
+    when(() => mockSseService.connect(any()))
+        .thenAnswer((_) => const Stream<Map<String, dynamic>>.empty());
+    when(() => mockSseService.disconnect()).thenReturn(null);
 
     container = ProviderContainer(
       overrides: [
@@ -37,6 +45,7 @@ void main() {
         diarizationApiProvider.overrideWithValue(mockDiaApi),
         minutesApiProvider.overrideWithValue(mockMinApi),
         summaryApiProvider.overrideWithValue(mockSumApi),
+        sseServiceProvider.overrideWithValue(mockSseService),
       ],
     );
   });

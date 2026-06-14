@@ -4,7 +4,7 @@
 
 import time
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 from uuid import uuid4
 
 import redis.asyncio as aioredis
@@ -20,7 +20,7 @@ from backend.schemas.advanced_search import (
 
 
 class AdvancedSearchService:  # pragma: no cover
-    """고급 검색 서비스 — 미완성: TaskResult에 없는 컬럼 참조"""
+    """고급 검색 서비스."""
 
     def __init__(self):
         self.redis_client = None
@@ -38,15 +38,17 @@ class AdvancedSearchService:  # pragma: no cover
         # 검색 쿼리 생성
         query = select(TaskResult)
 
-        # 기본 조건: 검색 쿼리 매칭
+        # 기본 조건: TaskResult의 실제 컬럼만 사용한다.
         search_conditions = []
 
         # 내용 검색 (간단한 텍스트 검색 - 실제로는 FTS5를 사용해야 함)
         if request.query:
             search_conditions.append(
                 or_(
-                    TaskResult.content.ilike(f"%{request.query}%"),
-                    TaskResult.summary.ilike(f"%{request.query}%"),
+                    TaskResult.task_id.ilike(f"%{request.query}%"),
+                    TaskResult.task_type.ilike(f"%{request.query}%"),
+                    TaskResult.status.ilike(f"%{request.query}%"),
+                    TaskResult.error_message.ilike(f"%{request.query}%"),
                 )
             )
 
@@ -57,27 +59,9 @@ class AdvancedSearchService:  # pragma: no cover
         if request.filters.end_date:
             search_conditions.append(TaskResult.created_at <= request.filters.end_date)
 
-        # 화자 필터
-        if request.filters.speaker_ids:
-            # TaskResult.speakers가 JSON 필드라고 가정
-            # 실제로는 JSONB 쿼리를 사용해야 함
-            search_conditions.append(TaskResult.speakers.op("?|")(request.filters.speaker_ids))
-
         # 콘텐츠 유형 필터
         if request.filters.content_types:
             search_conditions.append(TaskResult.task_type.in_(request.filters.content_types))
-
-        # 태그 필터
-        if request.filters.tags:
-            # TaskResult.tags가 JSON 필드라고 가정
-            search_conditions.append(TaskResult.tags.op("?|")(request.filters.tags))
-
-        # 단어 수 필터
-        if request.filters.min_word_count:
-            search_conditions.append(TaskResult.word_count >= request.filters.min_word_count)
-
-        if request.filters.max_word_count:
-            search_conditions.append(TaskResult.word_count <= request.filters.max_word_count)
 
         # 모든 조건 결합
         if search_conditions:
@@ -86,10 +70,6 @@ class AdvancedSearchService:  # pragma: no cover
         # 정렬
         if request.sort_by == "date":
             order_column = TaskResult.created_at
-        elif request.sort_by == "speaker":
-            order_column = TaskResult.speakers  # 실제로는 JSON 필드 정렬 필요
-        elif request.sort_by == "word_count":
-            order_column = TaskResult.word_count
         else:  # relevance
             order_column = TaskResult.created_at  # 기본값
 
@@ -104,7 +84,32 @@ class AdvancedSearchService:  # pragma: no cover
 
         # 검색 실행
         result = await db.execute(query)
-        task_results = result.scalars().all()
+        task_results = list(result.scalars().all())
+
+        if request.filters.speaker_ids:
+            speaker_set = set(request.filters.speaker_ids)
+            task_results = [
+                task
+                for task in task_results
+                if speaker_set.intersection(self._get_speaker_ids(task))
+            ]
+        if request.filters.tags:
+            tag_set = set(request.filters.tags)
+            task_results = [
+                task for task in task_results if tag_set.intersection(self._get_tags(task))
+            ]
+        if request.filters.min_word_count is not None:
+            task_results = [
+                task
+                for task in task_results
+                if self._get_word_count(task) >= cast(int, request.filters.min_word_count)
+            ]
+        if request.filters.max_word_count is not None:
+            task_results = [
+                task
+                for task in task_results
+                if self._get_word_count(task) <= cast(int, request.filters.max_word_count)
+            ]
 
         # 결과 변환
         search_results = []
@@ -112,12 +117,12 @@ class AdvancedSearchService:  # pragma: no cover
             search_result = SearchResultItem(
                 id=str(task.id),
                 task_id=task.task_id,
-                title=task.title or f"회의록 - {task.created_at.strftime('%Y-%m-%d %H:%M')}",
+                title=self._get_title(task),
                 content=self._extract_content_preview(task),
                 content_type=task.task_type or "minutes",
-                speaker_ids=task.speakers or [],
-                word_count=task.word_count or 0,
-                tags=task.tags or [],
+                speaker_ids=self._get_speaker_ids(task),
+                word_count=self._get_word_count(task),
+                tags=self._get_tags(task),
                 created_at=task.created_at,
                 relevance_score=self._calculate_relevance(task, request.query),
                 highlights=self._extract_highlights(task, request.query),
@@ -143,45 +148,93 @@ class AdvancedSearchService:  # pragma: no cover
 
         return search_results, pagination, analytics
 
+    def _result_data(self, task: TaskResult) -> dict[str, Any]:
+        return task.result_data or {}
+
+    def _input_metadata(self, task: TaskResult) -> dict[str, Any]:
+        return task.input_metadata or {}
+
+    def _get_title(self, task: TaskResult) -> str:
+        data = self._result_data(task)
+        meta = self._input_metadata(task)
+        title = data.get("title") or meta.get("title")
+        if isinstance(title, str) and title:
+            return title
+        return f"회의록 - {task.created_at.strftime('%Y-%m-%d %H:%M')}"
+
+    def _get_text(self, task: TaskResult, key: str) -> str:
+        value = self._result_data(task).get(key)
+        return value if isinstance(value, str) else ""
+
+    def _get_speaker_ids(self, task: TaskResult) -> list[str]:
+        speakers = self._result_data(task).get("speakers", [])
+        if not isinstance(speakers, list):
+            return []
+        result: list[str] = []
+        for speaker in speakers:
+            if isinstance(speaker, dict):
+                speaker_id = speaker.get("speaker_id") or speaker.get("id")
+                if speaker_id is not None:
+                    result.append(str(speaker_id))
+            elif speaker is not None:
+                result.append(str(speaker))
+        return result
+
+    def _get_tags(self, task: TaskResult) -> list[str]:
+        tags = self._result_data(task).get("tags", [])
+        return [str(tag) for tag in tags] if isinstance(tags, list) else []
+
+    def _get_word_count(self, task: TaskResult) -> int:
+        value = self._result_data(task).get("word_count")
+        if isinstance(value, int):
+            return value
+        text = self._get_text(task, "content") or self._get_text(task, "summary")
+        return len(text.split())
+
     def _extract_content_preview(self, task: TaskResult) -> str:
         """내용 미리 추출"""
-        if task.summary:
-            return task.summary[:200] + "..." if len(task.summary) > 200 else task.summary
-        elif task.content:
-            return task.content[:200] + "..." if len(task.content) > 200 else task.content
+        summary = self._get_text(task, "summary")
+        content = self._get_text(task, "content")
+        if summary:
+            return summary[:200] + "..." if len(summary) > 200 else summary
+        elif content:
+            return content[:200] + "..." if len(content) > 200 else content
         return "내용 없음"
 
     def _calculate_relevance(self, task: TaskResult, query: str) -> float:
         """관련도 점수 계산 (간단한 구현)"""
         score = 0.5  # 기본 점수
 
-        if query.lower() in (task.title or "").lower():
+        query_lower = query.lower()
+        if query_lower in self._get_title(task).lower():
             score += 0.3
 
-        if query.lower() in (task.summary or "").lower():
+        if query_lower in self._get_text(task, "summary").lower():
             score += 0.2
 
-        if query.lower() in (task.content or "").lower():
+        if query_lower in self._get_text(task, "content").lower():
             score += 0.1
 
         return min(score, 1.0)
 
     def _extract_highlights(self, task: TaskResult, query: str) -> list[str]:
         """하이라이트 추출 (간단한 구현)"""
-        highlights = []
+        highlights: list[str] = []
+        title = self._get_title(task)
+        summary = self._get_text(task, "summary")
 
         # 제목에서 하이라이트
-        if task.title and query.lower() in task.title.lower():
-            highlights.append(task.title)
+        if query.lower() in title.lower():
+            highlights.append(title)
 
         # 요약에서 하이라이트
-        if task.summary and query.lower() in task.summary.lower():
+        if summary and query.lower() in summary.lower():
             # 쿼리를 중심으로 앞뒤 50자씩 추출
-            pos = task.summary.lower().find(query.lower())
+            pos = summary.lower().find(query.lower())
             if pos != -1:
                 start = max(0, pos - 50)
-                end = min(len(task.summary), pos + len(query) + 50)
-                highlight = task.summary[start:end]
+                end = min(len(summary), pos + len(query) + 50)
+                highlight = summary[start:end]
                 highlights.append(highlight)
 
         return highlights[:3]  # 최대 3개
@@ -192,20 +245,20 @@ class AdvancedSearchService:  # pragma: no cover
         """검색 분석 생성"""
 
         # 타입별 분포
-        type_distribution = {}
+        type_distribution: dict[str, int] = {}
         for result in results:
             type_distribution[result.content_type] = (
                 type_distribution.get(result.content_type, 0) + 1
             )
 
         # 화자별 분포
-        speaker_distribution = {}
+        speaker_distribution: dict[str, int] = {}
         for result in results:
             for speaker_id in result.speaker_ids:
                 speaker_distribution[speaker_id] = speaker_distribution.get(speaker_id, 0) + 1
 
         # 인기 태그
-        tag_counts = {}
+        tag_counts: dict[str, int] = {}
         for result in results:
             for tag in result.tags:
                 tag_counts[tag] = tag_counts.get(tag, 0) + 1

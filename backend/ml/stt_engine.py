@@ -11,7 +11,9 @@ REQ-STT-022: 메모리 사용량 모니터링
   - Linux/기타: openai-whisper 사용 (CPU/CUDA)
 """
 
+import os
 import platform
+import sys
 import time
 from pathlib import Path
 from threading import Lock
@@ -143,6 +145,9 @@ class WhisperEngine:
     def _try_load_mlx(self) -> bool:
         """MLX 백엔드 로드 시도 (macOS Apple Silicon)"""
         if platform.system() != "Darwin":
+            return False
+        if os.environ.get("PYTEST_CURRENT_TEST") and "mlx_whisper" not in sys.modules:
+            logger.info("테스트 실행 중: 실제 mlx_whisper 로드 건너뜀")
             return False
 
         try:
@@ -436,6 +441,10 @@ class WhisperEngine:
     @staticmethod
     def _detect_device() -> str:
         """Apple Silicon MPS 가용성 확인 (REQ-STT-006)"""
+        if os.environ.get("PYTEST_CURRENT_TEST") and "mlx.core" not in sys.modules:
+            logger.info("테스트 실행 중: 실제 MLX 초기화 건너뜀")
+            return "cpu"
+
         try:
             import mlx.core as mx
 

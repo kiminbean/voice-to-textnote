@@ -7,6 +7,7 @@ SPEC-TEAM-001 REQ-TEAM-005: 회의록 공유 API 엔드포인트
 """
 
 import uuid
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -105,7 +106,7 @@ async def share_meeting(
     return MeetingShareResponse(
         task_id=ownership.task_id,
         team_id=str(ownership.team_id),
-        shared_at=ownership.shared_at,
+        shared_at=ownership.shared_at or datetime.utcnow(),
     )
 
 

@@ -1,6 +1,4 @@
 // NotificationProvider 테스트
-import 'dart:async';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -10,8 +8,11 @@ import 'package:voice_to_textnote/services/permission_service.dart';
 import 'package:voice_to_textnote/services/device_api.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 
-class MockPushNotificationService extends Mock implements PushNotificationService {}
+class MockPushNotificationService extends Mock
+    implements PushNotificationService {}
+
 class MockPermissionService extends Mock implements PermissionService {}
+
 class MockDeviceApi extends Mock implements DeviceApi {}
 
 void main() {
@@ -97,13 +98,12 @@ void main() {
           .thenAnswer((_) async => PermissionStatus.granted);
       when(() => mockPermissionService.requestNotificationPermission())
           .thenAnswer((_) async => PermissionStatus.granted);
-      when(() => mockPushService.initializeFCM())
-          .thenAnswer((_) async => true);
+      when(() => mockPushService.initializeFCM()).thenAnswer((_) async => true);
       when(() => mockPushService.getFCMToken())
           .thenAnswer((_) async => const FcmTokenResult(token: 'test_token'));
-      when(() => mockPushService.onForegroundMessage(any()))
-          .thenAnswer((_) {});
-      when(() => mockDeviceApi.registerDeviceToken(any())).thenAnswer((_) async {});
+      when(() => mockPushService.onForegroundMessage(any())).thenAnswer((_) {});
+      when(() => mockDeviceApi.registerDeviceToken(any()))
+          .thenAnswer((_) async {});
       when(() => mockPushService.handleMessageOpenedApp())
           .thenAnswer((_) async {});
       when(() => mockDeviceApi.registerDeviceToken(any()))
@@ -155,13 +155,12 @@ void main() {
           .thenAnswer((_) async => PermissionStatus.granted);
       when(() => mockPermissionService.requestNotificationPermission())
           .thenAnswer((_) async => PermissionStatus.granted);
-      when(() => mockPushService.initializeFCM())
-          .thenAnswer((_) async => true);
+      when(() => mockPushService.initializeFCM()).thenAnswer((_) async => true);
       when(() => mockPushService.getFCMToken())
           .thenAnswer((_) async => const FcmTokenResult(error: 'Token error'));
-      when(() => mockPushService.onForegroundMessage(any()))
-          .thenReturn(null);
-      when(() => mockDeviceApi.registerDeviceToken(any())).thenAnswer((_) async {});
+      when(() => mockPushService.onForegroundMessage(any())).thenReturn(null);
+      when(() => mockDeviceApi.registerDeviceToken(any()))
+          .thenAnswer((_) async {});
       when(() => mockPushService.handleMessageOpenedApp())
           .thenAnswer((_) async {});
 
@@ -187,15 +186,16 @@ void main() {
           .thenAnswer((_) async => PermissionStatus.granted);
       when(() => mockPermissionService.requestNotificationPermission())
           .thenAnswer((_) async => PermissionStatus.granted);
-      when(() => mockPushService.initializeFCM())
-          .thenAnswer((_) async => true);
+      when(() => mockPushService.initializeFCM()).thenAnswer((_) async => true);
       when(() => mockPushService.getFCMToken())
           .thenAnswer((_) async => const FcmTokenResult(token: 'test_token'));
       when(() => mockPushService.onForegroundMessage(captureAny()))
           .thenAnswer((invocation) {
-        capturedHandlers.add(invocation.positionalArguments[0] as Function(RemoteMessage));
+        capturedHandlers
+            .add(invocation.positionalArguments[0] as Function(RemoteMessage));
       });
-      when(() => mockDeviceApi.registerDeviceToken(any())).thenAnswer((_) async {});
+      when(() => mockDeviceApi.registerDeviceToken(any()))
+          .thenAnswer((_) async {});
       when(() => mockPushService.handleMessageOpenedApp())
           .thenAnswer((_) async {});
 
@@ -218,12 +218,11 @@ void main() {
           .thenAnswer((_) async => PermissionStatus.granted);
       when(() => mockPermissionService.requestNotificationPermission())
           .thenAnswer((_) async => PermissionStatus.granted);
-      when(() => mockPushService.initializeFCM())
-          .thenAnswer((_) async => true);
+      when(() => mockPushService.initializeFCM()).thenAnswer((_) async => true);
       when(() => mockPushService.getFCMToken())
           .thenAnswer((_) async => const FcmTokenResult(token: 'test_token'));
 
-      final testMessage = RemoteMessage(
+      const testMessage = RemoteMessage(
         messageId: 'test_msg',
         data: {'meeting_id': 'meeting_123'},
       );
@@ -234,9 +233,11 @@ void main() {
       Function(RemoteMessage)? capturedHandler;
       when(() => mockPushService.onForegroundMessage(captureAny()))
           .thenAnswer((invocation) {
-        capturedHandler = invocation.positionalArguments[0] as Function(RemoteMessage);
+        capturedHandler =
+            invocation.positionalArguments[0] as Function(RemoteMessage);
       });
-      when(() => mockDeviceApi.registerDeviceToken(any())).thenAnswer((_) async {});
+      when(() => mockDeviceApi.registerDeviceToken(any()))
+          .thenAnswer((_) async {});
       when(() => mockPushService.handleMessageOpenedApp())
           .thenAnswer((_) async {});
 
@@ -256,7 +257,7 @@ void main() {
 
     test('checkInitialMessage 성공 시 meeting_id를 반환해야 함', () async {
       // Arrange
-      final testMessage = RemoteMessage(
+      const testMessage = RemoteMessage(
         messageId: 'test_msg',
         data: {'meeting_id': 'meeting_456'},
       );

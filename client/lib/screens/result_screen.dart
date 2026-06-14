@@ -26,6 +26,7 @@ import 'package:voice_to_textnote/widgets/shimmer_text.dart';
 import 'package:voice_to_textnote/widgets/speaker_segment.dart';
 import 'package:voice_to_textnote/widgets/find_replace_bar.dart';
 import 'package:voice_to_textnote/widgets/audio_player_bar.dart';
+import 'package:voice_to_textnote/widgets/tone_timeline.dart';
 import 'package:voice_to_textnote/providers/audio_player_provider.dart';
 import 'package:voice_to_textnote/providers/qa_provider.dart';
 
@@ -75,10 +76,10 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     try {
       final exportApi = ref.read(exportApiProvider);
       final file = await switch (format) {
-        ExportFormat.pdf => exportApi.downloadPdf(minutesTaskId,
-            summaryTaskId: summaryTaskId),
-        ExportFormat.docx => exportApi.downloadDocx(minutesTaskId,
-            summaryTaskId: summaryTaskId),
+        ExportFormat.pdf =>
+          exportApi.downloadPdf(minutesTaskId, summaryTaskId: summaryTaskId),
+        ExportFormat.docx =>
+          exportApi.downloadDocx(minutesTaskId, summaryTaskId: summaryTaskId),
         ExportFormat.markdown => exportApi.downloadMarkdown(minutesTaskId,
             summaryTaskId: summaryTaskId),
       };
@@ -105,7 +106,8 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     }
   }
 
-  Future<void> _showShareDialog(BuildContext context, String? minutesTaskId) async {
+  Future<void> _showShareDialog(
+      BuildContext context, String? minutesTaskId) async {
     if (minutesTaskId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('회의록 처리가 완료되지 않아 공유할 수 없습니다')),
@@ -116,7 +118,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     try {
       final teamApi = ref.read(teamApiProvider);
       final teams = await teamApi.getTeams();
-      if (!mounted) return;
+      if (!context.mounted) return;
 
       if (teams.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -133,7 +135,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         ),
       );
     } catch (e) {
-      if (mounted) {
+      if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('팀 목록을 불러올 수 없습니다: $e')),
         );
@@ -228,7 +230,9 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
               child: TabBarView(
                 children: [
                   // 회의 내용 탭: 화자별 원본 발화 세그먼트
-                  _TranscriptTab(taskId: minutesTaskId, transcriptionTaskId: meeting?.transcriptionTaskId),
+                  _TranscriptTab(
+                      taskId: minutesTaskId,
+                      transcriptionTaskId: meeting?.transcriptionTaskId),
                   // 회의록 탭: 양식 기반 테이블 형태 회의록
                   _MinutesTab(taskId: summaryTaskId, meeting: meeting),
                   // AI 요약 탭: 구조화된 분석 (주요 결정 사항 + 다음 단계)
@@ -283,7 +287,9 @@ class _TranscriptTabState extends ConsumerState<_TranscriptTab> {
         _matchCount = 0;
         _currentMatchIndex = 0;
       } else {
-        _matchCount = RegExp(RegExp.escape(query), caseSensitive: false).allMatches(content).length;
+        _matchCount = RegExp(RegExp.escape(query), caseSensitive: false)
+            .allMatches(content)
+            .length;
         if (_matchCount > 0 && _currentMatchIndex >= _matchCount) {
           _currentMatchIndex = _matchCount - 1;
         }
@@ -314,8 +320,7 @@ class _TranscriptTabState extends ConsumerState<_TranscriptTab> {
       );
     }
 
-    final segmentsAsync =
-        ref.watch(transcriptSegmentsProvider(widget.taskId!));
+    final segmentsAsync = ref.watch(transcriptSegmentsProvider(widget.taskId!));
 
     return segmentsAsync.when(
       loading: () => _buildShimmerLoading(),
@@ -381,12 +386,14 @@ class _TranscriptTabState extends ConsumerState<_TranscriptTab> {
                   onSearchChanged: (q) => _updateSearch(q, allText),
                   onNext: () {
                     setState(() {
-                      _currentMatchIndex = (_currentMatchIndex + 1) % _matchCount;
+                      _currentMatchIndex =
+                          (_currentMatchIndex + 1) % _matchCount;
                     });
                   },
                   onPrevious: () {
                     setState(() {
-                      _currentMatchIndex = (_currentMatchIndex - 1 + _matchCount) % _matchCount;
+                      _currentMatchIndex =
+                          (_currentMatchIndex - 1 + _matchCount) % _matchCount;
                     });
                   },
                   onClose: () => setState(() {
@@ -487,8 +494,12 @@ class _TranscriptTabState extends ConsumerState<_TranscriptTab> {
         taskId: widget.taskId!,
         segmentStart: seg.start,
         segmentEnd: seg.end,
-        textSnippet: seg.text.length > 100 ? '${seg.text.substring(0, 100)}...' : seg.text,
-        note: noteController.text.trim().isNotEmpty ? noteController.text.trim() : null,
+        textSnippet: seg.text.length > 100
+            ? '${seg.text.substring(0, 100)}...'
+            : seg.text,
+        note: noteController.text.trim().isNotEmpty
+            ? noteController.text.trim()
+            : null,
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -548,9 +559,9 @@ class _TranscriptTabState extends ConsumerState<_TranscriptTab> {
             child: const Text('변경'),
           ),
         ],
-       ),
-     );
-   }
+      ),
+    );
+  }
 
   Widget _buildShimmerLoading() {
     return const Padding(
@@ -622,8 +633,8 @@ class _StatisticsTabState extends ConsumerState<_StatisticsTab> {
                 const SizedBox(height: 12),
                 _statRow(context, '총 세그먼트', '${stats.totalSegments}개'),
                 _statRow(context, '총 단어 수', '${stats.totalWords}개'),
-                _statRow(
-                    context, '총 발화 시간', _formatDuration(stats.totalDurationSeconds)),
+                _statRow(context, '총 발화 시간',
+                    _formatDuration(stats.totalDurationSeconds)),
                 _statRow(context, '참여 화자', '${stats.uniqueSpeakers}명'),
               ],
             ),
@@ -688,11 +699,13 @@ class _StatisticsTabState extends ConsumerState<_StatisticsTab> {
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
-                    children: stats.topKeywords.map((k) => Chip(
-                          label: Text('${k.keyword} (${k.count})'),
-                          materialTapTargetSize:
-                              MaterialTapTargetSize.shrinkWrap,
-                        )).toList(),
+                    children: stats.topKeywords
+                        .map((k) => Chip(
+                              label: Text('${k.keyword} (${k.count})'),
+                              materialTapTargetSize:
+                                  MaterialTapTargetSize.shrinkWrap,
+                            ))
+                        .toList(),
                   ),
                 ],
               ),
@@ -751,15 +764,19 @@ class _SentimentTab extends ConsumerWidget {
         message: '감정 분석을 불러올 수 없습니다',
         onRetry: () => ref.invalidate(sentimentFullProvider(taskId!)),
       ),
-      data: (response) => _SentimentContent(response: response),
+      // SPEC-TONE-001: meetingId 전달 → ToneSection 독립 watch (오류 격리, REQ-TONE-013)
+      data: (response) =>
+          _SentimentContent(response: response, meetingId: taskId!),
     );
   }
 }
 
 class _SentimentContent extends StatelessWidget {
   final SentimentFullResponse response;
+  // SPEC-TONE-001: ToneSection에 전달할 meetingId (minutesTaskId와 동일)
+  final String meetingId;
 
-  const _SentimentContent({required this.response});
+  const _SentimentContent({required this.response, required this.meetingId});
 
   Color _sentimentColor(String sentiment) {
     switch (sentiment) {
@@ -824,8 +841,7 @@ class _SentimentContent extends StatelessWidget {
             children: [
               Icon(Icons.sentiment_neutral, size: 64, color: Colors.grey[400]),
               const SizedBox(height: 16),
-              Text('감정 분석 데이터가 없습니다',
-                  style: theme.textTheme.titleMedium),
+              Text('감정 분석 데이터가 없습니다', style: theme.textTheme.titleMedium),
               const SizedBox(height: 8),
               Text(
                 '회의록이 완료된 후 감정 분석을 실행해 주세요.',
@@ -856,8 +872,13 @@ class _SentimentContent extends StatelessWidget {
         ],
 
         // 4. 감정 변화 타임라인 (REQ-SEN-009: emotional_timeline)
-        if (response.emotionalTimeline.isNotEmpty)
-          _buildTimelineSection(theme),
+        if (response.emotionalTimeline.isNotEmpty) _buildTimelineSection(theme),
+
+        // 5. 톤 타임라인 (SPEC-TONE-001 REQ-TONE-012)
+        // @MX:NOTE: ToneSection은 별도 ConsumerWidget으로 toneProvider를 독립 watch
+        // → tone 실패 시 sentiment 카드에 영향 없음 (오류 격리, REQ-TONE-013)
+        const SizedBox(height: 16),
+        ToneSection(meetingId: meetingId),
       ],
     );
   }
@@ -1006,7 +1027,8 @@ class _SentimentContent extends StatelessWidget {
           children: [
             Text('화자별 감정', style: theme.textTheme.titleMedium),
             const SizedBox(height: 12),
-            ...response.speakers.map((speaker) => _buildSpeakerRow(theme, speaker)),
+            ...response.speakers
+                .map((speaker) => _buildSpeakerRow(theme, speaker)),
           ],
         ),
       ),
@@ -1070,15 +1092,15 @@ class _SentimentContent extends StatelessWidget {
           children: [
             Text('감정 변화 타임라인', style: theme.textTheme.titleMedium),
             const SizedBox(height: 12),
-            ...response.emotionalTimeline.map((entry) => _buildTimelineEntry(theme, entry)),
+            ...response.emotionalTimeline
+                .map((entry) => _buildTimelineEntry(theme, entry)),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildTimelineEntry(
-      ThemeData theme, EmotionTimelineEntry entry) {
+  Widget _buildTimelineEntry(ThemeData theme, EmotionTimelineEntry entry) {
     final color = _sentimentColor(entry.sentiment);
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -1101,7 +1123,8 @@ class _SentimentContent extends StatelessWidget {
               children: [
                 Text(
                   entry.speaker,
-                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w600, fontSize: 13),
                 ),
                 Text(
                   '${_sentimentLabel(entry.sentiment)} · ${entry.emotion}',
@@ -1154,11 +1177,12 @@ class _MinutesTabState extends ConsumerState<_MinutesTab> {
   void _copyToClipboard(SummaryResult result) {
     final buffer = StringBuffer();
     final now = meeting?.createdAt ?? DateTime.now();
-    final dateStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-    
+    final dateStr =
+        '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+
     buffer.writeln('회의록_$dateStr');
     buffer.writeln('---');
-    
+
     if (result.sections.isNotEmpty) {
       for (final entry in result.sections.entries) {
         buffer.writeln('[${entry.key}]');
@@ -1170,11 +1194,11 @@ class _MinutesTabState extends ConsumerState<_MinutesTab> {
       buffer.writeln('[회의 안건]');
       buffer.writeln(_extractAgenda(result.summaryText));
       buffer.writeln();
-      
+
       buffer.writeln('[회의 내용]');
       buffer.writeln(result.summaryText);
       buffer.writeln();
-      
+
       if (result.keyDecisions.isNotEmpty) {
         buffer.writeln('[결정 사항]');
         for (var i = 0; i < result.keyDecisions.length; i++) {
@@ -1182,7 +1206,7 @@ class _MinutesTabState extends ConsumerState<_MinutesTab> {
         }
         buffer.writeln();
       }
-      
+
       if (result.nextSteps.isNotEmpty) {
         buffer.writeln('[향후 계획]');
         for (var i = 0; i < result.nextSteps.length; i++) {
@@ -1253,7 +1277,9 @@ class _MinutesTabState extends ConsumerState<_MinutesTab> {
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: Text(
                   '📌 편집할 셀을 탭하세요',
-                  style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.primary),
+                  style: TextStyle(
+                      fontSize: 12,
+                      color: Theme.of(context).colorScheme.primary),
                 ),
               ),
             // 테이블
@@ -1280,7 +1306,8 @@ class _MinutesTabState extends ConsumerState<_MinutesTab> {
     final borderColor = theme.dividerColor;
 
     // template_structure에서 table_layout 추출
-    final tableLayout = (result.templateStructure?['table_layout'] as List<dynamic>?) ?? [];
+    final tableLayout =
+        (result.templateStructure?['table_layout'] as List<dynamic>?) ?? [];
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(12),
@@ -1302,13 +1329,16 @@ class _MinutesTabState extends ConsumerState<_MinutesTab> {
             ),
             child: Column(
               children: tableLayout.isNotEmpty
-                  ? _buildRowsFromLayout(tableLayout, result, headerBg, contentBg, borderColor)
+                  ? _buildRowsFromLayout(
+                      tableLayout, result, headerBg, contentBg, borderColor)
                   // table_layout 없으면 sections 기반 단순 렌더링
                   : result.sections.entries.map((entry) {
-                      final isLarge = entry.key.contains('내용') || entry.value.length > 100;
+                      final isLarge =
+                          entry.key.contains('내용') || entry.value.length > 100;
                       final value = entry.value.isNotEmpty ? entry.value : '-';
                       final row = _tableRow2Col(
-                        entry.key, headerBg,
+                        entry.key,
+                        headerBg,
                         value,
                         isLarge ? contentBg : null,
                         borderColor,
@@ -1316,7 +1346,8 @@ class _MinutesTabState extends ConsumerState<_MinutesTab> {
                       );
                       return _isEditing
                           ? GestureDetector(
-                              onTap: () => _editCell(entry.key, value == '-' ? '' : value),
+                              onTap: () => _editCell(
+                                  entry.key, value == '-' ? '' : value),
                               child: row,
                             )
                           : row;
@@ -1359,7 +1390,13 @@ class _MinutesTabState extends ConsumerState<_MinutesTab> {
                   color: headerBg,
                   padding: const EdgeInsets.all(10),
                   alignment: Alignment.centerLeft,
-                  child: Text(label1, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: theme.colorScheme.onSurface), maxLines: 2, overflow: TextOverflow.ellipsis),
+                  child: Text(label1,
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                          color: theme.colorScheme.onSurface),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis),
                 ),
               ),
               Container(width: 1, color: borderColor),
@@ -1367,9 +1404,13 @@ class _MinutesTabState extends ConsumerState<_MinutesTab> {
                 child: GestureDetector(
                   onTap: () => _editCell(label1, value1),
                   child: Container(
-                    decoration: BoxDecoration(border: Border.all(color: editBorder, width: 1)),
+                    decoration: BoxDecoration(
+                        border: Border.all(color: editBorder, width: 1)),
                     padding: const EdgeInsets.all(10),
-                    child: Text(value1, style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface), softWrap: true),
+                    child: Text(value1,
+                        style: TextStyle(
+                            fontSize: 13, color: theme.colorScheme.onSurface),
+                        softWrap: true),
                   ),
                 ),
               ),
@@ -1381,7 +1422,13 @@ class _MinutesTabState extends ConsumerState<_MinutesTab> {
                   color: headerBg,
                   padding: const EdgeInsets.all(10),
                   alignment: Alignment.centerLeft,
-                  child: Text(label2, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: theme.colorScheme.onSurface), maxLines: 2, overflow: TextOverflow.ellipsis),
+                  child: Text(label2,
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                          color: theme.colorScheme.onSurface),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis),
                 ),
               ),
               Container(width: 1, color: borderColor),
@@ -1389,9 +1436,13 @@ class _MinutesTabState extends ConsumerState<_MinutesTab> {
                 child: GestureDetector(
                   onTap: () => _editCell(label2, value2),
                   child: Container(
-                    decoration: BoxDecoration(border: Border.all(color: editBorder, width: 1)),
+                    decoration: BoxDecoration(
+                        border: Border.all(color: editBorder, width: 1)),
                     padding: const EdgeInsets.all(10),
-                    child: Text(value2, style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface), softWrap: true),
+                    child: Text(value2,
+                        style: TextStyle(
+                            fontSize: 13, color: theme.colorScheme.onSurface),
+                        softWrap: true),
                   ),
                 ),
               ),
@@ -1491,8 +1542,14 @@ class _MinutesTabState extends ConsumerState<_MinutesTab> {
           final value1 = _resolveValue(label1, result);
           final value2 = _resolveValue(label2, result);
           splitRow = _tableRow4Col(
-            label1, headerBg, value1, null,
-            label2, headerBg, value2, null,
+            label1,
+            headerBg,
+            value1,
+            null,
+            label2,
+            headerBg,
+            value2,
+            null,
             borderColor,
           );
         } else {
@@ -1500,22 +1557,28 @@ class _MinutesTabState extends ConsumerState<_MinutesTab> {
           splitRow = _tableRowNCol(
             labels,
             labels.map((l) => _resolveValue(l, result)).toList(),
-            headerBg, borderColor,
+            headerBg,
+            borderColor,
           );
         }
         // 편집 모드 - split 행의 첫 번째 라벨로 편집 다이얼로그
         if (_isEditing) {
           // 편집 모드: 각 셀을 개별적으로 편집 가능하도록 IntrinsicHeight Row 내부에 GestureDetector 삽입
-          rows.add(_wrapSplitRowWithEdit(cells, result, headerBg, contentBg, borderColor));
+          rows.add(_wrapSplitRowWithEdit(
+              cells, result, headerBg, contentBg, borderColor));
         } else {
           rows.add(splitRow);
         }
       } else {
         final label = rowDef['label'] as String? ?? '';
         final value = _resolveValue(label, result);
-        final isLarge = label.contains('내용') || label.contains('논의') || label.contains('이슈') || value.length > 100;
+        final isLarge = label.contains('내용') ||
+            label.contains('논의') ||
+            label.contains('이슈') ||
+            value.length > 100;
         final row = _tableRow2Col(
-          label, headerBg,
+          label,
+          headerBg,
           value.isNotEmpty ? value : '-',
           isLarge ? contentBg : null,
           borderColor,
@@ -1575,22 +1638,37 @@ class _MinutesTabState extends ConsumerState<_MinutesTab> {
                 _wrapEditRow('과정명', courseName, headerBg, null, borderColor),
                 // 2행: 프로젝트명 | 회의일시 (4열 구조)
                 _wrapEditSplitRow(
-                  '프로젝트명', headerBg, meeting?.title ?? '-', null,
-                  '회의일시', headerBg, '$dateStr $timeStr', null,
+                  '프로젝트명',
+                  headerBg,
+                  meeting?.title ?? '-',
+                  null,
+                  '회의일시',
+                  headerBg,
+                  '$dateStr $timeStr',
+                  null,
                   borderColor,
                 ),
                 // 3행: 팀명 | 작성자 (4열 구조)
                 _wrapEditSplitRow(
-                  '팀명', headerBg, '-', null,
-                  '작성자', headerBg, '-', null,
+                  '팀명',
+                  headerBg,
+                  '-',
+                  null,
+                  '작성자',
+                  headerBg,
+                  '-',
+                  null,
                   borderColor,
                 ),
                 // 4행: 참석자
                 _wrapEditRow('참석자', '-', headerBg, null, borderColor),
                 // 5행: 회의안건 (summaryText 첫 문장 추출)
-                _wrapEditRow('회의안건', _extractAgenda(result.summaryText), headerBg, null, borderColor),
+                _wrapEditRow('회의안건', _extractAgenda(result.summaryText),
+                    headerBg, null, borderColor),
                 // 6행: 회의내용 (큰 영역, 노란 배경)
-                _wrapEditRow('회의내용', result.summaryText, headerBg, contentBg, borderColor, minHeight: 200),
+                _wrapEditRow('회의내용', result.summaryText, headerBg, contentBg,
+                    borderColor,
+                    minHeight: 200),
                 // 7행: 결정된 사안
                 _wrapEditRow(
                   '결정된 사안',
@@ -1615,16 +1693,22 @@ class _MinutesTabState extends ConsumerState<_MinutesTab> {
   }
 
   // 편집 모드 래핑: 2열 행
-  Widget _wrapEditRow(String label, String value, Color labelBg, Color? contentBg, Color borderColor, {double minHeight = 0}) {
-    final displayValue = _editedSections.containsKey(label) ? _editedSections[label]! : value;
-    final row = _tableRow2Col(label, labelBg, displayValue.isEmpty ? '-' : displayValue, contentBg, borderColor, minHeight: minHeight);
+  Widget _wrapEditRow(String label, String value, Color labelBg,
+      Color? contentBg, Color borderColor,
+      {double minHeight = 0}) {
+    final displayValue =
+        _editedSections.containsKey(label) ? _editedSections[label]! : value;
+    final row = _tableRow2Col(label, labelBg,
+        displayValue.isEmpty ? '-' : displayValue, contentBg, borderColor,
+        minHeight: minHeight);
     if (!_isEditing) return row;
     final theme = Theme.of(context);
     return GestureDetector(
       onTap: () => _editCell(label, displayValue == '-' ? '' : displayValue),
       child: Container(
         decoration: BoxDecoration(
-          border: Border.all(color: theme.colorScheme.primary.withAlpha(80), width: 1),
+          border: Border.all(
+              color: theme.colorScheme.primary.withAlpha(80), width: 1),
         ),
         child: row,
       ),
@@ -1633,15 +1717,26 @@ class _MinutesTabState extends ConsumerState<_MinutesTab> {
 
   // 편집 모드 래핑: 4열 split 행 — 각 셀 개별 편집
   Widget _wrapEditSplitRow(
-    String label1, Color labelBg1, String content1, Color? contentBg1,
-    String label2, Color labelBg2, String content2, Color? contentBg2,
+    String label1,
+    Color labelBg1,
+    String content1,
+    Color? contentBg1,
+    String label2,
+    Color labelBg2,
+    String content2,
+    Color? contentBg2,
     Color borderColor,
   ) {
-    final displayVal1 = _editedSections.containsKey(label1) ? _editedSections[label1]! : content1;
-    final displayVal2 = _editedSections.containsKey(label2) ? _editedSections[label2]! : content2;
+    final displayVal1 = _editedSections.containsKey(label1)
+        ? _editedSections[label1]!
+        : content1;
+    final displayVal2 = _editedSections.containsKey(label2)
+        ? _editedSections[label2]!
+        : content2;
 
     if (!_isEditing) {
-      return _tableRow4Col(label1, labelBg1, displayVal1, contentBg1, label2, labelBg2, displayVal2, contentBg2, borderColor);
+      return _tableRow4Col(label1, labelBg1, displayVal1, contentBg1, label2,
+          labelBg2, displayVal2, contentBg2, borderColor);
     }
 
     final theme = Theme.of(context);
@@ -1660,17 +1755,28 @@ class _MinutesTabState extends ConsumerState<_MinutesTab> {
                 color: labelBg1,
                 padding: const EdgeInsets.all(10),
                 alignment: Alignment.centerLeft,
-                child: Text(label1, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: theme.colorScheme.onSurface), maxLines: 2, overflow: TextOverflow.ellipsis),
+                child: Text(label1,
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                        color: theme.colorScheme.onSurface),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis),
               ),
             ),
             Container(width: 1, color: borderColor),
             Expanded(
               child: GestureDetector(
-                onTap: () => _editCell(label1, displayVal1 == '-' ? '' : displayVal1),
+                onTap: () =>
+                    _editCell(label1, displayVal1 == '-' ? '' : displayVal1),
                 child: Container(
-                  decoration: BoxDecoration(border: Border.all(color: editBorder, width: 1)),
+                  decoration: BoxDecoration(
+                      border: Border.all(color: editBorder, width: 1)),
                   padding: const EdgeInsets.all(10),
-                  child: Text(displayVal1, style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface), softWrap: true),
+                  child: Text(displayVal1,
+                      style: TextStyle(
+                          fontSize: 13, color: theme.colorScheme.onSurface),
+                      softWrap: true),
                 ),
               ),
             ),
@@ -1681,17 +1787,28 @@ class _MinutesTabState extends ConsumerState<_MinutesTab> {
                 color: labelBg2,
                 padding: const EdgeInsets.all(10),
                 alignment: Alignment.centerLeft,
-                child: Text(label2, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: theme.colorScheme.onSurface), maxLines: 2, overflow: TextOverflow.ellipsis),
+                child: Text(label2,
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                        color: theme.colorScheme.onSurface),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis),
               ),
             ),
             Container(width: 1, color: borderColor),
             Expanded(
               child: GestureDetector(
-                onTap: () => _editCell(label2, displayVal2 == '-' ? '' : displayVal2),
+                onTap: () =>
+                    _editCell(label2, displayVal2 == '-' ? '' : displayVal2),
                 child: Container(
-                  decoration: BoxDecoration(border: Border.all(color: editBorder, width: 1)),
+                  decoration: BoxDecoration(
+                      border: Border.all(color: editBorder, width: 1)),
                   padding: const EdgeInsets.all(10),
-                  child: Text(displayVal2, style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface), softWrap: true),
+                  child: Text(displayVal2,
+                      style: TextStyle(
+                          fontSize: 13, color: theme.colorScheme.onSurface),
+                      softWrap: true),
                 ),
               ),
             ),
@@ -1703,8 +1820,10 @@ class _MinutesTabState extends ConsumerState<_MinutesTab> {
 
   // 2열 행: 라벨 | 내용 (전체 폭)
   Widget _tableRow2Col(
-    String label, Color labelBg,
-    String content, Color? contentBg,
+    String label,
+    Color labelBg,
+    String content,
+    Color? contentBg,
     Color borderColor, {
     double minHeight = 0,
   }) {
@@ -1745,7 +1864,10 @@ class _MinutesTabState extends ConsumerState<_MinutesTab> {
                 constraints: BoxConstraints(minHeight: minHeight),
                 child: Text(
                   content,
-                  style: TextStyle(height: 1.7, fontSize: 13, color: theme.colorScheme.onSurface),
+                  style: TextStyle(
+                      height: 1.7,
+                      fontSize: 13,
+                      color: theme.colorScheme.onSurface),
                   softWrap: true,
                 ),
               ),
@@ -1758,8 +1880,14 @@ class _MinutesTabState extends ConsumerState<_MinutesTab> {
 
   // 4열 행: 라벨1 | 내용1 | 라벨2 | 내용2
   Widget _tableRow4Col(
-    String label1, Color labelBg1, String content1, Color? contentBg1,
-    String label2, Color labelBg2, String content2, Color? contentBg2,
+    String label1,
+    Color labelBg1,
+    String content1,
+    Color? contentBg1,
+    String label2,
+    Color labelBg2,
+    String content2,
+    Color? contentBg2,
     Color borderColor,
   ) {
     final theme = Theme.of(context);
@@ -1798,7 +1926,8 @@ class _MinutesTabState extends ConsumerState<_MinutesTab> {
                 padding: const EdgeInsets.all(10),
                 child: Text(
                   content1,
-                  style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface),
+                  style: TextStyle(
+                      fontSize: 13, color: theme.colorScheme.onSurface),
                   softWrap: true,
                 ),
               ),
@@ -1831,7 +1960,8 @@ class _MinutesTabState extends ConsumerState<_MinutesTab> {
                 padding: const EdgeInsets.all(10),
                 child: Text(
                   content2,
-                  style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface),
+                  style: TextStyle(
+                      fontSize: 13, color: theme.colorScheme.onSurface),
                   softWrap: true,
                 ),
               ),
@@ -1868,7 +1998,10 @@ class _MinutesTabState extends ConsumerState<_MinutesTab> {
                   alignment: Alignment.centerLeft,
                   child: Text(
                     labels[i],
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: theme.colorScheme.onSurface),
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 11,
+                        color: theme.colorScheme.onSurface),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -1881,12 +2014,14 @@ class _MinutesTabState extends ConsumerState<_MinutesTab> {
                   padding: const EdgeInsets.all(8),
                   child: Text(
                     values[i],
-                    style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurface),
+                    style: TextStyle(
+                        fontSize: 11, color: theme.colorScheme.onSurface),
                     softWrap: true,
                   ),
                 ),
               ),
-              if (i < labels.length - 1) Container(width: 1, color: borderColor),
+              if (i < labels.length - 1)
+                Container(width: 1, color: borderColor),
             ],
           ],
         ),
@@ -2012,7 +2147,7 @@ class _SummaryTabState extends ConsumerState<_SummaryTab> {
     buffer.writeln('AI 요약');
     buffer.writeln('---');
     buffer.writeln(result.summaryText);
-    
+
     if (result.keyDecisions.isNotEmpty) {
       buffer.writeln('\n주요 결정 사항');
       buffer.writeln('---');
@@ -2020,7 +2155,7 @@ class _SummaryTabState extends ConsumerState<_SummaryTab> {
         buffer.writeln('${i + 1}. ${result.keyDecisions[i]}');
       }
     }
-    
+
     if (result.nextSteps.isNotEmpty) {
       buffer.writeln('\n다음 단계');
       buffer.writeln('---');
@@ -2040,7 +2175,9 @@ class _SummaryTabState extends ConsumerState<_SummaryTab> {
       return Text(text, style: style);
     }
 
-    final matches = RegExp(RegExp.escape(_searchQuery), caseSensitive: false).allMatches(text).toList();
+    final matches = RegExp(RegExp.escape(_searchQuery), caseSensitive: false)
+        .allMatches(text)
+        .toList();
     if (matches.isEmpty) {
       return Text(text, style: style);
     }
@@ -2054,7 +2191,8 @@ class _SummaryTabState extends ConsumerState<_SummaryTab> {
       }
       spans.add(TextSpan(
         text: text.substring(match.start, match.end),
-        style: const TextStyle(backgroundColor: Colors.yellow, color: Colors.black),
+        style: const TextStyle(
+            backgroundColor: Colors.yellow, color: Colors.black),
       ));
       lastMatchEnd = match.end;
     }
@@ -2133,12 +2271,15 @@ class _SummaryTabState extends ConsumerState<_SummaryTab> {
                       onSearchChanged: (q) => _updateSearch(q, result),
                       onNext: () {
                         setState(() {
-                          _currentMatchIndex = (_currentMatchIndex + 1) % _matchCount;
+                          _currentMatchIndex =
+                              (_currentMatchIndex + 1) % _matchCount;
                         });
                       },
                       onPrevious: () {
                         setState(() {
-                          _currentMatchIndex = (_currentMatchIndex - 1 + _matchCount) % _matchCount;
+                          _currentMatchIndex =
+                              (_currentMatchIndex - 1 + _matchCount) %
+                                  _matchCount;
                         });
                       },
                       onClose: () => setState(() {
@@ -2177,15 +2318,15 @@ class _SummaryTabState extends ConsumerState<_SummaryTab> {
                             style: Theme.of(context).textTheme.titleMedium,
                           ),
                           const Divider(),
-                          ...result.keyDecisions.asMap().entries.map((e) =>
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 4),
-                              child: _buildHighlightedText(
-                                '${e.key + 1}. ${e.value}',
-                                const TextStyle(height: 1.6),
+                          ...result.keyDecisions.asMap().entries.map(
+                                (e) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 4),
+                                  child: _buildHighlightedText(
+                                    '${e.key + 1}. ${e.value}',
+                                    const TextStyle(height: 1.6),
+                                  ),
+                                ),
                               ),
-                            ),
-                          ),
                         ],
                         // 다음 단계 섹션 (SPEC-APP-004 REQ-APP-043)
                         if (result.nextSteps.isNotEmpty) ...[
@@ -2195,15 +2336,15 @@ class _SummaryTabState extends ConsumerState<_SummaryTab> {
                             style: Theme.of(context).textTheme.titleMedium,
                           ),
                           const Divider(),
-                          ...result.nextSteps.asMap().entries.map((e) =>
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 4),
-                              child: _buildHighlightedText(
-                                '${e.key + 1}. ${e.value}',
-                                const TextStyle(height: 1.6),
+                          ...result.nextSteps.asMap().entries.map(
+                                (e) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 4),
+                                  child: _buildHighlightedText(
+                                    '${e.key + 1}. ${e.value}',
+                                    const TextStyle(height: 1.6),
+                                  ),
+                                ),
                               ),
-                            ),
-                          ),
                         ],
                       ],
                     ),
@@ -2329,7 +2470,8 @@ class _MindMapRootNode extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.account_tree_outlined, color: theme.colorScheme.primary),
+              Icon(Icons.account_tree_outlined,
+                  color: theme.colorScheme.primary),
               const SizedBox(width: 8),
               Text(
                 title,
@@ -2474,7 +2616,8 @@ class _MindMapRelations extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.hub_outlined, size: 20, color: theme.colorScheme.primary),
+                Icon(Icons.hub_outlined,
+                    size: 20, color: theme.colorScheme.primary),
                 const SizedBox(width: 8),
                 Text(
                   '관계',
@@ -2673,8 +2816,7 @@ class _ActionItemCardListState extends State<_ActionItemCardList> {
       itemBuilder: (context, index) {
         final item = widget.items[index];
         final done = _checked[index];
-        final priorityColor =
-            _priorityColors[item.priority] ?? Colors.orange;
+        final priorityColor = _priorityColors[item.priority] ?? Colors.orange;
 
         return Card(
           margin: const EdgeInsets.only(bottom: 8),
@@ -2844,9 +2986,7 @@ class _QATabState extends ConsumerState<_QATab> {
               const SizedBox(width: 8),
               IconButton.filled(
                 icon: const Icon(Icons.send),
-                onPressed: qaState.isLoading
-                    ? null
-                    : () => _send(qaState),
+                onPressed: qaState.isLoading ? null : () => _send(qaState),
               ),
             ],
           ),
@@ -2877,9 +3017,8 @@ class _ChatBubble extends StatelessWidget {
     final bg = isUser
         ? theme.colorScheme.primary
         : theme.colorScheme.surfaceContainerHighest;
-    final fg = isUser
-        ? theme.colorScheme.onPrimary
-        : theme.colorScheme.onSurface;
+    final fg =
+        isUser ? theme.colorScheme.onPrimary : theme.colorScheme.onSurface;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -2959,14 +3098,19 @@ class _ShareDialogState extends ConsumerState<_ShareDialog> {
             return ListTile(
               leading: CircleAvatar(
                 backgroundColor: theme.colorScheme.primaryContainer,
-                child: Text(team.name.isNotEmpty ? team.name[0].toUpperCase() : '?'),
+                child: Text(
+                    team.name.isNotEmpty ? team.name[0].toUpperCase() : '?'),
               ),
               title: Text(team.name),
               subtitle: team.description != null && team.description!.isNotEmpty
-                  ? Text(team.description!, maxLines: 1, overflow: TextOverflow.ellipsis)
+                  ? Text(team.description!,
+                      maxLines: 1, overflow: TextOverflow.ellipsis)
                   : null,
               trailing: _isSharing
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2))
                   : const Icon(Icons.send),
               onTap: _isSharing ? null : () => _shareToTeam(team),
             );

@@ -1,8 +1,9 @@
 ---
 id: SPEC-REFACTOR-001
 version: 1.0.0
-status: draft
+status: completed
 created: 2026-06-03
+updated: 2026-06-14
 author: MoAI
 ---
 
@@ -298,9 +299,17 @@ Scenario: Anti-pattern 제거 검증
 
 ## Definition of Done
 
-- [ ] Phase 1: HTTPException 0건, bare dict 0건, 에러 헬퍼 테스트 통과
-- [ ] Phase 2: 서비스 파일 이동 완료, import 경로 업데이트, 전체 테스트 통과
-- [ ] Phase 3: 모듈레벨 인스턴스 0건, DI 패턴 적용, 테스트 통과
-- [ ] Phase 4: 도메인 그룹핑 완료, main.py 간소화, URL 유지
-- [ ] 전체: ruff lint 0건, black 포맷 일치, 85%+ 커버리지 유지
-- [ ] 전체: 기존 테스트 모두 통과, API 계약 변경 없음
+- [x] Phase 1: HTTPException 0건, bare dict 0건, 에러 헬퍼 테스트 통과
+- [x] Phase 2: 서비스 파일 이동 완료, import 경로 업데이트, 전체 테스트 통과
+- [x] Phase 3: 모듈레벨 인스턴스 0건, DI 패턴 적용, 테스트 통과
+- [x] Phase 4: 도메인 그룹핑 완료, main.py 간소화, URL 유지
+- [x] 전체: ruff lint 0건, black 포맷 일치, 85%+ 커버리지 유지
+- [x] 전체: 기존 테스트 모두 통과, API 계약 변경 없음
+
+2026-06-14 재검증:
+- `find backend/app/api/v1 -maxdepth 1 -type f -name '*.py' ! -name '__init__.py' ! -name 'registry.py' -print` -> 출력 없음(flat 라우터 0건)
+- `tests/e2e/test_pipeline_e2e.py` 포함 backend 전체 suite -> `3323 passed, 16 skipped`, coverage `98.62%`
+- `ruff check backend` -> `All checks passed!`
+- `ruff format --check backend` -> `394 files already formatted`
+- `mypy backend` -> `Success: no issues found in 394 source files`
+- route registry 중복 등록 제거 후 live route method entries `161`, unique `161`, duplicates `0`

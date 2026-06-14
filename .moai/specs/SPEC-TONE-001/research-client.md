@@ -389,7 +389,7 @@ File: `.moai/specs/SPEC-SEARCH-002/spec.md` (206 lines). Differences:
 ---
 id: SPEC-ANALYTICS-001
 version: "1.0.0"
-status: draft
+status: completed
 created: 2026-XX-XX
 author: MoAI
 priority: P2

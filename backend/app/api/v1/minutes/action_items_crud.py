@@ -16,7 +16,8 @@ SPEC-ACTION-001: 고급 액션 아이템 관리 API
 import uuid
 from datetime import datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import status as http_status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -56,6 +57,56 @@ class BulkOperationResult(BaseModel):
     errors: list[str] = Field(description="에러 메시지 목록")
 
 
+def _to_action_item_response(action_item: object) -> ActionItemResponse:
+    """Convert ORM/service objects into the declared API response schema."""
+    due_date = getattr(action_item, "due_date", None)
+    status = ActionItemStatus(str(getattr(action_item, "status")))
+    now = datetime.utcnow()
+    is_complete = status == ActionItemStatus.completed
+    is_overdue = bool(due_date and due_date < now and not is_complete)
+    time_remaining = None
+    if due_date and not is_complete:
+        time_remaining = (due_date - now).total_seconds() / 3600
+
+    progress_percentage = 0.0
+    if status == ActionItemStatus.in_progress:
+        progress_percentage = 50.0
+    elif is_complete:
+        progress_percentage = 100.0
+
+    return ActionItemResponse(
+        id=getattr(action_item, "id"),
+        title=getattr(action_item, "title"),
+        description=getattr(action_item, "description", None),
+        status=status,
+        priority=ActionItemPriority(str(getattr(action_item, "priority"))),
+        assignee_id=getattr(action_item, "assignee_id", None),
+        assignee_name=None,
+        created_by=getattr(action_item, "created_by"),
+        created_by_name="",
+        created_at=getattr(action_item, "created_at"),
+        updated_at=getattr(action_item, "updated_at"),
+        due_date=due_date,
+        completed_at=getattr(action_item, "completed_at", None),
+        completed_by=getattr(action_item, "completed_by", None),
+        completed_by_name=None,
+        completion_notes=getattr(action_item, "completion_notes", None),
+        meeting_id=getattr(action_item, "meeting_id", None),
+        meeting_title=None,
+        tags=list(getattr(action_item, "tags", None) or []),
+        estimated_hours=getattr(action_item, "estimated_hours", None),
+        actual_hours=getattr(action_item, "actual_hours", None),
+        category=getattr(action_item, "category", None),
+        is_overdue=is_overdue,
+        time_remaining_hours=time_remaining,
+        progress_percentage=progress_percentage,
+    )
+
+
+def _to_action_item_responses(items: list[object]) -> list[ActionItemResponse]:
+    return [_to_action_item_response(item) for item in items]
+
+
 # ---------------------------------------------------------------------------
 # 기본 CRUD 엔드포인트
 # ---------------------------------------------------------------------------
@@ -88,25 +139,22 @@ async def list_action_items(
     """사용자의 액션 아이템 목록을 조회합니다."""
     offset = (page - 1) * page_size
 
-    filters = {
-        "status": status,
-        "priority": priority,
-        "assignee_id": assignee_id or user.id,  # 기본값은 현재 사용자
-        "meeting_id": meeting_id,
-        "due_from": due_from,
-        "due_to": due_to,
-        "is_overdue": is_overdue,
-    }
-
-    # None 값 제거
-    filters = {k: v for k, v in filters.items() if v is not None}
-
     items, total = await svc.list_items(
-        session=db, user_id=user.id, **filters, limit=page_size, offset=offset
+        session=db,
+        user_id=user.id,
+        status=status,
+        priority=priority,
+        assignee_id=assignee_id or user.id,
+        meeting_id=meeting_id,
+        due_from=due_from,
+        due_to=due_to,
+        is_overdue=is_overdue,
+        limit=page_size,
+        offset=offset,
     )
 
     return ActionItemListResponse(
-        items=items,
+        items=_to_action_item_responses(list(items)),
         total=total,
         page=page,
         page_size=page_size,
@@ -116,7 +164,7 @@ async def list_action_items(
 @router.post(
     "",
     response_model=ActionItemResponse,
-    status_code=status.HTTP_201_CREATED,
+    status_code=http_status.HTTP_201_CREATED,
     summary="새 액션 아이템 생성",
     description="새로운 액션 아이템을 생성합니다.",
 )
@@ -144,7 +192,7 @@ async def create_action_item(
         created_by=user.id,
     )
 
-    return action_item
+    return _to_action_item_response(action_item)
 
 
 @router.get(
@@ -164,10 +212,11 @@ async def get_action_item(
 
     if not action_item:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=f"액션 아이템을 찾을 수 없습니다: {id}"
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            detail=f"액션 아이템을 찾을 수 없습니다: {id}",
         )
 
-    return action_item
+    return _to_action_item_response(action_item)
 
 
 @router.patch(
@@ -188,7 +237,8 @@ async def update_action_item(
 
     if not action_item:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=f"액션 아이템을 찾을 수 없습니다: {id}"
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            detail=f"액션 아이템을 찾을 수 없습니다: {id}",
         )
 
     logger.info(
@@ -197,12 +247,12 @@ async def update_action_item(
         updated_by=user.id,
     )
 
-    return action_item
+    return _to_action_item_response(action_item)
 
 
 @router.delete(
     "/{id}",
-    status_code=status.HTTP_204_NO_CONTENT,
+    status_code=http_status.HTTP_204_NO_CONTENT,
     summary="액션 아이템 삭제",
     description="액션 아이템을 삭제합니다.",
 )
@@ -217,7 +267,8 @@ async def delete_action_item(
 
     if not success:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=f"액션 아이템을 찾을 수 없습니다: {id}"
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            detail=f"액션 아이템을 찾을 수 없습니다: {id}",
         )
 
     logger.info(
@@ -258,7 +309,8 @@ async def get_meeting_action_items(
 
     if not meeting:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=f"회의록을 찾을 수 없습니다: {meeting_id}"
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            detail=f"회의록을 찾을 수 없습니다: {meeting_id}",
         )
 
     items, total = await svc.list_items(
@@ -266,7 +318,7 @@ async def get_meeting_action_items(
     )
 
     return ActionItemListResponse(
-        items=items,
+        items=_to_action_item_responses(list(items)),
         total=total,
         page=1,
         page_size=len(items),
@@ -301,7 +353,8 @@ async def complete_action_item(
 
     if not action_item:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=f"액션 아이템을 찾을 수 없습니다: {id}"
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            detail=f"액션 아이템을 찾을 수 없습니다: {id}",
         )
 
     logger.info(
@@ -310,7 +363,7 @@ async def complete_action_item(
         completed_by=user.id,
     )
 
-    return action_item
+    return _to_action_item_response(action_item)
 
 
 @router.get(
@@ -345,14 +398,14 @@ async def batch_update_action_items(
 ) -> BulkOperationResult:
     """액션 아이템 배치 업데이트를 수행합니다."""
     result = await svc.batch_update(
-        session=db, user_id=user.id, item_ids=payload.item_ids, update_payload=payload.update_data
+        session=db, user_id=user.id, item_ids=payload.item_ids, update_data=payload.update_data
     )
 
     logger.info(
         "액션 아이템 배치 업데이트 완료",
         total_count=len(payload.item_ids),
-        success_count=result.success_count,
-        failure_count=result.failure_count,
+        success_count=result["success_count"],
+        failure_count=result["failure_count"],
     )
 
-    return result
+    return BulkOperationResult(**result)

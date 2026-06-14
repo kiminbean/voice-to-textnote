@@ -3,6 +3,7 @@ FastAPI 메인 앱
 REQ-STT-021: lifespan에서 모델 사전 로드 (warm-up)
 """
 
+import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -26,6 +27,7 @@ from backend.app.middleware.security_headers import SecurityHeadersMiddleware
 from backend.app.middleware.validators import PathValidationMiddleware
 from backend.ml.diarization_engine import DiarizationEngine
 from backend.ml.stt_engine import WhisperEngine
+from backend.ml.tone_engine import ToneEngine
 from backend.utils.logger import get_logger, setup_logging
 
 setup_logging(settings.log_level)
@@ -91,12 +93,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     await validate_startup()
 
     # STT 모델 사전 로드 (REQ-STT-021)
-    try:
-        stt_engine = WhisperEngine.get_instance()
-        stt_engine.load(settings.whisper_model)
-        logger.info("STT 모델 사전 로드 완료", model=settings.whisper_model)
-    except Exception as e:
-        logger.error("STT 모델 사전 로드 실패 (서버는 계속 실행)", error=str(e))
+    if os.environ.get("PYTEST_CURRENT_TEST"):
+        logger.info("테스트 실행 중: STT 모델 사전 로드 건너뜀")
+    else:
+        try:
+            stt_engine = WhisperEngine.get_instance()
+            stt_engine.load(settings.whisper_model)
+            logger.info("STT 모델 사전 로드 완료", model=settings.whisper_model)
+        except Exception as e:
+            logger.error("STT 모델 사전 로드 실패 (서버는 계속 실행)", error=str(e))
 
     # 화자 분리 모델 사전 로드 (REQ-DIA-011)
     if settings.huggingface_token:
@@ -111,6 +116,18 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             logger.error("화자 분리 모델 사전 로드 실패 (서버는 계속 실행)", error=str(e))
     else:
         logger.warning("HUGGINGFACE_TOKEN 미설정 - 화자 분리 모델 로드 건너뜀")
+
+    # SPEC-TONE-001: 톤 분석 엔진 사전 로드 (REQ-TONE-001)
+    # REQ-TONE-011: tone_model이 빈 문자열이면 기능 비활성화 — 웜업도 건너뜀
+    if settings.tone_model:
+        try:
+            tone_engine = ToneEngine.get_instance()
+            tone_engine._initialize()
+            logger.info("톤 분석 엔진 사전 로드 완료")
+        except Exception as e:
+            logger.error("톤 분석 엔진 사전 로드 실패 (서버는 계속 실행)", error=str(e))
+    else:
+        logger.info("tone_model 미설정 - 톤 분석 기능 비활성화")
 
     yield
 

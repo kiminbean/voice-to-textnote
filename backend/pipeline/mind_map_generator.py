@@ -114,12 +114,13 @@ class MindMapGenerator:
             response_format={"type": "json_object"},
         )
 
-        response_text = response.choices[0].message.content
+        response_text = response.choices[0].message.content or ""
+        usage = response.usage
 
         logger.info(
             "OpenAI API 마인드맵 응답 수신",
-            input_tokens=response.usage.prompt_tokens,
-            output_tokens=response.usage.completion_tokens,
+            input_tokens=usage.prompt_tokens if usage else 0,
+            output_tokens=usage.completion_tokens if usage else 0,
         )
 
         return self.parse_response(response_text)

@@ -1,9 +1,9 @@
 ---
 id: SPEC-MOBILE-004
-version: "1.0.0"
-status: draft
+version: "1.0.5"
+status: completed
 created: "2026-06-13"
-updated: "2026-06-13"
+updated: "2026-06-15"
 author: sisyphus
 priority: high
 issue_number: 24
@@ -17,6 +17,11 @@ depends_on: SPEC-MOBILE-001
 | 버전 | 날짜 | 변경 내용 | 작성자 |
 |------|------|----------|--------|
 | 1.0.0 | 2026-06-13 | 초안 작성 — SPEC-MOBILE-001 Phase D/E 완성 + 심층 코드 분석 기반 결함 수정 | sisyphus |
+| 1.0.1 | 2026-06-15 | strict release readiness를 self-hosted GitHub Actions `workflow_dispatch` 게이트로 승격 | Codex |
+| 1.0.2 | 2026-06-15 | GitHub mobile release environment preflight 추가 | Codex |
+| 1.0.3 | 2026-06-15 | GitHub mobile release environment 구성 스크립트 추가 | Codex |
+| 1.0.4 | 2026-06-15 | self-hosted macOS runner 후보 장비 preflight 추가 | Codex |
+| 1.0.5 | 2026-06-15 | Release E2E evidence scaffold 생성 스크립트 추가 | Codex |
 
 ---
 
@@ -306,7 +311,7 @@ firebase-admin>=6.0
 ## 7. 구현 현황
 
 **버전**: v1.0.0
-**진행 상태**: draft (SPEC 생성 완료, 구현 대기)
+**진행 상태**: completed (구현 및 검증 완료)
 
 ### 심층 코드 분석 기반 발견사항
 
@@ -340,8 +345,36 @@ firebase-admin>=6.0
 | iOS 실기기 필요 | Push/백그라운드 녹음은 시뮬레이터로 완전 검증 불가 |
 | 기존 파이프라인 영향 | Celery hook 연동 시 회귀 테스트 필수 |
 
+### 2026-06-14 재검증
+
+- Backend Firebase/Push wiring 포함 전체 회귀: `venv/bin/python -m pytest backend -q` -> `3323 passed, 16 skipped`, coverage `98.62%`
+- Device token registration/unregistration focused gate: `venv/bin/python -m pytest -o addopts="" backend/tests/unit/test_devices_api_coverage.py backend/tests/test_push_service_db.py backend/tests/test_device_token_migration.py -q` -> `25 passed`; `device_tokens.device_id`와 `(user_id, device_id)` unregister로 요청한 기기만 비활성화.
+- Flutter notification/device client tests 포함 전체 회귀: `cd client && flutter test` -> `324 passed`
+- Native build readiness: `cd client && ./scripts/verify_mobile.sh --native` -> Android APK와 iOS no-codesign Runner.app 빌드 성공
+- Release readiness preflight: `python3 client/scripts/verify_release_readiness.py` -> `0 errors` (strict 외부 secret/device 검사는 별도 `--strict`; Android serial은 `adb devices -l`, iOS UDID는 `xcrun devicectl list devices`에서 실제 연결 상태까지 확인)
+- 실제 Firebase Console 프로젝트, APNs key, Apple Developer provisioning, 실기기 Push 수신 E2E는 외부 계정/장비 의존으로 남음.
+
+### 2026-06-15 App Store/Play 제출 자산 게이트 보강
+
+- `client/scripts/verify_release_readiness.py` 기본 모드가 `docs/screenshot-guide.md`, `docs/privacy-policy.md`, App Store/Google Play 메타데이터, Privacy Policy URL, 스크린샷 시나리오, 1024x1024 무알파 앱 아이콘을 정적으로 검증한다.
+- `docs/app-store-metadata.md`의 Privacy Policy URL은 제출 전 placeholder가 아닌 `https://voicetextnote.com/privacy`로 고정했다.
+- `docs/screenshot-guide.md`는 iPhone 6.7"/6.5", iPad 12.9", Android phone/tablet 산출물 체크와 샘플 데이터 사용 원칙을 포함한다.
+- 검증: `python3 -m py_compile client/scripts/verify_release_readiness.py && python3 client/scripts/verify_release_readiness.py` -> `release_readiness: 0 errors, 2 warnings`.
+- strict 검증: `python3 client/scripts/verify_release_readiness.py --strict` -> release 문서 placeholder와 제출 자산 checks는 통과하고, Firebase/APNs/App Store Connect/실기기 입력 및 `RELEASE_E2E_EVIDENCE_PATH` 누락으로 예상 실패한다. 증거 파일은 `docs/release-e2e-evidence.example.json` 구조를 따라 Push/딥링크/백그라운드 녹음/HTTP 정책/PDF 공유 시나리오 pass 증거를 포함해야 한다.
+- GitHub Actions strict gate: `.github/workflows/mobile.yml`의 `workflow_dispatch` `release-strict` job은 `self-hosted`, `macOS`, `mobile-release` runner에서 `client/scripts/verify_mobile.sh --native` 후 `python3 client/scripts/verify_release_readiness.py --strict`를 실행한다. 필요한 Firebase/APNs/App Store Connect secrets, Android/iOS device vars, `evidence_path` 입력은 `docs/e2e-device-checklist.md`에 문서화되어 있으며, regression test가 workflow snippet을 고정한다.
+- GitHub release environment preflight: `python3 client/scripts/verify_github_mobile_release_env.py --repo kiminbean/voice-to-textnote`는 repository Environment, required secret/variable names, self-hosted runner labels를 확인한다. 현재 GitHub `mobile-release` Environment는 생성되어 통과하지만, self-hosted runner `0`개와 production secret/variable 미설정으로 strict CI 실행 전 외부 설정이 아직 필요하다.
+- GitHub release environment configure: `python3 client/scripts/configure_github_mobile_release_env.py --repo kiminbean/voice-to-textnote`는 같은 이름의 로컬 환경변수에서 GitHub Environment secrets/vars를 등록한 뒤 verifier를 실행한다. secret 값이 없는 현재 세션에서는 dry-run/unit tests로 명령 surface만 검증했고, 실제 production secret 등록은 외부 보안 입력이 필요하다.
+- Self-hosted runner 후보 장비 preflight: `ANDROID_DEVICE_SERIAL=<serial> IOS_DEVICE_UDID=<udid> python3 client/scripts/verify_mobile_release_runner.py`는 macOS, Flutter/Android SDK 36/Xcode/CocoaPods, Android `adb device`, iOS `devicectl available` 상태를 확인한다. 현재 로컬은 Flutter/Android/Xcode는 준비됐지만 Android 실기기 없음, iOS 기기는 `unavailable`로 strict runner 조건을 충족하지 못한다.
+- Release E2E evidence scaffold: `python3 client/scripts/create_release_e2e_evidence.py --output docs/release-e2e-evidence.json`는 현재 git revision, device env, artifact path, 모든 required scenario key를 포함한 JSON을 생성한다. 생성 직후 scenario는 `pass: false`라 strict readiness를 통과할 수 없고, 실제 물리 기기 관측값을 채워야만 최종 release evidence가 된다.
+
+### 2026-06-15 DB 마이그레이션 실행 게이트 보강
+
+- `backend/tests/test_device_token_migration.py`가 임시 SQLite DB에 `DATABASE_URL=sqlite+aiosqlite:///...`를 주입하고 `python -m alembic upgrade head`를 실제 실행한다.
+- 실행 후 `device_tokens.device_id`, `ix_device_tokens_device_id`, `ix_device_tokens_user_device_id`, `alembic_version=003_add_device_id_to_device_tokens`를 SQLite PRAGMA/쿼리로 검증한다.
+- 검증: `venv/bin/python -m pytest -o addopts="" backend/tests/test_device_token_migration.py -q` -> `6 passed, 5 warnings`.
+
 ---
 
 *SPEC ID: SPEC-MOBILE-004*
 *생성일: 2026-06-13*
-*상태: draft*
+*상태: completed*

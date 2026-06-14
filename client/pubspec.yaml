@@ -58,6 +58,7 @@ dependencies:
   permission_handler: ^11.3.0
   url_launcher: ^6.3.0
   web_socket_channel: ^3.0.1
+  whisper_ggml_plus: ^1.5.2
 
 dev_dependencies:
   flutter_test:

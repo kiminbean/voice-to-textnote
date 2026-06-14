@@ -48,6 +48,12 @@ dependencies = [
     "pydantic[email]>=2.9",
     # SPEC-MOBILE-001: FCM 푸시 알림 의존성
     "firebase-admin>=6.0",
+    # SPEC-TONE-001: 발화 톤/운율 분석 (REQ-TONE-001)
+    # opensmile은 AGPL-3.0 — 로컬 전용 처리 환경에서만 사용 (REQ-TONE-014).
+    # 네트워크 서비스 형태 외부 제공 금지 (README "로컬 전용 처리" 정책 준수).
+    "opensmile>=2.6.0",
+    # librosa: F0(pYIN), RMS energy, speaking rate 추출
+    "librosa>=0.10.0",
 ]
 
 [project.optional-dependencies]

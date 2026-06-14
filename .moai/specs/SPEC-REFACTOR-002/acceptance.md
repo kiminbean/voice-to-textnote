@@ -1,7 +1,7 @@
 ---
 id: SPEC-REFACTOR-002
 type: acceptance
-status: draft
+status: completed
 parent_spec: SPEC-REFACTOR-001
 decisions_resolved: true
 ---

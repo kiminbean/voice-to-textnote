@@ -391,6 +391,19 @@
 - **SSE 실시간 진행률**: task:sentiment:status:{task_id} Redis 키로 진행률 스트리밍
 - **Flutter 전용 탭**: _SentimentTab에서 전체 분포, 화자별 통계, 타임라인 시각화, ErrorRetryWidget 제공
 
+### 26. 발화 톤/운율 분석 (Tone Analysis)
+
+음향 특징 기반 발화 톤 분석 기능.
+
+- **엔진**: opensmile eGeMAPSv02 (88차원 음향 특징) + librosa (F0, RMS energy, speaking rate)
+- **분류 체계**: 5-class (calm/excited/authoritative/hesitant/monotone) + unknown (confidence < 0.4)
+- **처리 파이프라인**: DIA 완료 후 minutes_task와 병렬 실행, 세그먼트별 waveform 슬라이싱 후 prosody 추출
+- **오디오 보존**: DIA wav를 tone_task 완료 후까지 보존 (DUAL-PATH: 비활성화 시 기존 즉시 삭제 유지)
+- **API**: `/api/v1/tone/{task_id}`, `/api/v1/tone/meeting/{meeting_id}` (tone_model 빈 값 시 503)
+- **Flutter**: 감정 분석 탭 내 tone timeline 섹션 (색상 매핑, 에러 격리, 재시도 버튼)
+- **메모리 보호**: 19.2GB 초과 시 MemoryError로 분석 중단 (STT/DIA 우선 보호)
+- **라이선스**: opensmile AGPL-3.0 (로컬 전용 처리로 회피 가능)
+
 ## 다음 단계 (Phase 8 계획)
 
 ### 향후 로드맵

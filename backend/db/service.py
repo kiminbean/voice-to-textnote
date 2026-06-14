@@ -183,4 +183,4 @@ class ResultService:
         stmt = delete(TaskResult).where(TaskResult.task_id == task_id)
         result = await session.execute(stmt)
         await session.commit()
-        return result.rowcount > 0
+        return getattr(result, "rowcount", 0) > 0

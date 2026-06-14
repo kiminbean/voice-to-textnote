@@ -1,7 +1,6 @@
 // 검색 필터 bottom sheet 위젯 (SPEC-SEARCH-002 Phase 4)
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:voice_to_textnote/models/search_result.dart';
 import 'package:voice_to_textnote/providers/search_provider.dart';
 
 // 검색 필터 bottom sheet
@@ -56,7 +55,8 @@ class _SearchFilterBottomSheetState
       }
     }
 
-    _speakerController = TextEditingController(text: widget.initialFilter.speaker ?? '');
+    _speakerController =
+        TextEditingController(text: widget.initialFilter.speaker ?? '');
     _hasActionItems = widget.initialFilter.hasActionItems;
     _hasKeyDecisions = widget.initialFilter.hasKeyDecisions;
   }
@@ -129,7 +129,7 @@ class _SearchFilterBottomSheetState
   // 정렬 순서 드롭다운
   Widget _buildSortDropdown() {
     return DropdownButtonFormField<String>(
-      value: _sort,
+      initialValue: _sort,
       decoration: const InputDecoration(
         labelText: '정렬 순서',
         border: OutlineInputBorder(),
@@ -248,9 +248,8 @@ class _SearchFilterBottomSheetState
   Future<void> _selectDate({required bool from}) async {
     final picked = await showDatePicker(
       context: context,
-      initialDate: from
-          ? _dateFrom ?? DateTime.now()
-          : _dateTo ?? DateTime.now(),
+      initialDate:
+          from ? _dateFrom ?? DateTime.now() : _dateTo ?? DateTime.now(),
       firstDate: DateTime(2020),
       lastDate: DateTime.now().add(const Duration(days: 365)),
     );

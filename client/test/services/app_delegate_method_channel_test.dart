@@ -2,6 +2,8 @@
 // AC-001: AppDelegate.swift에 3개 MethodChannel 핸들러가 등록되어 있다
 // @MX:NOTE: 네이티브 동작 검증은 아님 — MethodChannel 인터페이스 계약 검증
 // Flutter 3.44.1 호환: setMockMethodCallHandler 대신 handlePlatformMessage 사용
+import 'dart:io';
+
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -58,6 +60,44 @@ void main() {
     });
   });
 
+  group('REQ-001/003: AppDelegate.swift 정적 계약', () {
+    late String appDelegate;
+
+    setUpAll(() {
+      appDelegate = File('ios/Runner/AppDelegate.swift').readAsStringSync();
+    });
+
+    test('녹음 MethodChannel과 5개 호환 메서드를 구현해야 함', () {
+      expect(
+          appDelegate,
+          contains(
+              'private let channelName = "com.voicetextnote.app/recording"'));
+      expect(appDelegate, contains('FlutterMethodChannel('));
+      expect(appDelegate, contains('method == "startBackgroundTask"'));
+      expect(appDelegate, contains('method == "stopBackgroundTask"'));
+      expect(appDelegate, contains('method == "flushRecording"'));
+      expect(appDelegate, contains('method == "startForegroundService"'));
+      expect(appDelegate, contains('method == "stopForegroundService"'));
+    });
+
+    test('iOS 백그라운드 태스크와 오디오 세션 flush를 구현해야 함', () {
+      expect(appDelegate, contains('UIApplication.shared.beginBackgroundTask'));
+      expect(appDelegate, contains('UIApplication.shared.endBackgroundTask'));
+      expect(appDelegate, contains('AVAudioSession.sharedInstance()'));
+      expect(appDelegate, contains('try session.setActive(true'));
+    });
+
+    test('인터럽션과 route change를 Dart 이벤트로 전달해야 함', () {
+      expect(appDelegate, contains('AVAudioSession.interruptionNotification'));
+      expect(appDelegate, contains('AVAudioSession.routeChangeNotification'));
+      expect(appDelegate, contains('method: "onInterruptionBegin"'));
+      expect(appDelegate, contains('method: "onInterruptionEnd"'));
+      expect(appDelegate, contains('method: "onRouteChange"'));
+      expect(appDelegate, contains('"shouldResume": shouldResume'));
+      expect(appDelegate, contains('"reason": reasonString'));
+    });
+  });
+
   group('REQ-001: 네이티브→Dart 이벤트 인터페이스', () {
     test('onInterruptionBegin 이벤트를 수신할 수 있어야 함', () async {
       bool? received;
@@ -69,7 +109,8 @@ void main() {
         return null;
       });
 
-      ServicesBinding.instance.defaultBinaryMessenger.handlePlatformMessage(
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .handlePlatformMessage(
         channelName,
         const StandardMethodCodec().encodeMethodCall(
           const MethodCall('onInterruptionBegin'),
@@ -91,7 +132,8 @@ void main() {
         return null;
       });
 
-      ServicesBinding.instance.defaultBinaryMessenger.handlePlatformMessage(
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .handlePlatformMessage(
         channelName,
         const StandardMethodCodec().encodeMethodCall(
           const MethodCall('onInterruptionEnd', true),
@@ -116,7 +158,8 @@ void main() {
         return null;
       });
 
-      ServicesBinding.instance.defaultBinaryMessenger.handlePlatformMessage(
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .handlePlatformMessage(
         channelName,
         const StandardMethodCodec().encodeMethodCall(
           const MethodCall('onRouteChange', {'reason': 'oldDeviceUnavailable'}),

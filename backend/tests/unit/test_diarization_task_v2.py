@@ -48,6 +48,8 @@ def _default_settings(tmp_path):
     s.dia_chunk_duration_minutes = 10
     s.dia_chunk_overlap_seconds = 5
     s.dia_target_sample_rate = 0
+    # SPEC-TONE-001: tone_model 기본값은 빈 문자열 (기능 비활성화)
+    s.tone_model = ""
     return s
 
 

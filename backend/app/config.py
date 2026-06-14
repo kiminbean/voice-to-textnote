@@ -87,6 +87,14 @@ class Settings(BaseSettings):
     # 기존 MAX_CONCURRENT_SENTIMENT=3 하드코딩에서 설정 이관
     max_concurrent_sentiment: int = Field(default=3, ge=1, le=10)
 
+    # SPEC-TONE-001: 발화 톤/운율 분석 설정 (REQ-TONE-001, REQ-TONE-011)
+    # REQ-TONE-011: 빈 문자열이면 tone 기능 전체 비활성화 (API 503, Celery 미트리거)
+    tone_model: str = ""
+    tone_result_ttl: int = 86400  # 24시간 Redis 캐시 TTL (초)
+    max_concurrent_tone: int = 1  # 메모리 보호를 위한 동시 실행 제한
+    # REQ-TONE-002: 이 길이 미만 세그먼트는 F0/RMS 추출 불안정으로 분석 스킵
+    tone_min_segment_duration_sec: float = 0.5
+
     # -------------------------------------------------------------------------
     # SPEC-DB-001: 데이터베이스 설정 (REQ-DB-001, REQ-DB-002, REQ-DB-003)
     # -------------------------------------------------------------------------

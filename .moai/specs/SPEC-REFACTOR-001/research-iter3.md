@@ -98,7 +98,7 @@ REQ-ROUTE-001의 스케치(~24개 명명)는 실제 35개 인벤토리와 불일
 - AC-C1: `pytest tests/ --ignore=tests/e2e/test_pipeline_e2e.py` → 0 failed. ✅ **충족 (2478 passed, 4 skipped)**.
 - AC-C2: **라우트 테이블 스냅샷** — 재배치 전후 `app.routes`의 (path, methods) 집합 동일 (A-1 기계적 증명). ✅ **충족 (135 routes invariant, _route_snapshot_baseline.json)**.
 - AC-C3: main.py `include_router` 호출 개수 대폭 감소 (루프 1개소 집약). ✅ **충족 (35→1)**.
-- AC-C4: `ls backend/app/api/v1/*.py` (registry.py, __init__.py 제외) → flat 라우터 0건. ❌ **Deferred (범위 축소: registry-only, 파일 이동 없음)** — REQ-RM-C1(도메인 그룹핑 파일 재배치) 미수행, 라우터는 flat 구조 유지. 대신 registry.py 도입으로 main.py 보일러플레이트 축소(AC-C3)·라우트 불변(AC-C2) 달성.
+- AC-C4: `ls backend/app/api/v1/*.py` (registry.py, __init__.py 제외) → flat 라우터 0건. ✅ **후속 충족(2026-06-14)** — 당시에는 registry-only로 범위 축소했으나, SPEC-REFACTOR-002 후속 완료로 도메인 그룹핑 파일 재배치까지 완료됨.
 - AC-C5: 인증 전략 보존 (api_key 라우터 레벨 78개, no-router-dep 57개). ✅ **충족** (AC-C1 통과로 간접 증명).
 
 ---

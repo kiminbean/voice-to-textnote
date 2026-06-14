@@ -210,7 +210,8 @@ class EnhancedAudioProcessor:
         # 결과 생성
         processing_time = asyncio.get_event_loop().time() - start_time
 
-        summary = self._generate_batch_summary(results)
+        successful_results = [result for result in results if isinstance(result, AudioFileInfo)]
+        summary = self._generate_batch_summary(successful_results)
 
         return BatchPreprocessResult(
             task_id=task_id,
@@ -218,7 +219,7 @@ class EnhancedAudioProcessor:
             processed_files=processed_count,
             failed_files=len(errors),
             processing_time_seconds=processing_time,
-            results=results,
+            results=successful_results,
             errors=errors,
             summary=summary,
         )

@@ -31,9 +31,7 @@ ALL_SIGNATURES: dict[str, list[tuple[int, bytes]]] = {
 }
 
 
-def _check_signature_at_offset(
-    file_header: bytes, offset: int, expected: bytes
-) -> bool:
+def _check_signature_at_offset(file_header: bytes, offset: int, expected: bytes) -> bool:
     """특정 offset에서 시그니처가 일치하는지 확인."""
     end = offset + len(expected)
     if len(file_header) < end:

@@ -1,10 +1,6 @@
 // BackgroundRecordingService 테스트
 // SPEC-MOBILE-005: 인터럽션 상태, RecordConfig 고도화, 라우트 변경 검증 추가
-import 'dart:async';
-
 import 'package:flutter_test/flutter_test.dart';
-import 'package:audio_session/audio_session.dart';
-import 'package:record/record.dart';
 import 'package:voice_to_textnote/services/background_recording_service.dart';
 
 void main() {
@@ -114,9 +110,8 @@ void main() {
 
     test('onInterruptionChanged 콜백을 등록할 수 있어야 함', () {
       // Arrange & Act
-      InterruptionState? capturedState;
       service.onInterruptionChanged = (state) {
-        capturedState = state;
+        expect(state, isA<InterruptionState>());
       };
 
       // Assert: 콜백이 설정됨 (null이 아님)
@@ -125,9 +120,8 @@ void main() {
 
     test('onRouteChanged 콜백을 등록할 수 있어야 함', () {
       // Arrange & Act
-      String? capturedReason;
       service.onRouteChanged = (reason) {
-        capturedReason = reason;
+        expect(reason, isA<String>());
       };
 
       // Assert
@@ -166,7 +160,8 @@ void main() {
     });
 
     test('active 상태는 interrupted와 달라야 함', () {
-      expect(InterruptionState.active, isNot(equals(InterruptionState.interrupted)));
+      expect(InterruptionState.active,
+          isNot(equals(InterruptionState.interrupted)));
     });
   });
 }

@@ -55,6 +55,22 @@
 ## 6. 디버그 / 검증
 
 ```bash
+# 저장소/CI에서 항상 실행 가능한 정적 release readiness 검사
+python3 client/scripts/verify_release_readiness.py
+
+# 실제 서비스 계정/APNs/App Store Connect/실기기 정보까지 요구하는 운영 전 검사
+FIREBASE_CREDENTIALS_PATH=/secure/service-account.json \
+APNS_AUTH_KEY_PATH=/secure/AuthKey_XXXXXXXXXX.p8 \
+APNS_KEY_ID=XXXXXXXXXX \
+APNS_TEAM_ID=XXXXXXXXXX \
+APP_STORE_CONNECT_API_KEY_PATH=/secure/AuthKey_YYYYYYYYYY.p8 \
+APP_STORE_CONNECT_KEY_ID=YYYYYYYYYY \
+APP_STORE_CONNECT_ISSUER_ID=<issuer-uuid> \
+ANDROID_DEVICE_SERIAL=<adb-device-serial> \
+IOS_DEVICE_UDID=<ios-device-udid> \
+FIREBASE_TEST_DEVICE_TOKEN=<fcm-token> \
+python3 client/scripts/verify_release_readiness.py --strict
+
 # 클라이언트 FCM 토큰 확인 (앱 실행 후 로그)
 flutter run -d <device> --verbose
 

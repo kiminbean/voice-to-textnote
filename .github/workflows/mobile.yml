@@ -1,0 +1,169 @@
+name: Mobile
+
+on:
+  workflow_dispatch:
+    inputs:
+      evidence_path:
+        description: "Path to the completed release E2E evidence JSON"
+        required: true
+        default: "docs/release-e2e-evidence.json"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "client/**"
+      - "backend/app/config.py"
+      - "backend/services/push_service.py"
+      - "backend/app/workers/hooks/celery_push_hooks.py"
+      - "docs/app-store-metadata.md"
+      - "docs/e2e-device-checklist.md"
+      - "docs/firebase-setup-guide.md"
+      - "docs/privacy-policy.md"
+      - "docs/release-e2e-evidence.example.json"
+      - "docs/screenshot-guide.md"
+      - "backend/tests/test_release_readiness_evidence.py"
+      - ".github/workflows/mobile.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "client/**"
+      - "backend/app/config.py"
+      - "backend/services/push_service.py"
+      - "backend/app/workers/hooks/celery_push_hooks.py"
+      - "docs/app-store-metadata.md"
+      - "docs/e2e-device-checklist.md"
+      - "docs/firebase-setup-guide.md"
+      - "docs/privacy-policy.md"
+      - "docs/release-e2e-evidence.example.json"
+      - "docs/screenshot-guide.md"
+      - "backend/tests/test_release_readiness_evidence.py"
+      - ".github/workflows/mobile.yml"
+
+jobs:
+  android:
+    name: Flutter Analyze, Test, Android Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK packages
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0" "build-tools;28.0.3" "platform-tools"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        working-directory: client
+        run: flutter pub get
+
+      - name: Release readiness preflight
+        run: python3 client/scripts/verify_release_readiness.py
+
+      - name: Analyze
+        working-directory: client
+        run: flutter analyze
+
+      - name: Test
+        working-directory: client
+        run: flutter test
+
+      - name: Build Android debug APK
+        working-directory: client
+        run: flutter build apk --debug
+
+  ios:
+    name: Flutter iOS No-Codesign Build
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        working-directory: client
+        run: flutter pub get
+
+      - name: Build iOS debug without codesigning
+        working-directory: client
+        run: flutter build ios --debug --no-codesign
+
+  release-strict:
+    name: Strict Release Readiness With Physical Devices
+    if: github.event_name == 'workflow_dispatch'
+    runs-on:
+      - self-hosted
+      - macOS
+      - mobile-release
+    environment: mobile-release
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Set up strict credential files
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          APNS_AUTH_KEY_P8: ${{ secrets.APNS_AUTH_KEY_P8 }}
+          APP_STORE_CONNECT_API_KEY_P8: ${{ secrets.APP_STORE_CONNECT_API_KEY_P8 }}
+        run: |
+          test -n "$FIREBASE_SERVICE_ACCOUNT_JSON"
+          test -n "$APNS_AUTH_KEY_P8"
+          test -n "$APP_STORE_CONNECT_API_KEY_P8"
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT_JSON" > "$RUNNER_TEMP/firebase-service-account.json"
+          printf '%s' "$APNS_AUTH_KEY_P8" > "$RUNNER_TEMP/apns-auth-key.p8"
+          printf '%s' "$APP_STORE_CONNECT_API_KEY_P8" > "$RUNNER_TEMP/app-store-connect-api-key.p8"
+
+      - name: Run native mobile build gate
+        working-directory: client
+        run: ./scripts/verify_mobile.sh --native
+
+      - name: Run strict release readiness gate
+        env:
+          FIREBASE_CREDENTIALS_PATH: ${{ runner.temp }}/firebase-service-account.json
+          APNS_AUTH_KEY_PATH: ${{ runner.temp }}/apns-auth-key.p8
+          APNS_KEY_ID: ${{ secrets.APNS_KEY_ID }}
+          APNS_TEAM_ID: ${{ secrets.APNS_TEAM_ID }}
+          APP_STORE_CONNECT_API_KEY_PATH: ${{ runner.temp }}/app-store-connect-api-key.p8
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          ANDROID_DEVICE_SERIAL: ${{ vars.ANDROID_DEVICE_SERIAL }}
+          IOS_DEVICE_UDID: ${{ vars.IOS_DEVICE_UDID }}
+          FIREBASE_TEST_DEVICE_TOKEN: ${{ secrets.FIREBASE_TEST_DEVICE_TOKEN }}
+          RELEASE_E2E_EVIDENCE_PATH: ${{ inputs.evidence_path }}
+        run: python3 client/scripts/verify_release_readiness.py --strict

@@ -410,9 +410,19 @@ firebase-admin>=6.5.0       # Firebase Admin SDK — FCM 전송용
   - 에러 fallback (유효하지 않은 URL → 에러 화면)
 - go_router 딥링크 통합 (`client/lib/router/app_router.dart` 수정)
 
-**App Store 준비 (Phase D) — 미시작** (실기기 테스트 전제)
+**App Store 준비 (Phase D) — 자동화 준비 완료 / 외부 등록 대기**:
+- iOS no-codesign device build 검증 완료: `cd client && ./scripts/verify_mobile.sh --native` -> `Built build/ios/iphoneos/Runner.app`
+- Android debug APK 검증 완료: `Built build/app/outputs/flutter-apk/app-debug.apk`
+- 실제 App Store Connect 등록, provisioning profile, TestFlight 배포는 Apple Developer 계정과 서명 자산 필요.
 
-**통합 테스트 (Phase E) — 미시작** (Firebase 프로젝트 생성 + 실기기 필요)
+**통합 테스트 (Phase E) — 코드/빌드 검증 완료 / Push E2E 대기**:
+- Firebase client/backend wiring과 테스트는 backend 전체 suite 및 Flutter 전체 suite에 포함되어 통과.
+- Device token persistence 보강: `device_tokens.device_id` migration과 `(user_id, device_id)` 기반 unregister를 추가해 다중 기기에서 요청한 기기만 비활성화되도록 고정했다. `venv/bin/python -m pytest -o addopts="" backend/tests/unit/test_devices_api_coverage.py backend/tests/test_push_service_db.py backend/tests/test_device_token_migration.py -q` -> `25 passed`.
+- Device token migration 실행 보강: `backend/tests/test_device_token_migration.py`는 임시 SQLite DB에서 `python -m alembic upgrade head`를 실제 실행하고 `device_tokens.device_id` 및 `(user_id, device_id)` 인덱스 생성을 검증한다. `venv/bin/python -m pytest -o addopts="" backend/tests/test_device_token_migration.py -q` -> `6 passed`.
+- Release readiness 기본 사전검사 추가: `python3 client/scripts/verify_release_readiness.py`는 Firebase config, APNs entitlement, App Store metadata, backend Push wiring, E2E checklist를 정적 검증한다.
+- Strict release readiness: `python3 client/scripts/verify_release_readiness.py --strict`는 release 문서 placeholder 제거, `FIREBASE_CREDENTIALS_PATH`, APNs key, App Store Connect API key, Android/iOS 실기기 식별자, 테스트 FCM token, `RELEASE_E2E_EVIDENCE_PATH`를 요구한다. Android serial은 `adb devices -l`, iOS UDID는 `xcrun devicectl list devices`에서 실제 연결/available 상태인지 확인하고, E2E evidence JSON은 Push/딥링크/백그라운드 녹음/HTTP 정책/PDF 공유 시나리오 pass 증거를 요구한다.
+- 2026-06-15 보강: 기본 release readiness는 `docs/screenshot-guide.md`, `docs/privacy-policy.md`, Privacy Policy URL, iOS/Android 스크린샷 가이드, Google Play metadata, 1024x1024 무알파 store icon까지 검증한다.
+- 실제 FCM/APNs Push 수신, cold-start 딥링크, 실기기 백그라운드 흐름은 Firebase 프로젝트, APNs key, 서비스 계정, iOS/Android 실기기 필요.
 
 **제외됨 (MVP 범위 초과)**:
 - 오프라인 STT 처리 (로컬 Whisper 모델)
@@ -421,9 +431,9 @@ firebase-admin>=6.5.0       # Firebase Admin SDK — FCM 전송용
 ### 기술 제약사항
 
 **현재 제약**:
-- Firebase 프로젝트 미생성 → Push 알림 E2E 테스트 불가 (코드는 구현 완료)
+- Firebase 프로젝트/서비스 계정/APNs key가 현재 세션에 제공되지 않음 → Push 알림 E2E 테스트 불가 (코드와 빌드는 검증 완료)
 - Apple Developer 계정 미사용 → App Store 배포 불가
-- Firebase Admin SDK 서비스 계정 키 미발급 → 실제 Push 전송 불가
+- Firebase Admin SDK 서비스 계정 키 미제공 → 실제 Push 전송 불가
 
 **Phase D/E 진입 조건**:
 - Firebase Console 프로젝트 생성 + iOS/Android 앱 등록
