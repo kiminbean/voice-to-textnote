@@ -176,6 +176,9 @@ This path has now been executed locally.
   The GitHub `mobile-release` Environment was created with `gh api --method PUT repos/kiminbean/voice-to-textnote/environments/mobile-release`.
   Current GitHub state is private repo but not strict-CI-ready: the environment exists, but `gh api repos/kiminbean/voice-to-textnote/actions/runners` -> `runners=0`, environment secrets are unset, and environment vars `ANDROID_DEVICE_SERIAL` / `IOS_DEVICE_UDID` are unset.
   Local device probe showed `adb devices -l` has no attached Android device, while `xcrun devicectl list devices` sees iPhone/iPad entries only as `unavailable`; neither can satisfy strict evidence yet.
+- GitHub mobile release environment configure script was added on 2026-06-15:
+  `client/scripts/configure_github_mobile_release_env.py` creates/updates the `mobile-release` GitHub Environment, registers GitHub Environment vars from local `ANDROID_DEVICE_SERIAL` / `IOS_DEVICE_UDID`, registers required secrets from same-named local environment variables, then runs the verifier.
+  Regression tests assert the configure script uses the same required secret/variable names as `verify_github_mobile_release_env.py` and reports missing local values rather than silently claiming setup.
 
 ### Durable Fixes
 

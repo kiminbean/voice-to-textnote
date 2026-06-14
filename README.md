@@ -730,6 +730,9 @@ GitHub Actions에서도 동일한 strict 게이트를 실행할 수 있다. `.gi
 ```bash
 # GitHub Environment, self-hosted runner labels, secret/variable names preflight
 python3 client/scripts/verify_github_mobile_release_env.py --repo kiminbean/voice-to-textnote
+
+# Configure Environment secrets/vars from same-named local env vars, then verify
+python3 client/scripts/configure_github_mobile_release_env.py --repo kiminbean/voice-to-textnote
 ```
 
 ## 다음 단계
