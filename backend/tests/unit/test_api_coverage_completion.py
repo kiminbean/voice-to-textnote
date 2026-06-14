@@ -92,7 +92,9 @@ def _speaker(user_id: uuid.UUID | None = None):
 
 def _vocabulary():
     now = datetime.now(UTC)
-    return SimpleNamespace(id=uuid.uuid4(), name="용어", words=["API"], created_at=now, updated_at=now)
+    return SimpleNamespace(
+        id=uuid.uuid4(), name="용어", words=["API"], created_at=now, updated_at=now
+    )
 
 
 @pytest.mark.asyncio
@@ -115,7 +117,9 @@ async def test_history_api_direct_success_and_not_found_paths():
     )
     db = AsyncMock()
 
-    listing = await list_history(task_type="minutes", status="completed", page=2, page_size=5, db=db, svc=svc)
+    listing = await list_history(
+        task_type="minutes", status="completed", page=2, page_size=5, db=db, svc=svc
+    )
     assert listing.total == 1
     assert listing.page == 2
     svc.list_results.assert_awaited_with(
@@ -194,7 +198,9 @@ async def test_vocabulary_api_direct_crud_paths():
     assert listed.total == 1
     svc.list_all.assert_awaited_with(db, limit=10, offset=10)
     assert (await get_vocabulary(vocab.id, db=db, svc=svc)).id == vocab.id
-    assert (await update_vocabulary(vocab.id, VocabularyUpdate(name="새 용어"), db=db, svc=svc)).id == vocab.id
+    assert (
+        await update_vocabulary(vocab.id, VocabularyUpdate(name="새 용어"), db=db, svc=svc)
+    ).id == vocab.id
     await delete_vocabulary(vocab.id, db=db, svc=svc)
     svc.delete.assert_awaited_once_with(db, vocab.id)
 
@@ -401,7 +407,9 @@ async def test_bookmark_api_direct_crud_and_search_paths():
     listed = await list_bookmarks(task_id="task-1", page=2, page_size=10, db=db, user=user, svc=svc)
     assert listed.total == 1
     assert (await get_bookmark(bookmark.id, db=db, user=user, svc=svc)).id == bookmark.id
-    assert (await update_bookmark(bookmark.id, BookmarkUpdate(note="n"), db=db, user=user, svc=svc)).id == bookmark.id
+    assert (
+        await update_bookmark(bookmark.id, BookmarkUpdate(note="n"), db=db, user=user, svc=svc)
+    ).id == bookmark.id
     await delete_bookmark(bookmark.id, db=db, user=user, svc=svc)
     search = await search_bookmarks(
         query="q",
@@ -480,15 +488,24 @@ async def test_speaker_api_direct_crud_and_voice_paths():
     assert (await list_speakers(page=2, page_size=10, db=db, user=user, svc=svc)).total == 1
     assert (await get_speaker(speaker.id, db=db, user=user, svc=svc)).id == speaker.id
     assert (
-        await update_speaker(speaker.id, SpeakerProfileUpdate(display_name="A"), db=db, user=user, svc=svc)
+        await update_speaker(
+            speaker.id, SpeakerProfileUpdate(display_name="A"), db=db, user=user, svc=svc
+        )
     ).id == speaker.id
     await delete_speaker(speaker.id, db=db, user=user, svc=svc)
     upload = UploadFile(file=io.BytesIO(b"wav"), filename="sample.wav")
-    analyzed = await analyze_speaker_sample(speaker.id, upload, db=db, user=user, svc=svc, voice_svc=voice_svc)
+    analyzed = await analyze_speaker_sample(
+        speaker.id, upload, db=db, user=user, svc=svc, voice_svc=voice_svc
+    )
     assert analyzed.speaker_profile_id == speaker.id
     assert (
         await create_or_update_voice_profile(
-            speaker.id, VoiceProfileCreateRequest(samples=[]), db=db, user=user, svc=svc, voice_svc=voice_svc
+            speaker.id,
+            VoiceProfileCreateRequest(samples=[]),
+            db=db,
+            user=user,
+            svc=svc,
+            voice_svc=voice_svc,
         )
     ).speaker_profile_id == speaker.id
     assert (
@@ -610,7 +627,10 @@ async def test_collab_ws_message_loop_and_handlers():
 
     with (
         patch("backend.app.dependencies._session_factory", return_value=_AsyncSessionContext(db)),
-        patch("backend.app.api.v1.collaboration.collab.authenticate_ws_token", AsyncMock(return_value=user)),
+        patch(
+            "backend.app.api.v1.collaboration.collab.authenticate_ws_token",
+            AsyncMock(return_value=user),
+        ),
         patch("backend.app.api.v1.collaboration.collab.get_collab_service", return_value=svc),
         patch("backend.app.api.v1.collaboration.collab.get_redis_client", return_value=redis),
     ):
@@ -633,7 +653,10 @@ async def test_collab_ws_close_paths_and_handler_edge_cases():
 
     with (
         patch("backend.app.dependencies._session_factory", return_value=_AsyncSessionContext(db)),
-        patch("backend.app.api.v1.collaboration.collab.authenticate_ws_token", AsyncMock(return_value=None)),
+        patch(
+            "backend.app.api.v1.collaboration.collab.authenticate_ws_token",
+            AsyncMock(return_value=None),
+        ),
     ):
         await collab.collab_ws(ws, "task-1")
     ws.close.assert_awaited()
@@ -642,7 +665,10 @@ async def test_collab_ws_close_paths_and_handler_edge_cases():
     ws.close.reset_mock()
     with (
         patch("backend.app.dependencies._session_factory", return_value=_AsyncSessionContext(db)),
-        patch("backend.app.api.v1.collaboration.collab.authenticate_ws_token", AsyncMock(return_value=user)),
+        patch(
+            "backend.app.api.v1.collaboration.collab.authenticate_ws_token",
+            AsyncMock(return_value=user),
+        ),
         patch("backend.app.api.v1.collaboration.collab.get_collab_service", return_value=svc),
     ):
         await collab.collab_ws(ws, "task-1")
@@ -655,14 +681,19 @@ async def test_collab_ws_close_paths_and_handler_edge_cases():
     ws.close.reset_mock()
     with (
         patch("backend.app.dependencies._session_factory", return_value=_AsyncSessionContext(db)),
-        patch("backend.app.api.v1.collaboration.collab.authenticate_ws_token", AsyncMock(return_value=user)),
+        patch(
+            "backend.app.api.v1.collaboration.collab.authenticate_ws_token",
+            AsyncMock(return_value=user),
+        ),
         patch("backend.app.api.v1.collaboration.collab.get_collab_service", return_value=svc),
         patch("backend.app.api.v1.collaboration.collab.get_redis_client", return_value=redis),
     ):
         await collab.collab_ws(ws, "task-1")
     ws.close.assert_awaited()
 
-    fake_manager = SimpleNamespace(send_to_user=AsyncMock(), broadcast=AsyncMock(), disconnect=MagicMock())
+    fake_manager = SimpleNamespace(
+        send_to_user=AsyncMock(), broadcast=AsyncMock(), disconnect=MagicMock()
+    )
     svc = SimpleNamespace(
         apply_edit=AsyncMock(return_value=(False, datetime.now(UTC))),
         update_active_field=AsyncMock(),
@@ -713,7 +744,10 @@ async def test_collab_ws_logs_unexpected_receive_error():
 
     with (
         patch("backend.app.dependencies._session_factory", return_value=_AsyncSessionContext(db)),
-        patch("backend.app.api.v1.collaboration.collab.authenticate_ws_token", AsyncMock(return_value=user)),
+        patch(
+            "backend.app.api.v1.collaboration.collab.authenticate_ws_token",
+            AsyncMock(return_value=user),
+        ),
         patch("backend.app.api.v1.collaboration.collab.get_collab_service", return_value=svc),
         patch("backend.app.api.v1.collaboration.collab.get_redis_client", return_value=redis),
     ):

@@ -45,7 +45,9 @@ SuggestionTemplate: TypeAlias = dict[str, str | ImprovementType | Priority]
 
 
 def _as_float(value: object, default: float = 0.0) -> float:
-    return float(value) if isinstance(value, int | float) and not isinstance(value, bool) else default
+    return (
+        float(value) if isinstance(value, int | float) and not isinstance(value, bool) else default
+    )
 
 
 def _as_int(value: object, default: int = 0) -> int:

@@ -203,6 +203,13 @@ whisper_ggml_plus: ^1.5.2
 - `client/android/app/build.gradle`은 `com.android.application`, `org.jetbrains.kotlin.android`, `dev.flutter.flutter-gradle-plugin`, `com.google.gms.google-services` 플러그인을 명시 적용한다.
 - `client/android/settings.gradle`은 Flutter Gradle plugin composite build(`includeBuild("$flutterSdkPath/packages/flutter_tools/gradle")`)와 Google Services plugin version을 명시한다.
 - `client/android/gradlew`, `client/android/gradlew.bat`, `client/android/gradle/wrapper/*`를 복원해 CI/로컬 Android build가 시스템 Gradle 설치에 의존하지 않는다.
+- `client/macos/Podfile.lock`에는 `whisper_ggml_plus` macOS pod가 반영되어 macOS debug build에서도 whisper.cpp FFI plugin 링크 경로가 고정된다.
+
+### 2026-06-14 재검증
+
+- `cd client && ./scripts/verify_mobile.sh --native` -> `No issues found!`, `All tests passed!`, `local_stt_smoke: PASS`, `Built build/app/outputs/flutter-apk/app-debug.apk`, `Built build/ios/iphoneos/Runner.app`
+- `cd client && flutter build macos --debug` -> `Built build/macos/Build/Products/Debug/voice_to_textnote.app`
+- `cd client && flutter build web` -> `Built build/web`
 - `client/android/settings.gradle`과 `client/android/build.gradle`은 Flutter 3.44 경고 기준에 맞춰 Android Gradle Plugin 8.11.1과 Kotlin Gradle Plugin 2.2.20을 사용한다.
 - `client/android/app/build.gradle`은 release `minifyEnabled false`와 충돌하지 않도록 `shrinkResources false`를 명시한다.
 - `client/android/app/build.gradle`은 Flutter plugin 요구사항에 맞춰 `compileSdk 36`을 사용한다.

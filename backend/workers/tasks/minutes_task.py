@@ -208,7 +208,9 @@ def minutes_task(
             stt_result_raw = r.get(stt_result_key)
             if stt_result_raw is None:
                 raise FileNotFoundError(f"STT 결과를 찾을 수 없습니다: stt_task_id={stt_task_id}")
-            stt_result = json.loads(cast(str | bytes | bytearray, stt_result_raw))  # pragma: no cover
+            stt_result = json.loads(
+                cast(str | bytes | bytearray, stt_result_raw)
+            )  # pragma: no cover
             if stt_result.get("status") != TaskStatus.completed.value:
                 upstream_error = _extract_cached_error_message(stt_result) or (  # pragma: no cover
                     f"STT 작업이 완료되지 않았습니다: status={stt_result.get('status')}"

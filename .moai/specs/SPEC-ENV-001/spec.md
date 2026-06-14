@@ -60,10 +60,17 @@ The system shall NOT require `const` qualifier for `apiBaseUrl` (getter is accep
 
 ## 수락 기준
 
-- [ ] `flutter test client/test/config/app_config_test.dart` 통과
-- [ ] `flutter analyze client/` 경고 없음
-- [ ] 기존 테스트 전체 통과 (`flutter test`)
-- [ ] dev/staging/production 실행 스크립트 3개 생성
+- [x] `flutter test client/test/config/app_config_test.dart` 통과
+- [x] `flutter analyze client/` 경고 없음
+- [x] 기존 테스트 전체 통과 (`flutter test`)
+- [x] dev/staging/production 실행 스크립트 3개 생성
+
+### 2026-06-14 재검증
+
+- `cd client && flutter test test/config/app_config_test.dart`는 전체 `flutter test` 회귀에 포함되어 통과.
+- `cd client && flutter analyze` -> `No issues found!`
+- `cd client && flutter test` -> `324 passed`
+- `client/scripts/run_dev.sh`, `client/scripts/run_staging.sh`, `client/scripts/run_production.sh` 존재 및 실행 플래그 유지.
 
 ## 기술 설계
 

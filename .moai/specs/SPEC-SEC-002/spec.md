@@ -130,11 +130,20 @@ depends_on: SPEC-SEC-001
 - AC-003: 매직 바이트 불일치 시 422 반환
 - AC-004: 프로덕션 환경에서 HSTS 헤더 존재
 - AC-005: 클라이언트 오디오 업로드 전 크기/확장자 검증
+- AC-006: AndroidManifest가 `network_security_config`를 참조하고 cleartext 예외가 localhost/staging으로 제한됨
 
 ### 수동 기준
 - AC-M01: iOS 실기기 Release 빌드에서 HTTP 차단 확인
 - AC-M02: Android 실기기 Debug 빌드에서 staging 연결 확인
 - AC-M03: Android 실기기 Release 빌드에서 HTTP 차단 확인
+
+### 2026-06-14 재검증
+
+- `client/test/config/network_security_config_test.dart` 추가: AndroidManifest 참조, base cleartext 차단, localhost/Tailscale staging 예외만 허용하는 정적 회귀 테스트.
+- `cd client && flutter test test/config/network_security_config_test.dart` -> `3 passed`
+- `cd client && flutter test` -> `324 passed`
+- `cd client && flutter analyze` -> `No issues found!`
+- Android 에뮬레이터/실기기에서 실제 네트워크 차단/허용을 관측하는 AC-M02/AC-M03은 장비 기반 수동 검증으로 유지한다.
 
 ---
 

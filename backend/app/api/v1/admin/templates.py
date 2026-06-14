@@ -46,7 +46,9 @@ def _get_file_extension(filename: str) -> str:
     return Path(filename).suffix.lstrip(".").lower()
 
 
-def _validate_file(filename: str, file_size: int, file_header: bytes | None = None) -> tuple[bool, str]:
+def _validate_file(
+    filename: str, file_size: int, file_header: bytes | None = None
+) -> tuple[bool, str]:
     ext = _get_file_extension(filename)
     if ext not in _SUPPORTED_FORMATS:
         return False, f"지원하지 않는 파일 형식: .{ext}. PDF 또는 DOCX만 허용됩니다."

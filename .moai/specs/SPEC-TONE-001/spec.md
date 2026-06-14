@@ -221,12 +221,12 @@ opensmile은 AGPL-3.0 라이선스로, 네트워크 서비스 형태 제공 시 
 
 ### 품질 메트릭
 - 백엔드 테스트: 3323 passed, 16 skipped, 0 failed (2026-06-14 전체 suite)
-- Flutter 테스트: 318 passed, 0 failed (기존 문서화된 검증; 현재 sandbox는 Flutter SDK cache 쓰기 권한으로 재실행 불가)
-- 커버리지: 전체 backend 99.01%, tone_engine.py 98%, tone_task.py 100%, schemas/tone.py 100%, API 100%
+- Flutter 테스트: 324 passed, 0 failed (`cd client && flutter test`)
+- 커버리지: 전체 backend 98.62%, tone_engine.py 98%, tone_task.py 100%, schemas/tone.py 100%, API 100%
 - API 커버리지 보강(2026-06-14): `backend/tests/unit/test_api_coverage_completion.py`, `backend/tests/unit/test_devices_api_coverage.py`
   - 검증: `19 passed`, ruff `All checks passed!`
   - Coverage JSON API aggregate: `2545/2545` covered lines, `100.00%`, `missing=[]`
-- 품질 게이트(2026-06-14): `ruff check .` clean, `mypy .` no issues in 394 source files
+- 품질 게이트(2026-06-14): `ruff check backend` clean, `ruff format --check backend` clean, `mypy backend` no issues in 394 source files
 - AC-TONE-001~006: 6/6 충족
 
 ### 아키텍처 결정사항 요약

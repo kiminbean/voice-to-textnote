@@ -42,7 +42,7 @@
 - **AC-C5**: 라우터별 인증 정책(api_key 78 routes / no-router-dep 57 routes) 불변 증명
 - **AC-C4**: **충족 (2026-06-14 재검증)** — SPEC-REFACTOR-002 후속 완료로 flat 라우터 0건. `backend/app/api/v1` top-level에는 `__init__.py`, `registry.py`만 남음.
 - **Route 중복 정리**: `enhanced_preprocess` 중복 등록 제거 후 live route method entries 161 / unique 161 / duplicates 0.
-- **전체 회귀**: `pytest tests/ -q` → **3323 passed, 16 skipped**, coverage **99.01%**.
+- **전체 회귀**: `venv/bin/python -m pytest backend -q` → **3323 passed, 16 skipped**, coverage **98.62%**.
 
 ### 후속 (sync 단계 완료)
 - spec.md Section 8: AC-C4/REQ-RM-C1 deferred 상태를 후속 완료 상태로 정정

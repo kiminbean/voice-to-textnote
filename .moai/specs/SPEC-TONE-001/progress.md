@@ -22,12 +22,12 @@
 - Wave 1 (M6+M1): ToneEngine singleton + config + deps — 9 tests, 64 regression pass
 - Wave 2 (M2+M3): Audio preservation + Celery tone_task — 10 tests, 57 regression pass
 - Wave 3 (M4): Schema + API router + task_id fix — 8 tests, 82 regression pass
-- Wave 4 (M5): Flutter tone_api + timeline UI — 17 tests, 318 Flutter tests pass
+- Wave 4 (M5): Flutter tone_api + timeline UI — 17 tests, 324 Flutter tests pass
 - Coverage fix: tone_engine 84→98%, tone_task 80→100% (+22 tests)
 
 ### Phase 2.5: Quality Validation PASS
 - Backend: 3106 passed, 0 failed, 16 skipped
-- Flutter: 318 passed, 0 failed
+- Flutter: 324 passed, 0 failed
 - Tone coverage: engine 98%, task 100%, schema 100%, API 100% after Phase 2.6
 - LSP diagnostics: 0 errors all files
 - Route baseline updated: 161 → 165 routes

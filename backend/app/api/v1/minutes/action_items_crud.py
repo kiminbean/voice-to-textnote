@@ -212,7 +212,8 @@ async def get_action_item(
 
     if not action_item:
         raise HTTPException(
-            status_code=http_status.HTTP_404_NOT_FOUND, detail=f"액션 아이템을 찾을 수 없습니다: {id}"
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            detail=f"액션 아이템을 찾을 수 없습니다: {id}",
         )
 
     return _to_action_item_response(action_item)
@@ -236,7 +237,8 @@ async def update_action_item(
 
     if not action_item:
         raise HTTPException(
-            status_code=http_status.HTTP_404_NOT_FOUND, detail=f"액션 아이템을 찾을 수 없습니다: {id}"
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            detail=f"액션 아이템을 찾을 수 없습니다: {id}",
         )
 
     logger.info(
@@ -265,7 +267,8 @@ async def delete_action_item(
 
     if not success:
         raise HTTPException(
-            status_code=http_status.HTTP_404_NOT_FOUND, detail=f"액션 아이템을 찾을 수 없습니다: {id}"
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            detail=f"액션 아이템을 찾을 수 없습니다: {id}",
         )
 
     logger.info(
@@ -306,7 +309,8 @@ async def get_meeting_action_items(
 
     if not meeting:
         raise HTTPException(
-            status_code=http_status.HTTP_404_NOT_FOUND, detail=f"회의록을 찾을 수 없습니다: {meeting_id}"
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            detail=f"회의록을 찾을 수 없습니다: {meeting_id}",
         )
 
     items, total = await svc.list_items(
@@ -349,7 +353,8 @@ async def complete_action_item(
 
     if not action_item:
         raise HTTPException(
-            status_code=http_status.HTTP_404_NOT_FOUND, detail=f"액션 아이템을 찾을 수 없습니다: {id}"
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            detail=f"액션 아이템을 찾을 수 없습니다: {id}",
         )
 
     logger.info(

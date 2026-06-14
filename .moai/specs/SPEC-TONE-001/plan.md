@@ -286,8 +286,10 @@ pip install "opensmile>=2.6.0" "librosa>=0.10.0"
 - [x] TRUST 5 품질 게이트 통과 (0 에러, 0 타입 에러, 0 린트 에러)
 
 2026-06-14 재검증:
-- backend 전체 suite: `3323 passed, 16 skipped`, coverage `99.01%`
-- focused tone/e2e suite: `65 passed, 6 warnings`
-- `ruff check .` -> `All checks passed!`
-- `mypy .` -> `Success: no issues found in 394 source files`
-- Flutter SDK cache write restriction prevents re-running `flutter test` in this sandbox; previous documented Flutter evidence remains `318 passed, 0 failed`.
+- backend 전체 suite: `venv/bin/python -m pytest backend -q` -> `3323 passed, 16 skipped`, coverage `98.62%`
+- focused e2e suite: `venv/bin/python -m pytest -o addopts="" backend/tests/e2e/test_pipeline_e2e.py -q` -> `16 passed`
+- `venv/bin/python -m ruff check backend` -> `All checks passed!`
+- `venv/bin/python -m ruff format --check backend` -> `394 files already formatted`
+- `venv/bin/python -m mypy backend` -> `Success: no issues found in 394 source files`
+- `cd client && flutter analyze` -> `No issues found!`
+- `cd client && flutter test` -> `324 passed`

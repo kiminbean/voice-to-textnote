@@ -129,9 +129,7 @@ class TestToneSchemaStructure:
 
         # 모든 필드가 optional이거나 기본값이 있어야 함 — 새 required 필드 추가 금지
         required_fields = {
-            name
-            for name, field in SentimentResponse.model_fields.items()
-            if field.is_required()
+            name for name, field in SentimentResponse.model_fields.items() if field.is_required()
         }
         # 기존 required 필드만 존재해야 함 (task_id, status)
         assert required_fields == {"task_id", "status"}, (
@@ -261,7 +259,9 @@ class TestToneApiEndpoints:
         mock_redis = AsyncMock()
         result_data = _make_tone_result(meeting_id)
         mock_redis.get = AsyncMock(
-            side_effect=lambda key: json.dumps(result_data) if f"result:{meeting_id}" in key else None
+            side_effect=lambda key: (
+                json.dumps(result_data) if f"result:{meeting_id}" in key else None
+            )
         )
 
         async def override_redis():

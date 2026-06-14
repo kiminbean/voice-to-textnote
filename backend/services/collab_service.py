@@ -35,6 +35,7 @@ DEBOUNCE_SECONDS = 3
 # Redis 키 TTL (비활성 세션 자동 정리, 24시간)
 SESSION_TTL_SECONDS = 86400
 
+
 async def _resolve(value: Any) -> Any:
     """Redis test doubles may expose sync values while aioredis returns awaitables."""
     if inspect.isawaitable(value):
@@ -338,9 +339,7 @@ class CollabService:
 
         collab_session.content = document if document else None
         collab_session.last_editor_id = last_editor_id
-        collab_session.peak_participants = max(
-            collab_session.peak_participants or 1, peak
-        )
+        collab_session.peak_participants = max(collab_session.peak_participants or 1, peak)
 
         await session.commit()
         await session.refresh(collab_session)

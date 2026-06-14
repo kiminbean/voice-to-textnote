@@ -147,9 +147,7 @@ class TestEnsureTaskExists:
 
 class TestAddPresence:
     @pytest.mark.asyncio
-    async def test_add_first_user(
-        self, collab_service, mock_redis, sample_task_id, sample_user_id
-    ):
+    async def test_add_first_user(self, collab_service, mock_redis, sample_task_id, sample_user_id):
         joined, presence = await collab_service.add_presence(
             mock_redis, sample_task_id, sample_user_id, "Alice"
         )
@@ -161,9 +159,7 @@ class TestAddPresence:
     async def test_add_same_user_idempotent(
         self, collab_service, mock_redis, sample_task_id, sample_user_id
     ):
-        await collab_service.add_presence(
-            mock_redis, sample_task_id, sample_user_id, "Alice"
-        )
+        await collab_service.add_presence(mock_redis, sample_task_id, sample_user_id, "Alice")
         joined, presence = await collab_service.add_presence(
             mock_redis, sample_task_id, sample_user_id, "Alice"
         )
@@ -171,9 +167,7 @@ class TestAddPresence:
         assert len(presence) == 1
 
     @pytest.mark.asyncio
-    async def test_add_multiple_users(
-        self, collab_service, mock_redis, sample_task_id
-    ):
+    async def test_add_multiple_users(self, collab_service, mock_redis, sample_task_id):
         for i in range(3):
             joined, _ = await collab_service.add_presence(
                 mock_redis, sample_task_id, f"user-{i}", f"User{i}"
@@ -185,13 +179,9 @@ class TestAddPresence:
         assert len(presence) == 4
 
     @pytest.mark.asyncio
-    async def test_room_full_rejects_new_user(
-        self, collab_service, mock_redis, sample_task_id
-    ):
+    async def test_room_full_rejects_new_user(self, collab_service, mock_redis, sample_task_id):
         for i in range(MAX_PARTICIPANTS):
-            await collab_service.add_presence(
-                mock_redis, sample_task_id, f"user-{i}", f"User{i}"
-            )
+            await collab_service.add_presence(mock_redis, sample_task_id, f"user-{i}", f"User{i}")
         joined, presence = await collab_service.add_presence(
             mock_redis, sample_task_id, "overflow-user", "Overflow"
         )
@@ -201,15 +191,9 @@ class TestAddPresence:
 
 class TestRemovePresence:
     @pytest.mark.asyncio
-    async def test_remove_returns_remaining(
-        self, collab_service, mock_redis, sample_task_id
-    ):
-        await collab_service.add_presence(
-            mock_redis, sample_task_id, "u1", "Alice"
-        )
-        await collab_service.add_presence(
-            mock_redis, sample_task_id, "u2", "Bob"
-        )
+    async def test_remove_returns_remaining(self, collab_service, mock_redis, sample_task_id):
+        await collab_service.add_presence(mock_redis, sample_task_id, "u1", "Alice")
+        await collab_service.add_presence(mock_redis, sample_task_id, "u2", "Bob")
         remaining = await collab_service.remove_presence(mock_redis, sample_task_id, "u1")
         assert len(remaining) == 1
         assert remaining[0]["display_name"] == "Bob"
@@ -218,12 +202,8 @@ class TestRemovePresence:
     async def test_remove_last_returns_empty(
         self, collab_service, mock_redis, sample_task_id, sample_user_id
     ):
-        await collab_service.add_presence(
-            mock_redis, sample_task_id, sample_user_id, "Alice"
-        )
-        remaining = await collab_service.remove_presence(
-            mock_redis, sample_task_id, sample_user_id
-        )
+        await collab_service.add_presence(mock_redis, sample_task_id, sample_user_id, "Alice")
+        remaining = await collab_service.remove_presence(mock_redis, sample_task_id, sample_user_id)
         assert remaining == []
 
 
@@ -232,9 +212,7 @@ class TestUpdateActiveField:
     async def test_update_active_field(
         self, collab_service, mock_redis, sample_task_id, sample_user_id
     ):
-        await collab_service.add_presence(
-            mock_redis, sample_task_id, sample_user_id, "Alice"
-        )
+        await collab_service.add_presence(mock_redis, sample_task_id, sample_user_id, "Alice")
         result = await collab_service.update_active_field(
             mock_redis, sample_task_id, sample_user_id, "summary_text"
         )
@@ -258,9 +236,7 @@ class TestGetPresence:
         assert result == []
 
     @pytest.mark.asyncio
-    async def test_multiple_presence_order(
-        self, collab_service, mock_redis, sample_task_id
-    ):
+    async def test_multiple_presence_order(self, collab_service, mock_redis, sample_task_id):
         await collab_service.add_presence(mock_redis, sample_task_id, "u1", "A")
         await collab_service.add_presence(mock_redis, sample_task_id, "u2", "B")
         result = await collab_service.get_presence(mock_redis, sample_task_id)
@@ -276,9 +252,7 @@ class TestGetParticipantCount:
     @pytest.mark.asyncio
     async def test_three(self, collab_service, mock_redis, sample_task_id):
         for i in range(3):
-            await collab_service.add_presence(
-                mock_redis, sample_task_id, f"u{i}", f"U{i}"
-            )
+            await collab_service.add_presence(mock_redis, sample_task_id, f"u{i}", f"U{i}")
         count = await collab_service.get_participant_count(mock_redis, sample_task_id)
         assert count == 3
 
@@ -296,9 +270,7 @@ class TestGetDocument:
         assert ts == {}
 
     @pytest.mark.asyncio
-    async def test_returns_stored_data(
-        self, collab_service, mock_redis, sample_task_id, now_utc
-    ):
+    async def test_returns_stored_data(self, collab_service, mock_redis, sample_task_id, now_utc):
         await collab_service.apply_edit(
             mock_redis, sample_task_id, "summary_text", "Hello", now_utc
         )
@@ -309,9 +281,7 @@ class TestGetDocument:
 
 class TestApplyEdit:
     @pytest.mark.asyncio
-    async def test_first_edit_applied(
-        self, collab_service, mock_redis, sample_task_id, now_utc
-    ):
+    async def test_first_edit_applied(self, collab_service, mock_redis, sample_task_id, now_utc):
         applied, server_ts = await collab_service.apply_edit(
             mock_redis, sample_task_id, "summary_text", "Hello", now_utc
         )
@@ -319,9 +289,7 @@ class TestApplyEdit:
         assert server_ts is not None
 
     @pytest.mark.asyncio
-    async def test_newer_edit_applied(
-        self, collab_service, mock_redis, sample_task_id
-    ):
+    async def test_newer_edit_applied(self, collab_service, mock_redis, sample_task_id):
         old_ts = datetime(2025, 1, 1, tzinfo=UTC)
         new_ts = datetime(2025, 6, 13, tzinfo=UTC)
 
@@ -335,9 +303,7 @@ class TestApplyEdit:
         assert doc["f1"] == "new"
 
     @pytest.mark.asyncio
-    async def test_stale_edit_rejected(
-        self, collab_service, mock_redis, sample_task_id
-    ):
+    async def test_stale_edit_rejected(self, collab_service, mock_redis, sample_task_id):
         old_ts = datetime(2025, 1, 1, tzinfo=UTC)
         new_ts = datetime(2025, 6, 13, tzinfo=UTC)
 
@@ -361,9 +327,7 @@ class TestApplyEdit:
         assert applied is True
 
     @pytest.mark.asyncio
-    async def test_naive_timestamp_treated_as_utc(
-        self, collab_service, mock_redis, sample_task_id
-    ):
+    async def test_naive_timestamp_treated_as_utc(self, collab_service, mock_redis, sample_task_id):
         naive_ts = datetime(2025, 6, 13, 12, 0, 0)
         applied, _ = await collab_service.apply_edit(
             mock_redis, sample_task_id, "f1", "val", naive_ts
@@ -376,9 +340,7 @@ class TestApplyEdit:
     ):
         await collab_service.apply_edit(mock_redis, sample_task_id, "f1", "v1", now_utc)
         older = now_utc - timedelta(hours=1)
-        applied, _ = await collab_service.apply_edit(
-            mock_redis, sample_task_id, "f2", "v2", older
-        )
+        applied, _ = await collab_service.apply_edit(mock_redis, sample_task_id, "f2", "v2", older)
         assert applied is True  # f2 has no prior timestamp
 
     @pytest.mark.asyncio
@@ -403,12 +365,12 @@ class TestInitDocumentFromDB:
     async def test_skip_if_redis_has_data(
         self, collab_service, mock_redis, mock_db_session, sample_task_id, now_utc
     ):
-        await collab_service.apply_edit(
-            mock_redis, sample_task_id, "f1", "redis_val", now_utc
-        )
+        await collab_service.apply_edit(mock_redis, sample_task_id, "f1", "redis_val", now_utc)
         # Should not query DB — mock_db_session.execute should not be called
         mock_db_session.execute = AsyncMock(side_effect=AssertionError("Should not query DB"))
-        doc = await collab_service.init_document_from_db(mock_db_session, mock_redis, sample_task_id)
+        doc = await collab_service.init_document_from_db(
+            mock_db_session, mock_redis, sample_task_id
+        )
         assert doc["f1"] == "redis_val"
 
     @pytest.mark.asyncio
@@ -422,7 +384,9 @@ class TestInitDocumentFromDB:
         mock_result.scalar_one_or_none.return_value = collab_session_mock
         mock_db_session.execute = AsyncMock(return_value=mock_result)
 
-        doc = await collab_service.init_document_from_db(mock_db_session, mock_redis, sample_task_id)
+        doc = await collab_service.init_document_from_db(
+            mock_db_session, mock_redis, sample_task_id
+        )
         assert doc["summary_text"] == "DB content"
 
     @pytest.mark.asyncio
@@ -433,7 +397,9 @@ class TestInitDocumentFromDB:
         mock_result.scalar_one_or_none.return_value = None
         mock_db_session.execute = AsyncMock(return_value=mock_result)
 
-        doc = await collab_service.init_document_from_db(mock_db_session, mock_redis, sample_task_id)
+        doc = await collab_service.init_document_from_db(
+            mock_db_session, mock_redis, sample_task_id
+        )
         assert doc == {}
 
 
@@ -447,9 +413,7 @@ class TestFlushToDB:
     async def test_flush_creates_new_session(
         self, collab_service, mock_redis, mock_db_session, sample_task_id, now_utc
     ):
-        await collab_service.apply_edit(
-            mock_redis, sample_task_id, "f1", "val", now_utc
-        )
+        await collab_service.apply_edit(mock_redis, sample_task_id, "f1", "val", now_utc)
 
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = None
@@ -468,9 +432,7 @@ class TestFlushToDB:
     async def test_flush_updates_existing_session(
         self, collab_service, mock_redis, mock_db_session, sample_task_id, now_utc
     ):
-        await collab_service.apply_edit(
-            mock_redis, sample_task_id, "f1", "updated", now_utc
-        )
+        await collab_service.apply_edit(mock_redis, sample_task_id, "f1", "updated", now_utc)
 
         existing = MagicMock()
         existing.content = {"f1": "old"}
@@ -488,9 +450,7 @@ class TestFlushToDB:
     async def test_flush_clears_redis_when_no_participants(
         self, collab_service, mock_redis, mock_db_session, sample_task_id, now_utc
     ):
-        await collab_service.apply_edit(
-            mock_redis, sample_task_id, "f1", "val", now_utc
-        )
+        await collab_service.apply_edit(mock_redis, sample_task_id, "f1", "val", now_utc)
 
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = None
@@ -506,12 +466,8 @@ class TestFlushToDB:
     async def test_flush_preserves_redis_with_participants(
         self, collab_service, mock_redis, mock_db_session, sample_task_id, now_utc
     ):
-        await collab_service.apply_edit(
-            mock_redis, sample_task_id, "f1", "val", now_utc
-        )
-        await collab_service.add_presence(
-            mock_redis, sample_task_id, "u1", "Alice"
-        )
+        await collab_service.apply_edit(mock_redis, sample_task_id, "f1", "val", now_utc)
+        await collab_service.add_presence(mock_redis, sample_task_id, "u1", "Alice")
 
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = None

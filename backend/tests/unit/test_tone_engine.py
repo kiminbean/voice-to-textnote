@@ -27,9 +27,7 @@ def _make_mock_smile():
     import pandas as pd
 
     mock = MagicMock()
-    mock.process_signal.return_value = pd.DataFrame(
-        [{"F0semitoneFrom27.5Hz_sma3nz_amean": 220.0}]
-    )
+    mock.process_signal.return_value = pd.DataFrame([{"F0semitoneFrom27.5Hz_sma3nz_amean": 220.0}])
     return mock
 
 
@@ -294,7 +292,10 @@ class TestToneEngineAnalyzeStructure:
 
         with patch.object(engine, "_check_memory_usage") as mock_mem_check:
             with patch("librosa.load", return_value=(np.zeros(16000, dtype=np.float32), 16000)):
-                with patch("librosa.pyin", return_value=(np.full(50, 200.0), np.ones(50, dtype=bool), np.ones(50))):
+                with patch(
+                    "librosa.pyin",
+                    return_value=(np.full(50, 200.0), np.ones(50, dtype=bool), np.ones(50)),
+                ):
                     with patch("librosa.feature.rms", return_value=np.array([[0.05] * 10])):
                         engine.analyze_segments(str(wav_path), [valid_segment])
 
@@ -454,7 +455,10 @@ class TestToneEngineExtractProsodyError:
         y_seg = np.ones(16000, dtype=np.float32) * 0.1
 
         with (
-            patch("librosa.pyin", return_value=(np.full(50, 200.0), np.ones(50, dtype=bool), np.ones(50))),
+            patch(
+                "librosa.pyin",
+                return_value=(np.full(50, 200.0), np.ones(50, dtype=bool), np.ones(50)),
+            ),
             patch("librosa.feature.rms", return_value=np.array([[0.05] * 10])),
         ):
             prosody = engine._extract_prosody(y_seg, 16000)

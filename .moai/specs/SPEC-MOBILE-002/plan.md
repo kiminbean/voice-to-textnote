@@ -133,11 +133,11 @@
 - `ruby -c client/ios/Podfile` -> `Syntax OK`
 - workflow/analysis YAML parse -> `yaml ok`
 - `bash -n client/scripts/verify_mobile.sh` -> pass
-- backend full suite -> `3323 passed, 16 skipped`, coverage `99.01%`
+- backend full suite -> `3323 passed, 16 skipped`, coverage `98.62%`
 
-### 남은 외부 검증
+### 네이티브 검증 상태
 
-현재 sandbox에서는 Android SDK 디렉터리가 없고 CocoaPods trunk/network 및 Xcode cache 권한이 제한되어 native build 산출물을 만들 수 없다.
+2026-06-14 현재 로컬 Android SDK, CocoaPods, Xcode no-codesign 경로가 복구되어 `cd client && ./scripts/verify_mobile.sh --native`가 통과한다. 산출물: Android debug APK, iOS no-codesign `Runner.app`.
 
 - Android: `ANDROID_HOME=/Users/ibkim/Library/Android/sdk`로 설정돼 있으나 디렉터리가 없다. `flutter build apk --debug`는 `No Android SDK found`에서 중단된다.
 - iOS: `pod install`은 `https://cdn.cocoapods.org/` trunk clone 차단으로 중단된다. 이전 `flutter build ios --debug --no-codesign`은 CoreSimulator/SwiftPM cache 권한 문제로 중단됐다.

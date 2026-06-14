@@ -49,7 +49,12 @@ def _make_engine_results() -> list[dict]:
             "speaker": "SPEAKER_00",
             "tone": "calm",
             "confidence": 0.72,
-            "prosody_features": {"f0_mean": 180.0, "f0_std": 12.0, "rms_energy": 0.05, "speaking_rate": 50.0},
+            "prosody_features": {
+                "f0_mean": 180.0,
+                "f0_std": 12.0,
+                "rms_energy": 0.05,
+                "speaking_rate": 50.0,
+            },
         },
         {
             "start": 2.0,
@@ -57,7 +62,12 @@ def _make_engine_results() -> list[dict]:
             "speaker": "SPEAKER_01",
             "tone": "excited",
             "confidence": 0.68,
-            "prosody_features": {"f0_mean": 220.0, "f0_std": 35.0, "rms_energy": 0.10, "speaking_rate": 80.0},
+            "prosody_features": {
+                "f0_mean": 220.0,
+                "f0_std": 35.0,
+                "rms_energy": 0.10,
+                "speaking_rate": 80.0,
+            },
         },
     ]
 

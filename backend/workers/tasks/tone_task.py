@@ -142,7 +142,9 @@ def _build_speaker_summary(
 
 def _compute_overall_tone(segments: list[dict]) -> str:
     """전체 세그먼트에서 가장 빈도 높은 톤 반환"""
-    valid_tones = [s.get("tone", "unknown") for s in segments if s.get("tone") not in ("skipped", None)]
+    valid_tones = [
+        s.get("tone", "unknown") for s in segments if s.get("tone") not in ("skipped", None)
+    ]
     if not valid_tones:
         return "unknown"
     return Counter(valid_tones).most_common(1)[0][0]

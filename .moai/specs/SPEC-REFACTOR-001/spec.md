@@ -551,7 +551,7 @@ REQ-ROUTE-001의 스케치는 ~24개만 명명했으나, 실제 인벤토리는 
 
 | ID | 검증 명령 | 상태 | 결과 |
 |----|-----------|------|------|
-| AC-C1 | `cd backend && ../venv/bin/python -m pytest tests/ --ignore=tests/e2e/test_pipeline_e2e.py` | ✅ **충족** | **2478 passed, 4 skipped, 0 failed** (coverage 97.35%) |
+| AC-C1 | `venv/bin/python -m pytest backend -q` | ✅ **충족 (2026-06-14 재검증)** | **3323 passed, 16 skipped**, coverage **98.62%** |
 | AC-C2 | 라우트 테이블 스냅샷: 재배치 전 `app.routes`의 (path, methods) 집합을 기록 → 재배치 후 동일 집합인지 비교 | ✅ **충족** | **diff 0건** — `tests/unit/test_route_registry_invariance.py` + `_route_snapshot_baseline.json` (135 routes 불변 증명) |
 | AC-C3 | `main.py`의 `include_router` 호출 개수: 35개 정적 호출 → registry 순회 루프로 축소 | ✅ **충족** | **35 → 1** (`include_router` 직접 호출 대폭 감소, registry 루프로 집약) |
 | AC-C4 | flat 라우터 잔존 검사: `find backend/app/api/v1 -maxdepth 1 -type f -name '*.py' ! -name '__init__.py' ! -name 'registry.py' -print` | ✅ **충족 (후속 완료)** | 2026-06-14 재검증 출력 없음. SPEC-REFACTOR-002 후속으로 도메인 그룹핑 파일 재배치가 완료되었고, top-level은 `__init__.py`와 `registry.py`만 유지. |
@@ -564,7 +564,7 @@ REQ-ROUTE-001의 스케치는 ~24개만 명명했으나, 실제 인벤토리는 
 - **그룹 경계 결정 2건 (Plan Review에서 확정됨, 2026-06-05)**:
   - `core` 그룹(calendar, vocabulary, qa, search, stream): **별도 core 그룹 유지**로 확정(기존 그룹 분산 안 함).
   - `speakers.py`: **collaboration 그룹**으로 확정(JWT 엔드포인트 인증 패턴 일치).
-- **e2e 9건 (`test_pipeline_e2e.py`)**: 과거에는 Python 3.14 asyncio 이벤트 루프 이슈로 제외했으나, 2026-06-14 재검증에서 재현되지 않음. `tests/e2e/test_pipeline_e2e.py` 포함 backend 전체 suite `3323 passed, 16 skipped`, coverage `99.01%`.
+- **e2e (`test_pipeline_e2e.py`)**: 과거에는 Python 3.14 asyncio 이벤트 루프 이슈로 제외했으나, 2026-06-14 재검증에서 재현되지 않음. `venv/bin/python -m pytest -o addopts="" backend/tests/e2e/test_pipeline_e2e.py -q` -> `16 passed`; 전체 backend suite도 E2E 포함 `3323 passed, 16 skipped`, coverage `98.62%`.
 - **엔드포인트 동작 변경**: URL 이름 변경, 메서드 변경, 인증 전략 변경은 모두 **범위 밖**이다. 이번 반복은 파일 위치 이동 + registry 도입의 순수 구조 변경만 수행한다.
 - **`/statistics` 공유 (statistics.py + dashboard.py)**: 실제 충돌 아님(subpath 분리). 병합 금지, 위치 이동만. registry에서 두 라우터를 각각 등록하되 prefix는 불변 유지한다.
 

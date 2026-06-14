@@ -279,10 +279,7 @@ async def batch_preprocess_endpoint(
                 failed_files=result.failed_files,
                 processing_time_seconds=result.processing_time_seconds,
                 summary=BatchSummary.model_validate(result.summary),
-                results=[
-                    AudioFileInfoSchema.model_validate(item)
-                    for item in result.results
-                ],
+                results=[AudioFileInfoSchema.model_validate(item) for item in result.results],
                 errors=result.errors,
                 report=report,
             )

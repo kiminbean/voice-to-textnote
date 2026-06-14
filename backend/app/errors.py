@@ -108,7 +108,9 @@ def rate_limit(msg: str = "요청 제한을 초과했습니다", **kwargs: str) 
     )
 
 
-def unprocessable(msg: str | list[dict[str, Any]] = "요청을 처리할 수 없습니다", **kwargs: str) -> NoReturn:
+def unprocessable(
+    msg: str | list[dict[str, Any]] = "요청을 처리할 수 없습니다", **kwargs: str
+) -> NoReturn:
     """
     UnprocessableEntityError를 발생시키는 헬퍼 함수
 

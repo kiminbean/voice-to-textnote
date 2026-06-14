@@ -6,12 +6,18 @@ PODS:
   - FlutterMacOS (1.0.0)
   - sign_in_with_apple (0.0.1):
     - FlutterMacOS
+  - whisper_ggml_plus (1.3.1):
+    - FlutterMacOS
+    - whisper_ggml_plus/no-arc (= 1.3.1)
+  - whisper_ggml_plus/no-arc (1.3.1):
+    - FlutterMacOS
 
 DEPENDENCIES:
   - flutter_local_notifications (from `Flutter/ephemeral/.symlinks/plugins/flutter_local_notifications/macos`)
   - flutter_secure_storage_macos (from `Flutter/ephemeral/.symlinks/plugins/flutter_secure_storage_macos/macos`)
   - FlutterMacOS (from `Flutter/ephemeral`)
   - sign_in_with_apple (from `Flutter/ephemeral/.symlinks/plugins/sign_in_with_apple/macos`)
+  - whisper_ggml_plus (from `Flutter/ephemeral/.symlinks/plugins/whisper_ggml_plus/macos`)
 
 EXTERNAL SOURCES:
   flutter_local_notifications:
@@ -22,12 +28,15 @@ EXTERNAL SOURCES:
     :path: Flutter/ephemeral
   sign_in_with_apple:
     :path: Flutter/ephemeral/.symlinks/plugins/sign_in_with_apple/macos
+  whisper_ggml_plus:
+    :path: Flutter/ephemeral/.symlinks/plugins/whisper_ggml_plus/macos
 
 SPEC CHECKSUMS:
   flutter_local_notifications: 13862b132e32eb858dea558a86d45d08daeacfe7
   flutter_secure_storage_macos: 7f45e30f838cf2659862a4e4e3ee1c347c2b3b54
   FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1
   sign_in_with_apple: 6673c03c9e3643f6c8d33601943fbfa9ae99f94e
+  whisper_ggml_plus: 679c4d6243cd309dacdbb7ab4901466d3a49f51c
 
 PODFILE CHECKSUM: 9ebaf0ce3d369aaa26a9ea0e159195ed94724cf3
 

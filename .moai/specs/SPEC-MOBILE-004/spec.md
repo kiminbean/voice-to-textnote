@@ -340,6 +340,13 @@ firebase-admin>=6.0
 | iOS 실기기 필요 | Push/백그라운드 녹음은 시뮬레이터로 완전 검증 불가 |
 | 기존 파이프라인 영향 | Celery hook 연동 시 회귀 테스트 필수 |
 
+### 2026-06-14 재검증
+
+- Backend Firebase/Push wiring 포함 전체 회귀: `venv/bin/python -m pytest backend -q` -> `3323 passed, 16 skipped`, coverage `98.62%`
+- Flutter notification/device client tests 포함 전체 회귀: `cd client && flutter test` -> `324 passed`
+- Native build readiness: `cd client && ./scripts/verify_mobile.sh --native` -> Android APK와 iOS no-codesign Runner.app 빌드 성공
+- 실제 Firebase Console 프로젝트, APNs key, Apple Developer provisioning, 실기기 Push 수신 E2E는 외부 계정/장비 의존으로 남음.
+
 ---
 
 *SPEC ID: SPEC-MOBILE-004*

@@ -200,7 +200,9 @@ class BookmarkService:
             except Exception as exc:
                 errors.append({"id": str(bookmark_id), "error": str(exc)})
         await session.commit()
-        return BookmarkBulkResponse(processed_count=processed_count, failed_count=len(errors), errors=errors)
+        return BookmarkBulkResponse(
+            processed_count=processed_count, failed_count=len(errors), errors=errors
+        )
 
     async def get_summary(
         self, session: AsyncSession, user_id: uuid.UUID, task_id: str | None = None
@@ -286,7 +288,9 @@ class BookmarkService:
         preview = [BookmarkResponse.model_validate(item) for item in items[:20]]
         deleted_count = 0
         if not payload.dry_run and items:
-            await session.execute(delete(Bookmark).where(Bookmark.id.in_([item.id for item in items])))
+            await session.execute(
+                delete(Bookmark).where(Bookmark.id.in_([item.id for item in items]))
+            )
             await session.commit()
             deleted_count = len(items)
         return BookmarkCleanupResponse(
@@ -303,4 +307,8 @@ class BookmarkService:
             user_id,
             BookmarkSearchRequest(task_id=task_id, page=1, page_size=200),
         )
-        return {"format": format, "count": result.total, "items": [item.model_dump() for item in result.items]}
+        return {
+            "format": format,
+            "count": result.total,
+            "items": [item.model_dump() for item in result.items],
+        }

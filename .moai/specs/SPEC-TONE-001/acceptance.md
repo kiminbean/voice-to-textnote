@@ -216,9 +216,10 @@
   - 대상 테스트: `backend/tests/unit/test_api_coverage_completion.py`, `backend/tests/unit/test_devices_api_coverage.py`
 - [x] TRUST 5 통과(0 에러, 0 타입 에러, 0 린트 에러)
 - [x] 기존 회귀 테스트 전체 통과(sentiment 포함)
-  - 2026-06-14 backend 전체 suite: `3323 passed, 16 skipped`, coverage `99.01%`
-  - `ruff check .` -> `All checks passed!`
-  - `mypy .` -> `Success: no issues found in 394 source files`
+  - 2026-06-14 backend 전체 suite: `venv/bin/python -m pytest backend -q` -> `3323 passed, 16 skipped`, coverage `98.62%`
+  - `venv/bin/python -m ruff check backend` -> `All checks passed!`
+  - `venv/bin/python -m ruff format --check backend` -> `394 files already formatted`
+  - `venv/bin/python -m mypy backend` -> `Success: no issues found in 394 source files`
 - [x] acceptance.md 시나리오 6개(AC-TONE-001~006) 전체 통과
 
 ### 하위 호환성

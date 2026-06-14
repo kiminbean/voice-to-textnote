@@ -308,7 +308,8 @@ Scenario: Anti-pattern 제거 검증
 
 2026-06-14 재검증:
 - `find backend/app/api/v1 -maxdepth 1 -type f -name '*.py' ! -name '__init__.py' ! -name 'registry.py' -print` -> 출력 없음(flat 라우터 0건)
-- `tests/e2e/test_pipeline_e2e.py` 포함 backend 전체 suite -> `3323 passed, 16 skipped`, coverage `99.01%`
-- `ruff check .` -> `All checks passed!`
-- `mypy .` -> `Success: no issues found in 394 source files`
+- `tests/e2e/test_pipeline_e2e.py` 포함 backend 전체 suite -> `3323 passed, 16 skipped`, coverage `98.62%`
+- `ruff check backend` -> `All checks passed!`
+- `ruff format --check backend` -> `394 files already formatted`
+- `mypy backend` -> `Success: no issues found in 394 source files`
 - route registry 중복 등록 제거 후 live route method entries `161`, unique `161`, duplicates `0`

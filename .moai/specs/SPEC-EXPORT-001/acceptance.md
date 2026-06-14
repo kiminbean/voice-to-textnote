@@ -183,11 +183,20 @@ Then 로딩 인디케이터가 사라지고
 
 ### TRUST 5 체크리스트
 
-- [ ] **Tested**: 모든 요구사항에 대한 테스트 존재 (REQ-EXPORT-001 ~ 005)
-- [ ] **Readable**: 코드 주석은 'Why' 중심, Google 스타일 docstring
-- [ ] **Unified**: ruff/black 포맷팅 통과, Flutter analyze 통과
-- [ ] **Secured**: 입력값 검증 (task_id 형식), 에러 메시지에 내부 정보 미노출
-- [ ] **Trackable**: Conventional Commits 형식, SPEC-EXPORT-001 참조
+- [x] **Tested**: 모든 요구사항에 대한 테스트 존재 (REQ-EXPORT-001 ~ 005)
+- [x] **Readable**: 코드 주석은 'Why' 중심, Google 스타일 docstring
+- [x] **Unified**: ruff/formatting 통과, Flutter analyze 통과
+- [x] **Secured**: 입력값 검증 (task_id 형식), 에러 메시지에 내부 정보 미노출
+- [x] **Trackable**: SPEC-EXPORT-001 참조 이력 유지
+
+### 2026-06-14 재검증
+
+- Backend 전체 회귀: `venv/bin/python -m pytest backend -q` -> `3323 passed, 16 skipped`, coverage `98.62%`
+- Backend lint/format: `venv/bin/python -m ruff check backend` -> `All checks passed!`; `venv/bin/python -m ruff format --check backend` -> `394 files already formatted`
+- Backend type check: `venv/bin/python -m mypy backend` -> `Success: no issues found in 394 source files`
+- Flutter export client tests are included in `cd client && flutter test` -> `324 passed`
+- Flutter analyze: `cd client && flutter analyze` -> `No issues found!`
+- 실기기 공유 시트 UX는 시뮬레이터/자동화로 완전 증명할 수 없으므로 수동 E2E 체크리스트에 유지한다.
 
 ### 검증 명령어
 

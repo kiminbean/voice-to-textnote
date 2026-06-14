@@ -410,9 +410,14 @@ firebase-admin>=6.5.0       # Firebase Admin SDK — FCM 전송용
   - 에러 fallback (유효하지 않은 URL → 에러 화면)
 - go_router 딥링크 통합 (`client/lib/router/app_router.dart` 수정)
 
-**App Store 준비 (Phase D) — 미시작** (실기기 테스트 전제)
+**App Store 준비 (Phase D) — 자동화 준비 완료 / 외부 등록 대기**:
+- iOS no-codesign device build 검증 완료: `cd client && ./scripts/verify_mobile.sh --native` -> `Built build/ios/iphoneos/Runner.app`
+- Android debug APK 검증 완료: `Built build/app/outputs/flutter-apk/app-debug.apk`
+- 실제 App Store Connect 등록, provisioning profile, TestFlight 배포는 Apple Developer 계정과 서명 자산 필요.
 
-**통합 테스트 (Phase E) — 미시작** (Firebase 프로젝트 생성 + 실기기 필요)
+**통합 테스트 (Phase E) — 코드/빌드 검증 완료 / Push E2E 대기**:
+- Firebase client/backend wiring과 테스트는 backend 전체 suite 및 Flutter 전체 suite에 포함되어 통과.
+- 실제 FCM/APNs Push 수신, cold-start 딥링크, 실기기 백그라운드 흐름은 Firebase 프로젝트, APNs key, 서비스 계정, iOS/Android 실기기 필요.
 
 **제외됨 (MVP 범위 초과)**:
 - 오프라인 STT 처리 (로컬 Whisper 모델)
@@ -421,9 +426,9 @@ firebase-admin>=6.5.0       # Firebase Admin SDK — FCM 전송용
 ### 기술 제약사항
 
 **현재 제약**:
-- Firebase 프로젝트 미생성 → Push 알림 E2E 테스트 불가 (코드는 구현 완료)
+- Firebase 프로젝트/서비스 계정/APNs key가 현재 세션에 제공되지 않음 → Push 알림 E2E 테스트 불가 (코드와 빌드는 검증 완료)
 - Apple Developer 계정 미사용 → App Store 배포 불가
-- Firebase Admin SDK 서비스 계정 키 미발급 → 실제 Push 전송 불가
+- Firebase Admin SDK 서비스 계정 키 미제공 → 실제 Push 전송 불가
 
 **Phase D/E 진입 조건**:
 - Firebase Console 프로젝트 생성 + iOS/Android 앱 등록

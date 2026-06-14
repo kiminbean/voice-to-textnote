@@ -26,8 +26,8 @@ event: PreCompact
   `../venv/bin/python -m pytest -q tests/unit/test_route_registry_invariance.py tests/unit/test_tone_task.py tests/unit/test_tone_api.py tests/unit/test_tone_engine.py -o addopts=""`
   -> `52 passed, 6 warnings`
 - Full backend suite:
-  `../venv/bin/python -m pytest tests/ -q`
-  -> `3323 passed, 16 skipped, 249 warnings`, total coverage `99.01%`
+  `venv/bin/python -m pytest backend -q`
+  -> `3323 passed, 16 skipped, 255 warnings`, total coverage `98.62%`
 - REFACTOR invariant: `find backend/app/api/v1 -maxdepth 1 -type f -name '*.py' ! -name '__init__.py' ! -name 'registry.py' -print` -> no output.
 
 ### Mobile Work Completed
@@ -106,6 +106,11 @@ This path has now been executed locally.
   `flutter build apk --debug` -> `✓ Built build/app/outputs/flutter-apk/app-debug.apk`.
 - Full native mobile verification now succeeds:
   `cd client && ./scripts/verify_mobile.sh --native` -> analyzer clean, all tests pass, local STT smoke pass, Android APK built, iOS Runner.app built.
+- Current Flutter verification:
+  `cd client && flutter analyze` -> `No issues found!`
+  `cd client && flutter test` -> `324 passed`
+- Android network security static regression was added:
+  `client/test/config/network_security_config_test.dart` -> AndroidManifest networkSecurityConfig reference, default cleartext denial, and localhost/Tailscale-only cleartext exceptions.
 
 ### Durable Fixes
 

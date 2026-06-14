@@ -217,9 +217,7 @@ async def collab_ws(
             "type": "snapshot",
             "payload": {
                 "document": document,
-                "field_timestamps": {
-                    k: v.isoformat() for k, v in field_timestamps.items()
-                },
+                "field_timestamps": {k: v.isoformat() for k, v in field_timestamps.items()},
                 "presence": presence_list,
             },
         }
@@ -240,7 +238,8 @@ async def collab_ws(
                 msg = json.loads(raw_text)
             except json.JSONDecodeError:
                 await manager.send_to_user(
-                    task_id, str(user.id),
+                    task_id,
+                    str(user.id),
                     {"type": "error", "payload": {"detail": "잘못된 JSON 형식입니다"}},
                 )
                 continue
@@ -254,7 +253,8 @@ async def collab_ws(
                 await _handle_cursor(task_id, str(user.id), payload)
             else:
                 await manager.send_to_user(
-                    task_id, str(user.id),
+                    task_id,
+                    str(user.id),
                     {"type": "error", "payload": {"detail": f"알 수 없는 메시지 타입: {msg_type}"}},
                 )
 
@@ -283,7 +283,8 @@ async def _handle_edit(
 
     if not field or client_ts_raw is None:
         await manager.send_to_user(
-            task_id, user_id,
+            task_id,
+            user_id,
             {"type": "error", "payload": {"detail": "field와 client_timestamp는 필수입니다"}},
         )
         return
@@ -292,7 +293,8 @@ async def _handle_edit(
         client_ts = datetime.fromisoformat(client_ts_raw)
     except (ValueError, TypeError):
         await manager.send_to_user(
-            task_id, user_id,
+            task_id,
+            user_id,
             {"type": "error", "payload": {"detail": "잘못된 timestamp 형식"}},
         )
         return
@@ -301,7 +303,8 @@ async def _handle_edit(
 
     # ack to sender
     await manager.send_to_user(
-        task_id, user_id,
+        task_id,
+        user_id,
         {
             "type": "ack",
             "payload": {

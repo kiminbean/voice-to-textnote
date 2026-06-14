@@ -371,6 +371,12 @@ dependencies:
 | AC-M05 | 블루투스 해제 시 녹음이 일시정지된다 | 녹음 중 BT 해제 → 상태 확인 |
 | AC-M06 | 앱 강제 종료 후 재시작 시 복원 다이얼로그가 표시된다 | 강제 종료 → 재시작 → 다이얼로그 확인 |
 
+### 2026-06-14 재검증
+
+- 자동화 범위: `cd client && flutter test` -> `324 passed` (background recording, interruption state, recovery service tests 포함)
+- iOS build 범위: `cd client && ./scripts/verify_mobile.sh --native` -> `Built build/ios/iphoneos/Runner.app`
+- AC-M01~AC-M06은 전화 수신, 화면 잠금, Bluetooth route change, 강제 종료 복원 등 실기기 이벤트가 필요하므로 수동 검증으로 유지한다.
+
 ---
 
 ## 10. 위험 평가
