@@ -108,6 +108,30 @@
 
 ---
 
+## Release E2E Evidence JSON 매핑
+
+`RELEASE_E2E_EVIDENCE_PATH`는 아래 scenario key를 모두 포함해야 한다. 각 항목은 `pass: true`와 실제 관측 증거 문구를 가져야 하며, Android/iOS device id는 strict 환경변수와 일치해야 한다.
+
+| Evidence key | 체크리스트 범위 |
+|--------------|----------------|
+| `permission_microphone_initial` | 1.1 최초 마이크 권한 요청 |
+| `permission_denied_recovery` | 1.3-1.5 권한 거부/설정 복구 |
+| `ios_background_recording_lock` | 2.1-2.2 iOS 화면 잠금/백그라운드 녹음 지속 |
+| `ios_interruption_resume` | 2.3 전화 수신 후 인터럽션 복구 |
+| `ios_bluetooth_route_change` | iOS Bluetooth route 변경 수동 검증 |
+| `unfinished_recording_recovery` | 2.4-2.6 강제 종료 후 미완료 녹음 복구 |
+| `push_stt_complete` | 4.1 STT 완료 Push |
+| `push_summary_complete` | 4.2 요약 완료 Push |
+| `push_failure` | 4.3 실패 Push |
+| `push_deeplink_background` | 4.4-4.5 백그라운드 Push 딥링크 |
+| `push_deeplink_cold_start` | 4.6 cold-start Push 딥링크 |
+| `android_foreground_service` | 6.1-6.3 Android Foreground Service 알림 |
+| `android_debug_tailscale_cleartext_allowed` | SPEC-SEC-002 AC-M02 Android Debug Tailscale HTTP 허용 |
+| `android_release_cleartext_blocked` | SPEC-SEC-002 AC-M03 Android Release HTTP 차단 |
+| `ios_release_http_blocked` | SPEC-SEC-002 AC-M01 iOS Release HTTP 차단 |
+| `export_share_android` | SPEC-EXPORT-001 Android PDF 공유 시트 |
+| `export_share_ios` | SPEC-EXPORT-001 iOS PDF 공유 시트 |
+
 ## 결과 기록
 
 - 테스터: _______

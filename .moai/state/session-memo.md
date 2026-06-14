@@ -157,6 +157,8 @@ This path has now been executed locally.
   `python3 client/scripts/verify_release_readiness.py` -> `release_readiness: 0 errors, 2 warnings`; strict without external inputs now fails with `11 errors`; direct evidence parser check against `docs/release-e2e-evidence.example.json` with matching fake IDs -> `evidence_check: 0 errors, 0 warnings`.
   Regression coverage: `venv/bin/python -m pytest -o addopts="" backend/tests/test_release_readiness_evidence.py -q` -> `3 passed, 5 warnings`.
   CI trigger coverage: `.github/workflows/mobile.yml` path filters now include `docs/privacy-policy.md`, `docs/screenshot-guide.md`, `docs/release-e2e-evidence.example.json`, and `backend/tests/test_release_readiness_evidence.py`, so release-readiness input changes run mobile preflight.
+  Operator docs now map every required evidence scenario key to the manual checklist, and README documents default vs strict release readiness usage. Regression coverage now also asserts `docs/release-e2e-evidence.example.json` contains exactly every `REQUIRED_E2E_SCENARIOS` key:
+  `venv/bin/python -m pytest -o addopts="" backend/tests/test_release_readiness_evidence.py -q` -> `4 passed, 5 warnings`.
 
 ### Durable Fixes
 

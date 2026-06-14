@@ -712,6 +712,19 @@ cd client
 
 검증된 로컬 Android SDK 경로는 `/Users/ibkim/Library/Android/sdk`이며, Flutter 설정은 `flutter config --android-sdk /Users/ibkim/Library/Android/sdk`로 고정했다. CI는 `.github/workflows/mobile.yml`에서 Android SDK 36과 필요한 build tools를 설치한다. iOS는 `client/ios/Flutter/Profile.xcconfig`가 `Pods-Runner.profile.xcconfig`를 include해야 Profile 빌드에서 CocoaPods 설정이 누락되지 않는다.
 
+### 모바일 릴리스 readiness
+
+```bash
+# 로컬/CI 기본 사전검사: Firebase, App Store metadata, native wiring, release docs
+python3 client/scripts/verify_release_readiness.py
+
+# 실기기 릴리스 게이트: 외부 secret, 연결 기기, Push/딥링크/녹음/공유 evidence 필요
+RELEASE_E2E_EVIDENCE_PATH=docs/release-e2e-evidence.example.json \
+python3 client/scripts/verify_release_readiness.py --strict
+```
+
+`--strict`는 예제 파일을 그대로 통과시키는 용도가 아니다. `docs/release-e2e-evidence.example.json`을 복사해 실제 Android/iOS 기기 ID, 빌드 산출물, Push/딥링크/백그라운드 녹음/HTTP 정책/PDF 공유 시나리오 증거로 채운 뒤 실행한다. 필요한 환경 변수와 scenario key 매핑은 `docs/e2e-device-checklist.md`에 있다.
+
 ## 다음 단계
 
 ### Phase 5 (진행 중)

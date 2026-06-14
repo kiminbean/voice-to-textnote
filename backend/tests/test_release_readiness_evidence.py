@@ -98,3 +98,12 @@ def test_release_e2e_evidence_rejects_device_id_mismatch(tmp_path, monkeypatch):
     assert any(
         "android device serial does not match strict env" in error for error in reporter.errors
     )
+
+
+def test_release_e2e_example_lists_every_required_scenario():
+    module = load_release_readiness_module()
+    example_path = Path(__file__).resolve().parents[2] / "docs/release-e2e-evidence.example.json"
+    example = json.loads(example_path.read_text(encoding="utf-8"))
+    scenarios = example["scenarios"]
+
+    assert set(scenarios) == set(module.REQUIRED_E2E_SCENARIOS)
