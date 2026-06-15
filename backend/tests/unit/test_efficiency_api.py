@@ -7,8 +7,23 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from fastapi.testclient import TestClient
 
+from backend.app.api.v1.registry import ROUTER_REGISTRY
 from backend.app.main import app
 from backend.services.efficiency_service import EfficiencyService
+
+
+def _has_efficiency_route() -> bool:
+    """ROUTER_REGISTRY와 app.routes 양쪽에서 efficiency 라우트 확인."""
+    for router, _ in ROUTER_REGISTRY:
+        for route in router.routes:
+            path = getattr(route, "path", "")
+            if "/efficiency/" in path:
+                return True
+    for route in app.routes:
+        path = getattr(route, "path", "")
+        if "/efficiency/" in path:
+            return True
+    return False
 
 
 class TestEfficiencyAPI:
@@ -20,17 +35,8 @@ class TestEfficiencyAPI:
 
     def test_efficiency_endpoint_exists(self):
         """회의 효율성 엔드포인트 존재 여부 확인"""
-        # API 라우터가 정상적으로 등록되었는지 확인
-        assert hasattr(app, 'routes')
-
-        # efficiency 엔드포인트가 라우터에 있는지 확인
-        efficiency_route = None
-        for route in app.routes:
-            if hasattr(route, 'path') and '/efficiency/' in route.path:
-                efficiency_route = route
-                break
-
-        assert efficiency_route is not None, "Efficiency API endpoint not found"
+        assert hasattr(app, "routes")
+        assert _has_efficiency_route(), "Efficiency API endpoint not found"
 
     def test_efficiency_schema_import(self):
         """효율성 스키마 임포트 확인"""
@@ -86,7 +92,4 @@ class TestEfficiencyAPI:
 
     def test_efficiency_api_integration(self):
         """API 통합 테스트 (엔드포인트 응답 구조)"""
-        api_routes = [route.path for route in app.routes if hasattr(route, 'path')]
-
-        efficiency_found = any('/efficiency/' in route for route in api_routes)
-        assert efficiency_found, "Efficiency endpoint not found in API routes"
+        assert _has_efficiency_route(), "Efficiency endpoint not found in API routes"
