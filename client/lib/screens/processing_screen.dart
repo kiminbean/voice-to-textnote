@@ -3,6 +3,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:voice_to_textnote/models/meeting.dart';
@@ -135,6 +136,7 @@ class _ProcessingScreenState extends ConsumerState<ProcessingScreen>
 
   // 파이프라인 완료 시 Meeting 업데이트 및 결과 화면 이동
   void _onPipelineCompleted(PipelineState pipelineState) {
+    HapticFeedback.heavyImpact();
     // Meeting에 task ID들 저장 후 completed 상태로 변경
     // AsyncNotifier이므로 .value?.firstWhere 사용
     final currentMeetings = ref.read(meetingListProvider).value ?? [];
@@ -253,16 +255,20 @@ class _ProcessingScreenState extends ConsumerState<ProcessingScreen>
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // 펄스 애니메이션 인디케이터
-            AnimatedBuilder(
-              animation: _pulseAnimation,
-              builder: (context, child) => Transform.scale(
-                scale: _pulseAnimation.value,
-                child: child,
-              ),
-              child: Icon(
-                Icons.settings_voice,
-                size: 64,
-                color: Theme.of(context).colorScheme.primary,
+            Semantics(
+              label: '오디오 처리 중',
+              liveRegion: true,
+              child: AnimatedBuilder(
+                animation: _pulseAnimation,
+                builder: (context, child) => Transform.scale(
+                  scale: _pulseAnimation.value,
+                  child: child,
+                ),
+                child: Icon(
+                  Icons.settings_voice,
+                  size: 64,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
               ),
             ),
             const SizedBox(height: 24),
@@ -277,10 +283,14 @@ class _ProcessingScreenState extends ConsumerState<ProcessingScreen>
             PipelineProgress(pipelineState: pipelineState),
             const SizedBox(height: 24),
             // 진행률 퍼센트 표시
-            Text(
-              '${(pipelineState.progress * 100).toInt()}%',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleMedium,
+            Semantics(
+              label: '진행률 ${(pipelineState.progress * 100).toInt()}%',
+              liveRegion: true,
+              child: Text(
+                '${(pipelineState.progress * 100).toInt()}%',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
             ),
             // 오류 메시지 표시
             if (pipelineState.errorMessage != null) ...[

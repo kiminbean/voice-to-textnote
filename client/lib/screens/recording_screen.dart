@@ -1,6 +1,7 @@
 // 녹음 화면
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:voice_to_textnote/models/meeting.dart';
@@ -198,6 +199,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
     final status = ref.read(recordingProvider).status;
 
     if (status == RecordingStatus.idle || status == RecordingStatus.stopped) {
+      await HapticFeedback.mediumImpact();
       // 실제 녹음 시작 (마이크 권한 요청 포함)
       await ref.read(recordingProvider.notifier).startRecording();
 
@@ -206,6 +208,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
         _startTimer();
       }
     } else if (status == RecordingStatus.recording) {
+      await HapticFeedback.heavyImpact();
       _stopTimer();
 
       // 실제 녹음 중지 및 파일 저장
@@ -278,12 +281,16 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             // 타이머 표시
-            Text(
-              _formatTime(state.elapsedSeconds),
-              style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                    fontFamily: 'monospace',
-                    fontFeatures: const [],
-                  ),
+            Semantics(
+              label: '경과 시간 ${_formatTime(state.elapsedSeconds)}',
+              liveRegion: true,
+              child: Text(
+                _formatTime(state.elapsedSeconds),
+                style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                      fontFamily: 'monospace',
+                      fontFeatures: const [],
+                    ),
+              ),
             ),
             const SizedBox(height: 32),
             // 녹음 상태 텍스트

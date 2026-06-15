@@ -19,39 +19,42 @@ class MeetingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: ListTile(
-        onTap: onTap,
-        onLongPress: onLongPress,
-        title: Text(
-          meeting.title,
-          style: Theme.of(context).textTheme.titleMedium,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-        ),
-        subtitle: Text(
-          DateFormat('yyyy년 MM월 dd일 HH:mm').format(meeting.createdAt),
-          style: Theme.of(context).textTheme.bodySmall,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // 소요 시간 표시
-            if (meeting.duration != null)
-              Flexible(
-                child: Text(
-                  _formatDuration(meeting.duration!),
-                  style: Theme.of(context).textTheme.bodySmall,
-                  overflow: TextOverflow.ellipsis,
+    return Hero(
+      tag: 'meeting-${meeting.id}',
+      child: Card(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: ListTile(
+          onTap: onTap,
+          onLongPress: onLongPress,
+          title: Text(
+            meeting.title,
+            style: Theme.of(context).textTheme.titleMedium,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          subtitle: Text(
+            DateFormat('yyyy년 MM월 dd일 HH:mm').format(meeting.createdAt),
+            style: Theme.of(context).textTheme.bodySmall,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // 소요 시간 표시
+              if (meeting.duration != null)
+                Flexible(
+                  child: Text(
+                    _formatDuration(meeting.duration!),
+                    style: Theme.of(context).textTheme.bodySmall,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-              ),
-            if (meeting.duration != null) const SizedBox(width: 8),
-            // 상태 배지
-            _buildStatusBadge(context, meeting.status),
-          ],
+              if (meeting.duration != null) const SizedBox(width: 8),
+              // 상태 배지
+              _buildStatusBadge(context, meeting.status),
+            ],
+          ),
         ),
       ),
     );
