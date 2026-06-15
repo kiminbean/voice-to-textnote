@@ -773,9 +773,10 @@ python3 client/scripts/configure_github_mobile_release_env.py --repo kiminbean/v
 
 ---
 
-**마지막 업데이트**: 2026-06-14
+**마지막 업데이트**: 2026-06-15
 **버전**: 1.4.0
 **상태**: Release Candidate — 자동화/빌드 게이트 통과, strict 실기기 release evidence 대기
+**최근 확인**: PR #32의 route registry CI 회귀를 해결했고, GitHub Actions `Test & Lint`, `Flutter Analyze, Test, Android Build`, `Flutter iOS No-Codesign Build` 체크가 모두 통과했다.
 
 ### 구현 완료 SPEC 목록
 
