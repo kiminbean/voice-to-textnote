@@ -185,6 +185,10 @@ This path has now been executed locally.
 - Release E2E evidence scaffold was added on 2026-06-15:
   `client/scripts/create_release_e2e_evidence.py --output docs/release-e2e-evidence.json` generates an editable JSON with current git revision, device env values, default Android/iOS artifact paths, and every `REQUIRED_E2E_SCENARIOS` key.
   Generated scenarios default to `pass: false`, so scaffold output cannot accidentally satisfy strict readiness before physical-device observations are written.
+- PR 32 was closed out on 2026-06-15 after the route registry CI regression was fixed and the GitHub checks turned green:
+  `backend/tests/unit/test_route_registry_invariance.py` now snapshots directly from `backend.app.api.v1.registry.ROUTER_REGISTRY` plus the explicit `/metrics` route, avoiding the full-suite contamination that had been causing CI-only route count drift.
+  Local verification after the final fix: `ruff check backend/tests/unit/test_route_registry_invariance.py` -> `All checks passed!`; `venv/bin/python -m pytest -o addopts="" backend/tests/unit/test_route_registry_invariance.py -q` -> `3 passed, 5 warnings`; `venv/bin/python -m pytest -o addopts="" backend/tests/unit -q` -> `3125 passed, 16 skipped, 212 warnings`.
+  GitHub Actions on PR 32 finished green: `Test & Lint`, `Flutter Analyze, Test, Android Build`, and `Flutter iOS No-Codesign Build` all passed; PR merged as commit `884bce0fc5eea8e1daba96d3f3a34e241935070f`.
 
 ### Durable Fixes
 

@@ -7,7 +7,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class ActionItemStatus(StrEnum):
@@ -124,8 +124,7 @@ class ActionItemResponse(BaseModel):
     time_remaining_hours: float | None
     progress_percentage: float
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ActionItemFilter(BaseModel):
@@ -195,8 +194,7 @@ class ActionItemComment(BaseModel):
     updated_at: datetime
     is_internal: bool
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ActionItemCommentCreate(BaseModel):
@@ -218,8 +216,7 @@ class ActionItemCommentResponse(BaseModel):
     updated_at: datetime
     is_internal: bool
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ActionItemHistory(BaseModel):
@@ -235,8 +232,7 @@ class ActionItemHistory(BaseModel):
     changed_at: datetime
     change_type: Literal["create", "update", "status_change", "complete", "cancel"]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ActionItemReminder(BaseModel):
@@ -250,5 +246,4 @@ class ActionItemReminder(BaseModel):
     last_sent_at: datetime | None
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

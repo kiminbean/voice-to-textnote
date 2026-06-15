@@ -207,14 +207,13 @@ NUM_SPEAKERS = None  # 스피커 수 자동 추정
 
 ### AI 기반 처리
 
-**LLM**: Claude 3.5 Sonnet (Anthropic Claude API)
-- **용도**: 회의 요약, 액션 아이템 추출, 텍스트 정렬
-- **API 버전**: claude-3-5-sonnet-20241022
+**LLM**: OpenAI gpt-4o-mini (OpenAI API)
+- **용도**: 회의 요약, 액션 아이템 추출, 감정 분석, 텍스트 정렬
+- **API 버전**: gpt-4o-mini
 - **요청 형식**:
   ```json
   {
-    "model": "claude-3-5-sonnet-20241022",
-    "max_tokens": 1024,
+    "model": "gpt-4o-mini",
     "messages": [
       {
         "role": "user",
@@ -223,7 +222,7 @@ NUM_SPEAKERS = None  # 스피커 수 자동 추정
     ]
   }
   ```
-- **비용**: 요청 토큰 $3/백만, 응답 토큰 $15/백만
+- **비용**: 요청 토큰 $0.15/백만, 응답 토큰 $0.60/백만
 - **응답 시간**: 평균 2~5초
 
 ---
@@ -303,7 +302,7 @@ NUM_SPEAKERS = None  # 스피커 수 자동 추정
             └────────┘ └──────┘ └────┘ │    │
                                 ┌──────▼──┐
                                 │요약워커  │
-                                │(Claude) │
+                                │(gpt-4o-mini)│
                                 └─────────┘
 ```
 
@@ -321,7 +320,7 @@ NUM_SPEAKERS = None  # 스피커 수 자동 추정
 5. Celery 작업 체인 시작:
    a) transcription_task: mlx-whisper로 음성→텍스트 (30초~5분)
    b) diarization_task: pyannote로 스피커 식별 (20초~3분)
-   c) summary_task: Claude API로 요약 생성 (10초~1분)
+   c) summary_task: OpenAI API로 요약 생성 (10초~1분)
    ↓
 6. Redis 캐시에 중간 결과 저장
    ↓
@@ -511,19 +510,18 @@ curl http://localhost:8000/api/v1/health
 
 ## 주요 통합 지점
 
-### Claude API 통합
+### OpenAI API 통합
 
 ```python
-# ml/claude_summarizer.py
-from anthropic import Anthropic
+# ml/openai_client.py
+from openai import AsyncOpenAI
 
-client = Anthropic()
+client = AsyncOpenAI(api_key=settings.openai_api_key)
 
-def generate_summary(transcript: str, speakers: List[str]) -> Dict:
+async def generate_summary(transcript: str, speakers: List[str]) -> Dict:
     """회의록 요약 생성"""
-    response = client.messages.create(
-        model="claude-3-5-sonnet-20241022",
-        max_tokens=1024,
+    response = await client.chat.completions.create(
+        model=settings.summary_model,
         messages=[{
             "role": "user",
             "content": f"""
@@ -544,7 +542,7 @@ def generate_summary(transcript: str, speakers: List[str]) -> Dict:
         }]
     )
 
-    return parse_response(response.content[0].text)
+    return parse_response(response.choices[0].message.content)
 ```
 
 ### Celery 작업 오케스트레이션

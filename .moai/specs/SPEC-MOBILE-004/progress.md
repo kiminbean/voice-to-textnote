@@ -36,3 +36,4 @@
 - Flutter: exit code 0 (전체 통과)
 - Backend (SPEC-MOBILE-004): 17 passed, 0 failed
 - analyze lib/ test/: 0 errors
+- 2026-06-15 PR 32 post-fix cross-check: GitHub Actions `Test & Lint`, `Flutter Analyze, Test, Android Build`, `Flutter iOS No-Codesign Build` 모두 `pass`; strict physical-device gate는 hosted runner에서 `skipping`으로 남음.

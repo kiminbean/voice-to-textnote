@@ -51,6 +51,7 @@ TAGS_METADATA = [
     {"name": "search", "description": "Full-text meeting search."},
     {"name": "export", "description": "Meeting export endpoints."},
     {"name": "statistics", "description": "Meeting statistics and dashboard views."},
+    {"name": "efficiency", "description": "Meeting efficiency scoring and improvement analysis."},
     {
         "name": "quality",
         "description": "Meeting minutes quality assessment and improvement suggestions.",

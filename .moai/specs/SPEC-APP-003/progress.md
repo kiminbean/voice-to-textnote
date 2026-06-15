@@ -3,7 +3,7 @@
 - Started: 2026-03-22T00:00:00
 - Phase 1 complete: Strategy analysis approved
 - Phase 1.5 complete: 7 tasks decomposed (TASK-001~007)
-- Phase 1.6 complete: 6 acceptance criteria registered as pending tasks
+- Phase 1.6 complete: 6 acceptance criteria registered
 - Phase 2 complete: TDD implementation (RED-GREEN-REFACTOR 3 cycles)
   - Phase 1 (Model): ActionItem model + 7 tests
   - Phase 2 (Provider): Parsing fix + 4 new tests

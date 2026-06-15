@@ -45,7 +45,9 @@ async def health_check(
     # Redis 연결 확인
     redis_status = "healthy"
     try:
-        await redis_client.ping()
+        ping_result = redis_client.ping()
+        if hasattr(ping_result, "__await__"):
+            await ping_result
     except Exception as e:
         redis_status = f"unhealthy: {e}"
         logger.warning("Redis 연결 실패", error=str(e))
@@ -140,7 +142,9 @@ async def readiness_check(
     # Redis 연결 확인 (필수 의존성)
     redis_ok = False
     try:
-        await redis_client.ping()
+        ping_result = redis_client.ping()
+        if hasattr(ping_result, "__await__"):
+            await ping_result
         redis_ok = True
     except Exception as e:
         logger.warning("Readiness 체크: Redis 연결 실패", error=str(e))

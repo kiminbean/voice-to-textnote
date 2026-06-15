@@ -1,12 +1,13 @@
 ---
 active: true
 iteration: 1
-max_iterations: 100
+max_iterations: 500
 completion_promise: "DONE"
 initial_completion_promise: "DONE"
-started_at: "2026-06-14T09:35:14.626Z"
-session_id: "ses_13a83c352ffeNvCAMQwV67mUwW"
+started_at: "2026-06-15T13:58:08.746Z"
+session_id: "ses_1357de184ffeRG3RAMS3yK1J67"
+ultrawork: true
 strategy: "continue"
-message_count_at_start: 0
+message_count_at_start: 379
 ---
-커버리지: engine 98%, task 100%, schema 100%, API 100% (목표 100%, API aggregate 2545/2545))
+https://github.com/kiminbean/voice-to-textnote/pull/33/commits 확인하고 전부 머지해줘

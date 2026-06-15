@@ -9,6 +9,7 @@ TASK-003: DB-backed 디바이스 관리 (DeviceToken 모델 사용)
 MVP: 인메모리 저장 (dict) 사용, Firebase 프로젝트 생성 필요 없음
 """
 
+import asyncio
 from typing import Any
 
 from sqlalchemy import select
@@ -104,18 +105,19 @@ class PushService:
         self._ensure_firebase_initialized()
 
         try:
-            # MVP: 로그만 출력하고 성공 반환
-            logger.info(f"[MOCK] FCM 전송: title={title}, body={body}, token={token[:20]}...")
-            if data:
-                logger.info(f"[MOCK] FCM 데이터: {data}")
+            if self._is_mock_mode:
+                logger.info(f"[MOCK] FCM 전송: title={title}, body={body}, token={token[:20]}...")
+                if data:
+                    logger.info(f"[MOCK] FCM 데이터: {data}")
+            else:
+                from firebase_admin import messaging
 
-            # 프로덕션 코드 (현재 비활성화):
-            # message = messaging.Message(
-            #     notification=messaging.Notification(title=title, body=body),
-            #     data=data or {},
-            #     token=token,
-            # )
-            # messaging.send(message)
+                message = messaging.Message(
+                    notification=messaging.Notification(title=title, body=body),
+                    data=data or {},
+                    token=token,
+                )
+                await asyncio.to_thread(messaging.send, message)
 
             return True
 
@@ -155,26 +157,26 @@ class PushService:
             logger.warning("FCM 멀티캐스트: 빈 토큰 리스트")
             return {"success_count": 0, "failure_count": 0, "invalid_tokens": []}
 
-        # MVP: 모든 토큰이 성공한 것으로 시뮬레이션
-        logger.info(f"[MOCK] FCM 멀티캐스트: {len(tokens)}개 디바이스")
-        logger.info(f"[MOCK] title={title}, body={body}")
+        if self._is_mock_mode:
+            logger.info(f"[MOCK] FCM 멀티캐스트: {len(tokens)}개 디바이스")
+            logger.info(f"[MOCK] title={title}, body={body}")
+            return {
+                "success_count": len(tokens),
+                "failure_count": 0,
+                "invalid_tokens": [],
+            }
 
-        # 프로덕션 코드 (현재 비활성화):
-        # message = messaging.MulticastMessage(
-        #     notification=messaging.Notification(title=title, body=body),
-        #     data=data or {},
-        #     tokens=tokens,
-        # )
-        # response = messaging.send_multicast(message)
-        # return {
-        #     "success_count": response.success_count,
-        #     "failure_count": response.failure_count,
-        #     "invalid_tokens": [],  # response에서 추출 필요
-        # }
+        from firebase_admin import messaging
 
+        message = messaging.MulticastMessage(
+            notification=messaging.Notification(title=title, body=body),
+            data=data or {},
+            tokens=tokens,
+        )
+        response = await asyncio.to_thread(messaging.send_each_for_multicast, message)
         return {
-            "success_count": len(tokens),
-            "failure_count": 0,
+            "success_count": response.success_count,
+            "failure_count": response.failure_count,
             "invalid_tokens": [],
         }
 

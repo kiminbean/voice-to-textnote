@@ -343,16 +343,11 @@ def client(mock_redis_client, tmp_path):
                                 yield TestClient(app, raise_server_exceptions=True)
 
     app.dependency_overrides.clear()
-    # cleanup: engine dispose (best-effort, ignore if loop unavailable)
     try:
         import asyncio
 
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            loop.create_task(_test_engine.dispose())
-        else:
-            loop.run_until_complete(_test_engine.dispose())
-    except RuntimeError:
+        asyncio.run(_test_engine.dispose())
+    except (RuntimeError, Exception):
         pass
 
 

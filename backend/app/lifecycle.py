@@ -47,7 +47,9 @@ async def validate_startup() -> dict:
         from backend.app.dependencies import get_redis_client
 
         r = get_redis_client()
-        await r.ping()
+        ping_result = r.ping()
+        if hasattr(ping_result, "__await__"):
+            await ping_result
         status["redis"] = "ok"
     except Exception as e:
         status["redis"] = f"warning: {e}"

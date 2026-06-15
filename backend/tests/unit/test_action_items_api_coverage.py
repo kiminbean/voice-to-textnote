@@ -16,7 +16,7 @@ SPEC-ACTION-001: 액션 아이템 관리 API 단위 테스트
 """
 
 import uuid
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -38,7 +38,7 @@ def _make_action_item_response(
     priority="medium",
 ):
     """Create a mock object satisfying ActionItemResponse schema fields."""
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
     item = MagicMock()
     item.id = item_id or uuid.uuid4()
     item.title = title
@@ -279,7 +279,7 @@ class TestCreateActionItem:
         item = _make_action_item_response(priority="high")
         mock_service.create.return_value = item
 
-        due = (datetime.utcnow() + timedelta(days=5)).isoformat()
+        due = (datetime.now(UTC) + timedelta(days=5)).isoformat()
         response = api_client.post(
             "/api/v1/action-items",
             json={"title": "High priority", "priority": "high", "due_date": due},
@@ -317,7 +317,7 @@ class TestCreateActionItem:
                 "description": "Detailed description",
                 "priority": "high",
                 "assignee_id": str(FAKE_ASSIGNEE_ID),
-                "due_date": (datetime.utcnow() + timedelta(days=3)).isoformat(),
+                "due_date": (datetime.now(UTC) + timedelta(days=3)).isoformat(),
                 "meeting_id": "meeting-abc",
                 "tags": ["urgent", "backend"],
                 "estimated_hours": 4.5,

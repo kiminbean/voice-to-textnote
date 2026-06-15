@@ -4,6 +4,7 @@ POST /api/v1/transcriptions/batch  — 다중 오디오 파일 일괄 업로드 
 GET  /api/v1/transcriptions/batch/{batch_id} — 배치 처리 상태 일괄 조회
 """
 
+import asyncio
 import json
 import uuid
 from datetime import UTC, datetime
@@ -105,7 +106,7 @@ async def upload_batch_transcription(
 
         # 재생 시간 검증
         try:
-            duration_seconds = get_audio_duration_seconds(temp_path)
+            duration_seconds = await asyncio.to_thread(get_audio_duration_seconds, temp_path)
             if duration_seconds > settings.max_duration_seconds:
                 temp_path.unlink(missing_ok=True)
                 items.append(

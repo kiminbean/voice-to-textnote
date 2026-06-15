@@ -32,6 +32,35 @@ MAX_PARTICIPANTS = 5
 # Debounce: 마지막 편집 후 이 시간 내 추가 편집이 없으면 DB flush (초)
 DEBOUNCE_SECONDS = 3
 
+
+_ADD_PRESENCE_LUA = """
+local count = redis.call('hlen', KEYS[1])
+local exists = redis.call('hexists', KEYS[1], ARGV[1])
+if exists == 1 then
+    redis.call('hset', KEYS[1], ARGV[1], ARGV[2])
+    redis.call('expire', KEYS[1], ARGV[4])
+    return 1
+end
+if count >= tonumber(ARGV[3]) then
+    return 0
+end
+redis.call('hset', KEYS[1], ARGV[1], ARGV[2])
+redis.call('expire', KEYS[1], ARGV[4])
+return 1
+"""
+
+_APPLY_EDIT_LUA = """
+local existing = redis.call('hget', KEYS[2], ARGV[1])
+if existing then
+    if ARGV[2] < existing then
+        return {0, existing}
+    end
+end
+redis.call('hset', KEYS[1], ARGV[1], ARGV[3])
+redis.call('hset', KEYS[2], ARGV[1], ARGV[2])
+return {1, ARGV[2]}
+"""
+
 # Redis 키 TTL (비활성 세션 자동 정리, 24시간)
 SESSION_TTL_SECONDS = 86400
 
@@ -41,6 +70,11 @@ async def _resolve(value: Any) -> Any:
     if inspect.isawaitable(value):
         return await value
     return value
+
+
+def _is_real_redis(redis: Any) -> bool:
+    """프로덕션 redis.asyncio.Redis 인스턴스인지 감지 (Lua eval 지원 여부 판단용)."""
+    return type(redis).__module__.startswith("redis.")
 
 
 def _redis_key_doc(task_id: str) -> str:
@@ -93,20 +127,15 @@ class CollabService:
         """
         활성 사용자 추가.
 
+        프로덕션 Redis에서는 Lua script로 원자적 check-and-set을 수행하고,
+        Lua eval을 지원하지 않는 테스트 double에서는 기존 check-then-act로 폴백한다.
+
         Returns:
             (joined, presence_list)
             - joined=False → Room 가득 참 (5명)
             - joined=True → 입장 성공, 현재 전체 presence 목록 반환
         """
         presence_key = _redis_key_presence(task_id)
-
-        # 현재 참여자 수 확인
-        current_count = cast(int, await _resolve(redis.hlen(presence_key)))
-        already_in = cast(bool, await _resolve(redis.hexists(presence_key, user_id)))
-
-        if not already_in and current_count >= MAX_PARTICIPANTS:
-            return False, []
-
         presence_data = json.dumps(
             {
                 "user_id": user_id,
@@ -116,8 +145,29 @@ class CollabService:
             },
             ensure_ascii=False,
         )
-        await _resolve(redis.hset(presence_key, user_id, presence_data))
-        await _resolve(redis.expire(presence_key, SESSION_TTL_SECONDS))
+
+        if _is_real_redis(redis):
+            joined_raw = await _resolve(
+                redis.eval(
+                    _ADD_PRESENCE_LUA,
+                    1,
+                    presence_key,
+                    user_id,
+                    presence_data,
+                    str(MAX_PARTICIPANTS),
+                    str(SESSION_TTL_SECONDS),
+                )
+            )
+            if not joined_raw:
+                return False, []
+        else:
+            already_in = cast(bool, await _resolve(redis.hexists(presence_key, user_id)))
+            if not already_in:
+                current_count = cast(int, await _resolve(redis.hlen(presence_key)))
+                if current_count >= MAX_PARTICIPANTS:
+                    return False, []
+            await _resolve(redis.hset(presence_key, user_id, presence_data))
+            await _resolve(redis.expire(presence_key, SESSION_TTL_SECONDS))
 
         presence_list = await self.get_presence(redis, task_id)
         return True, presence_list
@@ -226,25 +276,44 @@ class CollabService:
         client_timestamp: datetime,
     ) -> tuple[bool, datetime]:
         """
-        Field-level LWW 편집 적용.
-
-        클라이언트 타임스탬프가 서버 타임스탬프보다 최신이면 반영한다.
-        동일한 타임스탬프인 경우에도 반영한다 (last-writer-wins).
+        Field-level LWW 편집 적용 (atomic via Lua script on production Redis).
 
         Returns:
             (applied, stored_timestamp)
-            - applied=True → 반영됨, stored_timestamp는 client_timestamp (LWW 기준 시각)
+            - applied=True → 반영됨, stored_timestamp는 client_timestamp
             - applied=False → 거부됨 (stale), stored_timestamp는 기존값
         """
         doc_key = _redis_key_doc(task_id)
         ts_key = _redis_key_ts(task_id)
 
-        # client_timestamp 정규화 (tzinfo 없으면 UTC 가정)
         client_ts = client_timestamp
         if client_ts.tzinfo is None:
             client_ts = client_ts.replace(tzinfo=UTC)
 
-        # 기존 타임스탬프 확인
+        client_ts_str = client_ts.isoformat()
+        value_json = json.dumps(value, ensure_ascii=False)
+
+        if _is_real_redis(redis):
+            result = await _resolve(
+                redis.eval(
+                    _APPLY_EDIT_LUA,
+                    2,
+                    doc_key,
+                    ts_key,
+                    field,
+                    client_ts_str,
+                    value_json,
+                )
+            )
+            applied = bool(result[0])
+            stored_ts_str = result[1].decode() if isinstance(result[1], bytes) else result[1]
+            stored_ts = datetime.fromisoformat(stored_ts_str)
+            if stored_ts.tzinfo is None:
+                stored_ts = stored_ts.replace(tzinfo=UTC)
+            if not applied:
+                return False, stored_ts
+            return True, stored_ts
+
         existing_ts_raw = cast(str | None, await _resolve(redis.hget(ts_key, field)))
         if existing_ts_raw is not None:
             try:
@@ -254,7 +323,6 @@ class CollabService:
         else:
             existing_ts = None
 
-        # LWW 판정: 클라이언트 타임스탬프가 기존보다 과거면 거부
         if existing_ts is not None:
             existing_ts_normalized = existing_ts
             if existing_ts_normalized.tzinfo is None:
@@ -262,9 +330,8 @@ class CollabService:
             if client_ts < existing_ts_normalized:
                 return False, existing_ts_normalized
 
-        # 반영: 클라이언트 타임스탬프를 LWW 기준 시각으로 저장
-        await _resolve(redis.hset(doc_key, field, json.dumps(value, ensure_ascii=False)))
-        await _resolve(redis.hset(ts_key, field, client_ts.isoformat()))
+        await _resolve(redis.hset(doc_key, field, value_json))
+        await _resolve(redis.hset(ts_key, field, client_ts_str))
         await _resolve(redis.expire(doc_key, SESSION_TTL_SECONDS))
         await _resolve(redis.expire(ts_key, SESSION_TTL_SECONDS))
 

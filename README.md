@@ -34,7 +34,7 @@
 ✅ **API 보안**: API Key 인증, 레이트 리미팅, CORS, Security Headers
 ✅ **모니터링**: Prometheus 메트릭, 요청 ID 추적, 구조화된 로깅
 ✅ **프로덕션 배포**: Ubuntu systemd + Redis + Tailscale 원격 접속
-✅ **완전한 테스트**: 2478 백엔드 테스트 (단위/통합/E2E) + Flutter 67, 97.35%+ 커버리지
+✅ **완전한 테스트**: 3374 백엔드 테스트 (단위/통합/E2E) + Flutter 328, 97.23% 커버리지
 
 ## 주요 기능
 
@@ -518,8 +518,8 @@ backend/
 
 | 항목 | 개수 | 커버리지 |
 |------|------|---------|
-| 백엔드 단위/통합 | 2400+개 | 98%+ |
-| Flutter 테스트 | 67개 | - |
+| 백엔드 단위/통합 | 3374개 | 97.23% |
+| Flutter 테스트 | 328개 | - |
 | E2E 테스트 | 16개 | 전체 파이프라인 |
 | 총합 | 2480+개 | - |
 
@@ -747,12 +747,19 @@ python3 client/scripts/configure_github_mobile_release_env.py --repo kiminbean/v
 
 ## 다음 단계
 
-### Phase 5 (진행 중)
+### Phase 7 (완료) — Release Candidate
 
-- **고급 분석**: 텍스트 감정 분석 완료 (SPEC-SENTIMENT-001), 음성 톤/운율 분석 완료 (SPEC-TONE-001, opensmile eGeMAPSv02 + librosa)
-- **통합**: Slack, Teams, Google Calendar 연동
+Phase 1-7의 31개 SPEC이 모두 구현 완료된 상태다. 자동화/빌드 게이트는 통과했으며, strict 실기기 release evidence만 대기 중이다.
+
+- **Phase 7 완료 항목**: 텍스트 감정 분석 (SPEC-SENTIMENT-001, OpenAI gpt-4o-mini), 음성 톤/운율 분석 (SPEC-TONE-001, opensmile eGeMAPSv02 + librosa), 보안 강화 (SPEC-SEC-002, 매직 바이트 검증 + iOS ATS/Android Network Security)
+- **직전 완료**: 실시간 협업 편집 (SPEC-COLLAB-001), 오프라인 STT 하이브리드 (SPEC-MOBILE-002), 모바일 프로덕션 (SPEC-MOBILE-004/005)
+
+### 향후 로드맵 (Phase 8 계획)
+
+- **i18n**: 11개 언어 다국어 지원
+- **클라우드 동기화**: 멀티 기기 지원
+- **Slack/Teams 연동**: 외부 협업 도구 통합
 - **OAuth**: Google/Apple 소셜 로그인
-- **실시간 협업**: 공동 편집, 댓글 기능 (SPEC-COLLAB-001 완료)
 
 ## 라이선스
 
@@ -773,9 +780,10 @@ python3 client/scripts/configure_github_mobile_release_env.py --repo kiminbean/v
 
 ---
 
-**마지막 업데이트**: 2026-06-14
-**버전**: 1.4.0
+**마지막 업데이트**: 2026-06-15
+**버전**: 1.6.0
 **상태**: Release Candidate — 자동화/빌드 게이트 통과, strict 실기기 release evidence 대기
+**최근 확인**: SPEC-UX-002 완료 — 접근성 Semantics 라벨링, 국제화 인프라 (ko/en ARB + flutter_localizations), 홈 화면 반응형 마스터-디테일, 마이크로 인터랙션 (햅틱 피드백, Hero 애니메이션). 3374 백엔드 테스트 + 328 Flutter 테스트 전부 통과.
 
 ### 구현 완료 SPEC 목록
 
@@ -813,3 +821,6 @@ python3 client/scripts/configure_github_mobile_release_env.py --repo kiminbean/v
 ✅ SPEC-SEC-002: 보안 강화 — 매직 바이트 검증 + iOS ATS/Android Network Security + 보안 헤더 고도화
 ✅ SPEC-SENTIMENT-001: 텍스트 감정 분석 — OpenAI gpt-4o-mini 기반 화자별/구간별 감정 분석 + 타임라인 + Flutter 전용 탭
 ✅ SPEC-TONE-001: 발화 톤/운율 분석 — opensmile eGeMAPSv02 + librosa 기반 prosody 추출, 5-class 톤 분류, Flutter tone timeline
+✅ SPEC-BUGFIX-002: 버그 fix 후속 작업 — asyncio.to_thread 회귀 테스트, collab Lua script atomic race condition 해결, FCM timebomb 예방, version_service UniqueConstraint + Alembic migration, temp file leak AST gate, 운영 로그 category 필드
+✅ SPEC-TECHDEBT-001: 기술 부채 정리 — datetime.utcnow() 38곳 전환, asyncio.get_event_loop() 3곳 대체, Pydantic class-based Config 5곳 ConfigDict 전환, pytest-asyncio 설정
+✅ SPEC-UX-002: 사용자 경험 개선 — 접근성 Semantics 라벨링, 국제화 인프라 (ko/en ARB + gen-l10n), 홈 화면 반응형 마스터-디테일, 마이크로 인터랙션 (햅틱 피드백, Hero 애니메이션)

@@ -151,7 +151,7 @@ class Settings(BaseSettings):
 
     # REQ-SEC-001/REQ-SEC-004: API Key 인증
     # 쉼표로 구분된 유효한 API Key 목록 (비어있으면 개발 모드 - 인증 비활성화)
-    api_keys: list[str] | str = Field(default_factory=list)
+    api_keys: list[str] | str = Field(default_factory=lambda: [])
 
     # REQ-SEC-007: IP 기반 Rate Limiting (분당 요청 횟수)
     # REQ-ERR-007: 범위 유효성 검사 (1-1000)

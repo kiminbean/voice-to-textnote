@@ -49,3 +49,8 @@
 - spec.md Section 8: AC-C4/REQ-RM-C1 deferred 상태를 후속 완료 상태로 정정
 - research-iter3.md C-D1 정정 기록은 이력으로 유지하되 현재 상태는 SPEC-REFACTOR-002 및 본 progress.md를 기준으로 삼음
 - 잔여 cruft: `backend/fake.wav`(0바이트), `.omc/state/*.json`(런타임) — 커밋 제외
+
+### 2026-06-15 CI stabilization / PR 32 merged
+- `backend/tests/unit/test_route_registry_invariance.py` live snapshot을 `backend.app.api.v1.registry.ROUTER_REGISTRY` + explicit `/metrics` 기준으로 직접 구성해 full-suite 오염에 따른 CI-only drift를 제거함.
+- 검증: `ruff check backend/tests/unit/test_route_registry_invariance.py` -> `All checks passed!`; `venv/bin/python -m pytest -o addopts="" backend/tests/unit/test_route_registry_invariance.py -q` -> `3 passed, 5 warnings`; `venv/bin/python -m pytest -o addopts="" backend/tests/unit -q` -> `3125 passed, 16 skipped, 212 warnings`.
+- PR 32 최종 상태: GitHub Actions `Test & Lint`, `Flutter Analyze, Test, Android Build`, `Flutter iOS No-Codesign Build` 모두 통과 후 `884bce0fc5eea8e1daba96d3f3a34e241935070f`로 머지됨.

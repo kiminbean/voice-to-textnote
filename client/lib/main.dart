@@ -1,7 +1,9 @@
 // 앱 진입점
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:voice_to_textnote/config/firebase_config.dart';
+import 'package:voice_to_textnote/l10n/app_localizations.dart';
 import 'package:voice_to_textnote/providers/auth_provider.dart';
 import 'package:voice_to_textnote/providers/notification_provider.dart';
 import 'package:voice_to_textnote/providers/permission_recheck_provider.dart';
@@ -107,6 +109,16 @@ class _VoiceToTextNoteAppState extends State<VoiceToTextNoteApp> with WidgetsBin
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
           useMaterial3: true,
         ),
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: const [
+          Locale('ko'),
+          Locale('en'),
+        ],
         routerConfig: router,
       ),
     );

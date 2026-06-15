@@ -7,6 +7,7 @@ SPEC-EXPORT-001: 회의록 PDF 내보내기 API
   선택적으로 summary_task_id를 지정하면 요약 섹션이 포함됩니다.
 """
 
+import asyncio
 import io
 import json
 import re
@@ -156,7 +157,7 @@ async def export_pdf(
     # 4. PDF 생성
     try:
         generator = MinutesPDFGenerator()
-        pdf_bytes = generator.generate(minutes_data, summary_data)
+        pdf_bytes = await asyncio.to_thread(generator.generate, minutes_data, summary_data)
     except ValueError as e:
         logger.error("PDF 생성 실패 - 유효하지 않은 데이터", error=str(e))
         unprocessable(str(e))
@@ -235,7 +236,7 @@ async def export_docx(
     # 3. DOCX 생성
     try:
         generator = MinutesDOCXGenerator()
-        docx_bytes = generator.generate(minutes_data, summary_data)
+        docx_bytes = await asyncio.to_thread(generator.generate, minutes_data, summary_data)
     except ValueError as e:
         unprocessable(str(e))
     except VoiceNoteError:

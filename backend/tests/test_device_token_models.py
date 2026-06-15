@@ -140,9 +140,9 @@ class TestDeviceTokenModel:
     @pytest.mark.asyncio
     async def test_created_at_auto_set(self, db_session):
         """created_at 자동 설정 검증"""
-        from datetime import datetime
+        from datetime import UTC, datetime
 
-        before_create = datetime.utcnow()
+        before_create = datetime.now(UTC).replace(tzinfo=None)
 
         token = DeviceToken(
             user_id="test-user",

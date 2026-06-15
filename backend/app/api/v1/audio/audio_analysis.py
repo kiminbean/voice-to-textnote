@@ -5,6 +5,7 @@ SPEC-AUDIO-ANALYSIS-001: 오디오 품질 분석 API
 - POST /api/v1/audio-analysis   오디오 파일 품질 분석
 """
 
+import asyncio
 import os
 import tempfile
 from pathlib import Path
@@ -84,7 +85,8 @@ async def analyze_audio_file(
                     )
                 tmp.write(chunk)
 
-        result = analyze_audio(
+        result = await asyncio.to_thread(
+            analyze_audio,
             file_path=tmp_path,
             include_silence_detection=include_silence_detection,
             silence_threshold_db=silence_threshold_db,

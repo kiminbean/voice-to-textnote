@@ -6,6 +6,7 @@ REQ-TMPL-003: GET /api/v1/templates/{template_id} - 상세 조회
 REQ-TMPL-003: DELETE /api/v1/templates/{template_id} - 삭제
 """
 
+import asyncio
 import json
 import shutil
 import uuid
@@ -111,7 +112,7 @@ async def upload_template(
 
     # --- 구조 파싱 ---
     parser = TemplateParser()
-    structure = parser.extract_structure(saved_file_path, file_ext)
+    structure = await asyncio.to_thread(parser.extract_structure, saved_file_path, file_ext)
 
     # 구조도 파일로 저장
     structure_path = template_dir / "structure.json"

@@ -131,7 +131,6 @@ class HomeScreen extends ConsumerWidget {
           const OfflineBanner(),
           Expanded(
             child: meetingsAsync.when(
-              // SharedPreferences 로딩 중: shimmer 카드 표시 (REQ-HSYNC-006)
               loading: () => _buildShimmerList(),
               error: (_, __) => const Center(
                 child: Text(
@@ -139,27 +138,68 @@ class HomeScreen extends ConsumerWidget {
                   style: TextStyle(color: Colors.grey),
                 ),
               ),
-              data: (meetings) => RefreshIndicator(
-                // REQ-HSYNC-003: 당겨서 새로 고침 시 서버 동기화
-                onRefresh: () => _onRefresh(context, ref),
-                child: meetings.isEmpty
-                    ? _buildEmptyState()
-                    : ListView.builder(
-                        itemCount: meetings.length,
-                        itemBuilder: (context, index) {
-                          final meeting = meetings[index];
-                          return MeetingCard(
-                            meeting: meeting,
-                            onTap: () {
-                              // 결과 화면으로 이동
-                              context.push('/result/${meeting.id}');
+              data: (meetings) => LayoutBuilder(
+                builder: (context, constraints) {
+                  final isTablet = constraints.maxWidth >= 600;
+                  final listWidget = RefreshIndicator(
+                    onRefresh: () => _onRefresh(context, ref),
+                    child: meetings.isEmpty
+                        ? _buildEmptyState()
+                        : ListView.builder(
+                            itemCount: meetings.length,
+                            itemBuilder: (context, index) {
+                              final meeting = meetings[index];
+                              return MeetingCard(
+                                meeting: meeting,
+                                onTap: () {
+                                  context.push('/result/${meeting.id}');
+                                },
+                                onLongPress: () =>
+                                    _onLongPress(context, ref, meeting.id),
+                              );
                             },
-                            // REQ-HSYNC-005: 롱프레스 삭제
-                            onLongPress: () =>
-                                _onLongPress(context, ref, meeting.id),
-                          );
-                        },
-                      ),
+                          ),
+                  );
+
+                  if (isTablet && meetings.isNotEmpty) {
+                    return Row(
+                      children: [
+                        SizedBox(
+                          width: constraints.maxWidth * 0.4,
+                          child: listWidget,
+                        ),
+                        VerticalDivider(
+                          width: 1,
+                          color: Theme.of(context).dividerColor,
+                        ),
+                        Expanded(
+                          child: Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.article_outlined,
+                                  size: 64,
+                                  color: Colors.grey.shade400,
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  '미팅을 선택하여 내용을 확인하세요',
+                                  style: TextStyle(
+                                    color: Colors.grey.shade600,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  }
+
+                  return listWidget;
+                },
               ),
             ),
           ),
@@ -262,20 +302,28 @@ class HomeScreen extends ConsumerWidget {
 
   // 빈 상태 위젯
   Widget _buildEmptyState() {
-    return const Center(
+    return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.mic_none, size: 64, color: Colors.grey),
-          SizedBox(height: 16),
-          Text(
-            '녹음된 미팅이 없습니다',
-            style: TextStyle(color: Colors.grey, fontSize: 16),
-          ),
-          SizedBox(height: 8),
-          Text(
-            '아래 버튼을 눌러 녹음을 시작하세요',
-            style: TextStyle(color: Colors.grey, fontSize: 14),
+          Semantics(
+            label: '녹음된 미팅이 없습니다',
+            hint: '아래 버튼을 눌러 녹음을 시작하세요',
+            child: const Column(
+              children: [
+                Icon(Icons.mic_none, size: 64, color: Colors.grey),
+                SizedBox(height: 16),
+                Text(
+                  '녹음된 미팅이 없습니다',
+                  style: TextStyle(color: Colors.grey, fontSize: 16),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  '아래 버튼을 눌러 녹음을 시작하세요',
+                  style: TextStyle(color: Colors.grey, fontSize: 14),
+                ),
+              ],
+            ),
           ),
         ],
       ),
