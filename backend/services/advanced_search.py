@@ -3,7 +3,7 @@
 """
 
 import time
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any, cast
 from uuid import uuid4
 
@@ -305,7 +305,7 @@ class AdvancedSearchService:  # pragma: no cover
             "filters": request.filters.dict(),
             "result_count": 0,  # 실제 결과 수는 이후에 업데이트
             "search_time_ms": search_time_ms,
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
             "is_saved": False,
         }
 

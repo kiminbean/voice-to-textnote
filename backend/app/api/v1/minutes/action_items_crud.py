@@ -14,7 +14,7 @@ SPEC-ACTION-001: 고급 액션 아이템 관리 API
 """
 
 import uuid
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi import status as http_status
@@ -61,7 +61,7 @@ def _to_action_item_response(action_item: object) -> ActionItemResponse:
     """Convert ORM/service objects into the declared API response schema."""
     due_date = getattr(action_item, "due_date", None)
     status = ActionItemStatus(str(getattr(action_item, "status")))
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
     is_complete = status == ActionItemStatus.completed
     is_overdue = bool(due_date and due_date < now and not is_complete)
     time_remaining = None
@@ -181,7 +181,7 @@ async def create_action_item(
         ActionItemPriority.critical,
     ]:
         default_days = 3 if payload.priority == ActionItemPriority.high else 1
-        payload.due_date = datetime.utcnow() + timedelta(days=default_days)
+        payload.due_date = datetime.now(UTC) + timedelta(days=default_days)
 
     action_item = await svc.create(session=db, user_id=user.id, payload=payload)
 
@@ -344,7 +344,7 @@ async def complete_action_item(
 
     update_payload = ActionItemUpdate(
         status=ActionItemStatus.completed,
-        completed_at=datetime.utcnow(),
+        completed_at=datetime.now(UTC),
         completed_by=user.id,
         completion_notes=notes or "",
     )

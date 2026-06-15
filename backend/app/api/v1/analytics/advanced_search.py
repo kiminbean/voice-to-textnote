@@ -3,7 +3,7 @@
 """
 
 import time
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import redis.asyncio as aioredis
@@ -108,7 +108,7 @@ async def get_search_history(
                         "filters": item.get("filters"),
                         "result_count": item.get("result_count", 0),
                         "search_time_ms": item.get("search_time_ms", 0.0),
-                        "created_at": datetime.utcnow(),
+                        "created_at": datetime.now(UTC),
                         "is_saved": item.get("is_saved", False),
                     }
                 )
@@ -121,11 +121,11 @@ async def get_search_history(
                 "query": "프로젝트",
                 "filters": {
                     "content_types": ["minutes"],
-                    "start_date": datetime.utcnow() - timedelta(days=30),
-                    "end_date": datetime.utcnow(),
+                    "start_date": datetime.now(UTC) - timedelta(days=30),
+                    "end_date": datetime.now(UTC),
                 },
-                "created_at": datetime.utcnow() - timedelta(days=7),
-                "last_used_at": datetime.utcnow() - timedelta(days=1),
+                "created_at": datetime.now(UTC) - timedelta(days=7),
+                "last_used_at": datetime.now(UTC) - timedelta(days=1),
                 "usage_count": 15,
             },
             {
@@ -133,8 +133,8 @@ async def get_search_history(
                 "name": "중요 의사결정 검색",
                 "query": "의사결정",
                 "filters": {"content_types": ["summary"], "min_word_count": 100},
-                "created_at": datetime.utcnow() - timedelta(days=14),
-                "last_used_at": datetime.utcnow() - timedelta(days=5),
+                "created_at": datetime.now(UTC) - timedelta(days=14),
+                "last_used_at": datetime.now(UTC) - timedelta(days=5),
                 "usage_count": 8,
             },
         ]
@@ -167,7 +167,7 @@ async def save_search(
             "id": f"saved_{int(time.time())}",
             "name": name,
             "search_id": search_id,
-            "created_at": datetime.utcnow(),
+            "created_at": datetime.now(UTC),
             "usage_count": 1,
         }
 

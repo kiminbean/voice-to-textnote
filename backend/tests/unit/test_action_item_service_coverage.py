@@ -36,7 +36,7 @@ FAKE_ITEM_ID = uuid.uuid4()
 
 def _make_action_item_instance(**overrides):
     """Create a mock ActionItem instance for testing."""
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
     defaults = {
         "id": FAKE_ITEM_ID,
         "title": "Test action item",
@@ -135,7 +135,7 @@ class TestCreate:
                     description="Detailed desc",
                     priority=ActionItemPriority.high,
                     assignee_id=FAKE_ASSIGNEE_ID,
-                    due_date=datetime.utcnow() + timedelta(days=3),
+                    due_date=datetime.now(UTC) + timedelta(days=3),
                     meeting_id="meeting-123",
                     tags=["urgent", "backend"],
                     estimated_hours=4.0,
@@ -274,7 +274,7 @@ class TestListItems:
         db_result = _mock_db_result(items=[])
         session.execute = AsyncMock(side_effect=[db_result, db_result])
 
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         await svc.list_items(
             session=session,
             user_id=FAKE_USER_ID,
@@ -381,7 +381,7 @@ class TestListItems:
         db_result = _mock_db_result(items=[])
         session.execute = AsyncMock(side_effect=[db_result, db_result])
 
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         await svc.list_items(
             session=session,
             user_id=FAKE_USER_ID,
@@ -631,7 +631,7 @@ class TestUpdate:
         session = AsyncMock()
 
         existing = _make_action_item_instance()
-        new_due = datetime.utcnow() + timedelta(days=14)
+        new_due = datetime.now(UTC) + timedelta(days=14)
         updated = _make_action_item_instance(due_date=new_due)
 
         with patch.object(
@@ -746,7 +746,7 @@ class TestGetOverview:
         svc = ActionItemService()
         session = AsyncMock()
 
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         items = [
             _make_action_item_instance(
                 status=ActionItemStatus.pending,

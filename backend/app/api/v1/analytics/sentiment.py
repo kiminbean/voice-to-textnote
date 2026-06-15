@@ -174,7 +174,7 @@ async def analyze_sentiment_trends(
 ) -> dict[str, Any]:
     """시간별 감성 추이 분석"""
     # 지정된 기간 내의 완료된 회의록 조회
-    since_date = datetime.utcnow() - timedelta(days=days)
+    since_date = datetime.now(UTC) - timedelta(days=days)
 
     stmt = (
         select(TaskResult)
@@ -258,7 +258,7 @@ async def get_sentiment_dashboard_summary(
 ) -> dict:
     """감성 분석 대시보드 요약 정보"""
     # 기간 내 완료된 회의록 조회
-    since_date = datetime.utcnow() - timedelta(days=days)
+    since_date = datetime.now(UTC) - timedelta(days=days)
 
     stmt = select(TaskResult).where(
         TaskResult.task_type == "minutes",

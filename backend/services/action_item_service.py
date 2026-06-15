@@ -3,7 +3,7 @@
 """
 
 import uuid
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any, Literal
 
 from sqlalchemy import delete, select, update
@@ -57,8 +57,8 @@ class ActionItemService:
             tags=payload.tags,
             estimated_hours=payload.estimated_hours,
             category=payload.category,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
 
         session.add(action_item)
@@ -140,7 +140,7 @@ class ActionItemService:
 
         # 지연 여부 필터
         if is_overdue is not None:
-            now = datetime.utcnow()
+            now = datetime.now(UTC)
             if is_overdue:
                 query = query.where(
                     ActionItemModel.due_date < now,
@@ -236,7 +236,7 @@ class ActionItemService:
 
         # 업데이트 데이터 준비
         update_data: dict[str, Any] = {
-            "updated_at": datetime.utcnow(),
+            "updated_at": datetime.now(UTC),
         }
 
         if payload.title is not None:
@@ -251,7 +251,7 @@ class ActionItemService:
             update_data["status"] = payload.status
             # 상태 변경 시 자동 필드 설정
             if payload.status == ActionItemStatus.completed and not existing_item.completed_at:
-                update_data["completed_at"] = datetime.utcnow()
+                update_data["completed_at"] = datetime.now(UTC)
                 update_data["completed_by"] = user_id
         if payload.due_date is not None:
             update_data["due_date"] = payload.due_date
@@ -316,7 +316,7 @@ class ActionItemService:
         Returns:
             ActionItemOverview: 액션 아이템 개요
         """
-        start_date = datetime.utcnow() - timedelta(days=days)
+        start_date = datetime.now(UTC) - timedelta(days=days)
 
         # 기간 내 아이템 조회
         query = select(ActionItemModel).where(
@@ -334,7 +334,7 @@ class ActionItemService:
         cancelled_count = sum(1 for item in items if item.status == ActionItemStatus.cancelled)
 
         # 지연 아이템 계산
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         overdue_count = sum(
             1
             for item in items

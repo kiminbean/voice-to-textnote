@@ -9,6 +9,7 @@
 import asyncio
 import json
 import tempfile
+import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
@@ -161,7 +162,7 @@ class EnhancedAudioProcessor:
         output_dir: str | Path | None = None,
     ) -> BatchPreprocessResult:
         """배치 전처리"""
-        start_time = asyncio.get_event_loop().time()
+        start_time = time.perf_counter()
         task_id = str(uuid.uuid4())
 
         if len(input_files) > BATCH_MAX_FILES:
@@ -208,7 +209,7 @@ class EnhancedAudioProcessor:
             )
 
         # 결과 생성
-        processing_time = asyncio.get_event_loop().time() - start_time
+        processing_time = time.perf_counter() - start_time
 
         successful_results = [result for result in results if isinstance(result, AudioFileInfo)]
         summary = self._generate_batch_summary(successful_results)

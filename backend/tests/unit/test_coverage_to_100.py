@@ -5,7 +5,7 @@
 목표: 100% (실현 가능한 범위)
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
@@ -51,7 +51,7 @@ class TestActionItemSchemaClassDefs:
     """action_item.py:90,171,192,207,223 - class definitions"""
 
     def test_action_item_response(self):
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         uid = uuid4()
         r = ActionItemResponse(
             id=uid,
@@ -84,7 +84,7 @@ class TestActionItemSchemaClassDefs:
         assert r.tags == ["test"]
 
     def test_action_item_comment(self):
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         c = ActionItemComment(
             id=uuid4(),
             action_item_id=uuid4(),
@@ -98,7 +98,7 @@ class TestActionItemSchemaClassDefs:
         assert c.content == "c"
 
     def test_action_item_comment_response(self):
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         r = ActionItemCommentResponse(
             id=uuid4(),
             action_item_id=uuid4(),
@@ -120,7 +120,7 @@ class TestActionItemSchemaClassDefs:
             new_value="done",
             changed_by=uuid4(),
             changed_by_name="U",
-            changed_at=datetime.utcnow(),
+            changed_at=datetime.now(UTC),
             change_type="update",
         )
         assert h.field_name == "status"
@@ -130,10 +130,10 @@ class TestActionItemSchemaClassDefs:
             id=uuid4(),
             action_item_id=uuid4(),
             reminder_type="before_due",
-            reminder_time=datetime.utcnow(),
+            reminder_time=datetime.now(UTC),
             is_active=True,
             last_sent_at=None,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
         )
         assert r.reminder_type == "before_due"
 
