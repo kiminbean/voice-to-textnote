@@ -25,6 +25,5 @@
       "Bash(.venv/bin/pytest backend/tests/ --cov=backend --no-header -q)"
     ],
     "defaultMode": "bypassPermissions"
-  },
-  "teammateMode": "tmux"
+  }
 }

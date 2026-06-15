@@ -30,6 +30,7 @@ from backend.app.api.v1.analytics import (
     advanced_search,
     dashboard,
     enhanced_statistics,
+    efficiency,
     search,
     sentiment,
     statistics,
@@ -97,6 +98,7 @@ ROUTER_REGISTRY: list[tuple[APIRouter, bool]] = [
     (statistics.router, True),  # SPEC-STATS-001
     (dashboard.router, True),  # SPEC-STATS-002
     (enhanced_statistics.router, True),  # SPEC-ENHANCED-STATS-001
+    (efficiency.router, True),  # SPEC-EFFICIENCY-001: 회의 효율성 평가
     (advanced_search.router, True),  # SPEC-ADVANCED-SEARCH-001
     # ── 확장 오디오 처리 (API Key 필수) ──────────────────────────────────────────
     (enhanced_preprocess.router, True),  # 고급 오디오 전처리 (AI 기반)
