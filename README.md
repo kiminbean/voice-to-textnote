@@ -34,7 +34,7 @@
 ✅ **API 보안**: API Key 인증, 레이트 리미팅, CORS, Security Headers
 ✅ **모니터링**: Prometheus 메트릭, 요청 ID 추적, 구조화된 로깅
 ✅ **프로덕션 배포**: Ubuntu systemd + Redis + Tailscale 원격 접속
-✅ **완전한 테스트**: 2478 백엔드 테스트 (단위/통합/E2E) + Flutter 67, 97.35%+ 커버리지
+✅ **완전한 테스트**: 3374 백엔드 테스트 (단위/통합/E2E) + Flutter 328, 97.23% 커버리지
 
 ## 주요 기능
 
@@ -518,8 +518,8 @@ backend/
 
 | 항목 | 개수 | 커버리지 |
 |------|------|---------|
-| 백엔드 단위/통합 | 2400+개 | 98%+ |
-| Flutter 테스트 | 67개 | - |
+| 백엔드 단위/통합 | 3374개 | 97.23% |
+| Flutter 테스트 | 328개 | - |
 | E2E 테스트 | 16개 | 전체 파이프라인 |
 | 총합 | 2480+개 | - |
 
@@ -747,12 +747,19 @@ python3 client/scripts/configure_github_mobile_release_env.py --repo kiminbean/v
 
 ## 다음 단계
 
-### Phase 5 (진행 중)
+### Phase 7 (완료) — Release Candidate
 
-- **고급 분석**: 텍스트 감정 분석 완료 (SPEC-SENTIMENT-001), 음성 톤/운율 분석 완료 (SPEC-TONE-001, opensmile eGeMAPSv02 + librosa)
-- **통합**: Slack, Teams, Google Calendar 연동
+Phase 1-7의 31개 SPEC이 모두 구현 완료된 상태다. 자동화/빌드 게이트는 통과했으며, strict 실기기 release evidence만 대기 중이다.
+
+- **Phase 7 완료 항목**: 텍스트 감정 분석 (SPEC-SENTIMENT-001, OpenAI gpt-4o-mini), 음성 톤/운율 분석 (SPEC-TONE-001, opensmile eGeMAPSv02 + librosa), 보안 강화 (SPEC-SEC-002, 매직 바이트 검증 + iOS ATS/Android Network Security)
+- **직전 완료**: 실시간 협업 편집 (SPEC-COLLAB-001), 오프라인 STT 하이브리드 (SPEC-MOBILE-002), 모바일 프로덕션 (SPEC-MOBILE-004/005)
+
+### 향후 로드맵 (Phase 8 계획)
+
+- **i18n**: 11개 언어 다국어 지원
+- **클라우드 동기화**: 멀티 기기 지원
+- **Slack/Teams 연동**: 외부 협업 도구 통합
 - **OAuth**: Google/Apple 소셜 로그인
-- **실시간 협업**: 공동 편집, 댓글 기능 (SPEC-COLLAB-001 완료)
 
 ## 라이선스
 
@@ -774,9 +781,9 @@ python3 client/scripts/configure_github_mobile_release_env.py --repo kiminbean/v
 ---
 
 **마지막 업데이트**: 2026-06-15
-**버전**: 1.4.0
+**버전**: 1.5.0
 **상태**: Release Candidate — 자동화/빌드 게이트 통과, strict 실기기 release evidence 대기
-**최근 확인**: PR #32의 route registry CI 회귀를 해결했고, GitHub Actions `Test & Lint`, `Flutter Analyze, Test, Android Build`, `Flutter iOS No-Codesign Build` 체크가 모두 통과했다.
+**최근 확인**: SPEC-BUGFIX-002 완료 — 18건 버그 fix (Pydantic v2 마이그레이션, async blocking 해소, temp file leak, race condition, error swallowing) + 6개 후속 작업 (FCM to_thread wrap, version UniqueConstraint migration, collab Lua script, 회귀 테스트 게이트). 3374 백엔드 테스트 + 328 Flutter 테스트 전부 통과.
 
 ### 구현 완료 SPEC 목록
 
@@ -814,3 +821,4 @@ python3 client/scripts/configure_github_mobile_release_env.py --repo kiminbean/v
 ✅ SPEC-SEC-002: 보안 강화 — 매직 바이트 검증 + iOS ATS/Android Network Security + 보안 헤더 고도화
 ✅ SPEC-SENTIMENT-001: 텍스트 감정 분석 — OpenAI gpt-4o-mini 기반 화자별/구간별 감정 분석 + 타임라인 + Flutter 전용 탭
 ✅ SPEC-TONE-001: 발화 톤/운율 분석 — opensmile eGeMAPSv02 + librosa 기반 prosody 추출, 5-class 톤 분류, Flutter tone timeline
+✅ SPEC-BUGFIX-002: 버그 fix 후속 작업 — asyncio.to_thread 회귀 테스트, collab Lua script atomic race condition 해결, FCM timebomb 예방, version_service UniqueConstraint + Alembic migration, temp file leak AST gate, 운영 로그 category 필드

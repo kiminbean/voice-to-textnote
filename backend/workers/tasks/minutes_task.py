@@ -284,7 +284,7 @@ def minutes_task(
                 result_data=final_result,
             )
         except Exception:
-            pass  # DB 저장 실패는 무시 (Redis에 이미 저장됨)
+            logger.warning("DB 결과 저장 실패 - Redis 캐시로 폴백", task_id=task_id, exc_info=True, category="db_fallback")
 
         _update_task_status(task_id, TaskStatus.completed, 1.0, "회의록 생성 완료")
 
@@ -333,7 +333,7 @@ def minutes_task(
                 error_message=error_msg,
             )
         except Exception:  # pragma: no cover
-            pass  # DB 저장 실패는 무시
+            logger.warning("DB 결과 저장 실패 - Redis 캐시로 폴백", task_id=task_id, exc_info=True, category="db_fallback")
 
         if user_id:
             from backend.app.workers.hooks.celery_push_hooks import fire_push_sync
@@ -373,7 +373,7 @@ def minutes_task(
                 error_message=error_msg,
             )
         except Exception:  # pragma: no cover
-            pass  # DB 저장 실패는 무시
+            logger.warning("DB 결과 저장 실패 - Redis 캐시로 폴백", task_id=task_id, exc_info=True, category="db_fallback")
 
         if user_id:
             from backend.app.workers.hooks.celery_push_hooks import fire_push_sync

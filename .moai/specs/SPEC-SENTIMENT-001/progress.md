@@ -15,7 +15,7 @@
 ### Phase 1.6 (Acceptance Criteria) - COMPLETE
 - 9 tasks registered (7 AC items + QA + Git)
 
-### Phase 2 (Implementation) - IN PROGRESS
+### Phase 2 (Implementation) - COMPLETE
 - B1 Backend (deep): celery fix + SSE prefix + config migration + tests
 - B2 Flutter (deep): api extension + provider fix + _SentimentTab
 - B3 Docs (quick): README fixes

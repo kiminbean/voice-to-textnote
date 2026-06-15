@@ -9,6 +9,7 @@ from typing import Any
 
 from fastapi import HTTPException
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.db.models import TaskResult
@@ -45,22 +46,32 @@ class VersionService:
         payload: VersionCreate,
         author_id: uuid.UUID | None = None,
     ) -> MinutesVersion:
-        """새 버전 스냅샷 저장."""
+        """새 버전 스냅샷 저장 (동시 생성 시 IntegrityError catch-and-retry)."""
         await self._ensure_task_exists(session, task_id)
-        version_number = await self._next_version_number(session, task_id)
 
-        version = MinutesVersion()
-        version.id = uuid.uuid4()
-        version.task_id = task_id
-        version.version_number = version_number
-        version.content = payload.content
-        version.change_summary = payload.change_summary
-        version.author_id = author_id
+        for attempt in range(3):
+            version_number = await self._next_version_number(session, task_id)
+            version = MinutesVersion()
+            version.id = uuid.uuid4()
+            version.task_id = task_id
+            version.version_number = version_number
+            version.content = payload.content
+            version.change_summary = payload.change_summary
+            version.author_id = author_id
 
-        session.add(version)
-        await session.commit()
-        await session.refresh(version)
-        return version
+            session.add(version)
+            try:
+                await session.commit()
+                await session.refresh(version)
+                return version
+            except IntegrityError:
+                await session.rollback()
+                if attempt == 2:
+                    raise HTTPException(
+                        status_code=409,
+                        detail="버전 생성 충돌이 발생했습니다. 다시 시도해 주세요.",
+                    )
+        raise HTTPException(status_code=500, detail="버전 생성 재시도 한도 초과")
 
     async def list_versions(
         self,

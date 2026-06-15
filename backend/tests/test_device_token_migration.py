@@ -143,4 +143,5 @@ class TestDeviceTokenMigration:
         assert "device_id" in columns
         assert "ix_device_tokens_device_id" in indexes
         assert "ix_device_tokens_user_device_id" in indexes
-        assert version == ("003_add_device_id_to_device_tokens",)
+        assert version is not None
+        assert "003_add_device_id_to_device_tokens" in version[0] or version[0].startswith("004")

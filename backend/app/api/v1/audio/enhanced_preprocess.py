@@ -12,6 +12,7 @@
 - GET /api/v1/audio/enhanced/status - AI 모델 상태 조회
 """
 
+import shutil
 import tempfile
 from pathlib import Path
 
@@ -130,9 +131,13 @@ async def enhanced_preprocess_endpoint(
             bad_request(f"업로드 처리 실패: {exc}")
 
         # 처리 수행 (비동기)
+        batch_output_dir: Path | None = None
         try:
             batch_options = BatchPreprocessOptions(**options.model_dump())
-            result = await processor.preprocess_batch([src_path], batch_options, None)
+            batch_output_dir = Path(tempfile.mkdtemp(prefix="batch_audio_"))
+            result = await processor.preprocess_batch(
+                [src_path], batch_options, batch_output_dir
+            )
 
             if result.failed_files > 0:
                 raise HTTPException(status_code=400, detail="오디오 처리 실패")
@@ -155,7 +160,7 @@ async def enhanced_preprocess_endpoint(
             # 클린업 태스크
             def cleanup():
                 src_path.unlink(missing_ok=True)
-                processed_path.unlink(missing_ok=True)
+                shutil.rmtree(batch_output_dir, ignore_errors=True)
 
             output_name = f"{Path(filename).stem}_enhanced.wav"
             return FileResponse(
@@ -168,6 +173,8 @@ async def enhanced_preprocess_endpoint(
 
         except Exception as exc:
             src_path.unlink(missing_ok=True)
+            if batch_output_dir is not None:
+                shutil.rmtree(batch_output_dir, ignore_errors=True)
             logger.error("오디오 전처리 실패", error=str(exc))
             raise HTTPException(status_code=400, detail=f"오디오 전처리 실패: {exc}")
 
@@ -247,6 +254,7 @@ async def batch_preprocess_endpoint(
 
         # 임시 파일 저장
         temp_files: list[Path] = []
+        batch_output_dir: Path | None = None
         try:
             for file in validated_files:
                 max_bytes = settings.audio_preprocess_max_file_mb * 1024 * 1024
@@ -267,7 +275,10 @@ async def batch_preprocess_endpoint(
                         fp.write(chunk)
 
             # 배치 처리 수행
-            result = await processor.preprocess_batch(list(temp_files), options, None)
+            batch_output_dir = Path(tempfile.mkdtemp(prefix="batch_audio_"))
+            result = await processor.preprocess_batch(
+                list(temp_files), options, batch_output_dir
+            )
 
             # 보고서 생성
             report = await processor.create_processing_report(result) if return_report else None
@@ -292,6 +303,8 @@ async def batch_preprocess_endpoint(
             # 클린업
             for temp_file in temp_files:
                 temp_file.unlink(missing_ok=True)
+            if batch_output_dir is not None:
+                shutil.rmtree(batch_output_dir, ignore_errors=True)
 
     except HTTPException:
         raise

@@ -4,6 +4,7 @@ REQ-STT-001~004: 오디오 업로드 및 검증
 REQ-STT-010~014: 상태 조회 및 결과 반환
 """
 
+import asyncio
 import json
 import time
 import uuid
@@ -154,10 +155,12 @@ async def upload_transcription(
         pipe.zcard("active_jobs_ts")
         active_count = (await pipe.execute())[1]
     except Exception:
+        logger.warning("Redis 동시 처리 카운트 조회 실패 - fail open", exc_info=True, category="redis_fallback")
         active_count = 0
     if active_count >= settings.max_concurrent_jobs:
         from backend.app.errors import too_many_requests
 
+        temp_path.unlink(missing_ok=True)
         too_many_requests(
             f"동시 처리 한도({settings.max_concurrent_jobs}개)를 초과했습니다. 잠시 후 재시도하세요."
         )
@@ -166,7 +169,7 @@ async def upload_transcription(
 
     # --- 재생 시간 검증 (REQ-STT-003: 4시간 초과 거부) ---
     try:
-        duration_seconds = get_audio_duration_seconds(temp_path)
+        duration_seconds = await asyncio.to_thread(get_audio_duration_seconds, temp_path)
         if duration_seconds > settings.max_duration_seconds:
             temp_path.unlink(missing_ok=True)  # REQ-STT-004  # pragma: no cover
             unprocessable(  # pragma: no cover

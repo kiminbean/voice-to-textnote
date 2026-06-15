@@ -78,7 +78,7 @@ class ConnectionManager:
         room = self.get_room(task_id)
         raw = json.dumps(message, ensure_ascii=False, default=str)
         disconnected: list[str] = []
-        for uid, ws in room.items():
+        for uid, ws in list(room.items()):
             if exclude_user_id and uid == exclude_user_id:
                 continue
             try:

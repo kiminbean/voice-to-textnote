@@ -29,8 +29,8 @@ from backend.app.api.v1.admin import (
 from backend.app.api.v1.analytics import (
     advanced_search,
     dashboard,
-    enhanced_statistics,
     efficiency,
+    enhanced_statistics,
     search,
     sentiment,
     statistics,

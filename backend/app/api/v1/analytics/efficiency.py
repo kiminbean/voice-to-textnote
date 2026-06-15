@@ -7,16 +7,15 @@ SPEC-EFFICIENCY-001: 회의 효율성 평가 API
   발화 시간 분포, 화자 참여도, 결정 속도, 액션 아이템 생성 등을 분석합니다.
 """
 
+
 import redis.asyncio as aioredis
-from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import List, Dict, Any
-import statistics
 
 from backend.app.dependencies import get_db_session, get_redis_client
-from backend.app.errors import unprocessable, not_found
-from backend.schemas.efficiency import EfficiencyScoreResponse, EfficiencyMetrics, EfficiencyRecommendations
+from backend.schemas.efficiency import (
+    EfficiencyScoreResponse,
+)
 from backend.services.efficiency_service import EfficiencyService
 
 router = APIRouter(prefix="/efficiency", tags=["efficiency"])
@@ -42,7 +41,7 @@ async def get_meeting_efficiency(
     ),
     analysis_depth: str = Query(
         default="standard",
-        regex="^(basic|standard|detailed)$",
+        pattern="^(basic|standard|detailed)$",
         description="분석 깊이: basic, standard, detailed"
     ),
     redis_client: aioredis.Redis = Depends(get_redis_client),
@@ -51,15 +50,15 @@ async def get_meeting_efficiency(
 ) -> EfficiencyScoreResponse:
     """
     회의 효율성 평가
-    
+
     다양한 지표를 통해 회의 효율성을 분석하고 개선 제안을 제공합니다.
-    
+
     - task_id: 분석할 회의 ID
     - include_recommendations: 개선 제안 포함 여부
     - min_speakers: 최소 화자 수 (1-20)
     - analysis_depth: 분석 깊이 (basic/standard/detailed)
     """
-    
+
     return await svc.analyze_meeting_efficiency(
         redis_client=redis_client,
         db=db,
