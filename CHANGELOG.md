@@ -4,6 +4,33 @@
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-06-15
+
+### Added
+
+- **SPEC-BUGFIX-001: 18건 런타임 버그 fix** — Pydantic v2 마이그레이션 (efficiency.py `regex=` → `pattern=`), async blocking 해소 (7곳 `asyncio.to_thread`), temp file leak fix (3곳), race condition 해결 (dict iteration snapshot, version UniqueConstraint), error swallowing 해소 (14곳 `except: pass` → `logger.warning`)
+
+- **SPEC-BUGFIX-002: 버그 fix 후속 작업 6종** — FCM `asyncio.to_thread` wrap, version_service UniqueConstraint Alembic migration (004), collab_service Lua script atomic race condition, asyncio.to_thread 회귀 테스트 8개 (AST 기반), temp file leak AST 정적 분석 gate, 운영 로그 `category` 필드 (13곳)
+
+- **SPEC-TECHDEBT-001: 기술 부채 정리** — `datetime.utcnow()` 38곳 → `datetime.now(UTC)`, `asyncio.get_event_loop()` 3곳 대체, Pydantic class-based `Config` 5곳 → `ConfigDict`, pytest-asyncio `asyncio_default_fixture_loop_scope` 설정
+
+- **SPEC-UX-002: 사용자 경험 개선** — 접근성 `Semantics` 라벨링 (WCAG 2.1 AA), 국제화 인프라 (`flutter_localizations` + ARB ko/en 36키), 홈 화면 반응형 마스터-디테일 (600px+), 마이크로 인터랙션 (HapticFeedback, Hero 애니메이션, TweenAnimationBuilder)
+
+- **SPEC-RELEASE-001: Release Readiness 절차 문서화** — 5단계 순차 절차 (Firebase, APNs, App Store Connect, 물리 기기 E2E, self-hosted runner)
+
+### Changed
+
+- 테스트: 2976 → **3374 passed** (+398 신규 회귀/접근성/gate 테스트)
+- Flutter 테스트: 269 → **328 passed** (+59)
+- 커버리지: 97.23% 유지
+- Alembic migration: 003 → **004** (UniqueConstraint on minutes_versions)
+
+### Fixed
+
+- CI 환경(Python 3.11) vs 로컬(Python 3.14) `app.routes` 노출 차이로 인한 efficiency test 실패 → `ROUTER_REGISTRY` SSOT에서 직접 확인하도록 수정
+- `config.py` `default_factory=list` mypy 타입 불일치 → lambda로 fix
+- `lifecycle.py`, `health.py` redis `ping()` sync/async 반환 타입 불일치 → `hasattr __await__` 패턴
+
 ## [0.1.0] - 2026-06-06
 
 ### Added
