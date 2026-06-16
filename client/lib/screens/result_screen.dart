@@ -29,6 +29,8 @@ import 'package:voice_to_textnote/widgets/audio_player_bar.dart';
 import 'package:voice_to_textnote/widgets/tone_timeline.dart';
 import 'package:voice_to_textnote/providers/audio_player_provider.dart';
 import 'package:voice_to_textnote/providers/qa_provider.dart';
+import 'package:voice_to_textnote/services/obsidian_api.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 // ConsumerStatefulWidget으로 변경: _isExporting 상태 관리 필요
 class ResultScreen extends ConsumerStatefulWidget {
@@ -106,6 +108,59 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     }
   }
 
+  Future<void> _exportToObsidian(
+      BuildContext context, String? minutesTaskId) async {
+    if (minutesTaskId == null || minutesTaskId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('회의록 처리가 완료되지 않아 내보낼 수 없습니다')),
+      );
+      return;
+    }
+
+    setState(() => _isExporting = true);
+
+    try {
+      final api = ref.read(obsidianApiProvider);
+      final result = await api.exportMeeting(minutesTaskId);
+
+      if (!context.mounted) return;
+
+      if (result.success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Obsidian에 저장되었습니다'),
+            action: result.obsidianUri.isNotEmpty
+                ? SnackBarAction(
+                    label: '열기',
+                    onPressed: () async {
+                      await launchUrl(
+                        Uri.parse(result.obsidianUri),
+                        mode: LaunchMode.externalApplication,
+                      );
+                    },
+                  )
+                : null,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text(
+                  'Obsidian 저장 실패: ${result.error ?? "알 수 없는 오류"}')),
+        );
+      }
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Obsidian 저장 실패: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isExporting = false);
+      }
+    }
+  }
+
   Future<void> _showShareDialog(
       BuildContext context, String? minutesTaskId) async {
     if (minutesTaskId == null) {
@@ -172,34 +227,52 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     ),
                   )
-                : PopupMenuButton<ExportFormat>(
+                : PopupMenuButton<String>(
                     icon: const Icon(Icons.ios_share),
                     tooltip: '내보내기',
-                    onSelected: (format) =>
-                        _export(context, format, minutesTaskId, summaryTaskId),
-                    itemBuilder: (_) => const [
-                      PopupMenuItem(
-                        value: ExportFormat.pdf,
+                    onSelected: (value) {
+                      if (value == 'obsidian') {
+                        _exportToObsidian(context, minutesTaskId);
+                      } else {
+                        final format = ExportFormat.values.firstWhere(
+                          (e) => e.name == value,
+                          orElse: () => ExportFormat.pdf,
+                        );
+                        _export(context, format, minutesTaskId, summaryTaskId);
+                      }
+                    },
+                    itemBuilder: (_) => [
+                      const PopupMenuItem(
+                        value: 'pdf',
                         child: Row(children: [
                           Icon(Icons.picture_as_pdf_outlined, size: 20),
                           SizedBox(width: 12),
                           Text('PDF'),
                         ]),
                       ),
-                      PopupMenuItem(
-                        value: ExportFormat.docx,
+                      const PopupMenuItem(
+                        value: 'docx',
                         child: Row(children: [
                           Icon(Icons.description_outlined, size: 20),
                           SizedBox(width: 12),
                           Text('DOCX'),
                         ]),
                       ),
-                      PopupMenuItem(
-                        value: ExportFormat.markdown,
+                      const PopupMenuItem(
+                        value: 'markdown',
                         child: Row(children: [
                           Icon(Icons.code_outlined, size: 20),
                           SizedBox(width: 12),
                           Text('Markdown'),
+                        ]),
+                      ),
+                      const PopupMenuDivider(),
+                      const PopupMenuItem(
+                        value: 'obsidian',
+                        child: Row(children: [
+                          Icon(Icons.auto_stories, size: 20),
+                          SizedBox(width: 12),
+                          Text('Obsidian에 저장'),
                         ]),
                       ),
                     ],

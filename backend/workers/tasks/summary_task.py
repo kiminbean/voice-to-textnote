@@ -292,6 +292,8 @@ def summary_task(
                 status="completed",
             )
 
+        _trigger_obsidian_auto_export(minutes_task_id)
+
         return final_result
 
     except FileNotFoundError as exc:
@@ -377,6 +379,110 @@ def summary_task(
 
     finally:
         _unregister_active_job(task_id)
+
+
+def _trigger_obsidian_auto_export(minutes_task_id: str) -> None:
+    """REQ-OBS-007: 파이프라인 완료 후 Obsidian 자동 export (설정 시).
+
+    REQ-OBS-014: 모든 예외를 삼켜 파이프라인에 영향을 주지 않는다.
+    """
+    try:
+        import json
+
+        from backend.app.api.v1.integrations.obsidian import _get_config_from_db
+        from backend.services.obsidian_service import obsidian_service
+        from backend.workers.redis_client import get_worker_redis
+
+        cfg = _get_config_from_db()
+        if cfg is None or not cfg.auto_export or not cfg.vault_path:
+            return
+
+        validation = obsidian_service.validate_vault(cfg.vault_path)
+        if not validation["valid"]:
+            logger.warning(
+                "Obsidian 자동 export 건너뜀: vault 무효",
+                vault=cfg.vault_path,
+                category="obsidian_auto_export",
+            )
+            return
+
+        r = get_worker_redis()
+        minutes_raw = r.get(f"task:min:result:{minutes_task_id}")
+        if not minutes_raw:
+            return
+        minutes_data = json.loads(minutes_raw)
+
+        summary_data = None
+        for key in r.scan_iter("task:summary:result:*"):
+            raw = r.get(key)
+            if raw:
+                d = json.loads(raw)
+                if d.get("minutes_task_id") == minutes_task_id:
+                    summary_data = d
+                    break
+
+        dia_task_id = minutes_data.get("diarization_task_id")
+        sentiment_data = None
+        tone_data = None
+        if dia_task_id:
+            sent_raw = r.get(f"task:sentiment:result:{dia_task_id}")
+            sentiment_data = json.loads(sent_raw) if sent_raw else None
+            tone_raw = r.get(f"task:tone:result:{dia_task_id}")
+            tone_data = json.loads(tone_raw) if tone_raw else None
+
+        if not summary_data:
+            logger.info(
+                "Obsidian 자동 export 건너뜀: 요약 미완료",
+                minutes_task_id=minutes_task_id,
+                category="obsidian_auto_export",
+            )
+            return
+
+        meeting_data = {
+            "meeting_id": minutes_task_id,
+            "title": f"회의록 {minutes_data.get('created_at', '')[:10]}",
+            "created_at": minutes_data.get("created_at", ""),
+            "duration": minutes_data.get("total_duration"),
+        }
+
+        file_path = obsidian_service.compute_file_path(
+            cfg.vault_path,
+            cfg.folder_pattern,
+            cfg.filename_pattern,
+            meeting_data,
+        )
+
+        if file_path.exists() and cfg.conflict_policy == "skip":
+            logger.info(
+                "Obsidian 자동 export 건너뜀: 기존 파일 (skip)",
+                path=str(file_path),
+                category="obsidian_auto_export",
+            )
+            return
+
+        note_content = obsidian_service.compose_note(
+            meeting_data,
+            minutes_data,
+            summary_data,
+            sentiment_data,
+            tone_data,
+            frontmatter_custom=cfg.frontmatter_custom,
+        )
+
+        obsidian_service.atomic_write(file_path, note_content)
+        logger.info(
+            "Obsidian 자동 export 완료",
+            meeting_id=minutes_task_id,
+            file_path=str(file_path),
+            category="obsidian_auto_export",
+        )
+    except Exception as e:
+        logger.warning(
+            "Obsidian 자동 export 실패 (파이프라인 영향 없음)",
+            minutes_task_id=minutes_task_id,
+            error=str(e),
+            category="obsidian_auto_export",
+        )
 
 
 @celery_app.task(
