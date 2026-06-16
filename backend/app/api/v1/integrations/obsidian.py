@@ -332,8 +332,7 @@ async def _find_by_minutes_task_id(
         d = _safe_json_load(raw)
         if not d or d.get("minutes_task_id") != meeting_id:
             continue
-        status = d.get("status")
-        if status is not None and status != "completed":
+        if d.get("status") != "completed":
             continue
         ts = d.get("completed_at") or d.get("created_at") or ""
         candidates.append((ts, d))
