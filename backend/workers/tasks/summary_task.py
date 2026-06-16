@@ -381,22 +381,25 @@ def summary_task(
         _unregister_active_job(task_id)
 
 
+def _safe_json_load_sync(raw) -> dict | None:
+    """Redis에서 가져온 JSON을 dict로 파싱. non-dict/오류 시 None."""
+    if not raw:
+        return None
+    try:
+        d = json.loads(raw)
+    except (json.JSONDecodeError, TypeError, ValueError):
+        return None
+    if not isinstance(d, dict):
+        return None
+    return d
+
+
 def _find_latest_summary_sync(r, minutes_task_id: str):
     """동기 Redis 클라이언트로 completed 상태의 최신 summary를 찾는다."""
-    import json as _json
-
     candidates = []
     for key in r.scan_iter(match="task:sum:result:*", count=100):
-        raw = r.get(key)
-        if not raw:
-            continue
-        try:
-            d = _json.loads(raw)
-        except (ValueError, TypeError):
-            continue
-        if not isinstance(d, dict):
-            continue
-        if d.get("minutes_task_id") != minutes_task_id:
+        d = _safe_json_load_sync(r.get(key))
+        if not d or d.get("minutes_task_id") != minutes_task_id:
             continue
         status = d.get("status")
         if status is not None and status != "completed":
@@ -416,7 +419,6 @@ def _trigger_obsidian_auto_export(minutes_task_id: str) -> None:
     REQ-OBS-014: 모든 예외를 삼켜 파이프라인에 영향을 주지 않는다.
     """
     try:
-        import json
 
         from backend.app.api.v1.integrations.obsidian import _get_config_from_db
         from backend.services.obsidian_service import obsidian_service
@@ -439,9 +441,8 @@ def _trigger_obsidian_auto_export(minutes_task_id: str) -> None:
         minutes_raw = r.get(f"task:min:result:{minutes_task_id}")
         if not minutes_raw:
             return
-        try:
-            minutes_data = json.loads(minutes_raw)
-        except (json.JSONDecodeError, TypeError):
+        minutes_data = _safe_json_load_sync(minutes_raw)
+        if not minutes_data:
             logger.warning("Obsidian 자동 export 건너뜀: minutes JSON 파싱 실패",
                 minutes_task_id=minutes_task_id, category="obsidian_auto_export")
             return
@@ -453,17 +454,9 @@ def _trigger_obsidian_auto_export(minutes_task_id: str) -> None:
         tone_data = None
         if dia_task_id:
             sent_raw = r.get(f"task:sentiment:result:{dia_task_id}")
-            if sent_raw:
-                try:
-                    sentiment_data = json.loads(sent_raw)
-                except (json.JSONDecodeError, TypeError):
-                    sentiment_data = None
+            sentiment_data = _safe_json_load_sync(sent_raw) if sent_raw else None
             tone_raw = r.get(f"task:tone:result:{dia_task_id}")
-            if tone_raw:
-                try:
-                    tone_data = json.loads(tone_raw)
-                except (json.JSONDecodeError, TypeError):
-                    tone_data = None
+            tone_data = _safe_json_load_sync(tone_raw) if tone_raw else None
 
         if not summary_data:
             logger.info(
