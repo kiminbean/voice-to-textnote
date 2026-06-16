@@ -394,9 +394,12 @@ def _find_latest_summary_sync(r, minutes_task_id: str):
             d = _json.loads(raw)
         except (ValueError, TypeError):
             continue
+        if not isinstance(d, dict):
+            continue
         if d.get("minutes_task_id") != minutes_task_id:
             continue
-        if d.get("status") not in (None, "completed"):
+        status = d.get("status")
+        if status is not None and status != "completed":
             continue
         ts = d.get("completed_at") or d.get("created_at") or ""
         candidates.append((ts, d))
@@ -484,14 +487,6 @@ def _trigger_obsidian_auto_export(minutes_task_id: str) -> None:
             meeting_data,
         )
 
-        if file_path.exists() and cfg.conflict_policy == "skip":
-            logger.info(
-                "Obsidian 자동 export 건너뜀: 기존 파일 (skip)",
-                path=str(file_path),
-                category="obsidian_auto_export",
-            )
-            return
-
         note_content = obsidian_service.compose_note(
             meeting_data,
             minutes_data,
@@ -501,7 +496,19 @@ def _trigger_obsidian_auto_export(minutes_task_id: str) -> None:
             frontmatter_custom=cfg.frontmatter_custom,
         )
 
-        obsidian_service.atomic_write(file_path, note_content)
+        written = obsidian_service.atomic_write(
+            file_path,
+            note_content,
+            exist_ok=(cfg.conflict_policy != "skip"),
+        )
+        if not written:
+            logger.info(
+                "Obsidian 자동 export 건너뜀: 기존 파일 (skip)",
+                path=str(file_path),
+                category="obsidian_auto_export",
+            )
+            return
+
         logger.info(
             "Obsidian 자동 export 완료",
             meeting_id=minutes_task_id,

@@ -355,15 +355,12 @@ class ObsidianService:
     def atomic_write(
         self, file_path: Path, content: str, exist_ok: bool = True
     ) -> bool:
-        """REQ-OBS-008: atomic write (temp → fsync → rename).
+        """REQ-OBS-008: atomic write (temp → fsync → link/replace).
 
-        Returns:
-            True if file was written, False if exist_ok=False and file already existed.
+        exist_ok=True: os.replace (overwrite always)
+        exist_ok=False: os.link (atomic create-only, raises FileExistsError if exists)
         """
         file_path.parent.mkdir(parents=True, exist_ok=True)
-
-        if not exist_ok and file_path.exists():
-            return False
 
         fd, tmp_path = tempfile.mkstemp(
             dir=str(file_path.parent), prefix=".obs_", suffix=".tmp"
@@ -373,15 +370,27 @@ class ObsidianService:
                 f.write(content)
                 f.flush()
                 os.fsync(f.fileno())
-            os.replace(tmp_path, file_path)
+
+            if exist_ok:
+                os.replace(tmp_path, file_path)
+                return True
+            else:
+                try:
+                    os.link(tmp_path, file_path)
+                    return True
+                except FileExistsError:
+                    return False
         except Exception:
             try:
                 os.unlink(tmp_path)
             except OSError:
                 pass
             raise
-
-        return True
+        finally:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
 
     def build_obsidian_uri(self, vault_path: str, file_path: Path) -> str:
         """REQ-OBS-009: obsidian:// URI 생성."""

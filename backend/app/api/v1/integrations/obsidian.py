@@ -299,9 +299,12 @@ def _safe_json_load(raw: str | bytes | None) -> dict[str, Any] | None:
     if not raw:
         return None
     try:
-        return json.loads(raw)
+        d = json.loads(raw)
     except (json.JSONDecodeError, TypeError):
         return None
+    if not isinstance(d, dict):
+        return None
+    return d
 
 
 async def _find_summary_by_meeting(
@@ -329,7 +332,8 @@ async def _find_by_minutes_task_id(
         d = _safe_json_load(raw)
         if not d or d.get("minutes_task_id") != meeting_id:
             continue
-        if d.get("status") not in (None, "completed"):
+        status = d.get("status")
+        if status is not None and status != "completed":
             continue
         ts = d.get("completed_at") or d.get("created_at") or ""
         candidates.append((ts, d))
@@ -379,10 +383,6 @@ async def auto_export_if_enabled(
             meeting_data,
         )
 
-        if file_path.exists() and cfg.conflict_policy == "skip":
-            logger.info("자동 export 건너뜀: 기존 파일 존재 (skip)", path=str(file_path))
-            return
-
         note_content = obsidian_service.compose_note(
             meeting_data,
             minutes_data,
@@ -392,7 +392,14 @@ async def auto_export_if_enabled(
             frontmatter_custom=cfg.frontmatter_custom,
         )
 
-        obsidian_service.atomic_write(file_path, note_content)
+        written = obsidian_service.atomic_write(
+            file_path,
+            note_content,
+            exist_ok=(cfg.conflict_policy != "skip"),
+        )
+        if not written:
+            logger.info("자동 export 건너뜀: 기존 파일 존재 (skip)", path=str(file_path))
+            return
         logger.info(
             "자동 export 완료",
             meeting_id=meeting_id,

@@ -243,3 +243,67 @@ class TestAtomicWrite:
         assert target.exists()
         assert target.read_text() == "good content"
         assert not list(tmp_path.glob(".obs_*.tmp"))
+
+    def test_concurrent_exist_ok_false_only_one_succeeds(self, service, tmp_path):
+        import threading
+
+        target = tmp_path / "race.md"
+        results = []
+
+        def writer(content):
+            r = service.atomic_write(target, content, exist_ok=False)
+            results.append(r)
+
+        t1 = threading.Thread(target=writer, args=("writer1",))
+        t2 = threading.Thread(target=writer, args=("writer2",))
+        t1.start()
+        t2.start()
+        t1.join()
+        t2.join()
+
+        assert results.count(True) == 1
+        assert results.count(False) == 1
+
+    def test_temp_file_cleanup_after_exist_ok_false_skip(self, service, tmp_path):
+        target = tmp_path / "note.md"
+        target.write_text("original")
+        service.atomic_write(target, "new", exist_ok=False)
+        assert not list(tmp_path.glob(".obs_*.tmp"))
+
+
+class TestSafeJsonLoad:
+    def test_none_returns_none(self):
+        from backend.app.api.v1.integrations.obsidian import _safe_json_load
+
+        assert _safe_json_load(None) is None
+
+    def test_empty_string_returns_none(self):
+        from backend.app.api.v1.integrations.obsidian import _safe_json_load
+
+        assert _safe_json_load("") is None
+
+    def test_malformed_json_returns_none(self):
+        from backend.app.api.v1.integrations.obsidian import _safe_json_load
+
+        assert _safe_json_load("{broken") is None
+
+    def test_list_returns_none(self):
+        from backend.app.api.v1.integrations.obsidian import _safe_json_load
+
+        assert _safe_json_load("[1,2,3]") is None
+
+    def test_string_returns_none(self):
+        from backend.app.api.v1.integrations.obsidian import _safe_json_load
+
+        assert _safe_json_load('"hello"') is None
+
+    def test_number_returns_none(self):
+        from backend.app.api.v1.integrations.obsidian import _safe_json_load
+
+        assert _safe_json_load("42") is None
+
+    def test_valid_dict_returns_dict(self):
+        from backend.app.api.v1.integrations.obsidian import _safe_json_load
+
+        result = _safe_json_load('{"key": "value"}')
+        assert result == {"key": "value"}
