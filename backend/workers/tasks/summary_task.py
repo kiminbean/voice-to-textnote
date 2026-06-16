@@ -381,6 +381,32 @@ def summary_task(
         _unregister_active_job(task_id)
 
 
+def _find_latest_summary_sync(r, minutes_task_id: str):
+    """동기 Redis 클라이언트로 completed 상태의 최신 summary를 찾는다."""
+    import json as _json
+
+    candidates = []
+    for key in r.scan_iter(match="task:sum:result:*", count=100):
+        raw = r.get(key)
+        if not raw:
+            continue
+        try:
+            d = _json.loads(raw)
+        except (ValueError, TypeError):
+            continue
+        if d.get("minutes_task_id") != minutes_task_id:
+            continue
+        if d.get("status") not in (None, "completed"):
+            continue
+        ts = d.get("completed_at") or d.get("created_at") or ""
+        candidates.append((ts, d))
+
+    if not candidates:
+        return None
+    candidates.sort(key=lambda x: x[0], reverse=True)
+    return candidates[0][1]
+
+
 def _trigger_obsidian_auto_export(minutes_task_id: str) -> None:
     """REQ-OBS-007: 파이프라인 완료 후 Obsidian 자동 export (설정 시).
 
@@ -410,25 +436,31 @@ def _trigger_obsidian_auto_export(minutes_task_id: str) -> None:
         minutes_raw = r.get(f"task:min:result:{minutes_task_id}")
         if not minutes_raw:
             return
-        minutes_data = json.loads(minutes_raw)
+        try:
+            minutes_data = json.loads(minutes_raw)
+        except (json.JSONDecodeError, TypeError):
+            logger.warning("Obsidian 자동 export 건너뜀: minutes JSON 파싱 실패",
+                minutes_task_id=minutes_task_id, category="obsidian_auto_export")
+            return
 
-        summary_data = None
-        for key in r.scan_iter("task:summary:result:*"):
-            raw = r.get(key)
-            if raw:
-                d = json.loads(raw)
-                if d.get("minutes_task_id") == minutes_task_id:
-                    summary_data = d
-                    break
+        summary_data = _find_latest_summary_sync(r, minutes_task_id)
 
         dia_task_id = minutes_data.get("diarization_task_id")
         sentiment_data = None
         tone_data = None
         if dia_task_id:
             sent_raw = r.get(f"task:sentiment:result:{dia_task_id}")
-            sentiment_data = json.loads(sent_raw) if sent_raw else None
+            if sent_raw:
+                try:
+                    sentiment_data = json.loads(sent_raw)
+                except (json.JSONDecodeError, TypeError):
+                    sentiment_data = None
             tone_raw = r.get(f"task:tone:result:{dia_task_id}")
-            tone_data = json.loads(tone_raw) if tone_raw else None
+            if tone_raw:
+                try:
+                    tone_data = json.loads(tone_raw)
+                except (json.JSONDecodeError, TypeError):
+                    tone_data = None
 
         if not summary_data:
             logger.info(

@@ -31,9 +31,10 @@ class ObsidianService:
         Returns:
             {valid, vault_name, obsidian_folder_exists, writable, is_symlink}
         """
-        path = Path(vault_path).expanduser().resolve()
+        raw_path = Path(vault_path).expanduser()
+        is_symlink = raw_path.is_symlink()
+        path = raw_path.resolve()
 
-        is_symlink = path.is_symlink()
         obsidian_exists = (path / ".obsidian").is_dir()
         writable = os.access(path, os.W_OK) if path.exists() else False
         valid = obsidian_exists and writable and not is_symlink
@@ -71,8 +72,10 @@ class ObsidianService:
         file_path = folder / filename_rel
 
         resolved = file_path.resolve()
-        if not str(resolved).startswith(str(vault)):
-            raise ValueError("경로가 vault 외부로 벗어났습니다")
+        try:
+            resolved.relative_to(vault)
+        except ValueError as e:
+            raise ValueError("경로가 vault 외부로 벗어났습니다") from e
 
         return resolved
 
@@ -123,6 +126,8 @@ class ObsidianService:
     def _sanitize_filename(self, name: str) -> str:
         cleaned = _FORBIDDEN_CHARS.sub("_", name).strip()
         cleaned = re.sub(r"\s+", "_", cleaned)
+        if not cleaned or cleaned == ".md":
+            cleaned = "untitled"
         return cleaned[:100]
 
     def _assert_no_traversal(self, value: str) -> None:
@@ -138,67 +143,68 @@ class ObsidianService:
         tone_data: dict[str, Any] | None,
         custom: dict[str, Any] | None = None,
     ) -> str:
-        """REQ-OBS-004: YAML frontmatter 생성."""
+        """REQ-OBS-004: YAML frontmatter 생성 (yaml.safe_dump 기반)."""
+        import yaml
+
         created_at = meeting_data.get("created_at", "")
         dt = self._parse_datetime(created_at)
 
         participants = self._extract_participants(minutes_data)
         tags = ["voice-to-textnote", "meetings"]
-        if custom and "additional_tags" in custom:
-            tags.extend(custom["additional_tags"])
+        if custom and isinstance(custom.get("additional_tags"), list):
+            tags.extend(str(t) for t in custom["additional_tags"])
 
-        lines = ["---"]
-        lines.append("type: meeting")
+        fm: dict[str, Any] = {"type": "meeting"}
+
         if dt:
-            lines.append(f"date: {dt.strftime('%Y-%m-%d')}")
-            lines.append(f"time: {dt.strftime('%H:%M')}")
-        lines.append(f"title: {self._yaml_escape(meeting_data.get('title', '회의록'))}")
+            fm["date"] = dt.strftime("%Y-%m-%d")
+            fm["time"] = dt.strftime("%H:%M")
+
+        fm["title"] = str(meeting_data.get("title", "회의록"))
 
         duration = meeting_data.get("duration")
         if duration is not None:
-            lines.append(f"duration_seconds: {int(duration)}")
+            fm["duration_seconds"] = int(duration)
 
         if participants:
-            lines.append("participants:")
-            for p in participants:
-                lines.append(f'  - "[[{p}]]"')
+            fm["participants"] = [f"[[{p}]]" for p in participants]
 
-        lines.append("tags:")
-        for tag in tags:
-            lines.append(f"  - {tag}")
-        lines.append("source: voice-to-textnote")
+        fm["tags"] = tags
+        fm["source"] = "voice-to-textnote"
 
         meeting_id = meeting_data.get("meeting_id") or meeting_data.get("task_id")
         if meeting_id:
-            lines.append(f"meeting_id: {meeting_id}")
+            fm["meeting_id"] = str(meeting_id)
 
         if sentiment_data:
             overall = sentiment_data.get("overall_sentiment")
             if overall:
-                lines.append(f"sentiment: {overall}")
+                fm["sentiment"] = str(overall)
             emotion = sentiment_data.get("overall_emotion")
             if emotion:
-                lines.append(f"overall_emotion: {emotion}")
+                fm["overall_emotion"] = str(emotion)
 
         if tone_data:
             overall_tone = tone_data.get("overall_tone")
             if overall_tone:
-                lines.append(f"overall_tone: {overall_tone}")
+                fm["overall_tone"] = str(overall_tone)
 
         if summary_data and summary_data.get("action_items"):
-            lines.append(f"action_item_count: {len(summary_data['action_items'])}")
+            fm["action_item_count"] = len(summary_data["action_items"])
 
-        if custom and "custom_fields" in custom:
+        if custom and isinstance(custom.get("custom_fields"), dict):
             for k, v in custom["custom_fields"].items():
-                lines.append(f"{k}: {self._yaml_escape(str(v))}")
+                if re.match(r"^[A-Za-z_][A-Za-z0-9_-]*$", str(k)):
+                    fm[str(k)] = str(v)
 
-        lines.append("---")
-        return "\n".join(lines)
+        yaml_text = yaml.safe_dump(
+            fm,
+            allow_unicode=True,
+            default_flow_style=False,
+            sort_keys=False,
+        ).strip()
 
-    def _yaml_escape(self, value: str) -> str:
-        if any(c in value for c in ':[]"\'#&*!|>%@`'):
-            return f'"{value.replace(chr(34), chr(92) + chr(34))}"'
-        return value
+        return f"---\n{yaml_text}\n---"
 
     def _extract_participants(
         self, minutes_data: dict[str, Any] | None
@@ -346,9 +352,18 @@ class ObsidianService:
         s = int(seconds % 60)
         return f"{h:02d}:{m:02d}:{s:02d}"
 
-    def atomic_write(self, file_path: Path, content: str) -> None:
-        """REQ-OBS-008: atomic write (temp → fsync → rename)."""
+    def atomic_write(
+        self, file_path: Path, content: str, exist_ok: bool = True
+    ) -> bool:
+        """REQ-OBS-008: atomic write (temp → fsync → rename).
+
+        Returns:
+            True if file was written, False if exist_ok=False and file already existed.
+        """
         file_path.parent.mkdir(parents=True, exist_ok=True)
+
+        if not exist_ok and file_path.exists():
+            return False
 
         fd, tmp_path = tempfile.mkstemp(
             dir=str(file_path.parent), prefix=".obs_", suffix=".tmp"
@@ -365,6 +380,8 @@ class ObsidianService:
             except OSError:
                 pass
             raise
+
+        return True
 
     def build_obsidian_uri(self, vault_path: str, file_path: Path) -> str:
         """REQ-OBS-009: obsidian:// URI 생성."""

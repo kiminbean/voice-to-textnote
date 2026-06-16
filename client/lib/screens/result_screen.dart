@@ -117,6 +117,8 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       return;
     }
 
+    if (_isExporting) return;
+
     setState(() => _isExporting = true);
 
     try {
@@ -133,10 +135,25 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                 ? SnackBarAction(
                     label: '열기',
                     onPressed: () async {
-                      await launchUrl(
-                        Uri.parse(result.obsidianUri),
-                        mode: LaunchMode.externalApplication,
-                      );
+                      try {
+                        final launched = await launchUrl(
+                          Uri.parse(result.obsidianUri),
+                          mode: LaunchMode.externalApplication,
+                        );
+                        if (!launched && context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content: Text(
+                                    'Obsidian을 열 수 없습니다. 앱이 설치되어 있는지 확인하세요.')),
+                          );
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Obsidian 열기 실패: $e')),
+                          );
+                        }
+                      }
                     },
                   )
                 : null,

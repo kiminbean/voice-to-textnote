@@ -122,6 +122,18 @@ async def save_config(req: ObsidianConfigRequest) -> ObsidianConfigResponse:
     if _has_traversal(req.vault_path):
         bad_request("경로 탐색 패턴이 감지되었습니다", error_code="PATH_TRAVERSAL_DETECTED")
 
+    if _has_traversal(req.folder_pattern):
+        bad_request(
+            "folder_pattern에 경로 탐색 패턴이 감지되었습니다",
+            error_code="PATH_TRAVERSAL_DETECTED",
+        )
+
+    if _has_traversal(req.filename_pattern):
+        bad_request(
+            "filename_pattern에 경로 탐색 패턴이 감지되었습니다",
+            error_code="PATH_TRAVERSAL_DETECTED",
+        )
+
     validation = obsidian_service.validate_vault(req.vault_path)
     if not validation["valid"]:
         if validation["is_symlink"]:
@@ -182,15 +194,6 @@ async def export_meeting(
             bad_request(msg, error_code="PATH_TRAVERSAL_DETECTED")
         bad_request(msg)
 
-    if file_path.exists() and cfg.conflict_policy == "skip":
-        uri = obsidian_service.build_obsidian_uri(cfg.vault_path, file_path)
-        return ObsidianExportResponse(
-            success=True,
-            file_path=str(file_path.relative_to(_vault_resolved(cfg.vault_path))),
-            obsidian_uri=uri,
-            error="기존 파일이 존재하여 건너뛰었습니다 (skip 정책)",
-        )
-
     note_content = obsidian_service.compose_note(
         meeting_data,
         minutes_data,
@@ -201,13 +204,21 @@ async def export_meeting(
     )
 
     try:
-        obsidian_service.atomic_write(file_path, note_content)
+        written = obsidian_service.atomic_write(
+            file_path,
+            note_content,
+            exist_ok=(cfg.conflict_policy != "skip"),
+        )
     except OSError as e:
         logger.error("Obsidian 노트 파일 쓰기 실패", error=str(e), path=str(file_path))
         return ObsidianExportResponse(success=False, error=f"파일 쓰기 실패: {e}")
 
     uri = obsidian_service.build_obsidian_uri(cfg.vault_path, file_path)
     rel_path = str(file_path.resolve().relative_to(_vault_resolved(cfg.vault_path)))
+
+    error_msg = None
+    if not written:
+        error_msg = "기존 파일이 존재하여 건너뛰었습니다 (skip 정책)"
 
     logger.info(
         "Obsidian 노트 생성 완료",
@@ -219,6 +230,7 @@ async def export_meeting(
         success=True,
         file_path=rel_path,
         obsidian_uri=uri,
+        error=error_msg,
     )
 
 
@@ -242,30 +254,18 @@ async def _gather_meeting_data(
     dict[str, Any] | None,
     dict[str, Any] | None,
 ]:
-    """Redis에서 회의 관련 데이터를 수집."""
+    """Redis에서 회의 관련 데이터를 수집.
+
+    Redis 키 패턴 (검증 완료):
+    - minutes: task:min:result:{meeting_id}
+    - summary: task:sum:result:{summaryTaskId} (minutes_task_id 필드로 역추적)
+    - sentiment: task:sentiment:result:{dia_task_id} 또는 minutes_task_id 매칭
+    - tone: task:tone:result:{dia_task_id}
+    """
     minutes_raw = await redis_client.get(f"task:min:result:{meeting_id}")
-    minutes_data = json.loads(minutes_raw) if minutes_raw else None
+    minutes_data = _safe_json_load(minutes_raw)
 
-    summary_task_id: str | None = None
-    if minutes_data:
-        summary_task_id = minutes_data.get("summary_task_id")
-
-    summary_data = None
-    if summary_task_id:
-        sum_raw = await redis_client.get(f"task:summary:result:{summary_task_id}")
-        summary_data = json.loads(sum_raw) if sum_raw else None
-    if summary_data is None:
-        for pattern in ("task:summary:result:*",):
-            keys = await redis_client.keys(pattern)
-            for key in keys:
-                raw = await redis_client.get(key)
-                if raw:
-                    d = json.loads(raw)
-                    if d.get("minutes_task_id") == meeting_id:
-                        summary_data = d
-                        break
-            if summary_data:
-                break
+    summary_data = await _find_summary_by_meeting(redis_client, meeting_id)
 
     dia_task_id = minutes_data.get("diarization_task_id") if minutes_data else None
     sentiment_data = None
@@ -273,23 +273,15 @@ async def _gather_meeting_data(
 
     if dia_task_id:
         sent_raw = await redis_client.get(f"task:sentiment:result:{dia_task_id}")
-        sentiment_data = json.loads(sent_raw) if sent_raw else None
+        sentiment_data = _safe_json_load(sent_raw)
 
         tone_raw = await redis_client.get(f"task:tone:result:{dia_task_id}")
-        tone_data = json.loads(tone_raw) if tone_raw else None
+        tone_data = _safe_json_load(tone_raw)
 
-    if sentiment_data is None and minutes_data:
-        for key_pat in ("task:sentiment:result:*",):
-            keys = await redis_client.keys(key_pat)
-            for key in keys:
-                raw = await redis_client.get(key)
-                if raw:
-                    d = json.loads(raw)
-                    if d.get("minutes_task_id") == meeting_id:
-                        sentiment_data = d
-                        break
-            if sentiment_data:
-                break
+    if sentiment_data is None:
+        sentiment_data = await _find_by_minutes_task_id(
+            redis_client, "task:sentiment:result:*", meeting_id
+        )
 
     meeting_data = None
     if minutes_data:
@@ -301,6 +293,51 @@ async def _gather_meeting_data(
         }
 
     return meeting_data, minutes_data, summary_data, sentiment_data, tone_data
+
+
+def _safe_json_load(raw: str | bytes | None) -> dict[str, Any] | None:
+    if not raw:
+        return None
+    try:
+        return json.loads(raw)
+    except (json.JSONDecodeError, TypeError):
+        return None
+
+
+async def _find_summary_by_meeting(
+    redis_client: aioredis.Redis,
+    meeting_id: str,
+) -> dict[str, Any] | None:
+    """minutes_task_id로 summary 결과를 역추적.
+
+    completed 상태의 summary만 반환하며, 여러 개가 있으면 가장 최신 completed_at 기준.
+    """
+    return await _find_by_minutes_task_id(
+        redis_client, "task:sum:result:*", meeting_id
+    )
+
+
+async def _find_by_minutes_task_id(
+    redis_client: aioredis.Redis,
+    pattern: str,
+    meeting_id: str,
+) -> dict[str, Any] | None:
+    """Redis SCAN으로 minutes_task_id 필드가 일치하는 completed 결과를 최신순으로 찾는다."""
+    candidates: list[tuple[str, dict[str, Any]]] = []
+    async for key in redis_client.scan_iter(match=pattern, count=100):
+        raw = await redis_client.get(key)
+        d = _safe_json_load(raw)
+        if not d or d.get("minutes_task_id") != meeting_id:
+            continue
+        if d.get("status") not in (None, "completed"):
+            continue
+        ts = d.get("completed_at") or d.get("created_at") or ""
+        candidates.append((ts, d))
+
+    if not candidates:
+        return None
+    candidates.sort(key=lambda x: x[0], reverse=True)
+    return candidates[0][1]
 
 
 async def auto_export_if_enabled(
