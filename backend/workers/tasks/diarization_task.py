@@ -207,11 +207,19 @@ def diarization_task(
         stt_segments: list[dict] = []
 
         if parallel_mode:
-            # --- 병렬 모드: STT 결과를 기다리지 않고 WAV 직접 처리 ---
-            _update_task_status(task_id, TaskStatus.processing, 0.05, "WAV 파일 확인 중...")
+            _update_task_status(task_id, TaskStatus.processing, 0.05, "WAV 파일 대기 중...")
             wav_path = Path(audio_path)  # type: ignore[arg-type]
+
+            import time as _time
+
+            waited = 0
+            while not wav_path.exists() and waited < 300:
+                _time.sleep(3)
+                waited += 3
+                if waited % 15 == 0:
+                    logger.info("STT _dia.wav 대기 중", waited_seconds=waited, path=str(wav_path))
             if not wav_path.exists():
-                raise FileNotFoundError(f"WAV 파일을 찾을 수 없습니다: {wav_path}")
+                raise FileNotFoundError(f"WAV 파일을 찾을 수 없습니다 (300초 대기 후에도 없음): {wav_path}")
         else:
             # --- 레거시 직렬 모드: STT 결과 조회 후 매칭 ---
             if not stt_task_id:
