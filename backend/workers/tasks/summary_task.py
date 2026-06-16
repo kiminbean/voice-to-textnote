@@ -401,8 +401,15 @@ def _safe_json_load_sync(raw) -> dict | None:
 
 def _find_latest_summary_sync(r, minutes_task_id: str):
     """동기 Redis 클라이언트로 completed 상태의 최신 summary를 찾는다."""
+    return _find_latest_completed_by_minutes_sync(
+        r, "task:sum:result:*", minutes_task_id
+    )
+
+
+def _find_latest_completed_by_minutes_sync(r, pattern: str, minutes_task_id: str):
+    """동기 Redis SCAN으로 minutes_task_id가 일치하는 completed 결과를 최신순으로 찾는다."""
     candidates = []
-    for key in r.scan_iter(match="task:sum:result:*", count=100):
+    for key in r.scan_iter(match=pattern, count=100):
         d = _safe_json_load_sync(r.get(key))
         if not d or d.get("minutes_task_id") != minutes_task_id:
             continue
@@ -467,6 +474,11 @@ def _trigger_obsidian_auto_export(minutes_task_id: str) -> None:
                 tone_data = _safe_json_load_sync(tone_raw)
                 if tone_data and tone_data.get("status") != "completed":
                     tone_data = None
+
+        if sentiment_data is None:
+            sentiment_data = _find_latest_completed_by_minutes_sync(
+                r, "task:sentiment:result:*", minutes_task_id
+            )
 
         if not summary_data:
             logger.info(
