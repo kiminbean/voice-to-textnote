@@ -264,6 +264,8 @@ async def _gather_meeting_data(
     """
     minutes_raw = await redis_client.get(f"task:min:result:{meeting_id}")
     minutes_data = _safe_json_load(minutes_raw)
+    if minutes_data and minutes_data.get("status") != "completed":
+        minutes_data = None
 
     summary_data = await _find_summary_by_meeting(redis_client, meeting_id)
 
@@ -274,9 +276,13 @@ async def _gather_meeting_data(
     if dia_task_id:
         sent_raw = await redis_client.get(f"task:sentiment:result:{dia_task_id}")
         sentiment_data = _safe_json_load(sent_raw)
+        if sentiment_data and sentiment_data.get("status") != "completed":
+            sentiment_data = None
 
         tone_raw = await redis_client.get(f"task:tone:result:{dia_task_id}")
         tone_data = _safe_json_load(tone_raw)
+        if tone_data and tone_data.get("status") != "completed":
+            tone_data = None
 
     if sentiment_data is None:
         sentiment_data = await _find_by_minutes_task_id(

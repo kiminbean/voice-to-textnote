@@ -446,8 +446,8 @@ def _trigger_obsidian_auto_export(minutes_task_id: str) -> None:
         if not minutes_raw:
             return
         minutes_data = _safe_json_load_sync(minutes_raw)
-        if not minutes_data:
-            logger.warning("Obsidian 자동 export 건너뜀: minutes JSON 파싱 실패",
+        if not minutes_data or minutes_data.get("status") != "completed":
+            logger.warning("Obsidian 자동 export 건너뜀: minutes 미완료 또는 파싱 실패",
                 minutes_task_id=minutes_task_id, category="obsidian_auto_export")
             return
 
@@ -458,9 +458,15 @@ def _trigger_obsidian_auto_export(minutes_task_id: str) -> None:
         tone_data = None
         if dia_task_id:
             sent_raw = r.get(f"task:sentiment:result:{dia_task_id}")
-            sentiment_data = _safe_json_load_sync(sent_raw) if sent_raw else None
+            if sent_raw:
+                sentiment_data = _safe_json_load_sync(sent_raw)
+                if sentiment_data and sentiment_data.get("status") != "completed":
+                    sentiment_data = None
             tone_raw = r.get(f"task:tone:result:{dia_task_id}")
-            tone_data = _safe_json_load_sync(tone_raw) if tone_raw else None
+            if tone_raw:
+                tone_data = _safe_json_load_sync(tone_raw)
+                if tone_data and tone_data.get("status") != "completed":
+                    tone_data = None
 
         if not summary_data:
             logger.info(
