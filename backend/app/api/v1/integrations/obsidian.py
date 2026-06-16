@@ -300,7 +300,7 @@ def _safe_json_load(raw: str | bytes | None) -> dict[str, Any] | None:
         return None
     try:
         d = json.loads(raw)
-    except (json.JSONDecodeError, TypeError):
+    except (json.JSONDecodeError, TypeError, ValueError):
         return None
     if not isinstance(d, dict):
         return None

@@ -307,3 +307,8 @@ class TestSafeJsonLoad:
 
         result = _safe_json_load('{"key": "value"}')
         assert result == {"key": "value"}
+
+    def test_malformed_bytes_returns_none(self):
+        from backend.app.api.v1.integrations.obsidian import _safe_json_load
+
+        assert _safe_json_load(b"\xff") is None
