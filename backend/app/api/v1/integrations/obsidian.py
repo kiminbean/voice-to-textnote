@@ -216,9 +216,18 @@ async def export_meeting(
     uri = obsidian_service.build_obsidian_uri(cfg.vault_path, file_path)
     rel_path = str(file_path.resolve().relative_to(_vault_resolved(cfg.vault_path)))
 
-    error_msg = None
     if not written:
-        error_msg = "기존 파일이 존재하여 건너뛰었습니다 (skip 정책)"
+        logger.info(
+            "Obsidian export 건너뜀 (skip 정책)",
+            meeting_id=meeting_id,
+            file_path=str(file_path),
+        )
+        return ObsidianExportResponse(
+            success=False,
+            file_path=rel_path,
+            obsidian_uri=uri,
+            error="기존 파일이 존재하여 건너뛰었습니다 (skip 정책)",
+        )
 
     logger.info(
         "Obsidian 노트 생성 완료",
@@ -230,7 +239,6 @@ async def export_meeting(
         success=True,
         file_path=rel_path,
         obsidian_uri=uri,
-        error=error_msg,
     )
 
 
