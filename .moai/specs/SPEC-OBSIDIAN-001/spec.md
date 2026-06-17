@@ -1,11 +1,13 @@
 # SPEC-OBSIDIAN-001: Obsidian Vault 연계 — 회의록/요약 자동 기록
 
 - **생성일**: 2026-06-16
-- **상태**: Planned
+- **완료일**: 2026-06-17
+- **상태**: Completed
 - **우선순위**: High
 - **담당**: Sisyphus (orchestration)
 - **관련 SPEC**: SPEC-EXPORT-001 (PDF Export), SPEC-TMPL-001 (Templates), SPEC-SENTIMENT-001, SPEC-TONE-001
 - **라이프사이클**: spec-anchored (구현과 함께 유지보수)
+- **검증**: 10라운드 Oracle 심사 통과 (17개 버그 수정, 30개 회귀 테스트)
 
 ---
 

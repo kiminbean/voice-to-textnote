@@ -4,6 +4,45 @@
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-06-17
+
+### Added
+
+- **SPEC-OBSIDIAN-001: Obsidian Vault 연계** — 회의록/요약/감정·톤 분석을 로컬 Obsidian vault에 자동 기록
+  - `backend/services/obsidian_service.py`: vault 검증, 경로 계산, YAML frontmatter(yaml.safe_dump), atomic write(os.link)
+  - `backend/app/api/v1/integrations/obsidian.py`: POST /obsidian/config, /obsidian/validate, /obsidian/export/{meeting_id}
+  - `backend/db/obsidian_models.py`: ObsidianConfig DB 모델 (vault_path, folder/filename pattern, auto_export, conflict_policy)
+  - `backend/schemas/obsidian.py`: Pydantic 요청/응답 스키마
+  - `client/lib/services/obsidian_api.dart`: 클라이언트 API
+  - `client/lib/providers/obsidian_provider.dart`: 상태 관리
+  - 파이프라인 완료 시 자동 export (summary_task.py 통합)
+  - 클라이언트 내보내기 메뉴 "Obsidian에 저장" + "Obsidian에서 열기" (obsidian:// URI)
+  - 30개 회귀 테스트 (test_obsidian_service.py)
+
+### Changed
+
+- **라이선스 변경: MIT → All Rights Reserved** — 사유재산권 전환, LICENSE/SECURITY.md/CONTRIBUTING.md 신규 작성, CLA 의무화
+- **SPEC-TONE-001: 톤 분석 기능 활성화** — opensmile 2.6.0 설치, tone_model 환경변수 설정, GET /tone/meeting/{id} 역추적 로직 (minutes result → dia_task_id)
+- **iOS 네트워크 설정** — Tailscale IP 갱신 (100.110.255.105 → 100.69.69.119), Info.plist ATS 예외 추가
+
+### Fixed
+
+- **SPEC-SENTIMENT-001: 감정 분석 on-demand 패턴修正** — result_provider.dart가 POST /sentiment → poll → GET /sentiment/{task_id} 패턴으로 변경 (기존: 잘못된 GET /sentiment/meeting/{id} 호출로 항상 실패)
+- **10라운드 Oracle 심사: SPEC-OBSIDIAN-001 버그 17건 수정**
+  - [CRITICAL] Redis 키 패턴 `task:summary:result` → `task:sum:result` (summary 미포함 버그)
+  - [BLOCKER] atomic_write TOCTOU race → os.link 원자적 create-only
+  - [HIGH] 폴더/파일명 패턴 경로 탐색(../) 차단
+  - [HIGH] 심볼릭 링크 vault 검출 (expanduser before resolve)
+  - [HIGH] vault confinement startswith → relative_to (접두어 공격 방지)
+  - [HIGH] 수동 YAML → yaml.safe_dump (인젝션 방지)
+  - [HIGH] Redis KEYS → SCAN (성능)
+  - [HIGH] _safe_json_load dict-only 검증 + UnicodeDecodeError 처리
+  - [HIGH] 실패한 minutes/sentiment/tone 결과 export 차단
+  - [HIGH] 자동 export sentiment 조회: minutes_task_id 스캔 폴백
+  - [MEDIUM] skip 정책 success=False 반환
+  - [MEDIUM] status 필터 strict completed-only
+  - [LOW] _isExporting 가드, launchUrl 에러 처리
+
 ## [1.6.0] - 2026-06-15
 
 ### Added
