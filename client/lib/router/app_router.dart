@@ -47,8 +47,11 @@ GoRouter createRouter(ProviderContainer container) {
       // 미인증 + 비게스트 상태에서 보호된 경로 접근 시 로그인으로
       if (!isAuthenticated && !isGuest && !isPublicPath) return '/login';
 
-      // 인증 상태에서 공개 경로(로그인/회원가입) 접근 시 홈으로
-      if ((isAuthenticated || isGuest) && isPublicPath) return '/';
+      // 인증(정식 로그인) 상태에서 공개 경로(로그인/회원가입) 접근 시 홈으로
+      // @MX:WARN: 게스트는 제외 — 게스트→회원가입 전환은 정상 플로우이므로 허용해야 함.
+      // 이전 코드는 (isAuthenticated || isGuest) 조건으로 게스트의 /register 이동을 차단하여
+      // "가입하기 버튼이 먹통"인 버그의 원인이 됨.
+      if (isAuthenticated && !isGuest && isPublicPath) return '/';
 
       return null;
     },
