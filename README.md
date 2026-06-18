@@ -34,6 +34,7 @@
 ✅ **API 보안**: API Key 인증, 레이트 리미팅, CORS, Security Headers
 ✅ **모니터링**: Prometheus 메트릭, 요청 ID 추적, 구조화된 로깅
 ✅ **프로덕션 배포**: Ubuntu systemd + Redis + Tailscale 원격 접속
+✅ **모던 UI/UX**: 모던 미니멀 디자인 시스템 (인디고/바이올렛), 다크모드 지원, 반응형 레이아웃
 ✅ **완전한 테스트**: 3374 백엔드 테스트 (단위/통합/E2E) + Flutter 328, 97.23% 커버리지
 
 ## 주요 기능
@@ -109,6 +110,14 @@
 - **헬스체크**: `GET /api/v1/health` (API, Redis, Celery 상태)
 - **준비 상태**: `GET /api/v1/ready` (모델 로드 확인)
 - **메트릭**: `GET /metrics` (Prometheus 형식)
+
+### 클라이언트 UI/UX
+
+- **디자인 시스템**: 중앙 집중식 토큰(`client/lib/theme/`)으로 컬러·타이포그래피·스페이싱 일관성 확보. 모던 미니멀 미학(Linear/Notion 계열), 인디고/바이올렛 브랜드 컬러.
+- **다크모드**: 시스템/라이트/다크 3모드 토글 지원. `SharedPreferences`로 사용자 선택 영속화. 모든 컴포넌트가 시맨틱 스킴을 통해 자동 전환.
+- **핵심 화면**: 로그인(브랜드 로고 + 소셜), 홈(SliverAppBar + 풀투리프레시 + 빈 상태 CTA), 녹음(펄스 애니메이션 + 모노스페이스 타이머), 결과(8개 탭 + 2x2 통계 그리드), 설정(테마/데이터/계정).
+- **접근성**: `Semantics` 라벨링(WCAG 2.1 AA), 한국어/영어 국제화(ARB 36키), 600px+ 반응형 레이아웃.
+- **공유 컴포넌트**: `StatusBadge`, `EmptyStateWidget`, `MeetingCard`, `PipelineProgress`(스텝 인디케이터), `SpeakerSegment`(10색 팔레트 + 검색 하이라이트).
 
 ## 기술 스택
 

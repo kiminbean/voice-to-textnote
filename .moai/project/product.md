@@ -362,6 +362,17 @@
 - **메모리 보호**: 19.2GB 초과 시 MemoryError로 분석 중단 (STT/DIA 우선 보호)
 - **라이선스**: opensmile AGPL-3.0 (로컬 전용 처리로 회피 가능)
 
+### 27. UI/UX 재설계 + 디자인 시스템 구축
+
+프로덕션 퀄리티의 클라이언트 UI를 위한 전면 재설계.
+
+- **모던 미니멀 디자인 시스템**: Linear/Notion 계열 미학, 인디고/바이올렛 브랜드 컬러. 중앙 집중식 토큰(`client/lib/theme/`)으로 컬러·타이포그래피·스페이싱·그림자·반경 일관성 확보.
+- **다크모드 전면 지원**: 시스템/라이트/다크 3모드 토글. `SharedPreferences` 영속화. 모든 14개 화면이 시맨틱 스킴(`AppColors.of(context)`)으로 자동 전환.
+- **핵심 화면 재설계**: login(브랜드 그라데이션 로고 + 소셜), home(SliverAppBar + 빈 상태 CTA + 메뉴 간소화), recording(펄스 링 애니메이션 + 모노스페이스 타이머), processing(그라데이션 인디케이터 + 스텝 진행), result(8개 탭 + 2x2 통계 그리드), settings(테마/데이터/계정 통합).
+- **공유 컴포넌트**: `StatusBadge`(6톤 알약형), `EmptyStateWidget`(CTA 포함), `PipelineProgress`(체크/원형 스텝), `SpeakerSegment`(10색 팔레트 + 다크모드 호환 검색 하이라이트).
+- **중복 제거**: template/vocabulary 개별 빈/에러 뷰 4개 클래스 → 공유 위젯 통합.
+- **테스트**: Flutter 328/328 통과, analyze 0 이슈.
+
 ## 다음 단계 (Phase 8 계획)
 
 ### 향후 로드맵

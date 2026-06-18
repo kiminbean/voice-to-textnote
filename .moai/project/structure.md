@@ -162,10 +162,16 @@ client/lib/
 │                                #   action_item, speaker_profile, vocabulary,
 │                                #   mind_map_result, pipeline_state, auth_user 등
 │
-├── screens/ (13개)              # home, recording, processing, result,
-│                                #   login, register, search, template,
+├── theme/ (4개)                 # 디자인 시스템 토큰 (모던 미니멀 + 인디고/바이올렛)
+│   ├── app_colors.dart          # 시맨틱 컬러 스킴 (라이트/다크) + 브랜드 그라데이션
+│   ├── app_typography.dart      # 타이포그래피 스케일 + 모노스페이스 타이머
+│   ├── app_spacing.dart         # 스페이싱/반경/그림자 토큰 (4px 기반)
+│   └── app_theme.dart           # Light/Dark ThemeData 통합 빌더
+│
+├── screens/ (14개)              # home, recording, processing, result,
+│                                #   login, register, search, settings,
 │                                #   team_list, team_detail, speaker_profile,
-│                                #   vocabulary, model_download
+│                                #   vocabulary, template, model_download
 │
 ├── services/ (35개)             # API 클라이언트 + 디바이스 서비스
 │   ├── api_client.dart          # Dio HTTP 기반
@@ -188,7 +194,7 @@ client/lib/
 │   ├── permission_service.dart, connectivity_service.dart
 │   └── auth_service.dart, audio_api.dart
 │
-├── providers/ (18개)            # Riverpod 상태 관리
+├── providers/ (19개)            # Riverpod 상태 관리
 │   ├── pipeline_provider.dart, recording_provider.dart
 │   ├── result_provider.dart, meeting_list_provider.dart
 │   ├── auth_provider.dart, team_provider.dart, collab_provider.dart
@@ -197,14 +203,16 @@ client/lib/
 │   ├── hybrid_pipeline_provider.dart, model_download_provider.dart
 │   ├── notification_provider.dart, permission_recheck_provider.dart
 │   ├── connectivity_provider.dart, qa_provider.dart
-│   └── audio_player_provider.dart
+│   ├── audio_player_provider.dart
+│   └── theme_mode_provider.dart # 다크모드 토글 (SharedPreferences 영속화)
 │
-├── widgets/ (18개)              # meeting_card, shimmer_card/text, offline_banner,
+├── widgets/ (19개)              # meeting_card, shimmer_card/text, offline_banner,
 │                                #   error_dialog, error_retry_widget, permission_dialog,
 │                                #   pipeline_progress, presence_overlay, tone_timeline,
 │                                #   speaker_segment, audio_player_bar, team_share_dialog,
 │                                #   recording_recovery_dialog, search_filter_bottom_sheet,
-│                                #   find_replace_bar, recent_searches_widget, empty_state
+│                                #   find_replace_bar, recent_searches_widget,
+│                                #   empty_state_widget, status_badge
 │
 ├── utils/                       # logger, extensions, validators
 └── dataconnect_generated/       # Firebase Data Connect 생성 코드

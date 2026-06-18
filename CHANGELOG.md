@@ -4,6 +4,33 @@
 
 ## [Unreleased]
 
+### Added
+
+- **클라이언트 디자인 시스템 구축 + 전체 UI 재설계**: 모던 미니멀 미학(Linear/Notion 계열) + 인디고/바이올렛 브랜드 컬러 도입. 중앙 집중식 토큰 시스템(`client/lib/theme/`)으로 컬러·타이포그래피·스페이싱·그림자·반경 일관성 확보. 모든 하드코딩 색상 제거.
+
+- **다크모드 전면 지원**: 시스템/라이트/다크 3모드 토글. `SharedPreferences` 영속화. 모든 14개 화면과 공유 위젯이 시맨틱 스킴(`AppColors.of(context)`)으로 자동 전환.
+
+- **설정 화면 신규 추가** (`screens/settings_screen.dart`): 테마 선택 바텀시트, 데이터 메뉴 통합(검색/팀/양식/사전), 계정 정보 + 로그아웃. `/settings` 라우트 추가.
+
+- **공용 상태 배지** (`widgets/status_badge.dart`): 6가지 톤(brand/success/warning/danger/info/neutral)의 알약형 배지. 상태 텍스트 자동 톤 추론 헬퍼 제공.
+
+### Changed
+
+- **핵심 화면 재설계**: login(브랜드 그라데이션 로고 + 소셜 버튼), register(환영 메시지), home(SliverAppBar + 빈 상태 CTA + 메뉴 간소화), recording(펄스 링 + 깜빡이는 상태 점 + 모노스페이스 타이머), processing(그라데이션 인디케이터 + 스텝 진행), search(에러/빈 상태 공유 위젯).
+
+- **위젯 폴리싱**: meeting_card(소프트 보더 + 시간/상태 분리), pipeline_progress(체크/원형 스텝 인디케이터 + 연결선), speaker_segment(10색 모던 팔레트 + 다크모드 호환 검색 하이라이트), empty_state(소프트 아이콘 컨테이너 + CTA 버튼).
+
+- **홈 메뉴 간소화**: 7개 메뉴 → 3개(검색 / 테마 토글 / 설정). 나머지는 설정 화면으로 이관.
+
+- **통계 탭 개선**: 평면 나열 → 2x2 그리드 통계 타일(아이콘 + 라벨 + 값).
+
+- **중복 코드 제거**: template/vocabulary의 개별 빈/에러 뷰 4개 클래스 제거 → 공유 `EmptyStateWidget`으로 통합.
+
+### Fixed
+
+- 검색 하이라이트가 다크모드에서 노란색 배경으로 가독성 저하되던 문제 → 모드에 따라 앰버/노랑 자동 전환
+- tone_timeline 컬러 매핑이 `Colors.black54`로 다크모드에서 보이지 않던 문제 → 시맨틱 토큰 사용
+
 ## [1.6.0] - 2026-06-15
 
 ### Added
