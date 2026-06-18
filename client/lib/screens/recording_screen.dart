@@ -226,41 +226,49 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
     return Scaffold(
       appBar: AppBar(title: const Text('새 녹음')),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
-          child: Column(
-            children: [
-              const Spacer(),
-              // 상태 인디케이터
-              _StatusPill(isRecording: isRecording, status: state.status),
-              const SizedBox(height: AppSpacing.xl),
-              // 타이머
-              Semantics(
-                label: '경과 시간 ${_formatTime(state.elapsedSeconds)}',
-                liveRegion: true,
-                child: Text(_formatTime(state.elapsedSeconds), style: AppTypography.timer(context)),
+        child: Column(
+          children: [
+            // 메인 콘텐츠: 완벽한 중앙 정렬 보장
+            Expanded(
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // 상태 인디케이터
+                    _StatusPill(isRecording: isRecording, status: state.status),
+                    const SizedBox(height: AppSpacing.xl),
+                    // 타이머
+                    Semantics(
+                      label: '경과 시간 ${_formatTime(state.elapsedSeconds)}',
+                      liveRegion: true,
+                      child: Text(_formatTime(state.elapsedSeconds),
+                          style: AppTypography.timer(context)),
+                    ),
+                    const SizedBox(height: AppSpacing.xxxl),
+                    // 녹음 버튼
+                    _RecordButton(
+                      isRecording: isRecording,
+                      scaleAnimation: _scaleAnimation,
+                      pulseAnimation: _pulseAnimation,
+                      onTap: _toggleRecording,
+                      onTapDown: (_) => _scaleController.reverse(),
+                      onTapUp: (_) => _scaleController.forward(),
+                      onTapCancel: () => _scaleController.forward(),
+                    ),
+                  ],
+                ),
               ),
+            ),
+            // 사용자 사전 선택 (하단 고정, 녹음 전에만)
+            if (!isRecording && state.status != RecordingStatus.stopped)
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.xl, vertical: AppSpacing.lg),
+                child: _buildVocabularySelector(context),
+              )
+            else
               const SizedBox(height: AppSpacing.xxxl),
-              // 녹음 버튼
-              _RecordButton(
-                isRecording: isRecording,
-                scaleAnimation: _scaleAnimation,
-                pulseAnimation: _pulseAnimation,
-                onTap: _toggleRecording,
-                onTapDown: (_) => _scaleController.reverse(),
-                onTapUp: (_) => _scaleController.forward(),
-                onTapCancel: () => _scaleController.forward(),
-              ),
-              const Spacer(),
-              // 사용자 사전 선택 (녹음 전에만)
-              if (!isRecording && state.status != RecordingStatus.stopped) ...[
-                _buildVocabularySelector(context),
-                const SizedBox(height: AppSpacing.xl),
-              ] else ...[
-                const SizedBox(height: AppSpacing.xxxl),
-              ],
-            ],
-          ),
+          ],
         ),
       ),
     );

@@ -54,6 +54,18 @@ class SettingsScreen extends ConsumerWidget {
             trailing: const Icon(Icons.chevron_right_rounded),
             onTap: () => context.push('/vocabulary'),
           ),
+          ListTile(
+            leading: const Icon(Icons.record_voice_over_outlined),
+            title: const Text('화자 프로필'),
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: () => context.push('/speakers'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.cloud_download_outlined),
+            title: const Text('오프라인 STT 모델'),
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: () => context.push('/model-download'),
+          ),
 
           if (authState.isAuthenticated) ...[
             const _SectionHeader('계정'),

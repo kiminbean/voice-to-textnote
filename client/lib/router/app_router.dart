@@ -10,6 +10,7 @@ import 'package:voice_to_textnote/screens/recording_screen.dart';
 import 'package:voice_to_textnote/screens/register_screen.dart';
 import 'package:voice_to_textnote/screens/result_screen.dart';
 import 'package:voice_to_textnote/screens/settings_screen.dart';
+import 'package:voice_to_textnote/screens/model_download_screen.dart';
 // SPEC-TMPL-001: 양식 관리 화면 추가
 import 'package:voice_to_textnote/screens/template_screen.dart';
 import 'package:voice_to_textnote/screens/vocabulary_screen.dart';
@@ -128,6 +129,11 @@ GoRouter createRouter(ProviderContainer container) {
       GoRoute(
         path: '/settings',
         builder: (_, __) => const SettingsScreen(),
+      ),
+      // 오프라인 STT 모델 다운로드 화면 (SPEC-MOBILE-002)
+      GoRoute(
+        path: '/model-download',
+        builder: (_, __) => const ModelDownloadScreen(),
       ),
     ],
   );

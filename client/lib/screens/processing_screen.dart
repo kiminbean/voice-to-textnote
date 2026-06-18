@@ -258,36 +258,38 @@ class _ProcessingScreenState extends ConsumerState<ProcessingScreen>
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const Spacer(),
-              // 펄스 애니메이션 인디케이터
-              Semantics(
-                label: '오디오 처리 중',
-                liveRegion: true,
-                child: AnimatedBuilder(
-                  animation: _pulseAnimation,
-                  builder: (context, child) => Transform.scale(
-                    scale: _pulseAnimation.value,
-                    child: child,
-                  ),
-                  child: Container(
-                    width: 96,
-                    height: 96,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [AppColors.indigo600, AppColors.violet500],
-                      ),
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.indigo600.withAlpha(60),
-                          blurRadius: 32,
-                          offset: const Offset(0, 12),
-                        ),
-                      ],
+              // 펄스 애니메이션 인디케이터 (Center로 감싸 원형 보장 — stretch가 width:96을 덮어쓰지 않도록)
+              Center(
+                child: Semantics(
+                  label: '오디오 처리 중',
+                  liveRegion: true,
+                  child: AnimatedBuilder(
+                    animation: _pulseAnimation,
+                    builder: (context, child) => Transform.scale(
+                      scale: _pulseAnimation.value,
+                      child: child,
                     ),
-                    child: const Icon(Icons.graphic_eq_rounded,
-                        color: Colors.white, size: 44),
+                    child: Container(
+                      width: 96,
+                      height: 96,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [AppColors.indigo600, AppColors.violet500],
+                        ),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.indigo600.withAlpha(60),
+                            blurRadius: 32,
+                            offset: const Offset(0, 12),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(Icons.graphic_eq_rounded,
+                          color: Colors.white, size: 44),
+                    ),
                   ),
                 ),
               ),

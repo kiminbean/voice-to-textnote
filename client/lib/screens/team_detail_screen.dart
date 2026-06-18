@@ -662,11 +662,18 @@ class _MemberListTile extends StatelessWidget {
       ),
       title: Row(
         children: [
-          Text(member.displayName),
+          Flexible(
+            child: Text(
+              member.displayName,
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+            ),
+          ),
           if (isSelf) ...[
             const SizedBox(width: 6),
-            const Text('(나)',
-                style: TextStyle(color: AppColors.lightTextTertiary, fontSize: 12)),
+            Text('(나)',
+                style: TextStyle(
+                    color: AppColors.of(context).textTertiary, fontSize: 12)),
           ],
         ],
       ),
