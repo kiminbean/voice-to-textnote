@@ -1,4 +1,4 @@
-// 녹음 화면
+// 녹음 화면 — 모던 미니멀 (펄스 애니메이션 + 모노스페이스 타이머)
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -10,6 +10,9 @@ import 'package:voice_to_textnote/providers/recording_provider.dart';
 import 'package:voice_to_textnote/providers/vocabulary_provider.dart';
 import 'package:voice_to_textnote/providers/notification_provider.dart';
 import 'package:voice_to_textnote/services/permission_service.dart';
+import 'package:voice_to_textnote/theme/app_colors.dart';
+import 'package:voice_to_textnote/theme/app_spacing.dart';
+import 'package:voice_to_textnote/theme/app_typography.dart';
 import 'package:voice_to_textnote/widgets/permission_dialog.dart';
 import 'package:voice_to_textnote/widgets/recording_recovery_dialog.dart';
 
@@ -21,17 +24,18 @@ class RecordingScreen extends ConsumerStatefulWidget {
 }
 
 class _RecordingScreenState extends ConsumerState<RecordingScreen>
-    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   Timer? _timer;
   late AnimationController _scaleController;
   late Animation<double> _scaleAnimation;
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
   String? _selectedVocabularyId;
   bool _isPermissionChecked = false;
 
   @override
   void initState() {
     super.initState();
-    // SPEC-MOBILE-005 REQ-005: 라이프사이클 관찰 등록
     WidgetsBinding.instance.addObserver(this);
     _scaleController = AnimationController(
       vsync: this,
@@ -40,17 +44,17 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
       upperBound: 1.0,
       value: 1.0,
     );
-    _scaleAnimation = CurvedAnimation(
-      parent: _scaleController,
-      curve: Curves.easeInOut,
+    _scaleAnimation = CurvedAnimation(parent: _scaleController, curve: Curves.easeInOut);
+    // 녹음 중 펄스 링
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1600),
     );
-    // 화면 진입 시 권한 체크
+    _pulseAnimation = CurvedAnimation(parent: _pulseController, curve: Curves.easeOut);
     _checkPermissions();
-    // T-010: 중단된 녹음 감지
     _checkInterruptedRecording();
   }
 
-  /// 중단된 녹음이 있는지 확인하고 다이얼로그 표시 (T-010)
   Future<void> _checkInterruptedRecording() async {
     final interruptedPath =
         await ref.read(recordingProvider.notifier).checkInterruptedRecording();
@@ -76,28 +80,19 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
     }
   }
 
-  // SPEC-MOBILE-005 REQ-005: 라이프사이클 변화 처리
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     final recordingStatus = ref.read(recordingProvider).status;
-
     switch (state) {
       case AppLifecycleState.paused:
-        // 백그라운드 진입 — 녹음 중이면 타이머 일시정지 (녹음 자체는 유지)
-        if (recordingStatus == RecordingStatus.recording) {
-          _stopTimer();
-        }
+        if (recordingStatus == RecordingStatus.recording) _stopTimer();
         break;
       case AppLifecycleState.resumed:
-        // 포그라운드 복귀 — 녹음 중이면 타이머 재개
-        if (recordingStatus == RecordingStatus.recording) {
-          _startTimer();
-        }
+        if (recordingStatus == RecordingStatus.recording) _startTimer();
         break;
       case AppLifecycleState.inactive:
       case AppLifecycleState.hidden:
       case AppLifecycleState.detached:
-        // 녹음은 background_recording_service에서 관리됨 — 여기서 추가 처리 불필요
         break;
     }
   }
@@ -107,27 +102,20 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
     WidgetsBinding.instance.removeObserver(this);
     _timer?.cancel();
     _scaleController.dispose();
+    _pulseController.dispose();
     super.dispose();
   }
 
-  /// 권한 상태 확인 (화면 진입 시)
   Future<void> _checkPermissions() async {
     final permissionService = ref.read(permissionServiceProvider);
     final micStatus = await permissionService.checkMicrophonePermission();
-
     if (micStatus != PermissionStatus.granted) {
-      // 권한 요청 다이얼로그 표시
-      if (mounted) {
-        _showPermissionDialog(PermissionType.microphone);
-      }
+      if (mounted) _showPermissionDialog(PermissionType.microphone);
     } else {
-      setState(() {
-        _isPermissionChecked = true;
-      });
+      setState(() => _isPermissionChecked = true);
     }
   }
 
-  /// 권한 요청 다이얼로그 표시
   void _showPermissionDialog(PermissionType type) {
     showDialog(
       context: context,
@@ -139,26 +127,18 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
     );
   }
 
-  /// 권한 요청
   Future<void> _requestPermission(PermissionType type) async {
     final permissionService = ref.read(permissionServiceProvider);
-
     if (type == PermissionType.microphone) {
       final status = await permissionService.requestMicrophonePermission();
       if (status == PermissionStatus.permanentlyDenied) {
-        // 영구 거부 다이얼로그 표시
-        if (mounted) {
-          _showPermanentlyDeniedDialog(type);
-        }
+        if (mounted) _showPermanentlyDeniedDialog(type);
       } else if (status == PermissionStatus.granted) {
-        setState(() {
-          _isPermissionChecked = true;
-        });
+        setState(() => _isPermissionChecked = true);
       }
     }
   }
 
-  /// 영구 거부 다이얼로그 표시
   void _showPermanentlyDeniedDialog(PermissionType type) {
     showDialog(
       context: context,
@@ -169,12 +149,8 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
     );
   }
 
-  /// 설정 열기
-  Future<void> _openSettings() async {
-    await openAppSettings();
-  }
+  Future<void> _openSettings() async => openAppSettings();
 
-  // 타이머 시작
   void _startTimer() {
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       final current = ref.read(recordingProvider).elapsedSeconds;
@@ -182,62 +158,45 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
     });
   }
 
-  // 타이머 중지
   void _stopTimer() {
     _timer?.cancel();
     _timer = null;
   }
 
-  // 녹음 토글 - 실제 마이크 녹음 시작/중지 처리
   Future<void> _toggleRecording() async {
-    // 권한 체크를 거치지 않았으면 권한 요청
     if (!_isPermissionChecked) {
       await _checkPermissions();
       return;
     }
-
     final status = ref.read(recordingProvider).status;
-
     if (status == RecordingStatus.idle || status == RecordingStatus.stopped) {
       await HapticFeedback.mediumImpact();
-      // 실제 녹음 시작 (마이크 권한 요청 포함)
       await ref.read(recordingProvider.notifier).startRecording();
-
-      // 권한이 거부되어 상태가 idle인 경우 타이머 시작 안함
       if (ref.read(recordingProvider).status == RecordingStatus.recording) {
         _startTimer();
+        _pulseController.repeat();
       }
     } else if (status == RecordingStatus.recording) {
       await HapticFeedback.heavyImpact();
       _stopTimer();
-
-      // 실제 녹음 중지 및 파일 저장
+      _pulseController.stop();
       await ref.read(recordingProvider.notifier).stopRecording();
-
-      // 녹음 완료 후 Meeting 생성 및 목록에 추가
       await _createMeetingAndNavigate();
     }
   }
 
-  // Meeting 객체 생성 후 목록에 추가, 처리 화면으로 이동
   Future<void> _createMeetingAndNavigate() async {
     final recordingState = ref.read(recordingProvider);
     final elapsedSeconds = recordingState.elapsedSeconds;
     final filePath = recordingState.filePath;
-
-    // 오디오 파일이 없으면 처리 불가
     if (filePath == null) return;
 
-    // 고유 ID 생성 (타임스탬프 기반)
     final meetingId = 'meeting_${DateTime.now().millisecondsSinceEpoch}';
-
-    // 녹음 일시 기반 제목 생성 (예: "미팅 2025-01-15 14:30")
     final now = DateTime.now();
     final title =
         '미팅 ${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')} '
         '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
 
-    // processing 상태로 Meeting 생성 (파이프라인이 완료되면 completed로 변경됨)
     final newMeeting = Meeting(
       id: meetingId,
       title: title,
@@ -248,19 +207,11 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
       vocabularyId: _selectedVocabularyId,
     );
 
-    // meetingListProvider에 추가
     ref.read(meetingListProvider.notifier).addMeeting(newMeeting);
-
-    // recordingProvider 초기화
     ref.read(recordingProvider.notifier).reset();
-
-    // 처리 화면으로 이동 (파이프라인 진행 상태 표시)
-    if (mounted) {
-      context.go('/processing/$meetingId');
-    }
+    if (mounted) context.go('/processing/$meetingId');
   }
 
-  // 경과 시간을 MM:SS 형식으로 변환
   String _formatTime(int seconds) {
     final minutes = seconds ~/ 60;
     final secs = seconds % 60;
@@ -273,105 +224,59 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
     final isRecording = state.status == RecordingStatus.recording;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('새 녹음'),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // 타이머 표시
-            Semantics(
-              label: '경과 시간 ${_formatTime(state.elapsedSeconds)}',
-              liveRegion: true,
-              child: Text(
-                _formatTime(state.elapsedSeconds),
-                style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                      fontFamily: 'monospace',
-                      fontFeatures: const [],
-                    ),
+      appBar: AppBar(title: const Text('새 녹음')),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+          child: Column(
+            children: [
+              const Spacer(),
+              // 상태 인디케이터
+              _StatusPill(isRecording: isRecording, status: state.status),
+              const SizedBox(height: AppSpacing.xl),
+              // 타이머
+              Semantics(
+                label: '경과 시간 ${_formatTime(state.elapsedSeconds)}',
+                liveRegion: true,
+                child: Text(_formatTime(state.elapsedSeconds), style: AppTypography.timer(context)),
               ),
-            ),
-            const SizedBox(height: 32),
-            // 녹음 상태 텍스트
-            Text(
-              _getStatusText(state.status),
-              style: TextStyle(
-                color: isRecording ? Colors.red : Colors.grey,
-                fontSize: 16,
+              const SizedBox(height: AppSpacing.xxxl),
+              // 녹음 버튼
+              _RecordButton(
+                isRecording: isRecording,
+                scaleAnimation: _scaleAnimation,
+                pulseAnimation: _pulseAnimation,
+                onTap: _toggleRecording,
+                onTapDown: (_) => _scaleController.reverse(),
+                onTapUp: (_) => _scaleController.forward(),
+                onTapCancel: () => _scaleController.forward(),
               ),
-            ),
-            const SizedBox(height: 48),
-            // 사용자 사전 선택 (녹음 전에만 표시)
-            if (!isRecording && state.status != RecordingStatus.stopped)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 48),
-                child: _buildVocabularySelector(context),
-              ),
-            if (!isRecording && state.status != RecordingStatus.stopped)
-              const SizedBox(height: 24),
-            // 녹음 버튼 (스케일 애니메이션 피드백)
-            ScaleTransition(
-              scale: _scaleAnimation,
-              child: Semantics(
-                button: true,
-                label: isRecording ? '녹음 중지' : '녹음 시작',
-                child: Material(
-                  color: isRecording ? Colors.red : Theme.of(context).colorScheme.primary,
-                  shape: const CircleBorder(),
-                  clipBehavior: Clip.antiAlias,
-                  child: InkWell(
-                    onTap: _toggleRecording,
-                    onTapDown: (_) => _scaleController.reverse(),
-                    onTapUp: (_) => _scaleController.forward(),
-                    onTapCancel: () => _scaleController.forward(),
-                    splashColor: Colors.white.withAlpha(80),
-                    child: SizedBox(
-                      width: 100,
-                      height: 100,
-                      child: Icon(
-                        isRecording ? Icons.stop : Icons.mic,
-                        color: Colors.white,
-                        size: 48,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
+              const Spacer(),
+              // 사용자 사전 선택 (녹음 전에만)
+              if (!isRecording && state.status != RecordingStatus.stopped) ...[
+                _buildVocabularySelector(context),
+                const SizedBox(height: AppSpacing.xl),
+              ] else ...[
+                const SizedBox(height: AppSpacing.xxxl),
+              ],
+            ],
+          ),
         ),
       ),
     );
   }
 
-  // 상태에 따른 텍스트 반환
-  String _getStatusText(RecordingStatus status) {
-    return switch (status) {
-      RecordingStatus.idle => '탭하여 녹음 시작',
-      RecordingStatus.recording => '녹음 중...',
-      RecordingStatus.paused => '일시 정지됨',
-      RecordingStatus.stopped => '녹음 완료',
-    };
-  }
-
-  // 사용자 사전 선택 드롭다운
   Widget _buildVocabularySelector(BuildContext context) {
     final vocabAsync = ref.watch(vocabularyListProvider);
-
     return vocabAsync.when(
       loading: () => const SizedBox.shrink(),
       error: (_, __) => const SizedBox.shrink(),
       data: (vocabularies) {
         if (vocabularies.isEmpty) return const SizedBox.shrink();
-
         return InputDecorator(
-          decoration: InputDecoration(
+          decoration: const InputDecoration(
             labelText: '사용자 사전 (선택)',
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+            prefixIcon: Icon(Icons.menu_book_outlined),
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String?>(
@@ -380,25 +285,180 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
               isExpanded: true,
               hint: const Text('사전 없음'),
               items: [
-                const DropdownMenuItem<String?>(
-                  value: null,
-                  child: Text('사전 없음'),
-                ),
+                const DropdownMenuItem<String?>(value: null, child: Text('사전 없음')),
                 ...vocabularies.map((v) => DropdownMenuItem<String?>(
-                  value: v.id,
-                  child: Text(
-                    '${v.name} (${v.words.length}단어)',
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                )),
+                      value: v.id,
+                      child: Text('${v.name} (${v.words.length}단어)',
+                          overflow: TextOverflow.ellipsis),
+                    )),
               ],
-              onChanged: (value) {
-                setState(() => _selectedVocabularyId = value);
-              },
+              onChanged: (value) => setState(() => _selectedVocabularyId = value),
             ),
           ),
         );
       },
+    );
+  }
+}
+
+/// 상태 필 (녹음 중 빨강 펄스 / 대기 회색)
+class _StatusPill extends StatelessWidget {
+  final bool isRecording;
+  final RecordingStatus status;
+  const _StatusPill({required this.isRecording, required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = isRecording ? AppColors.error : AppColors.of(context).textTertiary;
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 250),
+      child: Container(
+        key: ValueKey(isRecording),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs + 2),
+        decoration: BoxDecoration(
+          color: color.withAlpha(isRecording ? 24 : 0),
+          borderRadius: AppRadius.brPill,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isRecording)
+              _BlinkingDot(color: color)
+            else
+              Container(width: 7, height: 7, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+            const SizedBox(width: AppSpacing.sm),
+            Text(
+              _label(status),
+              style: TextStyle(
+                color: color,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.2,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _label(RecordingStatus s) => switch (s) {
+        RecordingStatus.idle => '탭하여 녹음 시작',
+        RecordingStatus.recording => '녹음 중',
+        RecordingStatus.paused => '일시 정지됨',
+        RecordingStatus.stopped => '녹음 완료',
+      };
+}
+
+class _BlinkingDot extends StatefulWidget {
+  final Color color;
+  const _BlinkingDot({required this.color});
+  @override
+  State<_BlinkingDot> createState() => _BlinkingDotState();
+}
+
+class _BlinkingDotState extends State<_BlinkingDot> with SingleTickerProviderStateMixin {
+  late AnimationController _c;
+  @override
+  void initState() {
+    super.initState();
+    _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 900))..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _c,
+      child: Container(width: 7, height: 7, decoration: BoxDecoration(color: widget.color, shape: BoxShape.circle)),
+    );
+  }
+}
+
+/// 녹음 버튼 — 펄스 링 + 스케일 피드백
+class _RecordButton extends StatelessWidget {
+  final bool isRecording;
+  final Animation<double> scaleAnimation;
+  final Animation<double> pulseAnimation;
+  final VoidCallback onTap;
+  final void Function(TapDownDetails) onTapDown;
+  final void Function(TapUpDetails) onTapUp;
+  final VoidCallback onTapCancel;
+
+  const _RecordButton({
+    required this.isRecording,
+    required this.scaleAnimation,
+    required this.pulseAnimation,
+    required this.onTap,
+    required this.onTapDown,
+    required this.onTapUp,
+    required this.onTapCancel,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = isRecording ? AppColors.error : AppColors.of(context).primary;
+
+    return SizedBox(
+      width: 160,
+      height: 160,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // 펄스 링 (녹음 중만)
+          if (isRecording)
+            AnimatedBuilder(
+              animation: pulseAnimation,
+              builder: (_, __) {
+                final t = pulseAnimation.value;
+                return Container(
+                  width: 120 + t * 60,
+                  height: 120 + t * 60,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: color.withAlpha((120 * (1 - t)).round()), width: 2),
+                  ),
+                );
+              },
+            ),
+          // 본체 버튼
+          ScaleTransition(
+            scale: scaleAnimation,
+            child: Semantics(
+              button: true,
+              label: isRecording ? '녹음 중지' : '녹음 시작',
+              child: Material(
+                color: color,
+                shape: const CircleBorder(),
+                clipBehavior: Clip.antiAlias,
+                elevation: isRecording ? 8 : 4,
+                shadowColor: color.withAlpha(120),
+                child: InkWell(
+                  onTap: onTap,
+                  onTapDown: onTapDown,
+                  onTapUp: onTapUp,
+                  onTapCancel: onTapCancel,
+                  splashColor: Colors.white.withAlpha(60),
+                  child: SizedBox(
+                    width: 120,
+                    height: 120,
+                    child: Icon(
+                      isRecording ? Icons.stop_rounded : Icons.mic_rounded,
+                      color: Colors.white,
+                      size: 48,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

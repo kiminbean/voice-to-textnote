@@ -61,11 +61,11 @@ void main() {
       // AsyncNotifier 초기화 대기
       await tester.pumpAndSettle();
 
-      // AppBar 타이틀 확인
-      expect(find.text('Voice to TextNote'), findsOneWidget);
+      // 헤더 타이틀 확인 (SliverAppBar.large는 확장/축소 상태 각각 렌더링)
+      expect(find.text('회의 기록'), findsWidgets);
 
       // 빈 상태 메시지 확인
-      expect(find.text('녹음된 미팅이 없습니다'), findsOneWidget);
+      expect(find.text('아직 녹음된 미팅이 없어요'), findsOneWidget);
 
       // FAB 버튼 확인
       expect(find.byType(FloatingActionButton), findsOneWidget);

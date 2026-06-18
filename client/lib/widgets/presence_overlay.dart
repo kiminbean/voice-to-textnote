@@ -85,12 +85,12 @@ class _PresenceAvatar extends StatelessWidget {
 
   Color _colorForUserId(String userId, BuildContext context) {
     final palette = [
-      Colors.red.shade300,
-      Colors.blue.shade300,
-      Colors.green.shade300,
-      Colors.orange.shade300,
-      Colors.purple.shade300,
-      Colors.teal.shade300,
+      const Color(0xFFF87171), // red-400
+      const Color(0xFF60A5FA), // blue-400
+      const Color(0xFF34D399), // emerald-400
+      const Color(0xFFFBBF24), // amber-400
+      const Color(0xFFA78BFA), // violet-400
+      const Color(0xFF2DD4BF), // teal-400
     ];
     final hash = userId.hashCode.abs();
     return palette[hash % palette.length];

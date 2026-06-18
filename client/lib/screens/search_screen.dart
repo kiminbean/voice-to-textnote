@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:voice_to_textnote/models/search_result.dart';
 import 'package:voice_to_textnote/providers/search_provider.dart';
+import 'package:voice_to_textnote/widgets/empty_state_widget.dart';
 import 'package:voice_to_textnote/widgets/recent_searches_widget.dart';
 import 'package:voice_to_textnote/widgets/search_filter_bottom_sheet.dart';
 
@@ -249,35 +250,25 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 
     // 에러 상태
     if (result.hasError) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.error_outline, size: 64, color: Colors.red),
-            const SizedBox(height: 16),
-            const Text('검색 중 오류가 발생했습니다'),
-            const SizedBox(height: 8),
-            TextButton(
-              onPressed: () {
-                // 동일 요청으로 재시도
-                final filterState = ref.read(searchFilterProvider);
-                final request = SearchRequest(
-                  query: _activeQuery,
-                  page: 1,
-                  pageSize: 20,
-                  sort: filterState.sort,
-                  dateFrom: filterState.dateFrom,
-                  dateTo: filterState.dateTo,
-                  speaker: filterState.speaker,
-                  hasActionItems: filterState.hasActionItems,
-                  hasKeyDecisions: filterState.hasKeyDecisions,
-                );
-                ref.invalidate(searchResultProvider(request));
-              },
-              child: const Text('다시 시도'),
-            ),
-          ],
-        ),
+      return EmptyStateWidget(
+        icon: Icons.error_outline_rounded,
+        title: '검색 중 오류가 발생했습니다',
+        actionLabel: '다시 시도',
+        onAction: () {
+          final filterState = ref.read(searchFilterProvider);
+          final request = SearchRequest(
+            query: _activeQuery,
+            page: 1,
+            pageSize: 20,
+            sort: filterState.sort,
+            dateFrom: filterState.dateFrom,
+            dateTo: filterState.dateTo,
+            speaker: filterState.speaker,
+            hasActionItems: filterState.hasActionItems,
+            hasKeyDecisions: filterState.hasKeyDecisions,
+          );
+          ref.invalidate(searchResultProvider(request));
+        },
       );
     }
 
@@ -285,28 +276,14 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 
     // 검색 결과 없음
     if (response.items.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.search_off, size: 64, color: Colors.grey),
-            const SizedBox(height: 16),
-            const Text(
-              '검색 결과가 없습니다',
-              style: TextStyle(color: Colors.grey, fontSize: 16),
-            ),
-            if (filterState.hasFilters) ...[
-              const SizedBox(height: 8),
-              TextButton(
-                onPressed: () {
-                  ref.read(searchFilterProvider.notifier).state =
-                      filterState.clear();
-                },
-                child: const Text('필터 초기화'),
-              ),
-            ],
-          ],
-        ),
+      return EmptyStateWidget(
+        icon: Icons.search_off_rounded,
+        title: '검색 결과가 없습니다',
+        subtitle: filterState.hasFilters ? '필터를 조정해보세요' : '다른 검색어로 시도해보세요',
+        actionLabel: filterState.hasFilters ? '필터 초기화' : null,
+        onAction: filterState.hasFilters
+            ? () => ref.read(searchFilterProvider.notifier).state = filterState.clear()
+            : null,
       );
     }
 
@@ -445,10 +422,9 @@ class _SearchResultTile extends StatelessWidget {
           // 생성 일시
           Text(
             _formatDate(item.createdAt),
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[600],
-            ),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.outline,
+                ),
           ),
         ],
       ),

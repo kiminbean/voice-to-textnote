@@ -14,6 +14,8 @@ import 'package:voice_to_textnote/providers/pipeline_provider.dart';
 import 'package:voice_to_textnote/providers/template_provider.dart';
 import 'package:voice_to_textnote/services/sse_service.dart';
 import 'package:voice_to_textnote/config/app_config.dart';
+import 'package:voice_to_textnote/theme/app_colors.dart';
+import 'package:voice_to_textnote/theme/app_spacing.dart';
 import 'package:voice_to_textnote/widgets/pipeline_progress.dart';
 import 'package:voice_to_textnote/widgets/error_dialog.dart';
 
@@ -237,7 +239,7 @@ class _ProcessingScreenState extends ConsumerState<ProcessingScreen>
     return Scaffold(
       appBar: AppBar(
         title: const Text('처리 중'),
-        automaticallyImplyLeading: false, // 뒤로가기 비활성화
+        automaticallyImplyLeading: false,
         actions: [
           TextButton(
             onPressed: () async {
@@ -248,60 +250,103 @@ class _ProcessingScreenState extends ConsumerState<ProcessingScreen>
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // 펄스 애니메이션 인디케이터
-            Semantics(
-              label: '오디오 처리 중',
-              liveRegion: true,
-              child: AnimatedBuilder(
-                animation: _pulseAnimation,
-                builder: (context, child) => Transform.scale(
-                  scale: _pulseAnimation.value,
-                  child: child,
-                ),
-                child: Icon(
-                  Icons.settings_voice,
-                  size: 64,
-                  color: Theme.of(context).colorScheme.primary,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.xl),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Spacer(),
+              // 펄스 애니메이션 인디케이터
+              Semantics(
+                label: '오디오 처리 중',
+                liveRegion: true,
+                child: AnimatedBuilder(
+                  animation: _pulseAnimation,
+                  builder: (context, child) => Transform.scale(
+                    scale: _pulseAnimation.value,
+                    child: child,
+                  ),
+                  child: Container(
+                    width: 96,
+                    height: 96,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [AppColors.indigo600, AppColors.violet500],
+                      ),
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.indigo600.withAlpha(60),
+                          blurRadius: 32,
+                          offset: const Offset(0, 12),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(Icons.graphic_eq_rounded,
+                        color: Colors.white, size: 44),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 24),
-            // 처리 상태 텍스트
-            Text(
-              _getStepText(pipelineState.currentStep),
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 32),
-            // 파이프라인 진행 표시
-            PipelineProgress(pipelineState: pipelineState),
-            const SizedBox(height: 24),
-            // 진행률 퍼센트 표시
-            Semantics(
-              label: '진행률 ${(pipelineState.progress * 100).toInt()}%',
-              liveRegion: true,
-              child: Text(
-                '${(pipelineState.progress * 100).toInt()}%',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-            ),
-            // 오류 메시지 표시
-            if (pipelineState.errorMessage != null) ...[
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.xl),
+              // 처리 상태 텍스트
               Text(
-                '오류: ${pipelineState.errorMessage}',
+                _getStepText(pipelineState.currentStep),
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.red),
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
               ),
+              const SizedBox(height: AppSpacing.xxxl),
+              // 파이프라인 진행 표시
+              PipelineProgress(pipelineState: pipelineState),
+              const SizedBox(height: AppSpacing.lg),
+              // 진행률 퍼센트
+              Semantics(
+                label: '진행률 ${(pipelineState.progress * 100).toInt()}%',
+                liveRegion: true,
+                child: Text(
+                  '${(pipelineState.progress * 100).toInt()}%',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.primary,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1,
+                      ),
+                ),
+              ),
+              // 오류 메시지 표시
+              if (pipelineState.errorMessage != null) ...[
+                const SizedBox(height: AppSpacing.lg),
+                Container(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  decoration: BoxDecoration(
+                    color: AppColors.errorSoft.withAlpha(120),
+                    borderRadius: AppRadius.brMd,
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.error_outline_rounded,
+                          color: AppColors.error, size: 18),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Text(
+                          pipelineState.errorMessage!,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: AppColors.error,
+                              ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              const Spacer(),
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -343,13 +388,12 @@ class _TemplateSelectorSheet extends ConsumerWidget {
             // 헤더
             Row(
               children: [
-                const Icon(Icons.folder_special_outlined),
-                const SizedBox(width: 8),
+                Icon(Icons.folder_special_outlined,
+                    color: Theme.of(context).colorScheme.primary),
+                const SizedBox(width: AppSpacing.sm),
                 const Expanded(
-                  child: Text(
-                    '요약 양식 선택',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
+                  child: Text('요약 양식 선택',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 ),
                 IconButton(
                   icon: const Icon(Icons.close),
@@ -365,7 +409,7 @@ class _TemplateSelectorSheet extends ConsumerWidget {
               title: const Text('기본 양식'),
               subtitle: const Text('AI가 자동으로 구성한 양식'),
               trailing: initialTemplateId == null
-                  ? const Icon(Icons.check_circle, color: Colors.blue)
+                  ? Icon(Icons.check_circle, color: Theme.of(context).colorScheme.primary)
                   : null,
               onTap: () => Navigator.of(context).pop(''),
             ),
@@ -373,23 +417,27 @@ class _TemplateSelectorSheet extends ConsumerWidget {
             // 업로드된 양식 목록
             templatesAsync.when(
               loading: () => const Padding(
-                padding: EdgeInsets.all(16),
+                padding: EdgeInsets.all(AppSpacing.lg),
                 child: Center(child: CircularProgressIndicator()),
               ),
-              error: (_, __) => const Padding(
-                padding: EdgeInsets.all(8),
+              error: (_, __) => Padding(
+                padding: const EdgeInsets.all(AppSpacing.sm),
                 child: Text(
                   '양식 목록을 불러올 수 없습니다',
-                  style: TextStyle(color: Colors.grey),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.outline,
+                      ),
                   textAlign: TextAlign.center,
                 ),
               ),
               data: (templates) => templates.isEmpty
-                  ? const Padding(
-                      padding: EdgeInsets.all(8),
+                  ? Padding(
+                      padding: const EdgeInsets.all(AppSpacing.sm),
                       child: Text(
                         '등록된 양식이 없습니다',
-                        style: TextStyle(color: Colors.grey),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).colorScheme.outline,
+                            ),
                         textAlign: TextAlign.center,
                       ),
                     )
@@ -398,17 +446,15 @@ class _TemplateSelectorSheet extends ConsumerWidget {
                           .map(
                             (template) => _TemplateOption(
                               template: template,
-                              isSelected:
-                                  initialTemplateId == template.templateId,
-                              onTap: () => Navigator.of(context)
-                                  .pop(template.templateId),
+                              isSelected: initialTemplateId == template.templateId,
+                              onTap: () => Navigator.of(context).pop(template.templateId),
                             ),
                           )
                           .toList(),
                     ),
             ),
 
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.sm),
           ],
         ),
       ),
@@ -431,22 +477,18 @@ class _TemplateOption extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isPdf = template.format.toLowerCase() == 'pdf';
-    final formatIcon = isPdf ? Icons.picture_as_pdf : Icons.description;
-    final formatColor = isPdf ? Colors.red : Colors.blue;
+    final formatIcon = isPdf ? Icons.picture_as_pdf_outlined : Icons.description_outlined;
+    final scheme = Theme.of(context).colorScheme;
 
     return ListTile(
-      leading: Icon(formatIcon, color: formatColor),
-      title: Text(
-        template.name,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
+      leading: Icon(formatIcon, color: scheme.primary),
+      title: Text(template.name, maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: Text(
         template.format.toUpperCase(),
         style: const TextStyle(fontSize: 12),
       ),
       trailing: isSelected
-          ? const Icon(Icons.check_circle, color: Colors.blue)
+          ? Icon(Icons.check_circle, color: scheme.primary)
           : null,
       onTap: onTap,
     );

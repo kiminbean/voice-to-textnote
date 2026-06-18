@@ -10,6 +10,7 @@ import 'package:voice_to_textnote/models/tone_model.dart';
 import 'package:voice_to_textnote/providers/result_provider.dart';
 import 'package:voice_to_textnote/widgets/empty_state_widget.dart';
 import 'package:voice_to_textnote/widgets/error_retry_widget.dart';
+import 'package:voice_to_textnote/theme/app_colors.dart';
 import 'package:voice_to_textnote/widgets/tone_timeline.dart';
 
 ToneResponse _sampleResponse({List<ToneSegment>? segments}) {
@@ -50,17 +51,17 @@ ToneResponse _sampleResponse({List<ToneSegment>? segments}) {
 
 void main() {
   group('toneColor', () {
-    test('톤별 올바른 Material 색상 반환 (REQ-TONE-012 색상 계약)', () {
-      expect(toneColor('calm'), Colors.blue);
-      expect(toneColor('excited'), Colors.orange);
-      expect(toneColor('authoritative'), Colors.purple);
-      expect(toneColor('hesitant'), Colors.amber);
-      expect(toneColor('monotone'), Colors.grey);
-      expect(toneColor('unknown'), Colors.black54);
+    test('톤별 올바른 색상 반환 (REQ-TONE-012 색상 계약)', () {
+      expect(toneColor('calm'), AppColors.indigo500);
+      expect(toneColor('excited'), AppColors.warning);
+      expect(toneColor('authoritative'), AppColors.violet500);
+      expect(toneColor('hesitant'), const Color(0xFFF97316));
+      expect(toneColor('monotone'), const Color(0xFF9CA3AF));
+      expect(toneColor('unknown'), AppColors.lightTextTertiary);
     });
 
-    test('알 수 없는 톤은 unknown 색상(black54)으로 폴백', () {
-      expect(toneColor('invalid_tone'), Colors.black54);
+    test('알 수 없는 톤은 unknown 색상으로 폴백', () {
+      expect(toneColor('invalid_tone'), AppColors.lightTextTertiary);
     });
   });
 

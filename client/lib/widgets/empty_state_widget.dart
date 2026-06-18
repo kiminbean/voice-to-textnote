@@ -1,52 +1,69 @@
-// 빈 상태 위젯 - 데이터가 없을 때 표시
+// 빈 상태 위젯 — 데이터가 없을 때 표시. 모던 미니멀 (큰 소프트 아이콘 + 계층)
 import 'package:flutter/material.dart';
+import 'package:voice_to_textnote/theme/app_colors.dart';
+import 'package:voice_to_textnote/theme/app_spacing.dart';
 
 class EmptyStateWidget extends StatelessWidget {
-  // 표시할 아이콘
   final IconData icon;
-
-  // 제목 텍스트
   final String title;
-
-  // 부제목 텍스트 (선택)
   final String? subtitle;
+  final String? actionLabel;
+  final VoidCallback? onAction;
 
   const EmptyStateWidget({
     super.key,
     this.icon = Icons.inbox_outlined,
     required this.title,
     this.subtitle,
+    this.actionLabel,
+    this.onAction,
   });
 
   @override
   Widget build(BuildContext context) {
+    final scheme = AppColors.of(context);
+
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: const EdgeInsets.all(AppSpacing.xxl),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              icon,
-              size: 64,
-              color: Theme.of(context).colorScheme.outline,
+            // 소프트 아이콘 컨테이너
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                color: scheme.surfaceAlt,
+                borderRadius: AppRadius.brLg,
+              ),
+              child: Icon(icon, size: 32, color: scheme.textTertiary),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.lg),
             Text(
               title,
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    color: scheme.textPrimary,
+                    fontWeight: FontWeight.w600,
                   ),
             ),
             if (subtitle != null) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.sm),
               Text(
                 subtitle!,
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.outline,
+                      color: scheme.textTertiary,
+                      height: 1.5,
                     ),
+              ),
+            ],
+            if (actionLabel != null && onAction != null) ...[
+              const SizedBox(height: AppSpacing.xl),
+              FilledButton(
+                onPressed: onAction,
+                child: Text(actionLabel!),
               ),
             ],
           ],

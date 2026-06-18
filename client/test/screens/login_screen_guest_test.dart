@@ -112,8 +112,9 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // 게스트 버튼 탭
+      // 게스트 버튼 탭 (스크롤하여 보이게 함)
       final guestButton = find.textContaining('게스트');
+      await tester.ensureVisible(guestButton);
       await tester.tap(guestButton);
       await tester.pumpAndSettle();
 

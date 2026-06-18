@@ -37,15 +37,14 @@ class RecentSearchesWidget extends ConsumerWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 '최근 검색어',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: Colors.grey,
+                  color: Theme.of(context).colorScheme.outline,
                 ),
-              ),
-              // 전체 삭제 버튼
+              ),              // 전체 삭제 버튼
               TextButton(
                 onPressed: () {
                   ref.read(recentSearchesProvider.notifier).state = [];
@@ -97,6 +96,7 @@ class _RecentSearchChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return InkWell(
       onTap: onTap,
       child: Chip(
@@ -106,14 +106,14 @@ class _RecentSearchChip extends StatelessWidget {
         ),
         onDeleted: onDelete,
         deleteIcon: const Icon(Icons.close, size: 16),
-        deleteIconColor: Colors.grey[600],
-        backgroundColor: Colors.grey[200],
+        deleteIconColor: scheme.outline,
+        backgroundColor: scheme.surfaceContainerHighest,
         labelPadding: const EdgeInsets.symmetric(horizontal: 8),
         padding: const EdgeInsets.symmetric(horizontal: 4),
-        avatar: const Icon(
+        avatar: Icon(
           Icons.history,
           size: 16,
-          color: Colors.grey,
+          color: scheme.outline,
         ),
       ),
     );

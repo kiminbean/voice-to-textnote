@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:voice_to_textnote/models/team.dart';
 import 'package:voice_to_textnote/providers/team_provider.dart';
 import 'package:voice_to_textnote/services/team_api.dart';
+import 'package:voice_to_textnote/widgets/empty_state_widget.dart';
 
 class TeamListScreen extends ConsumerWidget {
   const TeamListScreen({super.key});
@@ -20,43 +21,17 @@ class TeamListScreen extends ConsumerWidget {
       ),
       body: teamsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.error_outline, size: 48, color: Colors.red),
-              const SizedBox(height: 16),
-              Text(
-                '팀 목록을 불러오지 못했습니다',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 8),
-              TextButton(
-                onPressed: () => ref.invalidate(teamListProvider),
-                child: const Text('다시 시도'),
-              ),
-            ],
-          ),
+        error: (error, stack) => EmptyStateWidget(
+          icon: Icons.cloud_off_rounded,
+          title: '팀 목록을 불러오지 못했습니다',
+          actionLabel: '다시 시도',
+          onAction: () => ref.invalidate(teamListProvider),
         ),
         data: (teams) => teams.isEmpty
-            ? const Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.groups_outlined,
-                        size: 64, color: Colors.grey),
-                    SizedBox(height: 16),
-                    Text(
-                      '속한 팀이 없습니다',
-                      style: TextStyle(color: Colors.grey, fontSize: 16),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      '아래 버튼을 눌러 팀을 만드세요',
-                      style: TextStyle(color: Colors.grey, fontSize: 14),
-                    ),
-                  ],
-                ),
+            ? const EmptyStateWidget(
+                icon: Icons.groups_outlined,
+                title: '속한 팀이 없습니다',
+                subtitle: '아래 버튼을 눌러 팀을 만드세요',
               )
             : RefreshIndicator(
                 onRefresh: () async => ref.invalidate(teamListProvider),
@@ -218,15 +193,15 @@ class _TeamCard extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               )
             : null,
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.people_outline, size: 16, color: Colors.grey),
-            const SizedBox(width: 4),
-            Text(
-              '${team.memberCount}명',
-              style: const TextStyle(color: Colors.grey, fontSize: 13),
-            ),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.people_outline, size: 16, color: Theme.of(context).colorScheme.outline),
+                const SizedBox(width: 4),
+                Text(
+                  '${team.memberCount}명',
+                  style: TextStyle(color: Theme.of(context).colorScheme.outline, fontSize: 13),
+                ),
             const SizedBox(width: 8),
             const Icon(Icons.chevron_right),
           ],

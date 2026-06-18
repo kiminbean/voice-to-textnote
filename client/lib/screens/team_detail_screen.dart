@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:voice_to_textnote/models/team.dart';
 import 'package:voice_to_textnote/providers/team_provider.dart';
 import 'package:voice_to_textnote/services/team_api.dart';
+import 'package:voice_to_textnote/theme/app_colors.dart';
 
 class TeamDetailScreen extends ConsumerStatefulWidget {
   final String teamId;
@@ -61,7 +62,7 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen>
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.error_outline, size: 48, color: Colors.red),
+              const Icon(Icons.error_outline, size: 48, color: AppColors.error),
               const SizedBox(height: 16),
               const Text('팀 정보를 불러오지 못했습니다'),
               const SizedBox(height: 8),
@@ -665,7 +666,7 @@ class _MemberListTile extends StatelessWidget {
           if (isSelf) ...[
             const SizedBox(width: 6),
             const Text('(나)',
-                style: TextStyle(color: Colors.grey, fontSize: 12)),
+                style: TextStyle(color: AppColors.lightTextTertiary, fontSize: 12)),
           ],
         ],
       ),
@@ -707,7 +708,7 @@ class _MemberListTile extends StatelessWidget {
           if (onRemove != null) ...[
             const SizedBox(width: 4),
             IconButton(
-              icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
+              icon: const Icon(Icons.remove_circle_outline, color: AppColors.error),
               tooltip: '제거',
               onPressed: onRemove,
             ),
@@ -736,15 +737,15 @@ class _TeamMeetingsTab extends ConsumerWidget {
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (_, __) => const Center(child: Text('미팅 목록을 불러오지 못했습니다')),
       data: (meetings) => meetings.isEmpty
-          ? const Center(
+          ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.folder_open, size: 48, color: Colors.grey),
-                  SizedBox(height: 16),
+                  Icon(Icons.folder_open_outlined, size: 48, color: Theme.of(context).colorScheme.outline),
+                  const SizedBox(height: 16),
                   Text(
                     '공유된 미팅이 없습니다',
-                    style: TextStyle(color: Colors.grey),
+                    style: TextStyle(color: Theme.of(context).colorScheme.outline),
                   ),
                 ],
               ),

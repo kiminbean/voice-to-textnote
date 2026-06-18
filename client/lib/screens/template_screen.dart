@@ -7,6 +7,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:voice_to_textnote/models/template.dart';
 import 'package:voice_to_textnote/providers/template_provider.dart';
+import 'package:voice_to_textnote/theme/app_colors.dart';
+import 'package:voice_to_textnote/widgets/empty_state_widget.dart';
 
 class TemplateScreen extends ConsumerWidget {
   const TemplateScreen({super.key});
@@ -22,12 +24,19 @@ class TemplateScreen extends ConsumerWidget {
       ),
       body: templatesAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => _TemplateErrorView(
-          error: error.toString(),
-          onRetry: () => ref.read(templateListProvider.notifier).refresh(),
+        error: (error, _) => EmptyStateWidget(
+          icon: Icons.cloud_off_rounded,
+          title: '양식 목록을 불러올 수 없습니다',
+          subtitle: error.toString(),
+          actionLabel: '다시 시도',
+          onAction: () => ref.read(templateListProvider.notifier).refresh(),
         ),
         data: (templates) => templates.isEmpty
-            ? const _TemplateEmptyView()
+            ? const EmptyStateWidget(
+                icon: Icons.folder_open_rounded,
+                title: '등록된 양식이 없습니다',
+                subtitle: '아래 버튼을 눌러 양식을 업로드하세요',
+              )
             : _TemplateListView(templates: templates),
       ),
       floatingActionButton: FloatingActionButton.extended(
@@ -76,7 +85,7 @@ class TemplateScreen extends ConsumerWidget {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('업로드 실패: ${e.toString()}'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -123,7 +132,7 @@ class _TemplateListView extends ConsumerWidget {
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
             child: const Text('삭제'),
           ),
         ],
@@ -145,7 +154,7 @@ class _TemplateListView extends ConsumerWidget {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('삭제 실패: ${e.toString()}'),
-              backgroundColor: Colors.red,
+              backgroundColor: AppColors.error,
             ),
           );
         }
@@ -169,7 +178,7 @@ class _TemplateListItem extends StatelessWidget {
     // 파일 형식에 따른 아이콘 및 색상 결정
     final isPdf = template.format.toLowerCase() == 'pdf';
     final formatIcon = isPdf ? Icons.picture_as_pdf : Icons.description;
-    final formatColor = isPdf ? Colors.red : Colors.blue;
+    final formatColor = isPdf ? AppColors.error : AppColors.indigo600;
     final dateStr =
         DateFormat('yyyy.MM.dd HH:mm').format(template.createdAt.toLocal());
 
@@ -184,77 +193,14 @@ class _TemplateListItem extends StatelessWidget {
         ),
         subtitle: Text(
           '${template.format.toUpperCase()} · $dateStr',
-          style: const TextStyle(fontSize: 12, color: Colors.grey),
+          style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.outline),
         ),
         trailing: IconButton(
           icon: const Icon(Icons.delete_outline),
-          color: Colors.grey,
+          color: Theme.of(context).colorScheme.outline,
           tooltip: '삭제',
           onPressed: onDelete,
         ),
-      ),
-    );
-  }
-}
-
-// 빈 상태 뷰
-class _TemplateEmptyView extends StatelessWidget {
-  const _TemplateEmptyView();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.folder_open, size: 64, color: Colors.grey),
-          SizedBox(height: 16),
-          Text(
-            '등록된 양식이 없습니다',
-            style: TextStyle(color: Colors.grey, fontSize: 16),
-          ),
-          SizedBox(height: 8),
-          Text(
-            '아래 버튼을 눌러 양식을 업로드하세요',
-            style: TextStyle(color: Colors.grey, fontSize: 14),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// 오류 상태 뷰
-class _TemplateErrorView extends StatelessWidget {
-  final String error;
-  final VoidCallback onRetry;
-
-  const _TemplateErrorView({required this.error, required this.onRetry});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.error_outline, size: 64, color: Colors.red),
-          const SizedBox(height: 16),
-          const Text(
-            '양식 목록을 불러올 수 없습니다',
-            style: TextStyle(fontSize: 16),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            error,
-            style: const TextStyle(color: Colors.grey, fontSize: 12),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 16),
-          ElevatedButton(
-            onPressed: onRetry,
-            child: const Text('다시 시도'),
-          ),
-        ],
       ),
     );
   }

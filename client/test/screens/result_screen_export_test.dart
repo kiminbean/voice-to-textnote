@@ -107,7 +107,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // PopupMenuButton 트리거 탭 → 팝업 열기
-      await tester.tap(find.byIcon(Icons.ios_share));
+      await tester.tap(find.byIcon(Icons.ios_share_rounded));
       await tester.pumpAndSettle();
 
       // 팝업에서 PDF 선택
@@ -136,14 +136,14 @@ void main() {
       await tester.pumpWidget(buildTestWidget(completedMeeting));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byIcon(Icons.ios_share));
+      await tester.tap(find.byIcon(Icons.ios_share_rounded));
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('PDF'));
       await tester.pump();
 
       // Assert: 로딩 중에는 ios_share 아이콘이 없어야 함
-      expect(find.byIcon(Icons.ios_share), findsNothing);
+      expect(find.byIcon(Icons.ios_share_rounded), findsNothing);
 
       // 정리
       completer.completeError(Exception('테스트 종료'));
@@ -171,7 +171,7 @@ void main() {
       await tester.pumpWidget(buildTestWidget(completedMeeting));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byIcon(Icons.ios_share));
+      await tester.tap(find.byIcon(Icons.ios_share_rounded));
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('PDF'));
@@ -189,7 +189,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // 팝업 열기
-      await tester.tap(find.byIcon(Icons.ios_share));
+      await tester.tap(find.byIcon(Icons.ios_share_rounded));
       await tester.pumpAndSettle();
 
       // PDF 선택
@@ -224,14 +224,14 @@ void main() {
       await tester.pumpWidget(buildTestWidget(completedMeeting));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byIcon(Icons.ios_share));
+      await tester.tap(find.byIcon(Icons.ios_share_rounded));
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('PDF'));
       await tester.pumpAndSettle();
 
       // Assert: 에러 후 ios_share 버튼이 다시 표시되어야 함
-      expect(find.byIcon(Icons.ios_share), findsOneWidget);
+      expect(find.byIcon(Icons.ios_share_rounded), findsOneWidget);
     });
   });
 }

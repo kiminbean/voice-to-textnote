@@ -58,8 +58,8 @@ void main() {
       expect(find.byType(PopupMenuButton<String>), findsOneWidget);
     });
 
-    // 검색 아이콘과 양식 관리 아이콘 모두 존재하는지 확인
-    testWidgets('HomeScreen AppBar에 검색 아이콘과 양식 관리 아이콘이 모두 있어야 함',
+    // 검색 아이콘과 설정 아이콘 모두 존재하는지 확인
+    testWidgets('HomeScreen AppBar에 검색 아이콘과 설정 아이콘이 모두 있어야 함',
         (WidgetTester tester) async {
       await tester.pumpWidget(
         ProviderScope(
@@ -77,9 +77,9 @@ void main() {
       await tester.tap(find.byType(PopupMenuButton<String>));
       await tester.pump();
 
-      // 검색 및 양식 관리 아이콘 확인
-      expect(find.byIcon(Icons.search), findsOneWidget);
-      expect(find.byIcon(Icons.folder_special_outlined), findsOneWidget);
+      // 검색 및 설정 아이콘 확인
+      expect(find.byIcon(Icons.search_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.settings_outlined), findsOneWidget);
     });
   });
 

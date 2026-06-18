@@ -19,6 +19,8 @@ import 'package:voice_to_textnote/services/statistics_api.dart';
 import 'package:voice_to_textnote/services/sentiment_api.dart';
 import 'package:voice_to_textnote/services/bookmark_api.dart';
 import 'package:voice_to_textnote/services/team_api.dart';
+import 'package:voice_to_textnote/theme/app_colors.dart';
+import 'package:voice_to_textnote/theme/app_spacing.dart';
 import 'package:voice_to_textnote/models/team.dart';
 import 'package:voice_to_textnote/widgets/empty_state_widget.dart';
 import 'package:voice_to_textnote/widgets/error_retry_widget.dart';
@@ -156,7 +158,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       child: Scaffold(
         appBar: AppBar(
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
+            icon: const Icon(Icons.arrow_back_rounded),
             onPressed: () => Navigator.of(context).canPop()
                 ? Navigator.of(context).pop()
                 : context.go('/'),
@@ -173,7 +175,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                     ),
                   )
                 : PopupMenuButton<ExportFormat>(
-                    icon: const Icon(Icons.ios_share),
+                    icon: const Icon(Icons.ios_share_rounded),
                     tooltip: '내보내기',
                     onSelected: (format) =>
                         _export(context, format, minutesTaskId, summaryTaskId),
@@ -208,6 +210,11 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
               icon: const Icon(Icons.share_outlined),
               tooltip: '팀에 공유',
               onPressed: () => _showShareDialog(context, minutesTaskId),
+            ),
+            IconButton(
+              icon: const Icon(Icons.more_horiz_rounded),
+              tooltip: '설정',
+              onPressed: () => context.push('/settings'),
             ),
           ],
           bottom: const TabBar(
@@ -621,36 +628,26 @@ class _StatisticsTabState extends ConsumerState<_StatisticsTab> {
     final theme = Theme.of(context);
 
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       children: [
+        // 회의 개요 — 그리드 카드
+        _OverviewCard(stats: stats, formatDuration: _formatDuration),
+        const SizedBox(height: AppSpacing.lg),
+        // 화자별 발화 시간
         Card(
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(AppSpacing.lg),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('회의 개요', style: theme.textTheme.titleMedium),
-                const SizedBox(height: 12),
-                _statRow(context, '총 세그먼트', '${stats.totalSegments}개'),
-                _statRow(context, '총 단어 수', '${stats.totalWords}개'),
-                _statRow(context, '총 발화 시간',
-                    _formatDuration(stats.totalDurationSeconds)),
-                _statRow(context, '참여 화자', '${stats.uniqueSpeakers}명'),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('화자별 발화 시간', style: theme.textTheme.titleMedium),
-                const SizedBox(height: 12),
+                Row(children: [
+                  const Icon(Icons.bar_chart_rounded, size: 18),
+                  const SizedBox(width: AppSpacing.sm),
+                  Text('화자별 발화 시간', style: theme.textTheme.titleMedium),
+                ]),
+                const SizedBox(height: AppSpacing.md),
                 ...stats.speakers.map((s) => Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.only(bottom: AppSpacing.md),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -658,25 +655,26 @@ class _StatisticsTabState extends ConsumerState<_StatisticsTab> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(s.speaker,
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.w600)),
+                                  style: const TextStyle(fontWeight: FontWeight.w600)),
                               Text(
                                 '${_formatDuration(s.speakingTimeSeconds)} (${(s.speakingRatio * 100).toStringAsFixed(1)}%)',
-                                style: theme.textTheme.bodySmall,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  fontFeatures: const [FontFeature.tabularFigures()],
+                                ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 6),
                           ClipRRect(
                             borderRadius: BorderRadius.circular(4),
                             child: LinearProgressIndicator(
                               value: s.speakingRatio,
-                              minHeight: 8,
+                              minHeight: 6,
                             ),
                           ),
-                          const SizedBox(height: 2),
+                          const SizedBox(height: 4),
                           Text(
-                            '${s.segmentCount}회 발화, ${s.wordCount}단어',
+                            '${s.segmentCount}회 발화 · ${s.wordCount}단어',
                             style: theme.textTheme.labelSmall,
                           ),
                         ],
@@ -687,23 +685,26 @@ class _StatisticsTabState extends ConsumerState<_StatisticsTab> {
           ),
         ),
         if (stats.topKeywords.isNotEmpty) ...[
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.lg),
           Card(
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(AppSpacing.lg),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('주요 키워드', style: theme.textTheme.titleMedium),
-                  const SizedBox(height: 12),
+                  Row(children: [
+                    const Icon(Icons.tag_rounded, size: 18),
+                    const SizedBox(width: AppSpacing.sm),
+                    Text('주요 키워드', style: theme.textTheme.titleMedium),
+                  ]),
+                  const SizedBox(height: AppSpacing.md),
                   Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
+                    spacing: AppSpacing.sm,
+                    runSpacing: AppSpacing.sm,
                     children: stats.topKeywords
                         .map((k) => Chip(
                               label: Text('${k.keyword} (${k.count})'),
-                              materialTapTargetSize:
-                                  MaterialTapTargetSize.shrinkWrap,
+                              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             ))
                         .toList(),
                   ),
@@ -712,26 +713,7 @@ class _StatisticsTabState extends ConsumerState<_StatisticsTab> {
             ),
           ),
         ],
-        // SPEC-SENTIMENT-001: 감정 분석은 전용 _SentimentTab으로 이관됨
-        // 기존 silent fallback (SizedBox.shrink on error) 제거됨 (REQ-SEN-010)
       ],
-    );
-  }
-
-  Widget _statRow(BuildContext context, String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: Theme.of(context).textTheme.bodyMedium),
-          Text(value,
-              style: Theme.of(context)
-                  .textTheme
-                  .bodyMedium
-                  ?.copyWith(fontWeight: FontWeight.w600)),
-        ],
-      ),
     );
   }
 
@@ -740,6 +722,97 @@ class _StatisticsTabState extends ConsumerState<_StatisticsTab> {
     final s = (seconds % 60).round();
     return m > 0 ? '$m분 $s초' : '$s초';
   }
+}
+
+/// 회의 개요 통계 카드 — 2x2 그리드 레이아웃
+class _OverviewCard extends StatelessWidget {
+  final StatisticsResponse stats;
+  final String Function(double) formatDuration;
+  const _OverviewCard({required this.stats, required this.formatDuration});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final items = [
+      _StatItem(Icons.record_voice_over_outlined, '세그먼트', '${stats.totalSegments}'),
+      _StatItem(Icons.text_snippet_outlined, '총 단어', '${stats.totalWords}'),
+      _StatItem(Icons.timer_outlined, '발화 시간', formatDuration(stats.totalDurationSeconds)),
+      _StatItem(Icons.groups_outlined, '참여 화자', '${stats.uniqueSpeakers}명'),
+    ];
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(children: [
+              const Icon(Icons.insights_rounded, size: 18),
+              const SizedBox(width: AppSpacing.sm),
+              Text('회의 개요', style: theme.textTheme.titleMedium),
+            ]),
+            const SizedBox(height: AppSpacing.md),
+            GridView.count(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisCount: 2,
+              mainAxisSpacing: AppSpacing.md,
+              crossAxisSpacing: AppSpacing.md,
+              childAspectRatio: 2.8,
+              children: items.map((item) => _StatTile(item: item)).toList(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StatItem {
+  final IconData icon;
+  final String label;
+  final String value;
+  const _StatItem(this.icon, this.label, this.value);
+}
+
+class _StatTile extends StatelessWidget {
+  final _StatItem item;
+  const _StatTile({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = AppColors.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: scheme.surfaceAlt,
+        borderRadius: AppRadius.brMd,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Row(children: [
+            Icon(item.icon, size: 14, color: scheme.textTertiary),
+            const SizedBox(width: 4),
+            Text(item.label, style: theme(context).textTheme.labelSmall?.copyWith(
+                  color: scheme.textTertiary,
+                )),
+          ]),
+          const SizedBox(height: 2),
+          Text(
+            item.value,
+            style: theme(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  ThemeData theme(BuildContext context) => Theme.of(context);
 }
 
 // SPEC-SENTIMENT-001: 감정 분석 전용 탭 (REQ-SEN-007/008/009/010)
@@ -781,11 +854,11 @@ class _SentimentContent extends StatelessWidget {
   Color _sentimentColor(String sentiment) {
     switch (sentiment) {
       case 'positive':
-        return Colors.green;
+        return AppColors.success;
       case 'negative':
-        return Colors.red;
+        return AppColors.error;
       default:
-        return Colors.grey;
+        return const Color(0xFF9CA3AF);
     }
   }
 
@@ -829,55 +902,38 @@ class _SentimentContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    // 빈 응답 처리 (segments도 speakers도 timeline도 없는 경우)
     if (response.segments.isEmpty &&
         response.speakers.isEmpty &&
         response.emotionalTimeline.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.sentiment_neutral, size: 64, color: Colors.grey[400]),
-              const SizedBox(height: 16),
-              Text('감정 분석 데이터가 없습니다', style: theme.textTheme.titleMedium),
-              const SizedBox(height: 8),
-              Text(
-                '회의록이 완료된 후 감정 분석을 실행해 주세요.',
-                style: theme.textTheme.bodySmall,
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
+      return const EmptyStateWidget(
+        icon: Icons.sentiment_neutral_rounded,
+        title: '감정 분석 데이터가 없습니다',
+        subtitle: '회의록이 완료된 후 감정 분석을 실행해 주세요.',
       );
     }
 
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       children: [
         // 1. 전체 감정 요약 카드 (REQ-SEN-008: overall_sentiment/emotion)
         _buildOverallCard(theme),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.lg),
 
         // 2. 전체 감정 분포 (REQ-SEN-008)
         if (response.speakers.isNotEmpty) _buildDistributionCard(theme),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.lg),
 
         // 3. 화자별 감정 (REQ-SEN-008: SpeakerSentiment precomputed 데이터)
         if (response.speakers.isNotEmpty) ...[
           _buildSpeakerSection(theme),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.lg),
         ],
 
         // 4. 감정 변화 타임라인 (REQ-SEN-009: emotional_timeline)
         if (response.emotionalTimeline.isNotEmpty) _buildTimelineSection(theme),
 
         // 5. 톤 타임라인 (SPEC-TONE-001 REQ-TONE-012)
-        // @MX:NOTE: ToneSection은 별도 ConsumerWidget으로 toneProvider를 독립 watch
-        // → tone 실패 시 sentiment 카드에 영향 없음 (오류 격리, REQ-TONE-013)
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.lg),
         ToneSection(meetingId: meetingId),
       ],
     );
@@ -956,7 +1012,7 @@ class _SentimentContent extends StatelessWidget {
                       Expanded(
                         flex: (positiveRatio * 100).round().clamp(1, 100),
                         child: Container(
-                          color: Colors.green,
+                          color: AppColors.success,
                           alignment: Alignment.center,
                           child: Text(
                             '${(positiveRatio * 100).toStringAsFixed(0)}%',
@@ -971,7 +1027,7 @@ class _SentimentContent extends StatelessWidget {
                       Expanded(
                         flex: (neutralRatio * 100).round().clamp(1, 100),
                         child: Container(
-                          color: Colors.grey,
+                          color: const Color(0xFF9CA3AF),
                           alignment: Alignment.center,
                           child: Text(
                             '${(neutralRatio * 100).toStringAsFixed(0)}%',
@@ -986,7 +1042,7 @@ class _SentimentContent extends StatelessWidget {
                       Expanded(
                         flex: (negativeRatio * 100).round().clamp(1, 100),
                         child: Container(
-                          color: Colors.red,
+                          color: AppColors.error,
                           alignment: Alignment.center,
                           child: Text(
                             '${(negativeRatio * 100).toStringAsFixed(0)}%',
@@ -1004,11 +1060,11 @@ class _SentimentContent extends StatelessWidget {
             const SizedBox(height: 8),
             Row(
               children: [
-                _legendDot(Colors.green, '긍정'),
+                _legendDot(AppColors.success, '긍정'),
                 const SizedBox(width: 12),
-                _legendDot(Colors.grey, '중립'),
+                _legendDot(const Color(0xFF9CA3AF), '중립'),
                 const SizedBox(width: 12),
-                _legendDot(Colors.red, '부정'),
+                _legendDot(AppColors.error, '부정'),
               ],
             ),
           ],
@@ -1063,17 +1119,17 @@ class _SentimentContent extends StatelessWidget {
               if (speaker.positiveRatio > 0)
                 Expanded(
                   flex: (speaker.positiveRatio * 100).round().clamp(1, 100),
-                  child: Container(height: 8, color: Colors.green),
+                  child: const ColoredBox(color: AppColors.success, child: SizedBox(height: 8, width: double.infinity)),
                 ),
               if (speaker.neutralRatio > 0)
                 Expanded(
                   flex: (speaker.neutralRatio * 100).round().clamp(1, 100),
-                  child: Container(height: 8, color: Colors.grey),
+                  child: const ColoredBox(color: Color(0xFF9CA3AF), child: SizedBox(height: 8, width: double.infinity)),
                 ),
               if (speaker.negativeRatio > 0)
                 Expanded(
                   flex: (speaker.negativeRatio * 100).round().clamp(1, 100),
-                  child: Container(height: 8, color: Colors.red),
+                  child: const ColoredBox(color: AppColors.error, child: SizedBox(height: 8, width: double.infinity)),
                 ),
             ],
           ),
@@ -2185,14 +2241,18 @@ class _SummaryTabState extends ConsumerState<_SummaryTab> {
     final spans = <TextSpan>[];
     int lastMatchEnd = 0;
 
+    final scheme = AppColors.of(context);
+    final highlightBg = scheme.isDark
+        ? const Color(0xCCF59E0B)
+        : const Color(0xCCFDE047);
+
     for (final match in matches) {
       if (match.start > lastMatchEnd) {
         spans.add(TextSpan(text: text.substring(lastMatchEnd, match.start)));
       }
       spans.add(TextSpan(
         text: text.substring(match.start, match.end),
-        style: const TextStyle(
-            backgroundColor: Colors.yellow, color: Colors.black),
+        style: TextStyle(backgroundColor: highlightBg, color: scheme.textPrimary),
       ));
       lastMatchEnd = match.end;
     }
@@ -2646,9 +2706,9 @@ class _MindMapRelations extends StatelessWidget {
 
 // 우선순위 배지 색상 상수 (SPEC-APP-003 REQ-APP-033)
 const _priorityColors = {
-  'high': Colors.red,
-  'medium': Colors.orange,
-  'low': Colors.green,
+  'high': AppColors.error,
+  'medium': AppColors.warning,
+  'low': AppColors.success,
 };
 
 // 액션 아이템 탭 - ConsumerStatefulWidget으로 필터 상태 관리
@@ -2816,7 +2876,7 @@ class _ActionItemCardListState extends State<_ActionItemCardList> {
       itemBuilder: (context, index) {
         final item = widget.items[index];
         final done = _checked[index];
-        final priorityColor = _priorityColors[item.priority] ?? Colors.orange;
+        final priorityColor = _priorityColors[item.priority] ?? AppColors.warning;
 
         return Card(
           margin: const EdgeInsets.only(bottom: 8),
@@ -2827,7 +2887,7 @@ class _ActionItemCardListState extends State<_ActionItemCardList> {
               item.task,
               style: TextStyle(
                 decoration: done ? TextDecoration.lineThrough : null,
-                color: done ? Colors.grey : null,
+                color: done ? Theme.of(context).colorScheme.outline : null,
               ),
             ),
             // 담당자 + 마감일 표시

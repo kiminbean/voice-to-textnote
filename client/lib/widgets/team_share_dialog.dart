@@ -92,12 +92,12 @@ class _TeamShareDialogState extends ConsumerState<TeamShareDialog> {
             child: Center(child: Text('팀 목록을 불러오지 못했습니다')),
           ),
           data: (teams) => teams.isEmpty
-              ? const SizedBox(
+              ? SizedBox(
                   height: 100,
                   child: Center(
                     child: Text(
                       '속한 팀이 없습니다',
-                      style: TextStyle(color: Colors.grey),
+                      style: TextStyle(color: Theme.of(context).colorScheme.outline),
                     ),
                   ),
                 )

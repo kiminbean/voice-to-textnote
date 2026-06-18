@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:voice_to_textnote/providers/model_download_provider.dart';
 import 'package:voice_to_textnote/services/model_manager.dart';
+import 'package:voice_to_textnote/theme/app_colors.dart';
 
 class ModelDownloadScreen extends ConsumerWidget {
   const ModelDownloadScreen({super.key});
@@ -38,7 +39,7 @@ class ModelDownloadScreen extends ConsumerWidget {
             Text(
               '${(model.sizeBytes / 1024 / 1024).toStringAsFixed(1)} MB',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Colors.grey[600],
+                    color: Theme.of(context).colorScheme.outline,
                   ),
               textAlign: TextAlign.center,
             ),
@@ -89,7 +90,7 @@ class ModelDownloadScreen extends ConsumerWidget {
       case ModelDownloadState.ready:
         return Column(
           children: [
-            const Icon(Icons.check_circle, color: Colors.green, size: 48),
+            const Icon(Icons.check_circle, color: AppColors.success, size: 48),
             const SizedBox(height: 16),
             const Text('모델이 설치되었습니다'),
             const SizedBox(height: 24),
@@ -104,12 +105,12 @@ class ModelDownloadScreen extends ConsumerWidget {
       case ModelDownloadState.error:
         return Column(
           children: [
-            const Icon(Icons.error, color: Colors.red, size: 48),
+            const Icon(Icons.error, color: AppColors.error, size: 48),
             const SizedBox(height: 16),
             Text(
               status.errorMessage ?? '알 수 없는 오류',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.red[700]),
+              style: const TextStyle(color: AppColors.error),
             ),
             const SizedBox(height: 16),
             ElevatedButton.icon(

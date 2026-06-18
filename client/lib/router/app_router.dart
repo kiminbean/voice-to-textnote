@@ -9,6 +9,7 @@ import 'package:voice_to_textnote/screens/processing_screen.dart';
 import 'package:voice_to_textnote/screens/recording_screen.dart';
 import 'package:voice_to_textnote/screens/register_screen.dart';
 import 'package:voice_to_textnote/screens/result_screen.dart';
+import 'package:voice_to_textnote/screens/settings_screen.dart';
 // SPEC-TMPL-001: 양식 관리 화면 추가
 import 'package:voice_to_textnote/screens/template_screen.dart';
 import 'package:voice_to_textnote/screens/vocabulary_screen.dart';
@@ -119,6 +120,11 @@ GoRouter createRouter(ProviderContainer container) {
         builder: (_, state) => TeamDetailScreen(
           teamId: state.pathParameters['id']!,
         ),
+      ),
+      // 설정 화면
+      GoRoute(
+        path: '/settings',
+        builder: (_, __) => const SettingsScreen(),
       ),
     ],
   );

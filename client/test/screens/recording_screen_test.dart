@@ -36,7 +36,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // 녹음 버튼 (큰 원형 아이콘)이 존재해야 함
-      expect(find.byIcon(Icons.mic), findsOneWidget);
+      expect(find.byIcon(Icons.mic_rounded), findsOneWidget);
 
       // 타이머 표시 (00:00)
       expect(find.text('00:00'), findsOneWidget);
@@ -52,7 +52,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // 녹음 버튼 탭 (비동기 처리)
-      await tester.tap(find.byIcon(Icons.mic));
+      await tester.tap(find.byIcon(Icons.mic_rounded));
       await tester.pump();
 
       // UI가 존재해야 함 (권한 없이는 상태 변화 없을 수 있음)

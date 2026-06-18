@@ -7,10 +7,12 @@ import 'package:voice_to_textnote/l10n/app_localizations.dart';
 import 'package:voice_to_textnote/providers/auth_provider.dart';
 import 'package:voice_to_textnote/providers/notification_provider.dart';
 import 'package:voice_to_textnote/providers/permission_recheck_provider.dart';
+import 'package:voice_to_textnote/providers/theme_mode_provider.dart';
 import 'package:voice_to_textnote/router/app_router.dart';
 import 'package:voice_to_textnote/services/deep_link_service.dart';
 
 import 'package:voice_to_textnote/services/push_notification_service.dart';
+import 'package:voice_to_textnote/theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -42,6 +44,7 @@ class _VoiceToTextNoteAppState extends State<VoiceToTextNoteApp> with WidgetsBin
     _container = ProviderContainer();
     _container.read(authStateProvider.notifier).checkAuth();
     _container.read(notificationProvider.notifier).initialize();
+    _container.read(themeModeProvider.notifier).load();
 
     // SPEC-MOBILE-004 T-005: 딥링크 핸들러 연동
     DeepLinkService.instance.handleBackgroundResume();
@@ -103,23 +106,28 @@ class _VoiceToTextNoteAppState extends State<VoiceToTextNoteApp> with WidgetsBin
   Widget build(BuildContext context) {
     return UncontrolledProviderScope(
       container: _container,
-      child: MaterialApp.router(
-        title: 'Voice to TextNote',
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-          useMaterial3: true,
-        ),
-        localizationsDelegates: const [
-          AppLocalizations.delegate,
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-        ],
-        supportedLocales: const [
-          Locale('ko'),
-          Locale('en'),
-        ],
-        routerConfig: router,
+      child: Consumer(
+        builder: (context, ref, _) {
+          final themeState = ref.watch(themeModeProvider);
+          return MaterialApp.router(
+            title: 'Voice to TextNote',
+            debugShowCheckedModeBanner: false,
+            theme: buildAppLightTheme(),
+            darkTheme: buildAppDarkTheme(),
+            themeMode: themeState.mode.toMaterial(),
+            localizationsDelegates: const [
+              AppLocalizations.delegate,
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            supportedLocales: const [
+              Locale('ko'),
+              Locale('en'),
+            ],
+            routerConfig: router,
+          );
+        },
       ),
     );
   }

@@ -111,7 +111,7 @@ void main() {
 
       // Assert: ios_share 아이콘 (PopupMenuButton 트리거) 존재 확인
       expect(
-        find.byIcon(Icons.ios_share),
+        find.byIcon(Icons.ios_share_rounded),
         findsOneWidget,
       );
     });
@@ -130,7 +130,7 @@ void main() {
       expect(
         find.descendant(
           of: appBar,
-          matching: find.byIcon(Icons.ios_share),
+          matching: find.byIcon(Icons.ios_share_rounded),
         ),
         findsOneWidget,
       );
@@ -145,7 +145,7 @@ void main() {
 
       // Assert: ios_share 버튼은 항상 표시됨
       expect(
-        find.byIcon(Icons.ios_share),
+        find.byIcon(Icons.ios_share_rounded),
         findsOneWidget,
       );
     });

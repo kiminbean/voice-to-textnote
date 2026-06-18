@@ -1,13 +1,16 @@
-// 미팅 목록 카드 위젯
-// @MX:NOTE: SPEC-HISTSYNC-001 REQ-HSYNC-005 - onLongPress 삭제 콜백 추가
+// 미팅 목록 카드 위젯 — 모던 미니멀
+// @MX:NOTE: SPEC-HISTSYNC-001 REQ-HSYNC-005 - onLongPress 삭제 콜백 유지
+// @MX:WARN: Hero tag 'meeting-${id}' 는 result_screen 전환 애니메이션과 쌍을 이룸 — 변경 시 양쪽 수정.
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:voice_to_textnote/models/meeting.dart';
+import 'package:voice_to_textnote/theme/app_colors.dart';
+import 'package:voice_to_textnote/theme/app_spacing.dart';
+import 'package:voice_to_textnote/widgets/status_badge.dart';
 
 class MeetingCard extends StatelessWidget {
   final Meeting meeting;
   final VoidCallback? onTap;
-  // REQ-HSYNC-005: 롱프레스 삭제 콜백
   final VoidCallback? onLongPress;
 
   const MeetingCard({
@@ -19,77 +22,96 @@ class MeetingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = AppColors.of(context);
+
     return Hero(
       tag: 'meeting-${meeting.id}',
-      child: Card(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        child: ListTile(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
           onTap: onTap,
           onLongPress: onLongPress,
-          title: Text(
-            meeting.title,
-            style: Theme.of(context).textTheme.titleMedium,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-          subtitle: Text(
-            DateFormat('yyyy년 MM월 dd일 HH:mm').format(meeting.createdAt),
-            style: Theme.of(context).textTheme.bodySmall,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // 소요 시간 표시
-              if (meeting.duration != null)
-                Flexible(
-                  child: Text(
-                    _formatDuration(meeting.duration!),
-                    style: Theme.of(context).textTheme.bodySmall,
-                    overflow: TextOverflow.ellipsis,
+          borderRadius: AppRadius.brLg,
+          child: Container(
+            padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.lg, vertical: AppSpacing.md + 2),
+            decoration: BoxDecoration(
+              color: scheme.surface,
+              borderRadius: AppRadius.brLg,
+              border: Border.all(color: scheme.border),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // 좌측: 제목 + 메타
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        meeting.title,
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              color: scheme.textPrimary,
+                            ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Icon(Icons.schedule_outlined,
+                              size: 14, color: scheme.textTertiary),
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              DateFormat('yyyy. MM. dd. HH:mm')
+                                  .format(meeting.createdAt),
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: scheme.textTertiary,
+                                  ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-              if (meeting.duration != null) const SizedBox(width: 8),
-              // 상태 배지
-              _buildStatusBadge(context, meeting.status),
-            ],
+                const SizedBox(width: AppSpacing.md),
+                // 우측: 소요시간 + 상태
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    if (meeting.duration != null)
+                      Text(
+                        _formatDuration(meeting.duration!),
+                        style: TextStyle(
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: scheme.textSecondary,
+                        ),
+                      ),
+                    const SizedBox(height: 6),
+                    StatusBadge.auto(label: _statusLabel(meeting.status), dot: true),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  // 상태 배지 생성
-  Widget _buildStatusBadge(BuildContext context, MeetingStatus status) {
-    final (label, color) = switch (status) {
-      MeetingStatus.recording => ('녹음 중', Colors.red),
-      MeetingStatus.processing => ('처리 중', Colors.orange),
-      MeetingStatus.completed => ('완료', Colors.green),
-      MeetingStatus.failed => ('실패', Colors.grey),
-    };
+  String _statusLabel(MeetingStatus status) => switch (status) {
+        MeetingStatus.recording => '녹음 중',
+        MeetingStatus.processing => '처리 중',
+        MeetingStatus.completed => '완료',
+        MeetingStatus.failed => '실패',
+      };
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withAlpha(30),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color),
-      ),
-      child: FittedBox(
-        child: Text(
-          label,
-          style: TextStyle(
-            color: color,
-            fontSize: 12,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-    );
-  }
-
-  // Duration을 읽기 쉬운 형식으로 변환
   String _formatDuration(Duration duration) {
     final minutes = duration.inMinutes;
     final seconds = duration.inSeconds % 60;

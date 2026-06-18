@@ -8,29 +8,30 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:voice_to_textnote/models/tone_model.dart';
 import 'package:voice_to_textnote/providers/result_provider.dart';
+import 'package:voice_to_textnote/theme/app_colors.dart';
 import 'package:voice_to_textnote/widgets/empty_state_widget.dart';
 import 'package:voice_to_textnote/widgets/error_retry_widget.dart';
 
-/// 톤 클래스 → Material 색상 매핑 (REQ-TONE-012 색상 계약)
+/// 톤 클래스 → 색상 매핑 (REQ-TONE-012 색상 계약)
 ///
 /// @MX:NOTE: 백엔드 톤 레이블과 클라이언트 색상의 1:1 계약
-/// calm=blue, excited=orange, authoritative=purple, hesitant=amber,
-/// monotone=grey, unknown=black54
+/// calm=indigo, excited=amber, authoritative=violet, hesitant=orange,
+/// monotone=neutral, unknown=muted
 Color toneColor(String tone) {
   switch (tone) {
     case 'calm':
-      return Colors.blue;
+      return AppColors.indigo500;
     case 'excited':
-      return Colors.orange;
+      return AppColors.warning;
     case 'authoritative':
-      return Colors.purple;
+      return AppColors.violet500;
     case 'hesitant':
-      return Colors.amber;
+      return const Color(0xFFF97316); // orange-500
     case 'monotone':
-      return Colors.grey;
+      return const Color(0xFF9CA3AF);
     case 'unknown':
     default:
-      return Colors.black54;
+      return AppColors.lightTextTertiary;
   }
 }
 
