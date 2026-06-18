@@ -60,6 +60,9 @@ from backend.app.api.v1.collaboration import (
     versions,
     webhooks,
 )
+from backend.app.api.v1.integrations import (
+    obsidian,
+)
 from backend.app.api.v1.minutes import (
     action_items,
     action_items_crud,
@@ -132,4 +135,6 @@ ROUTER_REGISTRY: list[tuple[APIRouter, bool]] = [
     # ── 오디오 파일 서빙 / QA (혼합 인증) ───────────────────────────────────────
     (audio.router, False),  # 공개 엔드포인트
     (qa.router, True),
+    # ── 외부 도구 연계 (API Key 필수) ────────────────────────────────────────────
+    (obsidian.router, True),  # SPEC-OBSIDIAN-001: Obsidian vault export
 ]

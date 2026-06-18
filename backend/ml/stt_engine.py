@@ -117,18 +117,31 @@ class WhisperEngine:
             start_time = time.time()
 
             # 플랫폼별 백엔드 선택 (우선순위: MLX → faster-whisper → openai-whisper)
-            if self._try_load_mlx():
-                pass  # MLX 로드 성공 (macOS Apple Silicon)
-            elif self._try_load_faster_whisper():
-                pass  # faster-whisper 로드 성공 (CPU int8 또는 CUDA)
-            elif self._try_load_whisper():
-                pass  # openai-whisper 로드 성공 (최후의 폴백)
+            forced_backend = os.environ.get("STT_BACKEND", "").strip().lower()
+            if forced_backend == "mlx" and self._try_load_mlx():
+                pass
+            elif forced_backend == "faster_whisper" and self._try_load_faster_whisper():
+                pass
+            elif forced_backend == "whisper" and self._try_load_whisper():
+                pass
+            elif not forced_backend:
+                if self._try_load_mlx():
+                    pass  # MLX 로드 성공 (macOS Apple Silicon)
+                elif self._try_load_faster_whisper():
+                    pass  # faster-whisper 로드 성공 (CPU int8 또는 CUDA)
+                elif self._try_load_whisper():
+                    pass  # openai-whisper 로드 성공 (최후의 폴백)
+                else:
+                    raise RuntimeError(
+                        "STT 백엔드를 찾을 수 없습니다. "
+                        "macOS: 'pip install mlx-whisper>=0.4.3', "
+                        "Linux: 'pip install faster-whisper>=1.0.0' (권장) "
+                        "또는 'pip install openai-whisper'로 설치하세요."
+                    )
             else:
                 raise RuntimeError(
-                    "STT 백엔드를 찾을 수 없습니다. "
-                    "macOS: 'pip install mlx-whisper>=0.4.3', "
-                    "Linux: 'pip install faster-whisper>=1.0.0' (권장) "
-                    "또는 'pip install openai-whisper'로 설치하세요."
+                    f"지정한 STT_BACKEND='{forced_backend}' 백엔드 로드에 실패했습니다. "
+                    f"사용 가능: mlx, faster_whisper, whisper"
                 )
 
             self._load_time_seconds = time.time() - start_time

@@ -51,17 +51,74 @@ async def get_tone_by_meeting(
     meeting_id: str,
     redis_client: aioredis.Redis = Depends(get_redis_client),
 ) -> ToneResponse:
-    """회의 ID로 톤 분석 결과 조회 (task_id = meeting_id)"""
+    """회의 ID로 톤 분석 결과 조회
+
+    tone 결과는 dia_task_id로 저장되지만 클라이언트는 meeting_id로 조회한다.
+    minutes result에서 diarization_task_id를 역추적한 뒤 tone 결과를 가져온다.
+    """
     _check_tone_enabled()
 
-    result_key = f"task:tone:result:{meeting_id}"
+    minutes_raw = await redis_client.get(f"task:min:result:{meeting_id}")
+    if minutes_raw is None:
+        minutes_raw = await _lookup_minutes_result_from_db(meeting_id, redis_client)
+        if minutes_raw is None:
+            not_found(f"회의록을 찾을 수 없습니다: meeting_id={meeting_id}")
+
+    minutes_data = json.loads(minutes_raw)
+    dia_task_id = minutes_data.get("diarization_task_id")
+    if not dia_task_id:
+        not_found(
+            f"회의록에 diarization_task_id가 없습니다: meeting_id={meeting_id}"
+        )
+
+    result_key = f"task:tone:result:{dia_task_id}"
     raw = await redis_client.get(result_key)
 
     if raw is None:
-        not_found(f"톤 분석 결과를 찾을 수 없습니다: meeting_id={meeting_id}")
+        status_key = f"task:tone:status:{dia_task_id}"
+        status_raw = await redis_client.get(status_key)
+        if status_raw is None:
+            not_found(
+                f"톤 분석 결과를 찾을 수 없습니다: meeting_id={meeting_id}, "
+                f"dia_task_id={dia_task_id}"
+            )
+        status_data = json.loads(status_raw)
+        return ToneResponse(
+            task_id=dia_task_id,
+            status=status_data["status"],
+        )
 
     data = json.loads(raw)
     return _build_tone_response(data)
+
+
+async def _lookup_minutes_result_from_db(
+    meeting_id: str,
+    redis_client: aioredis.Redis,
+) -> str | None:
+    """Redis TTL 만료 후 DB에서 minutes 결과로 dia_task_id를 복구한다."""
+    try:
+        from sqlalchemy import select
+
+        from backend.db.models import TaskResult
+        from backend.db.sync_engine import get_sync_session
+
+        with get_sync_session() as session:
+            stmt = select(TaskResult).where(
+                TaskResult.task_id == meeting_id,
+                TaskResult.task_type == "minutes",
+            )
+            record = session.scalars(stmt).first()
+            if record and record.result_data:
+                return json.dumps(record.result_data)
+        return None
+    except Exception as e:
+        logger.warning(
+            "DB에서 minutes 결과 조회 실패, Redis 폴백 불가",
+            meeting_id=meeting_id,
+            error=str(e),
+        )
+        return None
 
 
 @router.get(

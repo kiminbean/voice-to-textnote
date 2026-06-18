@@ -177,11 +177,43 @@ final sentimentProvider =
 });
 
 // SPEC-SENTIMENT-001: 감정 분석 전체 응답 프로바이더 (REQ-SEN-008/009/010)
+// @MX:ANCHOR: _SentimentTab에서 minutesTaskId로 감정 분석 결과 로드
+// @MX:REASON: 백엔드 비동기 감정 분석(openAI) 작업을 create→poll→fetch 순서로 처리
+// mindMapResultProvider와 동일한 패턴 - POST /sentiment 생성 후 폴링, GET /sentiment/{taskId}로 결과 조회
 // 오류를 삼키지 않고 AsyncValue.error로 전파하여 ErrorRetryWidget이 표시되도록 함
 final sentimentFullProvider =
-    FutureProvider.family<SentimentFullResponse, String>((ref, taskId) async {
+    FutureProvider.family<SentimentFullResponse, String>((ref, minutesTaskId) async {
   final api = ref.watch(sentimentApiProvider);
-  return api.getFullByMeeting(taskId);
+
+  // 1. 감정 분석 태스크 생성 (POST /sentiment → Celery + OpenAI gpt-4o-mini)
+  final createData = await api.create(minutesTaskId);
+  final sentimentTaskId = createData['task_id'] as String? ?? '';
+
+  if (sentimentTaskId.isEmpty) {
+    throw StateError('감정 분석 작업 ID를 받지 못했습니다.');
+  }
+
+  // 2. 완료 대기 - 폴링 (최대 5분 = 150회 × 2초)
+  // OpenAI gpt-4o-mini 감정 분석은 회의록 길이에 따라 3~30초 소요
+  for (var attempt = 0; attempt < 150; attempt++) {
+    final statusData = await api.getStatus(sentimentTaskId);
+    final status = statusData['status'] as String? ?? 'pending';
+
+    if (status == 'completed') {
+      // 3. 결과 조회 (GET /sentiment/{task_id} → SentimentFullResponse)
+      return api.getFullResult(sentimentTaskId);
+    }
+
+    if (status == 'failed') {
+      final message =
+          statusData['error_message'] as String? ?? '감정 분석에 실패했습니다.';
+      throw StateError(message);
+    }
+
+    await Future<void>.delayed(const Duration(seconds: 2));
+  }
+
+  throw StateError('감정 분석 생성 시간이 초과되었습니다.');
 });
 
 // SPEC-TONE-001: 톤 분석 응답 프로바이더 (REQ-TONE-012, REQ-TONE-013)

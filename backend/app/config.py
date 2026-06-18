@@ -38,6 +38,7 @@ class Settings(BaseSettings):
     # STT 모델
     whisper_model: str = "mlx-community/whisper-small-mlx"
     whisper_language: str = "ko"
+    stt_backend: str = ""  # "mlx", "faster_whisper", "whisper", "" (auto-detect)
 
     # 처리 제한
     # REQ-ERR-007: 범위 유효성 검사 (1-10)

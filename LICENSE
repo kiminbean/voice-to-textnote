@@ -1,0 +1,26 @@
+Copyright (c) 2026 kiminbean <kiminbean@gmail.com>
+
+All rights reserved.
+
+No part of this software, including its source code, documentation,
+binary forms, and associated files (collectively, the "Software"), may be
+reproduced, distributed, modified, published, transmitted, displayed,
+broadcast, or otherwise exploited in any form or by any means, whether
+electronic, mechanical, photocopying, recording, or otherwise, without the
+express prior written permission of the copyright holder.
+
+Unauthorized use, copying, modification, merger, publication, distribution,
+sublicensing, and/or selling of the Software, in whole or in part, is
+strictly prohibited.
+
+This Software is provided "AS IS", without warranty of any kind, express or
+implied. In no event shall the copyright holder be liable for any claim,
+damages, or other liability arising from the use or inability to use the
+Software.
+
+Third-party components retain their original licenses:
+- opensmile (AGPL-3.0) — used only in local-only processing environments
+- Other dependencies — subject to their respective upstream licenses
+
+For licensing inquiries, commercial use, or redistribution permission,
+contact: kiminbean@gmail.com

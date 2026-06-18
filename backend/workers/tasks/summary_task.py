@@ -47,7 +47,7 @@ def _update_task_status(
     existing_created_at = None
     existing_raw = r.get(status_key)
     if existing_raw:
-        existing_data = json.loads(cast(str | bytes | bytearray, existing_raw))
+        existing_data = _safe_json_load_sync(existing_raw) or {}
         existing_created_at = existing_data.get("created_at")
 
     data: dict = {
@@ -184,7 +184,11 @@ def summary_task(
                 f"회의록 결과를 찾을 수 없습니다: minutes_task_id={minutes_task_id}"
             )
 
-        min_result = json.loads(cast(str | bytes | bytearray, min_result_raw))
+        min_result = _safe_json_load_sync(cast(str | bytes | bytearray, min_result_raw))
+        if not min_result:
+            raise FileNotFoundError(
+                f"회의록 결과 파싱 실패: minutes_task_id={minutes_task_id}"
+            )
         min_status = min_result.get("status")
         if min_status and min_status != TaskStatus.completed.value:
             # BUGFIX: 회의록 실패 결과를 그대로 요약 단계에 넘기면 빈 입력으로
@@ -205,13 +209,14 @@ def summary_task(
             tmpl_raw = r.get(tmpl_key)
             if tmpl_raw:
                 try:
-                    tmpl_meta = json.loads(cast(str | bytes | bytearray, tmpl_raw))
-                    template_structure = tmpl_meta.get("structure")
-                    logger.info(
-                        "양식 구조 로드 완료",
-                        task_id=task_id,
-                        template_id=template_id,
-                    )
+                    tmpl_meta = _safe_json_load_sync(cast(str | bytes | bytearray, tmpl_raw))
+                    if tmpl_meta:
+                        template_structure = tmpl_meta.get("structure")
+                        logger.info(
+                            "양식 구조 로드 완료",
+                            task_id=task_id,
+                            template_id=template_id,
+                        )
                 except (json.JSONDecodeError, KeyError) as exc:
                     logger.warning(
                         "양식 메타데이터 파싱 실패 - 기본 요약으로 진행",
@@ -291,6 +296,8 @@ def summary_task(
                 task_id=task_id,
                 status="completed",
             )
+
+        _trigger_obsidian_auto_export(minutes_task_id)
 
         return final_result
 
@@ -377,6 +384,159 @@ def summary_task(
 
     finally:
         _unregister_active_job(task_id)
+
+
+def _safe_json_load_sync(raw) -> dict | None:
+    """Redis에서 가져온 JSON을 dict로 파싱. non-dict/오류 시 None."""
+    if not raw:
+        return None
+    try:
+        d = json.loads(raw)
+    except (json.JSONDecodeError, TypeError, ValueError):
+        return None
+    if not isinstance(d, dict):
+        return None
+    return d
+
+
+def _find_latest_summary_sync(r, minutes_task_id: str):
+    """동기 Redis 클라이언트로 completed 상태의 최신 summary를 찾는다."""
+    return _find_latest_completed_by_minutes_sync(
+        r, "task:sum:result:*", minutes_task_id
+    )
+
+
+def _find_latest_completed_by_minutes_sync(r, pattern: str, minutes_task_id: str):
+    """동기 Redis SCAN으로 minutes_task_id가 일치하는 completed 결과를 최신순으로 찾는다."""
+    candidates = []
+    for key in r.scan_iter(match=pattern, count=100):
+        d = _safe_json_load_sync(r.get(key))
+        if not d or d.get("minutes_task_id") != minutes_task_id:
+            continue
+        if d.get("status") != "completed":
+            continue
+        ts = d.get("completed_at") or d.get("created_at") or ""
+        candidates.append((ts, d))
+
+    if not candidates:
+        return None
+    candidates.sort(key=lambda x: x[0], reverse=True)
+    return candidates[0][1]
+
+
+def _trigger_obsidian_auto_export(minutes_task_id: str) -> None:
+    """REQ-OBS-007: 파이프라인 완료 후 Obsidian 자동 export (설정 시).
+
+    REQ-OBS-014: 모든 예외를 삼켜 파이프라인에 영향을 주지 않는다.
+    """
+    try:
+
+        from backend.app.api.v1.integrations.obsidian import _get_config_from_db
+        from backend.services.obsidian_service import obsidian_service
+        from backend.workers.redis_client import get_worker_redis
+
+        cfg = _get_config_from_db()
+        if cfg is None or not cfg.auto_export or not cfg.vault_path:
+            return
+
+        validation = obsidian_service.validate_vault(cfg.vault_path)
+        if not validation["valid"]:
+            logger.warning(
+                "Obsidian 자동 export 건너뜀: vault 무효",
+                vault=cfg.vault_path,
+                category="obsidian_auto_export",
+            )
+            return
+
+        r = get_worker_redis()
+        minutes_raw = r.get(f"task:min:result:{minutes_task_id}")
+        if not minutes_raw:
+            return
+        minutes_data = _safe_json_load_sync(minutes_raw)
+        if not minutes_data or minutes_data.get("status") != "completed":
+            logger.warning("Obsidian 자동 export 건너뜀: minutes 미완료 또는 파싱 실패",
+                minutes_task_id=minutes_task_id, category="obsidian_auto_export")
+            return
+
+        summary_data = _find_latest_summary_sync(r, minutes_task_id)
+
+        dia_task_id = minutes_data.get("diarization_task_id")
+        sentiment_data = None
+        tone_data = None
+        if dia_task_id:
+            sent_raw = r.get(f"task:sentiment:result:{dia_task_id}")
+            if sent_raw:
+                sentiment_data = _safe_json_load_sync(sent_raw)
+                if sentiment_data and sentiment_data.get("status") != "completed":
+                    sentiment_data = None
+            tone_raw = r.get(f"task:tone:result:{dia_task_id}")
+            if tone_raw:
+                tone_data = _safe_json_load_sync(tone_raw)
+                if tone_data and tone_data.get("status") != "completed":
+                    tone_data = None
+
+        if sentiment_data is None:
+            sentiment_data = _find_latest_completed_by_minutes_sync(
+                r, "task:sentiment:result:*", minutes_task_id
+            )
+
+        if not summary_data:
+            logger.info(
+                "Obsidian 자동 export 건너뜀: 요약 미완료",
+                minutes_task_id=minutes_task_id,
+                category="obsidian_auto_export",
+            )
+            return
+
+        meeting_data = {
+            "meeting_id": minutes_task_id,
+            "title": f"회의록 {minutes_data.get('created_at', '')[:10]}",
+            "created_at": minutes_data.get("created_at", ""),
+            "duration": minutes_data.get("total_duration"),
+        }
+
+        file_path = obsidian_service.compute_file_path(
+            cfg.vault_path,
+            cfg.folder_pattern,
+            cfg.filename_pattern,
+            meeting_data,
+        )
+
+        note_content = obsidian_service.compose_note(
+            meeting_data,
+            minutes_data,
+            summary_data,
+            sentiment_data,
+            tone_data,
+            frontmatter_custom=cfg.frontmatter_custom,
+        )
+
+        written = obsidian_service.atomic_write(
+            file_path,
+            note_content,
+            exist_ok=(cfg.conflict_policy != "skip"),
+        )
+        if not written:
+            logger.info(
+                "Obsidian 자동 export 건너뜀: 기존 파일 (skip)",
+                path=str(file_path),
+                category="obsidian_auto_export",
+            )
+            return
+
+        logger.info(
+            "Obsidian 자동 export 완료",
+            meeting_id=minutes_task_id,
+            file_path=str(file_path),
+            category="obsidian_auto_export",
+        )
+    except Exception as e:
+        logger.warning(
+            "Obsidian 자동 export 실패 (파이프라인 영향 없음)",
+            minutes_task_id=minutes_task_id,
+            error=str(e),
+            category="obsidian_auto_export",
+        )
 
 
 @celery_app.task(
