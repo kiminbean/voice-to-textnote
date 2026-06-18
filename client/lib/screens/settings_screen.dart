@@ -67,16 +67,23 @@ class SettingsScreen extends ConsumerWidget {
             onTap: () => context.push('/model-download'),
           ),
 
-          if (authState.isAuthenticated) ...[
+          if (authState.isAuthenticated || authState.isGuest) ...[
             const _SectionHeader('계정'),
-            ListTile(
-              leading: const Icon(Icons.person_outline_rounded),
-              title: Text(authState.user?.displayName ?? '사용자'),
-              subtitle: Text(authState.user?.email ?? ''),
-            ),
+            if (authState.isAuthenticated)
+              ListTile(
+                leading: const Icon(Icons.person_outline_rounded),
+                title: Text(authState.user?.displayName ?? '사용자'),
+                subtitle: Text(authState.user?.email ?? ''),
+              )
+            else
+              ListTile(
+                leading: const Icon(Icons.person_outline_rounded),
+                title: const Text('게스트 모드'),
+                subtitle: const Text('데이터가 24시간 후 삭제됩니다'),
+              ),
             ListTile(
               leading: const Icon(Icons.logout_rounded, color: AppColors.error),
-              title: const Text('로그아웃'),
+              title: Text(authState.isGuest ? '게스트 종료' : '로그아웃'),
               onTap: () => _confirmLogout(context, ref),
             ),
           ],
@@ -126,14 +133,19 @@ class SettingsScreen extends ConsumerWidget {
   }
 
   Future<void> _confirmLogout(BuildContext context, WidgetRef ref) async {
+    final isGuest = ref.read(authStateProvider).isGuest;
+    final title = isGuest ? '게스트 종료' : '로그아웃';
+    final message = isGuest
+        ? '게스트 모드를 종료하고 로그인 화면으로 이동합니다.\n저장된 데이터는 24시간 후 삭제됩니다.'
+        : '로그아웃하시겠습니까?';
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('로그아웃'),
-        content: const Text('로그아웃하시겠습니까?'),
+        title: Text(title),
+        content: Text(message),
         actions: [
           TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('취소')),
-          FilledButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('로그아웃')),
+          FilledButton(onPressed: () => Navigator.of(ctx).pop(true), child: Text(title)),
         ],
       ),
     );
