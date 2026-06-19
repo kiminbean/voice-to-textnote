@@ -28,6 +28,7 @@ import 'package:voice_to_textnote/widgets/shimmer_text.dart';
 import 'package:voice_to_textnote/widgets/speaker_segment.dart';
 import 'package:voice_to_textnote/widgets/find_replace_bar.dart';
 import 'package:voice_to_textnote/widgets/audio_player_bar.dart';
+import 'package:voice_to_textnote/widgets/audio_enhancement_panel.dart';
 import 'package:voice_to_textnote/widgets/tone_timeline.dart';
 import 'package:voice_to_textnote/providers/audio_player_provider.dart';
 import 'package:voice_to_textnote/providers/qa_provider.dart';
@@ -351,6 +352,13 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
                 child: AudioPlayerBar(taskId: meeting!.transcriptionTaskId!),
+              ),
+            if (meeting?.audioFilePath != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                child: AudioEnhancementPanel(
+                  audioFilePath: meeting!.audioFilePath!,
+                ),
               ),
           ],
         ),
