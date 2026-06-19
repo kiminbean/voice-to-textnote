@@ -10,7 +10,11 @@ REQ-TONE-014: opensmile(AGPL-3.0) 로컬 전용 처리 환경에서만 사용
 명확한 의존성 격리가 중복 제거보다 우선한다.
 """
 
+import importlib
+import os
+import sys
 import time
+import types
 from pathlib import Path
 from threading import Lock
 from typing import Any
@@ -33,6 +37,39 @@ CONFIDENCE_THRESHOLD = 0.4
 
 # pyin 기본 hop length (librosa 기본값, F0 프레임 간격)
 _DEFAULT_HOP_LENGTH = 512
+
+
+class _LibrosaProxy(types.ModuleType):
+    """Lazy librosa module proxy so tests can patch librosa symbols without importing numba."""
+
+    def __init__(self) -> None:
+        super().__init__("librosa")
+        self.feature = types.SimpleNamespace(rms=self._feature_rms)
+
+    def _real(self) -> Any:
+        if sys.modules.get("librosa") is self:
+            del sys.modules["librosa"]
+            try:
+                module = importlib.import_module("librosa")
+            finally:
+                sys.modules["librosa"] = self
+            return module
+        return importlib.import_module("librosa")
+
+    def load(self, *args: Any, **kwargs: Any) -> Any:
+        return self._real().load(*args, **kwargs)
+
+    def pyin(self, *args: Any, **kwargs: Any) -> Any:
+        return self._real().pyin(*args, **kwargs)
+
+    def _feature_rms(self, *args: Any, **kwargs: Any) -> Any:
+        return self._real().feature.rms(*args, **kwargs)
+
+
+if os.environ.get("PYTEST_CURRENT_TEST") or "pytest" in sys.modules or "librosa" not in sys.modules:
+    sys.modules["librosa"] = _LibrosaProxy()
+
+librosa: Any = sys.modules["librosa"]
 
 
 class ToneEngine:
@@ -121,8 +158,6 @@ class ToneEngine:
         self._initialize()
         self._check_memory_usage()
 
-        import librosa
-
         logger.info("톤 분석 시작", path=str(wav_path), segments=len(segments))
         start_time = time.time()
 
@@ -185,8 +220,6 @@ class ToneEngine:
         Returns:
             {f0_mean, f0_std, rms_energy, speaking_rate, ...opensmile subset}
         """
-        import librosa
-
         # F0 추출 (pYIN: 입력 세그먼트에 대해 frame-level F0)
         f0, voiced_flag, _ = librosa.pyin(
             y,

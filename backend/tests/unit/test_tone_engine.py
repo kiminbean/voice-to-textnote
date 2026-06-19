@@ -14,12 +14,16 @@ import pytest
 
 def _reset_tone_engine_singleton():
     """각 테스트 전 ToneEngine 싱글톤 상태 초기화"""
+    import sys
+
+    import backend.ml.tone_engine as tone_engine_module
     from backend.ml.tone_engine import ToneEngine
 
     ToneEngine._instance = None
     ToneEngine._initialized = False
     ToneEngine._smile = None
     ToneEngine._load_time_seconds = None
+    sys.modules["librosa"] = tone_engine_module.librosa
 
 
 def _make_mock_smile():

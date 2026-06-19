@@ -30,7 +30,18 @@ def teams_client():
     from backend.app.main import app
 
     async def mock_db_session():
-        yield AsyncMock()
+        mock_session = MagicMock()
+        mock_result = MagicMock()
+        mock_result.scalar_one.return_value = 0
+        mock_result.scalar_one_or_none.return_value = None
+        mock_result.first.return_value = None
+        mock_result.scalars.return_value.all.return_value = []
+        mock_session.execute = AsyncMock(return_value=mock_result)
+        mock_session.commit = AsyncMock()
+        mock_session.refresh = AsyncMock()
+        mock_session.rollback = AsyncMock()
+        mock_session.delete = AsyncMock()
+        yield mock_session
 
     async def mock_current_user():
         mock_user = MagicMock(spec=User)
@@ -70,7 +81,7 @@ class TestGetTeamEndpointEdgeCases:
     def test_get_team_invalid_uuid(self, teams_client) -> None:
         client, _, _ = teams_client
         response = client.get("/api/v1/teams/invalid-uuid")
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
         assert "유효하지 않은 팀 ID 형식입니다" in response.json()["message"]
 
     def test_get_team_not_member(self, teams_client) -> None:
@@ -95,7 +106,7 @@ class TestUpdateTeamEndpointEdgeCases:
     def test_update_team_invalid_uuid(self, teams_client) -> None:
         client, _, _ = teams_client
         response = client.put("/api/v1/teams/invalid-uuid", json={"name": "Updated Name"})
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
         assert "유효하지 않은 팀 ID 형식입니다" in response.json()["message"]
 
 
@@ -103,7 +114,7 @@ class TestDeleteTeamEndpointEdgeCases:
     def test_delete_team_invalid_uuid(self, teams_client) -> None:
         client, _, _ = teams_client
         response = client.delete("/api/v1/teams/invalid-uuid")
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
         assert "유효하지 않은 팀 ID 형식입니다" in response.json()["message"]
 
     def test_delete_team_not_found(self, teams_client) -> None:
@@ -120,7 +131,7 @@ class TestListTeamMembersEndpointEdgeCases:
     def test_list_team_members_invalid_uuid(self, teams_client) -> None:
         client, _, _ = teams_client
         response = client.get("/api/v1/teams/invalid-uuid/members")
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
         assert "유효하지 않은 팀 ID 형식입니다" in response.json()["message"]
 
 
@@ -131,7 +142,7 @@ class TestAddTeamMemberEndpointEdgeCases:
             "/api/v1/teams/invalid-uuid/members",
             json={"email": "new@example.com", "role": "member"},
         )
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
         assert "유효하지 않은 팀 ID 형식입니다" in response.json()["message"]
 
     def test_add_team_member_already_exists(self, teams_client) -> None:
@@ -172,7 +183,7 @@ class TestUpdateMemberRoleEndpointEdgeCases:
         response = client.put(
             f"/api/v1/teams/{team_id}/members/invalid-uuid", json={"role": "admin"}
         )
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
         assert "유효하지 않은 ID 형식입니다" in response.json()["message"]
 
     def test_update_member_role_non_admin(self, teams_client) -> None:
@@ -219,7 +230,7 @@ class TestRemoveTeamMemberEndpointEdgeCases:
         client, _, _ = teams_client
         team_id = str(uuid.uuid4())
         response = client.delete(f"/api/v1/teams/{team_id}/members/invalid-uuid")
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
         assert "유효하지 않은 ID 형식입니다" in response.json()["message"]
 
     def test_remove_team_member_no_permission(self, teams_client) -> None:
@@ -276,7 +287,7 @@ class TestListTeamMeetingsEndpoint:
     def test_list_team_meetings_invalid_uuid(self, teams_client) -> None:
         client, _, _ = teams_client
         response = client.get("/api/v1/teams/invalid-uuid/meetings")
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
         assert "유효하지 않은 팀 ID 형식입니다" in response.json()["message"]
 
     def test_list_team_meetings_not_member(self, teams_client) -> None:

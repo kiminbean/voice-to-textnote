@@ -45,8 +45,7 @@ from backend.app.api.v1.audio import (
     qa,
     quality_assessment,
 )
-from backend.app.api.v1.audio.enhance import enhance as enhance_router
-from backend.app.api.v1.minutes.smart_summary import smart_summary as smart_summary_router
+from backend.app.api.v1.audio.enhance import router as enhance_router
 from backend.app.api.v1.auth import (
     auth,
     devices,
@@ -68,10 +67,10 @@ from backend.app.api.v1.minutes import (
     action_items_crud,
     keywords,
     minutes,
-    smart_summary as smart_summary_router,
     summary,
     tags,
 )
+from backend.app.api.v1.minutes.smart_summary import router as smart_summary_router
 from backend.app.api.v1.transcription import (
     batch,
     diarization,
@@ -82,7 +81,7 @@ from backend.app.api.v1.transcription import (
 )
 
 # 각 튜플: (APIRouter, requires_api_key)
-# 총 39개 라우터. 동일 router 중복 등록 금지.
+# 총 43개 라우터. 동일 router 중복 등록 금지.
 ROUTER_REGISTRY: list[tuple[APIRouter, bool]] = [
     # ── 핵심 STT/처리 파이프라인 (API Key 필수) ──────────────────────────────────
     # 주의: batch는 transcription 보다 반드시 먼저 와야 함 (경로 충돌 방지)
@@ -109,7 +108,7 @@ ROUTER_REGISTRY: list[tuple[APIRouter, bool]] = [
     (advanced_search.router, True),  # SPEC-ADVANCED-SEARCH-001
     # ── 확장 오디오 처리 (API Key 필수) ──────────────────────────────────────────
     (enhanced_preprocess.router, True),  # 고급 오디오 전처리 (AI 기반)
-    (enhance.router, True),  # AI 기반 오디오 향상 (신규 기능)
+    (enhance_router, True),  # AI 기반 오디오 향상 (신규 기능)
     # ── 인증 / 디바이스 / 팀 협업 (공개, JWT를 엔드포인트에서 직접 처리) ──────────
     (auth.router, False),  # SPEC-TEAM-001
     (devices.router, False),  # SPEC-MOBILE-001

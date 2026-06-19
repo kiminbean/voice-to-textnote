@@ -200,6 +200,7 @@ class TestDiarizationParallelMode:
             patch("backend.workers.tasks.diarization_task._get_redis", return_value=mock_redis),
             patch("backend.workers.tasks.diarization_task.settings", mock_settings),
             patch("backend.workers.tasks.diarization_task.publish_task_event_sync"),
+            patch("backend.workers.tasks.diarization_task.time.sleep"),
         ):
             result = diarization_task(
                 task_id=task_id,

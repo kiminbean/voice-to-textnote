@@ -336,6 +336,34 @@
     "api_key": true
   },
   {
+    "path": "/api/v1/efficiency/{task_id}",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/enhance",
+    "methods": [
+      "POST"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/enhance/results/{task_id}",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/enhance/status/{task_id}",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
     "path": "/api/v1/enhanced-statistics/overview",
     "methods": [
       "GET"
@@ -372,13 +400,6 @@
   },
   {
     "path": "/api/v1/enhanced/status",
-    "methods": [
-      "GET"
-    ],
-    "api_key": true
-  },
-  {
-    "path": "/api/v1/efficiency/{task_id}",
     "methods": [
       "GET"
     ],
@@ -574,6 +595,34 @@
     "api_key": false
   },
   {
+    "path": "/api/v1/obsidian/config",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/obsidian/config",
+    "methods": [
+      "POST"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/obsidian/export/{meeting_id}",
+    "methods": [
+      "POST"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/obsidian/validate",
+    "methods": [
+      "POST"
+    ],
+    "api_key": true
+  },
+  {
     "path": "/api/v1/qa/ask",
     "methods": [
       "POST"
@@ -703,6 +752,34 @@
     "path": "/api/v1/sentiment/{task_id}/status",
     "methods": [
       "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/smart-summary/meeting-types",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/smart-summary/results/{task_id}",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/smart-summary/status/{task_id}",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/smart-summary/{minutes_task_id}",
+    "methods": [
+      "POST"
     ],
     "api_key": true
   },

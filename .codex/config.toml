@@ -1,0 +1,28 @@
+[shell_environment_policy]
+inherit = "core"
+
+[shell_environment_policy.set]
+CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS = "1"
+CLAUDE_CODE_FILE_READ_MAX_OUTPUT_TOKENS = "64000"
+ENABLE_TOOL_SEARCH = "1"
+MOAI_CONFIG_SOURCE = "sections"
+PATH = "/Users/ibkim/.local/bin:/Users/ibkim/.opencode/bin:/Users/ibkim/.antigravity/antigravity/bin:/Users/ibkim/development/flutter/bin:/opt/homebrew/bin/flutter/bin:/opt/homebrew/bin:/opt/homebrew/opt/openjdk@17/bin:/Users/ibkim/.bun/bin:/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home/bin:/Users/ibkim/Library/Android/sdk/emulator:/Users/ibkim/Library/Android/sdk/tools:/Users/ibkim/Library/Android/sdk/tools/bin:/Users/ibkim/Library/Android/sdk/platform-tools:/Applications/Cursor.app/Contents/MacOS:/Users/ibkim/.rbenv/shims:/opt/homebrew/sbin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/opt/pmk/env/global/bin:/Library/Apple/usr/bin:/Users/ibkim/go/bin:/opt/anaconda3/bin:/opt/anaconda3/condabin"
+
+[mcp_servers.context7]
+command = "/bin/bash"
+args = [
+    "-l",
+    "-c",
+    "exec npx -y @upstash/context7-mcp@latest",
+]
+
+[mcp_servers.sequential-thinking]
+command = "/bin/bash"
+args = [
+    "-l",
+    "-c",
+    "exec npx -y @modelcontextprotocol/server-sequential-thinking",
+]
+
+[mcp_servers.vercel]
+url = "https://mcp.vercel.com"

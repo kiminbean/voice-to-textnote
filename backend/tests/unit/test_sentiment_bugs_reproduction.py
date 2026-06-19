@@ -7,6 +7,9 @@ REQ-SEN-004: max_concurrent_sentiment 설정 이관
 이 테스트들은 버그가 존재할 때 FAIL 해야 하고, 수정 후 PASS 해야 한다.
 """
 
+import json
+from unittest.mock import AsyncMock, MagicMock
+
 
 class TestCelerySentimentRegistration:
     """REQ-SEN-001/002: Celery가 sentiment_task를 발견할 수 있어야 한다"""
@@ -59,8 +62,6 @@ class TestSSEStreamSentimentPrefix:
 
     def test_stream_does_not_404_for_sentiment_task(self):
         """sentiment status 키가 존재할 때 stream 엔드포인트가 404가 아닌 200을 반환해야 한다."""
-        from unittest.mock import AsyncMock
-
         from fastapi import FastAPI
         from fastapi.testclient import TestClient
 
@@ -73,7 +74,7 @@ class TestSSEStreamSentimentPrefix:
         app.include_router(router, prefix="/api/v1")
 
         # Redis: sentiment status 키만 존재 (다른 prefix는 없음)
-        redis_mock = AsyncMock()
+        redis_mock = MagicMock()
 
         async def mock_exists(key):
             # sentiment status 키가 존재한다고 응답
@@ -82,6 +83,20 @@ class TestSSEStreamSentimentPrefix:
             return 0
 
         redis_mock.exists = mock_exists
+
+        pubsub_mock = MagicMock()
+        pubsub_mock.subscribe = AsyncMock()
+        pubsub_mock.unsubscribe = AsyncMock()
+        pubsub_mock.close = AsyncMock()
+
+        async def mock_listen():
+            yield {
+                "type": "message",
+                "data": json.dumps({"event": "completed", "data": {"status": "completed"}}),
+            }
+
+        pubsub_mock.listen = mock_listen
+        redis_mock.pubsub.return_value = pubsub_mock
 
         async def override_redis():
             return redis_mock

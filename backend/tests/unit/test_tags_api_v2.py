@@ -23,13 +23,37 @@ def tags_client():
     from backend.app.dependencies import get_current_user, get_db_session
     from backend.app.main import app
 
+    user_id = uuid.uuid4()
+    mock_tag = MagicMock()
+    mock_tag.id = uuid.uuid4()
+    mock_tag.user_id = user_id
+    mock_tag.task_id = "test-123"
+    mock_tag.tag_type = "topic"
+    mock_tag.tag_value = "프로젝트A"
+    mock_tag.source = "manual"
+    mock_tag.confidence = None
+    mock_tag.note = None
+    mock_tag.created_at = None
+    mock_tag.updated_at = None
+
     async def mock_db_session():
-        yield AsyncMock()
+        mock_session = MagicMock()
+        mock_result = MagicMock()
+        mock_result.scalar_one.return_value = 0
+        mock_result.scalar_one_or_none.return_value = mock_tag
+        mock_result.first.return_value = None
+        mock_result.scalars.return_value.all.return_value = [mock_tag]
+        mock_session.execute = AsyncMock(return_value=mock_result)
+        mock_session.commit = AsyncMock()
+        mock_session.refresh = AsyncMock()
+        mock_session.rollback = AsyncMock()
+        mock_session.delete = AsyncMock()
+        yield mock_session
 
     async def mock_current_user():
         # Mock User 객체
         mock_user = MagicMock()
-        mock_user.id = uuid.uuid4()
+        mock_user.id = user_id
         mock_user.email = "test@example.com"
         mock_user.is_active = True
         yield mock_user
@@ -77,7 +101,7 @@ class TestAutoTagEndpoint:
                 "max_tags": 5,
             },
         )
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
 
 class TestCreateTagEndpoint:
@@ -107,7 +131,7 @@ class TestCreateTagEndpoint:
             },
         )
         # 스키마 검증에 실패하면 422
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
 
 class TestListTagsEndpoint:
@@ -121,7 +145,7 @@ class TestListTagsEndpoint:
     def test_list_tags_missing_task_id(self, tags_client):
         """task_id 누락 시 422."""
         response = tags_client.get("/api/v1/tags")
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
 
 class TestGetTagEndpoint:
@@ -136,7 +160,7 @@ class TestGetTagEndpoint:
     def test_get_tag_invalid_uuid(self, tags_client):
         """유효하지 않은 UUID로 422."""
         response = tags_client.get("/api/v1/tags/invalid-uuid")
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
 
 class TestUpdateTagEndpoint:
@@ -157,7 +181,7 @@ class TestUpdateTagEndpoint:
             "/api/v1/tags/invalid-uuid",
             json={"tag_value": "새로운 값"},
         )
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
 
 class TestDeleteTagEndpoint:
@@ -172,7 +196,7 @@ class TestDeleteTagEndpoint:
     def test_delete_tag_invalid_uuid(self, tags_client):
         """유효하지 않은 UUID로 422."""
         response = tags_client.delete("/api/v1/tags/invalid-uuid")
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
 
 class TestBulkDeleteTagsEndpoint:
@@ -186,4 +210,4 @@ class TestBulkDeleteTagsEndpoint:
     def test_bulk_delete_missing_task_id(self, tags_client):
         """task_id 누락 시 422."""
         response = tags_client.delete("/api/v1/tags/bulk/delete")
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT

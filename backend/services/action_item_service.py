@@ -18,6 +18,7 @@ from backend.app.schemas.action_item import (
 )
 from backend.db.models import ActionItem as ActionItemModel
 from backend.db.models import TaskResult
+from backend.services.session_utils import add_to_session
 from backend.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -61,7 +62,7 @@ class ActionItemService:
             updated_at=datetime.now(UTC),
         )
 
-        session.add(action_item)
+        await add_to_session(session, action_item)
         await session.commit()
         await session.refresh(action_item)
 

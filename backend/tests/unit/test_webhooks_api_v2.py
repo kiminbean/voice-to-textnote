@@ -23,13 +23,36 @@ def webhooks_client():
     from backend.app.dependencies import get_current_user, get_db_session
     from backend.app.main import app
 
+    user_id = uuid.uuid4()
+    mock_endpoint = MagicMock()
+    mock_endpoint.id = uuid.uuid4()
+    mock_endpoint.user_id = user_id
+    mock_endpoint.url = "https://example.com/webhook"
+    mock_endpoint.events = ["minutes.completed"]
+    mock_endpoint.secret = None
+    mock_endpoint.is_active = True
+    mock_endpoint.description = "테스트 웹훅"
+    mock_endpoint.created_at = None
+    mock_endpoint.updated_at = None
+
     async def mock_db_session():
-        yield AsyncMock()
+        mock_session = MagicMock()
+        mock_result = MagicMock()
+        mock_result.scalar_one.return_value = 0
+        mock_result.scalar_one_or_none.return_value = mock_endpoint
+        mock_result.first.return_value = None
+        mock_result.scalars.return_value.all.return_value = [mock_endpoint]
+        mock_session.execute = AsyncMock(return_value=mock_result)
+        mock_session.commit = AsyncMock()
+        mock_session.refresh = AsyncMock()
+        mock_session.rollback = AsyncMock()
+        mock_session.delete = AsyncMock()
+        yield mock_session
 
     async def mock_current_user():
         # Mock User 객체
         mock_user = MagicMock()
-        mock_user.id = uuid.uuid4()
+        mock_user.id = user_id
         mock_user.email = "test@example.com"
         mock_user.is_active = True
         yield mock_user
@@ -75,7 +98,7 @@ class TestCreateWebhookEndpoint:
                 "event_types": ["minutes.completed"],
             },
         )
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
     def test_create_webhook_missing_url(self, webhooks_client):
         """URL 누락 시 422."""
@@ -85,7 +108,7 @@ class TestCreateWebhookEndpoint:
                 "event_types": ["minutes.completed"],
             },
         )
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
 
 class TestListWebhooksEndpoint:
@@ -104,12 +127,12 @@ class TestListWebhooksEndpoint:
     def test_list_webhooks_invalid_page(self, webhooks_client):
         """유효하지 않은 페이지 번호로 422."""
         response = webhooks_client.get("/api/v1/webhooks?page=0")
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
     def test_list_webhooks_invalid_page_size(self, webhooks_client):
         """page_size 범위 초과로 422."""
         response = webhooks_client.get("/api/v1/webhooks?page_size=200")
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
 
 class TestGetWebhookEndpoint:
@@ -124,7 +147,7 @@ class TestGetWebhookEndpoint:
     def test_get_webhook_invalid_uuid(self, webhooks_client):
         """유효하지 않은 UUID로 422."""
         response = webhooks_client.get("/api/v1/webhooks/invalid-uuid")
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
 
 class TestUpdateWebhookEndpoint:
@@ -145,7 +168,7 @@ class TestUpdateWebhookEndpoint:
             "/api/v1/webhooks/invalid-uuid",
             json={"description": "수정된 설명"},
         )
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
     def test_update_webhook_empty_body(self, webhooks_client):
         """빈 body로도 엔드포인트는 응답해야 함."""
@@ -167,7 +190,7 @@ class TestDeleteWebhookEndpoint:
     def test_delete_webhook_invalid_uuid(self, webhooks_client):
         """유효하지 않은 UUID로 422."""
         response = webhooks_client.delete("/api/v1/webhooks/invalid-uuid")
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
 
 class TestPingWebhookEndpoint:
@@ -182,7 +205,7 @@ class TestPingWebhookEndpoint:
     def test_ping_webhook_invalid_uuid(self, webhooks_client):
         """유효하지 않은 UUID로 422."""
         response = webhooks_client.post("/api/v1/webhooks/invalid-uuid/ping")
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
     def test_ping_webhook_success_response(self, webhooks_client):
         """ping 요청이 성공하면 WebhookPingResponse 반환."""

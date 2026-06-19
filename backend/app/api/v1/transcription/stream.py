@@ -48,22 +48,27 @@ async def create_sse_event_generator(
     """
     event_counter = 0
 
-    async for event_data in subscriber_fn(redis_client, task_id):
-        event_counter += 1
-        event_type = event_data.get("event", "status_update")
-        data = event_data.get("data", {})
+    subscriber = subscriber_fn(redis_client, task_id)
+    try:
+        async for event_data in subscriber:
+            event_counter += 1
+            event_type = event_data.get("event", "status_update")
+            data = event_data.get("data", {})
 
-        # REQ-SSE-002: event type, data (JSON), id 포함
-        yield {
-            "event": event_type,
-            "data": json.dumps(data),
-            "id": str(event_counter),
-        }
+            # REQ-SSE-002: event type, data (JSON), id 포함
+            yield {
+                "event": event_type,
+                "data": json.dumps(data),
+                "id": str(event_counter),
+            }
 
-        # REQ-SSE-003: completed/failed 이벤트에서 스트림 자동 종료
-        if event_type in TERMINAL_EVENTS:
-            logger.info("스트림 자동 종료", task_id=task_id, event_type=event_type)
-            return
+            # REQ-SSE-003: completed/failed 이벤트에서 스트림 자동 종료
+            if event_type in TERMINAL_EVENTS:
+                logger.info("스트림 자동 종료", task_id=task_id, event_type=event_type)
+                return
+    finally:
+        if hasattr(subscriber, "aclose"):
+            await subscriber.aclose()
 
 
 # @MX:ANCHOR: SSE 스트림 공개 API 진입점 - 클라이언트와의 계약 변경 금지

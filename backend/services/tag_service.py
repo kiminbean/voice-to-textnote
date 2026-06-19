@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.db.tag_models import MeetingTag
 from backend.schemas.tag import TagCreate, TagUpdate
+from backend.services.session_utils import add_to_session
 
 # 회의록당 최대 태그 수
 _MAX_TAGS_PER_MEETING = 100
@@ -77,7 +78,7 @@ class TagService:
         tag.confidence = payload.confidence
         tag.note = payload.note
 
-        session.add(tag)
+        await add_to_session(session, tag)
         await session.commit()
         await session.refresh(tag)
         return tag
@@ -107,7 +108,7 @@ class TagService:
             tag.source = payload.source or "auto"
             tag.confidence = payload.confidence
             tag.note = payload.note
-            session.add(tag)
+            await add_to_session(session, tag)
             created.append(tag)
 
         await session.commit()

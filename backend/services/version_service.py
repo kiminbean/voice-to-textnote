@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.db.models import TaskResult
 from backend.db.version_models import MinutesVersion
 from backend.schemas.version import VersionCreate
+from backend.services.session_utils import add_to_session
 
 
 class VersionService:
@@ -59,7 +60,7 @@ class VersionService:
             version.change_summary = payload.change_summary
             version.author_id = author_id
 
-            session.add(version)
+            await add_to_session(session, version)
             try:
                 await session.commit()
                 await session.refresh(version)

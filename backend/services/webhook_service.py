@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.db.webhook_models import WebhookEndpoint
 from backend.schemas.webhook import WebhookEndpointCreate, WebhookEndpointUpdate
+from backend.services.session_utils import add_to_session
 from backend.utils.validators import validate_webhook_url
 
 _MAX_WEBHOOKS_PER_USER = 20
@@ -52,7 +53,7 @@ class WebhookService:
         endpoint.is_active = True
         endpoint.description = payload.description
 
-        session.add(endpoint)
+        await add_to_session(session, endpoint)
         await session.commit()
         await session.refresh(endpoint)
         return endpoint

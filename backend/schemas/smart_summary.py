@@ -2,10 +2,8 @@
 Smart Summary Generation API 스키마
 """
 
-import uuid
 from datetime import datetime
 from enum import Enum
-from typing import Literal, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -41,6 +39,7 @@ class FocusArea(str, Enum):
     """집중 영역"""
     ALL = "all"                  # 모든 내용 포함
     DECISIONS_ONLY = "decisions" # 결정 사항만
+    DECISIONS = "decisions"      # 결정 사항만 (하위 호환 alias)
     ACTION_ITEMS = "action_items" # 실행 항목만
     SENTIMENT = "sentiment"      # 감정 분석만
     DISCUSSION = "discussion"    # 논의 내용만
@@ -57,7 +56,7 @@ class SummaryRequest(BaseModel):
         default=SummaryLength.MEDIUM,
         description="요약 길이"
     )
-    focus_areas: List[FocusArea] = Field(
+    focus_areas: list[FocusArea] = Field(
         default=[FocusArea.ALL],
         description="집중 영역 목록"
     )
@@ -79,8 +78,8 @@ class MeetingDetection(BaseModel):
     """회의 유형 자동 감지 결과"""
     detected_type: MeetingType = Field(description="감지된 회의 유형")
     confidence: float = Field(ge=0.0, le=1.0, description="신뢰도")
-    reasoning: List[str] = Field(description="판단 근거")
-    keywords: List[str] = Field(description="키워드 목록")
+    reasoning: list[str] = Field(description="판단 근거")
+    keywords: list[str] = Field(description="키워드 목록")
 
 
 class SentimentAnalysis(BaseModel):
@@ -88,17 +87,17 @@ class SentimentAnalysis(BaseModel):
     overall_sentiment: str = Field(description="전체 감정 (positive, neutral, negative)")
     sentiment_score: float = Field(ge=-1.0, le=1.0, description="감정 점수 (-1: 부정, 0: 중립, 1: 긍정)")
     sentiment_details: dict = Field(description="상세 감정 분석")
-    emotional_segments: List[dict] = Field(description="감정 변화 세그먼트")
+    emotional_segments: list[dict] = Field(description="감정 변화 세그먼트")
 
 
 class SummaryContent(BaseModel):
     """요약 내용"""
     summary_text: str = Field(description="요약 텍스트")
-    key_points: List[str] = Field(description="핵심 포인트 목록")
-    action_items: List[str] = Field(description="실행 항목 목록")
-    decisions: List[str] = Field(description="결정 사항 목록")
-    participants_mentioned: List[str] = Field(description="언급된 참가자 목록")
-    topics_covered: List[str] = Field(description="다룬 주제 목록")
+    key_points: list[str] = Field(description="핵심 포인트 목록")
+    action_items: list[str] = Field(description="실행 항목 목록")
+    decisions: list[str] = Field(description="결정 사항 목록")
+    participants_mentioned: list[str] = Field(description="언급된 참가자 목록")
+    topics_covered: list[str] = Field(description="다룬 주제 목록")
     word_count: int = Field(description="단어 수")
     reading_time_minutes: float = Field(description="읽는 데 걸리는 시간 (분)")
 
@@ -122,7 +121,7 @@ class SummaryGenerationResult(BaseModel):
     sentiment_analysis: SentimentAnalysis | None = Field(default=None, description="감정 분석 결과")
     confidence_score: float = Field(ge=0.0, le=1.0, description="요약 품질 점수")
     processing_time_seconds: float = Field(description="처리 시간 (초)")
-    alternative_versions: List[VersionedSummary] = Field(default_factory=list, description="대체 버전")
+    alternative_versions: list[VersionedSummary] = Field(default_factory=list, description="대체 버전")
     metadata: dict = Field(default_factory=dict, description="추가 메타데이터")
 
 

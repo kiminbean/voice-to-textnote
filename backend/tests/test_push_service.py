@@ -469,7 +469,7 @@ class TestDeviceAPIEndpoints:
             },
         )
 
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
     def test_list_devices_empty(self, client):
         """REQ-MOBILE-003: 빈 디바이스 목록 조회"""
@@ -537,7 +537,7 @@ class TestDeviceAPIEndpoints:
                 # fcm_token 누락
             },
         )
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
     def test_register_device_invalid_platform_value(self, client):
         """잘못된 platform 값으로 등록 실패 (대소문자 구분)"""
@@ -548,7 +548,7 @@ class TestDeviceAPIEndpoints:
                 "platform": "IOS",  # 대문자 (소문자만 허용)
             },
         )
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
     def test_register_device_empty_platform(self, client):
         """빈 platform 값으로 등록 실패"""
@@ -559,7 +559,7 @@ class TestDeviceAPIEndpoints:
                 "platform": "",  # 빈 문자열
             },
         )
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
     def test_register_duplicate_device_id(self, client):
         """동일 device_id로 재등록 시 업데이트됨"""

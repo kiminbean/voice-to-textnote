@@ -139,7 +139,7 @@ class TestUploadTemplate:
             await upload_template(file=mock_file, redis_client=mock_redis_client)
 
         # HTTPException 확인
-        assert exc_info.value.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert exc_info.value.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
         assert "지원하지 않는 파일 형식" in exc_info.value.message
 
     @pytest.mark.asyncio
@@ -158,7 +158,7 @@ class TestUploadTemplate:
         with pytest.raises(Exception) as exc_info:
             await upload_template(file=mock_file, redis_client=mock_redis_client)
 
-        assert exc_info.value.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert exc_info.value.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
         assert "파일 크기 초과" in exc_info.value.message
 
     @pytest.mark.asyncio

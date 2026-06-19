@@ -766,7 +766,7 @@ python3 client/scripts/configure_github_mobile_release_env.py --repo kiminbean/v
 
 ### Phase 7 (완료) — Release Candidate
 
-Phase 1-7의 31개 SPEC이 모두 구현 완료된 상태다. 자동화/빌드 게이트는 통과했으며, strict 실기기 release evidence만 대기 중이다.
+Phase 1-7의 31개 SPEC이 모두 구현 완료된 상태다. 자동화/빌드 게이트는 통과했으며, 최종 전환 상태는 strict 실기기 release evidence 대기다.
 
 - **Phase 7 완료 항목**: 텍스트 감정 분석 (SPEC-SENTIMENT-001, OpenAI gpt-4o-mini), 음성 톤/운율 분석 (SPEC-TONE-001, opensmile eGeMAPSv02 + librosa), 보안 강화 (SPEC-SEC-002, 매직 바이트 검증 + iOS ATS/Android Network Security)
 - **직전 완료**: 실시간 협업 편집 (SPEC-COLLAB-001), 오프라인 STT 하이브리드 (SPEC-MOBILE-002), 모바일 프로덕션 (SPEC-MOBILE-004/005)

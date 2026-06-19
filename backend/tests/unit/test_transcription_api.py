@@ -81,7 +81,7 @@ class TestUploadTranscription:
                 },
             )
 
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
         data = response.json()
         assert "message" in data
         assert any(e.get("field") == "vocabulary_id" for e in data["message"])
@@ -102,7 +102,7 @@ class TestUploadTranscription:
                 data={"language": "ko"},
             )
 
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
         data = response.json()
         assert "message" in data
         # message 텍스트 확인 (한국어 또는 영어 메시지)
@@ -135,7 +135,7 @@ class TestUploadTranscription:
             data={"language": "ko"},
         )
 
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
         data = response.json()
         assert any("file_too_large" in e.get("type", "") for e in data["message"])
 
@@ -161,7 +161,7 @@ class TestUploadTranscription:
                     data={"language": "ko"},
                 )
 
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
         data = response.json()
         assert any("duration_exceeded" in e.get("type", "") for e in data["message"])
 
@@ -178,7 +178,7 @@ class TestUploadTranscription:
                 data={"language": "ko"},
             )
 
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
         data = response.json()
         assert any("invalid_signature" in e.get("type", "") for e in data["message"])
 
@@ -226,7 +226,7 @@ class TestUploadTranscription:
                     data={"language": "ko"},
                 )
 
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
 
 class TestGetTaskStatus:
@@ -551,7 +551,7 @@ class TestEdgeCases:
         # 예외를 삼켜서 0으로 처리 후 계속 진행
         assert response.status_code in [
             status.HTTP_201_CREATED,
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
         ]
 
     @pytest.mark.skip(reason="Redis error handling needs conftest adjustment")
@@ -621,6 +621,6 @@ class TestEdgeCases:
                 data={"language": "ko"},
             )
 
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
         data = response.json()
         assert len(data["message"]) >= 2  # 형식 오류 + 크기 오류

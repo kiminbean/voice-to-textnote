@@ -7,7 +7,7 @@ REQ-SSE-004: 클라이언트 연결 해제 시 리소스 해제
 REQ-SSE-007: 15초마다 heartbeat ping 전송
 """
 
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi import FastAPI
@@ -160,10 +160,10 @@ class TestSSEEndpoint:
         app.include_router(router, prefix="/api/v1")
 
         # Redis에 태스크 존재 + 즉시 completed 이벤트
-        redis_mock = AsyncMock()
+        redis_mock = MagicMock()
         redis_mock.exists = AsyncMock(return_value=1)
 
-        pubsub_mock = AsyncMock()
+        pubsub_mock = MagicMock()
         pubsub_mock.subscribe = AsyncMock()
         pubsub_mock.unsubscribe = AsyncMock()
         pubsub_mock.close = AsyncMock()

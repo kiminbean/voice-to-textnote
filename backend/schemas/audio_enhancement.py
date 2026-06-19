@@ -2,15 +2,13 @@
 Advanced Audio Enhancement API 스키마
 """
 
-import uuid
 from datetime import datetime
-from enum import Enum
-from typing import Literal
+from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
 
-class EnhancementMode(str, Enum):
+class EnhancementMode(StrEnum):
     """음향 향상 모드"""
     CLEAN = "clean"  # 노이즈 제거만
     ENHANCED = "enhanced"  # 음향 향상 + 노이즈 제거
@@ -18,18 +16,18 @@ class EnhancementMode(str, Enum):
     MUSIC_FOCUSED = "music_focused"  # 배경음악 강조
 
 
-class NoiseReductionLevel(str, Enum):
+class NoiseReductionLevel(StrEnum):
     """노이즈 감소 레벨"""
     LIGHT = "light"  # 가벼운 노이즈 제거
     MODERATE = "moderate"  # 중간 수준 노이즈 제거
     AGGRESSIVE = "aggressive"  # 강력한 노이즈 제거
 
 
-class VoiceEnhancementMode(str, Enum):
+class VoiceEnhancementMode(StrEnum):
     """보이스 향상 모드"""
     NATURAL = "natural"  # 자연스러운 향상
     CLEAR = "clear"  # 명확성 중심 향상
-    BROADCAST = "broadcast"  방송용 강조
+    BROADCAST = "broadcast"  # 방송용 강조
 
 
 class AudioEnhancementRequest(BaseModel):

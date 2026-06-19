@@ -104,7 +104,7 @@ class TestAudioPreprocessCoverage:
         # HTTPException 발생 로직 검증
         try:
             raise HTTPException(
-                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                status_code=status.HTTP_413_CONTENT_TOO_LARGE,
                 detail="파일 크기가 500MB를 초과합니다.",
             )
         except HTTPException as exc:

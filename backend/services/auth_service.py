@@ -21,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.config import settings
 from backend.db.auth_models import RefreshToken, User
+from backend.services.session_utils import add_to_session
 
 # 신규 비밀번호 해시는 bcrypt의 72바이트 입력 제한을 피하기 위해 SHA-256을
 # 먼저 적용한다. 기존 passlib bcrypt 해시는 verify_password()에서 계속 검증한다.
@@ -159,7 +160,7 @@ class AuthService:
         user.password_hash = self.hash_password(password)
         user.display_name = display_name
         user.is_active = True
-        session.add(user)
+        await add_to_session(session, user)
 
         # refresh token 생성 및 저장
         raw_refresh = self.create_refresh_token()
@@ -171,7 +172,7 @@ class AuthService:
             datetime.now(UTC) + timedelta(days=self.REFRESH_TOKEN_EXPIRE_DAYS)
         ).replace(tzinfo=None)
         refresh_record.is_revoked = False
-        session.add(refresh_record)
+        await add_to_session(session, refresh_record)
 
         await session.commit()
 
@@ -216,7 +217,7 @@ class AuthService:
             datetime.now(UTC) + timedelta(days=self.REFRESH_TOKEN_EXPIRE_DAYS)
         ).replace(tzinfo=None)
         refresh_record.is_revoked = False
-        session.add(refresh_record)
+        await add_to_session(session, refresh_record)
         await session.commit()
 
         access_token = self.create_access_token(str(user.id), user.email)
@@ -278,7 +279,7 @@ class AuthService:
             datetime.now(UTC) + timedelta(days=self.REFRESH_TOKEN_EXPIRE_DAYS)
         ).replace(tzinfo=None)
         new_record.is_revoked = False
-        session.add(new_record)
+        await add_to_session(session, new_record)
 
         await session.commit()
 
@@ -349,7 +350,7 @@ class AuthService:
             user.provider_id = provider_id
             user.avatar_url = avatar_url
             user.is_active = True
-            session.add(user)
+            await add_to_session(session, user)
 
         elif not user.is_active:
             raise HTTPException(status_code=401, detail="비활성화된 계정입니다")
@@ -367,7 +368,7 @@ class AuthService:
             datetime.now(UTC) + timedelta(days=self.REFRESH_TOKEN_EXPIRE_DAYS)
         ).replace(tzinfo=None)
         refresh_record.is_revoked = False
-        session.add(refresh_record)
+        await add_to_session(session, refresh_record)
 
         await session.commit()
 

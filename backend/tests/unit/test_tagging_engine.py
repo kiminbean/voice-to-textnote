@@ -38,7 +38,7 @@ class TestTaggingEngineExceptions:
             mock_settings.summary_model = "gpt-4o-mini"
 
             # Mock response with invalid JSON
-            mock_response = AsyncMock()
+            mock_response = Mock()
             mock_response.raise_for_status = Mock()
             mock_response.json.return_value = {
                 "choices": [{"message": {"content": "Not valid JSON at all {{{"}}]
@@ -79,7 +79,7 @@ class TestTaggingEngineExceptions:
 
             # Mock HTTP error
             mock_client = AsyncMock()
-            mock_response = AsyncMock()
+            mock_response = Mock()
             mock_response.raise_for_status.side_effect = Exception("HTTP 500 Error")
             mock_client.post.return_value = mock_response
 
@@ -100,7 +100,7 @@ class TestTaggingEngineExceptions:
             long_content = "A" * 7000
 
             # Mock successful response
-            mock_response = AsyncMock()
+            mock_response = Mock()
             mock_response.raise_for_status = Mock()
             mock_response.json.return_value = {
                 "choices": [{"message": {"content": '{"tags": []}'}}]

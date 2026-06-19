@@ -135,9 +135,12 @@ class TestGetDbSession:
         """AsyncSession 인스턴스 yield 확인"""
         from backend.app.dependencies import get_db_session
 
-        async for session in get_db_session():
+        session_generator = get_db_session()
+        try:
+            session = await anext(session_generator)
             assert isinstance(session, AsyncSession)
-            break  # 한 번만 테스트
+        finally:
+            await session_generator.aclose()
 
     @pytest.mark.asyncio
     async def test_session_cleanup(self):

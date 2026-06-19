@@ -62,9 +62,15 @@ async def get_tone_by_meeting(
     if minutes_raw is None:
         minutes_raw = await _lookup_minutes_result_from_db(meeting_id, redis_client)
         if minutes_raw is None:
+            direct_raw = await redis_client.get(f"task:tone:result:{meeting_id}")
+            if direct_raw is not None:
+                return _build_tone_response(json.loads(direct_raw))
             not_found(f"회의록을 찾을 수 없습니다: meeting_id={meeting_id}")
 
     minutes_data = json.loads(minutes_raw)
+    if "segments" in minutes_data and "overall_tone" in minutes_data:
+        return _build_tone_response(minutes_data)
+
     dia_task_id = minutes_data.get("diarization_task_id")
     if not dia_task_id:
         not_found(

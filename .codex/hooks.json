@@ -1,0 +1,105 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "'/Users/ibkim/Projects/voice-to-textnote/.codex/hooks/moai/handle-pre-tool.sh'",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "'/Users/ibkim/Projects/voice-to-textnote/.codex/hooks/moai/handle-permission-request.sh'",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "'/Users/ibkim/Projects/voice-to-textnote/.codex/hooks/moai/handle-post-tool.sh'",
+            "timeout": 60
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "'/Users/ibkim/Projects/voice-to-textnote/.codex/hooks/moai/handle-compact.sh'",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "'/Users/ibkim/Projects/voice-to-textnote/.codex/hooks/moai/handle-session-start.sh'",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "'/Users/ibkim/Projects/voice-to-textnote/.codex/hooks/moai/handle-user-prompt-submit.sh'",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "'/Users/ibkim/Projects/voice-to-textnote/.codex/hooks/moai/handle-subagent-start.sh'",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "'/Users/ibkim/Projects/voice-to-textnote/.codex/hooks/moai/handle-subagent-stop.sh'",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "'/Users/ibkim/Projects/voice-to-textnote/.codex/hooks/moai/handle-stop.sh'",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

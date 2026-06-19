@@ -116,6 +116,7 @@ class TestSentimentTaskHappyPath:
             patch("backend.workers.tasks.sentiment_task._get_redis", return_value=mock_redis),
             patch("backend.workers.tasks.sentiment_task.settings") as mock_settings,
             patch("backend.workers.tasks.sentiment_task.SentimentAnalyzer", analyzer_cls),
+            patch("backend.services.sync_service.persist_task_result"),
         ):
             _configure_settings(mock_settings)
 
@@ -154,6 +155,7 @@ class TestSentimentTaskHappyPath:
             patch("backend.workers.tasks.sentiment_task._get_redis", return_value=mock_redis),
             patch("backend.workers.tasks.sentiment_task.settings") as mock_settings,
             patch("backend.workers.tasks.sentiment_task.SentimentAnalyzer", analyzer_cls),
+            patch("backend.services.sync_service.persist_task_result"),
         ):
             _configure_settings(mock_settings)
             sentiment_task(task_id=task_id, minutes_task_id=minutes_task_id)
