@@ -165,8 +165,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text(
-                  'Obsidian 저장 실패: ${result.error ?? "알 수 없는 오류"}')),
+              content: Text('Obsidian 저장 실패: ${result.error ?? "알 수 없는 오류"}')),
         );
       }
     } catch (e) {
@@ -236,7 +235,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                 ? Navigator.of(context).pop()
                 : context.go('/'),
           ),
-          title: const Text('회의 결과'),
+          title: const Text('AI Notes'),
           actions: [
             _isExporting
                 ? const Padding(
@@ -311,11 +310,11 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           bottom: const TabBar(
             isScrollable: true,
             tabs: [
-              Tab(text: '회의 내용'),
-              Tab(text: '회의록'),
               Tab(text: 'AI 요약'),
-              Tab(text: '마인드맵'),
+              Tab(text: '회의 내용'),
               Tab(text: '액션 아이템'),
+              Tab(text: '회의록'),
+              Tab(text: '마인드맵'),
               Tab(text: 'Q&A'),
               Tab(text: '통계'),
               Tab(text: '감정 분석'),
@@ -324,21 +323,30 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         ),
         body: Column(
           children: [
+            _ResultHero(
+              meeting: meeting,
+              onExportTap: () => _showExportSheet(
+                context,
+                minutesTaskId,
+                summaryTaskId,
+              ),
+              onShareTap: () => _showShareDialog(context, minutesTaskId),
+            ),
             Expanded(
               child: TabBarView(
                 children: [
+                  // AI 요약 탭: 구조화된 분석 (주요 결정 사항 + 다음 단계)
+                  _SummaryTab(taskId: summaryTaskId),
                   // 회의 내용 탭: 화자별 원본 발화 세그먼트
                   _TranscriptTab(
                       taskId: minutesTaskId,
                       transcriptionTaskId: meeting?.transcriptionTaskId),
-                  // 회의록 탭: 양식 기반 테이블 형태 회의록
-                  _MinutesTab(taskId: summaryTaskId, meeting: meeting),
-                  // AI 요약 탭: 구조화된 분석 (주요 결정 사항 + 다음 단계)
-                  _SummaryTab(taskId: summaryTaskId),
-                  // 마인드맵 탭: 백엔드 AI 생성 API 기반 관계 그래프
-                  _MindMapTab(taskId: summaryTaskId),
                   // 액션 아이템 탭 (summaryTaskId 사용)
                   _ActionItemsTab(taskId: summaryTaskId),
+                  // 회의록 탭: 양식 기반 테이블 형태 회의록
+                  _MinutesTab(taskId: summaryTaskId, meeting: meeting),
+                  // 마인드맵 탭: 백엔드 AI 생성 API 기반 관계 그래프
+                  _MindMapTab(taskId: summaryTaskId),
                   // Q&A 탭: 회의 내용 질문/답변 (SPEC-QA-001)
                   _QATab(taskId: summaryTaskId ?? minutesTaskId),
                   _StatisticsTab(taskId: minutesTaskId),
@@ -363,6 +371,220 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Future<void> _showExportSheet(
+    BuildContext context,
+    String? minutesTaskId,
+    String? summaryTaskId,
+  ) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            AppSpacing.sm,
+            AppSpacing.lg,
+            AppSpacing.xl,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Share & Export',
+                style: Theme.of(ctx).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              _ExportSheetTile(
+                icon: Icons.picture_as_pdf_outlined,
+                label: 'Export PDF',
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  _export(
+                      context, ExportFormat.pdf, minutesTaskId, summaryTaskId);
+                },
+              ),
+              _ExportSheetTile(
+                icon: Icons.description_outlined,
+                label: 'Export DOCX',
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  _export(
+                      context, ExportFormat.docx, minutesTaskId, summaryTaskId);
+                },
+              ),
+              _ExportSheetTile(
+                icon: Icons.code_outlined,
+                label: 'Export Markdown',
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  _export(context, ExportFormat.markdown, minutesTaskId,
+                      summaryTaskId);
+                },
+              ),
+              _ExportSheetTile(
+                icon: Icons.auto_stories,
+                label: 'Save to Obsidian',
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  _exportToObsidian(context, minutesTaskId);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ResultHero extends StatelessWidget {
+  final Meeting? meeting;
+  final VoidCallback onExportTap;
+  final VoidCallback onShareTap;
+
+  const _ResultHero({
+    required this.meeting,
+    required this.onExportTap,
+    required this.onShareTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = AppColors.of(context);
+    final duration = meeting?.duration;
+    final durationLabel = duration == null
+        ? 'Processing'
+        : '${duration.inMinutes}m ${duration.inSeconds.remainder(60)}s';
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.md,
+        AppSpacing.lg,
+        AppSpacing.sm,
+      ),
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        borderRadius: AppRadius.brLg,
+        border: Border.all(color: scheme.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: scheme.primarySoft,
+                  borderRadius: AppRadius.brMd,
+                ),
+                child: Icon(Icons.auto_awesome_rounded, color: scheme.primary),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      meeting?.title ?? '회의 요약 생성 중',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Summary, transcript, action items',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: scheme.textSecondary,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+              _MetricPill(label: durationLabel),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: onExportTap,
+                  icon: const Icon(Icons.ios_share_rounded),
+                  label: const Text('Share & Export'),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              IconButton.filledTonal(
+                onPressed: onShareTap,
+                icon: const Icon(Icons.groups_2_outlined),
+                tooltip: '팀에 공유',
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MetricPill extends StatelessWidget {
+  final String label;
+  const _MetricPill({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = AppColors.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xs,
+      ),
+      decoration: BoxDecoration(
+        color: scheme.surfaceAlt,
+        borderRadius: AppRadius.brPill,
+      ),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: scheme.textSecondary,
+              fontWeight: FontWeight.w800,
+            ),
+      ),
+    );
+  }
+}
+
+class _ExportSheetTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _ExportSheetTile({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: Icon(icon),
+      title: Text(label),
+      trailing: const Icon(Icons.chevron_right_rounded),
+      onTap: onTap,
     );
   }
 }
@@ -753,11 +975,14 @@ class _StatisticsTabState extends ConsumerState<_StatisticsTab> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(s.speaker,
-                                  style: const TextStyle(fontWeight: FontWeight.w600)),
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w600)),
                               Text(
                                 '${_formatDuration(s.speakingTimeSeconds)} (${(s.speakingRatio * 100).toStringAsFixed(1)}%)',
                                 style: theme.textTheme.bodySmall?.copyWith(
-                                  fontFeatures: const [FontFeature.tabularFigures()],
+                                  fontFeatures: const [
+                                    FontFeature.tabularFigures()
+                                  ],
                                 ),
                               ),
                             ],
@@ -802,7 +1027,8 @@ class _StatisticsTabState extends ConsumerState<_StatisticsTab> {
                     children: stats.topKeywords
                         .map((k) => Chip(
                               label: Text('${k.keyword} (${k.count})'),
-                              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              materialTapTargetSize:
+                                  MaterialTapTargetSize.shrinkWrap,
                             ))
                         .toList(),
                   ),
@@ -832,9 +1058,11 @@ class _OverviewCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final items = [
-      _StatItem(Icons.record_voice_over_outlined, '세그먼트', '${stats.totalSegments}'),
+      _StatItem(
+          Icons.record_voice_over_outlined, '세그먼트', '${stats.totalSegments}'),
       _StatItem(Icons.text_snippet_outlined, '총 단어', '${stats.totalWords}'),
-      _StatItem(Icons.timer_outlined, '발화 시간', formatDuration(stats.totalDurationSeconds)),
+      _StatItem(Icons.timer_outlined, '발화 시간',
+          formatDuration(stats.totalDurationSeconds)),
       _StatItem(Icons.groups_outlined, '참여 화자', '${stats.uniqueSpeakers}명'),
     ];
 
@@ -881,7 +1109,8 @@ class _StatTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = AppColors.of(context);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md, vertical: AppSpacing.sm),
       decoration: BoxDecoration(
         color: scheme.surfaceAlt,
         borderRadius: AppRadius.brMd,
@@ -893,17 +1122,18 @@ class _StatTile extends StatelessWidget {
           Row(children: [
             Icon(item.icon, size: 14, color: scheme.textTertiary),
             const SizedBox(width: 4),
-            Text(item.label, style: theme(context).textTheme.labelSmall?.copyWith(
-                  color: scheme.textTertiary,
-                )),
+            Text(item.label,
+                style: theme(context).textTheme.labelSmall?.copyWith(
+                      color: scheme.textTertiary,
+                    )),
           ]),
           const SizedBox(height: 2),
           Text(
             item.value,
             style: theme(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  fontFeatures: const [FontFeature.tabularFigures()],
-                ),
+              fontWeight: FontWeight.w700,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
           ),
         ],
       ),
@@ -1217,17 +1447,23 @@ class _SentimentContent extends StatelessWidget {
               if (speaker.positiveRatio > 0)
                 Expanded(
                   flex: (speaker.positiveRatio * 100).round().clamp(1, 100),
-                  child: const ColoredBox(color: AppColors.success, child: SizedBox(height: 8, width: double.infinity)),
+                  child: const ColoredBox(
+                      color: AppColors.success,
+                      child: SizedBox(height: 8, width: double.infinity)),
                 ),
               if (speaker.neutralRatio > 0)
                 Expanded(
                   flex: (speaker.neutralRatio * 100).round().clamp(1, 100),
-                  child: const ColoredBox(color: Color(0xFF9CA3AF), child: SizedBox(height: 8, width: double.infinity)),
+                  child: const ColoredBox(
+                      color: Color(0xFF9CA3AF),
+                      child: SizedBox(height: 8, width: double.infinity)),
                 ),
               if (speaker.negativeRatio > 0)
                 Expanded(
                   flex: (speaker.negativeRatio * 100).round().clamp(1, 100),
-                  child: const ColoredBox(color: AppColors.error, child: SizedBox(height: 8, width: double.infinity)),
+                  child: const ColoredBox(
+                      color: AppColors.error,
+                      child: SizedBox(height: 8, width: double.infinity)),
                 ),
             ],
           ),
@@ -2340,9 +2576,8 @@ class _SummaryTabState extends ConsumerState<_SummaryTab> {
     int lastMatchEnd = 0;
 
     final scheme = AppColors.of(context);
-    final highlightBg = scheme.isDark
-        ? const Color(0xCCF59E0B)
-        : const Color(0xCCFDE047);
+    final highlightBg =
+        scheme.isDark ? const Color(0xCCF59E0B) : const Color(0xCCFDE047);
 
     for (final match in matches) {
       if (match.start > lastMatchEnd) {
@@ -2350,7 +2585,8 @@ class _SummaryTabState extends ConsumerState<_SummaryTab> {
       }
       spans.add(TextSpan(
         text: text.substring(match.start, match.end),
-        style: TextStyle(backgroundColor: highlightBg, color: scheme.textPrimary),
+        style:
+            TextStyle(backgroundColor: highlightBg, color: scheme.textPrimary),
       ));
       lastMatchEnd = match.end;
     }
@@ -2974,7 +3210,8 @@ class _ActionItemCardListState extends State<_ActionItemCardList> {
       itemBuilder: (context, index) {
         final item = widget.items[index];
         final done = _checked[index];
-        final priorityColor = _priorityColors[item.priority] ?? AppColors.warning;
+        final priorityColor =
+            _priorityColors[item.priority] ?? AppColors.warning;
 
         return Card(
           margin: const EdgeInsets.only(bottom: 8),

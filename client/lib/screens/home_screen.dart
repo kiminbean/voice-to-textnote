@@ -27,66 +27,72 @@ class HomeScreen extends ConsumerWidget {
         onRefresh: () => _onRefresh(context, ref),
         child: CustomScrollView(
           slivers: [
-          // 헤더
-          SliverAppBar.large(
-            title: _buildHeader(context, authState.isGuest),
-            actions: [_buildMenuButton(context, ref)],
-            pinned: false,
-          ),
-          // 오프라인 배너
-          if (authState.isGuest)
-            SliverToBoxAdapter(child: _buildGuestBanner(context, ref)),
-          const SliverToBoxAdapter(child: OfflineBanner()),
-          // 본문
-          meetingsAsync.when(
-            loading: () => SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-              sliver: SliverList.builder(itemCount: 3, itemBuilder: (_, __) => const ShimmerCard()),
+            // 헤더
+            SliverAppBar.large(
+              title: _buildHeader(context, authState.isGuest),
+              actions: [_buildMenuButton(context, ref)],
+              pinned: false,
             ),
-            error: (_, __) => const SliverFillRemaining(
-              child: EmptyStateWidget(
-                icon: Icons.cloud_off_rounded,
-                title: '미팅 목록을 불러올 수 없습니다',
-                subtitle: '잠시 후 다시 시도해주세요',
+            // 오프라인 배너
+            if (authState.isGuest)
+              SliverToBoxAdapter(child: _buildGuestBanner(context, ref)),
+            const SliverToBoxAdapter(child: OfflineBanner()),
+            SliverToBoxAdapter(child: _buildOwllHero(context)),
+            SliverToBoxAdapter(child: _buildCaptureShortcuts(context)),
+            // 본문
+            meetingsAsync.when(
+              loading: () => SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                sliver: SliverList.builder(
+                    itemCount: 3, itemBuilder: (_, __) => const ShimmerCard()),
               ),
+              error: (_, __) => const SliverFillRemaining(
+                child: EmptyStateWidget(
+                  icon: Icons.cloud_off_rounded,
+                  title: '미팅 목록을 불러올 수 없습니다',
+                  subtitle: '잠시 후 다시 시도해주세요',
+                ),
+              ),
+              data: (meetings) => meetings.isEmpty
+                  ? SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: EmptyStateWidget(
+                        icon: Icons.graphic_eq_rounded,
+                        title: '아직 녹음된 미팅이 없어요',
+                        subtitle: '첫 번째 회의를 녹음해 보세요',
+                        actionLabel: '녹음 시작하기',
+                        onAction: () => context.push('/recording'),
+                      ),
+                    )
+                  : SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(AppSpacing.lg,
+                          AppSpacing.sm, AppSpacing.lg, AppSpacing.xxxl),
+                      sliver: SliverList.builder(
+                        itemCount: meetings.length,
+                        itemBuilder: (context, index) {
+                          final meeting = meetings[index];
+                          return Padding(
+                            padding:
+                                const EdgeInsets.only(bottom: AppSpacing.sm),
+                            child: MeetingCard(
+                              meeting: meeting,
+                              onTap: () =>
+                                  context.push('/result/${meeting.id}'),
+                              onLongPress: () =>
+                                  _onLongPress(context, ref, meeting.id),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
             ),
-            data: (meetings) => meetings.isEmpty
-                ? SliverFillRemaining(
-                    hasScrollBody: false,
-                    child: EmptyStateWidget(
-                      icon: Icons.graphic_eq_rounded,
-                      title: '아직 녹음된 미팅이 없어요',
-                      subtitle: '첫 번째 회의를 녹음해 보세요',
-                      actionLabel: '녹음 시작하기',
-                      onAction: () => context.push('/recording'),
-                    ),
-                  )
-                : SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(
-                        AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, AppSpacing.xxxl),
-                    sliver: SliverList.builder(
-                      itemCount: meetings.length,
-                      itemBuilder: (context, index) {
-                        final meeting = meetings[index];
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                          child: MeetingCard(
-                            meeting: meeting,
-                            onTap: () => context.push('/result/${meeting.id}'),
-                            onLongPress: () => _onLongPress(context, ref, meeting.id),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-          ),
-        ],
+          ],
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.push('/recording'),
         icon: const Icon(Icons.mic_rounded),
-        label: const Text('녹음'),
+        label: const Text('지금 녹음'),
       ),
     );
   }
@@ -98,13 +104,183 @@ class HomeScreen extends ConsumerWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
-          '회의 기록',
+          'Owll Notes',
           style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                 fontWeight: FontWeight.w700,
                 letterSpacing: -0.3,
               ),
         ),
       ],
+    );
+  }
+
+  Widget _buildOwllHero(BuildContext context) {
+    final scheme = AppColors.of(context);
+    return Container(
+      margin: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.sm,
+        AppSpacing.lg,
+        AppSpacing.md,
+      ),
+      padding: const EdgeInsets.all(AppSpacing.xl),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF14203B),
+            Color(0xFF06184A),
+            Color(0xFF062F2C),
+          ],
+        ),
+        borderRadius: AppRadius.brLg,
+        boxShadow: AppElevation.floating(Colors.black),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: const BoxDecoration(
+                  color: AppColors.info,
+                  borderRadius: AppRadius.brMd,
+                ),
+                child:
+                    const Icon(Icons.auto_awesome_rounded, color: Colors.white),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Text(
+                  'AI가 회의 기록을 대신합니다',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                      ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          Text(
+            '녹음부터 실시간 전사, 요약, 액션 아이템, 팀 공유까지 한 흐름으로 정리하세요.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Colors.white.withAlpha(220),
+                  height: 1.45,
+                ),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          const Wrap(
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
+            children: [
+              _HeroBadge(icon: Icons.mic_rounded, label: '원탭 녹음'),
+              _HeroBadge(icon: Icons.subject_rounded, label: '실시간 전사'),
+              _HeroBadge(icon: Icons.checklist_rounded, label: '액션 아이템'),
+              _HeroBadge(icon: Icons.ios_share_rounded, label: '공유/내보내기'),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          FilledButton.icon(
+            onPressed: () => context.push('/recording'),
+            icon: const Icon(Icons.radio_button_checked_rounded),
+            label: const Text('Download Now 대신 바로 기록 시작'),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFF8DD3F),
+              foregroundColor: const Color(0xFF102027),
+              minimumSize: const Size.fromHeight(48),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            '#1 AI Note Taker 스타일 벤치마크',
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: scheme.isDark
+                      ? Colors.white.withAlpha(180)
+                      : Colors.white.withAlpha(200),
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCaptureShortcuts(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        0,
+        AppSpacing.lg,
+        AppSpacing.lg,
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _ShortcutTile(
+              icon: Icons.upload_file_rounded,
+              title: '파일 업로드',
+              subtitle: 'MP3/MP4/M4A/WAV',
+              onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('녹음 화면에서 파일 업로드 흐름을 준비합니다.')),
+              ),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: _ShortcutTile(
+              icon: Icons.video_call_rounded,
+              title: '온라인 회의',
+              subtitle: 'Zoom/Meet/Teams',
+              onTap: () => _showMeetingLinkSheet(context),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showMeetingLinkSheet(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.lg,
+          AppSpacing.sm,
+          AppSpacing.lg,
+          AppSpacing.xl,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('회의 링크 캡처',
+                style: Theme.of(ctx).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    )),
+            const SizedBox(height: AppSpacing.md),
+            const TextField(
+              decoration: InputDecoration(
+                prefixIcon: Icon(Icons.link_rounded),
+                labelText: 'Zoom, Google Meet, Teams 링크',
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            FilledButton.icon(
+              onPressed: () {
+                Navigator.of(ctx).pop();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('회의 링크 캡처 요청이 준비되었습니다.')),
+                );
+              },
+              icon: const Icon(Icons.smart_toy_outlined),
+              label: const Text('AI 기록 봇 준비'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -137,7 +313,9 @@ class HomeScreen extends ConsumerWidget {
         }
       },
       itemBuilder: (_) => [
-        const PopupMenuItem(value: 'search', child: _MenuItem(icon: Icons.search_rounded, label: '검색')),
+        const PopupMenuItem(
+            value: 'search',
+            child: _MenuItem(icon: Icons.search_rounded, label: '검색')),
         PopupMenuItem(
           value: 'toggle_theme',
           child: _MenuItem(
@@ -148,7 +326,9 @@ class HomeScreen extends ConsumerWidget {
           ),
         ),
         const PopupMenuDivider(),
-        const PopupMenuItem(value: 'settings', child: _MenuItem(icon: Icons.settings_outlined, label: '설정')),
+        const PopupMenuItem(
+            value: 'settings',
+            child: _MenuItem(icon: Icons.settings_outlined, label: '설정')),
       ],
     );
   }
@@ -157,8 +337,10 @@ class HomeScreen extends ConsumerWidget {
   Widget _buildGuestBanner(BuildContext context, WidgetRef ref) {
     final scheme = AppColors.of(context);
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.md),
+      margin: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md, vertical: AppSpacing.md),
       decoration: BoxDecoration(
         color: AppColors.warningSoft.withAlpha(120),
         borderRadius: AppRadius.brMd,
@@ -166,7 +348,8 @@ class HomeScreen extends ConsumerWidget {
       ),
       child: Row(
         children: [
-          const Icon(Icons.info_outline_rounded, size: 18, color: AppColors.warning),
+          const Icon(Icons.info_outline_rounded,
+              size: 18, color: AppColors.warning),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Text(
@@ -204,14 +387,17 @@ class HomeScreen extends ConsumerWidget {
   }
 
   // REQ-HSYNC-005: 롱프레스 시 삭제 확인 다이얼로그
-  Future<void> _onLongPress(BuildContext context, WidgetRef ref, String meetingId) async {
+  Future<void> _onLongPress(
+      BuildContext context, WidgetRef ref, String meetingId) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('미팅 삭제'),
         content: const Text('이 미팅을 삭제하시겠습니까? 서버에서도 삭제됩니다.'),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('취소')),
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('취소')),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppColors.error),
             onPressed: () => Navigator.of(ctx).pop(true),
@@ -225,7 +411,8 @@ class HomeScreen extends ConsumerWidget {
     }
   }
 
-  Future<void> _deleteMeeting(BuildContext context, WidgetRef ref, String meetingId) async {
+  Future<void> _deleteMeeting(
+      BuildContext context, WidgetRef ref, String meetingId) async {
     try {
       final historyApi = ref.read(historyApiProvider);
       await historyApi.delete(meetingId);
@@ -234,6 +421,96 @@ class HomeScreen extends ConsumerWidget {
     } finally {
       await ref.read(meetingListProvider.notifier).removeMeeting(meetingId);
     }
+  }
+}
+
+class _HeroBadge extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  const _HeroBadge({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white.withAlpha(28),
+        borderRadius: AppRadius.brPill,
+        border: Border.all(color: Colors.white.withAlpha(42)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: Colors.white, size: 16),
+          const SizedBox(width: AppSpacing.xs),
+          Text(label,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  )),
+        ],
+      ),
+    );
+  }
+}
+
+class _ShortcutTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  const _ShortcutTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = AppColors.of(context);
+    return Material(
+      color: scheme.surface,
+      borderRadius: AppRadius.brMd,
+      child: InkWell(
+        borderRadius: AppRadius.brMd,
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            borderRadius: AppRadius.brMd,
+            border: Border.all(color: scheme.border),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, color: scheme.primary),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title,
+                        style: Theme.of(context)
+                            .textTheme
+                            .labelLarge
+                            ?.copyWith(fontWeight: FontWeight.w800)),
+                    Text(subtitle,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: scheme.textSecondary,
+                            )),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

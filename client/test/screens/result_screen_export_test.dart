@@ -30,6 +30,13 @@ class _FakeMeetingListNotifier extends MeetingListNotifier {
   Future<List<Meeting>> build() async => _meetings;
 }
 
+Finder _appBarExportIcon() {
+  return find.descendant(
+    of: find.byType(AppBar),
+    matching: find.byIcon(Icons.ios_share_rounded),
+  );
+}
+
 void main() {
   late MockMinutesApi mockMinApi;
   late MockSummaryApi mockSumApi;
@@ -107,7 +114,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // PopupMenuButton 트리거 탭 → 팝업 열기
-      await tester.tap(find.byIcon(Icons.ios_share_rounded));
+      await tester.tap(_appBarExportIcon());
       await tester.pumpAndSettle();
 
       // 팝업에서 PDF 선택
@@ -136,14 +143,14 @@ void main() {
       await tester.pumpWidget(buildTestWidget(completedMeeting));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byIcon(Icons.ios_share_rounded));
+      await tester.tap(_appBarExportIcon());
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('PDF'));
       await tester.pump();
 
       // Assert: 로딩 중에는 ios_share 아이콘이 없어야 함
-      expect(find.byIcon(Icons.ios_share_rounded), findsNothing);
+      expect(_appBarExportIcon(), findsNothing);
 
       // 정리
       completer.completeError(Exception('테스트 종료'));
@@ -161,7 +168,8 @@ void main() {
             summaryTaskId: any(named: 'summaryTaskId'),
           )).thenThrow(
         DioException(
-          requestOptions: RequestOptions(path: '/export/pdf/min-task-loading-001'),
+          requestOptions:
+              RequestOptions(path: '/export/pdf/min-task-loading-001'),
           type: DioExceptionType.connectionError,
           message: '연결 오류',
         ),
@@ -171,7 +179,7 @@ void main() {
       await tester.pumpWidget(buildTestWidget(completedMeeting));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byIcon(Icons.ios_share_rounded));
+      await tester.tap(_appBarExportIcon());
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('PDF'));
@@ -189,7 +197,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // 팝업 열기
-      await tester.tap(find.byIcon(Icons.ios_share_rounded));
+      await tester.tap(_appBarExportIcon());
       await tester.pumpAndSettle();
 
       // PDF 선택
@@ -207,15 +215,15 @@ void main() {
     });
 
     // 에러 후 버튼이 다시 활성화되어야 함
-    testWidgets('다운로드 실패 후 내보내기 버튼이 다시 표시되어야 함',
-        (WidgetTester tester) async {
+    testWidgets('다운로드 실패 후 내보내기 버튼이 다시 표시되어야 함', (WidgetTester tester) async {
       // Arrange
       when(() => mockExportApi.downloadPdf(
             any(),
             summaryTaskId: any(named: 'summaryTaskId'),
           )).thenThrow(
         DioException(
-          requestOptions: RequestOptions(path: '/export/pdf/min-task-loading-001'),
+          requestOptions:
+              RequestOptions(path: '/export/pdf/min-task-loading-001'),
           type: DioExceptionType.connectionError,
         ),
       );
@@ -224,14 +232,14 @@ void main() {
       await tester.pumpWidget(buildTestWidget(completedMeeting));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byIcon(Icons.ios_share_rounded));
+      await tester.tap(_appBarExportIcon());
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('PDF'));
       await tester.pumpAndSettle();
 
       // Assert: 에러 후 ios_share 버튼이 다시 표시되어야 함
-      expect(find.byIcon(Icons.ios_share_rounded), findsOneWidget);
+      expect(_appBarExportIcon(), findsOneWidget);
     });
   });
 }

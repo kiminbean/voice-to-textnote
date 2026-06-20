@@ -39,6 +39,13 @@ Future<void> _pumpToMindMapTab(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
+Finder _tabText(String label) {
+  return find.descendant(
+    of: find.byType(TabBar),
+    matching: find.text(label),
+  );
+}
+
 void main() {
   late MockMinutesApi mockMinApi;
   late MockSummaryApi mockSumApi;
@@ -117,7 +124,7 @@ void main() {
       await tester.pumpWidget(buildTestWidget([]));
       await tester.pumpAndSettle();
       // AI 요약 탭으로 이동
-      await tester.tap(find.text('AI 요약'));
+      await tester.tap(_tabText('AI 요약'));
       await tester.pumpAndSettle();
 
       // Assert
@@ -140,7 +147,7 @@ void main() {
       // Act
       await tester.pumpWidget(buildTestWidget([]));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('AI 요약'));
+      await tester.tap(_tabText('AI 요약'));
       await tester.pumpAndSettle();
 
       // Assert
@@ -163,7 +170,7 @@ void main() {
       // Act
       await tester.pumpWidget(buildTestWidget([]));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('AI 요약'));
+      await tester.tap(_tabText('AI 요약'));
       await tester.pumpAndSettle();
 
       // Assert: 섹션 헤더가 없어야 함
@@ -184,7 +191,7 @@ void main() {
       // Act
       await tester.pumpWidget(buildTestWidget([]));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('AI 요약'));
+      await tester.tap(_tabText('AI 요약'));
       await tester.pumpAndSettle();
 
       // Assert: 섹션 헤더가 없어야 함
@@ -204,7 +211,7 @@ void main() {
       // Act
       await tester.pumpWidget(buildTestWidget([]));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('AI 요약'));
+      await tester.tap(_tabText('AI 요약'));
       await tester.pumpAndSettle();
 
       // Assert: 번호 형식 확인

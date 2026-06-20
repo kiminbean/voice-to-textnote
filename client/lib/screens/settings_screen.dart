@@ -76,10 +76,10 @@ class SettingsScreen extends ConsumerWidget {
                 subtitle: Text(authState.user?.email ?? ''),
               )
             else
-              ListTile(
-                leading: const Icon(Icons.person_outline_rounded),
-                title: const Text('게스트 모드'),
-                subtitle: const Text('데이터가 24시간 후 삭제됩니다'),
+              const ListTile(
+                leading: Icon(Icons.person_outline_rounded),
+                title: Text('게스트 모드'),
+                subtitle: Text('데이터가 24시간 후 삭제됩니다'),
               ),
             ListTile(
               leading: const Icon(Icons.logout_rounded, color: AppColors.error),
@@ -144,8 +144,11 @@ class SettingsScreen extends ConsumerWidget {
         title: Text(title),
         content: Text(message),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('취소')),
-          FilledButton(onPressed: () => Navigator.of(ctx).pop(true), child: Text(title)),
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('취소')),
+          FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(true), child: Text(title)),
         ],
       ),
     );

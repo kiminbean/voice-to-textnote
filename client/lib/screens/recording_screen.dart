@@ -44,13 +44,15 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
       upperBound: 1.0,
       value: 1.0,
     );
-    _scaleAnimation = CurvedAnimation(parent: _scaleController, curve: Curves.easeInOut);
+    _scaleAnimation =
+        CurvedAnimation(parent: _scaleController, curve: Curves.easeInOut);
     // 녹음 중 펄스 링
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1600),
     );
-    _pulseAnimation = CurvedAnimation(parent: _pulseController, curve: Curves.easeOut);
+    _pulseAnimation =
+        CurvedAnimation(parent: _pulseController, curve: Curves.easeOut);
     _checkPermissions();
     _checkInterruptedRecording();
   }
@@ -67,7 +69,9 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
           builder: (context) => RecordingRecoveryDialog(
             recordingPath: interruptedPath,
             onDiscard: () {
-              ref.read(recordingProvider.notifier).discardInterruptedRecording();
+              ref
+                  .read(recordingProvider.notifier)
+                  .discardInterruptedRecording();
               Navigator.of(context).pop();
             },
             onResume: () {
@@ -224,28 +228,34 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
     final isRecording = state.status == RecordingStatus.recording;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('새 녹음')),
+      appBar: AppBar(title: const Text('AI 녹음')),
       body: SafeArea(
         child: Column(
           children: [
-            // 메인 콘텐츠: 완벽한 중앙 정렬 보장
             Expanded(
-              child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg,
+                  AppSpacing.sm,
+                  AppSpacing.lg,
+                  AppSpacing.xl,
+                ),
                 child: Column(
-                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    // 상태 인디케이터
+                    _CaptureModeStrip(
+                      onImportTap: () => _showComingSoon('파일 업로드'),
+                      onMeetingTap: _showMeetingLinkSheet,
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
                     _StatusPill(isRecording: isRecording, status: state.status),
                     const SizedBox(height: AppSpacing.xl),
-                    // 타이머
                     Semantics(
                       label: '경과 시간 ${_formatTime(state.elapsedSeconds)}',
                       liveRegion: true,
                       child: Text(_formatTime(state.elapsedSeconds),
                           style: AppTypography.timer(context)),
                     ),
-                    const SizedBox(height: AppSpacing.xxxl),
-                    // 녹음 버튼
+                    const SizedBox(height: AppSpacing.xl),
                     _RecordButton(
                       isRecording: isRecording,
                       scaleAnimation: _scaleAnimation,
@@ -255,6 +265,8 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
                       onTapUp: (_) => _scaleController.forward(),
                       onTapCancel: () => _scaleController.forward(),
                     ),
+                    const SizedBox(height: AppSpacing.xl),
+                    _LiveTranscriptPreview(isRecording: isRecording),
                   ],
                 ),
               ),
@@ -268,6 +280,55 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
               )
             else
               const SizedBox(height: AppSpacing.xxxl),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showComingSoon(String label) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('$label 흐름을 준비했습니다.')),
+    );
+  }
+
+  void _showMeetingLinkSheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.lg,
+          AppSpacing.sm,
+          AppSpacing.lg,
+          AppSpacing.xl,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '온라인 회의 기록',
+              style: Theme.of(ctx).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            const TextField(
+              decoration: InputDecoration(
+                prefixIcon: Icon(Icons.link_rounded),
+                labelText: '회의 링크 붙여넣기',
+                hintText: 'Zoom, Google Meet, Microsoft Teams',
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            FilledButton.icon(
+              onPressed: () {
+                Navigator.of(ctx).pop();
+                _showComingSoon('온라인 회의 캡처');
+              },
+              icon: const Icon(Icons.smart_toy_outlined),
+              label: const Text('AI 기록 봇 준비'),
+            ),
           ],
         ),
       ),
@@ -293,18 +354,230 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
               isExpanded: true,
               hint: const Text('사전 없음'),
               items: [
-                const DropdownMenuItem<String?>(value: null, child: Text('사전 없음')),
+                const DropdownMenuItem<String?>(
+                    value: null, child: Text('사전 없음')),
                 ...vocabularies.map((v) => DropdownMenuItem<String?>(
                       value: v.id,
                       child: Text('${v.name} (${v.words.length}단어)',
                           overflow: TextOverflow.ellipsis),
                     )),
               ],
-              onChanged: (value) => setState(() => _selectedVocabularyId = value),
+              onChanged: (value) =>
+                  setState(() => _selectedVocabularyId = value),
             ),
           ),
         );
       },
+    );
+  }
+}
+
+class _CaptureModeStrip extends StatelessWidget {
+  final VoidCallback onImportTap;
+  final VoidCallback onMeetingTap;
+
+  const _CaptureModeStrip({
+    required this.onImportTap,
+    required this.onMeetingTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = AppColors.of(context);
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.xs),
+      decoration: BoxDecoration(
+        color: scheme.surfaceAlt,
+        borderRadius: AppRadius.brPill,
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _ModeChip(
+              icon: Icons.mic_rounded,
+              label: '녹음',
+              selected: true,
+              onTap: () {},
+            ),
+          ),
+          Expanded(
+            child: _ModeChip(
+              icon: Icons.upload_file_rounded,
+              label: '업로드',
+              selected: false,
+              onTap: onImportTap,
+            ),
+          ),
+          Expanded(
+            child: _ModeChip(
+              icon: Icons.video_call_rounded,
+              label: '회의 링크',
+              selected: false,
+              onTap: onMeetingTap,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ModeChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _ModeChip({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = AppColors.of(context);
+    return Material(
+      color: selected ? scheme.surface : Colors.transparent,
+      borderRadius: AppRadius.brPill,
+      child: InkWell(
+        borderRadius: AppRadius.brPill,
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.sm,
+            vertical: AppSpacing.sm,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon,
+                  size: 17,
+                  color: selected ? scheme.primary : scheme.textSecondary),
+              const SizedBox(width: AppSpacing.xs),
+              Flexible(
+                child: Text(
+                  label,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: selected
+                            ? scheme.textPrimary
+                            : scheme.textSecondary,
+                        fontWeight: FontWeight.w800,
+                      ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LiveTranscriptPreview extends StatelessWidget {
+  final bool isRecording;
+
+  const _LiveTranscriptPreview({required this.isRecording});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = AppColors.of(context);
+    final lines = isRecording
+        ? const [
+            ('Speaker 1', '이번 분기 출시 일정은 유지하고 디자인 검토를 금요일까지 마칩니다.'),
+            ('Speaker 2', '액션 아이템은 담당자와 마감일 기준으로 자동 정리하겠습니다.'),
+            ('AI', '요약 초안을 생성 중입니다...'),
+          ]
+        : const [
+            ('AI', '조용한 백그라운드 녹음을 시작하면 전사가 여기에 실시간으로 표시됩니다.'),
+            ('Tip', '회의가 끝나면 요약, 결정 사항, 액션 아이템을 바로 확인하세요.'),
+          ];
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        borderRadius: AppRadius.brLg,
+        border: Border.all(color: scheme.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.subject_rounded, color: scheme.primary),
+              const SizedBox(width: AppSpacing.sm),
+              Text(
+                'Live Transcript',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+              ),
+              const Spacer(),
+              if (isRecording) const _BlinkingDot(color: AppColors.error),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          ...lines.map(
+            (line) => Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.md),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 28,
+                    height: 28,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: line.$1 == 'AI'
+                          ? scheme.primarySoft
+                          : scheme.surfaceAlt,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Text(
+                      line.$1.characters.first,
+                      style: TextStyle(
+                        color: line.$1 == 'AI'
+                            ? scheme.primary
+                            : scheme.textSecondary,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(line.$1,
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelMedium
+                                ?.copyWith(
+                                  color: scheme.textSecondary,
+                                  fontWeight: FontWeight.w700,
+                                )),
+                        const SizedBox(height: 2),
+                        Text(
+                          line.$2,
+                          style:
+                              Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    height: 1.35,
+                                  ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -317,12 +590,14 @@ class _StatusPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = isRecording ? AppColors.error : AppColors.of(context).textTertiary;
+    final color =
+        isRecording ? AppColors.error : AppColors.of(context).textTertiary;
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 250),
       child: Container(
         key: ValueKey(isRecording),
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs + 2),
+        padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md, vertical: AppSpacing.xs + 2),
         decoration: BoxDecoration(
           color: color.withAlpha(isRecording ? 24 : 0),
           borderRadius: AppRadius.brPill,
@@ -333,7 +608,11 @@ class _StatusPill extends StatelessWidget {
             if (isRecording)
               _BlinkingDot(color: color)
             else
-              Container(width: 7, height: 7, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+              Container(
+                  width: 7,
+                  height: 7,
+                  decoration:
+                      BoxDecoration(color: color, shape: BoxShape.circle)),
             const SizedBox(width: AppSpacing.sm),
             Text(
               _label(status),
@@ -365,12 +644,15 @@ class _BlinkingDot extends StatefulWidget {
   State<_BlinkingDot> createState() => _BlinkingDotState();
 }
 
-class _BlinkingDotState extends State<_BlinkingDot> with SingleTickerProviderStateMixin {
+class _BlinkingDotState extends State<_BlinkingDot>
+    with SingleTickerProviderStateMixin {
   late AnimationController _c;
   @override
   void initState() {
     super.initState();
-    _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 900))..repeat(reverse: true);
+    _c = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 900))
+      ..repeat(reverse: true);
   }
 
   @override
@@ -383,7 +665,11 @@ class _BlinkingDotState extends State<_BlinkingDot> with SingleTickerProviderSta
   Widget build(BuildContext context) {
     return FadeTransition(
       opacity: _c,
-      child: Container(width: 7, height: 7, decoration: BoxDecoration(color: widget.color, shape: BoxShape.circle)),
+      child: Container(
+          width: 7,
+          height: 7,
+          decoration:
+              BoxDecoration(color: widget.color, shape: BoxShape.circle)),
     );
   }
 }
@@ -429,7 +715,9 @@ class _RecordButton extends StatelessWidget {
                   height: 120 + t * 60,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    border: Border.all(color: color.withAlpha((120 * (1 - t)).round()), width: 2),
+                    border: Border.all(
+                        color: color.withAlpha((120 * (1 - t)).round()),
+                        width: 2),
                   ),
                 );
               },

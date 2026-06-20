@@ -36,13 +36,16 @@ void main() {
       await tester.pumpAndSettle();
 
       // 녹음 버튼 (큰 원형 아이콘)이 존재해야 함
-      expect(find.byIcon(Icons.mic_rounded), findsOneWidget);
+      expect(find.bySemanticsLabel('녹음 시작'), findsOneWidget);
 
       // 타이머 표시 (00:00)
       expect(find.text('00:00'), findsOneWidget);
 
       // 초기 상태 텍스트
       expect(find.text('탭하여 녹음 시작'), findsOneWidget);
+      expect(find.text('Live Transcript'), findsOneWidget);
+      expect(find.text('업로드'), findsOneWidget);
+      expect(find.text('회의 링크'), findsOneWidget);
     });
 
     // 녹음 버튼 탭 후 상태 확인 (실제 마이크 없이 테스트)
@@ -52,7 +55,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // 녹음 버튼 탭 (비동기 처리)
-      await tester.tap(find.byIcon(Icons.mic_rounded));
+      await tester.tap(find.bySemanticsLabel('녹음 시작'));
       await tester.pump();
 
       // UI가 존재해야 함 (권한 없이는 상태 변화 없을 수 있음)
@@ -69,11 +72,11 @@ void main() {
     });
 
     // 앱바 제목 테스트
-    testWidgets('앱바에 새 녹음 제목이 표시되어야 함', (WidgetTester tester) async {
+    testWidgets('앱바에 AI 녹음 제목이 표시되어야 함', (WidgetTester tester) async {
       await tester.pumpWidget(buildTestApp());
       await tester.pumpAndSettle();
 
-      expect(find.text('새 녹음'), findsOneWidget);
+      expect(find.text('AI 녹음'), findsOneWidget);
     });
   });
 }

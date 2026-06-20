@@ -22,6 +22,20 @@ class _MockMeetingListNotifier extends MeetingListNotifier {
   Future<List<Meeting>> build() async => _meetings;
 }
 
+Finder _appBarExportIcon() {
+  return find.descendant(
+    of: find.byType(AppBar),
+    matching: find.byIcon(Icons.ios_share_rounded),
+  );
+}
+
+Finder _tabText(String label) {
+  return find.descendant(
+    of: find.byType(TabBar),
+    matching: find.text(label),
+  );
+}
+
 void main() {
   late MockMinutesApi mockMinApi;
   late MockSummaryApi mockSumApi;
@@ -103,17 +117,13 @@ void main() {
 
   group('ResultScreen AppBar - 내보내기 버튼', () {
     // AppBar에 PopupMenuButton (ios_share 아이콘) 존재 확인
-    testWidgets('AppBar에 내보내기 버튼이 표시되어야 함',
-        (WidgetTester tester) async {
+    testWidgets('AppBar에 내보내기 버튼이 표시되어야 함', (WidgetTester tester) async {
       // Act
       await tester.pumpWidget(buildTestWidget(completedMeeting));
       await tester.pumpAndSettle();
 
       // Assert: ios_share 아이콘 (PopupMenuButton 트리거) 존재 확인
-      expect(
-        find.byIcon(Icons.ios_share_rounded),
-        findsOneWidget,
-      );
+      expect(_appBarExportIcon(), findsOneWidget);
     });
 
     // 버튼이 AppBar actions 영역에 위치하는지 테스트
@@ -127,13 +137,7 @@ void main() {
       final appBar = find.byType(AppBar);
       expect(appBar, findsOneWidget);
 
-      expect(
-        find.descendant(
-          of: appBar,
-          matching: find.byIcon(Icons.ios_share_rounded),
-        ),
-        findsOneWidget,
-      );
+      expect(_appBarExportIcon(), findsOneWidget);
     });
 
     // minutesTaskId가 없을 때도 버튼이 표시되는지 테스트
@@ -144,20 +148,18 @@ void main() {
       await tester.pumpAndSettle();
 
       // Assert: ios_share 버튼은 항상 표시됨
-      expect(
-        find.byIcon(Icons.ios_share_rounded),
-        findsOneWidget,
-      );
+      expect(_appBarExportIcon(), findsOneWidget);
     });
 
     // AppBar 제목이 올바르게 표시되는지 테스트
-    testWidgets('AppBar 제목이 "회의 결과"로 표시되어야 함', (WidgetTester tester) async {
+    testWidgets('AppBar 제목이 "AI Notes"로 표시되어야 함', (WidgetTester tester) async {
       // Act
       await tester.pumpWidget(buildTestWidget(completedMeeting));
       await tester.pumpAndSettle();
 
       // Assert
-      expect(find.text('회의 결과'), findsOneWidget);
+      expect(find.text('AI Notes'), findsOneWidget);
+      expect(find.text('Share & Export'), findsOneWidget);
     });
   });
 
@@ -171,7 +173,7 @@ void main() {
 
       // Assert: 탭 레이블 확인
       expect(find.text('회의록'), findsWidgets);
-      expect(find.text('AI 요약'), findsOneWidget);
+      expect(_tabText('AI 요약'), findsOneWidget);
       expect(find.text('마인드맵'), findsOneWidget);
       expect(find.text('액션 아이템'), findsOneWidget);
     });
@@ -181,7 +183,7 @@ void main() {
       // Act
       await tester.pumpWidget(buildTestWidget(completedMeeting));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('AI 요약'));
+      await tester.tap(_tabText('AI 요약'));
       await tester.pumpAndSettle();
 
       // Assert: 탭 전환 후 오류 없이 렌더링

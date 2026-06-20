@@ -47,8 +47,7 @@ void main() {
     });
 
     // 빈 상태 표시 테스트
-    testWidgets('미팅이 없을 때 빈 상태 메시지가 표시되어야 함',
-        (WidgetTester tester) async {
+    testWidgets('미팅이 없을 때 빈 상태 메시지가 표시되어야 함', (WidgetTester tester) async {
       await tester.pumpWidget(
         ProviderScope(
           overrides: _onlineOverrides(mockService),
@@ -62,7 +61,9 @@ void main() {
       await tester.pumpAndSettle();
 
       // 헤더 타이틀 확인 (SliverAppBar.large는 확장/축소 상태 각각 렌더링)
-      expect(find.text('회의 기록'), findsWidgets);
+      expect(find.text('Owll Notes'), findsWidgets);
+      expect(find.text('AI가 회의 기록을 대신합니다'), findsOneWidget);
+      expect(find.text('원탭 녹음'), findsOneWidget);
 
       // 빈 상태 메시지 확인
       expect(find.text('아직 녹음된 미팅이 없어요'), findsOneWidget);
@@ -72,8 +73,7 @@ void main() {
     });
 
     // 미팅 목록 표시 테스트
-    testWidgets('미팅이 있을 때 MeetingCard가 표시되어야 함',
-        (WidgetTester tester) async {
+    testWidgets('미팅이 있을 때 MeetingCard가 표시되어야 함', (WidgetTester tester) async {
       final testMeeting = Meeting(
         id: 'test-001',
         title: '테스트 미팅',
@@ -101,11 +101,12 @@ void main() {
 
       // 미팅 카드가 표시되어야 함
       expect(find.text('테스트 미팅'), findsOneWidget);
+      expect(find.text('파일 업로드'), findsOneWidget);
+      expect(find.text('온라인 회의'), findsOneWidget);
     });
 
     // REQ-HSYNC-003: RefreshIndicator가 있어야 함
-    testWidgets('홈 화면에 RefreshIndicator가 있어야 함',
-        (WidgetTester tester) async {
+    testWidgets('홈 화면에 RefreshIndicator가 있어야 함', (WidgetTester tester) async {
       final testMeeting = Meeting(
         id: 'test-001',
         title: '테스트 미팅',
