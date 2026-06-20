@@ -4,7 +4,7 @@ REQ-OAUTH-001: OAuth 토큰 검증 서비스 단위 테스트
 대상: services/oauth_service.py
   - verify_google_token (httpx + jwt mock)
   - verify_apple_token (httpx + jwt mock)
-  - verify_apple_code_callback (trivial)
+  - verify_apple_code_callback (unsupported flow guard)
 """
 
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -339,8 +339,12 @@ class TestVerifyAppleToken:
 
 
 class TestVerifyAppleCodeCallback:
-    """Apple authorization code 콜백 (미구현)."""
+    """Apple authorization code 콜백은 현재 서버 플로우에서 명시적으로 거부한다."""
 
-    def test_returns_empty_dict(self):
-        result = verify_apple_code_callback("some-code")
-        assert result == {}
+    def test_rejects_unsupported_callback_flow(self):
+        with pytest.raises(ValueError, match="현재 지원하지 않습니다"):
+            verify_apple_code_callback("some-code")
+
+    def test_rejects_empty_code(self):
+        with pytest.raises(ValueError, match="비어 있습니다"):
+            verify_apple_code_callback("   ")

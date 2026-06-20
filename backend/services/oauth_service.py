@@ -156,8 +156,15 @@ async def verify_apple_token(id_token: str) -> OAuthUserInfo:
 
 def verify_apple_code_callback(code: str) -> dict:
     """
-    Apple authorization code를 검증합니다 (초기 구현에서는 미사용).
-    추후 Apple private email relay 기능이 필요할 때 활성화.
+    Apple authorization code 콜백은 현재 서버 인증 플로우에서 지원하지 않는다.
+
+    모바일 클라이언트는 /auth/apple 엔드포인트로 ID token을 전달하고,
+    서버는 verify_apple_token()에서 해당 토큰을 검증한다. Authorization
+    code 교환은 Apple private key 기반 client_secret 설정이 추가될 때
+    별도 구현해야 하므로, 빈 dict를 반환하지 않고 명시적으로 실패시킨다.
     """
-    logger.warning("Apple authorization code callback은 아직 구현되지 않았습니다")
-    return {}
+    if not code.strip():
+        raise ValueError("Apple authorization code가 비어 있습니다")
+
+    logger.warning("Apple authorization code callback은 현재 지원하지 않습니다")
+    raise ValueError("Apple authorization code callback은 현재 지원하지 않습니다")
