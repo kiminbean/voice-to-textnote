@@ -42,6 +42,14 @@ REQUIRED_E2E_SCENARIOS = {
     "export_share_android": "Android PDF share sheet",
     "export_share_ios": "iOS PDF share sheet",
 }
+UNRESOLVED_EVIDENCE_PATTERNS = (
+    r"\bTODO\b",
+    r"\bTBD\b",
+    r"to be configured",
+    r"pending manual",
+    r"requires manual",
+    r"not yet configured",
+)
 
 
 class Reporter:
@@ -802,6 +810,10 @@ def require_non_empty_string(
     return ""
 
 
+def has_unresolved_evidence_placeholder(value: str) -> bool:
+    return any(re.search(pattern, value, re.IGNORECASE) for pattern in UNRESOLVED_EVIDENCE_PATTERNS)
+
+
 def check_release_e2e_evidence(path: Path, reporter: Reporter) -> None:
     if not path.is_file():
         reporter.fail(f"RELEASE_E2E_EVIDENCE_PATH does not point to a file: {path}")
@@ -859,10 +871,12 @@ def check_release_e2e_evidence(path: Path, reporter: Reporter) -> None:
             continue
         passed = scenario.get("pass")
         evidence = str(scenario.get("evidence", "")).strip()
-        if passed is True and evidence:
+        if passed is True and evidence and not has_unresolved_evidence_placeholder(evidence):
             reporter.ok(f"Release E2E scenario passed: {key}")
         elif passed is not True:
             reporter.fail(f"Release E2E scenario not marked pass: {key}")
+        elif has_unresolved_evidence_placeholder(evidence):
+            reporter.fail(f"Release E2E scenario has placeholder evidence: {key}")
         else:
             reporter.fail(f"Release E2E scenario missing evidence note: {key}")
 

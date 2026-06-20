@@ -110,6 +110,24 @@ def test_release_e2e_evidence_rejects_missing_required_scenario(tmp_path, monkey
     assert any("push_deeplink_cold_start" in error for error in reporter.errors)
 
 
+def test_release_e2e_evidence_rejects_placeholder_scenario_evidence(tmp_path, monkeypatch):
+    module = load_release_readiness_module()
+    evidence = make_evidence(tmp_path, module)
+    scenarios = evidence["scenarios"]
+    assert isinstance(scenarios, dict)
+    scenario = scenarios["push_stt_complete"]
+    assert isinstance(scenario, dict)
+    scenario["evidence"] = "TODO: send an actual push notification on release devices"
+    evidence_path = write_evidence(tmp_path, evidence)
+    monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
+    monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")
+
+    reporter = module.Reporter()
+    module.check_release_e2e_evidence(evidence_path, reporter)
+
+    assert any("placeholder evidence" in error for error in reporter.errors)
+
+
 def test_release_e2e_evidence_rejects_device_id_mismatch(tmp_path, monkeypatch):
     module = load_release_readiness_module()
     evidence_path = write_evidence(tmp_path, make_evidence(tmp_path, module))
