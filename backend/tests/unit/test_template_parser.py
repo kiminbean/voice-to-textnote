@@ -18,33 +18,30 @@ def sample_docx_path(tmp_path: Path) -> Path:
     """
     테스트용 DOCX 파일 생성 (python-docx 사용)
     """
-    try:
-        from docx import Document
+    from docx import Document
 
-        doc = Document()
-        doc.add_heading("회의록", level=1)
-        doc.add_heading("1. 회의 개요", level=2)
-        doc.add_paragraph("일시: 2025-01-01")
-        doc.add_paragraph("참석자: 홍길동, 김철수")
-        doc.add_heading("2. 주요 안건", level=2)
-        doc.add_paragraph("안건 1: 프로젝트 진행 현황")
-        doc.add_heading("3. 결정 사항", level=2)
-        doc.add_paragraph("결정 1: 다음 주 까지 보고서 제출")
-        doc.add_heading("4. 다음 단계", level=2)
-        doc.add_paragraph("담당자: 홍길동")
+    doc = Document()
+    doc.add_heading("회의록", level=1)
+    doc.add_heading("1. 회의 개요", level=2)
+    doc.add_paragraph("일시: 2025-01-01")
+    doc.add_paragraph("참석자: 홍길동, 김철수")
+    doc.add_heading("2. 주요 안건", level=2)
+    doc.add_paragraph("안건 1: 프로젝트 진행 현황")
+    doc.add_heading("3. 결정 사항", level=2)
+    doc.add_paragraph("결정 1: 다음 주 까지 보고서 제출")
+    doc.add_heading("4. 다음 단계", level=2)
+    doc.add_paragraph("담당자: 홍길동")
 
-        # 테이블 추가
-        table = doc.add_table(rows=2, cols=2)
-        table.rows[0].cells[0].text = "항목"
-        table.rows[0].cells[1].text = "내용"
-        table.rows[1].cells[0].text = "담당자"
-        table.rows[1].cells[1].text = "홍길동"
+    # 테이블 추가
+    table = doc.add_table(rows=2, cols=2)
+    table.rows[0].cells[0].text = "항목"
+    table.rows[0].cells[1].text = "내용"
+    table.rows[1].cells[0].text = "담당자"
+    table.rows[1].cells[1].text = "홍길동"
 
-        docx_path = tmp_path / "sample.docx"
-        doc.save(str(docx_path))
-        return docx_path
-    except ImportError:
-        pytest.skip("python-docx not installed")
+    docx_path = tmp_path / "sample.docx"
+    doc.save(str(docx_path))
+    return docx_path
 
 
 @pytest.fixture
@@ -90,15 +87,12 @@ def sample_pdf_path(tmp_path: Path) -> Path:
 @pytest.fixture
 def empty_docx_path(tmp_path: Path) -> Path:
     """내용이 없는 DOCX 파일"""
-    try:
-        from docx import Document
+    from docx import Document
 
-        doc = Document()
-        docx_path = tmp_path / "empty.docx"
-        doc.save(str(docx_path))
-        return docx_path
-    except ImportError:
-        pytest.skip("python-docx not installed")
+    doc = Document()
+    docx_path = tmp_path / "empty.docx"
+    doc.save(str(docx_path))
+    return docx_path
 
 
 # ---------------------------------------------------------------------------
