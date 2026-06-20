@@ -4,7 +4,6 @@ REQ-STT-015, REQ-STT-016, REQ-STT-017, SPEC-AUDIO-PREP-001
 """
 
 import math
-import shutil
 import struct
 import wave
 from pathlib import Path
@@ -12,9 +11,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from pydub import AudioSegment
-
-# ffmpeg 필요 테스트 건너뛰기 (CI 등 ffmpeg 미설치 환경)
-_HAS_FFMPEG = shutil.which("ffmpeg") is not None
 
 # ---------------------------------------------------------------------------
 # 테스트 헬퍼
@@ -229,33 +225,37 @@ class TestGetAudioDurationSeconds:
         with pytest.raises(ValueError, match="유효하지 않은 WAV 샘플레이트"):
             get_audio_duration_seconds(invalid_wav)
 
-    @pytest.mark.skipif(not _HAS_FFMPEG, reason="ffmpeg not installed")
-    def test_non_wav_file_uses_mediainfo(self, tmp_path: Path, monkeypatch):
+    def test_non_wav_file_uses_mediainfo(self, tmp_path: Path):
         """WAV가 아닌 파일은 mediainfo로 길이 측정"""
 
         from backend.pipeline.audio_processor import get_audio_duration_seconds
 
         mp3_path = tmp_path / "audio.mp3"
-        audio = _make_audio_segment()
-        audio.export(str(mp3_path), format="mp3")
+        mp3_path.write_bytes(b"fake mp3 bytes")
 
         # mediainfo mock
         mock_info = {"duration": "2.5"}
-        with patch("backend.pipeline.audio_processor.mediainfo", return_value=mock_info):
+        with (
+            patch("backend.pipeline.audio_processor.mediainfo", return_value=mock_info),
+            patch("backend.pipeline.audio_processor.AudioSegment.from_file") as mock_from_file,
+        ):
             duration = get_audio_duration_seconds(mp3_path)
             assert duration == 2.5
+            mock_from_file.assert_not_called()
 
-    @pytest.mark.skipif(not _HAS_FFMPEG, reason="ffmpeg not installed")
     def test_fallback_to_full_audio_load(self, tmp_path: Path):
         """mediainfo 실패 시 전체 오디오 로드로 폴백"""
         from backend.pipeline.audio_processor import get_audio_duration_seconds
 
         mp3_path = tmp_path / "audio.mp3"
+        mp3_path.write_bytes(b"fake mp3 bytes")
         audio = _make_audio_segment(duration_ms=2000)
-        audio.export(str(mp3_path), format="mp3")
 
         # mediainfo가 duration을 반환하지 않는 경우
-        with patch("backend.pipeline.audio_processor.mediainfo", return_value={}):
+        with (
+            patch("backend.pipeline.audio_processor.mediainfo", return_value={}),
+            patch("backend.pipeline.audio_processor.AudioSegment.from_file", return_value=audio),
+        ):
             duration = get_audio_duration_seconds(mp3_path)
             assert abs(duration - 2.0) < 0.1
 
