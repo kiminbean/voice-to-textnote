@@ -222,10 +222,8 @@ class HomeScreen extends ConsumerWidget {
             child: _ShortcutTile(
               icon: Icons.upload_file_rounded,
               title: '파일 업로드',
-              subtitle: 'MP3/MP4/M4A/WAV',
-              onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('녹음 화면에서 파일 업로드 흐름을 준비합니다.')),
-              ),
+              subtitle: 'WAV/MP3/M4A/OGG',
+              onTap: () => context.push('/recording'),
             ),
           ),
           const SizedBox(width: AppSpacing.sm),

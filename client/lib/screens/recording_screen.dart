@@ -2,6 +2,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:voice_to_textnote/models/meeting.dart';
@@ -13,6 +14,7 @@ import 'package:voice_to_textnote/services/permission_service.dart';
 import 'package:voice_to_textnote/theme/app_colors.dart';
 import 'package:voice_to_textnote/theme/app_spacing.dart';
 import 'package:voice_to_textnote/theme/app_typography.dart';
+import 'package:voice_to_textnote/utils/file_validator.dart';
 import 'package:voice_to_textnote/widgets/permission_dialog.dart';
 import 'package:voice_to_textnote/widgets/recording_recovery_dialog.dart';
 
@@ -243,7 +245,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
                 child: Column(
                   children: [
                     _CaptureModeStrip(
-                      onImportTap: () => _showComingSoon('파일 업로드'),
+                      onImportTap: _pickAudioFile,
                       onMeetingTap: _showMeetingLinkSheet,
                     ),
                     const SizedBox(height: AppSpacing.lg),
@@ -290,6 +292,57 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('$label 흐름을 준비했습니다.')),
     );
+  }
+
+  Future<void> _pickAudioFile() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const ['wav', 'mp3', 'm4a', 'ogg'],
+      allowMultiple: false,
+      withData: false,
+    );
+    if (!mounted || result == null) return;
+
+    final file = result.files.single;
+    final path = file.path;
+    if (path == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('선택한 파일 경로를 확인할 수 없습니다.')),
+      );
+      return;
+    }
+
+    final validation = await validateAudioFile(path);
+    if (!mounted) return;
+    if (!validation.isValid) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(validation.errorMessage ?? '지원하지 않는 파일입니다.')),
+      );
+      return;
+    }
+
+    await _createImportedMeetingAndNavigate(path, file.name);
+  }
+
+  Future<void> _createImportedMeetingAndNavigate(
+    String filePath,
+    String fileName,
+  ) async {
+    final meetingId = 'meeting_${DateTime.now().millisecondsSinceEpoch}';
+    final title = fileName.trim().isEmpty ? '업로드한 오디오' : fileName;
+    final now = DateTime.now();
+
+    final newMeeting = Meeting(
+      id: meetingId,
+      title: title,
+      createdAt: now,
+      status: MeetingStatus.processing,
+      audioFilePath: filePath,
+      vocabularyId: _selectedVocabularyId,
+    );
+
+    ref.read(meetingListProvider.notifier).addMeeting(newMeeting);
+    if (mounted) context.go('/processing/$meetingId');
   }
 
   void _showMeetingLinkSheet() {
