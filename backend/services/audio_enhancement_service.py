@@ -27,6 +27,7 @@ logger = logging.getLogger(__name__)
 
 class AudioSegment(BaseModel):
     """오디오 세그먼트 정보"""
+
     start_time: float
     end_time: float
     is_speech: bool
@@ -104,17 +105,19 @@ class AudioEnhancementService:
         elif mode == VoiceEnhancementMode.CLEAR:
             # 명확성 중심 - 고주파 강조
             # 간단한 고주강화 필터 적용
-            high_freq = np.convolve(audio, [0.1, 0.2, 0.4, 0.2, 0.1], mode='same')
+            high_freq = np.convolve(audio, [0.1, 0.2, 0.4, 0.2, 0.1], mode="same")
             enhanced = audio + 0.3 * high_freq
 
         else:  # BROADCAST
             # 방송용 - 중간 주파대 강조
-            mid_freq = np.convolve(audio, [0.2, 0.6, 0.2], mode='same')
+            mid_freq = np.convolve(audio, [0.2, 0.6, 0.2], mode="same")
             enhanced = audio + 0.5 * mid_freq
 
         return np.clip(enhanced, -1.0, 1.0)
 
-    def _detect_voice_activity(self, audio: np.ndarray, frame_length: int = 1024) -> list[AudioSegment]:
+    def _detect_voice_activity(
+        self, audio: np.ndarray, frame_length: int = 1024
+    ) -> list[AudioSegment]:
         """음성 활동 검출 (VAD)"""
         segments = []
         num_frames = max(1, int(np.ceil(len(audio) / frame_length))) if len(audio) else 0
@@ -131,17 +134,21 @@ class AudioEnhancementService:
             is_speech = rms > self.speech_threshold
             confidence = min(rms / 0.5, 1.0)  # 정규화된 신뢰도
 
-            segments.append(AudioSegment(
-                start_time=start_idx / self.sample_rate,
-                end_time=end_idx / self.sample_rate,
-                is_speech=bool(is_speech),
-                confidence=float(confidence),
-                rms_level=float(rms)
-            ))
+            segments.append(
+                AudioSegment(
+                    start_time=start_idx / self.sample_rate,
+                    end_time=end_idx / self.sample_rate,
+                    is_speech=bool(is_speech),
+                    confidence=float(confidence),
+                    rms_level=float(rms),
+                )
+            )
 
         return segments
 
-    def _extract_speech_segments(self, audio: np.ndarray, segments: list[AudioSegment]) -> np.ndarray:
+    def _extract_speech_segments(
+        self, audio: np.ndarray, segments: list[AudioSegment]
+    ) -> np.ndarray:
         """순수 음성 추출"""
         speech_segments = []
 
@@ -157,8 +164,9 @@ class AudioEnhancementService:
             # 음성이 검출되지 않으면 전체 오디오 반환
             return audio
 
-    def _calculate_quality_scores(self, original_audio: np.ndarray, enhanced_audio: np.ndarray,
-                                segments: list[AudioSegment]) -> AudioQualityScore:
+    def _calculate_quality_scores(
+        self, original_audio: np.ndarray, enhanced_audio: np.ndarray, segments: list[AudioSegment]
+    ) -> AudioQualityScore:
         """오디오 품질 점수 계산"""
 
         # 명확도 점수 (고주파 성분 강도)
@@ -170,8 +178,15 @@ class AudioEnhancementService:
             enhanced_fft = np.fft.fft(enhanced_audio[:min_len])
             high_freq_mask = np.abs(np.fft.fftfreq(min_len)) >= 0.25
             if np.any(high_freq_mask):
-                clarity_score = min(float(np.mean(np.abs(enhanced_fft[high_freq_mask]) /
-                                                 (np.abs(original_fft[high_freq_mask]) + 1e-8))), 1.0)
+                clarity_score = min(
+                    float(
+                        np.mean(
+                            np.abs(enhanced_fft[high_freq_mask])
+                            / (np.abs(original_fft[high_freq_mask]) + 1e-8)
+                        )
+                    ),
+                    1.0,
+                )
             else:
                 clarity_score = 0.0
 
@@ -180,16 +195,20 @@ class AudioEnhancementService:
         noise_level = silent_frames / len(segments) if segments else 0.0
 
         # 볼륨 레벨 (RMS 기준)
-        original_rms = np.sqrt(np.mean(original_audio**2))
-        enhanced_rms = np.sqrt(np.mean(enhanced_audio**2))
-        volume_level = min(float(enhanced_rms / (original_rms + 1e-8)), 1.0)
+        if len(original_audio) == 0 or len(enhanced_audio) == 0:
+            volume_level = 0.0
+        else:
+            original_rms = np.sqrt(np.mean(original_audio**2))
+            enhanced_rms = np.sqrt(np.mean(enhanced_audio**2))
+            volume_level = min(float(enhanced_rms / (original_rms + 1e-8)), 1.0)
 
         # 음성 활동 비율
         speech_ratio = sum(1 for s in segments if s.is_speech) / len(segments) if segments else 0.0
 
         # 전체 점수 (가중 평균)
-        overall_score = (clarity_score * 0.4 + (1 - noise_level) * 0.3 +
-                        volume_level * 0.2 + speech_ratio * 0.1)
+        overall_score = (
+            clarity_score * 0.4 + (1 - noise_level) * 0.3 + volume_level * 0.2 + speech_ratio * 0.1
+        )
 
         clarity_score = float(np.nan_to_num(clarity_score, nan=0.0, posinf=1.0, neginf=0.0))
         overall_score = float(np.nan_to_num(overall_score, nan=0.0, posinf=1.0, neginf=0.0))
@@ -199,10 +218,12 @@ class AudioEnhancementService:
             clarity_score=round(clarity_score, 3),
             noise_level=round(noise_level, 3),
             volume_level=round(volume_level, 3),
-            voice_activity_ratio=round(speech_ratio, 3)
+            voice_activity_ratio=round(speech_ratio, 3),
         )
 
-    async def enhance_audio(self, file_path: Path, request: AudioEnhancementRequest) -> EnhancementResult:
+    async def enhance_audio(
+        self, file_path: Path, request: AudioEnhancementRequest
+    ) -> EnhancementResult:
         """오디오 향상 처리"""
 
         # 1. 오디오 파일 읽기
@@ -216,7 +237,9 @@ class AudioEnhancementService:
 
         # 4. 노이즈 제거 적용
         if request.enhancement_mode != EnhancementMode.MUSIC_FOCUSED:
-            processed_audio = self._apply_noise_reduction(processed_audio, request.noise_reduction_level)
+            processed_audio = self._apply_noise_reduction(
+                processed_audio, request.noise_reduction_level
+            )
 
         # 5. 보이스 향상 적용
         if request.enhancement_mode != EnhancementMode.CLEAN:
@@ -257,7 +280,7 @@ class AudioEnhancementService:
                 "end_time": seg.end_time,
                 "is_speech": seg.is_speech,
                 "confidence": round(seg.confidence, 3),
-                "rms_level": round(seg.rms_level, 6)
+                "rms_level": round(seg.rms_level, 6),
             }
             for seg in segments
         ]
@@ -286,6 +309,6 @@ class AudioEnhancementService:
                 "enhancement_mode": request.enhancement_mode.value,
                 "noise_reduction_level": request.noise_reduction_level.value,
                 "voice_enhancement": request.voice_enhancement.value,
-                "extract_speech_only": request.extract_speech_only
-            }
+                "extract_speech_only": request.extract_speech_only,
+            },
         )
