@@ -65,6 +65,57 @@ class TestToneEngineSingleton:
         assert instance1 is instance2
 
 
+class TestLibrosaProxy:
+    """Lazy librosa proxy delegation tests."""
+
+    def setup_method(self):
+        _reset_tone_engine_singleton()
+
+    def test_proxy_temporarily_imports_real_module_when_registered_as_librosa(self):
+        """Proxy methods delegate after temporarily removing itself from sys.modules."""
+        import sys
+        import types
+
+        import backend.ml.tone_engine as tone_engine_module
+
+        proxy = tone_engine_module.librosa
+        fake_librosa = types.SimpleNamespace(
+            load=MagicMock(return_value=("waveform", 16000)),
+            pyin=MagicMock(return_value=("f0", "voiced", "probability")),
+            feature=types.SimpleNamespace(rms=MagicMock(return_value="rms")),
+        )
+        sys.modules["librosa"] = proxy
+
+        with patch("backend.ml.tone_engine.importlib.import_module", return_value=fake_librosa):
+            assert proxy.load("audio.wav") == ("waveform", 16000)
+            assert proxy.pyin("segment") == ("f0", "voiced", "probability")
+            assert proxy.feature.rms(y=[0.1]) == "rms"
+
+        assert sys.modules["librosa"] is proxy
+        fake_librosa.load.assert_called_once_with("audio.wav")
+        fake_librosa.pyin.assert_called_once_with("segment")
+        fake_librosa.feature.rms.assert_called_once_with(y=[0.1])
+
+    def test_proxy_delegates_when_another_librosa_module_is_registered(self):
+        """The fallback branch imports and delegates when sys.modules holds another module."""
+        import sys
+        import types
+
+        import backend.ml.tone_engine as tone_engine_module
+
+        proxy = tone_engine_module.librosa
+        fake_librosa = types.SimpleNamespace(load=MagicMock(return_value=("other", 8000)))
+        sys.modules["librosa"] = fake_librosa
+
+        try:
+            with patch("backend.ml.tone_engine.importlib.import_module", return_value=fake_librosa):
+                assert proxy.load("other.wav") == ("other", 8000)
+        finally:
+            sys.modules["librosa"] = proxy
+
+        fake_librosa.load.assert_called_once_with("other.wav")
+
+
 # ---------------------------------------------------------------------------
 # REQ-TONE-003: 메모리 임계값 초과 시 예외 발생 테스트
 # ---------------------------------------------------------------------------
@@ -372,6 +423,29 @@ class TestToneEngineInitialize:
 
         mock_opensmile.Smile.assert_called_once()
 
+    def test_initialize_returns_when_initialized_inside_lock(self):
+        """다른 호출이 lock 대기 중 초기화를 끝내면 opensmile을 다시 import하지 않는다."""
+        from backend.ml.tone_engine import ToneEngine
+
+        class InitializingLock:
+            def __enter__(self):
+                engine._initialized = True
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+        engine = ToneEngine.get_instance()
+        engine._initialized = False
+
+        with (
+            patch.object(ToneEngine, "_lock", InitializingLock()),
+            patch("backend.ml.tone_engine.importlib.import_module") as mock_import,
+        ):
+            engine._initialize()
+
+        mock_import.assert_not_called()
+        assert engine._smile is None
+
 
 # ---------------------------------------------------------------------------
 # _classify_tone() 분류 로직 테스트
@@ -421,15 +495,12 @@ class TestToneEngineClassifyTone:
         from backend.ml.tone_engine import ToneEngine
 
         engine = ToneEngine.get_instance()
-        # 극단적으로 낮은 값 — 어느 클래스에도 강하게 매칭되지 않음
-        prosody = {"f0_std": 50.0, "rms_energy": 0.001, "speaking_rate": 200.0}
-        tone, confidence = engine._classify_tone(prosody, duration=0.5)
-        # confidence가 임계값 미만일 수 있음
-        if confidence < 0.4:
-            assert tone == "unknown"
-        # 아니면 유효한 톤이어야 함
-        else:
-            assert tone in ("calm", "excited", "authoritative", "hesitant", "monotone", "unknown")
+        # 최고 점수 0.3966으로 confidence threshold(0.4) 바로 아래에 머무는 조합
+        prosody = {"f0_std": 39.5, "rms_energy": 0.011, "speaking_rate": 100.0}
+        tone, confidence = engine._classify_tone(prosody, duration=1.0)
+
+        assert tone == "unknown"
+        assert confidence < 0.4
 
 
 # ---------------------------------------------------------------------------
