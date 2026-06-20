@@ -3,10 +3,13 @@ STT 엔진 커버리지 추가 테스트
 커버리지 부족 라인: 109, 173-174, 208-210, 223, 239-241, 276, 315-323, 342, 434-439
 """
 
+import os
 import sys
 from pathlib import Path
 from threading import Thread
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 
 def _make_mock_mlx(transcribe_result=None):
@@ -136,6 +139,55 @@ class TestFasterWhisperLoad:
                     assert result is False
                     # 에러 로그 확인
                     assert mock_logger.error.called
+
+
+class TestForcedBackendLoad:
+    """STT_BACKEND 강제 선택 분기 테스트"""
+
+    def setup_method(self):
+        _reset_engine()
+
+    @pytest.mark.parametrize(
+        ("backend_name", "loader_name"),
+        [
+            ("mlx", "_try_load_mlx"),
+            ("faster_whisper", "_try_load_faster_whisper"),
+            ("whisper", "_try_load_whisper"),
+        ],
+    )
+    def test_load_uses_forced_backend_when_loader_succeeds(
+        self,
+        backend_name,
+        loader_name,
+    ):
+        """STT_BACKEND가 지정되면 해당 백엔드 로더 성공만으로 로드를 완료한다."""
+        from backend.ml.stt_engine import WhisperEngine
+
+        engine = WhisperEngine.get_instance()
+
+        with (
+            patch.dict(os.environ, {"STT_BACKEND": backend_name}),
+            patch.object(engine, loader_name, return_value=True) as loader,
+        ):
+            engine.load()
+
+        loader.assert_called_once()
+        assert engine.is_loaded is True
+
+    def test_load_raises_when_forced_backend_loader_fails(self):
+        """강제 지정한 백엔드 로더가 실패하면 다른 백엔드로 폴백하지 않고 실패한다."""
+        from backend.ml.stt_engine import WhisperEngine
+
+        engine = WhisperEngine.get_instance()
+
+        with (
+            patch.dict(os.environ, {"STT_BACKEND": "mlx"}),
+            patch.object(engine, "_try_load_mlx", return_value=False),
+        ):
+            with pytest.raises(RuntimeError, match="STT_BACKEND='mlx'"):
+                engine.load()
+
+        assert engine.is_loaded is False
 
 
 class TestWhisperBackendLoad:
