@@ -18,8 +18,15 @@ import 'package:voice_to_textnote/utils/file_validator.dart';
 import 'package:voice_to_textnote/widgets/permission_dialog.dart';
 import 'package:voice_to_textnote/widgets/recording_recovery_dialog.dart';
 
+enum CaptureMode { recording, upload, meeting }
+
 class RecordingScreen extends ConsumerStatefulWidget {
-  const RecordingScreen({super.key});
+  final CaptureMode initialMode;
+
+  const RecordingScreen({
+    super.key,
+    this.initialMode = CaptureMode.recording,
+  });
 
   @override
   ConsumerState<RecordingScreen> createState() => _RecordingScreenState();
@@ -32,12 +39,14 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
   late Animation<double> _scaleAnimation;
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
+  late CaptureMode _selectedMode;
   String? _selectedVocabularyId;
   bool _isPermissionChecked = false;
 
   @override
   void initState() {
     super.initState();
+    _selectedMode = widget.initialMode;
     WidgetsBinding.instance.addObserver(this);
     _scaleController = AnimationController(
       vsync: this,
@@ -245,9 +254,27 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
                 child: Column(
                   children: [
                     _CaptureModeStrip(
-                      onImportTap: _pickAudioFile,
-                      onMeetingTap: _showMeetingLinkSheet,
+                      selectedMode: _selectedMode,
+                      onRecordingTap: () {
+                        setState(() => _selectedMode = CaptureMode.recording);
+                      },
+                      onImportTap: () {
+                        setState(() => _selectedMode = CaptureMode.upload);
+                        _pickAudioFile();
+                      },
+                      onMeetingTap: () {
+                        setState(() => _selectedMode = CaptureMode.meeting);
+                        _showMeetingLinkSheet();
+                      },
                     ),
+                    if (_selectedMode == CaptureMode.upload) ...[
+                      const SizedBox(height: AppSpacing.sm),
+                      const _CaptureModeHint(
+                        icon: Icons.upload_file_rounded,
+                        title: '업로드할 파일 선택',
+                        subtitle: 'WAV, MP3, M4A, MP4, OGG 파일을 바로 처리합니다.',
+                      ),
+                    ],
                     const SizedBox(height: AppSpacing.lg),
                     _StatusPill(isRecording: isRecording, status: state.status),
                     const SizedBox(height: AppSpacing.xl),
@@ -481,10 +508,14 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
 }
 
 class _CaptureModeStrip extends StatelessWidget {
+  final CaptureMode selectedMode;
+  final VoidCallback onRecordingTap;
   final VoidCallback onImportTap;
   final VoidCallback onMeetingTap;
 
   const _CaptureModeStrip({
+    required this.selectedMode,
+    required this.onRecordingTap,
     required this.onImportTap,
     required this.onMeetingTap,
   });
@@ -504,15 +535,15 @@ class _CaptureModeStrip extends StatelessWidget {
             child: _ModeChip(
               icon: Icons.mic_rounded,
               label: '녹음',
-              selected: true,
-              onTap: () {},
+              selected: selectedMode == CaptureMode.recording,
+              onTap: onRecordingTap,
             ),
           ),
           Expanded(
             child: _ModeChip(
               icon: Icons.upload_file_rounded,
               label: '업로드',
-              selected: false,
+              selected: selectedMode == CaptureMode.upload,
               onTap: onImportTap,
             ),
           ),
@@ -520,8 +551,62 @@ class _CaptureModeStrip extends StatelessWidget {
             child: _ModeChip(
               icon: Icons.video_call_rounded,
               label: '회의 링크',
-              selected: false,
+              selected: selectedMode == CaptureMode.meeting,
               onTap: onMeetingTap,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CaptureModeHint extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+
+  const _CaptureModeHint({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = AppColors.of(context);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: scheme.primarySoft,
+        borderRadius: AppRadius.brMd,
+        border: Border.all(color: scheme.primary.withAlpha(70)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: scheme.primary),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        color: scheme.textPrimary,
+                        fontWeight: FontWeight.w800,
+                      ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: scheme.textSecondary,
+                        height: 1.35,
+                      ),
+                ),
+              ],
             ),
           ),
         ],

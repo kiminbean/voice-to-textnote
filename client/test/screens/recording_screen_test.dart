@@ -10,7 +10,10 @@ import 'package:voice_to_textnote/screens/recording_screen.dart';
 void main() {
   group('RecordingScreen', () {
     // go_router를 포함한 테스트 앱 빌더 헬퍼
-    Widget buildTestApp({List<Override> overrides = const []}) {
+    Widget buildTestApp({
+      List<Override> overrides = const [],
+      CaptureMode initialMode = CaptureMode.recording,
+    }) {
       final router = GoRouter(
         initialLocation: '/recording',
         routes: [
@@ -20,7 +23,7 @@ void main() {
           ),
           GoRoute(
             path: '/recording',
-            builder: (_, __) => const RecordingScreen(),
+            builder: (_, __) => RecordingScreen(initialMode: initialMode),
           ),
         ],
       );
@@ -49,6 +52,16 @@ void main() {
       expect(find.text('Live Transcript'), findsOneWidget);
       expect(find.text('업로드'), findsOneWidget);
       expect(find.text('회의 링크'), findsOneWidget);
+    });
+
+    testWidgets('업로드 초기 모드로 진입하면 파일 선택 안내가 표시되어야 함',
+        (WidgetTester tester) async {
+      await tester.pumpWidget(buildTestApp(initialMode: CaptureMode.upload));
+      await tester.pumpAndSettle();
+
+      expect(find.text('업로드할 파일 선택'), findsOneWidget);
+      expect(
+          find.text('WAV, MP3, M4A, MP4, OGG 파일을 바로 처리합니다.'), findsOneWidget);
     });
 
     // 녹음 버튼 탭 후 상태 확인 (실제 마이크 없이 테스트)

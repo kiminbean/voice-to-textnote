@@ -5,6 +5,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:voice_to_textnote/models/meeting.dart';
@@ -132,6 +133,38 @@ void main() {
       expect(find.text('Google Meet 회의'), findsOneWidget);
       expect(find.text('대기'), findsOneWidget);
       expect(find.text('온라인 회의'), findsWidgets);
+    });
+
+    testWidgets('파일 업로드 바로가기는 업로드 모드 녹음 화면으로 이동해야 함',
+        (WidgetTester tester) async {
+      final router = GoRouter(
+        initialLocation: '/',
+        routes: [
+          GoRoute(
+            path: '/',
+            builder: (_, __) => const HomeScreen(),
+          ),
+          GoRoute(
+            path: '/recording',
+            builder: (_, state) => Scaffold(
+              body: Text('recording:${state.uri.queryParameters['mode']}'),
+            ),
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: _onlineOverrides(mockService),
+          child: MaterialApp.router(routerConfig: router),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('파일 업로드'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('recording:upload'), findsOneWidget);
     });
 
     testWidgets('온라인 회의 카드를 누르면 회의 열기와 링크 복사를 제공해야 함',
