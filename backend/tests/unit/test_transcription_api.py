@@ -7,9 +7,9 @@ import json
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 from fastapi import status
 from fastapi.testclient import TestClient
 
@@ -112,29 +112,26 @@ class TestUploadTranscription:
             for e in data["message"]
         )
 
-    @pytest.mark.skip(reason="대용량 파일 생성으로 인한 테스트 시간 초과")
-    def test_upload_file_too_large(self, client, monkeypatch):
+    def test_upload_file_too_large(self, client, test_audio_bytes, tmp_path):
         """
-        Given: 파일 크기가 제한 초과 (501MB)
+        Given: 파일 크기가 설정 제한 초과
         When: 파일 업로드
         Then: 422 Unprocessable Entity
         """
-        # Settings override
-        import backend.app.config as config_module
-
-        monkeypatch.setattr(config_module.settings, "max_file_size_bytes", 500 * 1024 * 1024)
-
-        # 큰 파일 생성 (temp_path에 저장되며 크기 검증)
-        large_content = b"\x00" * (501 * 1024 * 1024)  # 501MB
         import io
 
-        large_file = io.BytesIO(large_content)
+        from backend.app.api.v1.transcription import transcription as transcription_module
 
-        response = client.post(
-            "/api/v1/transcriptions",
-            files={"file": ("large.wav", large_file, "audio/wav")},
-            data={"language": "ko"},
+        limited_settings = SimpleNamespace(
+            temp_dir=tmp_path,
+            max_file_size_bytes=1,
         )
+        with patch.object(transcription_module, "settings", limited_settings):
+            response = client.post(
+                "/api/v1/transcriptions",
+                files={"file": ("large.wav", io.BytesIO(test_audio_bytes), "audio/wav")},
+                data={"language": "ko"},
+            )
 
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
         data = response.json()
