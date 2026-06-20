@@ -26,46 +26,93 @@ import pytest
 class TestBookmarksSearchParams:
     """bookmarks.py 204-232라인: search_bookmarks 엔드포인트 파라미터 변환 커버"""
 
+    def _mock_bookmark_service(self, client):
+        from backend.app.api.v1.collaboration.bookmarks import get_bookmark_service
+
+        mock_svc = MagicMock()
+        mock_svc.search_bookmarks = AsyncMock(
+            return_value={
+                "items": [],
+                "total": 0,
+                "page": 1,
+                "page_size": 50,
+                "total_pages": 0,
+            }
+        )
+        mock_svc.get_summary = AsyncMock(
+            return_value={
+                "total_count": 0,
+                "category_counts": {},
+                "priority_counts": {},
+                "tag_counts": {},
+                "recent_bookmarks": [],
+            }
+        )
+        client.app.dependency_overrides[get_bookmark_service] = lambda: mock_svc
+        return mock_svc
+
     @pytest.mark.asyncio
     async def test_search_with_tags_csv_parsing(self, client):
         """tags 쿼리 파라미터가 쉼표로 분리되어 리스트로 변환되는지 확인"""
+        mock_svc = self._mock_bookmark_service(client)
+
         resp = client.get(
             "/api/v1/bookmarks/search",
             params={"tags": "tag1, tag2, tag3"},
         )
-        # 의존성 주입 오류(422/500)여도 파라미터 변환 로직은 실행됨
-        assert resp.status_code in (200, 401, 404, 422, 500)
+
+        assert resp.status_code == 200
+        search_request = mock_svc.search_bookmarks.await_args.args[2]
+        assert search_request.tags == ["tag1", "tag2", "tag3"]
 
     @pytest.mark.asyncio
     async def test_search_with_date_from_iso_parsing(self, client):
         """date_from ISO 파싱 (Z → +00:00 치환) 검증"""
+        mock_svc = self._mock_bookmark_service(client)
+
         resp = client.get(
             "/api/v1/bookmarks/search",
             params={"date_from": "2026-01-01T00:00:00Z"},
         )
-        assert resp.status_code in (200, 401, 404, 422, 500)
+
+        assert resp.status_code == 200
+        search_request = mock_svc.search_bookmarks.await_args.args[2]
+        assert search_request.date_from.isoformat() == "2026-01-01T00:00:00+00:00"
 
     @pytest.mark.asyncio
     async def test_search_with_date_to_iso_parsing(self, client):
         """date_to ISO 파싱 검증"""
+        mock_svc = self._mock_bookmark_service(client)
+
         resp = client.get(
             "/api/v1/bookmarks/search",
             params={"date_to": "2026-06-01T23:59:59Z"},
         )
-        assert resp.status_code in (200, 401, 404, 422, 500)
+
+        assert resp.status_code == 200
+        search_request = mock_svc.search_bookmarks.await_args.args[2]
+        assert search_request.date_to.isoformat() == "2026-06-01T23:59:59+00:00"
 
     @pytest.mark.asyncio
     async def test_search_with_category_and_priority(self, client):
         """category/priority enum 변환 경로 커버"""
+        mock_svc = self._mock_bookmark_service(client)
+
         resp = client.get(
             "/api/v1/bookmarks/search",
             params={"category": "important", "priority": "high"},
         )
-        assert resp.status_code in (200, 401, 404, 422, 500)
+
+        assert resp.status_code == 200
+        search_request = mock_svc.search_bookmarks.await_args.args[2]
+        assert search_request.category.value == "important"
+        assert search_request.priority.value == "high"
 
     @pytest.mark.asyncio
     async def test_search_with_all_params(self, client):
         """모든 파라미터 동시 전달 시 BookmarkSearchRequest 생성 경로 커버"""
+        mock_svc = self._mock_bookmark_service(client)
+
         resp = client.get(
             "/api/v1/bookmarks/search",
             params={
@@ -83,13 +130,29 @@ class TestBookmarksSearchParams:
                 "sort_order": "desc",
             },
         )
-        assert resp.status_code in (200, 401, 404, 422, 500)
+
+        assert resp.status_code == 200
+        search_request = mock_svc.search_bookmarks.await_args.args[2]
+        assert search_request.query == "테스트"
+        assert search_request.category.value == "important"
+        assert search_request.priority.value == "high"
+        assert search_request.tags == ["a", "b", "c"]
+        assert search_request.task_id == "task-123"
+        assert search_request.has_tags is True
+        assert search_request.page == 1
+        assert search_request.page_size == 20
+        assert search_request.sort_by == "created_at"
+        assert search_request.sort_order == "desc"
 
     @pytest.mark.asyncio
     async def test_get_bookmark_summary(self, client):
         """get_bookmark_summary 엔드포인트 (155라인) 커버"""
+        mock_svc = self._mock_bookmark_service(client)
+
         resp = client.get("/api/v1/bookmarks/summary")
-        assert resp.status_code in (200, 401, 404, 422, 500)
+
+        assert resp.status_code == 200
+        mock_svc.get_summary.assert_awaited_once()
 
 
 # ---------------------------------------------------------------------------
