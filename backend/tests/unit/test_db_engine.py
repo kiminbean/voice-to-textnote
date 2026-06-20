@@ -11,6 +11,12 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 
+def dispose_async_engine(engine: AsyncEngine) -> None:
+    import asyncio
+
+    asyncio.run(engine.dispose())
+
+
 class TestCreateEngine:
     """REQ-DB-001: 비동기 SQLAlchemy 엔진 팩토리 테스트"""
 
@@ -19,29 +25,41 @@ class TestCreateEngine:
         from backend.db.engine import create_engine
 
         engine = create_engine()
-        assert isinstance(engine, AsyncEngine)
+        try:
+            assert isinstance(engine, AsyncEngine)
+        finally:
+            dispose_async_engine(engine)
 
     def test_create_engine_sqlite_fallback_when_no_url(self):
         """REQ-DB-002: DATABASE_URL 미설정 시 SQLite로 폴백"""
         from backend.db.engine import create_engine
 
         engine = create_engine(database_url=None)
-        # SQLite 드라이버 확인
-        assert "sqlite" in str(engine.url)
+        try:
+            # SQLite 드라이버 확인
+            assert "sqlite" in str(engine.url)
+        finally:
+            dispose_async_engine(engine)
 
     def test_create_engine_sqlite_fallback_when_empty_string(self):
         """REQ-DB-002: 빈 문자열도 SQLite 폴백"""
         from backend.db.engine import create_engine
 
         engine = create_engine(database_url="")
-        assert "sqlite" in str(engine.url)
+        try:
+            assert "sqlite" in str(engine.url)
+        finally:
+            dispose_async_engine(engine)
 
     def test_create_engine_with_explicit_sqlite_url(self):
         """명시적 SQLite URL 사용"""
         from backend.db.engine import create_engine
 
         engine = create_engine(database_url="sqlite+aiosqlite:///:memory:")
-        assert "sqlite" in str(engine.url)
+        try:
+            assert "sqlite" in str(engine.url)
+        finally:
+            dispose_async_engine(engine)
 
     def test_create_engine_postgresql_pool_size(self):
         """REQ-DB-003: PostgreSQL 커넥션 풀 min 5, max 20 설정"""
@@ -70,8 +88,11 @@ class TestGetSessionFactory:
         from backend.db.engine import create_engine, get_session_factory
 
         engine = create_engine()
-        factory = get_session_factory(engine)
-        assert isinstance(factory, async_sessionmaker)
+        try:
+            factory = get_session_factory(engine)
+            assert isinstance(factory, async_sessionmaker)
+        finally:
+            dispose_async_engine(engine)
 
     @pytest.mark.asyncio
     async def test_session_factory_creates_async_session(self):

@@ -11,6 +11,22 @@ import pytest
 from sqlalchemy import create_engine, text
 
 
+@pytest.fixture(autouse=True)
+def dispose_created_engines(monkeypatch):
+    engines = []
+    original_create_engine = create_engine
+
+    def tracked_create_engine(*args, **kwargs):
+        engine = original_create_engine(*args, **kwargs)
+        engines.append(engine)
+        return engine
+
+    monkeypatch.setattr("backend.tests.unit.test_search_index.create_engine", tracked_create_engine)
+    yield
+    for engine in engines:
+        engine.dispose()
+
+
 class TestFTS5TableCreation:
     """FTS5 search_index 테이블 생성 검증"""
 
@@ -380,19 +396,15 @@ def get_sync_session():
     """테스트용 동기 세션 팩토리"""
     from contextlib import contextmanager
 
-    from backend.db.sync_engine import get_sync_session as actual_get_sync_session
+    from sqlalchemy import create_engine as sa_create_engine
+    from sqlalchemy.orm import Session
+
+    fallback_engine = sa_create_engine("sqlite:///:memory:", echo=False)
 
     @contextmanager
     def _wrapper(engine=None):
-        if engine is not None:
-            # 커스텀 엔진 사용 (임시 DB용)
-            from sqlalchemy.orm import Session
+        with Session(engine or fallback_engine) as session:
+            yield session
 
-            with Session(engine) as session:
-                yield session
-        else:
-            # 기본 엔진 사용
-            with actual_get_sync_session() as session:
-                yield session
-
-    return _wrapper
+    yield _wrapper
+    fallback_engine.dispose()
