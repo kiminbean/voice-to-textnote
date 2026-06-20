@@ -529,6 +529,7 @@ def check_readme_release_status(root: Path, reporter: Reporter) -> None:
     if not require_file(reporter, path, "README"):
         return
     readme = read_text(path)
+    completed_spec_count = len(re.findall(r"^✅ SPEC-", readme, re.MULTILINE))
     require_snippets(
         reporter,
         readme,
@@ -539,12 +540,20 @@ def check_readme_release_status(root: Path, reporter: Reporter) -> None:
         ],
         "README distinguishes automated readiness from final physical release readiness",
     )
-    if "Production Ready (31/31 SPECs 완료)" in readme:
+    if re.search(r"Production Ready \(\d+/\d+ SPECs 완료\)", readme):
         reporter.fail(
             "README must not claim Production Ready before strict release evidence passes"
         )
     else:
         reporter.ok("README does not overclaim Production Ready before strict evidence")
+    if "3659 백엔드 테스트" in readme and "3659개" in readme and "3999개" in readme:
+        reporter.ok("README test counts match current release validation evidence")
+    else:
+        reporter.fail("README test counts must match current 3659 backend / 3999 total evidence")
+    if f"{completed_spec_count}개 SPEC" in readme:
+        reporter.fail("README should avoid hard-coded completed SPEC counts outside the SPEC list")
+    else:
+        reporter.ok("README avoids hard-coded completed SPEC counts outside the SPEC list")
 
 
 def check_docs(root: Path, reporter: Reporter) -> None:
@@ -585,6 +594,8 @@ def check_docs(root: Path, reporter: Reporter) -> None:
         else:
             reporter.fail(f"E2E checklist missing {label}")
     procedure_doc = read_text(root / "docs/release-procedure.md")
+    readme = read_text(root / "README.md")
+    completed_spec_count = len(re.findall(r"^✅ SPEC-", readme, re.MULTILINE))
     require_snippets(
         reporter,
         procedure_doc,
@@ -603,6 +614,19 @@ def check_docs(root: Path, reporter: Reporter) -> None:
         reporter.fail("Release procedure references obsolete 6-scenario evidence schema")
     else:
         reporter.ok("Release procedure uses current 17-scenario evidence schema")
+    expected_spec_text = f"{completed_spec_count}개 SPEC 전부 완료"
+    expected_tag_text = f"{completed_spec_count} SPECs completed"
+    if expected_spec_text in procedure_doc and expected_tag_text in procedure_doc:
+        reporter.ok("Release procedure SPEC count matches README completed SPEC list")
+    else:
+        reporter.fail(
+            "Release procedure SPEC count must match README completed SPEC list "
+            f"({completed_spec_count})"
+        )
+    if "3659 passed" in procedure_doc:
+        reporter.ok("Release procedure backend test count matches latest full pytest evidence")
+    else:
+        reporter.fail("Release procedure backend test count must match latest 3659 passed evidence")
     app_store_doc = read_text(root / "docs/app-store-metadata.md")
     for snippet in [
         "App Store Connect",
