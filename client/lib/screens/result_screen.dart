@@ -226,7 +226,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     final summaryTaskId = meeting?.summaryTaskId;
 
     return DefaultTabController(
-      length: 8,
+      length: 9,
       child: Scaffold(
         appBar: AppBar(
           leading: IconButton(
@@ -315,6 +315,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
               Tab(text: '액션 아이템'),
               Tab(text: '회의록'),
               Tab(text: '마인드맵'),
+              Tab(text: '학습'),
               Tab(text: 'Q&A'),
               Tab(text: '통계'),
               Tab(text: '감정 분석'),
@@ -347,6 +348,8 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                   _MinutesTab(taskId: summaryTaskId, meeting: meeting),
                   // 마인드맵 탭: 백엔드 AI 생성 API 기반 관계 그래프
                   _MindMapTab(taskId: summaryTaskId),
+                  // 학습 탭: 요약 결과에서 플래시카드와 복습 퀴즈 생성
+                  _StudyTab(taskId: summaryTaskId),
                   // Q&A 탭: 회의 내용 질문/답변 (SPEC-QA-001)
                   _QATab(taskId: summaryTaskId ?? minutesTaskId),
                   _StatisticsTab(taskId: minutesTaskId),
@@ -2769,6 +2772,265 @@ class _SummaryTabState extends ConsumerState<_SummaryTab> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _StudyTab extends ConsumerWidget {
+  final String? taskId;
+
+  const _StudyTab({required this.taskId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (taskId == null) {
+      return const EmptyStateWidget(
+        icon: Icons.school_outlined,
+        title: '학습 자료 준비 중',
+        subtitle: '요약이 완료되면 플래시카드와 퀴즈가 생성됩니다',
+      );
+    }
+
+    final summaryAsync = ref.watch(summaryResultProvider(taskId!));
+
+    return summaryAsync.when(
+      loading: () => const Padding(
+        padding: EdgeInsets.all(16),
+        child: Card(
+          child: Padding(
+            padding: EdgeInsets.all(16),
+            child: ShimmerText(lines: 6),
+          ),
+        ),
+      ),
+      error: (error, _) => ErrorRetryWidget(
+        message: '학습 자료를 불러올 수 없습니다',
+        onRetry: () => ref.invalidate(summaryResultProvider(taskId!)),
+      ),
+      data: (result) {
+        final flashcards = _buildStudyCards(result);
+        final quizzes = _buildStudyQuizzes(result);
+
+        if (flashcards.isEmpty && quizzes.isEmpty) {
+          return const EmptyStateWidget(
+            icon: Icons.school_outlined,
+            title: '학습 자료가 없습니다',
+            subtitle: '요약, 결정 사항, 다음 단계가 생성되면 복습 자료가 표시됩니다',
+          );
+        }
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.school_outlined),
+                  const SizedBox(width: 8),
+                  Text(
+                    '플래시카드',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const Spacer(),
+                  Text('${flashcards.length}개'),
+                ],
+              ),
+              const SizedBox(height: 12),
+              ...flashcards.map((card) => _StudyFlashcard(card: card)),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  const Icon(Icons.quiz_outlined),
+                  const SizedBox(width: 8),
+                  Text(
+                    '복습 퀴즈',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const Spacer(),
+                  Text('${quizzes.length}문항'),
+                ],
+              ),
+              const SizedBox(height: 12),
+              ...quizzes.asMap().entries.map(
+                    (entry) => _StudyQuizCard(
+                      index: entry.key + 1,
+                      quiz: entry.value,
+                    ),
+                  ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  List<_StudyCardData> _buildStudyCards(SummaryResult result) {
+    final cards = <_StudyCardData>[
+      for (final decision in result.keyDecisions)
+        _StudyCardData(
+          label: '주요 결정',
+          prompt: '회의에서 확정된 결정은?',
+          answer: decision,
+        ),
+      for (final step in result.nextSteps)
+        _StudyCardData(
+          label: '다음 단계',
+          prompt: '회의 후 이어서 해야 할 일은?',
+          answer: step,
+        ),
+      for (final item in result.actionItems)
+        _StudyCardData(
+          label: '액션 아이템',
+          prompt:
+              item.assignee == null ? '누가 맡을 작업인가?' : '${item.assignee}의 작업은?',
+          answer: item.deadline == null
+              ? item.task
+              : '${item.task} (${item.deadline})',
+        ),
+    ];
+
+    if (cards.isNotEmpty) return cards;
+
+    return _summarySentences(result.summaryText)
+        .take(3)
+        .map(
+          (sentence) => _StudyCardData(
+            label: '요약',
+            prompt: '회의 핵심 내용은?',
+            answer: sentence,
+          ),
+        )
+        .toList();
+  }
+
+  List<_StudyQuizData> _buildStudyQuizzes(SummaryResult result) {
+    final quizzes = <_StudyQuizData>[];
+
+    if (result.keyDecisions.isNotEmpty) {
+      quizzes.add(_StudyQuizData(
+        question: '이번 회의에서 확정한 주요 결정은 무엇인가요?',
+        answer: result.keyDecisions.first,
+      ));
+    }
+    if (result.nextSteps.isNotEmpty) {
+      quizzes.add(_StudyQuizData(
+        question: '회의 후 가장 먼저 확인할 다음 단계는 무엇인가요?',
+        answer: result.nextSteps.first,
+      ));
+    }
+    if (result.actionItems.isNotEmpty) {
+      final item = result.actionItems.first;
+      quizzes.add(_StudyQuizData(
+        question: item.assignee == null
+            ? '액션 아이템으로 기록된 작업은 무엇인가요?'
+            : '${item.assignee}에게 배정된 작업은 무엇인가요?',
+        answer: item.task,
+      ));
+    }
+
+    if (quizzes.isNotEmpty) return quizzes;
+
+    final sentences = _summarySentences(result.summaryText);
+    if (sentences.isEmpty) return quizzes;
+
+    quizzes.add(_StudyQuizData(
+      question: '요약에서 기억해야 할 핵심 내용은 무엇인가요?',
+      answer: sentences.first,
+    ));
+    return quizzes;
+  }
+
+  List<String> _summarySentences(String summaryText) {
+    return summaryText
+        .split(RegExp(r'(?<=[.!?。！？])\s+|\n+'))
+        .map((line) => line.trim())
+        .where((line) => line.isNotEmpty)
+        .toList();
+  }
+}
+
+class _StudyCardData {
+  final String label;
+  final String prompt;
+  final String answer;
+
+  const _StudyCardData({
+    required this.label,
+    required this.prompt,
+    required this.answer,
+  });
+}
+
+class _StudyQuizData {
+  final String question;
+  final String answer;
+
+  const _StudyQuizData({
+    required this.question,
+    required this.answer,
+  });
+}
+
+class _StudyFlashcard extends StatelessWidget {
+  final _StudyCardData card;
+
+  const _StudyFlashcard({required this.card});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Chip(
+              avatar: const Icon(Icons.style_outlined, size: 18),
+              label: Text(card.label),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              card.prompt,
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+            const SizedBox(height: 8),
+            Text(card.answer, style: const TextStyle(height: 1.5)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StudyQuizCard extends StatelessWidget {
+  final int index;
+  final _StudyQuizData quiz;
+
+  const _StudyQuizCard({
+    required this.index,
+    required this.quiz,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: ExpansionTile(
+        leading: CircleAvatar(child: Text('$index')),
+        title: Text(quiz.question),
+        childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        children: [
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              '정답: ${quiz.answer}',
+              style: const TextStyle(height: 1.5),
+            ),
+          ),
+        ],
       ),
     );
   }

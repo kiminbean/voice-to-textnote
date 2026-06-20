@@ -39,6 +39,13 @@ Future<void> _pumpToMindMapTab(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
+Future<void> _pumpToStudyTab(WidgetTester tester) async {
+  await tester.ensureVisible(find.text('학습'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('학습'));
+  await tester.pumpAndSettle();
+}
+
 Finder _tabText(String label) {
   return find.descendant(
     of: find.byType(TabBar),
@@ -218,6 +225,63 @@ void main() {
       expect(find.text('1. 첫 번째 결정'), findsOneWidget);
       expect(find.text('2. 두 번째 결정'), findsOneWidget);
       expect(find.text('3. 세 번째 결정'), findsOneWidget);
+    });
+  });
+
+  group('_StudyTab - 플래시카드 및 복습 퀴즈 표시', () {
+    testWidgets('요약 결과에서 학습 카드와 퀴즈를 생성해야 함', (WidgetTester tester) async {
+      // Arrange
+      when(() => mockSumApi.getResult(any())).thenAnswer((_) async => {
+            'summary_text': 'Owll 벤치마크 결과를 공유했습니다.',
+            'action_items': [
+              {
+                'assignee': '김철수',
+                'task': '업로드 플로우 검증',
+                'deadline': '2026-03-25',
+                'priority': 'high',
+              },
+            ],
+            'key_decisions': ['MP4 업로드를 지원한다'],
+            'next_steps': ['학습 탭을 QA한다'],
+          });
+
+      // Act
+      await tester.pumpWidget(buildTestWidget([]));
+      await _pumpToStudyTab(tester);
+
+      // Assert
+      expect(find.text('플래시카드'), findsOneWidget);
+      expect(find.text('복습 퀴즈'), findsOneWidget);
+      expect(find.text('MP4 업로드를 지원한다'), findsWidgets);
+      expect(find.text('학습 탭을 QA한다'), findsWidgets);
+      expect(find.text('김철수의 작업은?'), findsOneWidget);
+      expect(find.text('업로드 플로우 검증 (2026-03-25)'), findsOneWidget);
+
+      await tester.ensureVisible(find.text('이번 회의에서 확정한 주요 결정은 무엇인가요?'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('이번 회의에서 확정한 주요 결정은 무엇인가요?'));
+      await tester.pumpAndSettle();
+      expect(find.text('정답: MP4 업로드를 지원한다'), findsOneWidget);
+    });
+
+    testWidgets('구조화 필드가 없으면 요약 문장으로 학습 자료를 생성해야 함',
+        (WidgetTester tester) async {
+      // Arrange
+      when(() => mockSumApi.getResult(any())).thenAnswer((_) async => {
+            'summary_text': '첫 번째 핵심 문장입니다. 두 번째 핵심 문장입니다.',
+            'action_items': <dynamic>[],
+            'key_decisions': <dynamic>[],
+            'next_steps': <dynamic>[],
+          });
+
+      // Act
+      await tester.pumpWidget(buildTestWidget([]));
+      await _pumpToStudyTab(tester);
+
+      // Assert
+      expect(find.text('회의 핵심 내용은?'), findsWidgets);
+      expect(find.text('첫 번째 핵심 문장입니다.'), findsWidgets);
+      expect(find.text('요약에서 기억해야 할 핵심 내용은 무엇인가요?'), findsOneWidget);
     });
   });
 
