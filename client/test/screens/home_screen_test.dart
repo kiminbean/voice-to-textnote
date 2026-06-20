@@ -165,6 +165,7 @@ void main() {
       expect(find.text('https://teams.microsoft.com/l/meetup-join/example'),
           findsOneWidget);
       expect(find.text('회의 열기'), findsOneWidget);
+      expect(find.text('캘린더 추가'), findsOneWidget);
       expect(find.text('링크 복사'), findsOneWidget);
     });
 

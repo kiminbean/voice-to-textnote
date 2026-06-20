@@ -349,30 +349,36 @@ class HomeScreen extends ConsumerWidget {
             const SizedBox(height: AppSpacing.sm),
             Text(meeting.sourceUrl ?? ''),
             const SizedBox(height: AppSpacing.lg),
-            Row(
+            Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.sm,
               children: [
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed: () => _openOnlineMeeting(context, ctx, meeting),
-                    icon: const Icon(Icons.open_in_new_rounded),
-                    label: const Text('회의 열기'),
-                  ),
+                FilledButton.icon(
+                  onPressed: () => _openOnlineMeeting(context, ctx, meeting),
+                  icon: const Icon(Icons.open_in_new_rounded),
+                  label: const Text('회의 열기'),
                 ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () {
-                      Clipboard.setData(
-                        ClipboardData(text: meeting.sourceUrl ?? ''),
-                      );
-                      Navigator.of(ctx).pop();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('회의 링크를 복사했습니다.')),
-                      );
-                    },
-                    icon: const Icon(Icons.copy_rounded),
-                    label: const Text('링크 복사'),
+                OutlinedButton.icon(
+                  onPressed: () => _addOnlineMeetingToCalendar(
+                    context,
+                    ctx,
+                    meeting,
                   ),
+                  icon: const Icon(Icons.event_available_rounded),
+                  label: const Text('캘린더 추가'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () {
+                    Clipboard.setData(
+                      ClipboardData(text: meeting.sourceUrl ?? ''),
+                    );
+                    Navigator.of(ctx).pop();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('회의 링크를 복사했습니다.')),
+                    );
+                  },
+                  icon: const Icon(Icons.copy_rounded),
+                  label: const Text('링크 복사'),
                 ),
               ],
             ),
@@ -410,6 +416,46 @@ class HomeScreen extends ConsumerWidget {
         content: Text(launched ? '회의 링크를 열었습니다.' : '회의 링크를 열 수 없습니다.'),
       ),
     );
+  }
+
+  Future<void> _addOnlineMeetingToCalendar(
+    BuildContext rootContext,
+    BuildContext sheetContext,
+    Meeting meeting,
+  ) async {
+    final sheetNavigator = Navigator.of(sheetContext);
+    final messenger = ScaffoldMessenger.of(rootContext);
+    final uri = _buildGoogleCalendarUri(meeting);
+    final launched = await launchUrl(
+      uri,
+      mode: LaunchMode.externalApplication,
+    );
+
+    sheetNavigator.pop();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(launched ? '캘린더에 추가할 수 있습니다.' : '캘린더를 열 수 없습니다.'),
+      ),
+    );
+  }
+
+  Uri _buildGoogleCalendarUri(Meeting meeting) {
+    final start = meeting.createdAt.toUtc();
+    final end = start.add(meeting.duration ?? const Duration(hours: 1));
+    return Uri.https('calendar.google.com', '/calendar/render', {
+      'action': 'TEMPLATE',
+      'text': meeting.title,
+      'details': meeting.sourceUrl ?? '',
+      'location': meeting.sourceUrl ?? '',
+      'dates': '${_calendarTimestamp(start)}/${_calendarTimestamp(end)}',
+    });
+  }
+
+  String _calendarTimestamp(DateTime value) {
+    final utc = value.toUtc();
+    String two(int n) => n.toString().padLeft(2, '0');
+    return '${utc.year}${two(utc.month)}${two(utc.day)}T'
+        '${two(utc.hour)}${two(utc.minute)}${two(utc.second)}Z';
   }
 
   String? _validateMeetingUrl(String url) {
