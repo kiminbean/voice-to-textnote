@@ -53,7 +53,7 @@ def get_vocabulary_service() -> VocabularyService:
     },
 )
 async def upload_transcription(
-    file: UploadFile = File(..., description="오디오 파일 (WAV, MP3, M4A, OGG)"),
+    file: UploadFile = File(..., description="오디오/영상 파일 (WAV, MP3, M4A, MP4, OGG)"),
     language: str = Form(default="ko", description="전사 언어 코드"),
     model: str = Form(default="mlx-community/whisper-small-mlx"),
     vocabulary_id: str | None = Form(

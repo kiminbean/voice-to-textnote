@@ -46,6 +46,14 @@ class TestVerifyFileSignatureAudio:
         header = b"\x00\x00\x00\x00XXXXM4A \x00"
         assert verify_file_signature(header, ".m4a") is False
 
+    def test_mp4_valid(self):
+        header = b"\x00\x00\x00\x20ftypisom\x00"
+        assert verify_file_signature(header, ".mp4") is True
+
+    def test_mp4_invalid(self):
+        header = b"\x00\x00\x00\x00XXXXisom\x00"
+        assert verify_file_signature(header, ".mp4") is False
+
     def test_ogg_valid(self):
         header = b"OggS\x00\x02\x00\x00\x00\x00"
         assert verify_file_signature(header, ".ogg") is True

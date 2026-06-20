@@ -222,7 +222,7 @@ class HomeScreen extends ConsumerWidget {
             child: _ShortcutTile(
               icon: Icons.upload_file_rounded,
               title: '파일 업로드',
-              subtitle: 'WAV/MP3/M4A/OGG',
+              subtitle: 'WAV/MP3/M4A/MP4/OGG',
               onTap: () => context.push('/recording'),
             ),
           ),

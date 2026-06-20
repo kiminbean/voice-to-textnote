@@ -23,7 +23,7 @@ _FORBIDDEN_WEBHOOK_HOSTS = {
 }
 
 # 허용 오디오 형식 및 MIME 타입
-ALLOWED_EXTENSIONS = {".wav", ".mp3", ".m4a", ".ogg"}
+ALLOWED_EXTENSIONS = {".wav", ".mp3", ".m4a", ".mp4", ".ogg"}
 ALLOWED_MIME_TYPES = {
     "audio/wav",
     "audio/x-wav",
@@ -32,6 +32,7 @@ ALLOWED_MIME_TYPES = {
     "audio/x-m4a",
     "audio/ogg",
     "audio/vorbis",
+    "video/mp4",
 }
 
 
@@ -52,7 +53,7 @@ def validate_audio_format(
     suffix = Path(filename).suffix.lower()
     if suffix not in ALLOWED_EXTENSIONS:
         return False, (
-            f"지원하지 않는 파일 형식입니다. 허용: WAV, MP3, M4A, OGG (받은 형식: {suffix})"
+            f"지원하지 않는 파일 형식입니다. 허용: WAV, MP3, M4A, MP4, OGG (받은 형식: {suffix})"
         )
 
     if content_type and content_type not in ALLOWED_MIME_TYPES:

@@ -34,6 +34,10 @@ class TestValidateAudioFormat:
         ok, _ = validate_audio_format("recording.m4a")
         assert ok is True
 
+    def test_valid_mp4_with_video_mime(self):
+        ok, _ = validate_audio_format("meeting.mp4", "video/mp4")
+        assert ok is True
+
     def test_valid_ogg(self):
         ok, _ = validate_audio_format("voice.ogg")
         assert ok is True

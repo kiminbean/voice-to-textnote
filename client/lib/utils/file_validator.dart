@@ -4,18 +4,20 @@ import 'dart:typed_data';
 class FileValidationResult {
   final bool isValid;
   final String? errorMessage;
-  const FileValidationResult.valid() : isValid = true, errorMessage = null;
-  const FileValidationResult.invalid(this.errorMessage)
-      : isValid = false;
+  const FileValidationResult.valid()
+      : isValid = true,
+        errorMessage = null;
+  const FileValidationResult.invalid(this.errorMessage) : isValid = false;
 }
 
-const _allowedExtensions = {'.wav', '.mp3', '.m4a', '.ogg'};
+const _allowedExtensions = {'.wav', '.mp3', '.m4a', '.mp4', '.ogg'};
 const _maxFileSizeBytes = 500 * 1024 * 1024;
 
 const _magicBytes = <String, List<int>>{
   '.wav': [0x52, 0x49, 0x46, 0x46],
   '.mp3': [0x49, 0x44, 0x33],
   '.m4a': [0x66, 0x74, 0x79, 0x70],
+  '.mp4': [0x66, 0x74, 0x79, 0x70],
   '.ogg': [0x4F, 0x67, 0x67, 0x53],
 };
 
@@ -23,6 +25,7 @@ const _magicByteOffsets = <String, int>{
   '.wav': 0,
   '.mp3': 0,
   '.m4a': 4,
+  '.mp4': 4,
   '.ogg': 0,
 };
 
@@ -76,7 +79,7 @@ Future<FileValidationResult> validateAudioFile(String filePath) async {
 
   if (!_allowedExtensions.contains(ext)) {
     return FileValidationResult.invalid(
-      '지원하지 않는 파일 형식입니다. 허용: WAV, MP3, M4A, OGG (받은 형식: $ext)',
+      '지원하지 않는 파일 형식입니다. 허용: WAV, MP3, M4A, MP4, OGG (받은 형식: $ext)',
     );
   }
 

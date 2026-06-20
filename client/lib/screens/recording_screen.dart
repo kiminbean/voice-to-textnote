@@ -297,7 +297,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
   Future<void> _pickAudioFile() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
-      allowedExtensions: const ['wav', 'mp3', 'm4a', 'ogg'],
+      allowedExtensions: const ['wav', 'mp3', 'm4a', 'mp4', 'ogg'],
       allowMultiple: false,
       withData: false,
     );

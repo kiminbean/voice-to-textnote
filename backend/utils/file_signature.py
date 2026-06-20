@@ -15,6 +15,7 @@ _AUDIO_SIGNATURES: dict[str, list[tuple[int, bytes]]] = {
     ".wav": [(0, b"RIFF"), (8, b"WAVE")],
     ".mp3": [(0, b"ID3"), (0, b"\xff\xfb"), (0, b"\xff\xf3"), (0, b"\xff\xf2")],
     ".m4a": [(4, b"ftyp")],
+    ".mp4": [(4, b"ftyp")],
     ".ogg": [(0, b"OggS")],
 }
 
