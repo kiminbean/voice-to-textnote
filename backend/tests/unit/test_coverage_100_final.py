@@ -225,31 +225,25 @@ class TestSchemaValidationCoverage:
 
     def test_schema_with_none_values(self):
         """Test schemas handle None values correctly"""
-        try:
-            from backend.app.schemas.action_item import ActionItemCreate
+        from backend.app.schemas.action_item import ActionItemCreate
 
-            # Test with optional fields as None
-            try:
-                schema = ActionItemCreate(title="Test", description=None, due_date=None)
-                assert schema.title == "Test"
-            except (TypeError, ValueError):
-                # Schema may require certain fields
-                assert True
-        except ImportError:
-            pytest.skip("action_item schema not available")
+        # Test with optional fields as None
+        try:
+            schema = ActionItemCreate(title="Test", description=None, due_date=None)
+            assert schema.title == "Test"
+        except (TypeError, ValueError):
+            # Schema may require certain fields
+            assert True
 
     def test_schema_with_invalid_types(self):
         """Test schemas reject invalid types"""
-        try:
-            from backend.app.schemas.action_item import ActionItemCreate
+        from backend.app.schemas.action_item import ActionItemCreate
 
-            with pytest.raises((TypeError, ValueError)):
-                ActionItemCreate(
-                    title=123,  # Should be string
-                    description="Test",
-                )
-        except ImportError:
-            pytest.skip("action_item schema not available")
+        with pytest.raises((TypeError, ValueError)):
+            ActionItemCreate(
+                title=123,  # Should be string
+                description="Test",
+            )
 
 
 # =============================================================================
