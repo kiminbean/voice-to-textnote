@@ -1,8 +1,8 @@
 """SPEC-OBSIDIAN-001: ObsidianService 회귀 테스트."""
 
-
 import pytest
 
+import backend.services.obsidian_service as obsidian_module
 from backend.services.obsidian_service import ObsidianService
 
 
@@ -36,7 +36,13 @@ def minutes_data():
             {"speaker_name": "Speaker 2", "text": "반갑습니다", "start": 5.0, "end": 10.0},
         ],
         "speakers": [
-            {"speaker_id": "SPEAKER_00", "speaker_name": "Speaker 1", "total_speaking_time": 5.0, "segment_count": 1, "speaking_ratio": 50.0},
+            {
+                "speaker_id": "SPEAKER_00",
+                "speaker_name": "Speaker 1",
+                "total_speaking_time": 5.0,
+                "segment_count": 1,
+                "speaking_ratio": 50.0,
+            },
         ],
         "total_duration": 600,
         "created_at": "2026-06-16T10:30:00Z",
@@ -58,7 +64,15 @@ def sentiment_data():
     return {
         "overall_sentiment": "positive",
         "overall_emotion": "joy",
-        "speakers": [{"speaker": "Speaker 1", "dominant_emotion": "joy", "positive_ratio": 0.8, "neutral_ratio": 0.2, "negative_ratio": 0.0}],
+        "speakers": [
+            {
+                "speaker": "Speaker 1",
+                "dominant_emotion": "joy",
+                "positive_ratio": 0.8,
+                "neutral_ratio": 0.2,
+                "negative_ratio": 0.0,
+            }
+        ],
     }
 
 
@@ -102,39 +116,57 @@ class TestComputeFilePath:
 
     def test_traversal_in_folder_blocked(self, service, tmp_vault, meeting_data):
         with pytest.raises(ValueError, match="탐색"):
-            service.compute_file_path(
-                str(tmp_vault), "../../../etc", "{{date}}", meeting_data
-            )
+            service.compute_file_path(str(tmp_vault), "../../../etc", "{{date}}", meeting_data)
 
     def test_traversal_in_filename_blocked(self, service, tmp_vault, meeting_data):
         with pytest.raises(ValueError, match="탐색"):
-            service.compute_file_path(
-                str(tmp_vault), "{{date}}", "../../passwd", meeting_data
-            )
+            service.compute_file_path(str(tmp_vault), "{{date}}", "../../passwd", meeting_data)
 
     def test_vault_confinement_relative_to(self, service, tmp_path, meeting_data):
         vault_a = tmp_path / "vault"
         (vault_a / ".obsidian").mkdir(parents=True)
         vault_b = tmp_path / "vault_evil"
         (vault_b / ".obsidian").mkdir(parents=True)
-        path = service.compute_file_path(
-            str(vault_a), "{{date}}", "{{title}}", meeting_data
-        )
+        path = service.compute_file_path(str(vault_a), "{{date}}", "{{title}}", meeting_data)
         assert str(path).startswith(str(vault_a))
         assert str(path).startswith(str(vault_b)) is False
 
     def test_empty_filename_fallback(self, service, tmp_vault, meeting_data):
-        path = service.compute_file_path(
-            str(tmp_vault), "{{date}}", "", meeting_data
-        )
+        path = service.compute_file_path(str(tmp_vault), "{{date}}", "", meeting_data)
         assert path.name == "untitled.md"
+
+    def test_resolved_symlink_folder_cannot_escape_vault(
+        self, service, tmp_vault, tmp_path, meeting_data
+    ):
+        outside = tmp_path / "outside"
+        outside.mkdir()
+        (tmp_vault / "linked").symlink_to(outside)
+
+        with pytest.raises(ValueError, match="vault 외부"):
+            service.compute_file_path(str(tmp_vault), "linked", "{{title}}", meeting_data)
+
+
+class TestDateParsing:
+    def test_missing_datetime_returns_none(self, service):
+        assert service._parse_datetime("") is None
+
+    def test_iso_datetime_fallback_and_invalid_datetime(self, service):
+        parsed = service._parse_datetime("2026-06-16T10:30:00+09:00")
+
+        assert parsed is not None
+        assert parsed.hour == 10
+        assert service._parse_datetime("not-a-date") is None
 
 
 class TestBuildFrontmatter:
-    def test_valid_yaml(self, service, meeting_data, minutes_data, summary_data, sentiment_data, tone_data):
+    def test_valid_yaml(
+        self, service, meeting_data, minutes_data, summary_data, sentiment_data, tone_data
+    ):
         import yaml
 
-        fm_str = service.build_frontmatter(meeting_data, minutes_data, summary_data, sentiment_data, tone_data)
+        fm_str = service.build_frontmatter(
+            meeting_data, minutes_data, summary_data, sentiment_data, tone_data
+        )
         assert fm_str.startswith("---\n")
         assert fm_str.endswith("\n---")
 
@@ -150,7 +182,11 @@ class TestBuildFrontmatter:
 
     def test_custom_tags(self, service, meeting_data, minutes_data):
         fm_str = service.build_frontmatter(
-            meeting_data, minutes_data, None, None, None,
+            meeting_data,
+            minutes_data,
+            None,
+            None,
+            None,
             custom={"additional_tags": ["work", "project-x"]},
         )
         import yaml
@@ -161,7 +197,11 @@ class TestBuildFrontmatter:
 
     def test_custom_tags_string_rejected(self, service, meeting_data, minutes_data):
         fm_str = service.build_frontmatter(
-            meeting_data, minutes_data, None, None, None,
+            meeting_data,
+            minutes_data,
+            None,
+            None,
+            None,
             custom={"additional_tags": "not_a_list"},
         )
         import yaml
@@ -171,7 +211,11 @@ class TestBuildFrontmatter:
 
     def test_custom_field_key_injection_blocked(self, service, meeting_data, minutes_data):
         fm_str = service.build_frontmatter(
-            meeting_data, minutes_data, None, None, None,
+            meeting_data,
+            minutes_data,
+            None,
+            None,
+            None,
             custom={"custom_fields": {"malicious:key": "value", "good_key": "good_value"}},
         )
         import yaml
@@ -190,8 +234,12 @@ class TestBuildFrontmatter:
 
 
 class TestBuildNoteBody:
-    def test_all_sections(self, service, meeting_data, minutes_data, summary_data, sentiment_data, tone_data):
-        body = service.build_note_body(meeting_data, minutes_data, summary_data, sentiment_data, tone_data)
+    def test_all_sections(
+        self, service, meeting_data, minutes_data, summary_data, sentiment_data, tone_data
+    ):
+        body = service.build_note_body(
+            meeting_data, minutes_data, summary_data, sentiment_data, tone_data
+        )
         assert "# 테스트 회의" in body
         assert "## 📋 개요" in body
         assert "테스트 요약입니다." in body
@@ -209,6 +257,18 @@ class TestBuildNoteBody:
         assert "## 📊 감정 분석" not in body
         assert "## 🎵 톤 분석" not in body
         assert "## 📋 개요" not in body
+
+    def test_empty_transcript_is_omitted(self, service, meeting_data):
+        body = service.build_note_body(
+            meeting_data,
+            {"segments": []},
+            None,
+            None,
+            None,
+        )
+
+        assert "## 📝 회의록" not in body
+        assert "## 🔗 링크" in body
 
 
 class TestAtomicWrite:
@@ -269,6 +329,73 @@ class TestAtomicWrite:
         target.write_text("original")
         service.atomic_write(target, "new", exist_ok=False)
         assert not list(tmp_path.glob(".obs_*.tmp"))
+
+    def test_temp_cleanup_failure_does_not_mask_atomic_write_error(
+        self, service, tmp_path, monkeypatch
+    ):
+        target = tmp_path / "note.md"
+        tmp_files = []
+        original_unlink = obsidian_module.os.unlink
+
+        def fail_replace(_tmp_path, _target):
+            raise RuntimeError("replace failed")
+
+        def fail_unlink(path):
+            tmp_files.append(path)
+            raise OSError("cleanup failed")
+
+        monkeypatch.setattr(obsidian_module.os, "replace", fail_replace)
+        monkeypatch.setattr(obsidian_module.os, "unlink", fail_unlink)
+
+        try:
+            with pytest.raises(RuntimeError, match="replace failed"):
+                service.atomic_write(target, "content")
+        finally:
+            for tmp_file in tmp_files:
+                if obsidian_module.Path(tmp_file).exists():
+                    original_unlink(tmp_file)
+
+
+class TestObsidianUriAndCompose:
+    def test_build_obsidian_uri_strips_markdown_suffix_and_encodes_path(self, service, tmp_vault):
+        note = tmp_vault / "Meetings" / "2026 06" / "회의록.md"
+        note.parent.mkdir(parents=True)
+        note.write_text("note")
+
+        uri = service.build_obsidian_uri(str(tmp_vault), note)
+
+        assert (
+            uri
+            == "obsidian://open?vault=TestVault&file=Meetings%2F2026%2006%2F%ED%9A%8C%EC%9D%98%EB%A1%9D"
+        )
+
+    def test_compose_note_joins_frontmatter_and_body(self, service, monkeypatch, meeting_data):
+        calls = []
+
+        def fake_frontmatter(*args, **kwargs):
+            calls.append(("frontmatter", args, kwargs))
+            return "---\ntitle: test\n---"
+
+        def fake_body(*args):
+            calls.append(("body", args, {}))
+            return "# Body"
+
+        monkeypatch.setattr(service, "build_frontmatter", fake_frontmatter)
+        monkeypatch.setattr(service, "build_note_body", fake_body)
+
+        note = service.compose_note(
+            meeting_data,
+            None,
+            None,
+            None,
+            None,
+            frontmatter_custom={"custom_fields": {"project": "alpha"}},
+        )
+
+        assert note == "---\ntitle: test\n---\n\n# Body"
+        assert calls[0][0] == "frontmatter"
+        assert calls[0][2] == {"custom": {"custom_fields": {"project": "alpha"}}}
+        assert calls[1][0] == "body"
 
 
 class TestSafeJsonLoad:
