@@ -224,6 +224,56 @@ class TestSummaryTaskHappyPath:
         for field in required_fields:
             assert field in result, f"결과에 '{field}' 필드 누락"
 
+    def test_template_parse_error_falls_back_to_default_summary(self):
+        """양식 메타데이터 파싱 실패 시 기본 요약으로 계속 진행"""
+        from backend.workers.tasks.summary_task import summary_task
+
+        task_id = str(uuid.uuid4())
+        min_task_id = str(uuid.uuid4())
+        template_id = str(uuid.uuid4())
+
+        mock_redis = _make_mock_redis()
+        mock_redis.get.side_effect = lambda key: (
+            json.dumps(MOCK_MIN_RESULT)
+            if f"min:result:{min_task_id}" in key
+            else ("template-raw" if f"template:{template_id}" in key else None)
+        )
+
+        def load_or_raise(raw):
+            if raw == "template-raw":
+                raise json.JSONDecodeError("bad template", raw, 0)
+            return MOCK_MIN_RESULT
+
+        mock_gen_cls = _make_mock_summary_generator()
+
+        with (
+            patch("backend.workers.tasks.summary_task._get_redis", return_value=mock_redis),
+            patch("backend.workers.tasks.summary_task.settings") as mock_settings,
+            patch("backend.workers.tasks.summary_task.SummaryGenerator", mock_gen_cls),
+            patch("backend.workers.tasks.summary_task._safe_json_load_sync", side_effect=load_or_raise),
+            patch("backend.workers.tasks.summary_task.logger") as mock_logger,
+        ):
+            mock_settings.summary_result_ttl = 86400
+            mock_settings.max_concurrent_summaries = 2
+            mock_settings.openai_api_key = "sk-test-key"
+            mock_settings.summary_model = "claude-sonnet-4-20250514"
+            mock_settings.summary_max_tokens = 2000
+
+            result = summary_task(
+                task_id=task_id,
+                minutes_task_id=min_task_id,
+                template_id=template_id,
+            )
+
+        assert result["status"] == "completed"
+        assert result["template_structure"] is None
+        mock_logger.warning.assert_any_call(
+            "양식 메타데이터 파싱 실패 - 기본 요약으로 진행",
+            task_id=task_id,
+            template_id=template_id,
+            error="bad template: line 1 column 1 (char 0)",
+        )
+
 
 # ---------------------------------------------------------------------------
 # 오류 조건 테스트
@@ -281,6 +331,28 @@ class TestSummaryTaskErrors:
 
         # 에러 메시지에 minutes_task_id가 포함되어야 함
         assert min_task_id in result["error"] or "찾을 수 없" in result["error"]
+
+    def test_minutes_result_parse_failure_returns_failed(self):
+        """회의록 결과가 JSON으로 파싱되지 않으면 failed 결과를 캐싱한다."""
+        from backend.workers.tasks.summary_task import summary_task
+
+        task_id = str(uuid.uuid4())
+        min_task_id = str(uuid.uuid4())
+
+        mock_redis = _make_mock_redis(active_count=0)
+        mock_redis.get.side_effect = lambda key: "not-json" if f"min:result:{min_task_id}" in key else None
+
+        with (
+            patch("backend.workers.tasks.summary_task._get_redis", return_value=mock_redis),
+            patch("backend.workers.tasks.summary_task.settings") as mock_settings,
+        ):
+            mock_settings.summary_result_ttl = 86400
+            mock_settings.max_concurrent_summaries = 2
+            mock_settings.openai_api_key = "sk-test-key"
+            result = summary_task(task_id=task_id, minutes_task_id=min_task_id)
+
+        assert result["status"] == "failed"
+        assert "회의록 결과 파싱 실패" in result["error_message"]
 
     def test_empty_api_key_returns_failed_immediately(self):
         """ANTHROPIC_API_KEY 빈 값 → 즉시 실패, 재시도 없음 (REQ-SUM-011)"""

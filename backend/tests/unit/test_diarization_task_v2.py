@@ -53,6 +53,43 @@ def _default_settings(tmp_path):
     return s
 
 
+class TestToneTaskTrigger:
+    """DIA 완료 후 tone task 트리거 helper 분기 테스트"""
+
+    def test_trigger_tone_task_returns_when_tone_model_disabled(self):
+        from backend.workers.tasks.diarization_task import _trigger_tone_task
+
+        settings = MagicMock()
+        settings.tone_model = ""
+
+        with (
+            patch("backend.workers.tasks.diarization_task.settings", settings),
+            patch("backend.workers.tasks.tone_task.tone_celery_task") as tone_task,
+        ):
+            _trigger_tone_task("dia-1", "/tmp/audio.wav", [{"speaker": "SPEAKER_00"}])
+
+        tone_task.delay.assert_not_called()
+
+    def test_trigger_tone_task_logs_failure_and_continues(self):
+        from backend.workers.tasks.diarization_task import _trigger_tone_task
+
+        settings = MagicMock()
+        settings.tone_model = "opensmile"
+
+        with (
+            patch("backend.workers.tasks.diarization_task.settings", settings),
+            patch("backend.workers.tasks.tone_task.tone_celery_task") as tone_task,
+            patch("backend.workers.tasks.diarization_task.logger") as logger,
+        ):
+            tone_task.delay.side_effect = RuntimeError("queue unavailable")
+            _trigger_tone_task("dia-1", "/tmp/audio.wav", [{"speaker": "SPEAKER_00"}])
+
+        logger.error.assert_called_once_with(
+            "톤 분석 태스크 트리거 실패 (파이프라인 계속)",
+            error="queue unavailable",
+        )
+
+
 # ---------------------------------------------------------------------------
 # created_at 보존 테스트 (lines 50-51, 60)
 # ---------------------------------------------------------------------------
