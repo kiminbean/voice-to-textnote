@@ -75,10 +75,11 @@
   },
   "summary": {
     "total_scenarios": 6,
-    "passed": 3,
-    "pending_manual": 3,
-    "passed_scenarios": ["http_policy", "backend_pipeline_verification", "app_install_verification"],
+    "passed": 1,
+    "pending_manual": 5,
+    "passed_scenarios": ["http_policy"],
     "pending_scenarios": ["push", "deeplink", "background_recording", "foreground_service", "pdf_share"],
+    "additional_verified_checks": ["backend_pipeline_verification", "app_install_verification"],
     "blocker_categories": {
       "external_credentials": ["push (FCM/APNs)", "deeplink (depends on push)"],
       "external_device": ["foreground_service (Android required)"],

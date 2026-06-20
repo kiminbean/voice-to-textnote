@@ -9,7 +9,7 @@
 - [x] 34개 SPEC 전부 완료
 - [x] `verify_release_readiness.py` (default) — 0 errors
 - [x] CI: Test & Lint PASS, Flutter Android PASS, Flutter iOS PASS
-- [x] 백엔드: 3374 passed, Flutter: 328 passed
+- [x] 백엔드: 3655 passed, Flutter: 340 passed, backend coverage 100.00%
 - [ ] `verify_release_readiness.py --strict` — **11 errors (이 문서의 목표)**
 
 ---
@@ -166,10 +166,12 @@ gh workflow run mobile.yml \
 
 ## Phase 4: Release
 
+Phase 4는 `python3 client/scripts/verify_release_readiness.py --strict`가 0 errors로 통과한 뒤에만 실행합니다. 현재 strict gate는 외부 secret, 물리 기기, 실제 E2E evidence가 없으면 실패해야 정상입니다.
+
 ### 4.1 README 업데이트
 
 ```markdown
-**상태**: Production Ready v1.6.0
+**상태**: Production Ready v1.6.0 — strict release readiness 0 errors 확인 후 적용
 ```
 
 ### 4.2 Git Tag + GitHub Release
