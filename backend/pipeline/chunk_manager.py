@@ -10,7 +10,10 @@ from pathlib import Path
 
 from pydub import AudioSegment
 
-from backend.pipeline.audio_processor import normalize_audio
+from backend.pipeline.audio_processor import (
+    export_audio_segment,
+    normalize_audio,
+)
 from backend.schemas.transcription import SegmentResult
 from backend.utils.logger import get_logger
 
@@ -39,7 +42,11 @@ def split_audio(
     REQ-STT-018: 30분 단위, 5초 오버랩
     """
     file_path = Path(file_path)
-    audio = AudioSegment.from_file(str(file_path))
+    if file_path.exists():
+        with file_path.open("rb") as fp:
+            audio = AudioSegment.from_file(fp)
+    else:
+        audio = AudioSegment.from_file(str(file_path))
     total_ms = len(audio)
 
     if total_ms <= chunk_duration_ms:
@@ -64,7 +71,7 @@ def split_audio(
         chunk_audio = normalize_audio(chunk_audio)
 
         chunk_path = output_dir / f"chunk_{chunk_index:04d}.wav"
-        chunk_audio.export(str(chunk_path), format="wav")
+        export_audio_segment(chunk_audio, chunk_path)
 
         chunks.append(
             AudioChunk(

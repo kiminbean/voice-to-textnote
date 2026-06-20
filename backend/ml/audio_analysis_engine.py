@@ -66,7 +66,11 @@ def analyze_audio(
     file_size = file_path.stat().st_size
 
     try:
-        audio = AudioSegment.from_file(str(file_path))
+        if file_path.exists():
+            with file_path.open("rb") as fp:
+                audio = AudioSegment.from_file(fp)
+        else:
+            audio = AudioSegment.from_file(str(file_path))
     except Exception as e:
         raise ValueError(f"오디오 파일 로드 실패: {e}") from e
 

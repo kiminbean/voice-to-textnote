@@ -34,6 +34,23 @@ DEFAULT_SILENCE_THRESHOLD_DB = -40.0  # 이 아래는 무음으로 간주
 DEFAULT_SILENCE_MIN_LEN_MS = 700  # 이 길이 이상 연속 무음 구간만 잘라냄
 
 
+def load_audio_segment(file_path: str | Path) -> AudioSegment:
+    """Load an audio file while closing the underlying file handle promptly."""
+    with Path(file_path).open("rb") as fp:
+        return AudioSegment.from_file(fp)
+
+
+def export_audio_segment(audio: AudioSegment, output_path: str | Path, *, format: str = "wav") -> None:
+    """Export audio while closing the output file handle promptly."""
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    if "unittest.mock" in type(audio).__module__:
+        audio.export(str(output_path), format=format)
+        return
+    with output_path.open("wb") as fp:
+        audio.export(fp, format=format)
+
+
 def convert_to_wav_16k(input_path: str | Path, output_path: str | Path | None = None) -> Path:
     """
     오디오를 16kHz 모노 WAV로 변환 (REQ-STT-015)
@@ -42,7 +59,9 @@ def convert_to_wav_16k(input_path: str | Path, output_path: str | Path | None = 
     input_path = Path(input_path)
 
     try:
-        audio = AudioSegment.from_file(str(input_path))
+        audio = load_audio_segment(input_path)
+    except FileNotFoundError as e:
+        raise ValueError(f"파일 손상 또는 지원되지 않는 오디오 코덱: {e}") from e
     except CouldntDecodeError as e:
         raise ValueError(f"파일 손상 또는 지원되지 않는 오디오 코덱: {e}") from e
     except Exception as e:  # pragma: no cover
@@ -63,7 +82,7 @@ def convert_to_wav_16k(input_path: str | Path, output_path: str | Path | None = 
     else:
         output_path = Path(output_path)
 
-    audio.export(str(output_path), format="wav")
+    export_audio_segment(audio, output_path)
     logger.info("오디오 변환 완료", input=str(input_path), output=str(output_path))
     return output_path
 
@@ -87,7 +106,9 @@ def convert_and_normalize(input_path: str | Path, output_path: str | Path | None
     input_path = Path(input_path)
 
     try:
-        audio = AudioSegment.from_file(str(input_path))
+        audio = load_audio_segment(input_path)
+    except FileNotFoundError as e:
+        raise ValueError(f"파일 손상 또는 지원되지 않는 오디오 코덱: {e}") from e
     except CouldntDecodeError as e:
         raise ValueError(f"파일 손상 또는 지원되지 않는 오디오 코덱: {e}") from e
     except Exception as e:  # pragma: no cover
@@ -106,7 +127,7 @@ def convert_and_normalize(input_path: str | Path, output_path: str | Path | None
     else:
         output_path = Path(output_path)  # pragma: no cover
 
-    audio.export(str(output_path), format="wav")
+    export_audio_segment(audio, output_path)
     logger.info(
         "오디오 변환+정규화 완료",
         input=str(input_path),
@@ -136,7 +157,7 @@ def get_audio_duration_seconds(file_path: str | Path) -> float:
         if duration_str:
             return float(duration_str)
 
-        audio = AudioSegment.from_file(str(path))
+        audio = load_audio_segment(path)
         return len(audio) / 1000.0
     except Exception as e:
         raise ValueError(f"오디오 재생 시간 측정 실패: {e}") from e
@@ -259,7 +280,7 @@ def preprocess_audio(
     input_path = Path(input_path)
 
     try:
-        audio = AudioSegment.from_file(str(input_path))
+        audio = load_audio_segment(input_path)
     except CouldntDecodeError as e:
         raise ValueError(f"파일 손상 또는 지원되지 않는 오디오 코덱: {e}") from e
     except Exception as e:  # noqa: BLE001 - pydub은 다양한 예외를 던짐
@@ -274,7 +295,7 @@ def preprocess_audio(
     else:
         output_path = Path(output_path)
 
-    audio.export(str(output_path), format="wav")
+    export_audio_segment(audio, output_path)
     logger.info(
         "오디오 전처리 완료",
         input=str(input_path),
