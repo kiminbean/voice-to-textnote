@@ -7,10 +7,7 @@ SPEC-BOOKMARK-001: 북마크 API 확장 엔드포인트 테스트
   - POST /api/v1/bookmarks/export    내보내기
 
 참고:
-- GET /bookmarks/summary, GET /bookmarks/search는 /{bookmark_id} 경로와
-  충돌하여 실제로 도달 불가 (route ordering issue).
-  이 테스트는 도달 가능한 POST 엔드포인트만 테스트.
-- BookmarkService에 bulk/cleanup/export 미구현 메서드는 서비스 레벨 mock으로 처리.
+- BookmarkService는 서비스 레벨 mock으로 처리하고 라우터 계약을 검증한다.
 """
 
 from unittest.mock import AsyncMock, MagicMock
@@ -232,6 +229,64 @@ class TestBookmarkCleanup:
         )
 
         assert resp.status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# GET /bookmarks/summary and /bookmarks/search
+# ---------------------------------------------------------------------------
+
+
+class TestBookmarkStaticGetRoutes:
+    """동적 /{bookmark_id}보다 정적 GET 라우트가 먼저 매칭되어야 한다."""
+
+    def test_summary_route_reaches_service(self, app_client):
+        """summary 경로가 bookmark_id UUID 파싱으로 빠지지 않아야 함."""
+        client, mock_session, mock_svc = app_client
+
+        mock_svc.get_summary = AsyncMock(
+            return_value={
+                "total_count": 0,
+                "category_counts": {},
+                "priority_counts": {},
+                "tag_counts": {},
+                "recent_bookmarks": [],
+            }
+        )
+
+        resp = client.get("/api/v1/bookmarks/summary?task_id=task-123")
+
+        assert resp.status_code == 200
+        assert resp.json()["total_count"] == 0
+        mock_svc.get_summary.assert_awaited_once_with(
+            mock_session,
+            "test-user-id",
+            "task-123",
+        )
+
+    def test_search_route_reaches_service(self, app_client):
+        """search 경로가 bookmark_id UUID 파싱으로 빠지지 않아야 함."""
+        client, mock_session, mock_svc = app_client
+
+        mock_svc.search_bookmarks = AsyncMock(
+            return_value={
+                "items": [],
+                "total": 0,
+                "page": 1,
+                "page_size": 50,
+                "total_pages": 0,
+            }
+        )
+
+        resp = client.get("/api/v1/bookmarks/search?query=important&tags=urgent,review")
+
+        assert resp.status_code == 200
+        assert resp.json()["items"] == []
+        mock_svc.search_bookmarks.assert_awaited_once()
+        args = mock_svc.search_bookmarks.await_args.args
+        assert args[0] is mock_session
+        assert args[1] == "test-user-id"
+        assert args[2].query == "important"
+        assert args[2].tags == ["urgent", "review"]
 
 
 # ---------------------------------------------------------------------------

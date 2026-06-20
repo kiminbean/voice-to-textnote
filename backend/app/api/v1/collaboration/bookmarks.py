@@ -91,39 +91,6 @@ async def list_bookmarks(
     )
 
 
-@router.get("/{bookmark_id}", response_model=BookmarkResponse)
-async def get_bookmark(
-    bookmark_id: uuid.UUID,
-    db: AsyncSession = Depends(get_db_session),
-    user: User = Depends(get_current_user),
-    svc: BookmarkService = Depends(get_bookmark_service),
-) -> BookmarkResponse:
-    bookmark = await svc.get_by_id(db, bookmark_id, user.id)
-    return BookmarkResponse.model_validate(bookmark)
-
-
-@router.patch("/{bookmark_id}", response_model=BookmarkResponse)
-async def update_bookmark(
-    bookmark_id: uuid.UUID,
-    payload: BookmarkUpdate,
-    db: AsyncSession = Depends(get_db_session),
-    user: User = Depends(get_current_user),
-    svc: BookmarkService = Depends(get_bookmark_service),
-) -> BookmarkResponse:
-    bookmark = await svc.update(db, bookmark_id, user.id, payload)
-    return BookmarkResponse.model_validate(bookmark)
-
-
-@router.delete("/{bookmark_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_bookmark(
-    bookmark_id: uuid.UUID,
-    db: AsyncSession = Depends(get_db_session),
-    user: User = Depends(get_current_user),
-    svc: BookmarkService = Depends(get_bookmark_service),
-) -> None:
-    await svc.delete(db, bookmark_id, user.id)
-
-
 # ---------------------------------------------------------------------------
 # 확장된 북마크 기능
 # ---------------------------------------------------------------------------
@@ -260,3 +227,36 @@ async def export_bookmarks(
 ):
     """북마크 내보내기"""
     return await svc.export_bookmarks(db, user.id, task_id, format)
+
+
+@router.get("/{bookmark_id}", response_model=BookmarkResponse)
+async def get_bookmark(
+    bookmark_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db_session),
+    user: User = Depends(get_current_user),
+    svc: BookmarkService = Depends(get_bookmark_service),
+) -> BookmarkResponse:
+    bookmark = await svc.get_by_id(db, bookmark_id, user.id)
+    return BookmarkResponse.model_validate(bookmark)
+
+
+@router.patch("/{bookmark_id}", response_model=BookmarkResponse)
+async def update_bookmark(
+    bookmark_id: uuid.UUID,
+    payload: BookmarkUpdate,
+    db: AsyncSession = Depends(get_db_session),
+    user: User = Depends(get_current_user),
+    svc: BookmarkService = Depends(get_bookmark_service),
+) -> BookmarkResponse:
+    bookmark = await svc.update(db, bookmark_id, user.id, payload)
+    return BookmarkResponse.model_validate(bookmark)
+
+
+@router.delete("/{bookmark_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_bookmark(
+    bookmark_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db_session),
+    user: User = Depends(get_current_user),
+    svc: BookmarkService = Depends(get_bookmark_service),
+) -> None:
+    await svc.delete(db, bookmark_id, user.id)
