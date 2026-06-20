@@ -264,16 +264,6 @@ class TestSubscriberCorruptedMessage:
 # ---------------------------------------------------------------------------
 
 
-pydub_available = True
-try:
-    import pydub  # noqa: F401
-except Exception:
-    pydub_available = False
-
-
-@pytest.mark.skipif(
-    not pydub_available, reason="pydub은 Python 3.14에서 audioop 누락으로 임포트 불가"
-)
 class TestChunkManagerTempDir:
     """split_audio가 짧은 오디오에도 디렉토리를 만들어두면 호출자가 정리할 수 있음을 확인."""
 
