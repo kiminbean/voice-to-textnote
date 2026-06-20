@@ -233,6 +233,113 @@ class TestMinutesTaskDBPersistence:
         assert result["status"] == "completed"
 
 
+class TestMinutesTaskPushNotifications:
+    """user_id가 제공된 회의록 작업의 push hook 호출 테스트"""
+
+    def test_success_sends_completed_push(self):
+        from backend.workers.tasks.minutes_task import minutes_task
+
+        task_id = str(uuid.uuid4())
+        dia_task_id = str(uuid.uuid4())
+        mock_redis = _make_mock_redis()
+        mock_redis.get.side_effect = lambda key: (
+            json.dumps(_make_mock_dia_result()) if "dia:result" in key else None
+        )
+
+        with (
+            patch("backend.workers.tasks.minutes_task._get_redis", return_value=mock_redis),
+            patch("backend.workers.tasks.minutes_task.settings") as mock_settings,
+            patch("backend.services.sync_service.persist_task_result"),
+            patch("backend.app.workers.hooks.celery_push_hooks.fire_push_sync") as push,
+        ):
+            mock_settings.minutes_result_ttl = 86400
+            mock_settings.max_concurrent_minutes = 3
+
+            result = minutes_task(
+                task_id=task_id,
+                diarization_task_id=dia_task_id,
+                output_format="json",
+                user_id="user-1",
+            )
+
+        assert result["status"] == "completed"
+        push.assert_called_once_with(
+            user_id="user-1",
+            meeting_id=task_id,
+            task_id=task_id,
+            status="completed",
+        )
+
+    def test_file_not_found_failure_sends_failed_push(self):
+        from backend.workers.tasks.minutes_task import minutes_task
+
+        task_id = str(uuid.uuid4())
+        dia_task_id = str(uuid.uuid4())
+        mock_redis = _make_mock_redis()
+        mock_redis.get.return_value = None
+
+        with (
+            patch("backend.workers.tasks.minutes_task._get_redis", return_value=mock_redis),
+            patch("backend.workers.tasks.minutes_task.settings") as mock_settings,
+            patch("backend.services.sync_service.persist_task_result"),
+            patch("backend.app.workers.hooks.celery_push_hooks.fire_push_sync") as push,
+        ):
+            mock_settings.minutes_result_ttl = 86400
+            mock_settings.max_concurrent_minutes = 3
+
+            result = minutes_task(
+                task_id=task_id,
+                diarization_task_id=dia_task_id,
+                output_format="json",
+                user_id="user-1",
+            )
+
+        assert result["status"] == "failed"
+        push.assert_called_once_with(
+            user_id="user-1",
+            meeting_id=task_id,
+            task_id=task_id,
+            status="failed",
+            error_message=result["error_message"],
+        )
+
+    def test_generic_failure_sends_failed_push(self):
+        from backend.workers.tasks.minutes_task import minutes_task
+
+        task_id = str(uuid.uuid4())
+        dia_task_id = str(uuid.uuid4())
+        mock_redis = _make_mock_redis()
+        mock_redis.get.side_effect = lambda key: (
+            json.dumps(_make_mock_dia_result(matched=False)) if "dia:result" in key else None
+        )
+
+        with (
+            patch("backend.workers.tasks.minutes_task._get_redis", return_value=mock_redis),
+            patch("backend.workers.tasks.minutes_task.settings") as mock_settings,
+            patch("backend.services.sync_service.persist_task_result"),
+            patch("backend.app.workers.hooks.celery_push_hooks.fire_push_sync") as push,
+        ):
+            mock_settings.minutes_result_ttl = 86400
+            mock_settings.max_concurrent_minutes = 3
+
+            result = minutes_task(
+                task_id=task_id,
+                diarization_task_id=dia_task_id,
+                output_format="json",
+                user_id="user-1",
+            )
+
+        assert result["status"] == "failed"
+        assert "stt_task_id" in result["error_message"]
+        push.assert_called_once_with(
+            user_id="user-1",
+            meeting_id=task_id,
+            task_id=task_id,
+            status="failed",
+            error_message=result["error_message"],
+        )
+
+
 # ---------------------------------------------------------------------------
 # 활성 작업 등록/해제 테스트
 # ---------------------------------------------------------------------------
