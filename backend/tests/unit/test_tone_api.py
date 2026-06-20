@@ -7,6 +7,7 @@ REQ-TONE-011: tone_model 빈 값 → 503 Service Unavailable
 
 import json
 import uuid
+from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
@@ -69,6 +70,14 @@ def _make_tone_status(task_id: str, status: str = "processing") -> dict:
         "message": "세그먼트별 톤 분석 중...",
         "updated_at": "2026-06-14T10:00:00+00:00",
     }
+
+
+class MapRedis:
+    def __init__(self, values: dict[str, str | None]):
+        self.values = values
+
+    async def get(self, key: str):
+        return self.values.get(key)
 
 
 # ---------------------------------------------------------------------------
@@ -299,3 +308,200 @@ class TestToneApiEndpoints:
 
         assert response.status_code in (200, 204)
         mock_redis.delete.assert_called_once()
+
+
+class TestToneMeetingLookupBranches:
+    @pytest.mark.asyncio
+    async def test_meeting_lookup_uses_direct_tone_result_when_minutes_missing(
+        self, tone_enabled_settings, monkeypatch
+    ):
+        from backend.app.api.v1.analytics import tone
+
+        monkeypatch.setattr(tone, "_lookup_minutes_result_from_db", AsyncMock(return_value=None))
+        redis = MapRedis(
+            {
+                "task:min:result:meeting-1": None,
+                "task:tone:result:meeting-1": json.dumps(_make_tone_result("meeting-1")),
+            }
+        )
+
+        response = await tone.get_tone_by_meeting("meeting-1", redis_client=redis)
+
+        assert response.task_id == "meeting-1"
+        assert response.status == "completed"
+
+    @pytest.mark.asyncio
+    async def test_meeting_lookup_raises_when_minutes_and_direct_result_missing(
+        self, tone_enabled_settings, monkeypatch
+    ):
+        from backend.app.api.v1.analytics import tone
+
+        monkeypatch.setattr(tone, "_lookup_minutes_result_from_db", AsyncMock(return_value=None))
+        redis = MapRedis(
+            {
+                "task:min:result:meeting-1": None,
+                "task:tone:result:meeting-1": None,
+            }
+        )
+
+        with pytest.raises(Exception) as exc_info:
+            await tone.get_tone_by_meeting("meeting-1", redis_client=redis)
+
+        assert getattr(exc_info.value, "status_code", None) == 404
+
+    @pytest.mark.asyncio
+    async def test_meeting_lookup_rejects_minutes_without_diarization_id(
+        self, tone_enabled_settings
+    ):
+        from backend.app.api.v1.analytics import tone
+
+        redis = MapRedis({"task:min:result:meeting-1": json.dumps({"task_id": "meeting-1"})})
+
+        with pytest.raises(Exception) as exc_info:
+            await tone.get_tone_by_meeting("meeting-1", redis_client=redis)
+
+        assert getattr(exc_info.value, "status_code", None) == 404
+
+    @pytest.mark.asyncio
+    async def test_meeting_lookup_returns_processing_status_when_tone_result_missing(
+        self, tone_enabled_settings
+    ):
+        from backend.app.api.v1.analytics import tone
+
+        redis = MapRedis(
+            {
+                "task:min:result:meeting-1": json.dumps({"diarization_task_id": "dia-1"}),
+                "task:tone:result:dia-1": None,
+                "task:tone:status:dia-1": json.dumps({"status": "processing"}),
+            }
+        )
+
+        response = await tone.get_tone_by_meeting("meeting-1", redis_client=redis)
+
+        assert response.task_id == "dia-1"
+        assert response.status == "processing"
+
+    @pytest.mark.asyncio
+    async def test_meeting_lookup_raises_when_tone_result_and_status_missing(
+        self, tone_enabled_settings
+    ):
+        from backend.app.api.v1.analytics import tone
+
+        redis = MapRedis(
+            {
+                "task:min:result:meeting-1": json.dumps({"diarization_task_id": "dia-1"}),
+                "task:tone:result:dia-1": None,
+                "task:tone:status:dia-1": None,
+            }
+        )
+
+        with pytest.raises(Exception) as exc_info:
+            await tone.get_tone_by_meeting("meeting-1", redis_client=redis)
+
+        assert getattr(exc_info.value, "status_code", None) == 404
+
+    @pytest.mark.asyncio
+    async def test_meeting_lookup_returns_tone_result_by_diarization_id(
+        self, tone_enabled_settings
+    ):
+        from backend.app.api.v1.analytics import tone
+
+        redis = MapRedis(
+            {
+                "task:min:result:meeting-1": json.dumps({"diarization_task_id": "dia-1"}),
+                "task:tone:result:dia-1": json.dumps(_make_tone_result("dia-1")),
+            }
+        )
+
+        response = await tone.get_tone_by_meeting("meeting-1", redis_client=redis)
+
+        assert response.task_id == "dia-1"
+        assert response.overall_tone == "calm"
+
+    @pytest.mark.asyncio
+    async def test_get_tone_status_raises_when_status_missing(self, tone_enabled_settings):
+        from backend.app.api.v1.analytics import tone
+
+        with pytest.raises(Exception) as exc_info:
+            await tone.get_tone_status("missing", redis_client=MapRedis({}))
+
+        assert getattr(exc_info.value, "status_code", None) == 404
+
+    @pytest.mark.asyncio
+    async def test_get_tone_result_returns_processing_status_when_result_missing(
+        self, tone_enabled_settings
+    ):
+        from backend.app.api.v1.analytics import tone
+
+        response = await tone.get_tone_result(
+            "tone-1",
+            redis_client=MapRedis(
+                {
+                    "task:tone:result:tone-1": None,
+                    "task:tone:status:tone-1": json.dumps({"status": "processing"}),
+                }
+            ),
+        )
+
+        assert response.task_id == "tone-1"
+        assert response.status == "processing"
+
+
+class TestToneMinutesDbFallback:
+    @pytest.mark.asyncio
+    async def test_lookup_minutes_result_from_db_returns_record_data(self, monkeypatch):
+        from backend.app.api.v1.analytics import tone
+        from backend.db import sync_engine
+
+        class Session:
+            def scalars(self, _stmt):
+                return SimpleNamespace(first=lambda: SimpleNamespace(result_data={"dia": "dia-1"}))
+
+        class Context:
+            def __enter__(self):
+                return Session()
+
+            def __exit__(self, *_args):
+                return False
+
+        monkeypatch.setattr(sync_engine, "get_sync_session", lambda: Context())
+
+        result = await tone._lookup_minutes_result_from_db("meeting-1", MapRedis({}))
+
+        assert json.loads(result) == {"dia": "dia-1"}
+
+    @pytest.mark.asyncio
+    async def test_lookup_minutes_result_from_db_returns_none_without_record(self, monkeypatch):
+        from backend.app.api.v1.analytics import tone
+        from backend.db import sync_engine
+
+        class Session:
+            def scalars(self, _stmt):
+                return SimpleNamespace(first=lambda: None)
+
+        class Context:
+            def __enter__(self):
+                return Session()
+
+            def __exit__(self, *_args):
+                return False
+
+        monkeypatch.setattr(sync_engine, "get_sync_session", lambda: Context())
+
+        result = await tone._lookup_minutes_result_from_db("meeting-1", MapRedis({}))
+
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_lookup_minutes_result_from_db_returns_none_on_exception(self, monkeypatch):
+        from backend.app.api.v1.analytics import tone
+        from backend.db import sync_engine
+
+        def fail_session():
+            raise RuntimeError("db unavailable")
+
+        monkeypatch.setattr(sync_engine, "get_sync_session", fail_session)
+
+        result = await tone._lookup_minutes_result_from_db("meeting-1", MapRedis({}))
+
+        assert result is None
