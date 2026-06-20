@@ -11,6 +11,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import status
+from fastapi.testclient import TestClient
 
 
 class TestUploadTranscription:
@@ -139,19 +140,16 @@ class TestUploadTranscription:
         data = response.json()
         assert any("file_too_large" in e.get("type", "") for e in data["message"])
 
-    @pytest.mark.skip(reason="Duration check uses mocked settings - needs conftest adjustment")
-    def test_upload_duration_exceeded(self, client, test_audio_file, monkeypatch):
+    def test_upload_duration_exceeded(self, client, test_audio_file):
         """
         Given: 재생 시간이 제한 초과 (5시간)
         When: 파일 업로드
         Then: 422 Unprocessable Entity
         """
-        from backend.app.config import settings
-
-        monkeypatch.setattr(settings, "max_duration_seconds", 4 * 3600)
-
-        # get_audio_duration_seconds가 5시간 반환하도록 mock
-        with patch("backend.pipeline.audio_processor.get_audio_duration_seconds") as mock_duration:
+        # upload_transcription 모듈이 직접 import한 duration 함수 바인딩을 mock
+        with patch(
+            "backend.app.api.v1.transcription.transcription.get_audio_duration_seconds"
+        ) as mock_duration:
             mock_duration.return_value = 5 * 3600
 
             with open(test_audio_file, "rb") as f:
@@ -554,7 +552,6 @@ class TestEdgeCases:
             status.HTTP_422_UNPROCESSABLE_CONTENT,
         ]
 
-    @pytest.mark.skip(reason="Redis error handling needs conftest adjustment")
     def test_get_status_redis_error(self, client, mock_redis_client):
         """
         Given: Redis 연결 실패
@@ -563,15 +560,11 @@ class TestEdgeCases:
         """
         mock_redis_client.get.side_effect = Exception("Redis down")
 
-        response = client.get(f"/api/v1/transcriptions/{uuid.uuid4()}/status")
+        no_raise_client = TestClient(client.app, raise_server_exceptions=False)
+        response = no_raise_client.get(f"/api/v1/transcriptions/{uuid.uuid4()}/status")
 
-        # 에러가 발생하면 404로 처리되지 않고 500이 될 수 있음
-        assert response.status_code in [
-            status.HTTP_404_NOT_FOUND,
-            status.HTTP_500_INTERNAL_SERVER_ERROR,
-        ]
+        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
 
-    @pytest.mark.skip(reason="Redis pipeline error handling needs conftest adjustment")
     def test_get_result_redis_pipeline_error(self, client, mock_redis_client):
         """
         Given: Redis pipeline 실패
@@ -580,13 +573,10 @@ class TestEdgeCases:
         """
         mock_redis_client._set_pipeline_results(Exception("Pipeline error"))
 
-        response = client.get(f"/api/v1/transcriptions/{uuid.uuid4()}")
+        no_raise_client = TestClient(client.app, raise_server_exceptions=False)
+        response = no_raise_client.get(f"/api/v1/transcriptions/{uuid.uuid4()}")
 
-        # 에러가 발생하면 404로 처리되지 않고 500이 될 수 있음
-        assert response.status_code in [
-            status.HTTP_404_NOT_FOUND,
-            status.HTTP_500_INTERNAL_SERVER_ERROR,
-        ]
+        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
 
     def test_upload_without_filename(self, client, test_audio_bytes):
         """
