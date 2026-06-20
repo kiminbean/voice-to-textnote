@@ -15,6 +15,7 @@ from backend.services.collab_service import (
     _redis_key_doc,
     _redis_key_presence,
     _redis_key_ts,
+    _resolve,
 )
 
 # ---------------------------------------------------------------------------
@@ -188,6 +189,53 @@ class TestAddPresence:
         assert joined is False
         assert presence == []
 
+    @pytest.mark.asyncio
+    async def test_real_redis_lua_success_returns_presence(
+        self, collab_service, sample_task_id, sample_user_id
+    ):
+        class FakeRealRedis:
+            __module__ = "redis.asyncio.client"
+
+            async def eval(self, *_args):
+                return 1
+
+            async def hgetall(self, _key):
+                return {
+                    sample_user_id: (
+                        f'{{"user_id":"{sample_user_id}","display_name":"Alice",'
+                        '"avatar_url":null,"active_field":null}'
+                    )
+                }
+
+        joined, presence = await collab_service.add_presence(
+            FakeRealRedis(), sample_task_id, sample_user_id, "Alice"
+        )
+
+        assert joined is True
+        assert presence == [
+            {
+                "user_id": sample_user_id,
+                "display_name": "Alice",
+                "avatar_url": None,
+                "active_field": None,
+            }
+        ]
+
+    @pytest.mark.asyncio
+    async def test_real_redis_lua_rejects_full_room(self, collab_service, sample_task_id):
+        class FakeRealRedis:
+            __module__ = "redis.asyncio.client"
+
+            def eval(self, *_args):
+                return 0
+
+        joined, presence = await collab_service.add_presence(
+            FakeRealRedis(), sample_task_id, "overflow", "Overflow"
+        )
+
+        assert joined is False
+        assert presence == []
+
 
 class TestRemovePresence:
     @pytest.mark.asyncio
@@ -242,6 +290,20 @@ class TestGetPresence:
         result = await collab_service.get_presence(mock_redis, sample_task_id)
         assert len(result) == 2
 
+    @pytest.mark.asyncio
+    async def test_invalid_presence_payloads_are_skipped(
+        self, collab_service, mock_redis, sample_task_id
+    ):
+        presence_key = _redis_key_presence(sample_task_id)
+        mock_redis._hashes[presence_key] = {
+            "bad-json": "{not-json",
+            "wrong-type": None,
+        }
+
+        result = await collab_service.get_presence(mock_redis, sample_task_id)
+
+        assert result == []
+
 
 class TestGetParticipantCount:
     @pytest.mark.asyncio
@@ -277,6 +339,24 @@ class TestGetDocument:
         doc, ts = await collab_service.get_document(mock_redis, sample_task_id)
         assert doc["summary_text"] == "Hello"
         assert "summary_text" in ts
+
+    @pytest.mark.asyncio
+    async def test_invalid_document_json_and_timestamp_fall_back(
+        self, collab_service, mock_redis, sample_task_id
+    ):
+        mock_redis._hashes[_redis_key_doc(sample_task_id)] = {
+            "raw": "{bad-json",
+            "none": None,
+        }
+        mock_redis._hashes[_redis_key_ts(sample_task_id)] = {
+            "raw": "not-a-date",
+            "none": None,
+        }
+
+        doc, ts = await collab_service.get_document(mock_redis, sample_task_id)
+
+        assert doc == {"raw": "{bad-json", "none": None}
+        assert ts == {}
 
 
 class TestApplyEdit:
@@ -353,6 +433,80 @@ class TestApplyEdit:
         )
         doc, _ = await collab_service.get_document(mock_redis, sample_task_id)
         assert doc["sections"] == complex_val
+
+    @pytest.mark.asyncio
+    async def test_existing_naive_timestamp_is_normalized_before_stale_compare(
+        self, collab_service, mock_redis, sample_task_id
+    ):
+        mock_redis._hashes[_redis_key_ts(sample_task_id)] = {"f1": "2025-06-13T12:00:00"}
+        older = datetime(2025, 6, 13, 11, 0, 0, tzinfo=UTC)
+
+        applied, stored_ts = await collab_service.apply_edit(
+            mock_redis, sample_task_id, "f1", "stale", older
+        )
+
+        assert applied is False
+        assert stored_ts == datetime(2025, 6, 13, 12, 0, 0, tzinfo=UTC)
+
+    @pytest.mark.asyncio
+    async def test_invalid_existing_timestamp_is_ignored(
+        self, collab_service, mock_redis, sample_task_id
+    ):
+        mock_redis._hashes[_redis_key_ts(sample_task_id)] = {"f1": "not-a-date"}
+        client_ts = datetime(2025, 6, 13, 12, 0, 0, tzinfo=UTC)
+
+        applied, stored_ts = await collab_service.apply_edit(
+            mock_redis, sample_task_id, "f1", "value", client_ts
+        )
+
+        assert applied is True
+        assert stored_ts == client_ts
+
+    @pytest.mark.asyncio
+    async def test_real_redis_lua_rejects_stale_edit_with_bytes_timestamp(
+        self, collab_service, sample_task_id
+    ):
+        stored_ts = "2025-06-13T12:00:00"
+
+        class FakeRealRedis:
+            __module__ = "redis.asyncio.client"
+
+            async def eval(self, *_args):
+                return [0, stored_ts.encode()]
+
+        applied, returned_ts = await collab_service.apply_edit(
+            FakeRealRedis(),
+            sample_task_id,
+            "f1",
+            "stale",
+            datetime(2025, 6, 13, 11, 0, 0, tzinfo=UTC),
+        )
+
+        assert applied is False
+        assert returned_ts == datetime(2025, 6, 13, 12, 0, 0, tzinfo=UTC)
+
+    @pytest.mark.asyncio
+    async def test_real_redis_lua_applies_edit_with_string_timestamp(
+        self, collab_service, sample_task_id
+    ):
+        stored_ts = "2025-06-13T12:00:00+00:00"
+
+        class FakeRealRedis:
+            __module__ = "redis.asyncio.client"
+
+            def eval(self, *_args):
+                return [1, stored_ts]
+
+        applied, returned_ts = await collab_service.apply_edit(
+            FakeRealRedis(),
+            sample_task_id,
+            "f1",
+            "new",
+            datetime(2025, 6, 13, 12, 0, 0, tzinfo=UTC),
+        )
+
+        assert applied is True
+        assert returned_ts == datetime(2025, 6, 13, 12, 0, 0, tzinfo=UTC)
 
 
 # ---------------------------------------------------------------------------
@@ -494,3 +648,9 @@ class TestRedisKeys:
 
     def test_presence_key(self, sample_task_id):
         assert _redis_key_presence(sample_task_id) == f"collab:presence:{sample_task_id}"
+
+
+class TestResolve:
+    @pytest.mark.asyncio
+    async def test_sync_values_are_returned_directly(self):
+        assert await _resolve("ready") == "ready"
