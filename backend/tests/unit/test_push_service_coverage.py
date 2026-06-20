@@ -1,5 +1,7 @@
 """PushService production-mode and branch coverage tests."""
 
+import builtins
+import importlib
 import sys
 import types
 from types import SimpleNamespace
@@ -63,6 +65,24 @@ def _rows_result(rows):
     result = MagicMock()
     result.all.return_value = rows
     return result
+
+
+def test_firebase_exception_import_falls_back_when_sdk_missing():
+    real_import = builtins.__import__
+
+    def import_without_firebase_exceptions(name, *args, **kwargs):
+        if name == "firebase_admin.exceptions":
+            raise ImportError("firebase_admin.exceptions unavailable")
+        return real_import(name, *args, **kwargs)
+
+    try:
+        with patch("builtins.__import__", side_effect=import_without_firebase_exceptions):
+            importlib.reload(push_module)
+
+        assert push_module.FirebaseError is Exception
+        assert push_module.InvalidArgumentError is ValueError
+    finally:
+        importlib.reload(push_module)
 
 
 def test_ensure_firebase_initializes_real_app(monkeypatch):
