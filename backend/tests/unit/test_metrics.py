@@ -11,6 +11,8 @@ from unittest.mock import patch
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from prometheus_fastapi_instrumentator import routing as instrumentator_routing
+from starlette.routing import Mount, Route
 
 # ---------------------------------------------------------------------------
 # 테스트 픽스처
@@ -129,6 +131,60 @@ class TestHTTPRequestMetrics:
         response = app_with_metrics.get("/metrics")
         # 응답 내용이 비어있지 않음
         assert len(response.text) > 100
+
+
+class TestInstrumentatorRoutePatch:
+    """prometheus-fastapi-instrumentator 라우트 이름 패치 테스트"""
+
+    def test_route_patch_skips_routes_without_path_or_matches(self):
+        """path/matches가 없는 내부 라우터 객체는 무시하고 다음 라우트를 검사한다."""
+        from backend.app.metrics import _patch_instrumentator_route_matching
+
+        async def endpoint(_request):
+            return {"message": "ok"}
+
+        _patch_instrumentator_route_matching()
+
+        route_name = instrumentator_routing._get_route_name(
+            {"type": "http", "path": "/api/test", "root_path": "", "method": "GET"},
+            [object(), Route("/api/test", endpoint)],
+        )
+
+        assert route_name == "/api/test"
+
+    def test_route_patch_combines_mount_and_child_route_names(self):
+        """Mount 라우트가 FULL 매치되면 부모 path와 자식 path를 결합한다."""
+        from backend.app.metrics import _patch_instrumentator_route_matching
+
+        async def endpoint(_request):
+            return {"message": "ok"}
+
+        _patch_instrumentator_route_matching()
+
+        route_name = instrumentator_routing._get_route_name(
+            {"type": "http", "path": "/parent/child", "root_path": "", "method": "GET"},
+            [Mount("/parent", routes=[Route("/child", endpoint)])],
+        )
+
+        assert route_name == "/parent/child"
+
+    def test_route_patch_returns_none_when_mount_child_has_no_name(self):
+        """Mount 하위 라우트 이름을 찾지 못하면 부모 이름도 숨긴다."""
+        from backend.app.metrics import _patch_instrumentator_route_matching
+
+        async def endpoint(_request):
+            return {"message": "ok"}
+
+        mount = Mount("/parent", routes=[Route("/child", endpoint)])
+        mount.app.routes = [object()]
+        _patch_instrumentator_route_matching()
+
+        route_name = instrumentator_routing._get_route_name(
+            {"type": "http", "path": "/parent/child", "root_path": "", "method": "GET"},
+            [mount],
+        )
+
+        assert route_name is None
 
 
 # ---------------------------------------------------------------------------
