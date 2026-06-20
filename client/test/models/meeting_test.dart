@@ -33,17 +33,21 @@ void main() {
         createdAt: DateTime(2024, 1, 15),
         status: MeetingStatus.processing,
         duration: const Duration(minutes: 30),
+        sourceUrl: 'https://meet.google.com/abc-defg-hij',
         transcriptionTaskId: 'stt-task-001',
         diarizationTaskId: 'dia-task-001',
         minutesTaskId: 'min-task-001',
         summaryTaskId: 'sum-task-001',
+        vocabularyId: 'vocab-001',
       );
 
       expect(meeting.duration, const Duration(minutes: 30));
+      expect(meeting.sourceUrl, 'https://meet.google.com/abc-defg-hij');
       expect(meeting.transcriptionTaskId, 'stt-task-001');
       expect(meeting.diarizationTaskId, 'dia-task-001');
       expect(meeting.minutesTaskId, 'min-task-001');
       expect(meeting.summaryTaskId, 'sum-task-001');
+      expect(meeting.vocabularyId, 'vocab-001');
     });
 
     // copyWith 테스트
@@ -57,11 +61,14 @@ void main() {
 
       final updated = original.copyWith(
         status: MeetingStatus.completed,
+        sourceUrl: 'https://teams.microsoft.com/l/meetup-join/example',
         transcriptionTaskId: 'stt-task-002',
       );
 
       // 변경된 필드 확인
       expect(updated.status, MeetingStatus.completed);
+      expect(updated.sourceUrl,
+          'https://teams.microsoft.com/l/meetup-join/example');
       expect(updated.transcriptionTaskId, 'stt-task-002');
 
       // 변경되지 않은 필드 확인
@@ -78,10 +85,12 @@ void main() {
         'createdAt': '2024-01-15T10:00:00.000Z',
         'status': 'completed',
         'duration': 1800000, // 30분 (밀리초)
+        'sourceUrl': 'https://meet.google.com/abc-defg-hij',
         'transcriptionTaskId': 'stt-001',
         'diarizationTaskId': null,
         'minutesTaskId': null,
         'summaryTaskId': null,
+        'vocabularyId': 'vocab-002',
       };
 
       final meeting = Meeting.fromJson(json);
@@ -90,7 +99,9 @@ void main() {
       expect(meeting.title, 'JSON 테스트 미팅');
       expect(meeting.status, MeetingStatus.completed);
       expect(meeting.duration, const Duration(milliseconds: 1800000));
+      expect(meeting.sourceUrl, 'https://meet.google.com/abc-defg-hij');
       expect(meeting.transcriptionTaskId, 'stt-001');
+      expect(meeting.vocabularyId, 'vocab-002');
     });
 
     // JSON 역직렬화 테스트
@@ -102,6 +113,8 @@ void main() {
         createdAt: createdAt,
         status: MeetingStatus.failed,
         duration: const Duration(minutes: 45),
+        sourceUrl: 'https://zoom.us/j/123456789',
+        vocabularyId: 'vocab-003',
       );
 
       final json = meeting.toJson();
@@ -110,16 +123,21 @@ void main() {
       expect(json['title'], 'toJson 테스트');
       expect(json['status'], 'failed');
       expect(json['duration'], 2700000); // 45분 (밀리초)
+      expect(json['sourceUrl'], 'https://zoom.us/j/123456789');
+      expect(json['vocabularyId'], 'vocab-003');
     });
 
     // MeetingStatus 열거형 테스트
     test('모든 MeetingStatus 값이 존재해야 함', () {
-      expect(MeetingStatus.values, containsAll([
-        MeetingStatus.recording,
-        MeetingStatus.processing,
-        MeetingStatus.completed,
-        MeetingStatus.failed,
-      ]));
+      expect(
+          MeetingStatus.values,
+          containsAll([
+            MeetingStatus.recording,
+            MeetingStatus.scheduled,
+            MeetingStatus.processing,
+            MeetingStatus.completed,
+            MeetingStatus.failed,
+          ]));
     });
   });
 }

@@ -1,8 +1,10 @@
 // 홈 화면 - 미팅 목록 표시 (모던 미니멀)
 // @MX:NOTE: SPEC-TMPL/SEARCH/TEAM/HISTSYNC/GUEST 통합 진입점
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:voice_to_textnote/models/meeting.dart';
 import 'package:voice_to_textnote/providers/auth_provider.dart';
 import 'package:voice_to_textnote/providers/meeting_list_provider.dart';
 import 'package:voice_to_textnote/providers/theme_mode_provider.dart';
@@ -38,7 +40,7 @@ class HomeScreen extends ConsumerWidget {
               SliverToBoxAdapter(child: _buildGuestBanner(context, ref)),
             const SliverToBoxAdapter(child: OfflineBanner()),
             SliverToBoxAdapter(child: _buildOwllHero(context)),
-            SliverToBoxAdapter(child: _buildCaptureShortcuts(context)),
+            SliverToBoxAdapter(child: _buildCaptureShortcuts(context, ref)),
             // 본문
             meetingsAsync.when(
               loading: () => SliverPadding(
@@ -76,8 +78,13 @@ class HomeScreen extends ConsumerWidget {
                                 const EdgeInsets.only(bottom: AppSpacing.sm),
                             child: MeetingCard(
                               meeting: meeting,
-                              onTap: () =>
-                                  context.push('/result/${meeting.id}'),
+                              onTap: () => meeting.sourceUrl != null &&
+                                      meeting.minutesTaskId == null
+                                  ? _showOnlineMeetingDetail(
+                                      context,
+                                      meeting,
+                                    )
+                                  : context.push('/result/${meeting.id}'),
                               onLongPress: () =>
                                   _onLongPress(context, ref, meeting.id),
                             ),
@@ -208,7 +215,7 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildCaptureShortcuts(BuildContext context) {
+  Widget _buildCaptureShortcuts(BuildContext context, WidgetRef ref) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.lg,
@@ -232,7 +239,7 @@ class HomeScreen extends ConsumerWidget {
               icon: Icons.video_call_rounded,
               title: '온라인 회의',
               subtitle: 'Zoom/Meet/Teams',
-              onTap: () => _showMeetingLinkSheet(context),
+              onTap: () => _showMeetingLinkSheet(context, ref),
             ),
           ),
         ],
@@ -240,7 +247,85 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  void _showMeetingLinkSheet(BuildContext context) {
+  void _showMeetingLinkSheet(BuildContext context, WidgetRef ref) {
+    var draftUrl = '';
+    String? errorText;
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(
+          left: AppSpacing.lg,
+          right: AppSpacing.lg,
+          top: AppSpacing.sm,
+          bottom: MediaQuery.of(ctx).viewInsets.bottom + AppSpacing.xl,
+        ),
+        child: StatefulBuilder(
+          builder: (ctx, setSheetState) {
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('회의 링크 캡처',
+                    style: Theme.of(ctx).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        )),
+                const SizedBox(height: AppSpacing.md),
+                TextField(
+                  decoration: InputDecoration(
+                    prefixIcon: const Icon(Icons.link_rounded),
+                    labelText: 'Zoom, Google Meet, Teams 링크',
+                    errorText: errorText,
+                  ),
+                  keyboardType: TextInputType.url,
+                  textInputAction: TextInputAction.done,
+                  onChanged: (value) {
+                    draftUrl = value;
+                    if (errorText != null) {
+                      setSheetState(() => errorText = null);
+                    }
+                  },
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                FilledButton.icon(
+                  onPressed: () {
+                    final url = draftUrl.trim();
+                    final validationError = _validateMeetingUrl(url);
+                    if (validationError != null) {
+                      setSheetState(() => errorText = validationError);
+                      return;
+                    }
+
+                    final meeting = _createOnlineMeeting(ref, url);
+                    Navigator.of(ctx).pop();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('${meeting.title}이 준비되었습니다.')),
+                    );
+                  },
+                  icon: const Icon(Icons.smart_toy_outlined),
+                  label: const Text('AI 기록 봇 준비'),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Meeting _createOnlineMeeting(WidgetRef ref, String sourceUrl) {
+    final now = DateTime.now();
+    final meeting = Meeting(
+      id: 'meeting_${now.millisecondsSinceEpoch}',
+      title: _onlineMeetingTitle(sourceUrl),
+      createdAt: now,
+      status: MeetingStatus.scheduled,
+      sourceUrl: sourceUrl,
+    );
+    ref.read(meetingListProvider.notifier).addMeeting(meeting);
+    return meeting;
+  }
+
+  void _showOnlineMeetingDetail(BuildContext context, Meeting meeting) {
     showModalBottomSheet<void>(
       context: context,
       builder: (ctx) => Padding(
@@ -254,32 +339,51 @@ class HomeScreen extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('회의 링크 캡처',
-                style: Theme.of(ctx).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    )),
-            const SizedBox(height: AppSpacing.md),
-            const TextField(
-              decoration: InputDecoration(
-                prefixIcon: Icon(Icons.link_rounded),
-                labelText: 'Zoom, Google Meet, Teams 링크',
-              ),
+            Text(
+              meeting.title,
+              style: Theme.of(ctx).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
             ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(meeting.sourceUrl ?? ''),
             const SizedBox(height: AppSpacing.lg),
             FilledButton.icon(
               onPressed: () {
+                Clipboard.setData(ClipboardData(text: meeting.sourceUrl ?? ''));
                 Navigator.of(ctx).pop();
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('회의 링크 캡처 요청이 준비되었습니다.')),
+                  const SnackBar(content: Text('회의 링크를 복사했습니다.')),
                 );
               },
-              icon: const Icon(Icons.smart_toy_outlined),
-              label: const Text('AI 기록 봇 준비'),
+              icon: const Icon(Icons.copy_rounded),
+              label: const Text('링크 복사'),
             ),
           ],
         ),
       ),
     );
+  }
+
+  String? _validateMeetingUrl(String url) {
+    if (url.isEmpty) return '회의 링크를 입력해주세요';
+    final uri = Uri.tryParse(url);
+    if (uri == null || !uri.hasScheme || uri.host.isEmpty) {
+      return '올바른 회의 링크를 입력해주세요';
+    }
+    final host = uri.host.toLowerCase();
+    final supported = host.contains('zoom.us') ||
+        host.contains('meet.google.com') ||
+        host.contains('teams.microsoft.com');
+    return supported ? null : 'Zoom, Google Meet, Teams 링크만 지원합니다';
+  }
+
+  String _onlineMeetingTitle(String url) {
+    final host = Uri.tryParse(url)?.host.toLowerCase() ?? '';
+    if (host.contains('zoom.us')) return 'Zoom 회의';
+    if (host.contains('meet.google.com')) return 'Google Meet 회의';
+    if (host.contains('teams.microsoft.com')) return 'Microsoft Teams 회의';
+    return '온라인 회의';
   }
 
   // 메뉴 버튼

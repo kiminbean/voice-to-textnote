@@ -3,12 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:voice_to_textnote/models/meeting.dart';
+import 'package:voice_to_textnote/providers/meeting_list_provider.dart';
 import 'package:voice_to_textnote/screens/recording_screen.dart';
 
 void main() {
   group('RecordingScreen', () {
     // go_router를 포함한 테스트 앱 빌더 헬퍼
-    Widget buildTestApp() {
+    Widget buildTestApp({List<Override> overrides = const []}) {
       final router = GoRouter(
         initialLocation: '/recording',
         routes: [
@@ -24,6 +26,7 @@ void main() {
       );
 
       return ProviderScope(
+        overrides: overrides,
         child: MaterialApp.router(
           routerConfig: router,
         ),
@@ -78,5 +81,45 @@ void main() {
 
       expect(find.text('AI 녹음'), findsOneWidget);
     });
+
+    testWidgets('회의 링크 탭에서 지원 링크를 대기 미팅으로 저장해야 함', (WidgetTester tester) async {
+      final notifier = _CaptureMeetingListNotifier();
+
+      await tester.pumpWidget(buildTestApp(
+        overrides: [
+          meetingListProvider.overrideWith(() => notifier),
+        ],
+      ));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('회의 링크'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byType(TextField).last,
+        'https://zoom.us/j/123456789',
+      );
+      await tester.tap(find.text('AI 기록 봇 준비'));
+      await tester.pumpAndSettle();
+
+      expect(notifier.addedMeetings, hasLength(1));
+      expect(notifier.addedMeetings.single.title, 'Zoom 회의');
+      expect(notifier.addedMeetings.single.status, MeetingStatus.scheduled);
+      expect(notifier.addedMeetings.single.sourceUrl,
+          'https://zoom.us/j/123456789');
+      expect(find.text('홈'), findsOneWidget);
+    });
   });
+}
+
+class _CaptureMeetingListNotifier extends MeetingListNotifier {
+  final addedMeetings = <Meeting>[];
+
+  @override
+  Future<List<Meeting>> build() async => addedMeetings;
+
+  @override
+  Future<void> addMeeting(Meeting meeting) async {
+    addedMeetings.add(meeting);
+    state = AsyncData([...addedMeetings]);
+  }
 }

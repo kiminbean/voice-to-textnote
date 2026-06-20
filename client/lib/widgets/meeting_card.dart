@@ -50,9 +50,10 @@ class MeetingCard extends StatelessWidget {
                     children: [
                       Text(
                         meeting.title,
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              color: scheme.textPrimary,
-                            ),
+                        style:
+                            Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  color: scheme.textPrimary,
+                                ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -66,7 +67,10 @@ class MeetingCard extends StatelessWidget {
                             child: Text(
                               DateFormat('yyyy. MM. dd. HH:mm')
                                   .format(meeting.createdAt),
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(
                                     color: scheme.textTertiary,
                                   ),
                               maxLines: 1,
@@ -75,6 +79,23 @@ class MeetingCard extends StatelessWidget {
                           ),
                         ],
                       ),
+                      if (meeting.sourceUrl != null) ...[
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            Icon(Icons.video_call_outlined,
+                                size: 14, color: scheme.textTertiary),
+                            const SizedBox(width: 4),
+                            Text(
+                              '온라인 회의',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(color: scheme.textTertiary),
+                            ),
+                          ],
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -94,7 +115,8 @@ class MeetingCard extends StatelessWidget {
                         ),
                       ),
                     const SizedBox(height: 6),
-                    StatusBadge.auto(label: _statusLabel(meeting.status), dot: true),
+                    StatusBadge.auto(
+                        label: _statusLabel(meeting.status), dot: true),
                   ],
                 ),
               ],
@@ -107,6 +129,7 @@ class MeetingCard extends StatelessWidget {
 
   String _statusLabel(MeetingStatus status) => switch (status) {
         MeetingStatus.recording => '녹음 중',
+        MeetingStatus.scheduled => '대기',
         MeetingStatus.processing => '처리 중',
         MeetingStatus.completed => '완료',
         MeetingStatus.failed => '실패',

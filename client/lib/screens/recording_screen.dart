@@ -288,12 +288,6 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
     );
   }
 
-  void _showComingSoon(String label) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$label 흐름을 준비했습니다.')),
-    );
-  }
-
   Future<void> _pickAudioFile() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
@@ -346,46 +340,107 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
   }
 
   void _showMeetingLinkSheet() {
+    var draftUrl = '';
+    String? errorText;
     showModalBottomSheet<void>(
       context: context,
       builder: (ctx) => Padding(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.lg,
-          AppSpacing.sm,
-          AppSpacing.lg,
-          AppSpacing.xl,
+        padding: EdgeInsets.only(
+          left: AppSpacing.lg,
+          right: AppSpacing.lg,
+          top: AppSpacing.sm,
+          bottom: MediaQuery.of(ctx).viewInsets.bottom + AppSpacing.xl,
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '온라인 회의 기록',
-              style: Theme.of(ctx).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w800,
+        child: StatefulBuilder(
+          builder: (ctx, setSheetState) {
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '온라인 회의 기록',
+                  style: Theme.of(ctx).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                TextField(
+                  decoration: InputDecoration(
+                    prefixIcon: const Icon(Icons.link_rounded),
+                    labelText: '회의 링크 붙여넣기',
+                    hintText: 'Zoom, Google Meet, Microsoft Teams',
+                    errorText: errorText,
                   ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            const TextField(
-              decoration: InputDecoration(
-                prefixIcon: Icon(Icons.link_rounded),
-                labelText: '회의 링크 붙여넣기',
-                hintText: 'Zoom, Google Meet, Microsoft Teams',
-              ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            FilledButton.icon(
-              onPressed: () {
-                Navigator.of(ctx).pop();
-                _showComingSoon('온라인 회의 캡처');
-              },
-              icon: const Icon(Icons.smart_toy_outlined),
-              label: const Text('AI 기록 봇 준비'),
-            ),
-          ],
+                  keyboardType: TextInputType.url,
+                  textInputAction: TextInputAction.done,
+                  onChanged: (value) {
+                    draftUrl = value;
+                    if (errorText != null) {
+                      setSheetState(() => errorText = null);
+                    }
+                  },
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                FilledButton.icon(
+                  onPressed: () {
+                    final url = draftUrl.trim();
+                    final validationError = _validateMeetingUrl(url);
+                    if (validationError != null) {
+                      setSheetState(() => errorText = validationError);
+                      return;
+                    }
+
+                    final meeting = _createOnlineMeeting(url);
+                    Navigator.of(ctx).pop();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('${meeting.title}이 준비되었습니다.')),
+                    );
+                    context.go('/');
+                  },
+                  icon: const Icon(Icons.smart_toy_outlined),
+                  label: const Text('AI 기록 봇 준비'),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
+  }
+
+  Meeting _createOnlineMeeting(String sourceUrl) {
+    final now = DateTime.now();
+    final meeting = Meeting(
+      id: 'meeting_${now.millisecondsSinceEpoch}',
+      title: _onlineMeetingTitle(sourceUrl),
+      createdAt: now,
+      status: MeetingStatus.scheduled,
+      sourceUrl: sourceUrl,
+      vocabularyId: _selectedVocabularyId,
+    );
+    ref.read(meetingListProvider.notifier).addMeeting(meeting);
+    return meeting;
+  }
+
+  String? _validateMeetingUrl(String url) {
+    if (url.isEmpty) return '회의 링크를 입력해주세요';
+    final uri = Uri.tryParse(url);
+    if (uri == null || !uri.hasScheme || uri.host.isEmpty) {
+      return '올바른 회의 링크를 입력해주세요';
+    }
+    final host = uri.host.toLowerCase();
+    final supported = host.contains('zoom.us') ||
+        host.contains('meet.google.com') ||
+        host.contains('teams.microsoft.com');
+    return supported ? null : 'Zoom, Google Meet, Teams 링크만 지원합니다';
+  }
+
+  String _onlineMeetingTitle(String url) {
+    final host = Uri.tryParse(url)?.host.toLowerCase() ?? '';
+    if (host.contains('zoom.us')) return 'Zoom 회의';
+    if (host.contains('meet.google.com')) return 'Google Meet 회의';
+    if (host.contains('teams.microsoft.com')) return 'Microsoft Teams 회의';
+    return '온라인 회의';
   }
 
   Widget _buildVocabularySelector(BuildContext context) {

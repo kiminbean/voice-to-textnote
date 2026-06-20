@@ -105,6 +105,35 @@ void main() {
       expect(find.text('온라인 회의'), findsOneWidget);
     });
 
+    testWidgets('온라인 회의 링크를 입력하면 대기 중인 미팅 카드가 생성되어야 함',
+        (WidgetTester tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: _onlineOverrides(mockService),
+          child: const MaterialApp(
+            home: HomeScreen(),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('온라인 회의'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('회의 링크 캡처'), findsOneWidget);
+
+      await tester.enterText(
+        find.byType(TextField).last,
+        'https://meet.google.com/abc-defg-hij',
+      );
+      await tester.tap(find.text('AI 기록 봇 준비'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Google Meet 회의'), findsOneWidget);
+      expect(find.text('대기'), findsOneWidget);
+      expect(find.text('온라인 회의'), findsWidgets);
+    });
+
     // REQ-HSYNC-003: RefreshIndicator가 있어야 함
     testWidgets('홈 화면에 RefreshIndicator가 있어야 함', (WidgetTester tester) async {
       final testMeeting = Meeting(
