@@ -6,7 +6,7 @@ bookmark.py, validators.py의 미커버리지 라인 테스트 커버리지 완�
 """
 
 import asyncio
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import Request, Response
@@ -94,6 +94,94 @@ async def test_main_lifecycle_diarization_model_load_failure(client):
                 assert mock_logger.error.called
                 error_call_args = mock_logger.error.call_args
                 assert "화자 분리 모델 사전 로드 실패" in error_call_args[0][0]
+
+
+@pytest.mark.asyncio
+async def test_main_lifecycle_stt_preload_success_outside_pytest():
+    """main.py STT warm-up 성공 경로를 검증한다."""
+    from fastapi import FastAPI
+
+    from backend.app.config import Settings
+    from backend.app.main import lifespan
+
+    mock_settings = MagicMock(spec=Settings)
+    mock_settings.whisper_model = "test-whisper"
+    mock_settings.huggingface_token = None
+    mock_settings.diarization_model = "test-diarization"
+    mock_settings.tone_model = ""
+    mock_stt_engine = MagicMock()
+
+    with (
+        patch.dict("backend.app.main.os.environ", {}, clear=True),
+        patch("backend.app.main.settings", mock_settings),
+        patch("backend.app.main.validate_startup", new_callable=AsyncMock),
+        patch("backend.app.main.cleanup_shutdown", new_callable=AsyncMock),
+        patch("backend.app.main.WhisperEngine.get_instance", return_value=mock_stt_engine),
+        patch("backend.app.main.logger") as mock_logger,
+    ):
+        async with lifespan(FastAPI()):
+            pass
+
+    mock_stt_engine.load.assert_called_once_with("test-whisper")
+    assert any("STT 모델 사전 로드 완료" in str(call) for call in mock_logger.info.call_args_list)
+
+
+@pytest.mark.asyncio
+async def test_main_lifecycle_stt_preload_failure_logs_and_continues():
+    """main.py STT warm-up 실패는 로그만 남기고 lifespan을 계속 진행한다."""
+    from fastapi import FastAPI
+
+    from backend.app.config import Settings
+    from backend.app.main import lifespan
+
+    mock_settings = MagicMock(spec=Settings)
+    mock_settings.whisper_model = "test-whisper"
+    mock_settings.huggingface_token = None
+    mock_settings.diarization_model = "test-diarization"
+    mock_settings.tone_model = ""
+    mock_stt_engine = MagicMock()
+    mock_stt_engine.load.side_effect = RuntimeError("stt load failed")
+
+    with (
+        patch.dict("backend.app.main.os.environ", {}, clear=True),
+        patch("backend.app.main.settings", mock_settings),
+        patch("backend.app.main.validate_startup", new_callable=AsyncMock),
+        patch("backend.app.main.cleanup_shutdown", new_callable=AsyncMock),
+        patch("backend.app.main.WhisperEngine.get_instance", return_value=mock_stt_engine),
+        patch("backend.app.main.logger") as mock_logger,
+    ):
+        async with lifespan(FastAPI()):
+            pass
+
+    assert any("STT 모델 사전 로드 실패" in str(call) for call in mock_logger.error.call_args_list)
+
+
+@pytest.mark.asyncio
+async def test_main_lifecycle_tone_preload_failure_logs_and_continues():
+    """main.py tone warm-up 실패는 로그만 남기고 lifespan을 계속 진행한다."""
+    from fastapi import FastAPI
+
+    from backend.app.config import Settings
+    from backend.app.main import lifespan
+
+    mock_settings = MagicMock(spec=Settings)
+    mock_settings.huggingface_token = None
+    mock_settings.diarization_model = "test-diarization"
+    mock_settings.tone_model = "local-tone"
+    mock_tone_engine = MagicMock()
+    mock_tone_engine._initialize.side_effect = RuntimeError("tone load failed")
+
+    with (
+        patch("backend.app.main.settings", mock_settings),
+        patch("backend.app.main.validate_startup", new_callable=AsyncMock),
+        patch("backend.app.main.cleanup_shutdown", new_callable=AsyncMock),
+        patch("backend.app.main.ToneEngine.get_instance", return_value=mock_tone_engine),
+        patch("backend.app.main.logger") as mock_logger,
+    ):
+        async with lifespan(FastAPI()):
+            pass
+
+    assert any("톤 분석 엔진 사전 로드 실패" in str(call) for call in mock_logger.error.call_args_list)
 
 
 # =============================================================================
