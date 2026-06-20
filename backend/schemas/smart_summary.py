@@ -3,12 +3,12 @@ Smart Summary Generation API 스키마
 """
 
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
 
-class SummaryMode(str, Enum):
+class SummaryMode(StrEnum):
     """요약 모드"""
     EXECUTIVE = "executive"  # 경영진 요약 (간결, 핵심만)
     DETAILED = "detailed"    # 상세 요약 (완전한 내용)
@@ -17,14 +17,14 @@ class SummaryMode(str, Enum):
     SENTIMENT_FOCUSED = "sentiment_focused"  # 감정 분석 중심
 
 
-class SummaryLength(str, Enum):
+class SummaryLength(StrEnum):
     """요약 길이"""
     SHORT = "short"     # 짧음 (100-200자)
     MEDIUM = "medium"   # 중간 (200-500자)
     DETAILED = "detailed"  # 상세 (500-1000자)
 
 
-class MeetingType(str, Enum):
+class MeetingType(StrEnum):
     """회의 유형 자동 감지"""
     REGULAR = "regular"           # 정기 회의
     BRAINSTORMING = "brainstorming"  # 브레인스토밍
@@ -35,7 +35,7 @@ class MeetingType(str, Enum):
     EMERGENCY = "emergency"       # 긴급 회의
 
 
-class FocusArea(str, Enum):
+class FocusArea(StrEnum):
     """집중 영역"""
     ALL = "all"                  # 모든 내용 포함
     DECISIONS_ONLY = "decisions" # 결정 사항만

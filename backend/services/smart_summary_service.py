@@ -56,8 +56,8 @@ class SmartSummaryService:
         content_lower = content.lower()
 
         # 각 유형별 키워드 점수 계산
-        scores = {}
-        reasoning = []
+        scores: dict[MeetingType, int] = {}
+        reasoning: list[str] = []
 
         for meeting_type, keywords in self.keywords_by_meeting_type.items():
             score = sum(1 for keyword in keywords if keyword in content_lower)
@@ -67,7 +67,7 @@ class SmartSummaryService:
 
         # 가장 높은 점수의 유형 선택
         if scores:
-            detected_type = max(scores, key=scores.get)
+            detected_type = max(scores, key=lambda meeting_type: scores[meeting_type])
             confidence = min(scores[detected_type] / 5.0, 1.0)  # 최대 5개 키워드 기준
         else:
             detected_type = MeetingType.REGULAR
@@ -185,7 +185,7 @@ class SmartSummaryService:
                 r"^\s*결정(?!사항)[:\s]*(.*?)(?=\n|$)",
                 r"^\s*약속[:\s]*(.*?)(?=\n|$)",
             ]
-            decision_matches = []
+            decision_matches: list[str] = []
             for pattern in decision_patterns:
                 matches = re.findall(pattern, content, re.IGNORECASE | re.MULTILINE)
                 decision_matches.extend(match.strip() for match in matches if match.strip())
@@ -198,7 +198,7 @@ class SmartSummaryService:
                 r"^\s*할일[:\s]*(.*?)(?=\n|$)",
                 r"^\s*미팅액션[:\s]*(.*?)(?=\n|$)",
             ]
-            action_matches = []
+            action_matches: list[str] = []
             for pattern in action_patterns:
                 matches = re.findall(pattern, content, re.IGNORECASE | re.MULTILINE)
                 action_matches.extend(match.strip() for match in matches if match.strip())
@@ -421,7 +421,7 @@ class SmartSummaryService:
         confidence_score = min(confidence_score, 1.0)
 
         # 6. 대체 버전 생성 (선택적)
-        alternative_versions = []
+        alternative_versions: list[VersionedSummary] = []
         if request.generate_multiple_versions:
             # 다른 모드로 추가 버전 생성
             alternative_modes = [

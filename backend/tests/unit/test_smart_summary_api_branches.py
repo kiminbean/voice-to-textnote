@@ -1,5 +1,6 @@
 """Direct API branch coverage for smart summary endpoints."""
 
+import json
 from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
@@ -67,6 +68,13 @@ def _request() -> SummaryRequest:
     )
 
 
+def test_parse_status_accepts_redis_bytes_and_rejects_non_object_payload():
+    assert api._parse_status(b'{"task_id": "task-1"}') == {"task_id": "task-1"}
+
+    with pytest.raises(ValueError, match="not an object"):
+        api._parse_status('["not", "an", "object"]')
+
+
 @pytest.mark.asyncio
 async def test_create_smart_summary_uses_markdown_and_stores_completed_status():
     record = SimpleNamespace(result_data={"markdown": "# 회의록\n내용"})
@@ -89,7 +97,7 @@ async def test_create_smart_summary_uses_markdown_and_stores_completed_status():
     assert response.detected_meeting_type == MeetingType.PLANNING
     svc.generate_smart_summary.assert_awaited_once_with("# 회의록\n내용", _request())
     assert redis.setex.await_count == 2
-    completed_payload = redis.setex.await_args.args[2]
+    completed_payload = json.loads(redis.setex.await_args.args[2])
     assert completed_payload["status"] == "completed"
     assert completed_payload["progress"] == 100.0
 
@@ -134,7 +142,7 @@ async def test_create_smart_summary_persists_failed_status_when_service_raises()
     with pytest.raises(RuntimeError, match="generation failed"):
         await api.create_smart_summary("minutes-1", _request(), db, redis, svc)
 
-    failed_payload = redis.setex.await_args.args[2]
+    failed_payload = json.loads(redis.setex.await_args.args[2])
     assert failed_payload["status"] == "failed"
     assert failed_payload["error_message"] == "generation failed"
 

@@ -1,10 +1,10 @@
-"""
-Smart Summary Generation API 엔드포인트
-다양한 모드로 회의록 스마트 요약 생성
-"""
+"""Smart Summary Generation API 엔드포인트."""
 
+import ast
+import json
 import uuid
 from datetime import datetime
+from typing import Any
 
 import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends, status
@@ -37,6 +37,22 @@ def _smart_summary_error(message: str, status_code: int = 400) -> VoiceNoteError
         message=message,
         status_code=status_code,
     )
+
+
+def _serialize_status(status_data: dict[str, Any]) -> str:
+    return json.dumps(status_data, ensure_ascii=False)
+
+
+def _parse_status(raw_status: bytes | str) -> dict[str, Any]:
+    if isinstance(raw_status, bytes):
+        raw_status = raw_status.decode("utf-8")
+    try:
+        parsed = json.loads(raw_status)
+    except json.JSONDecodeError:
+        parsed = ast.literal_eval(raw_status)
+    if not isinstance(parsed, dict):
+        raise ValueError("Smart summary status payload is not an object")
+    return parsed
 
 
 @router.post(
@@ -118,13 +134,14 @@ async def create_smart_summary(
     summary_task_id = str(uuid.uuid4())
 
     # 4. Redis에 작업 상태 저장
-    task_status = {
+    created_at = datetime.now()
+    task_status: dict[str, Any] = {
         "task_id": summary_task_id,
         "status": "processing",
         "minutes_task_id": minutes_task_id,
-        "summary_request": request.model_dump(),
+        "summary_request": request.model_dump(mode="json"),
         "content_length": len(content),
-        "created_at": datetime.now().isoformat(),
+        "created_at": created_at.isoformat(),
         "progress": 0.0,
         "current_step": "analysis",
         "detected_meeting_type": None,
@@ -132,24 +149,25 @@ async def create_smart_summary(
     }
 
     redis_key = f"task:summary:smart:{summary_task_id}"
-    await redis_client.setex(redis_key, 86400, task_status)  # 24시간 TTL
+    await redis_client.setex(redis_key, 86400, _serialize_status(task_status))  # 24시간 TTL
 
     try:
         # 5. 비동기 스마트 요약 처리 시작
         summary_result = await svc.generate_smart_summary(content, request)
 
         # 6. 결과 저장
+        completed_at = datetime.now()
         task_status.update(
             {
                 "status": "completed",
-                "result": summary_result.model_dump(),
+                "result": summary_result.model_dump(mode="json"),
                 "detected_meeting_type": summary_result.meeting_detection.detected_type.value,
-                "completed_at": datetime.now().isoformat(),
+                "completed_at": completed_at.isoformat(),
                 "progress": 100.0,
             }
         )
 
-        await redis_client.setex(redis_key, 86400, task_status)
+        await redis_client.setex(redis_key, 86400, _serialize_status(task_status))
 
         # 7. 응답 생성
         return SmartSummaryResponse(
@@ -158,14 +176,14 @@ async def create_smart_summary(
             request=request,
             result=summary_result,
             detected_meeting_type=summary_result.meeting_detection.detected_type,
-            created_at=task_status["created_at"],
-            completed_at=task_status["completed_at"],
+            created_at=created_at,
+            completed_at=completed_at,
         )
 
     except Exception as e:
         # 오류 발생 시 상태 업데이트
         task_status.update({"status": "failed", "error_message": str(e)})
-        await redis_client.setex(redis_key, 86400, task_status)
+        await redis_client.setex(redis_key, 86400, _serialize_status(task_status))
 
         # 재발생
         raise
@@ -192,7 +210,7 @@ async def get_smart_summary_status(
         raise _smart_summary_error(f"요약 작업을 찾을 수 없습니다: {task_id}", status_code=404)
 
     try:
-        status_data = eval(raw_status)  # JSON 문자열을 Python 딕셔너리로 변환
+        status_data = _parse_status(raw_status)
     except Exception:
         raise _smart_summary_error("작업 상태 데이터 파싱 실패", status_code=422)
 
@@ -228,7 +246,7 @@ async def get_smart_summary_result(
         raise _smart_summary_error(f"요약 작업을 찾을 수 없습니다: {task_id}", status_code=404)
 
     try:
-        status_data = eval(raw_status)  # JSON 문자열을 Python 딕셔너리로 변환
+        status_data = _parse_status(raw_status)
     except Exception:
         raise _smart_summary_error("작업 상태 데이터 파싱 실패", status_code=422)
 
