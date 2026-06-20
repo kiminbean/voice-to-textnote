@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:voice_to_textnote/models/meeting.dart';
 import 'package:voice_to_textnote/providers/auth_provider.dart';
 import 'package:voice_to_textnote/providers/meeting_list_provider.dart';
@@ -348,19 +349,65 @@ class HomeScreen extends ConsumerWidget {
             const SizedBox(height: AppSpacing.sm),
             Text(meeting.sourceUrl ?? ''),
             const SizedBox(height: AppSpacing.lg),
-            FilledButton.icon(
-              onPressed: () {
-                Clipboard.setData(ClipboardData(text: meeting.sourceUrl ?? ''));
-                Navigator.of(ctx).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('회의 링크를 복사했습니다.')),
-                );
-              },
-              icon: const Icon(Icons.copy_rounded),
-              label: const Text('링크 복사'),
+            Row(
+              children: [
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: () => _openOnlineMeeting(context, ctx, meeting),
+                    icon: const Icon(Icons.open_in_new_rounded),
+                    label: const Text('회의 열기'),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Clipboard.setData(
+                        ClipboardData(text: meeting.sourceUrl ?? ''),
+                      );
+                      Navigator.of(ctx).pop();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('회의 링크를 복사했습니다.')),
+                      );
+                    },
+                    icon: const Icon(Icons.copy_rounded),
+                    label: const Text('링크 복사'),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Future<void> _openOnlineMeeting(
+    BuildContext rootContext,
+    BuildContext sheetContext,
+    Meeting meeting,
+  ) async {
+    final sheetNavigator = Navigator.of(sheetContext);
+    final messenger = ScaffoldMessenger.of(rootContext);
+    final sourceUrl = meeting.sourceUrl;
+    final uri = sourceUrl == null ? null : Uri.tryParse(sourceUrl);
+    if (uri == null) {
+      sheetNavigator.pop();
+      messenger.showSnackBar(
+        const SnackBar(content: Text('회의 링크를 열 수 없습니다.')),
+      );
+      return;
+    }
+
+    final launched = await launchUrl(
+      uri,
+      mode: LaunchMode.externalApplication,
+    );
+
+    sheetNavigator.pop();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(launched ? '회의 링크를 열었습니다.' : '회의 링크를 열 수 없습니다.'),
       ),
     );
   }

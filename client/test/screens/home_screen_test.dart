@@ -134,6 +134,40 @@ void main() {
       expect(find.text('온라인 회의'), findsWidgets);
     });
 
+    testWidgets('온라인 회의 카드를 누르면 회의 열기와 링크 복사를 제공해야 함',
+        (WidgetTester tester) async {
+      final testMeeting = Meeting(
+        id: 'online-001',
+        title: 'Microsoft Teams 회의',
+        createdAt: DateTime(2024, 1, 15),
+        status: MeetingStatus.scheduled,
+        sourceUrl: 'https://teams.microsoft.com/l/meetup-join/example',
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            ..._onlineOverrides(mockService),
+            meetingListProvider.overrideWith(
+              () => _MockMeetingListNotifier([testMeeting]),
+            ),
+          ],
+          child: const MaterialApp(
+            home: HomeScreen(),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Microsoft Teams 회의'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('https://teams.microsoft.com/l/meetup-join/example'),
+          findsOneWidget);
+      expect(find.text('회의 열기'), findsOneWidget);
+      expect(find.text('링크 복사'), findsOneWidget);
+    });
+
     // REQ-HSYNC-003: RefreshIndicator가 있어야 함
     testWidgets('홈 화면에 RefreshIndicator가 있어야 함', (WidgetTester tester) async {
       final testMeeting = Meeting(
