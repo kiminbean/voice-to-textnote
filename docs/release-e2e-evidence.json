@@ -1,89 +1,92 @@
 {
-  "git_revision": "1f682b4a7d156f898d4716b1f9eca748897aa6ab",
-  "generated_at": "2026-06-16T01:05:00Z",
-  "device_env": {
-    "android_device_serial": null,
-    "ios_device_udid": "00008150-000239020C08401C",
-    "ios_device_name": "Inbean의 iPhone",
-    "ios_device_model": "iPhone 17 Pro (iPhone18,1)",
-    "ios_os_version": "26.5.1 23F81"
-  },
-  "artifacts": {
-    "android_apk_path": null,
-    "ios_app_path": "client/build/ios/iphoneos/Runner.app",
-    "ios_bundle_id": "com.voicetextnote.app",
-    "ios_version": "1.0.0",
-    "backend_api_url": "http://192.168.50.248:8000/api/v1",
-    "stt_backend": "faster_whisper (CPU int8)",
-    "diarization_model": "pyannote/speaker-diarization-3.1"
-  },
-  "scenarios": {
-    "push": {
-      "pass": false,
-      "evidence": "Pending manual execution — FCM credentials not yet configured on backend (FIREBASE_CREDENTIALS_PATH unset). App receives FCM token (log: 'FCM 권한 상태: AuthorizationStatus.authorized') but APNS token not set (log: 'APNS token has not been set yet'). Manual send required after Firebase/APNs setup per docs/release-procedure.md Phase 1.",
-      "blocker": "External: Firebase service account + APNs key required (SPEC-RELEASE-001 REQ-REL-001/002)"
+  "tested_at": "2026-06-20T16:51:37.973104+00:00",
+  "tester": "ibkim",
+  "backend_version": "git:10df238",
+  "client_version": "git:10df238",
+  "devices": {
+    "android": {
+      "serial": "",
+      "model": "",
+      "os_version": ""
     },
-    "deeplink": {
-      "pass": false,
-      "evidence": "Pending manual execution — DeepLinkService initialized, checkColdStartDeepLink() called on startup. Requires Push notification with meeting_id payload to trigger, which depends on Push scenario pass first.",
-      "blocker": "Depends on Push scenario (external FCM credentials)"
-    },
-    "background_recording": {
-      "pass": false,
-      "evidence": "Pending manual execution — iOS background recording service initialized (log: 'iOS 백그라운드 녹음 초기화 완료'). AppDelegate recording MethodChannel wired (verified by verify_release_readiness.py). Requires manual test: start recording → background → return.",
-      "blocker": "Manual: requires physical device interaction (SPEC-MOBILE-005 AC-M01~M06)"
-    },
-    "http_policy": {
-      "pass": true,
-      "evidence": "Static verification PASS: client/android/app/src/main/res/xml/network_security_config.xml has base-config cleartextTrafficPermitted=false. iOS Info.plist NSAppTransportSecurity configured. Backend accessible via HTTP on local network (192.168.50.248:8000) for dev only — Release build blocks cleartext per Android config.",
-      "android_config": "client/android/app/src/main/res/xml/network_security_config.xml",
-      "ios_config": "client/ios/Runner/Info.plist",
-      "verified_by": "Static code inspection + client/scripts/verify_release_readiness.py"
-    },
-    "foreground_service": {
-      "pass": false,
-      "evidence": "Pending manual execution — Android RecordingService implemented (client/android/app/src/main/kotlin/.../RecordingService.kt). Requires Android device for verification (only iOS connected).",
-      "blocker": "External: Android physical device required (currently only iOS available)"
-    },
-    "pdf_share": {
-      "pass": false,
-      "evidence": "Pending manual execution — Export API implemented (backend/app/api/v1/admin/export.py), PDF generator async via asyncio.to_thread (SPEC-BUGFIX-002). Flutter share_plus integrated. Requires completed meeting → tap export → verify share sheet.",
-      "blocker": "Manual: requires completed pipeline output on device"
+    "ios": {
+      "udid": "",
+      "model": "",
+      "os_version": ""
     }
   },
-  "backend_pipeline_verification": {
-    "pass": true,
-    "evidence": "FULL PIPELINE VERIFIED on iPhone 17 Pro with real speech audio (36s). STT: faster-whisper CPU, 13 segments in 20s. DIA: pyannote 3.1 CPU, 1 speaker, 8 segments in 66s. Minutes: completed. Summary: OpenAI gpt-4o-mini completed. App displays results correctly. User confirmed: '잘 작동됩니다.'",
-    "stt_backend": "faster_whisper",
-    "stt_device": "cpu",
-    "dia_model": "pyannote/speaker-diarization-3.1",
-    "summary_model": "gpt-4o-mini",
-    "audio_duration_seconds": 36,
-    "stt_processing_time_seconds": 20,
-    "dia_processing_time_seconds": 66,
-    "segments_count": 13,
-    "speakers_count": 1,
-    "health_check": "API: healthy, Redis: healthy, Celery: healthy (2 workers)"
+  "artifacts": {
+    "android_apk": "client/build/app/outputs/flutter-apk/app-debug.apk",
+    "ios_runner_app": "client/build/ios/iphoneos/Runner.app"
   },
-  "app_install_verification": {
-    "pass": true,
-    "evidence": "iOS app built in profile mode (48.9s), codesigned with team 4NJ9JSQFW9, installed via devicectl on iPhone 17 Pro. App launches and runs correctly. User confirmed: '잘 작동됩니다.'",
-    "build_mode": "profile",
-    "build_time_seconds": 48.9,
-    "install_method": "xcrun devicectl device install app",
-    "user_confirmation": "2026-06-16 — full pipeline working end-to-end"
-  },
-  "summary": {
-    "total_scenarios": 6,
-    "passed": 1,
-    "pending_manual": 5,
-    "passed_scenarios": ["http_policy"],
-    "pending_scenarios": ["push", "deeplink", "background_recording", "foreground_service", "pdf_share"],
-    "additional_verified_checks": ["backend_pipeline_verification", "app_install_verification"],
-    "blocker_categories": {
-      "external_credentials": ["push (FCM/APNs)", "deeplink (depends on push)"],
-      "external_device": ["foreground_service (Android required)"],
-      "manual_interaction": ["background_recording", "pdf_share"]
+  "scenarios": {
+    "permission_microphone_initial": {
+      "pass": false,
+      "evidence": "TODO: Initial microphone permission prompt"
+    },
+    "permission_denied_recovery": {
+      "pass": false,
+      "evidence": "TODO: Permission denial recovery UI"
+    },
+    "ios_background_recording_lock": {
+      "pass": false,
+      "evidence": "TODO: iOS background recording while locked"
+    },
+    "ios_interruption_resume": {
+      "pass": false,
+      "evidence": "TODO: iOS call interruption resume"
+    },
+    "ios_bluetooth_route_change": {
+      "pass": false,
+      "evidence": "TODO: iOS Bluetooth route change"
+    },
+    "unfinished_recording_recovery": {
+      "pass": false,
+      "evidence": "TODO: Unfinished recording recovery after restart"
+    },
+    "push_stt_complete": {
+      "pass": false,
+      "evidence": "TODO: Push received for STT completion"
+    },
+    "push_summary_complete": {
+      "pass": false,
+      "evidence": "TODO: Push received for summary completion"
+    },
+    "push_failure": {
+      "pass": false,
+      "evidence": "TODO: Push received for processing failure"
+    },
+    "push_deeplink_background": {
+      "pass": false,
+      "evidence": "TODO: Push deeplink while app is backgrounded"
+    },
+    "push_deeplink_cold_start": {
+      "pass": false,
+      "evidence": "TODO: Push deeplink from cold start"
+    },
+    "android_foreground_service": {
+      "pass": false,
+      "evidence": "TODO: Android foreground recording notification"
+    },
+    "android_debug_tailscale_cleartext_allowed": {
+      "pass": false,
+      "evidence": "TODO: Android debug Tailscale HTTP allowed"
+    },
+    "android_release_cleartext_blocked": {
+      "pass": false,
+      "evidence": "TODO: Android release HTTP blocked"
+    },
+    "ios_release_http_blocked": {
+      "pass": false,
+      "evidence": "TODO: iOS release HTTP blocked"
+    },
+    "export_share_android": {
+      "pass": false,
+      "evidence": "TODO: Android PDF share sheet"
+    },
+    "export_share_ios": {
+      "pass": false,
+      "evidence": "TODO: iOS PDF share sheet"
     }
   }
 }

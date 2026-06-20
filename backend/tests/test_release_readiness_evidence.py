@@ -151,6 +151,15 @@ def test_release_e2e_example_lists_every_required_scenario():
     assert set(scenarios) == set(module.REQUIRED_E2E_SCENARIOS)
 
 
+def test_tracked_release_e2e_scaffold_lists_every_required_scenario():
+    module = load_release_readiness_module()
+    scaffold_path = Path(__file__).resolve().parents[2] / "docs/release-e2e-evidence.json"
+    scaffold = json.loads(scaffold_path.read_text(encoding="utf-8"))
+    scenarios = scaffold["scenarios"]
+
+    assert set(scenarios) == set(module.REQUIRED_E2E_SCENARIOS)
+
+
 def test_tone_release_policy_accepts_current_repo_policy():
     module = load_release_readiness_module()
     root = Path(__file__).resolve().parents[2]
@@ -232,6 +241,7 @@ def test_mobile_workflow_exposes_manual_strict_release_gate():
         "FIREBASE_TEST_DEVICE_TOKEN",
         "./scripts/verify_mobile.sh --native",
         "python3 client/scripts/verify_release_readiness.py --strict",
+        "docs/release-e2e-evidence.json",
     ]
 
     for snippet in required_snippets:

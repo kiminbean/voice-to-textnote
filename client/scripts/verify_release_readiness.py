@@ -673,6 +673,32 @@ def check_release_doc_placeholders(root: Path, reporter: Reporter) -> None:
             reporter.ok(f"Release documentation has no unresolved placeholders: {relative_path}")
 
 
+def check_tracked_release_e2e_scaffold(root: Path, reporter: Reporter) -> None:
+    path = root / "docs/release-e2e-evidence.json"
+    if not require_file(reporter, path, "Tracked release E2E evidence scaffold"):
+        return
+    try:
+        data = json.loads(read_text(path))
+    except json.JSONDecodeError as exc:
+        reporter.fail(f"Tracked release E2E evidence scaffold JSON is invalid: {exc}")
+        return
+    scenarios = data.get("scenarios") if isinstance(data, dict) else None
+    if not isinstance(scenarios, dict):
+        reporter.fail("Tracked release E2E evidence scaffold missing scenario results")
+        return
+    actual = set(scenarios)
+    expected = set(REQUIRED_E2E_SCENARIOS)
+    if actual == expected:
+        reporter.ok("Tracked release E2E evidence scaffold lists every required scenario")
+        return
+    missing = ", ".join(sorted(expected - actual)) or "none"
+    extra = ", ".join(sorted(actual - expected)) or "none"
+    reporter.fail(
+        "Tracked release E2E evidence scaffold scenario keys are stale "
+        f"(missing: {missing}; extra: {extra})"
+    )
+
+
 def check_service_account(path: Path, reporter: Reporter) -> None:
     if not path.is_file():
         reporter.fail(f"FIREBASE_CREDENTIALS_PATH does not point to a file: {path}")
@@ -930,6 +956,7 @@ def main() -> int:
     check_tone_release_policy(root, reporter)
     check_readme_release_status(root, reporter)
     check_docs(root, reporter)
+    check_tracked_release_e2e_scaffold(root, reporter)
 
     if args.strict:
         check_release_doc_placeholders(root, reporter)
