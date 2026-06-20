@@ -505,11 +505,11 @@ def test_safe_json_load_rejects_invalid_payloads():
 async def test_find_by_minutes_task_id_skips_invalid_and_incomplete_entries():
     redis = _redis_with(
         {
-            "bad-json": "{bad",
-            "other-meeting": {"status": "completed", "minutes_task_id": "other"},
-            "failed": {"status": "failed", "minutes_task_id": "meeting-1"},
+            "task:any:bad-json": "{bad",
+            "task:any:other-meeting": {"status": "completed", "minutes_task_id": "other"},
+            "task:any:failed": {"status": "failed", "minutes_task_id": "meeting-1"},
         },
-        scan_keys=["bad-json", "other-meeting", "failed"],
+        scan_keys=["task:any:bad-json", "task:any:other-meeting", "task:any:failed"],
     )
 
     assert await obsidian._find_by_minutes_task_id(redis, "task:any:*", "meeting-1") is None

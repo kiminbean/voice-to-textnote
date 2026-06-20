@@ -54,6 +54,41 @@ class TestEfficiencyAPI:
         except ImportError as e:
             pytest.fail(f"Failed to import efficiency service: {e}")
 
+    def test_efficiency_service_dependency_returns_service(self):
+        from backend.app.api.v1.analytics.efficiency import get_efficiency_service
+
+        assert isinstance(get_efficiency_service(), EfficiencyService)
+
+    @pytest.mark.asyncio
+    async def test_get_meeting_efficiency_delegates_to_service(self):
+        from backend.app.api.v1.analytics.efficiency import get_meeting_efficiency
+
+        expected = MagicMock()
+        service = MagicMock()
+        service.analyze_meeting_efficiency = AsyncMock(return_value=expected)
+        redis = AsyncMock()
+        db = AsyncMock()
+
+        result = await get_meeting_efficiency(
+            task_id="meeting-1",
+            include_recommendations=False,
+            min_speakers=3,
+            analysis_depth="detailed",
+            redis_client=redis,
+            db=db,
+            svc=service,
+        )
+
+        assert result is expected
+        service.analyze_meeting_efficiency.assert_awaited_once_with(
+            redis_client=redis,
+            db=db,
+            task_id="meeting-1",
+            include_recommendations=False,
+            min_speakers=3,
+            analysis_depth="detailed",
+        )
+
     @pytest.mark.asyncio
     async def test_efficiency_service_basic_functionality(self):
         """효율성 서비스 기본 기능 테스트"""
