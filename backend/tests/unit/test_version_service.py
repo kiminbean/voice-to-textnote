@@ -7,6 +7,7 @@ import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from sqlalchemy.exc import IntegrityError
 
 from backend.db.version_models import MinutesVersion
 from backend.schemas.version import VersionCreate
@@ -188,6 +189,63 @@ class TestCreateVersion:
 
                 # Assert
                 assert result.author_id is None
+
+    @pytest.mark.asyncio
+    async def test_create_retries_after_integrity_error(
+        self,
+        version_service,
+        mock_session,
+        sample_task_id,
+        sample_version_create_payload,
+    ):
+        """버전 번호 충돌이 한 번 발생하면 rollback 후 다음 번호로 재시도한다."""
+        integrity_error = IntegrityError("insert", {}, Exception("duplicate version"))
+        mock_session.commit.side_effect = [integrity_error, None]
+
+        with (
+            patch.object(version_service, "_ensure_task_exists", AsyncMock()),
+            patch.object(version_service, "_next_version_number", AsyncMock(side_effect=[1, 2])),
+        ):
+            result = await version_service.create_version(
+                mock_session,
+                sample_task_id,
+                sample_version_create_payload,
+            )
+
+        assert isinstance(result, MinutesVersion)
+        assert result.version_number == 2
+        assert mock_session.commit.await_count == 2
+        mock_session.rollback.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_create_raises_conflict_after_three_integrity_errors(
+        self,
+        version_service,
+        mock_session,
+        sample_task_id,
+        sample_version_create_payload,
+    ):
+        """버전 번호 충돌이 3회 반복되면 409 응답을 반환한다."""
+        mock_session.commit.side_effect = [
+            IntegrityError("insert", {}, Exception("duplicate version"))
+            for _ in range(3)
+        ]
+
+        with (
+            patch.object(version_service, "_ensure_task_exists", AsyncMock()),
+            patch.object(version_service, "_next_version_number", AsyncMock(side_effect=[1, 2, 3])),
+        ):
+            with pytest.raises(Exception) as exc_info:
+                await version_service.create_version(
+                    mock_session,
+                    sample_task_id,
+                    sample_version_create_payload,
+                )
+
+        assert exc_info.value.status_code == 409
+        assert "버전 생성 충돌" in exc_info.value.detail
+        assert mock_session.commit.await_count == 3
+        assert mock_session.rollback.await_count == 3
 
 
 # list_versions 테스트

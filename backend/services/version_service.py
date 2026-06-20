@@ -72,7 +72,6 @@ class VersionService:
                         status_code=409,
                         detail="버전 생성 충돌이 발생했습니다. 다시 시도해 주세요.",
                     )
-        raise HTTPException(status_code=500, detail="버전 생성 재시도 한도 초과")
 
     async def list_versions(
         self,
