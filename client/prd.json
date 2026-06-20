@@ -14,7 +14,7 @@
     {"id": "UIX-012", "title": "Status badge Korean text overflow", "severity": "i18n", "file": "lib/widgets/meeting_card.dart", "status": "fixed"},
     {"id": "UIX-015", "title": "CheckboxListTile subtitle overflow in action items", "severity": "bug", "file": "lib/screens/result_screen.dart", "status": "fixed"},
     {"id": "UIX-016", "title": "ProcessingScreen has no cancel/back option", "severity": "ux", "file": "lib/screens/processing_screen.dart", "status": "fixed"},
-    {"id": "UIX-009", "title": "TextEditingController lifecycle in dialogs", "severity": "bug", "file": "lib/screens/team_list_screen.dart", "status": "skipped"},
+    {"id": "UIX-009", "title": "TextEditingController lifecycle in dialogs", "severity": "bug", "file": "lib/screens/team_list_screen.dart", "status": "fixed"},
     {"id": "UIX-013", "title": "Missing semantic labels for accessibility", "severity": "a11y", "file": "lib/screens/recording_screen.dart", "status": "fixed"},
     {"id": "UIX-014", "title": "Tab text '액션 아이템' length", "severity": "i18n", "file": "lib/screens/result_screen.dart", "status": "no_action_needed"}
   ]

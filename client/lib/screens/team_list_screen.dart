@@ -58,74 +58,17 @@ class TeamListScreen extends ConsumerWidget {
   // 팀 생성 다이얼로그 표시
   Future<void> _showCreateTeamDialog(
       BuildContext context, WidgetRef ref) async {
-    final nameController = TextEditingController();
-    final descController = TextEditingController();
-    final formKey = GlobalKey<FormState>();
-
     await showDialog<void>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('새 팀 만들기'),
-        content: Form(
-          key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                controller: nameController,
-                decoration: const InputDecoration(
-                  labelText: '팀 이름 *',
-                  hintText: '팀 이름을 입력하세요',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return '팀 이름을 입력하세요';
-                  }
-                  return null;
-                },
-                autofocus: true,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: descController,
-                decoration: const InputDecoration(
-                  labelText: '설명 (선택)',
-                  hintText: '팀에 대한 설명을 입력하세요',
-                  border: OutlineInputBorder(),
-                ),
-                maxLines: 2,
-              ),
-            ],
-          ),
+      builder: (dialogContext) => _CreateTeamDialog(
+        onCreate: (name, description) => _createTeam(
+          context,
+          ref,
+          name: name,
+          description: description,
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('취소'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              if (!formKey.currentState!.validate()) return;
-
-              Navigator.of(dialogContext).pop();
-              await _createTeam(
-                context,
-                ref,
-                name: nameController.text.trim(),
-                description: descController.text.trim().isEmpty
-                    ? null
-                    : descController.text.trim(),
-              );
-            },
-            child: const Text('만들기'),
-          ),
-        ],
       ),
     );
-
-    nameController.dispose();
-    descController.dispose();
   }
 
   // 팀 생성 API 호출
@@ -154,6 +97,89 @@ class TeamListScreen extends ConsumerWidget {
         );
       }
     }
+  }
+}
+
+class _CreateTeamDialog extends StatefulWidget {
+  final Future<void> Function(String name, String? description) onCreate;
+
+  const _CreateTeamDialog({required this.onCreate});
+
+  @override
+  State<_CreateTeamDialog> createState() => _CreateTeamDialogState();
+}
+
+class _CreateTeamDialogState extends State<_CreateTeamDialog> {
+  final _nameController = TextEditingController();
+  final _descController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _descController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final name = _nameController.text.trim();
+    final rawDescription = _descController.text.trim();
+    final description = rawDescription.isEmpty ? null : rawDescription;
+
+    Navigator.of(context).pop();
+    await widget.onCreate(name, description);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('새 팀 만들기'),
+      content: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextFormField(
+              controller: _nameController,
+              decoration: const InputDecoration(
+                labelText: '팀 이름 *',
+                hintText: '팀 이름을 입력하세요',
+                border: OutlineInputBorder(),
+              ),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return '팀 이름을 입력하세요';
+                }
+                return null;
+              },
+              autofocus: true,
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _descController,
+              decoration: const InputDecoration(
+                labelText: '설명 (선택)',
+                hintText: '팀에 대한 설명을 입력하세요',
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 2,
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('취소'),
+        ),
+        FilledButton(
+          onPressed: _submit,
+          child: const Text('만들기'),
+        ),
+      ],
+    );
   }
 }
 
@@ -193,15 +219,17 @@ class _TeamCard extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               )
             : null,
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.people_outline, size: 16, color: Theme.of(context).colorScheme.outline),
-                const SizedBox(width: 4),
-                Text(
-                  '${team.memberCount}명',
-                  style: TextStyle(color: Theme.of(context).colorScheme.outline, fontSize: 13),
-                ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.people_outline,
+                size: 16, color: Theme.of(context).colorScheme.outline),
+            const SizedBox(width: 4),
+            Text(
+              '${team.memberCount}명',
+              style: TextStyle(
+                  color: Theme.of(context).colorScheme.outline, fontSize: 13),
+            ),
             const SizedBox(width: 8),
             const Icon(Icons.chevron_right),
           ],
