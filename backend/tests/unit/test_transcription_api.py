@@ -160,6 +160,27 @@ class TestUploadTranscription:
         data = response.json()
         assert any("duration_exceeded" in e.get("type", "") for e in data["message"])
 
+    def test_upload_duration_read_error_returns_invalid_audio(self, client, test_audio_file):
+        """
+        Given: 재생 시간 분석 중 예외 발생
+        When: 파일 업로드
+        Then: 422 Unprocessable Entity + invalid_audio 오류
+        """
+        with patch(
+            "backend.app.api.v1.transcription.transcription.get_audio_duration_seconds",
+            side_effect=RuntimeError("ffprobe failed"),
+        ):
+            with open(test_audio_file, "rb") as f:
+                response = client.post(
+                    "/api/v1/transcriptions",
+                    files={"file": ("test.wav", f, "audio/wav")},
+                    data={"language": "ko"},
+                )
+
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+        data = response.json()
+        assert any("invalid_audio" in e.get("type", "") for e in data["message"])
+
     def test_upload_corrupted_audio(self, client, corrupted_audio_file):
         """
         Given: 손상된 오디오 파일
