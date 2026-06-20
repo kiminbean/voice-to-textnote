@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:voice_to_textnote/models/team.dart';
+import 'package:voice_to_textnote/providers/auth_provider.dart';
 import 'package:voice_to_textnote/providers/team_provider.dart';
 import 'package:voice_to_textnote/services/team_api.dart';
 import 'package:voice_to_textnote/theme/app_colors.dart';
@@ -19,10 +20,6 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
-  // 현재 로그인한 사용자 ID (임시: 실제 앱에서는 auth provider에서 가져옴)
-  // @MX:TODO: auth provider 연동 후 실제 사용자 ID로 교체 필요
-  String? _currentUserId;
-
   @override
   void initState() {
     super.initState();
@@ -36,11 +33,11 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen>
   }
 
   // 현재 사용자의 팀 내 역할 확인
-  String? _getCurrentUserRole(TeamDetail detail) {
-    if (_currentUserId == null) return null;
+  String? _getCurrentUserRole(TeamDetail detail, String? currentUserId) {
+    if (currentUserId == null) return null;
     try {
       final member =
-          detail.members.firstWhere((m) => m.userId == _currentUserId);
+          detail.members.firstWhere((m) => m.userId == currentUserId);
       return member.role;
     } catch (_) {
       return null;
@@ -50,6 +47,7 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen>
   @override
   Widget build(BuildContext context) {
     final teamAsync = ref.watch(teamDetailProvider(widget.teamId));
+    final currentUserId = ref.watch(currentUserProvider)?.id;
 
     return teamAsync.when(
       loading: () => Scaffold(
@@ -76,7 +74,7 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen>
         ),
       ),
       data: (detail) {
-        final currentRole = _getCurrentUserRole(detail);
+        final currentRole = _getCurrentUserRole(detail, currentUserId);
         final isAdmin = currentRole == 'admin';
 
         return Scaffold(
@@ -107,12 +105,12 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen>
               _MembersTab(
                 detail: detail,
                 isAdmin: isAdmin,
-                currentUserId: _currentUserId,
+                currentUserId: currentUserId,
                 onInvite: () => _showInviteMemberDialog(context, detail.id),
                 onRoleChange: (member, newRole) =>
                     _changeRole(context, detail.id, member, newRole),
                 onRemove: (member) => _removeMember(context, detail.id, member),
-                onLeave: () => _leaveTeam(context, detail),
+                onLeave: () => _leaveTeam(context, detail, currentUserId),
                 onDelete: isAdmin ? () => _deleteTeam(context, detail) : null,
               ),
               // 공유 미팅 탭
@@ -402,8 +400,12 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen>
   }
 
   // 팀 나가기 (비관리자의 자기 자신 제거)
-  Future<void> _leaveTeam(BuildContext context, TeamDetail detail) async {
-    if (_currentUserId == null) return;
+  Future<void> _leaveTeam(
+    BuildContext context,
+    TeamDetail detail,
+    String? currentUserId,
+  ) async {
+    if (currentUserId == null) return;
 
     final confirmed = await showDialog<bool>(
       context: context,
@@ -430,7 +432,7 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen>
 
     try {
       final api = ref.read(teamApiProvider);
-      await api.removeMember(detail.id, _currentUserId!);
+      await api.removeMember(detail.id, currentUserId);
 
       if (context.mounted) {
         Navigator.of(context).pop();
@@ -715,7 +717,8 @@ class _MemberListTile extends StatelessWidget {
           if (onRemove != null) ...[
             const SizedBox(width: 4),
             IconButton(
-              icon: const Icon(Icons.remove_circle_outline, color: AppColors.error),
+              icon: const Icon(Icons.remove_circle_outline,
+                  color: AppColors.error),
               tooltip: '제거',
               onPressed: onRemove,
             ),
@@ -748,11 +751,13 @@ class _TeamMeetingsTab extends ConsumerWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.folder_open_outlined, size: 48, color: Theme.of(context).colorScheme.outline),
+                  Icon(Icons.folder_open_outlined,
+                      size: 48, color: Theme.of(context).colorScheme.outline),
                   const SizedBox(height: 16),
                   Text(
                     '공유된 미팅이 없습니다',
-                    style: TextStyle(color: Theme.of(context).colorScheme.outline),
+                    style:
+                        TextStyle(color: Theme.of(context).colorScheme.outline),
                   ),
                 ],
               ),
