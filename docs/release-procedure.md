@@ -99,15 +99,17 @@ flutter build ios --release
 # evidence scaffold 생성
 ANDROID_DEVICE_SERIAL=$ANDROID_DEVICE_SERIAL \
 IOS_DEVICE_UDID=$IOS_DEVICE_UDID \
-python3 scripts/create_release_e2e_evidence.py --output docs/release-e2e-evidence.json
+python3 client/scripts/create_release_e2e_evidence.py --output docs/release-e2e-evidence.json
 
-# 6개 시나리오 수동 실행 후 JSON 채우기:
-# 1. Push 알림: 백엔드에서 전송 → 기기에서 수신
-# 2. 딥링크: Push 탭 → 회의 결과 화면 이동
-# 3. 백그라운드 녹음: 녹음 중 백그라운드 → 계속 녹음 → 복귀 정상
-# 4. HTTP 정책: Release APK가 HTTP 평문 차단 (Tailscale만 허용)
-# 5. Foreground service: Android 녹음 중 알림 표시
-# 6. PDF 공유: 회의록 PDF 내보내기 → 공유 시트 동작
+# 17개 required scenario 수동 실행 후 JSON 채우기:
+# - 마이크 권한 최초 요청/거부 복구
+# - iOS 백그라운드 녹음/인터럽트 재개/Bluetooth route change
+# - 미완료 녹음 복구
+# - STT/요약/실패 Push 수신
+# - 백그라운드/콜드스타트 Push 딥링크
+# - Android foreground recording notification
+# - Android debug Tailscale HTTP 허용 및 Android/iOS release HTTP 차단
+# - Android/iOS PDF 공유 시트
 
 # FCM 테스트 토큰 (앱에서 등록한 토큰)
 export FIREBASE_TEST_DEVICE_TOKEN=<fcm-token-from-app>
@@ -196,6 +198,6 @@ gh release create v1.6.0 \
 | 1.2 APNs | `APNS_AUTH_KEY_PATH`, `APNS_KEY_ID`, `APNS_TEAM_ID` | `--strict` APNs 3개 PASS |
 | 1.3 App Store | `APP_STORE_CONNECT_API_KEY_PATH`, `KEY_ID`, `ISSUER_ID` | `--strict` App Store 3개 PASS |
 | 2.1 기기 | `ANDROID_DEVICE_SERIAL`, `IOS_DEVICE_UDID` | `adb`/`devicectl` 인식 |
-| 2.3 E2E | `FIREBASE_TEST_DEVICE_TOKEN`, `RELEASE_E2E_EVIDENCE_PATH` | evidence JSON 6개 pass:true |
+| 2.3 E2E | `FIREBASE_TEST_DEVICE_TOKEN`, `RELEASE_E2E_EVIDENCE_PATH` | evidence JSON 17개 required scenario pass:true |
 | 3.1 Runner | (GitHub Actions) | `verify_github_mobile_release_env.py` PASS |
 | 4.1 Release | (README + tag) | `git tag` + GitHub Release 확인 |

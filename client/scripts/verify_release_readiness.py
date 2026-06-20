@@ -551,6 +551,7 @@ def check_docs(root: Path, reporter: Reporter) -> None:
     required = [
         (root / "docs/firebase-setup-guide.md", "Firebase setup guide"),
         (root / "docs/e2e-device-checklist.md", "Device E2E checklist"),
+        (root / "docs/release-procedure.md", "Release procedure"),
         (root / "docs/app-store-metadata.md", "App Store metadata"),
         (root / "docs/privacy-policy.md", "Privacy policy"),
         (root / "docs/screenshot-guide.md", "Screenshot guide"),
@@ -583,6 +584,25 @@ def check_docs(root: Path, reporter: Reporter) -> None:
             reporter.ok(f"E2E checklist covers {label}")
         else:
             reporter.fail(f"E2E checklist missing {label}")
+    procedure_doc = read_text(root / "docs/release-procedure.md")
+    require_snippets(
+        reporter,
+        procedure_doc,
+        [
+            "client/scripts/create_release_e2e_evidence.py",
+            "17개 required scenario",
+            "python3 client/scripts/verify_release_readiness.py --strict",
+        ],
+        "Release procedure matches current strict E2E evidence workflow",
+    )
+    if re.search(r"(?<!client/)scripts/create_release_e2e_evidence\.py", procedure_doc):
+        reporter.fail("Release procedure references obsolete release evidence script path")
+    else:
+        reporter.ok("Release procedure uses current release evidence script path")
+    if "evidence JSON 6개" in procedure_doc or "6개 시나리오" in procedure_doc:
+        reporter.fail("Release procedure references obsolete 6-scenario evidence schema")
+    else:
+        reporter.ok("Release procedure uses current 17-scenario evidence schema")
     app_store_doc = read_text(root / "docs/app-store-metadata.md")
     for snippet in [
         "App Store Connect",

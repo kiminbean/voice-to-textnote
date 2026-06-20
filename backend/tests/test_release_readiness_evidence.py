@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import importlib.util
 import json
+from functools import lru_cache
 from pathlib import Path
 
 
+@lru_cache(maxsize=1)
 def load_release_readiness_module():
     script_path = Path(__file__).resolve().parents[2] / "client/scripts/verify_release_readiness.py"
     spec = importlib.util.spec_from_file_location("verify_release_readiness", script_path)
