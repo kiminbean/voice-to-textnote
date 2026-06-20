@@ -2825,6 +2825,19 @@ class _StudyTab extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Align(
+                alignment: Alignment.centerRight,
+                child: OutlinedButton.icon(
+                  onPressed: () => _copyStudyMaterials(
+                    context,
+                    flashcards,
+                    quizzes,
+                  ),
+                  icon: const Icon(Icons.copy_all_outlined),
+                  label: const Text('학습 자료 복사'),
+                ),
+              ),
+              const SizedBox(height: 12),
               Row(
                 children: [
                   const Icon(Icons.school_outlined),
@@ -2863,6 +2876,42 @@ class _StudyTab extends ConsumerWidget {
           ),
         );
       },
+    );
+  }
+
+  Future<void> _copyStudyMaterials(
+    BuildContext context,
+    List<_StudyCardData> flashcards,
+    List<_StudyQuizData> quizzes,
+  ) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final buffer = StringBuffer()
+      ..writeln('학습 자료')
+      ..writeln('---');
+
+    if (flashcards.isNotEmpty) {
+      buffer.writeln();
+      buffer.writeln('플래시카드');
+      for (var index = 0; index < flashcards.length; index++) {
+        final card = flashcards[index];
+        buffer.writeln('${index + 1}. [${card.label}] ${card.prompt}');
+        buffer.writeln('   답: ${card.answer}');
+      }
+    }
+
+    if (quizzes.isNotEmpty) {
+      buffer.writeln();
+      buffer.writeln('복습 퀴즈');
+      for (var index = 0; index < quizzes.length; index++) {
+        final quiz = quizzes[index];
+        buffer.writeln('${index + 1}. ${quiz.question}');
+        buffer.writeln('   정답: ${quiz.answer}');
+      }
+    }
+
+    await Clipboard.setData(ClipboardData(text: buffer.toString()));
+    messenger.showSnackBar(
+      const SnackBar(content: Text('학습 자료를 복사했습니다')),
     );
   }
 

@@ -2,6 +2,7 @@
 // SPEC-APP-004 REQ-APP-042, REQ-APP-043 (주요 결정 사항, 다음 단계 UI)
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:voice_to_textnote/models/meeting.dart';
@@ -256,6 +257,32 @@ void main() {
       expect(find.text('학습 탭을 QA한다'), findsWidgets);
       expect(find.text('김철수의 작업은?'), findsOneWidget);
       expect(find.text('업로드 플로우 검증 (2026-03-25)'), findsOneWidget);
+
+      Map<dynamic, dynamic>? clipboardPayload;
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(SystemChannels.platform, (call) async {
+        if (call.method == 'Clipboard.setData') {
+          clipboardPayload = call.arguments as Map<dynamic, dynamic>;
+        }
+        return null;
+      });
+      addTearDown(() {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(SystemChannels.platform, null);
+      });
+
+      await tester.ensureVisible(find.text('학습 자료 복사'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(OutlinedButton, '학습 자료 복사'));
+      await tester.pump(const Duration(milliseconds: 250));
+
+      final clipboardText = clipboardPayload?['text'] as String?;
+      expect(clipboardText, contains('플래시카드'));
+      expect(clipboardText, contains('[주요 결정] 회의에서 확정된 결정은?'));
+      expect(clipboardText, contains('답: MP4 업로드를 지원한다'));
+      expect(clipboardText, contains('복습 퀴즈'));
+      expect(clipboardText, contains('정답: MP4 업로드를 지원한다'));
+      expect(find.text('학습 자료를 복사했습니다'), findsOneWidget);
 
       await tester.ensureVisible(find.text('이번 회의에서 확정한 주요 결정은 무엇인가요?'));
       await tester.pumpAndSettle();
