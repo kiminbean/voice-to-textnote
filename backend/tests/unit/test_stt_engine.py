@@ -532,8 +532,13 @@ class TestFasterWhisperBackend:
         from backend.ml.stt_engine import WhisperEngine
 
         mock_fw, _ = _make_mock_faster_whisper()
+        mock_torch = MagicMock()
+        mock_torch.cuda.is_available.return_value = False
         # mlx_whisper를 ImportError로 만들기 위해 sys.modules에서 제거
-        with patch.dict(sys.modules, {"faster_whisper": mock_fw, "mlx_whisper": None}):
+        with patch.dict(
+            sys.modules,
+            {"faster_whisper": mock_fw, "torch": mock_torch, "mlx_whisper": None},
+        ):
             with patch("platform.system", return_value="Linux"):
                 engine = WhisperEngine.get_instance()
                 engine.load()
