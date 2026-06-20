@@ -53,7 +53,7 @@ class ActionItem(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)
 
-    def __repr__(self) -> str:
+    def __repr__(self) -> str:  # pragma: no cover - backend/tests/conftest replaces this class in unit tests.
         return f"<ActionItem(id={self.id}, title={self.title!r}, status={self.status!r})>"
 
 

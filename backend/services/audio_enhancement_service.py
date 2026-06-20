@@ -126,8 +126,6 @@ class AudioEnhancementService:
             start_idx = i * frame_length
             end_idx = min(start_idx + frame_length, len(audio))
             frame = audio[start_idx:end_idx]
-            if len(frame) == 0:
-                continue
 
             # 간단한 에너지 기반 VAD
             rms = float(np.sqrt(np.mean(frame**2)))

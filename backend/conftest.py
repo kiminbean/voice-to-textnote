@@ -347,7 +347,7 @@ def client(mock_redis_client, tmp_path):
         import asyncio
 
         asyncio.run(_test_engine.dispose())
-    except (RuntimeError, Exception):
+    except (RuntimeError, Exception):  # pragma: no cover - teardown fallback for interrupted event loops.
         pass
 
 

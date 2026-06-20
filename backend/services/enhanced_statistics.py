@@ -462,6 +462,7 @@ class EnhancedStatisticsService:
 
             # 추세 방향 (단순히 등장 시간 기준)
             trend_direction = "stable"
+            frequency_change = float(count)
             if first_appearance is not None and last_appearance is not None:
                 time_diff = (last_appearance - first_appearance).total_seconds()
                 if time_diff > 0:
@@ -472,8 +473,6 @@ class EnhancedStatisticsService:
                         trend_direction = "down"
                 else:
                     frequency_change = float(count)  # pragma: no cover
-            else:
-                frequency_change = float(count)
 
             trends.append(
                 KeywordTrend(
