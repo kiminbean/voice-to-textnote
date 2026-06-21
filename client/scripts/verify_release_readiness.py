@@ -1251,6 +1251,22 @@ def artifact_path_stays_inside_root(root: Path, artifact_path: str) -> bool:
     return True
 
 
+def resolve_release_evidence_path(root: Path, evidence_path: str) -> Path:
+    path = Path(evidence_path).expanduser()
+    if path.is_absolute():
+        return path
+    return root / path
+
+
+def evidence_path_stays_inside_root(root: Path, evidence_path: str) -> bool:
+    try:
+        resolved = resolve_release_evidence_path(root, evidence_path).resolve()
+        resolved.relative_to(root.resolve())
+    except ValueError:
+        return False
+    return True
+
+
 def release_artifact_sha256(path: Path) -> str:
     digest = hashlib.sha256()
     if path.is_file():
@@ -1551,7 +1567,10 @@ def check_strict_external(reporter: Reporter) -> None:
     evidence = os.environ.get("RELEASE_E2E_EVIDENCE_PATH", "")
     if evidence:
         root = Path(__file__).resolve().parents[2]
-        check_release_e2e_evidence(Path(evidence).expanduser(), reporter, root)
+        if evidence_path_stays_inside_root(root, evidence):
+            check_release_e2e_evidence(resolve_release_evidence_path(root, evidence), reporter, root)
+        else:
+            reporter.fail("Release E2E evidence path must stay inside repo")
     else:
         reporter.fail("Release E2E evidence: RELEASE_E2E_EVIDENCE_PATH is not set")
 

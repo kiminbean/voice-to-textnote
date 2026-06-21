@@ -849,6 +849,40 @@ def test_release_e2e_evidence_rejects_ios_artifact_path_traversal(
     assert any("artifact path must stay inside repo" in error for error in reporter.errors)
 
 
+def test_strict_external_rejects_evidence_path_outside_repo(tmp_path, monkeypatch):
+    module = load_release_readiness_module()
+    outside_evidence = tmp_path / "release-e2e-evidence.json"
+    outside_evidence.write_text("{}", encoding="utf-8")
+
+    monkeypatch.setenv("FIREBASE_CREDENTIALS_PATH", str(tmp_path / "firebase.json"))
+    monkeypatch.setenv("APNS_AUTH_KEY_PATH", str(tmp_path / "AuthKey_APNS.p8"))
+    monkeypatch.setenv("APNS_KEY_ID", "ABCDEFGHIJ")
+    monkeypatch.setenv("APNS_TEAM_ID", "KLMNOPQRST")
+    monkeypatch.setenv("APP_STORE_CONNECT_API_KEY_PATH", str(tmp_path / "AuthKey_ASC.p8"))
+    monkeypatch.setenv("APP_STORE_CONNECT_KEY_ID", "UVWXYZ1234")
+    monkeypatch.setenv("APP_STORE_CONNECT_ISSUER_ID", "issuer-id")
+    monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
+    monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")
+    monkeypatch.setenv("FIREBASE_TEST_DEVICE_TOKEN", "firebase-token")
+    monkeypatch.setenv("RELEASE_E2E_EVIDENCE_PATH", str(outside_evidence))
+
+    monkeypatch.setattr(module, "check_service_account", lambda *_args: None)
+    monkeypatch.setattr(module, "require_env_file", lambda *_args: None)
+    monkeypatch.setattr(module, "require_env_value", lambda *_args: None)
+    monkeypatch.setattr(module, "require_android_device", lambda *_args: None)
+    monkeypatch.setattr(module, "require_ios_device", lambda *_args: None)
+
+    def reject_unreachable_evidence_check(*_args):
+        raise AssertionError("outside evidence must be rejected before JSON validation")
+
+    monkeypatch.setattr(module, "check_release_e2e_evidence", reject_unreachable_evidence_check)
+
+    reporter = module.Reporter()
+    module.check_strict_external(reporter)
+
+    assert "Release E2E evidence path must stay inside repo" in reporter.errors
+
+
 def test_release_e2e_example_lists_every_required_scenario():
     module = load_release_readiness_module()
     example_path = Path(__file__).resolve().parents[2] / "docs/release-e2e-evidence.example.json"
