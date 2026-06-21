@@ -12,6 +12,7 @@ import 'package:voice_to_textnote/router/app_router.dart';
 import 'package:voice_to_textnote/services/deep_link_service.dart';
 
 import 'package:voice_to_textnote/services/push_notification_service.dart';
+import 'package:voice_to_textnote/services/shared_import_service.dart';
 import 'package:voice_to_textnote/theme/app_theme.dart';
 
 void main() async {
@@ -33,7 +34,8 @@ class VoiceToTextNoteApp extends StatefulWidget {
   State<VoiceToTextNoteApp> createState() => _VoiceToTextNoteAppState();
 }
 
-class _VoiceToTextNoteAppState extends State<VoiceToTextNoteApp> with WidgetsBindingObserver {
+class _VoiceToTextNoteAppState extends State<VoiceToTextNoteApp>
+    with WidgetsBindingObserver {
   late final ProviderContainer _container;
   late final router = createRouter(_container);
 
@@ -49,11 +51,13 @@ class _VoiceToTextNoteAppState extends State<VoiceToTextNoteApp> with WidgetsBin
     // SPEC-MOBILE-004 T-005: 딥링크 핸들러 연동
     DeepLinkService.instance.handleBackgroundResume();
     _checkColdStartDeepLink();
+    _checkInitialSharedImport();
   }
 
   Future<void> _checkColdStartDeepLink() async {
     try {
-      final notificationNotifier = _container.read(notificationProvider.notifier);
+      final notificationNotifier =
+          _container.read(notificationProvider.notifier);
       final meetingId = await notificationNotifier.checkInitialMessage();
       if (meetingId != null) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -67,12 +71,29 @@ class _VoiceToTextNoteAppState extends State<VoiceToTextNoteApp> with WidgetsBin
     }
   }
 
+  Future<void> _checkInitialSharedImport() async {
+    try {
+      final payload = await SharedImportService().consumeInitialSharedImport();
+      if (payload == null || !payload.hasContent) return;
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final uri =
+            Uri(path: '/', queryParameters: payload.toQueryParameters());
+        router.go(uri.toString());
+      });
+    } catch (e) {
+      debugPrint('공유 import 확인 실패: $e');
+    }
+  }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     // SPEC-MOBILE-005 REQ-005: 백그라운드 진입 시 녹음 상태 보존
     switch (state) {
       case AppLifecycleState.resumed:
         _container.read(notificationProvider.notifier).checkInitialMessage();
+        _checkLatestSharedImport();
         // T-015: 설정 앱에서 권한 변경 후 복귀 시 UI 갱신 트리거
         _container.read(permissionRecheckProvider.notifier).triggerRecheck();
         break;
@@ -92,6 +113,17 @@ class _VoiceToTextNoteAppState extends State<VoiceToTextNoteApp> with WidgetsBin
         // iOS 다중 태스크 전환 화면 — 녹음 유지
         debugPrint('AppLifecycleState.hidden — 녹음 유지');
         break;
+    }
+  }
+
+  Future<void> _checkLatestSharedImport() async {
+    try {
+      final payload = await SharedImportService().consumeLatestSharedImport();
+      if (payload == null || !payload.hasContent) return;
+      final uri = Uri(path: '/', queryParameters: payload.toQueryParameters());
+      router.go(uri.toString());
+    } catch (e) {
+      debugPrint('최근 공유 import 확인 실패: $e');
     }
   }
 

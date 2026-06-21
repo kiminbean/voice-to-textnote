@@ -15,6 +15,7 @@ import 'package:voice_to_textnote/providers/meeting_list_provider.dart';
 import 'package:voice_to_textnote/providers/theme_mode_provider.dart';
 import 'package:voice_to_textnote/services/history_api.dart';
 import 'package:voice_to_textnote/services/minutes_api.dart';
+import 'package:voice_to_textnote/services/shared_import_service.dart';
 import 'package:voice_to_textnote/theme/app_colors.dart';
 import 'package:voice_to_textnote/theme/app_spacing.dart';
 import 'package:voice_to_textnote/widgets/empty_state_widget.dart';
@@ -52,11 +53,24 @@ List<String> _sharedTeamIdsFromImportResult(Map<String, dynamic> result) {
       const [];
 }
 
-class HomeScreen extends ConsumerWidget {
-  const HomeScreen({super.key});
+class HomeScreen extends ConsumerStatefulWidget {
+  final SharedImportPayload? initialSharedImport;
+
+  const HomeScreen({
+    super.key,
+    this.initialSharedImport,
+  });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  bool _didShowInitialSharedImport = false;
+
+  @override
+  Widget build(BuildContext context) {
+    _scheduleInitialSharedImportSheet();
     final meetingsAsync = ref.watch(meetingListProvider);
     final authState = ref.watch(authStateProvider);
 
@@ -510,6 +524,36 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
+  void _scheduleInitialSharedImportSheet() {
+    final payload = widget.initialSharedImport;
+    if (_didShowInitialSharedImport || payload == null || !payload.hasContent) {
+      return;
+    }
+
+    _didShowInitialSharedImport = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _showSharedImportSheet(context, payload);
+    });
+  }
+
+  void _showSharedImportSheet(
+    BuildContext context,
+    SharedImportPayload payload,
+  ) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => _ExternalTextImportSheet(
+        validateExternalImport: _validateExternalImport,
+        externalSourceType: _externalSourceType,
+        initialUrl: payload.sourceUrl,
+        initialTitle: payload.title,
+        initialContent: payload.text,
+      ),
+    );
+  }
+
   String? _validateExternalImport(String url, String title, String content) {
     if (url.isEmpty) return '원본 URL을 입력해주세요';
     final uri = Uri.tryParse(url);
@@ -913,10 +957,16 @@ class _ExternalTextImportSheet extends ConsumerStatefulWidget {
   final String? Function(String url, String title, String content)
       validateExternalImport;
   final String Function(String url) externalSourceType;
+  final String? initialUrl;
+  final String? initialTitle;
+  final String? initialContent;
 
   const _ExternalTextImportSheet({
     required this.validateExternalImport,
     required this.externalSourceType,
+    this.initialUrl,
+    this.initialTitle,
+    this.initialContent,
   });
 
   @override
@@ -926,6 +976,8 @@ class _ExternalTextImportSheet extends ConsumerStatefulWidget {
 
 class _ExternalTextImportSheetState
     extends ConsumerState<_ExternalTextImportSheet> {
+  final TextEditingController _urlController = TextEditingController();
+  final TextEditingController _titleController = TextEditingController();
   final TextEditingController _contentController = TextEditingController();
   String _draftUrl = '';
   String _draftTitle = '';
@@ -935,7 +987,20 @@ class _ExternalTextImportSheetState
   String? _clipboardMessage;
 
   @override
+  void initState() {
+    super.initState();
+    _draftUrl = widget.initialUrl ?? '';
+    _draftTitle = widget.initialTitle ?? '';
+    _draftContent = widget.initialContent ?? '';
+    _urlController.text = _draftUrl;
+    _titleController.text = _draftTitle;
+    _contentController.text = _draftContent;
+  }
+
+  @override
   void dispose() {
+    _urlController.dispose();
+    _titleController.dispose();
     _contentController.dispose();
     super.dispose();
   }
@@ -1041,6 +1106,7 @@ class _ExternalTextImportSheetState
               ),
               keyboardType: TextInputType.url,
               textInputAction: TextInputAction.next,
+              controller: _urlController,
               onChanged: (value) {
                 _draftUrl = value;
                 if (_errorText != null) {
@@ -1054,6 +1120,7 @@ class _ExternalTextImportSheetState
                 prefixIcon: Icon(Icons.title_rounded),
                 labelText: '제목',
               ),
+              controller: _titleController,
               textInputAction: TextInputAction.next,
               onChanged: (value) => _draftTitle = value,
             ),

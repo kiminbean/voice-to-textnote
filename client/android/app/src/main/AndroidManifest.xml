@@ -45,6 +45,12 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="voicetextnote" />
             </intent-filter>
+            <!-- Owll benchmark: share-sheet text/URL ingestion without new Flutter plugin deps -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
         </activity>
 
         <meta-data

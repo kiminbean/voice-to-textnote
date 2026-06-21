@@ -98,6 +98,35 @@ void main() {
     });
   });
 
+  group('Owll benchmark: Android share-sheet import contract', () {
+    late String manifest;
+    late String mainActivity;
+
+    setUpAll(() {
+      manifest =
+          File('android/app/src/main/AndroidManifest.xml').readAsStringSync();
+      mainActivity = File(
+        'android/app/src/main/kotlin/com/voicetextnote/app/MainActivity.kt',
+      ).readAsStringSync();
+    });
+
+    test('Android manifest accepts text/plain ACTION_SEND shares', () {
+      expect(manifest, contains('android.intent.action.SEND'));
+      expect(manifest, contains('android:mimeType="text/plain"'));
+    });
+
+    test('MainActivity exposes shared import MethodChannel methods', () {
+      expect(
+        mainActivity,
+        contains('com.voicetextnote.app/shared_import'),
+      );
+      expect(mainActivity, contains('consumeInitialSharedImport'));
+      expect(mainActivity, contains('consumeLatestSharedImport'));
+      expect(mainActivity, contains('Intent.ACTION_SEND'));
+      expect(mainActivity, contains('Intent.EXTRA_TEXT'));
+    });
+  });
+
   group('REQ-001: 네이티브→Dart 이벤트 인터페이스', () {
     test('onInterruptionBegin 이벤트를 수신할 수 있어야 함', () async {
       bool? received;

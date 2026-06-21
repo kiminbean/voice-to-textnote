@@ -22,6 +22,7 @@ import 'package:voice_to_textnote/screens/search_screen.dart';
 import 'package:voice_to_textnote/screens/team_detail_screen.dart';
 // SPEC-MOBILE-001: 딥링크 서비스
 import 'package:voice_to_textnote/services/deep_link_service.dart';
+import 'package:voice_to_textnote/services/shared_import_service.dart';
 
 // 인증이 불필요한 공개 경로 목록
 const _publicPaths = ['/login', '/register'];
@@ -62,7 +63,10 @@ GoRouter createRouter(ProviderContainer container) {
       // 홈 화면 - 미팅 목록
       GoRoute(
         path: '/',
-        builder: (_, __) => const HomeScreen(),
+        builder: (_, state) => HomeScreen(
+          initialSharedImport: SharedImportPayload.fromQueryParameters(
+              state.uri.queryParameters),
+        ),
       ),
       // 로그인 화면
       GoRoute(

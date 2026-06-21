@@ -383,11 +383,15 @@ def check_ios_project(root: Path, reporter: Reporter) -> None:
 def check_android_project(root: Path, reporter: Reporter) -> None:
     gradle_path = root / "client/android/app/build.gradle"
     manifest_path = root / "client/android/app/src/main/AndroidManifest.xml"
+    main_activity_path = root / (
+        "client/android/app/src/main/kotlin/com/voicetextnote/app/MainActivity.kt"
+    )
     network_path = root / "client/android/app/src/main/res/xml/network_security_config.xml"
     debug_network_path = root / "client/android/app/src/debug/res/xml/network_security_config.xml"
     for path, label in [
         (gradle_path, "Android app Gradle file"),
         (manifest_path, "Android manifest"),
+        (main_activity_path, "Android MainActivity"),
         (network_path, "Android release/profile network security config"),
         (debug_network_path, "Android debug network security config"),
     ]:
@@ -407,6 +411,32 @@ def check_android_project(root: Path, reporter: Reporter) -> None:
         reporter.ok("Android manifest references network security config")
     else:
         reporter.fail("Android manifest does not reference network security config")
+    if (
+        "android.intent.action.SEND" in manifest
+        and 'android:mimeType="text/plain"' in manifest
+    ):
+        reporter.ok("Android manifest accepts text/plain share-sheet imports")
+    else:
+        reporter.fail("Android manifest missing text/plain ACTION_SEND share import")
+
+    main_activity = read_text(main_activity_path)
+    shared_import_contract = [
+        "com.voicetextnote.app/shared_import",
+        "consumeInitialSharedImport",
+        "consumeLatestSharedImport",
+        "Intent.ACTION_SEND",
+        "Intent.EXTRA_TEXT",
+    ]
+    missing_shared_import = [
+        snippet for snippet in shared_import_contract if snippet not in main_activity
+    ]
+    if not missing_shared_import:
+        reporter.ok("Android MainActivity exposes shared import MethodChannel")
+    else:
+        reporter.fail(
+            "Android MainActivity shared import contract missing: "
+            + ", ".join(missing_shared_import)
+        )
 
     release_network = read_text(network_path)
     if '<base-config cleartextTrafficPermitted="false">' in release_network:
@@ -549,13 +579,13 @@ def check_readme_release_status(root: Path, reporter: Reporter) -> None:
     if (
         "3847 백엔드 테스트" in readme
         and "3847개" in readme
-        and ("Flutter 404" in readme or "404개" in readme)
-        and "4251개" in readme
+        and ("Flutter 412" in readme or "412개" in readme)
+        and "4259개" in readme
     ):
         reporter.ok("README test counts match current release validation evidence")
     else:
         reporter.fail(
-            "README test counts must match current 3847 backend / 404 Flutter / 4251 total evidence"
+            "README test counts must match current 3847 backend / 412 Flutter / 4259 total evidence"
         )
     if f"{completed_spec_count}개 SPEC" in readme:
         reporter.fail("README should avoid hard-coded completed SPEC counts outside the SPEC list")
@@ -630,11 +660,11 @@ def check_docs(root: Path, reporter: Reporter) -> None:
             "Release procedure SPEC count must match README completed SPEC list "
             f"({completed_spec_count})"
         )
-    if "3847 passed" in procedure_doc and "Flutter: 404 passed" in procedure_doc:
+    if "3847 passed" in procedure_doc and "Flutter: 412 passed" in procedure_doc:
         reporter.ok("Release procedure backend test count matches latest full pytest evidence")
     else:
         reporter.fail(
-            "Release procedure test counts must match latest 3847 backend / 404 Flutter evidence"
+            "Release procedure test counts must match latest 3847 backend / 412 Flutter evidence"
         )
     app_store_doc = read_text(root / "docs/app-store-metadata.md")
     for snippet in [

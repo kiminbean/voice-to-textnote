@@ -18,6 +18,7 @@ import 'package:voice_to_textnote/providers/meeting_list_provider.dart';
 import 'package:voice_to_textnote/screens/home_screen.dart';
 import 'package:voice_to_textnote/services/connectivity_service.dart';
 import 'package:voice_to_textnote/services/minutes_api.dart';
+import 'package:voice_to_textnote/services/shared_import_service.dart';
 
 class MockConnectivityService extends Mock implements ConnectivityService {}
 
@@ -155,6 +156,32 @@ void main() {
       expect(find.text('Google Meet 회의'), findsOneWidget);
       expect(find.text('대기'), findsOneWidget);
       expect(find.text('온라인 회의'), findsWidgets);
+    });
+
+    testWidgets('공유된 URL은 URL/Transcript 가져오기 시트에 미리 채워져야 함',
+        (WidgetTester tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: _onlineOverrides(mockService),
+          child: const MaterialApp(
+            home: HomeScreen(
+              initialSharedImport: SharedImportPayload(
+                sourceUrl: 'https://youtu.be/example123',
+                title: 'YouTube transcript',
+                text: '강의 transcript 본문입니다. 충분한 길이의 공유 원문입니다.',
+                mimeType: 'text/plain',
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(find.text('URL/Transcript 가져오기'), findsOneWidget);
+      expect(find.text('https://youtu.be/example123'), findsOneWidget);
+      expect(find.text('YouTube transcript'), findsOneWidget);
+      expect(find.textContaining('강의 transcript 본문'), findsOneWidget);
     });
 
     testWidgets('파일 업로드 바로가기는 업로드 모드 녹음 화면으로 이동해야 함',
