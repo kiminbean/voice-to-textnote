@@ -207,6 +207,7 @@ jobs:
 
       - name: Run strict release readiness gate
         env:
+          REQUIRE_ANDROID_RELEASE_SIGNING: "true"
           FIREBASE_CREDENTIALS_PATH: ${{ runner.temp }}/firebase-service-account.json
           APNS_AUTH_KEY_PATH: ${{ runner.temp }}/apns-auth-key.p8
           APNS_KEY_ID: ${{ secrets.APNS_KEY_ID }}

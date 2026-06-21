@@ -10,7 +10,7 @@
 - [x] `verify_release_readiness.py` (default) — 0 errors
 - [x] CI: Test & Lint PASS, Flutter Android PASS, Flutter iOS PASS
 - [x] 백엔드: 3907 passed, Flutter: 415 passed, backend coverage 100.00%
-- [ ] `verify_release_readiness.py --strict` — **11 errors (이 문서의 목표)**
+- [ ] `verify_release_readiness.py --strict` — **12 errors (이 문서의 목표)**
 
 ---
 

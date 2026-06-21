@@ -120,7 +120,7 @@ def test_mobile_workflow_matches_github_release_env_contract():
     assert all(f"vars.{variable}" in workflow for variable in module.REQUIRED_VARIABLES)
     assert "ANDROID_KEYSTORE_BASE64" in module.REQUIRED_SECRETS
     assert "ANDROID_KEYSTORE_PATH" in workflow
-    assert "REQUIRE_ANDROID_RELEASE_SIGNING: \"true\"" in workflow
+    assert workflow.count("REQUIRE_ANDROID_RELEASE_SIGNING: \"true\"") == 2
     assert "python3 client/scripts/verify_mobile_release_runner.py" in workflow
     assert (
         workflow.index("python3 client/scripts/verify_mobile_release_runner.py")

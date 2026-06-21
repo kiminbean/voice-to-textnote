@@ -1694,6 +1694,13 @@ def check_release_e2e_evidence(path: Path, reporter: Reporter, root: Path | None
 
 
 def check_strict_external(reporter: Reporter) -> None:
+    require_env_value(
+        reporter,
+        "REQUIRE_ANDROID_RELEASE_SIGNING",
+        "Android release signing gate",
+        "true",
+    )
+
     credentials = os.environ.get("FIREBASE_CREDENTIALS_PATH", "")
     if credentials:
         check_service_account(Path(credentials).expanduser(), reporter)
