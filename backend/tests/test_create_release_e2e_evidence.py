@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import zipfile
 from pathlib import Path
 
 
@@ -69,7 +70,8 @@ def test_release_e2e_evidence_artifacts_are_resolved_from_repo_root(
     android_apk = root / "client/build/app/outputs/flutter-apk/app-debug.apk"
     ios_runner_app = root / "client/build/ios/iphoneos/Runner.app"
     android_apk.parent.mkdir(parents=True)
-    android_apk.write_bytes(b"apk")
+    with zipfile.ZipFile(android_apk, "w") as apk:
+        apk.writestr("AndroidManifest.xml", "<manifest />")
     ios_runner_app.mkdir(parents=True)
     (ios_runner_app / "Info.plist").write_text("plist", encoding="utf-8")
     evidence_path = tmp_path / "evidence.json"

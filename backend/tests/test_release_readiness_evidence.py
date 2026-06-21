@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import zipfile
 from functools import lru_cache
 from pathlib import Path
 
@@ -20,7 +21,8 @@ def load_release_readiness_module():
 def make_evidence(tmp_path: Path, module) -> dict[str, object]:
     android_apk = tmp_path / "app-debug.apk"
     ios_runner = tmp_path / "Runner.app"
-    android_apk.write_text("apk", encoding="utf-8")
+    with zipfile.ZipFile(android_apk, "w") as apk:
+        apk.writestr("AndroidManifest.xml", "<manifest />")
     ios_runner.mkdir()
     (ios_runner / "Info.plist").write_text("plist", encoding="utf-8")
 
@@ -84,10 +86,10 @@ def write_tone_policy_files(root: Path, *, tone_model_line: str = 'tone_model: s
 def write_readme_status(root: Path, content: str) -> None:
     (root / "README.md").write_text(
         (
-            "3863 백엔드 테스트\n"
-            "| 백엔드 단위/통합/E2E | 3863개 | 100.00% |\n"
+            "3864 백엔드 테스트\n"
+            "| 백엔드 단위/통합/E2E | 3864개 | 100.00% |\n"
             "| Flutter 테스트 | 415개 | - |\n"
-            "| 총합 | 4278개 | - |\n"
+            "| 총합 | 4279개 | - |\n"
             f"{content}"
         ),
         encoding="utf-8",
@@ -250,6 +252,21 @@ def test_release_e2e_evidence_rejects_empty_android_apk(tmp_path, monkeypatch):
     module.check_release_e2e_evidence(evidence_path, reporter)
 
     assert any("artifact must be non-empty: android_apk" in error for error in reporter.errors)
+
+
+def test_release_e2e_evidence_rejects_non_zip_android_apk(tmp_path, monkeypatch):
+    module = load_release_readiness_module()
+    evidence = make_evidence(tmp_path, module)
+    android_apk = Path(str(evidence["artifacts"]["android_apk"]))
+    android_apk.write_text("not a zip apk", encoding="utf-8")
+    evidence_path = write_evidence(tmp_path, evidence)
+    monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
+    monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")
+
+    reporter = module.Reporter()
+    module.check_release_e2e_evidence(evidence_path, reporter)
+
+    assert any("artifact must be a valid APK zip: android_apk" in error for error in reporter.errors)
 
 
 def test_release_e2e_evidence_rejects_ios_runner_without_info_plist(

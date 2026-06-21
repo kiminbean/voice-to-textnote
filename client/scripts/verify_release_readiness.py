@@ -17,6 +17,7 @@ import shutil
 import struct
 import subprocess
 import sys
+import zipfile
 from datetime import datetime
 from pathlib import Path
 
@@ -621,15 +622,15 @@ def check_readme_release_status(root: Path, reporter: Reporter) -> None:
     else:
         reporter.ok("README does not overclaim Production Ready before strict evidence")
     if (
-        "3863 백엔드 테스트" in readme
-        and "3863개" in readme
+        "3864 백엔드 테스트" in readme
+        and "3864개" in readme
         and ("Flutter 415" in readme or "415개" in readme)
-        and "4278개" in readme
+        and "4279개" in readme
     ):
         reporter.ok("README test counts match current release validation evidence")
     else:
         reporter.fail(
-            "README test counts must match current 3863 backend / 415 Flutter / 4278 total evidence"
+            "README test counts must match current 3864 backend / 415 Flutter / 4279 total evidence"
         )
     if f"{completed_spec_count}개 SPEC" in readme:
         reporter.fail("README should avoid hard-coded completed SPEC counts outside the SPEC list")
@@ -704,11 +705,11 @@ def check_docs(root: Path, reporter: Reporter) -> None:
             "Release procedure SPEC count must match README completed SPEC list "
             f"({completed_spec_count})"
         )
-    if "3863 passed" in procedure_doc and "Flutter: 415 passed" in procedure_doc:
+    if "3864 passed" in procedure_doc and "Flutter: 415 passed" in procedure_doc:
         reporter.ok("Release procedure backend test count matches latest full pytest evidence")
     else:
         reporter.fail(
-            "Release procedure test counts must match latest 3863 backend / 415 Flutter evidence"
+            "Release procedure test counts must match latest 3864 backend / 415 Flutter evidence"
         )
     app_store_doc = read_text(root / "docs/app-store-metadata.md")
     for snippet in [
@@ -1002,6 +1003,14 @@ def resolve_release_artifact_path(root: Path, artifact_path: str) -> Path:
     return root / path
 
 
+def is_android_apk(path: Path) -> bool:
+    try:
+        with zipfile.ZipFile(path) as apk:
+            return "AndroidManifest.xml" in apk.namelist()
+    except zipfile.BadZipFile:
+        return False
+
+
 def check_release_e2e_evidence(path: Path, reporter: Reporter, root: Path | None = None) -> None:
     root = root or Path(__file__).resolve().parents[2]
     if not path.is_file():
@@ -1065,6 +1074,9 @@ def check_release_e2e_evidence(path: Path, reporter: Reporter, root: Path | None
         if type_check(resolved_artifact):
             if key == "android_apk" and resolved_artifact.stat().st_size == 0:
                 reporter.fail(f"Release E2E evidence artifact must be non-empty: {key}")
+                continue
+            if key == "android_apk" and not is_android_apk(resolved_artifact):
+                reporter.fail(f"Release E2E evidence artifact must be a valid APK zip: {key}")
                 continue
             if key == "ios_runner_app" and not (resolved_artifact / "Info.plist").is_file():
                 reporter.fail(f"Release E2E evidence artifact missing Info.plist: {key}")
