@@ -71,6 +71,7 @@ def test_release_e2e_evidence_artifacts_are_resolved_from_repo_root(
     android_apk.parent.mkdir(parents=True)
     android_apk.write_bytes(b"apk")
     ios_runner_app.mkdir(parents=True)
+    (ios_runner_app / "Info.plist").write_text("plist", encoding="utf-8")
     evidence_path = tmp_path / "evidence.json"
     evidence_path.write_text(
         json.dumps(

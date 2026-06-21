@@ -22,6 +22,7 @@ def make_evidence(tmp_path: Path, module) -> dict[str, object]:
     ios_runner = tmp_path / "Runner.app"
     android_apk.write_text("apk", encoding="utf-8")
     ios_runner.mkdir()
+    (ios_runner / "Info.plist").write_text("plist", encoding="utf-8")
 
     return {
         "tested_at": "2026-06-15T09:00:00+09:00",
@@ -83,10 +84,10 @@ def write_tone_policy_files(root: Path, *, tone_model_line: str = 'tone_model: s
 def write_readme_status(root: Path, content: str) -> None:
     (root / "README.md").write_text(
         (
-            "3862 백엔드 테스트\n"
-            "| 백엔드 단위/통합/E2E | 3862개 | 100.00% |\n"
+            "3863 백엔드 테스트\n"
+            "| 백엔드 단위/통합/E2E | 3863개 | 100.00% |\n"
             "| Flutter 테스트 | 415개 | - |\n"
-            "| 총합 | 4277개 | - |\n"
+            "| 총합 | 4278개 | - |\n"
             f"{content}"
         ),
         encoding="utf-8",
@@ -249,6 +250,23 @@ def test_release_e2e_evidence_rejects_empty_android_apk(tmp_path, monkeypatch):
     module.check_release_e2e_evidence(evidence_path, reporter)
 
     assert any("artifact must be non-empty: android_apk" in error for error in reporter.errors)
+
+
+def test_release_e2e_evidence_rejects_ios_runner_without_info_plist(
+    tmp_path, monkeypatch
+):
+    module = load_release_readiness_module()
+    evidence = make_evidence(tmp_path, module)
+    ios_runner = Path(str(evidence["artifacts"]["ios_runner_app"]))
+    (ios_runner / "Info.plist").unlink()
+    evidence_path = write_evidence(tmp_path, evidence)
+    monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
+    monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")
+
+    reporter = module.Reporter()
+    module.check_release_e2e_evidence(evidence_path, reporter)
+
+    assert any("artifact missing Info.plist: ios_runner_app" in error for error in reporter.errors)
 
 
 def test_release_e2e_example_lists_every_required_scenario():
