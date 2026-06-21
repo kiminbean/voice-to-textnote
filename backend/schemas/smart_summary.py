@@ -22,6 +22,7 @@ class SummaryMode(StrEnum):
     RESEARCH_INTERVIEW = "research_interview"  # 리서치 인터뷰
     DECISION_LOG = "decision_log"  # 결정 로그
     ACTION_ONLY = "action_only"  # 실행 항목만
+    SOAP_NOTE = "soap_note"  # SOAP 구조화 노트 (비진단)
 
 
 class SummaryLength(StrEnum):

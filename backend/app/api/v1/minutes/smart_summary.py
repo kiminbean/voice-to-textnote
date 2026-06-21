@@ -83,6 +83,11 @@ _SUMMARY_MODE_PRESETS = [
         "label": "액션만",
         "description": "실행 항목만 빠르게 추출합니다.",
     },
+    {
+        "value": SummaryMode.SOAP_NOTE.value,
+        "label": "SOAP 노트",
+        "description": "진단 없이 주관/객관/평가 후보/계획을 구조화합니다.",
+    },
 ]
 
 

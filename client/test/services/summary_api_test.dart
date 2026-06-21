@@ -169,6 +169,7 @@ void main() {
             'modes': [
               {'value': 'lecture_notes', 'label': '강의 노트'},
               {'value': 'action_only', 'label': '액션만'},
+              {'value': 'soap_note', 'label': 'SOAP 노트'},
             ],
           },
           statusCode: 200,
@@ -180,8 +181,9 @@ void main() {
       final result = await summaryApi.getSmartSummaryModes();
 
       // Assert
-      expect(result, hasLength(2));
+      expect(result, hasLength(3));
       expect(result.first['value'], 'lecture_notes');
+      expect(result.last['value'], 'soap_note');
       verify(() => mockDio.get('/smart-summary/modes')).called(1);
     });
 

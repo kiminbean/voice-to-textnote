@@ -300,10 +300,11 @@ class TestSmartSummaryService:
             "research_interview",
             "decision_log",
             "action_only",
+            "soap_note",
         }
 
         assert {mode.value for mode in SummaryMode} == expected_modes
-        assert len(SummaryMode) >= 10
+        assert len(SummaryMode) >= 12
 
     @pytest.mark.parametrize(
         ("mode", "expected_sections"),
@@ -317,6 +318,10 @@ class TestSmartSummaryService:
             ),
             (SummaryMode.DECISION_LOG, ["## 결정 로그", "베타 출시"]),
             (SummaryMode.ACTION_ONLY, ["## 실행 항목", "개발팀은"]),
+            (
+                SummaryMode.SOAP_NOTE,
+                ["## Subjective", "## Objective", "## Assessment 후보", "## Plan", "의료 판단"],
+            ),
         ],
     )
     def test_generate_purpose_specific_owll_benchmark_summary_modes(self, mode, expected_sections):

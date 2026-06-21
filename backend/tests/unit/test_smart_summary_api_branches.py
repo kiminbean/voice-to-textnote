@@ -299,3 +299,8 @@ async def test_get_available_summary_modes_returns_owll_benchmark_presets():
         "label": "액션만",
         "description": "실행 항목만 빠르게 추출합니다.",
     } in modes
+    assert {
+        "value": "soap_note",
+        "label": "SOAP 노트",
+        "description": "진단 없이 주관/객관/평가 후보/계획을 구조화합니다.",
+    } in modes

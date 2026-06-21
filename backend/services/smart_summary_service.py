@@ -337,6 +337,28 @@ class SmartSummaryService:
             )
             summary = f"## 결정 로그\n{decisions or '명시적인 결정 사항이 없습니다.'}"
 
+        elif mode == SummaryMode.SOAP_NOTE:
+            sentences = [s.strip() for s in re.split(r"[.!?]+", content) if s.strip()]
+            subjective = [f"- {sentence}" for sentence in sentences[:2]] or [
+                "- 주관적 진술이 명시적으로 충분하지 않습니다."
+            ]
+            objective = [f"- {point}" for point in self._extract_key_points(content)[:2]] or [
+                "- 객관적 관찰 내용이 명시적으로 충분하지 않습니다."
+            ]
+            summary = "\n".join(
+                [
+                    "## Subjective",
+                    *subjective,
+                    "## Objective",
+                    *objective,
+                    "## Assessment 후보",
+                    "- 사용자가 제공한 내용 기반의 정리 후보입니다. 진단으로 사용하지 마세요.",
+                    "## Plan",
+                    "- 확인할 질문과 후속 기록 필요 사항을 정리하세요.",
+                    "주의: 이 노트는 기록 정리용이며 의료 판단, 진단, 처방을 생성하지 않습니다.",
+                ]
+            )
+
         else:  # ACTION_ONLY
             actions = self._generate_summary_by_mode(
                 content,

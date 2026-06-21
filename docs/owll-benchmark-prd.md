@@ -51,7 +51,7 @@ Voice to TextNote already covers many core Owll-equivalent capabilities:
 | 100+ language transcription/translation | Backend translation API, Flutter result-screen translation tab, search indexing, and Obsidian export inclusion implemented for persisted minutes/summaries; Korean default and i18n UI exist | Broader multilingual transcript workflow remains | P1 |
 | Online meeting capture for Zoom/Meet/Teams | Roadmap mentions Slack/Teams, no bot/import surface found | Meeting-platform import/integration | P2 |
 | Contact manager for sales notes | Team/auth exist, no CRM/contact model found | Sales follow-up/contact workflows | P3 |
-| SOAP/healthcare note mode | Generic templates exist | Domain-specific summary template | P3 |
+| SOAP/healthcare note mode | SOAP smart-summary mode implemented with non-diagnostic disclaimer | Domain tuning/validation and regulated clinical workflows remain out of scope | P3 |
 | Private cloud per team member | Team sharing exists; history sync, meeting cards, result hero team names, team sharing dialog policy labels, and authenticated new import flows now apply team-default sharing policies while preserving private fallback | Broader capture surfaces can reuse the same policy hook | P1 |
 | Summary modes 10+ | Backend smart-summary modes and Flutter result-screen mode generation implemented | Mode tuning and persisted history UX can be improved | P1 |
 
@@ -206,7 +206,7 @@ Add transcript and summary translation workflows. The current app has Korean/Eng
 
 Productize reusable summary modes such as executive brief, lecture notes, sales follow-up, sermon notes, research interview, action-only, and decision log.
 
-**Implementation status (2026-06-21)**: Backend smart summary now exposes 11 selectable modes through `GET /api/v1/smart-summary/modes`, including executive, detailed, bullet, action-oriented, sentiment-focused, lecture notes, sales follow-up, sermon notes, research interview, decision log, and action-only. Generated mode-specific summaries are persisted under the source minutes result, `GET /api/v1/smart-summary/history/{minutes_task_id}` returns saved versions, and the Flutter result screen AI summary tab displays saved mode history across revisits while still supporting fresh generation. Remaining work: tune prompts/output quality per domain.
+**Implementation status (2026-06-21)**: Backend smart summary now exposes 12 selectable modes through `GET /api/v1/smart-summary/modes`, including executive, detailed, bullet, action-oriented, sentiment-focused, lecture notes, sales follow-up, sermon notes, research interview, decision log, action-only, and SOAP note. Generated mode-specific summaries are persisted under the source minutes result, `GET /api/v1/smart-summary/history/{minutes_task_id}` returns saved versions, and the Flutter result screen AI summary tab displays saved mode history across revisits while still supporting fresh generation. Remaining work: tune prompts/output quality per domain.
 
 ### P1: YouTube and External Media Import
 
@@ -233,6 +233,8 @@ Make note ownership and sharing state visible everywhere users make sharing deci
 ### P3: Domain Packs
 
 Add optional sales/contact follow-up and SOAP-style healthcare templates as configurable modes, without making regulated claims.
+
+**Implementation status (2026-06-21)**: Sales follow-up and SOAP note are available as smart-summary modes. SOAP note structures user-provided content into Subjective, Objective, Assessment 후보, and Plan sections, and explicitly states that it is for record organization only and does not generate medical judgment, diagnosis, or prescription. Remaining work: contact/CRM workflows and further domain-specific tuning.
 
 ## 7. Implementation Plan
 

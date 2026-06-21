@@ -2625,6 +2625,7 @@ const _smartSummaryModeOptions = [
   _SmartSummaryModeOption('research_interview', '리서치'),
   _SmartSummaryModeOption('decision_log', '결정 로그'),
   _SmartSummaryModeOption('action_only', '액션만'),
+  _SmartSummaryModeOption('soap_note', 'SOAP 노트'),
 ];
 
 class _SummaryTabState extends ConsumerState<_SummaryTab> {
