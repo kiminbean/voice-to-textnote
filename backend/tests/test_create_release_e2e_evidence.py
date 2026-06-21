@@ -29,16 +29,36 @@ def load_release_readiness_module():
     return module
 
 
-def test_release_e2e_scaffold_contains_every_required_scenario(monkeypatch):
+def write_release_artifacts(root: Path) -> tuple[Path, Path]:
+    android_apk = root / "app-debug.apk"
+    ios_runner_app = root / "Runner.app"
+    with zipfile.ZipFile(android_apk, "w") as apk:
+        apk.writestr("AndroidManifest.xml", "<manifest />")
+        apk.writestr("classes.dex", b"dex\n035\0")
+    ios_runner_app.mkdir()
+    with (ios_runner_app / "Info.plist").open("wb") as plist:
+        plistlib.dump(
+            {
+                "CFBundleIdentifier": "com.voicetextnote.app",
+                "CFBundleExecutable": "Runner",
+            },
+            plist,
+        )
+    (ios_runner_app / "Runner").write_bytes(b"binary")
+    return android_apk, ios_runner_app
+
+
+def test_release_e2e_scaffold_contains_every_required_scenario(monkeypatch, tmp_path):
     create = load_create_evidence_module()
     readiness = load_release_readiness_module()
+    android_apk, ios_runner_app = write_release_artifacts(tmp_path)
     monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
     monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")
 
     evidence = create.build_evidence(
-        Path(__file__).resolve().parents[2],
-        android_apk="app-debug.apk",
-        ios_runner_app="Runner.app",
+        tmp_path,
+        android_apk=android_apk.name,
+        ios_runner_app=ios_runner_app.name,
     )
 
     assert evidence["devices"]["android"]["serial"] == "android-serial"
@@ -50,19 +70,35 @@ def test_release_e2e_scaffold_contains_every_required_scenario(monkeypatch):
 
 def test_release_e2e_scaffold_round_trips_json(tmp_path):
     create = load_create_evidence_module()
+    android_apk, ios_runner_app = write_release_artifacts(tmp_path)
     evidence = create.build_evidence(
-        Path(__file__).resolve().parents[2],
-        android_apk="app-debug.apk",
-        ios_runner_app="Runner.app",
+        tmp_path,
+        android_apk=android_apk.name,
+        ios_runner_app=ios_runner_app.name,
     )
     path = tmp_path / "release-e2e-evidence.json"
     path.write_text(json.dumps(evidence), encoding="utf-8")
 
     loaded = json.loads(path.read_text(encoding="utf-8"))
 
-    assert loaded["artifacts"]["android_apk"] == "app-debug.apk"
-    assert loaded["artifacts"]["ios_runner_app"] == "Runner.app"
+    assert loaded["artifacts"]["android_apk"] == android_apk.name
+    assert loaded["artifacts"]["ios_runner_app"] == ios_runner_app.name
     assert set(loaded["artifact_sha256"]) == {"android_apk", "ios_runner_app"}
+
+
+def test_release_e2e_scaffold_rejects_missing_artifacts(tmp_path):
+    create = load_create_evidence_module()
+
+    try:
+        create.build_evidence(
+            tmp_path,
+            android_apk="missing.apk",
+            ios_runner_app="Missing.app",
+        )
+    except ValueError as exc:
+        assert "missing release artifact" in str(exc)
+    else:
+        raise AssertionError("build_evidence should reject missing release artifacts")
 
 
 def test_release_e2e_evidence_artifacts_are_resolved_from_repo_root(

@@ -25,6 +25,10 @@ from verify_release_readiness import (  # noqa: E402
 
 DEFAULT_ANDROID_APK = "client/build/app/outputs/flutter-apk/app-debug.apk"
 DEFAULT_IOS_RUNNER_APP = "client/build/ios/iphoneos/Runner.app"
+RELEASE_ARTIFACT_TYPES = {
+    "android_apk": "file",
+    "ios_runner_app": "directory",
+}
 
 
 def git_revision(root: Path) -> str:
@@ -43,12 +47,23 @@ def git_revision(root: Path) -> str:
     return f"git:{revision}" if revision else "git:unknown"
 
 
+def validate_release_artifacts(root: Path, artifacts: dict[str, str]) -> None:
+    for key, artifact_path in artifacts.items():
+        resolved = resolve_release_artifact_path(root, artifact_path)
+        expected_type = RELEASE_ARTIFACT_TYPES[key]
+        if expected_type == "file" and not resolved.is_file():
+            raise ValueError(f"missing release artifact file: {key} ({resolved})")
+        if expected_type == "directory" and not resolved.is_dir():
+            raise ValueError(f"missing release artifact directory: {key} ({resolved})")
+
+
 def build_evidence(root: Path, *, android_apk: str, ios_runner_app: str) -> dict[str, object]:
     revision = git_revision(root)
     artifacts = {
         "android_apk": android_apk,
         "ios_runner_app": ios_runner_app,
     }
+    validate_release_artifacts(root, artifacts)
     return {
         "tested_at": datetime.now(UTC).isoformat(),
         "tester": os.environ.get("USER", "release-operator"),
@@ -96,11 +111,15 @@ def main() -> int:
         return 1
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    evidence = build_evidence(
-        root,
-        android_apk=args.android_apk,
-        ios_runner_app=args.ios_runner_app,
-    )
+    try:
+        evidence = build_evidence(
+            root,
+            android_apk=args.android_apk,
+            ios_runner_app=args.ios_runner_app,
+        )
+    except ValueError as exc:
+        print(f"Cannot create release E2E evidence scaffold: {exc}", file=sys.stderr)
+        return 1
     output_path.write_text(
         json.dumps(evidence, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
