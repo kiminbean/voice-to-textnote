@@ -87,7 +87,13 @@ export IOS_DEVICE_UDID=<udid>
 cd client
 
 # Android Release APK
-flutter build apk --release
+cat > android/key.properties <<EOF
+storeFile=/secure/path/android-release.jks
+storePassword=<keystore-password>
+keyAlias=<key-alias>
+keyPassword=<key-password>
+EOF
+REQUIRE_ANDROID_RELEASE_SIGNING=true ./scripts/verify_mobile.sh --native
 
 # iOS (Xcode에서 코드사인 필요)
 flutter build ios --release
@@ -157,6 +163,10 @@ python3 client/scripts/verify_mobile_release_runner.py
 ```bash
 # 환경 변수에서 secrets 일괄 설정
 FIREBASE_SERVICE_ACCOUNT_JSON="$(cat $FIREBASE_CREDENTIALS_PATH)" \
+ANDROID_KEYSTORE_BASE64="$(base64 < /secure/path/android-release.jks | tr -d '\n')" \
+ANDROID_KEYSTORE_PASSWORD=<keystore-password> \
+ANDROID_KEY_ALIAS=<key-alias> \
+ANDROID_KEY_PASSWORD=<key-password> \
 APNS_AUTH_KEY_P8="$(cat $APNS_AUTH_KEY_PATH)" \
 APNS_KEY_ID=$APNS_KEY_ID \
 APNS_TEAM_ID=$APNS_TEAM_ID \
@@ -208,6 +218,7 @@ gh release create v1.7.0 \
 
 | 단계 | 환경 변수 | 검증 방법 |
 |------|-----------|-----------|
+| 0.1 Android signing | `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD` | `REQUIRE_ANDROID_RELEASE_SIGNING=true ./scripts/verify_mobile.sh --native` |
 | 1.1 Firebase | `FIREBASE_CREDENTIALS_PATH` | `--strict` Firebase PASS |
 | 1.2 APNs | `APNS_AUTH_KEY_PATH`, `APNS_KEY_ID`, `APNS_TEAM_ID` | `--strict` APNs 3개 PASS |
 | 1.3 App Store | `APP_STORE_CONNECT_API_KEY_PATH`, `KEY_ID`, `ISSUER_ID` | `--strict` App Store 3개 PASS |

@@ -33,10 +33,14 @@ def test_verify_mobile_script_checks_native_artifact_outputs():
     script = read_verify_mobile_script()
 
     assert 'verify_file_artifact "$ANDROID_RELEASE_APK"' in script
+    assert 'verify_signed_android_artifact "$ANDROID_RELEASE_APK"' in script
     assert 'verify_directory_artifact "$IOS_RUNNER_APP"' in script
     assert 'verify_file_artifact "$IOS_INFO_PLIST"' in script
     assert script.index("flutter build apk --release") < script.index(
         'verify_file_artifact "$ANDROID_RELEASE_APK"'
+    )
+    assert script.index('verify_file_artifact "$ANDROID_RELEASE_APK"') < script.index(
+        'verify_signed_android_artifact "$ANDROID_RELEASE_APK"'
     )
     assert script.index("flutter build ios --debug --no-codesign") < script.index(
         'verify_directory_artifact "$IOS_RUNNER_APP"'

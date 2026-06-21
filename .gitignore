@@ -131,6 +131,8 @@ logs/
 *.p12
 *.pfx
 *.jks
+*.keystore
+client/android/key.properties
 
 # Private keys (specific patterns to avoid false positives)
 # FIXED: Issue #237 - Replaced overly broad *key* and *secret* patterns

@@ -172,19 +172,37 @@ jobs:
 
       - name: Set up strict credential files
         env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/android-release.jks
           FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
           APNS_AUTH_KEY_P8: ${{ secrets.APNS_AUTH_KEY_P8 }}
           APP_STORE_CONNECT_API_KEY_P8: ${{ secrets.APP_STORE_CONNECT_API_KEY_P8 }}
         run: |
+          test -n "$ANDROID_KEYSTORE_BASE64"
+          test -n "$ANDROID_KEYSTORE_PASSWORD"
+          test -n "$ANDROID_KEY_ALIAS"
+          test -n "$ANDROID_KEY_PASSWORD"
           test -n "$FIREBASE_SERVICE_ACCOUNT_JSON"
           test -n "$APNS_AUTH_KEY_P8"
           test -n "$APP_STORE_CONNECT_API_KEY_P8"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$ANDROID_KEYSTORE_PATH"
+          cat > client/android/key.properties <<EOF
+          storeFile=$ANDROID_KEYSTORE_PATH
+          storePassword=$ANDROID_KEYSTORE_PASSWORD
+          keyAlias=$ANDROID_KEY_ALIAS
+          keyPassword=$ANDROID_KEY_PASSWORD
+          EOF
           printf '%s' "$FIREBASE_SERVICE_ACCOUNT_JSON" > "$RUNNER_TEMP/firebase-service-account.json"
           printf '%s' "$APNS_AUTH_KEY_P8" > "$RUNNER_TEMP/apns-auth-key.p8"
           printf '%s' "$APP_STORE_CONNECT_API_KEY_P8" > "$RUNNER_TEMP/app-store-connect-api-key.p8"
 
       - name: Run native mobile build gate
         working-directory: client
+        env:
+          REQUIRE_ANDROID_RELEASE_SIGNING: "true"
         run: ./scripts/verify_mobile.sh --native
 
       - name: Run strict release readiness gate

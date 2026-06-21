@@ -18,6 +18,10 @@ from typing import Any
 ENVIRONMENT = "mobile-release"
 REQUIRED_RUNNER_LABELS = {"self-hosted", "macOS", "mobile-release"}
 REQUIRED_SECRETS = {
+    "ANDROID_KEYSTORE_BASE64",
+    "ANDROID_KEYSTORE_PASSWORD",
+    "ANDROID_KEY_ALIAS",
+    "ANDROID_KEY_PASSWORD",
     "FIREBASE_SERVICE_ACCOUNT_JSON",
     "APNS_AUTH_KEY_P8",
     "APNS_KEY_ID",

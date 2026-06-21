@@ -13,8 +13,8 @@
 - [ ] Android SDK 확인: `flutter doctor -v`에서 Android toolchain이 `Android SDK version 36.0.0`으로 표시
 - [ ] CocoaPods 확인: `cd client/ios && pod install`
 - [ ] self-hosted runner 후보 장비 사전검사 통과: `ANDROID_DEVICE_SERIAL=<adb-device-serial> IOS_DEVICE_UDID=<ios-device-udid> python3 client/scripts/verify_mobile_release_runner.py`
-- [ ] 네이티브 빌드 게이트 통과: `cd client && ./scripts/verify_mobile.sh --native`
-- [ ] Android release APK 산출물 확인: `client/build/app/outputs/flutter-apk/app-release.apk`
+- [ ] 네이티브 빌드 게이트 통과: `cd client && REQUIRE_ANDROID_RELEASE_SIGNING=true ./scripts/verify_mobile.sh --native`
+- [ ] Android release APK 산출물 및 서명 확인: `client/build/app/outputs/flutter-apk/app-release.apk`, `apksigner verify --print-certs`
 - [ ] iOS no-codesign 산출물 확인: `client/build/ios/iphoneos/Runner.app`
 - [ ] Release readiness 기본 사전검사 통과: `python3 client/scripts/verify_release_readiness.py`
 - [ ] Release E2E evidence scaffold 생성: `python3 client/scripts/create_release_e2e_evidence.py --output docs/release-e2e-evidence.json`
@@ -55,10 +55,10 @@
 |------|-----|
 | Runner labels | `self-hosted`, `macOS`, `mobile-release` |
 | Environment | `mobile-release` |
-| Required secrets | `FIREBASE_SERVICE_ACCOUNT_JSON`, `APNS_AUTH_KEY_P8`, `APNS_KEY_ID`, `APNS_TEAM_ID`, `APP_STORE_CONNECT_API_KEY_P8`, `APP_STORE_CONNECT_KEY_ID`, `APP_STORE_CONNECT_ISSUER_ID`, `FIREBASE_TEST_DEVICE_TOKEN` |
+| Required secrets | `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`, `FIREBASE_SERVICE_ACCOUNT_JSON`, `APNS_AUTH_KEY_P8`, `APNS_KEY_ID`, `APNS_TEAM_ID`, `APP_STORE_CONNECT_API_KEY_P8`, `APP_STORE_CONNECT_KEY_ID`, `APP_STORE_CONNECT_ISSUER_ID`, `FIREBASE_TEST_DEVICE_TOKEN` |
 | Required vars | `ANDROID_DEVICE_SERIAL`, `IOS_DEVICE_UDID` |
 
-이 job은 먼저 `python3 client/scripts/verify_mobile_release_runner.py`로 macOS runner, Flutter doctor, `xcodebuild -version`, Android authorized device, iOS available device를 확인한다. 그 다음 `client/scripts/verify_mobile.sh --native`로 Flutter analyze/test/local STT smoke/Android release APK/iOS no-codesign build를 실행한 뒤, secret을 임시 파일로 materialize하고 `python3 client/scripts/verify_release_readiness.py --strict`를 실행한다. `evidence_path` 입력값은 실제 release evidence JSON을 가리켜야 하며, 예제 파일을 그대로 사용하면 device id와 artifact/evidence가 실제 strict 입력과 맞지 않아 실패해야 정상이다.
+이 job은 먼저 `python3 client/scripts/verify_mobile_release_runner.py`로 macOS runner, Flutter doctor, `xcodebuild -version`, Android authorized device, iOS available device를 확인한다. 그 다음 Android signing secret을 임시 keystore와 `client/android/key.properties`로 materialize하고 `REQUIRE_ANDROID_RELEASE_SIGNING=true client/scripts/verify_mobile.sh --native`로 Flutter analyze/test/local STT smoke/Android signed release APK/iOS no-codesign build를 실행한 뒤, Firebase/APNs/App Store Connect secret을 임시 파일로 materialize하고 `python3 client/scripts/verify_release_readiness.py --strict`를 실행한다. `evidence_path` 입력값은 실제 release evidence JSON을 가리켜야 하며, 예제 파일을 그대로 사용하면 device id와 artifact/evidence가 실제 strict 입력과 맞지 않아 실패해야 정상이다.
 
 GitHub runner를 등록하기 전 macOS 후보 장비에서 아래 명령을 먼저 실행한다. 이 검사는 macOS, Flutter doctor, Android SDK 36, Xcode/CocoaPods, `xcodebuild -version`, Android authorized device, iOS `available` device를 확인한다.
 
@@ -78,6 +78,10 @@ secret과 device id 값이 준비된 운영 장비에서는 아래 명령으로 
 
 ```bash
 FIREBASE_SERVICE_ACCOUNT_JSON="$(cat /secure/firebase-service-account.json)" \
+ANDROID_KEYSTORE_BASE64="$(base64 < /secure/android-release.jks | tr -d '\n')" \
+ANDROID_KEYSTORE_PASSWORD=<keystore-password> \
+ANDROID_KEY_ALIAS=<key-alias> \
+ANDROID_KEY_PASSWORD=<key-password> \
 APNS_AUTH_KEY_P8="$(cat /secure/AuthKey_APNS.p8)" \
 APNS_KEY_ID=XXXXXXXXXX \
 APNS_TEAM_ID=XXXXXXXXXX \

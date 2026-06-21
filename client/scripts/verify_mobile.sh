@@ -45,6 +45,53 @@ verify_directory_artifact() {
   echo "Verified $label artifact directory: $path"
 }
 
+find_android_build_tool() {
+  local tool="$1"
+
+  if command -v "$tool" >/dev/null 2>&1; then
+    command -v "$tool"
+    return 0
+  fi
+
+  local android_sdk="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+  if [[ -n "$android_sdk" && -d "$android_sdk/build-tools" ]]; then
+    local candidate
+    candidate="$(find "$android_sdk/build-tools" -type f -name "$tool" | sort -V | tail -n 1)"
+    if [[ -n "$candidate" ]]; then
+      echo "$candidate"
+      return 0
+    fi
+  fi
+
+  return 1
+}
+
+verify_signed_android_artifact() {
+  local path="$1"
+
+  if [[ "${REQUIRE_ANDROID_RELEASE_SIGNING:-false}" != "true" ]]; then
+    echo "Skipping Android release signing verification. Set REQUIRE_ANDROID_RELEASE_SIGNING=true for strict release."
+    return 0
+  fi
+
+  local apksigner
+  if ! apksigner="$(find_android_build_tool apksigner)"; then
+    echo "apksigner not found. Install Android SDK build-tools or add apksigner to PATH." >&2
+    exit 1
+  fi
+
+  local verify_output
+  verify_output="$(mktemp)"
+  if ! "$apksigner" verify --print-certs "$path" >"$verify_output" 2>&1; then
+    cat "$verify_output" >&2
+    rm -f "$verify_output"
+    exit 1
+  fi
+  cat "$verify_output"
+  rm -f "$verify_output"
+  echo "Verified signed Android release APK: $path"
+}
+
 flutter pub get
 flutter analyze
 flutter test
@@ -57,6 +104,7 @@ fi
 
 flutter build apk --release
 verify_file_artifact "$ANDROID_RELEASE_APK" "Android release APK"
+verify_signed_android_artifact "$ANDROID_RELEASE_APK"
 
 if [[ "$(uname -s)" == "Darwin" ]]; then
   flutter build ios --debug --no-codesign
