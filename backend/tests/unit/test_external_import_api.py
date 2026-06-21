@@ -208,6 +208,37 @@ def test_import_document_success(app_client):
     document_svc.import_document.assert_awaited_once()
 
 
+def test_import_image_document_success(app_client):
+    client, _, document_svc = app_client
+    document_svc.import_document = AsyncMock(
+        return_value=DocumentImportResponse(
+            task_id="ext-img-001",
+            status="completed",
+            title="화이트보드",
+            source_url="https://local.voicetextnote/imports/documents/whiteboard.png",
+            source_type=ExternalImportSourceType.DOCUMENT,
+            language="ko",
+            result_url="/api/v1/minutes/ext-img-001",
+            search_indexed=True,
+            file_name="whiteboard.png",
+            file_type="png",
+            extracted_characters=64,
+        )
+    )
+
+    response = client.post(
+        "/api/v1/imports/document",
+        files={"file": ("whiteboard.png", b"\x89PNG\r\n\x1a\nfake image", "image/png")},
+        data={"title": "화이트보드", "language": "ko"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["task_id"] == "ext-img-001"
+    assert body["file_type"] == "png"
+    document_svc.import_document.assert_awaited_once()
+
+
 def test_import_document_validation_error_returns_422(app_client):
     client, _, document_svc = app_client
     document_svc.import_document = AsyncMock(

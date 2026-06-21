@@ -421,6 +421,63 @@ void main() {
       expect((captured.single as File).path, '/tmp/lecture.pdf');
     });
 
+    testWidgets('이미지 문서를 가져오면 OCR 미팅으로 목록에 추가되어야 함',
+        (WidgetTester tester) async {
+      when(() => mockMinutesApi.importDocument(
+            file: any(named: 'file'),
+            title: any(named: 'title'),
+            language: any(named: 'language'),
+          )).thenAnswer(
+        (_) async => {
+          'task_id': 'img-001',
+          'status': 'completed',
+          'title': '화이트보드',
+          'source_url':
+              'https://local.voicetextnote/imports/documents/whiteboard.png',
+          'result_url': '/api/v1/minutes/img-001',
+          'search_indexed': true,
+          'file_name': 'whiteboard.png',
+          'file_type': 'png',
+          'extracted_characters': 80,
+          'shared_team_ids': const <String>[],
+        },
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            ..._onlineOverrides(mockService),
+            minutesApiProvider.overrideWithValue(mockMinutesApi),
+            documentImportPickerProvider.overrideWithValue(
+              () async => PlatformFile(
+                name: '화이트보드.png',
+                size: 80,
+                path: '/tmp/whiteboard.png',
+              ),
+            ),
+          ],
+          child: const MaterialApp(
+            home: HomeScreen(),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+      expect(find.text('PDF/DOCX/이미지 검색 노트'), findsOneWidget);
+      await tester.tap(find.text('문서 가져오기'));
+      await tester.pumpAndSettle();
+      await _scrollHomeUntilVisible(tester, '화이트보드');
+
+      expect(find.text('화이트보드'), findsOneWidget);
+      expect(find.text('비공개'), findsOneWidget);
+      final captured = verify(() => mockMinutesApi.importDocument(
+            file: captureAny(named: 'file'),
+            title: '화이트보드',
+            language: 'ko',
+          )).captured;
+      expect((captured.single as File).path, '/tmp/whiteboard.png');
+    });
+
     // REQ-HSYNC-003: RefreshIndicator가 있어야 함
     testWidgets('홈 화면에 RefreshIndicator가 있어야 함', (WidgetTester tester) async {
       final testMeeting = Meeting(

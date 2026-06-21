@@ -25,10 +25,20 @@ _TEMPLATE_SIGNATURES: dict[str, list[tuple[int, bytes]]] = {
     ".docx": [(0, b"PK\x03\x04")],
 }
 
+_IMAGE_SIGNATURES: dict[str, list[tuple[int, bytes]]] = {
+    ".png": [(0, b"\x89PNG\r\n\x1a\n")],
+    ".jpg": [(0, b"\xff\xd8\xff")],
+    ".jpeg": [(0, b"\xff\xd8\xff")],
+    ".webp": [(0, b"RIFF"), (8, b"WEBP")],
+    ".heic": [(4, b"ftyp")],
+    ".heif": [(4, b"ftyp")],
+}
+
 # 모든 시그니처 통합
 ALL_SIGNATURES: dict[str, list[tuple[int, bytes]]] = {
     **_AUDIO_SIGNATURES,
     **_TEMPLATE_SIGNATURES,
+    **_IMAGE_SIGNATURES,
 }
 
 
@@ -62,11 +72,15 @@ def verify_file_signature(file_header: bytes, extension: str) -> bool:
     # OR 조건: 시그니처 목록 중 하나라도 매칭되면 통과
     for offset, expected in signatures:
         if _check_signature_at_offset(file_header, offset, expected):
-            # WAV의 경우 RIFF + WAVE 두 조건을 모두 확인
+            # 컨테이너 포맷은 복수 시그니처를 모두 확인
             if ext == ".wav":
                 riff_ok = _check_signature_at_offset(file_header, 0, b"RIFF")
                 wave_ok = _check_signature_at_offset(file_header, 8, b"WAVE")
                 return riff_ok and wave_ok
+            if ext == ".webp":
+                riff_ok = _check_signature_at_offset(file_header, 0, b"RIFF")
+                webp_ok = _check_signature_at_offset(file_header, 8, b"WEBP")
+                return riff_ok and webp_ok
             return True
 
     logger.warning(

@@ -30,7 +30,7 @@ Voice to TextNote already covers many core Owll-equivalent capabilities:
 - AI summary and action items
 - Meeting Q&A
 - Search, advanced search, tags, bookmarks, vocabulary, templates
-- PDF/DOCX/export and share flow
+- PDF/DOCX/image import, export, and share flow
 - Team workspace, meeting sharing, JWT auth
 - Mobile background recording, push notifications, deep links
 - Offline STT hybrid pipeline
@@ -47,7 +47,7 @@ Voice to TextNote already covers many core Owll-equivalent capabilities:
 | Flashcards and AI quizzes | No flashcard/quiz model or UI found | Study pack generation from transcripts/summaries | P0 |
 | Lecture/study mode | Templates exist, but no dedicated study workflow | Dedicated lecture notes + review artifacts | P0 |
 | YouTube summary | URL/transcript import API, Flutter API client, Home URL/Transcript entry point, and clipboard paste ingestion implemented for user-provided external text | Native share-sheet ingestion and compliant transcript fetching remain | P1 |
-| OCR for PDFs/images | PDF/DOCX document import API and Flutter Home entry point implemented for searchable note context | Image OCR engine and native share-sheet ingestion remain | P2 |
+| OCR for PDFs/images | PDF/DOCX/image document import API and Flutter Home entry point implemented for searchable note context, with optional image OCR runtime support | Native share-sheet ingestion remains | P2 |
 | 100+ language transcription/translation | Backend translation API, Flutter result-screen translation tab, search indexing, and Obsidian export inclusion implemented for persisted minutes/summaries; Korean default and i18n UI exist | Broader multilingual transcript workflow remains | P1 |
 | Online meeting capture for Zoom/Meet/Teams | Roadmap mentions Slack/Teams, no bot/import surface found | Meeting-platform import/integration | P2 |
 | Contact manager for sales notes | Team/auth exist, no CRM/contact model found | Sales follow-up/contact workflows | P3 |
@@ -218,7 +218,7 @@ Add URL import and transcript generation for user-provided external media. This 
 
 Import PDFs/images into searchable note context. This is useful for slides, handouts, receipts, whiteboards, and screenshots.
 
-**Implementation status (2026-06-21)**: First product slice implemented. `POST /api/v1/imports/document` accepts user-owned PDF/DOCX uploads, validates extension and magic bytes, extracts full text with existing `pdfplumber`/`python-docx` capabilities, and routes the normalized text through the existing external import pipeline so the document becomes a completed searchable minutes-compatible artifact. The Flutter Home capture shortcuts now include a PDF/DOCX document picker that uploads the file and adds the imported artifact as a completed meeting. Image uploads return a deterministic 422 until an OCR engine is selected. Remaining work: native share-sheet/clipboard ingestion and real OCR for images/screenshots.
+**Implementation status (2026-06-21)**: Product slice implemented. `POST /api/v1/imports/document` accepts user-owned PDF/DOCX/image uploads, validates extension and magic bytes, extracts full text with existing `pdfplumber`/`python-docx` capabilities, and can OCR PNG/JPG/JPEG/WebP/HEIC/HEIF images through an optional Pillow + pytesseract runtime. Extracted text routes through the existing external import pipeline so the document becomes a completed searchable minutes-compatible artifact. The Flutter Home capture shortcuts now include a PDF/DOCX/image picker that uploads the file and adds the imported artifact as a completed meeting. When OCR runtime support is unavailable or extraction fails, image uploads return a deterministic 422 instead of creating empty notes. Remaining work: native share-sheet/clipboard ingestion.
 
 ### P2: Apple Watch Quick Capture
 

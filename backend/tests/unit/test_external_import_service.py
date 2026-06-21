@@ -227,12 +227,84 @@ async def test_import_document_uses_filename_as_default_title():
 def test_import_document_rejects_image_until_ocr_engine_is_available():
     service = DocumentImportService()
 
-    with pytest.raises(ExternalImportValidationError, match="이미지 OCR"):
-        service._validate_document(
-            filename="whiteboard.png",
-            file_type="png",
-            content=b"\x89PNG\r\n\x1a\n",
+    service._validate_document(
+        filename="whiteboard.png",
+        file_type="png",
+        content=b"\x89PNG\r\n\x1a\n",
+    )
+
+
+@pytest.mark.asyncio
+async def test_import_document_extracts_image_ocr_text_and_reuses_pipeline():
+    external_service = AsyncMock()
+    external_service.import_text = AsyncMock(
+        return_value=ExternalTextImportResponse(
+            task_id="ext-img-001",
+            status="completed",
+            title="화이트보드",
+            source_url="https://local.voicetextnote/imports/documents/whiteboard.png",
+            source_type=ExternalImportSourceType.DOCUMENT,
+            language="ko",
+            result_url="/api/v1/minutes/ext-img-001",
+            search_indexed=True,
         )
+    )
+    service = DocumentImportService(external_service)
+    service._extract_image_text = lambda content: "화이트보드 OCR 텍스트와 결정 사항"
+
+    response = await service.import_document(
+        filename="whiteboard.png",
+        content=b"\x89PNG\r\n\x1a\nfake image",
+        title=None,
+        language="ko",
+        db=AsyncMock(),
+        redis_client=AsyncMock(),
+    )
+
+    assert response.task_id == "ext-img-001"
+    assert response.file_type == "png"
+    assert response.extracted_characters == len("화이트보드 OCR 텍스트와 결정 사항")
+    payload = external_service.import_text.await_args.args[0]
+    assert payload.title == "whiteboard"
+    assert payload.content == "화이트보드 OCR 텍스트와 결정 사항"
+    assert payload.source_type == ExternalImportSourceType.DOCUMENT
+
+
+def test_extract_image_text_reports_missing_optional_ocr_runtime(monkeypatch):
+    service = DocumentImportService()
+    monkeypatch.setitem(sys.modules, "PIL", None)
+    monkeypatch.setitem(sys.modules, "pytesseract", None)
+
+    with pytest.raises(ExternalImportValidationError, match="이미지 OCR"):
+        service._extract_image_text(b"\x89PNG\r\n\x1a\nfake image")
+
+
+def test_extract_image_text_uses_optional_ocr_runtime(monkeypatch):
+    service = DocumentImportService()
+    fake_image = MagicMock()
+    fake_image.__enter__.return_value = fake_image
+    fake_image.__exit__.return_value = False
+    image_module = MagicMock()
+    image_module.open.return_value = fake_image
+    pytesseract = MagicMock()
+    pytesseract.image_to_string.return_value = "OCR 텍스트"
+    monkeypatch.setitem(sys.modules, "PIL", SimpleNamespace(Image=image_module))
+    monkeypatch.setitem(sys.modules, "pytesseract", pytesseract)
+
+    assert service._extract_image_text(b"\x89PNG\r\n\x1a\nfake image") == "OCR 텍스트"
+    image_module.open.assert_called_once()
+    pytesseract.image_to_string.assert_called_once_with(fake_image, lang="kor+eng")
+
+
+def test_extract_image_text_reports_ocr_runtime_failure(monkeypatch):
+    service = DocumentImportService()
+    image_module = MagicMock()
+    image_module.open.side_effect = RuntimeError("broken image")
+    monkeypatch.setitem(sys.modules, "PIL", SimpleNamespace(Image=image_module))
+    monkeypatch.setitem(sys.modules, "pytesseract", MagicMock())
+
+    with pytest.raises(ExternalImportValidationError, match="이미지 OCR 텍스트 추출"):
+        service._extract_image_text(b"\x89PNG\r\n\x1a\nfake image")
 
 
 def test_import_document_rejects_magic_byte_mismatch():
@@ -266,7 +338,7 @@ def test_import_document_rejects_missing_filename_empty_and_large_content():
 def test_import_document_rejects_unsupported_document_type():
     service = DocumentImportService()
 
-    with pytest.raises(ExternalImportValidationError, match="PDF 또는 DOCX"):
+    with pytest.raises(ExternalImportValidationError, match="PDF, DOCX 또는 이미지"):
         service._validate_document(
             filename="notes.txt",
             file_type="txt",

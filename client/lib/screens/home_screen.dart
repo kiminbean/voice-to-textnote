@@ -26,7 +26,7 @@ final documentImportPickerProvider =
   return () async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
-      allowedExtensions: const ['pdf', 'docx'],
+      allowedExtensions: const ['pdf', 'docx', 'png', 'jpg', 'jpeg', 'webp'],
       allowMultiple: false,
       withData: false,
     );
@@ -278,7 +278,7 @@ class HomeScreen extends ConsumerWidget {
                 child: _ShortcutTile(
                   icon: Icons.description_rounded,
                   title: '문서 가져오기',
-                  subtitle: 'PDF/DOCX 검색 노트',
+                  subtitle: 'PDF/DOCX/이미지 검색 노트',
                   onTap: () => _importDocument(context, ref),
                 ),
               ),

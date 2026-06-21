@@ -22,7 +22,8 @@ from backend.services.external_import_service import (
 from backend.utils.file_signature import verify_file_signature
 
 _SUPPORTED_DOCUMENT_TYPES = {"pdf", "docx"}
-_IMAGE_TYPES_REQUIRING_OCR = {"png", "jpg", "jpeg", "webp", "heic", "heif"}
+_SUPPORTED_IMAGE_TYPES = {"png", "jpg", "jpeg", "webp", "heic", "heif"}
+_SUPPORTED_IMPORT_TYPES = _SUPPORTED_DOCUMENT_TYPES | _SUPPORTED_IMAGE_TYPES
 _MAX_DOCUMENT_SIZE_BYTES = 20 * 1024 * 1024
 _MIN_EXTRACTED_TEXT_CHARS = 20
 
@@ -44,7 +45,7 @@ class DocumentImportService:
         redis_client: aioredis.Redis,
         owner_id: uuid.UUID | None = None,
     ) -> DocumentImportResponse:
-        """Import a PDF/DOCX document as a completed searchable minutes artifact."""
+        """Import a PDF/DOCX/image document as a completed searchable minutes artifact."""
         file_type = self._file_type(filename)
         self._validate_document(filename=filename, file_type=file_type, content=content)
 
@@ -91,12 +92,8 @@ class DocumentImportService:
             raise ExternalImportValidationError("빈 문서는 가져올 수 없습니다.")
         if len(content) > _MAX_DOCUMENT_SIZE_BYTES:
             raise ExternalImportValidationError("문서 크기는 최대 20MB까지 허용됩니다.")
-        if file_type in _IMAGE_TYPES_REQUIRING_OCR:
-            raise ExternalImportValidationError(
-                "이미지 OCR 가져오기는 아직 지원하지 않습니다. PDF 또는 DOCX를 업로드해주세요."
-            )
-        if file_type not in _SUPPORTED_DOCUMENT_TYPES:
-            raise ExternalImportValidationError("PDF 또는 DOCX 문서만 가져올 수 있습니다.")
+        if file_type not in _SUPPORTED_IMPORT_TYPES:
+            raise ExternalImportValidationError("PDF, DOCX 또는 이미지 문서만 가져올 수 있습니다.")
         if not verify_file_signature(content[:16], f".{file_type}"):
             raise ExternalImportValidationError("파일 시그니처가 확장자와 일치하지 않습니다.")
 
@@ -105,6 +102,8 @@ class DocumentImportService:
             return self._extract_pdf_text(content)
         if file_type == "docx":
             return self._extract_docx_text(content)
+        if file_type in _SUPPORTED_IMAGE_TYPES:
+            return self._extract_image_text(content)
         raise ExternalImportValidationError("지원하지 않는 문서 형식입니다.")
 
     def _extract_pdf_text(self, content: bytes) -> str:
@@ -142,6 +141,21 @@ class DocumentImportService:
             for row in table.rows:
                 lines.extend(cell.text for cell in row.cells)
         return "\n".join(lines)
+
+    def _extract_image_text(self, content: bytes) -> str:
+        try:
+            import pytesseract
+            from PIL import Image
+        except ImportError as exc:
+            raise ExternalImportValidationError(
+                "이미지 OCR 기능을 사용할 수 없습니다. Pillow와 pytesseract 런타임을 확인해주세요."
+            ) from exc
+
+        try:
+            with Image.open(BytesIO(content)) as image:
+                return pytesseract.image_to_string(image, lang="kor+eng")
+        except Exception as exc:
+            raise ExternalImportValidationError("이미지 OCR 텍스트 추출에 실패했습니다.") from exc
 
     def _normalize_text(self, text: str) -> str:
         lines = [line.strip() for line in text.replace("\r\n", "\n").split("\n")]

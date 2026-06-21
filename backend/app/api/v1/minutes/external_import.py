@@ -70,7 +70,7 @@ async def import_document(
     current_user=Depends(get_optional_current_user),
     svc: DocumentImportService = Depends(get_document_import_service),
 ) -> DocumentImportResponse:
-    """Import a user-owned PDF/DOCX document as searchable minutes-compatible content."""
+    """Import a user-owned PDF/DOCX/image document as searchable minutes-compatible content."""
     try:
         return await svc.import_document(
             filename=file.filename or "",

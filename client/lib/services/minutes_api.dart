@@ -65,7 +65,7 @@ class MinutesApi {
     return response.data as Map<String, dynamic>;
   }
 
-  // PDF/DOCX 문서를 검색 가능한 회의록 자산으로 가져오기
+  // PDF/DOCX/이미지 문서를 검색 가능한 회의록 자산으로 가져오기
   Future<Map<String, dynamic>> importDocument({
     required File file,
     String? title,

@@ -81,6 +81,22 @@ class TestVerifyFileSignatureTemplate:
         assert verify_file_signature(header, ".docx") is False
 
 
+class TestVerifyFileSignatureImage:
+    def test_png_valid(self):
+        assert verify_file_signature(b"\x89PNG\r\n\x1a\n\x00\x00", ".png") is True
+
+    def test_jpeg_valid(self):
+        assert verify_file_signature(b"\xff\xd8\xff\xe0\x00\x10JFIF", ".jpg") is True
+        assert verify_file_signature(b"\xff\xd8\xff\xe0\x00\x10JFIF", ".jpeg") is True
+
+    def test_webp_requires_riff_and_webp(self):
+        assert verify_file_signature(b"RIFF\x00\x00\x00\x00WEBP", ".webp") is True
+        assert verify_file_signature(b"RIFF\x00\x00\x00\x00XXXX", ".webp") is False
+
+    def test_heic_valid(self):
+        assert verify_file_signature(b"\x00\x00\x00\x18ftypheic", ".heic") is True
+
+
 class TestVerifyFileSignatureEdgeCases:
     def test_unknown_extension_passes(self):
         header = b"\x00\x00\x00\x00"
