@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import plistlib
 import zipfile
 from pathlib import Path
 
@@ -73,7 +74,8 @@ def test_release_e2e_evidence_artifacts_are_resolved_from_repo_root(
     with zipfile.ZipFile(android_apk, "w") as apk:
         apk.writestr("AndroidManifest.xml", "<manifest />")
     ios_runner_app.mkdir(parents=True)
-    (ios_runner_app / "Info.plist").write_text("plist", encoding="utf-8")
+    with (ios_runner_app / "Info.plist").open("wb") as plist:
+        plistlib.dump({"CFBundleIdentifier": "com.voicetextnote.app"}, plist)
     evidence_path = tmp_path / "evidence.json"
     evidence_path.write_text(
         json.dumps(

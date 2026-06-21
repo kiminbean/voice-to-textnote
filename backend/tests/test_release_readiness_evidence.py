@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import plistlib
 import zipfile
 from functools import lru_cache
 from pathlib import Path
@@ -26,7 +27,7 @@ def make_evidence(tmp_path: Path, module) -> dict[str, object]:
     with zipfile.ZipFile(android_apk, "w") as apk:
         apk.writestr("AndroidManifest.xml", "<manifest />")
     ios_runner.mkdir()
-    (ios_runner / "Info.plist").write_text("plist", encoding="utf-8")
+    write_ios_info_plist(ios_runner / "Info.plist")
 
     return {
         "tested_at": "2026-06-15T09:00:00+09:00",
@@ -59,6 +60,11 @@ def make_evidence(tmp_path: Path, module) -> dict[str, object]:
     }
 
 
+def write_ios_info_plist(path: Path, *, bundle_id: str = "com.voicetextnote.app") -> None:
+    with path.open("wb") as plist:
+        plistlib.dump({"CFBundleIdentifier": bundle_id}, plist)
+
+
 def write_evidence(tmp_path: Path, evidence: dict[str, object]) -> Path:
     evidence_path = tmp_path / "release-e2e-evidence.json"
     evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
@@ -88,10 +94,10 @@ def write_tone_policy_files(root: Path, *, tone_model_line: str = 'tone_model: s
 def write_readme_status(root: Path, content: str) -> None:
     (root / "README.md").write_text(
         (
-            "3866 백엔드 테스트\n"
-            "| 백엔드 단위/통합/E2E | 3866개 | 100.00% |\n"
+            "3867 백엔드 테스트\n"
+            "| 백엔드 단위/통합/E2E | 3867개 | 100.00% |\n"
             "| Flutter 테스트 | 415개 | - |\n"
-            "| 총합 | 4281개 | - |\n"
+            "| 총합 | 4282개 | - |\n"
             f"{content}"
         ),
         encoding="utf-8",
@@ -316,6 +322,23 @@ def test_release_e2e_evidence_rejects_ios_runner_without_info_plist(
     module.check_release_e2e_evidence(evidence_path, reporter)
 
     assert any("artifact missing Info.plist: ios_runner_app" in error for error in reporter.errors)
+
+
+def test_release_e2e_evidence_rejects_ios_runner_bundle_id_mismatch(
+    tmp_path, monkeypatch
+):
+    module = load_release_readiness_module()
+    evidence = make_evidence(tmp_path, module)
+    ios_runner = Path(str(evidence["artifacts"]["ios_runner_app"]))
+    write_ios_info_plist(ios_runner / "Info.plist", bundle_id="com.example.wrong")
+    evidence_path = write_evidence(tmp_path, evidence)
+    monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
+    monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")
+
+    reporter = module.Reporter()
+    module.check_release_e2e_evidence(evidence_path, reporter)
+
+    assert any("artifact bundle id mismatch: ios_runner_app" in error for error in reporter.errors)
 
 
 def test_release_e2e_example_lists_every_required_scenario():
