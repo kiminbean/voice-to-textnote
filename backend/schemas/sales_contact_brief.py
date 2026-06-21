@@ -57,3 +57,27 @@ class SalesContactBriefResponse(BaseModel):
     follow_up_message: str = Field(default="")
     source_refs: list[StudySourceRef] = Field(default_factory=list)
     created_at: str = Field(..., description="ISO-8601 creation timestamp")
+
+
+class SalesContactListItem(BaseModel):
+    """Compact customer/contact entry derived from a generated sales brief."""
+
+    artifact_task_id: str = Field(..., description="Persisted sales brief artifact task ID")
+    source_task_id: str = Field(..., description="Source minutes task ID")
+    contact: SalesContactIdentity = Field(default_factory=SalesContactIdentity)
+    deal: SalesContactDeal = Field(default_factory=SalesContactDeal)
+    customer_needs: list[str] = Field(default_factory=list)
+    pain_points: list[str] = Field(default_factory=list)
+    next_steps: list[SalesNextStep] = Field(default_factory=list)
+    follow_up_message: str = Field(default="")
+    created_at: str = Field(..., description="Brief creation timestamp")
+    completed_at: str | None = Field(default=None, description="Persisted artifact completion time")
+
+
+class SalesContactListResponse(BaseModel):
+    """Paginated sales/contact brief index."""
+
+    items: list[SalesContactListItem]
+    total: int
+    page: int
+    page_size: int

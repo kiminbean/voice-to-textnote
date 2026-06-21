@@ -763,6 +763,13 @@
     "api_key": true
   },
   {
+    "path": "/api/v1/sales-contacts",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
     "path": "/api/v1/sentiment",
     "methods": [
       "POST"

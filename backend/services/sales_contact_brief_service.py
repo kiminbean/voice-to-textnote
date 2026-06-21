@@ -8,14 +8,18 @@ from typing import Any, cast
 
 import redis.asyncio as aioredis
 from openai import OpenAI
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.config import settings
+from backend.db.models import TaskResult
 from backend.db.search_models import ensure_search_index_table, index_search_entry
 from backend.schemas.sales_contact_brief import (
     SalesContactBriefResponse,
     SalesContactDeal,
     SalesContactIdentity,
+    SalesContactListItem,
+    SalesContactListResponse,
     SalesNextStep,
 )
 from backend.schemas.study_pack import StudySourceRef
@@ -24,6 +28,7 @@ from backend.utils.logger import get_logger
 logger = get_logger(__name__)
 
 _SALES_CONTACT_BRIEF_KEY_PREFIX = "sales_contact_brief:"
+_SALES_CONTACT_BRIEF_RESULT_PREFIX = "sales-contact-brief:"
 _MINUTES_KEY_PREFIX = "task:min:result:"
 
 
@@ -31,11 +36,35 @@ def _sales_contact_brief_cache_key(task_id: str) -> str:
     return f"{_SALES_CONTACT_BRIEF_KEY_PREFIX}{task_id}"
 
 
+def _sales_contact_brief_result_task_id(task_id: str) -> str:
+    return f"{_SALES_CONTACT_BRIEF_RESULT_PREFIX}{task_id}"
+
+
 def _parse_created_at(value: str) -> datetime | None:
     try:
         return datetime.fromisoformat(value)
     except ValueError:
         return None
+
+
+def _sales_contact_item_text(item: SalesContactListItem) -> str:
+    parts = [
+        item.contact.name,
+        item.contact.company,
+        item.contact.role,
+        item.contact.email,
+        item.contact.phone,
+        item.deal.stage,
+        item.deal.value_hint,
+        item.deal.urgency,
+        item.follow_up_message,
+        *item.customer_needs,
+        *item.pain_points,
+        *(step.task for step in item.next_steps),
+        *(step.owner for step in item.next_steps if step.owner),
+        *(step.due for step in item.next_steps if step.due),
+    ]
+    return " ".join(str(part) for part in parts if part).casefold()
 
 
 class SalesContactBriefSourceNotFoundError(ValueError):
@@ -78,9 +107,13 @@ class SalesContactBriefService:
         if not force_refresh:
             cached = await redis_client.get(cache_key)
             if cached is not None:
-                return SalesContactBriefResponse.model_validate_json(
+                result = SalesContactBriefResponse.model_validate_json(
                     cast(str | bytes | bytearray, cached)
                 )
+                if db_session is not None:
+                    await self._persist_brief(task_id, result, db_session)
+                    await self._index_brief(task_id, result, db_session)
+                return result
 
         minutes_data = await self._load_minutes(task_id, redis_client)
         transcript = self._format_transcript(minutes_data)
@@ -130,8 +163,99 @@ class SalesContactBriefService:
             ex=settings.summary_result_ttl,
         )
         if db_session is not None:
+            await self._persist_brief(task_id, result, db_session)
             await self._index_brief(task_id, result, db_session)
         return result
+
+    async def list_contacts(
+        self,
+        db_session: AsyncSession,
+        *,
+        page: int = 1,
+        page_size: int = 20,
+        query: str | None = None,
+    ) -> SalesContactListResponse:
+        """Return persisted sales/contact brief artifacts as a CRM-style list."""
+        stmt = (
+            select(TaskResult)
+            .where(
+                TaskResult.task_type == "sales_contact_brief",
+                TaskResult.status == "completed",
+            )
+            .order_by(TaskResult.completed_at.desc(), TaskResult.created_at.desc())
+        )
+        result = await db_session.execute(stmt)
+        records = list(result.scalars().all())
+        items = [self._record_to_list_item(record) for record in records]
+
+        query_text = (query or "").strip().casefold()
+        if query_text:
+            items = [item for item in items if query_text in _sales_contact_item_text(item)]
+
+        total = len(items)
+        start = (page - 1) * page_size
+        end = start + page_size
+        return SalesContactListResponse(
+            items=items[start:end],
+            total=total,
+            page=page,
+            page_size=page_size,
+        )
+
+    async def _persist_brief(
+        self,
+        task_id: str,
+        result: SalesContactBriefResponse,
+        db_session: AsyncSession,
+    ) -> None:
+        """Best-effort persistence for the customer/contact list surface."""
+        artifact_task_id = _sales_contact_brief_result_task_id(task_id)
+        completed_at = _parse_created_at(result.created_at) or datetime.now(UTC).replace(
+            tzinfo=None
+        )
+        try:
+            stmt = select(TaskResult).where(TaskResult.task_id == artifact_task_id)
+            query_result = await db_session.execute(stmt)
+            record = query_result.scalar_one_or_none()
+            if record is None:
+                record = TaskResult(task_id=artifact_task_id)
+                db_session.add(record)
+
+            record.task_type = "sales_contact_brief"
+            record.status = "completed"
+            record.result_data = result.model_dump(mode="json")
+            record.input_metadata = {
+                "source_task_id": task_id,
+                "artifact_type": "sales_contact_brief",
+            }
+            record.error_message = None
+            record.completed_at = completed_at.replace(tzinfo=None)
+            await db_session.commit()
+        except Exception as exc:
+            await db_session.rollback()
+            logger.warning(
+                "Sales contact brief persistence failed",
+                task_id=task_id,
+                error=str(exc),
+            )
+
+    def _record_to_list_item(self, record: TaskResult) -> SalesContactListItem:
+        data = SalesContactBriefResponse.model_validate(record.result_data or {})
+        metadata = record.input_metadata or {}
+        source_task_id = str(metadata.get("source_task_id") or data.task_id)
+        completed_at = record.completed_at.isoformat() if record.completed_at else None
+        return SalesContactListItem(
+            artifact_task_id=record.task_id,
+            source_task_id=source_task_id,
+            contact=data.contact,
+            deal=data.deal,
+            customer_needs=data.customer_needs,
+            pain_points=data.pain_points,
+            next_steps=data.next_steps,
+            follow_up_message=data.follow_up_message,
+            created_at=data.created_at,
+            completed_at=completed_at,
+        )
 
     async def _index_brief(
         self,

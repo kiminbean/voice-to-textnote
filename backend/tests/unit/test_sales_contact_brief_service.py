@@ -1,13 +1,18 @@
 import json
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
+from backend.db.models import Base, TaskResult
+from backend.schemas.sales_contact_brief import SalesContactBriefResponse
 from backend.services.sales_contact_brief_service import (
     SalesContactBriefService,
     SalesContactBriefSourceNotFoundError,
     SalesContactBriefValidationError,
     _parse_created_at,
+    _sales_contact_brief_result_task_id,
 )
 
 
@@ -39,6 +44,17 @@ class FakeDbSession:
 
     async def commit(self) -> None:
         self.committed = True
+
+    async def rollback(self) -> None:
+        self.rolled_back = True
+
+
+class FailingPersistDbSession:
+    def __init__(self) -> None:
+        self.rolled_back = False
+
+    async def execute(self, stmt):
+        raise RuntimeError("db unavailable")
 
     async def rollback(self) -> None:
         self.rolled_back = True
@@ -162,6 +178,7 @@ async def test_generate_indexes_sales_contact_brief_for_search(monkeypatch):
     db_session = FakeDbSession()
     indexed = {}
     monkeypatch.setattr(svc, "_get_client", lambda: client)
+    monkeypatch.setattr(svc, "_persist_brief", AsyncMock())
     monkeypatch.setattr(
         "backend.services.sales_contact_brief_service.ensure_search_index_table",
         lambda connection: indexed.update({"ensured": connection is not None}),
@@ -196,6 +213,7 @@ async def test_generate_ignores_sales_contact_brief_index_failure(monkeypatch):
     client = stub_openai_client(make_ai_payload())
     db_session = FakeDbSession()
     monkeypatch.setattr(svc, "_get_client", lambda: client)
+    monkeypatch.setattr(svc, "_persist_brief", AsyncMock())
 
     def fail_index(connection):
         raise RuntimeError("fts unavailable")
@@ -210,6 +228,85 @@ async def test_generate_ignores_sales_contact_brief_index_failure(monkeypatch):
     assert result.contact.company == "Acme"
     assert db_session.committed is False
     assert db_session.rolled_back is True
+
+
+@pytest.mark.asyncio
+async def test_generate_persists_sales_contact_brief_artifact(monkeypatch):
+    engine = create_async_engine("sqlite+aiosqlite://", echo=False)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    redis = FakeRedis()
+    redis.values["task:min:result:min-sales-001"] = json.dumps(
+        make_minutes_payload(), ensure_ascii=False
+    )
+    svc = SalesContactBriefService()
+    monkeypatch.setattr(svc, "_get_client", lambda: stub_openai_client(make_ai_payload()))
+
+    try:
+        async with factory() as session:
+            await svc.generate("min-sales-001", redis, db_session=session)
+            result = await session.execute(
+                select(TaskResult).where(
+                    TaskResult.task_id
+                    == _sales_contact_brief_result_task_id("min-sales-001")
+                )
+            )
+            record = result.scalar_one()
+
+        assert record.task_type == "sales_contact_brief"
+        assert record.status == "completed"
+        assert record.input_metadata["source_task_id"] == "min-sales-001"
+        assert record.result_data["contact"]["company"] == "Acme"
+    finally:
+        await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_list_contacts_returns_paginated_query_matches():
+    engine = create_async_engine("sqlite+aiosqlite://", echo=False)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    svc = SalesContactBriefService()
+    acme_payload = {
+        **make_ai_payload(),
+        "task_id": "min-sales-001",
+        "source_refs": [],
+        "created_at": "2026-06-21T00:00:00+00:00",
+    }
+    beta_payload = {
+        **make_ai_payload(),
+        "task_id": "min-sales-002",
+        "contact": {"name": "이서연", "company": "Beta", "role": "COO"},
+        "customer_needs": ["계약 갱신 자동화"],
+        "source_refs": [],
+        "created_at": "2026-06-22T00:00:00+00:00",
+    }
+
+    try:
+        async with factory() as session:
+            await svc._persist_brief(
+                "min-sales-001",
+                SalesContactBriefResponse.model_validate(acme_payload),
+                session,
+            )
+            await svc._persist_brief(
+                "min-sales-002",
+                SalesContactBriefResponse.model_validate(beta_payload),
+                session,
+            )
+
+            page = await svc.list_contacts(session, page=1, page_size=1)
+            filtered = await svc.list_contacts(session, page=1, page_size=10, query="Acme")
+
+        assert page.total == 2
+        assert len(page.items) == 1
+        assert page.items[0].source_task_id == "min-sales-002"
+        assert filtered.total == 1
+        assert filtered.items[0].contact.company == "Acme"
+    finally:
+        await engine.dispose()
 
 
 @pytest.mark.asyncio
@@ -239,6 +336,35 @@ async def test_generate_returns_cached_sales_contact_brief(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_generate_cached_sales_contact_brief_updates_db_artifacts(monkeypatch):
+    redis = FakeRedis()
+    cached = {
+        "task_id": "min-sales-001",
+        "contact": {"name": "캐시 고객", "company": "Cached Co"},
+        "deal": {"stage": "qualified"},
+        "customer_needs": ["캐시 니즈"],
+        "pain_points": [],
+        "objections": [],
+        "next_steps": [{"task": "캐시 후속 조치"}],
+        "follow_up_message": "캐시 메시지",
+        "source_refs": [],
+        "created_at": "2026-06-21T00:00:00+00:00",
+    }
+    redis.values["sales_contact_brief:min-sales-001"] = json.dumps(cached, ensure_ascii=False)
+    svc = SalesContactBriefService()
+    persist = AsyncMock()
+    index = AsyncMock()
+    monkeypatch.setattr(svc, "_persist_brief", persist)
+    monkeypatch.setattr(svc, "_index_brief", index)
+
+    result = await svc.generate("min-sales-001", redis, db_session=object())
+
+    assert result.contact.company == "Cached Co"
+    persist.assert_awaited_once()
+    index.assert_awaited_once()
+
+
+@pytest.mark.asyncio
 async def test_get_returns_cached_sales_contact_brief():
     redis = FakeRedis()
     cached = {
@@ -258,6 +384,26 @@ async def test_get_returns_cached_sales_contact_brief():
     result = await SalesContactBriefService().get("min-sales-001", redis)
 
     assert result.follow_up_message == "캐시 메시지"
+
+
+@pytest.mark.asyncio
+async def test_persist_brief_ignores_db_failure():
+    svc = SalesContactBriefService()
+    db_session = FailingPersistDbSession()
+    payload = {
+        **make_ai_payload(),
+        "task_id": "min-sales-001",
+        "source_refs": [],
+        "created_at": "2026-06-21T00:00:00+00:00",
+    }
+
+    await svc._persist_brief(
+        "min-sales-001",
+        SalesContactBriefResponse.model_validate(payload),
+        db_session,
+    )
+
+    assert db_session.rolled_back is True
 
 
 @pytest.mark.asyncio
