@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import json
+from csv import DictWriter
 from datetime import UTC, datetime
+from io import StringIO
 from typing import Any, cast
 
 import redis.asyncio as aioredis
@@ -203,6 +205,69 @@ class SalesContactBriefService:
             page_size=page_size,
         )
 
+    async def export_contacts_csv(
+        self,
+        db_session: AsyncSession,
+        *,
+        query: str | None = None,
+    ) -> str:
+        """Export all matching sales contacts as CRM-importable CSV."""
+        response = await self.list_contacts(
+            db_session,
+            page=1,
+            page_size=10_000,
+            query=query,
+        )
+        fieldnames = [
+            "name",
+            "company",
+            "role",
+            "email",
+            "phone",
+            "deal_stage",
+            "deal_value_hint",
+            "urgency",
+            "customer_needs",
+            "pain_points",
+            "next_steps",
+            "follow_up_message",
+            "crm_status",
+            "crm_note",
+            "source_task_id",
+            "artifact_task_id",
+            "created_at",
+            "crm_updated_at",
+        ]
+        output = StringIO()
+        writer = DictWriter(output, fieldnames=fieldnames)
+        writer.writeheader()
+        for item in response.items:
+            writer.writerow(
+                {
+                    "name": item.contact.name or "",
+                    "company": item.contact.company or "",
+                    "role": item.contact.role or "",
+                    "email": item.contact.email or "",
+                    "phone": item.contact.phone or "",
+                    "deal_stage": item.deal.stage,
+                    "deal_value_hint": item.deal.value_hint or "",
+                    "urgency": item.deal.urgency,
+                    "customer_needs": "; ".join(item.customer_needs),
+                    "pain_points": "; ".join(item.pain_points),
+                    "next_steps": "; ".join(
+                        self._format_export_next_step(step) for step in item.next_steps
+                    ),
+                    "follow_up_message": item.follow_up_message,
+                    "crm_status": item.crm_status,
+                    "crm_note": item.crm_note,
+                    "source_task_id": item.source_task_id,
+                    "artifact_task_id": item.artifact_task_id,
+                    "created_at": item.created_at,
+                    "crm_updated_at": item.crm_updated_at or "",
+                }
+            )
+        return output.getvalue()
+
     async def update_crm(
         self,
         db_session: AsyncSession,
@@ -293,6 +358,14 @@ class SalesContactBriefService:
             created_at=data.created_at,
             completed_at=completed_at,
         )
+
+    def _format_export_next_step(self, step: SalesNextStep) -> str:
+        details = [step.task]
+        if step.owner:
+            details.append(f"owner={step.owner}")
+        if step.due:
+            details.append(f"due={step.due}")
+        return " | ".join(details)
 
     async def _index_brief(
         self,

@@ -310,6 +310,7 @@ async def test_list_contacts_returns_paginated_query_matches():
                 ),
             )
             crm_filtered = await svc.list_contacts(session, page=1, page_size=10, query="금요일")
+            csv_text = await svc.export_contacts_csv(session, query="Acme")
 
         assert page.total == 2
         assert len(page.items) == 1
@@ -321,6 +322,9 @@ async def test_list_contacts_returns_paginated_query_matches():
         assert updated.crm_updated_at is not None
         assert crm_filtered.total == 1
         assert crm_filtered.items[0].crm_note == "견적서 발송 후 금요일 오전 재확인"
+        assert "name,company,role,email,phone,deal_stage" in csv_text
+        assert "김민수,Acme,CTO" in csv_text
+        assert "견적서 발송 후 금요일 오전 재확인" in csv_text
     finally:
         await engine.dispose()
 

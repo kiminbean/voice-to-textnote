@@ -770,6 +770,13 @@
     "api_key": true
   },
   {
+    "path": "/api/v1/sales-contacts/export.csv",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
     "path": "/api/v1/sales-contacts/{artifact_task_id}/crm",
     "methods": [
       "PATCH"

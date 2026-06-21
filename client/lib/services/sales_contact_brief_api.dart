@@ -54,6 +54,16 @@ class SalesContactBriefApi {
     );
   }
 
+  Future<String> exportContactsCsv({String? query}) async {
+    final response = await _dio.get<String>(
+      '/sales-contacts/export.csv',
+      queryParameters: {
+        if (query != null && query.trim().isNotEmpty) 'q': query.trim(),
+      },
+    );
+    return response.data ?? '';
+  }
+
   Future<SalesContactListItem> updateContactCrm({
     required String artifactTaskId,
     required String status,

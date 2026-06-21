@@ -1,6 +1,6 @@
 """Sales contact list API endpoints."""
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.dependencies import get_db_session
@@ -36,6 +36,24 @@ async def list_sales_contacts(
         return await svc.list_contacts(db, page=page, page_size=page_size, query=q)
     except Exception as exc:
         internal_error(f"영업 연락처 목록 조회 중 오류가 발생했습니다: {exc}")
+
+
+@router.get("/sales-contacts/export.csv")
+async def export_sales_contacts_csv(
+    q: str | None = Query(default=None, min_length=2, description="Optional contact search"),
+    db: AsyncSession = Depends(get_db_session),
+    svc: SalesContactBriefService = Depends(get_sales_contact_service),
+) -> Response:
+    """Export matching sales/customer follow-up entries as CRM-importable CSV."""
+    try:
+        csv_text = await svc.export_contacts_csv(db, query=q)
+    except Exception as exc:
+        internal_error(f"영업 연락처 CSV 내보내기 중 오류가 발생했습니다: {exc}")
+    return Response(
+        content=csv_text,
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="sales-contacts.csv"'},
+    )
 
 
 @router.patch("/sales-contacts/{artifact_task_id}/crm", response_model=SalesContactListItem)

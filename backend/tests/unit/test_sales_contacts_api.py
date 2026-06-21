@@ -106,6 +106,28 @@ def test_list_sales_contacts_unexpected_error_returns_500(app_client):
     assert response.status_code == 500
 
 
+def test_export_sales_contacts_csv_success(app_client):
+    client, svc, db_session = app_client
+    svc.export_contacts_csv = AsyncMock(return_value="name,company\n김민수,Acme\n")
+
+    response = client.get("/api/v1/sales-contacts/export.csv", params={"q": "Acme"})
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/csv")
+    assert response.headers["content-disposition"] == 'attachment; filename="sales-contacts.csv"'
+    assert "김민수,Acme" in response.text
+    svc.export_contacts_csv.assert_awaited_once_with(db_session, query="Acme")
+
+
+def test_export_sales_contacts_csv_unexpected_error_returns_500(app_client):
+    client, svc, _ = app_client
+    svc.export_contacts_csv = AsyncMock(side_effect=RuntimeError("db unavailable"))
+
+    response = client.get("/api/v1/sales-contacts/export.csv")
+
+    assert response.status_code == 500
+
+
 def test_update_sales_contact_crm_success(app_client):
     client, svc, db_session = app_client
     updated = make_list_response().items[0]

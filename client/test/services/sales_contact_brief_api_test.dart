@@ -161,4 +161,28 @@ void main() {
       ),
     ).called(1);
   });
+
+  test('exportContactsCsv downloads CRM CSV with query', () async {
+    when(
+      () => mockDio.get<String>(
+        any(),
+        queryParameters: any(named: 'queryParameters'),
+      ),
+    ).thenAnswer(
+      (_) async => Response<String>(
+        data: 'name,company\n김민수,Acme\n',
+        requestOptions: RequestOptions(path: '/sales-contacts/export.csv'),
+      ),
+    );
+
+    final result = await api.exportContactsCsv(query: ' Acme ');
+
+    expect(result, contains('김민수,Acme'));
+    verify(
+      () => mockDio.get<String>(
+        '/sales-contacts/export.csv',
+        queryParameters: {'q': 'Acme'},
+      ),
+    ).called(1);
+  });
 }

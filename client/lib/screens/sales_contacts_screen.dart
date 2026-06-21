@@ -3,11 +3,17 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:voice_to_textnote/models/sales_contact_brief.dart';
 import 'package:voice_to_textnote/providers/sales_contact_brief_provider.dart';
 import 'package:voice_to_textnote/services/sales_contact_brief_api.dart';
 import 'package:voice_to_textnote/theme/app_spacing.dart';
 import 'package:voice_to_textnote/widgets/empty_state_widget.dart';
+
+final salesContactCsvShareProvider =
+    Provider<Future<void> Function(String)>((ref) {
+  return (csv) => Share.share(csv, subject: 'sales-contacts.csv');
+});
 
 class SalesContactsScreen extends ConsumerStatefulWidget {
   const SalesContactsScreen({super.key});
@@ -57,6 +63,11 @@ class _SalesContactsScreenState extends ConsumerState<SalesContactsScreen> {
         leading: BackButton(onPressed: () => context.pop()),
         title: const Text('영업 고객'),
         actions: [
+          IconButton(
+            tooltip: 'CRM CSV 공유',
+            icon: const Icon(Icons.ios_share_rounded),
+            onPressed: () => _shareCrmCsv(context, ref),
+          ),
           IconButton(
             tooltip: '새로고침',
             icon: const Icon(Icons.refresh_rounded),
@@ -228,6 +239,26 @@ class _SalesContactsScreenState extends ConsumerState<SalesContactsScreen> {
     } catch (_) {
       messenger.showSnackBar(
         const SnackBar(content: Text('CRM 메모를 저장할 수 없습니다')),
+      );
+    }
+  }
+
+  Future<void> _shareCrmCsv(BuildContext context, WidgetRef ref) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final api = ref.read(salesContactBriefApiProvider);
+    final shareCsv = ref.read(salesContactCsvShareProvider);
+    try {
+      final csv = await api.exportContactsCsv(query: _query);
+      if (csv.trim().isEmpty) {
+        messenger.showSnackBar(
+          const SnackBar(content: Text('내보낼 영업 고객이 없습니다')),
+        );
+        return;
+      }
+      await shareCsv(csv);
+    } catch (_) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('CRM CSV를 내보낼 수 없습니다')),
       );
     }
   }

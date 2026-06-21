@@ -134,6 +134,38 @@ void main() {
     expect(find.text('CRM 메모를 저장했습니다'), findsOneWidget);
   });
 
+  testWidgets('shares CRM CSV export for current search', (tester) async {
+    final api = MockSalesContactBriefApi();
+    final sharedPayloads = <String>[];
+    when(() => api.exportContactsCsv(query: any(named: 'query')))
+        .thenAnswer((_) async => 'name,company\n김민수,Acme\n');
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          salesContactBriefApiProvider.overrideWithValue(api),
+          salesContactCsvShareProvider.overrideWithValue(
+            (csv) async => sharedPayloads.add(csv),
+          ),
+          salesContactListProvider.overrideWith(
+            (ref, request) async => responseWithItems(),
+          ),
+        ],
+        child: const MaterialApp(home: SalesContactsScreen()),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump();
+    await tester.enterText(find.byType(TextField), 'Acme');
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.byTooltip('CRM CSV 공유'));
+    await tester.pumpAndSettle();
+
+    verify(() => api.exportContactsCsv(query: 'Acme')).called(1);
+    expect(sharedPayloads.single, contains('김민수,Acme'));
+  });
+
   testWidgets('renders empty state when no sales contacts exist',
       (tester) async {
     await tester.pumpWidget(
