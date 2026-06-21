@@ -26,6 +26,7 @@ def make_evidence(tmp_path: Path, module) -> dict[str, object]:
     current_revision = module.current_git_revision(repo_root)
     with zipfile.ZipFile(android_apk, "w") as apk:
         apk.writestr("AndroidManifest.xml", "<manifest />")
+        apk.writestr("classes.dex", b"dex\n035\0")
     ios_runner.mkdir()
     write_ios_info_plist(ios_runner / "Info.plist")
     (ios_runner / "Runner").write_bytes(b"binary")
@@ -107,10 +108,10 @@ def write_tone_policy_files(root: Path, *, tone_model_line: str = 'tone_model: s
 def write_readme_status(root: Path, content: str) -> None:
     (root / "README.md").write_text(
         (
-            "3870 백엔드 테스트\n"
-            "| 백엔드 단위/통합/E2E | 3870개 | 100.00% |\n"
+            "3871 백엔드 테스트\n"
+            "| 백엔드 단위/통합/E2E | 3871개 | 100.00% |\n"
             "| Flutter 테스트 | 415개 | - |\n"
-            "| 총합 | 4285개 | - |\n"
+            "| 총합 | 4286개 | - |\n"
             f"{content}"
         ),
         encoding="utf-8",
@@ -340,6 +341,25 @@ def test_release_e2e_evidence_rejects_non_zip_android_apk(tmp_path, monkeypatch)
     evidence = make_evidence(tmp_path, module)
     android_apk = Path(str(evidence["artifacts"]["android_apk"]))
     android_apk.write_text("not a zip apk", encoding="utf-8")
+    evidence_path = write_evidence(tmp_path, evidence)
+    monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
+    monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")
+
+    reporter = module.Reporter()
+    module.check_release_e2e_evidence(evidence_path, reporter)
+
+    assert any("artifact must be a valid APK zip: android_apk" in error for error in reporter.errors)
+
+
+def test_release_e2e_evidence_rejects_android_apk_without_dex(tmp_path, monkeypatch):
+    module = load_release_readiness_module()
+    evidence = make_evidence(tmp_path, module)
+    android_apk = Path(str(evidence["artifacts"]["android_apk"]))
+    with zipfile.ZipFile(android_apk, "w") as apk:
+        apk.writestr("AndroidManifest.xml", "<manifest />")
+    artifact_hashes = evidence["artifact_sha256"]
+    assert isinstance(artifact_hashes, dict)
+    artifact_hashes["android_apk"] = module.release_artifact_sha256(android_apk)
     evidence_path = write_evidence(tmp_path, evidence)
     monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
     monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")

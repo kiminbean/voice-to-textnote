@@ -75,6 +75,7 @@ def test_release_e2e_evidence_artifacts_are_resolved_from_repo_root(
     android_apk.parent.mkdir(parents=True)
     with zipfile.ZipFile(android_apk, "w") as apk:
         apk.writestr("AndroidManifest.xml", "<manifest />")
+        apk.writestr("classes.dex", b"dex\n035\0")
     ios_runner_app.mkdir(parents=True)
     with (ios_runner_app / "Info.plist").open("wb") as plist:
         plistlib.dump(
