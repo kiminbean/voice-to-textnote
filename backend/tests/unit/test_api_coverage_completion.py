@@ -116,6 +116,9 @@ async def test_history_api_direct_success_and_not_found_paths():
         delete_result=AsyncMock(side_effect=[True, False]),
     )
     db = AsyncMock()
+    shared_result = MagicMock()
+    shared_result.all.return_value = []
+    db.execute.return_value = shared_result
 
     listing = await list_history(
         task_type="minutes", status="completed", page=2, page_size=5, db=db, svc=svc

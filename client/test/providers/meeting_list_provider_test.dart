@@ -280,6 +280,7 @@ void main() {
               'status': 'completed',
               'created_at': '2024-03-01T09:00:00Z',
               'completed_at': '2024-03-01T09:10:00Z',
+              'shared_team_ids': ['team-001', 'team-002'],
             }
           ],
           'total': 1,
@@ -306,6 +307,57 @@ void main() {
       expect(meeting.status, MeetingStatus.completed);
       expect(meeting.summaryTaskId, 'sum-abc');
       expect(meeting.createdAt, DateTime.utc(2024, 3, 1, 9, 0, 0));
+      expect(meeting.sharedTeamIds, ['team-001', 'team-002']);
+    });
+
+    test('refreshFromServer가 기존 로컬 미팅의 공유 팀 상태를 갱신해야 함', () async {
+      // Arrange
+      when(() => mockHistoryApi.list(
+            taskType: any(named: 'taskType'),
+            status: any(named: 'status'),
+            page: any(named: 'page'),
+            pageSize: any(named: 'pageSize'),
+          )).thenAnswer(
+        (_) async => {
+          'items': [
+            {
+              'task_id': 'local-001',
+              'task_type': 'summary',
+              'status': 'completed',
+              'created_at': '2024-03-01T09:00:00Z',
+              'completed_at': '2024-03-01T09:10:00Z',
+              'shared_team_ids': ['team-shared'],
+            }
+          ],
+          'total': 1,
+          'page': 1,
+          'page_size': 20,
+        },
+      );
+
+      final container = ProviderContainer(
+        overrides: [
+          historyApiProvider.overrideWithValue(mockHistoryApi),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await container.read(meetingListProvider.future);
+      await container.read(meetingListProvider.notifier).addMeeting(Meeting(
+            id: 'local-001',
+            title: '기존 미팅',
+            createdAt: DateTime(2024, 3, 1, 9),
+            status: MeetingStatus.completed,
+          ));
+
+      // Act
+      await container.read(meetingListProvider.notifier).refreshFromServer();
+
+      // Assert
+      final meetings = container.read(meetingListProvider).value ?? [];
+      final meeting = meetings.firstWhere((m) => m.id == 'local-001');
+      expect(meeting.sharedTeamIds, ['team-shared']);
+      expect(meeting.title, '기존 미팅');
     });
   });
 }

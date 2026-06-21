@@ -7,6 +7,8 @@ History API 테스트 - SPEC-HISTORY-001
 - DELETE /api/v1/history/{task_id}: 삭제 (REQ-HIST-007)
 """
 
+import uuid
+
 import pytest
 import pytest_asyncio
 from fastapi import FastAPI
@@ -14,6 +16,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from backend.app.error_handlers import register_exception_handlers
+from backend.db.auth_models import MeetingOwnership, Team, User
 from backend.db.models import Base, TaskResult
 
 # ---------------------------------------------------------------------------
@@ -121,6 +124,31 @@ async def populated_db(db_session: AsyncSession):
 
     for record in records:
         db_session.add(record)
+    owner_id = uuid.uuid4()
+    team_id = uuid.uuid4()
+    db_session.add(
+        User(
+            id=owner_id,
+            email="owner@example.com",
+            password_hash="hash",
+            display_name="Owner",
+        )
+    )
+    db_session.add(
+        Team(
+            id=team_id,
+            name="Research Team",
+            description=None,
+            created_by=owner_id,
+        )
+    )
+    db_session.add(
+        MeetingOwnership(
+            task_id="summary-001",
+            owner_id=owner_id,
+            team_id=team_id,
+        )
+    )
     await db_session.commit()
 
     yield db_session
@@ -218,8 +246,16 @@ class TestHistoryList:
         assert "task_type" in item
         assert "status" in item
         assert "created_at" in item
+        assert "shared_team_ids" in item
         # result_data는 목록에서 제외
         assert "result_data" not in item
+
+    def test_list_item_includes_shared_team_ids(self, client):
+        """공유된 회의는 history 목록에서 공유 팀 ID를 포함해야 함"""
+        resp = client.get("/api/v1/history")
+        data = resp.json()
+        item = next(item for item in data["items"] if item["task_id"] == "summary-001")
+        assert len(item["shared_team_ids"]) == 1
 
     def test_list_page_size_param(self, client):
         """page_size 파라미터 적용"""

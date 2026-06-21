@@ -85,7 +85,7 @@ def write_readme_status(root: Path, content: str) -> None:
         (
             "3772 백엔드 테스트\n"
             "| 백엔드 단위/통합/E2E | 3772개 | 100.00% |\n"
-            "| 총합 | 4148개 | - |\n"
+            "| 총합 | 4149개 | - |\n"
             f"{content}"
         ),
         encoding="utf-8",

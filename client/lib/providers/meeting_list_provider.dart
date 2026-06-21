@@ -76,16 +76,29 @@ class MeetingListNotifier extends AsyncNotifier<List<Meeting>> {
       final items = response['items'] as List<dynamic>;
       final current = state.value ?? [];
       final existingIds = current.map((m) => m.id).toSet();
-
-      // 로컬에 없는 서버 항목만 변환하여 추가
-      final newMeetings = items
+      final serverMeetings = items
           .cast<Map<String, dynamic>>()
-          .where((item) => !existingIds.contains(item['task_id'] as String))
           .map(_historyItemToMeeting)
           .toList();
 
-      if (newMeetings.isNotEmpty) {
-        final merged = [...current, ...newMeetings];
+      // 로컬에 없는 서버 항목만 변환하여 추가
+      final newMeetings =
+          serverMeetings.where((meeting) => !existingIds.contains(meeting.id));
+
+      final serverMeetingsById = {
+        for (final meeting in serverMeetings) meeting.id: meeting,
+      };
+      final refreshedCurrent = current.map((meeting) {
+        final serverMeeting = serverMeetingsById[meeting.id];
+        if (serverMeeting == null) return meeting;
+        return meeting.copyWith(
+          sharedTeamIds: serverMeeting.sharedTeamIds,
+          summaryTaskId: meeting.summaryTaskId ?? serverMeeting.summaryTaskId,
+        );
+      }).toList();
+
+      if (newMeetings.isNotEmpty || serverMeetingsById.isNotEmpty) {
+        final merged = [...refreshedCurrent, ...newMeetings];
         // 날짜 기준 최신순 정렬
         merged.sort((a, b) => b.createdAt.compareTo(a.createdAt));
         state = AsyncData(merged);
@@ -109,6 +122,10 @@ class MeetingListNotifier extends AsyncNotifier<List<Meeting>> {
       createdAt: DateTime.parse(createdAtStr),
       status: MeetingStatus.completed,
       summaryTaskId: taskId,
+      sharedTeamIds: (item['shared_team_ids'] as List<dynamic>?)
+              ?.map((teamId) => teamId as String)
+              .toList(growable: false) ??
+          const [],
     );
   }
 

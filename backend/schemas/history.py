@@ -8,7 +8,7 @@ REQ-HIST-005: 상세 응답에 result_data, input_metadata 포함
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class HistoryItem(BaseModel):
@@ -24,6 +24,7 @@ class HistoryItem(BaseModel):
     created_at: datetime
     completed_at: datetime | None = None
     error_message: str | None = None
+    shared_team_ids: list[str] = Field(default_factory=list)
 
     model_config = {"from_attributes": True}
 

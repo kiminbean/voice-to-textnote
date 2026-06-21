@@ -8,10 +8,13 @@ SPEC-HISTORY-001: 작업 이력 조회/삭제 API
 """
 
 from fastapi import APIRouter, Depends, Query
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.dependencies import get_db_session
 from backend.app.errors import not_found
+from backend.db.auth_models import MeetingOwnership
+from backend.db.models import TaskResult
 from backend.db.service import ResultService
 from backend.schemas.history import HistoryDetailItem, HistoryItem, HistoryListResponse
 
@@ -21,6 +24,44 @@ router = APIRouter(tags=["history"])
 def get_result_service() -> ResultService:
     """ResultService 인스턴스 제공 (FastAPI Depends)"""
     return ResultService()
+
+
+async def _shared_team_ids_by_task(
+    db: AsyncSession,
+    task_ids: list[str],
+) -> dict[str, list[str]]:
+    if not task_ids:
+        return {}
+
+    result = await db.execute(
+        select(MeetingOwnership.task_id, MeetingOwnership.team_id).where(
+            MeetingOwnership.task_id.in_(task_ids),
+            MeetingOwnership.team_id.is_not(None),
+        )
+    )
+    shared_by_task: dict[str, list[str]] = {task_id: [] for task_id in task_ids}
+    for task_id, team_id in result.all():
+        if team_id is not None:
+            shared_by_task.setdefault(task_id, []).append(str(team_id))
+    return shared_by_task
+
+
+def _history_item(
+    record: TaskResult,
+    shared_by_task: dict[str, list[str]],
+) -> HistoryItem:
+    return HistoryItem.model_validate(record).model_copy(
+        update={"shared_team_ids": shared_by_task.get(record.task_id, [])}
+    )
+
+
+def _history_detail_item(
+    record: TaskResult,
+    shared_by_task: dict[str, list[str]],
+) -> HistoryDetailItem:
+    return HistoryDetailItem.model_validate(record).model_copy(
+        update={"shared_team_ids": shared_by_task.get(record.task_id, [])}
+    )
 
 
 @router.get("/history", response_model=HistoryListResponse)
@@ -62,7 +103,8 @@ async def list_history(
         offset=offset,
     )
 
-    items = [HistoryItem.model_validate(r) for r in records]
+    shared_by_task = await _shared_team_ids_by_task(db, [r.task_id for r in records])
+    items = [_history_item(r, shared_by_task) for r in records]
 
     return HistoryListResponse(
         items=items,
@@ -89,7 +131,8 @@ async def get_history(
     if record is None:
         not_found(f"작업 이력을 찾을 수 없습니다: task_id={task_id}")
 
-    return HistoryDetailItem.model_validate(record)
+    shared_by_task = await _shared_team_ids_by_task(db, [record.task_id])
+    return _history_detail_item(record, shared_by_task)
 
 
 @router.delete("/history/{task_id}", status_code=204)
