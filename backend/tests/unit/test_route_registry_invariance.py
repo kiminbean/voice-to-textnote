@@ -32,6 +32,13 @@ def _has_api_key_dep(route: fastapi.routing.APIRoute) -> bool:
     return False
 
 
+def _sorted_route_methods(route: fastapi.routing.APIRoute) -> list[str]:
+    """APIRoute 메서드 목록을 정렬해 반환한다."""
+    methods = route.methods
+    assert methods is not None, f"라우트에 HTTP 메서드가 없습니다: {route.path}"
+    return sorted(methods)
+
+
 def _build_snapshot(app_routes: list) -> list[dict]:
     """app.routes에서 APIRoute만 추출해 스냅숏 목록을 만든다.
 
@@ -45,7 +52,7 @@ def _build_snapshot(app_routes: list) -> list[dict]:
         snapshot.append(
             {
                 "path": route.path,
-                "methods": sorted(route.methods),
+                "methods": _sorted_route_methods(route),
                 "api_key": _has_api_key_dep(route),
             }
         )
@@ -79,7 +86,7 @@ def live_snapshot() -> list[dict]:
             snapshot.append(
                 {
                     "path": f"{api_prefix}{route.path}",
-                    "methods": sorted(route.methods),
+                    "methods": _sorted_route_methods(route),
                     "api_key": requires_api_key,
                 }
             )
