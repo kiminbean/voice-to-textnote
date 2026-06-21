@@ -518,6 +518,7 @@ backend/
 | `LOG_LEVEL` | `INFO` | 로그 레벨 (DEBUG, INFO, WARNING, ERROR) |
 | `API_KEYS` | (프로덕션 필수) | 쉼표로 구분된 API Key 목록 |
 | `JWT_SECRET` | (프로덕션 필수) | JWT 서명 시크릿. 32자 이상의 랜덤 문자열 필요 |
+| `FIREBASE_CREDENTIALS_PATH` | (프로덕션 필수) | Firebase Admin SDK 서비스 계정 JSON 경로. Docker 프로덕션 compose는 이 파일을 읽기 전용 secret mount로 주입 |
 | `OPENAI_API_KEY` | (필수) | OpenAI API 키 (gpt-4o-mini 모델 - 요약/감정분석) |
 | `RATE_LIMIT` | `60/minute` | IP당 분당 요청 제한 |
 | `DATA_RETENTION_DAYS` | `30` | DB 데이터 보유 기간 |

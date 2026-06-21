@@ -80,12 +80,14 @@ services:
       - API_KEYS=${API_KEYS:?API_KEYS is required}
       - JWT_SECRET=${JWT_SECRET:?JWT_SECRET is required}
       - OPENAI_API_KEY=${OPENAI_API_KEY:?OPENAI_API_KEY is required}
+      - FIREBASE_CREDENTIALS_PATH=/run/secrets/firebase-service-account.json
       - REDIS_URL=redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is required}@redis:6379/0
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is required}@redis:6379/0
       - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is required}@redis:6379/1
       - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-voicenote}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/${POSTGRES_DB:-voicenote}
     volumes:
       - ./storage:/app/storage
+      - ${FIREBASE_CREDENTIALS_PATH:?FIREBASE_CREDENTIALS_PATH is required}:/run/secrets/firebase-service-account.json:ro
     depends_on:
       redis:
         condition: service_healthy
@@ -117,12 +119,14 @@ services:
       - API_KEYS=${API_KEYS:?API_KEYS is required}
       - JWT_SECRET=${JWT_SECRET:?JWT_SECRET is required}
       - OPENAI_API_KEY=${OPENAI_API_KEY:?OPENAI_API_KEY is required}
+      - FIREBASE_CREDENTIALS_PATH=/run/secrets/firebase-service-account.json
       - REDIS_URL=redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is required}@redis:6379/0
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is required}@redis:6379/0
       - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is required}@redis:6379/1
       - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-voicenote}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/${POSTGRES_DB:-voicenote}
     volumes:
       - ./storage:/app/storage
+      - ${FIREBASE_CREDENTIALS_PATH:?FIREBASE_CREDENTIALS_PATH is required}:/run/secrets/firebase-service-account.json:ro
     depends_on:
       redis:
         condition: service_healthy

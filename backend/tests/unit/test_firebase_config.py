@@ -6,6 +6,9 @@ REQ-MOBILE-002-06: config.py에 firebase_credentials_path 필드 추가
 - 기본값 None (미설정 시 MOCK 모드)
 """
 
+import pytest
+from pydantic import ValidationError
+
 from backend.app.config import Settings
 
 
@@ -31,3 +34,15 @@ class TestFirebaseCredentialsPath:
         # pydantic-settings는 빈 문자열을 빈 문자열로 유지
         # push_service에서 falsy 체크로 MOCK 모드 판별
         assert settings.firebase_credentials_path == ""
+
+    def test_production_requires_firebase_credentials_path(self, monkeypatch):
+        """production 환경에서는 Firebase credentials path가 필수"""
+        monkeypatch.setenv("ENVIRONMENT", "production")
+        monkeypatch.setenv("API_KEYS", "test-key")
+        monkeypatch.setenv("JWT_SECRET", "x" * 48)
+        monkeypatch.delenv("FIREBASE_CREDENTIALS_PATH", raising=False)
+
+        with pytest.raises(ValidationError) as exc_info:
+            Settings()
+
+        assert "FIREBASE_CREDENTIALS_PATH" in str(exc_info.value)

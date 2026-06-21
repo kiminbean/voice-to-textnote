@@ -53,10 +53,25 @@ class TestFirebaseInitialization:
     def test_real_mode_fallback_to_mock_on_import_error(self):
         """firebase_admin 임포트 실패 시 MOCK 모드로 폴백"""
         with patch("backend.services.push_service.settings") as mock_settings:
+            mock_settings.environment = "development"
             mock_settings.firebase_credentials_path = "/path/to/creds.json"
             service = PushService()
             service._ensure_firebase_initialized()
             assert service._is_mock_mode is True
+
+    def test_production_raises_on_firebase_initialization_failure(self):
+        """production에서는 Firebase 초기화 실패를 MOCK으로 숨기지 않음"""
+        with patch("backend.services.push_service.settings") as mock_settings:
+            mock_settings.environment = "production"
+            mock_settings.firebase_credentials_path = "/path/to/creds.json"
+            service = PushService()
+
+            try:
+                service._ensure_firebase_initialized()
+            except RuntimeError as exc:
+                assert "Firebase initialization failed in production" in str(exc)
+            else:  # pragma: no cover
+                raise AssertionError("production Firebase initialization failure was hidden")
 
     def test_real_mode_skips_reinit(self):
         """이미 초기화됐으면 재초기화 안 함"""

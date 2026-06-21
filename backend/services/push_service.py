@@ -57,6 +57,8 @@ class PushService:
 
         creds_path = settings.firebase_credentials_path
         if not creds_path:
+            if settings.environment == "production":
+                raise RuntimeError("Firebase credentials are required in production")
             logger.info("Firebase Admin SDK 초기화 (MOCK 모드)")
             self._is_mock_mode = True
             self._firebase_initialized = True
@@ -75,6 +77,8 @@ class PushService:
             self._is_mock_mode = False
             self._firebase_initialized = True
         except Exception as e:
+            if settings.environment == "production":
+                raise RuntimeError("Firebase initialization failed in production") from e
             logger.warning(f"Firebase 초기화 실패, MOCK 모드로 폴백: {e}")
             self._is_mock_mode = True
             self._firebase_initialized = True

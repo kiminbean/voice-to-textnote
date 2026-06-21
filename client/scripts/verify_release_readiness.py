@@ -192,6 +192,9 @@ def check_production_compose(root: Path, reporter: Reporter) -> None:
         "${API_KEYS:?API_KEYS is required}",
         "${JWT_SECRET:?JWT_SECRET is required}",
         "${OPENAI_API_KEY:?OPENAI_API_KEY is required}",
+        "${FIREBASE_CREDENTIALS_PATH:?FIREBASE_CREDENTIALS_PATH is required}",
+        "FIREBASE_CREDENTIALS_PATH=/run/secrets/firebase-service-account.json",
+        "/run/secrets/firebase-service-account.json:ro",
     ]
     require_snippets(
         reporter,

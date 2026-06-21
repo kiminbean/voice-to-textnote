@@ -275,6 +275,10 @@ class Settings(BaseSettings):
             raise ValueError("production 환경에서는 JWT_SECRET을 반드시 설정해야 합니다")
         if self.environment == "production" and len(jwt_secret) < 32:
             raise ValueError("production 환경에서는 JWT_SECRET은 최소 32자 이상이어야 합니다")
+        if self.environment == "production" and not self.firebase_credentials_path:
+            raise ValueError(
+                "production 환경에서는 FIREBASE_CREDENTIALS_PATH를 반드시 설정해야 합니다"
+            )
         return self
 
     @property

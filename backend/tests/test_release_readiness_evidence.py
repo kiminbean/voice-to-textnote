@@ -1136,6 +1136,7 @@ services:
           - DATABASE_URL=${DATABASE_URL}
           - API_KEYS=${API_KEYS}
           - JWT_SECRET=${JWT_SECRET}
+          - FIREBASE_CREDENTIALS_PATH=${FIREBASE_CREDENTIALS_PATH}
       worker:
         environment:
           - ENVIRONMENT=development

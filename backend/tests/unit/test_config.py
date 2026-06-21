@@ -67,12 +67,14 @@ class TestValidateEnvironment:
             old_val = os.environ.get("ENVIRONMENT")
             old_api = os.environ.get("API_KEYS")
             old_jwt = os.environ.get("JWT_SECRET")
+            old_firebase = os.environ.get("FIREBASE_CREDENTIALS_PATH")
             try:
                 os.environ["ENVIRONMENT"] = env
-                # production 환경에서는 API_KEYS/JWT_SECRET 필요
+                # production 환경에서는 API_KEYS/JWT_SECRET/FIREBASE_CREDENTIALS_PATH 필요
                 if env == "production":
                     os.environ["API_KEYS"] = "test-key"
                     os.environ["JWT_SECRET"] = "x" * 48
+                    os.environ["FIREBASE_CREDENTIALS_PATH"] = "/tmp/firebase.json"
                 # Settings 생성 시 검증됨
                 settings = Settings()
                 assert settings.environment == env
@@ -89,6 +91,10 @@ class TestValidateEnvironment:
                     os.environ["JWT_SECRET"] = old_jwt
                 else:
                     os.environ.pop("JWT_SECRET", None)
+                if old_firebase:
+                    os.environ["FIREBASE_CREDENTIALS_PATH"] = old_firebase
+                else:
+                    os.environ.pop("FIREBASE_CREDENTIALS_PATH", None)
 
     def test_invalid_environment(self):
         """유효하지 않은 환경값 (라인 218-219)"""
@@ -97,10 +103,12 @@ class TestValidateEnvironment:
         old_val = os.environ.get("ENVIRONMENT")
         old_api = os.environ.get("API_KEYS")
         old_jwt = os.environ.get("JWT_SECRET")
+        old_firebase = os.environ.get("FIREBASE_CREDENTIALS_PATH")
         try:
             os.environ["ENVIRONMENT"] = "invalid_env"
             os.environ["API_KEYS"] = "test-key"
             os.environ["JWT_SECRET"] = "x" * 48
+            os.environ["FIREBASE_CREDENTIALS_PATH"] = "/tmp/firebase.json"
             with pytest.raises(ValidationError) as exc_info:
                 Settings()
             assert "environment는 다음 중 하나여야 합니다" in str(exc_info.value)
@@ -117,6 +125,10 @@ class TestValidateEnvironment:
                 os.environ["JWT_SECRET"] = old_jwt
             else:
                 os.environ.pop("JWT_SECRET", None)
+            if old_firebase:
+                os.environ["FIREBASE_CREDENTIALS_PATH"] = old_firebase
+            else:
+                os.environ.pop("FIREBASE_CREDENTIALS_PATH", None)
 
     def test_environment_normalization(self):
         """환경값 정규화 (라인 216)"""
@@ -125,10 +137,12 @@ class TestValidateEnvironment:
         old_val = os.environ.get("ENVIRONMENT")
         old_api = os.environ.get("API_KEYS")
         old_jwt = os.environ.get("JWT_SECRET")
+        old_firebase = os.environ.get("FIREBASE_CREDENTIALS_PATH")
         try:
             os.environ["ENVIRONMENT"] = "  Development  "
             os.environ["API_KEYS"] = "test-key"
             os.environ["JWT_SECRET"] = "x" * 48
+            os.environ["FIREBASE_CREDENTIALS_PATH"] = "/tmp/firebase.json"
             settings = Settings()
             assert settings.environment == "development"
         finally:
@@ -144,6 +158,10 @@ class TestValidateEnvironment:
                 os.environ["JWT_SECRET"] = old_jwt
             else:
                 os.environ.pop("JWT_SECRET", None)
+            if old_firebase:
+                os.environ["FIREBASE_CREDENTIALS_PATH"] = old_firebase
+            else:
+                os.environ.pop("FIREBASE_CREDENTIALS_PATH", None)
 
 
 class TestValidateCorsAllowMethods:
@@ -213,10 +231,12 @@ class TestValidateProductionSecurity:
         old_val = os.environ.get("API_KEYS")
         old_env = os.environ.get("ENVIRONMENT")
         old_jwt = os.environ.get("JWT_SECRET")
+        old_firebase = os.environ.get("FIREBASE_CREDENTIALS_PATH")
         try:
             os.environ.pop("API_KEYS", None)
             os.environ["ENVIRONMENT"] = "production"
             os.environ["JWT_SECRET"] = "x" * 48
+            os.environ["FIREBASE_CREDENTIALS_PATH"] = "/tmp/firebase.json"
             with pytest.raises(ValidationError) as exc_info:
                 Settings()
             assert "production 환경에서는 API_KEYS를 반드시 설정해야 합니다" in str(exc_info.value)
@@ -233,6 +253,10 @@ class TestValidateProductionSecurity:
                 os.environ["JWT_SECRET"] = old_jwt
             else:
                 os.environ.pop("JWT_SECRET", None)
+            if old_firebase:
+                os.environ["FIREBASE_CREDENTIALS_PATH"] = old_firebase
+            else:
+                os.environ.pop("FIREBASE_CREDENTIALS_PATH", None)
 
     def test_production_without_jwt_secret_raises_error(self):
         """production 환경에서 JWT_SECRET 없으면 에러"""
@@ -291,6 +315,40 @@ class TestValidateProductionSecurity:
                 os.environ["JWT_SECRET"] = old_jwt
             else:
                 os.environ.pop("JWT_SECRET", None)
+
+    def test_production_without_firebase_credentials_path_raises_error(self):
+        """production 환경에서 FIREBASE_CREDENTIALS_PATH 없으면 에러"""
+        import os
+
+        old_api = os.environ.get("API_KEYS")
+        old_env = os.environ.get("ENVIRONMENT")
+        old_jwt = os.environ.get("JWT_SECRET")
+        old_firebase = os.environ.get("FIREBASE_CREDENTIALS_PATH")
+        try:
+            os.environ["API_KEYS"] = "test-key"
+            os.environ["ENVIRONMENT"] = "production"
+            os.environ["JWT_SECRET"] = "x" * 48
+            os.environ.pop("FIREBASE_CREDENTIALS_PATH", None)
+            with pytest.raises(ValidationError) as exc_info:
+                Settings()
+            assert "FIREBASE_CREDENTIALS_PATH" in str(exc_info.value)
+        finally:
+            if old_api:
+                os.environ["API_KEYS"] = old_api
+            else:
+                os.environ.pop("API_KEYS", None)
+            if old_env:
+                os.environ["ENVIRONMENT"] = old_env
+            else:
+                os.environ.pop("ENVIRONMENT", None)
+            if old_jwt:
+                os.environ["JWT_SECRET"] = old_jwt
+            else:
+                os.environ.pop("JWT_SECRET", None)
+            if old_firebase:
+                os.environ["FIREBASE_CREDENTIALS_PATH"] = old_firebase
+            else:
+                os.environ.pop("FIREBASE_CREDENTIALS_PATH", None)
 
     def test_development_without_api_keys_ok(self):
         """development 환경에서는 API_KEYS 없어도 OK"""
@@ -357,10 +415,12 @@ class TestSettingsIntegration:
         old_api = os.environ.get("API_KEYS")
         old_env = os.environ.get("ENVIRONMENT")
         old_jwt = os.environ.get("JWT_SECRET")
+        old_firebase = os.environ.get("FIREBASE_CREDENTIALS_PATH")
         try:
             os.environ["API_KEYS"] = "test-key"
             os.environ["ENVIRONMENT"] = "production"
             os.environ["JWT_SECRET"] = "x" * 48
+            os.environ["FIREBASE_CREDENTIALS_PATH"] = "/tmp/firebase.json"
             settings = Settings(max_file_size_mb=1000, max_concurrent_jobs=5)
             assert settings.max_file_size_mb == 1000
             assert settings.max_concurrent_jobs == 5
@@ -378,6 +438,10 @@ class TestSettingsIntegration:
                 os.environ["JWT_SECRET"] = old_jwt
             else:
                 os.environ.pop("JWT_SECRET", None)
+            if old_firebase:
+                os.environ["FIREBASE_CREDENTIALS_PATH"] = old_firebase
+            else:
+                os.environ.pop("FIREBASE_CREDENTIALS_PATH", None)
 
     def test_field_validators(self):
         """필드 검증기 통합 테스트"""
@@ -385,13 +449,16 @@ class TestSettingsIntegration:
 
         old_env = os.environ.get("ENVIRONMENT")
         old_jwt = os.environ.get("JWT_SECRET")
+        old_firebase = os.environ.get("FIREBASE_CREDENTIALS_PATH")
         try:
             os.environ["ENVIRONMENT"] = "production"
             os.environ["API_KEYS"] = "test-key"
             os.environ["JWT_SECRET"] = "x" * 48
+            os.environ["FIREBASE_CREDENTIALS_PATH"] = "/tmp/firebase.json"
             settings = Settings(
                 environment="production",
                 jwt_secret="x" * 48,
+                firebase_credentials_path="/tmp/firebase.json",
                 cors_allow_origins=["https://example.com"],
                 cors_allow_methods=["GET", "POST"],
             )
@@ -407,3 +474,7 @@ class TestSettingsIntegration:
                 os.environ["JWT_SECRET"] = old_jwt  # pragma: no cover
             else:
                 os.environ.pop("JWT_SECRET", None)
+            if old_firebase:
+                os.environ["FIREBASE_CREDENTIALS_PATH"] = old_firebase  # pragma: no cover
+            else:
+                os.environ.pop("FIREBASE_CREDENTIALS_PATH", None)

@@ -49,6 +49,9 @@ def test_production_compose_forces_backend_production_environment():
     assert "- API_KEYS=${API_KEYS:?API_KEYS is required}" in compose
     assert "- JWT_SECRET=${JWT_SECRET:?JWT_SECRET is required}" in compose
     assert "- OPENAI_API_KEY=${OPENAI_API_KEY:?OPENAI_API_KEY is required}" in compose
+    assert "${FIREBASE_CREDENTIALS_PATH:?FIREBASE_CREDENTIALS_PATH is required}" in compose
+    assert "FIREBASE_CREDENTIALS_PATH=/run/secrets/firebase-service-account.json" in compose
+    assert "/run/secrets/firebase-service-account.json:ro" in compose
 
 
 def test_production_compose_uses_internal_async_postgres_url():
