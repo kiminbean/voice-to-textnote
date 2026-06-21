@@ -109,10 +109,10 @@ def write_tone_policy_files(root: Path, *, tone_model_line: str = 'tone_model: s
 def write_readme_status(root: Path, content: str) -> None:
     (root / "README.md").write_text(
         (
-            "3882 백엔드 테스트\n"
-            "| 백엔드 단위/통합/E2E | 3882개 | 100.00% |\n"
+            "3884 백엔드 테스트\n"
+            "| 백엔드 단위/통합/E2E | 3884개 | 100.00% |\n"
             "| Flutter 테스트 | 415개 | - |\n"
-            "| 총합 | 4297개 | - |\n"
+            "| 총합 | 4299개 | - |\n"
             f"{content}"
         ),
         encoding="utf-8",
@@ -187,6 +187,24 @@ def test_release_e2e_evidence_rejects_unknown_device_metadata_key(tmp_path, monk
         "unknown android device metadata key: legacy_fingerprint" in error
         for error in reporter.errors
     )
+
+
+def test_release_e2e_evidence_rejects_non_string_device_id(tmp_path, monkeypatch):
+    module = load_release_readiness_module()
+    evidence = make_evidence(tmp_path, module)
+    devices = evidence["devices"]
+    assert isinstance(devices, dict)
+    android_device = devices["android"]
+    assert isinstance(android_device, dict)
+    android_device["serial"] = 12345
+    evidence_path = write_evidence(tmp_path, evidence)
+    monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "12345")
+    monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")
+
+    reporter = module.Reporter()
+    module.check_release_e2e_evidence(evidence_path, reporter)
+
+    assert any("android device serial must be a string" in error for error in reporter.errors)
 
 
 def test_release_e2e_evidence_rejects_missing_required_scenario(tmp_path, monkeypatch):
@@ -352,6 +370,27 @@ def test_release_e2e_evidence_rejects_too_short_scenario_evidence(tmp_path, monk
 
     assert any(
         "evidence note is too short: push_stt_complete" in error
+        for error in reporter.errors
+    )
+
+
+def test_release_e2e_evidence_rejects_non_string_scenario_evidence(tmp_path, monkeypatch):
+    module = load_release_readiness_module()
+    evidence = make_evidence(tmp_path, module)
+    scenarios = evidence["scenarios"]
+    assert isinstance(scenarios, dict)
+    scenario = scenarios["push_stt_complete"]
+    assert isinstance(scenario, dict)
+    scenario["evidence"] = 1234567890123456789012345
+    evidence_path = write_evidence(tmp_path, evidence)
+    monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
+    monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")
+
+    reporter = module.Reporter()
+    module.check_release_e2e_evidence(evidence_path, reporter)
+
+    assert any(
+        "scenario evidence must be a string: push_stt_complete" in error
         for error in reporter.errors
     )
 

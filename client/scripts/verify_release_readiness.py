@@ -625,15 +625,15 @@ def check_readme_release_status(root: Path, reporter: Reporter) -> None:
     else:
         reporter.ok("README does not overclaim Production Ready before strict evidence")
     if (
-        "3882 백엔드 테스트" in readme
-        and "3882개" in readme
+        "3884 백엔드 테스트" in readme
+        and "3884개" in readme
         and ("Flutter 415" in readme or "415개" in readme)
-        and "4297개" in readme
+        and "4299개" in readme
     ):
         reporter.ok("README test counts match current release validation evidence")
     else:
         reporter.fail(
-            "README test counts must match current 3882 backend / 415 Flutter / 4297 total evidence"
+            "README test counts must match current 3884 backend / 415 Flutter / 4299 total evidence"
         )
     if f"{completed_spec_count}개 SPEC" in readme:
         reporter.fail("README should avoid hard-coded completed SPEC counts outside the SPEC list")
@@ -708,11 +708,11 @@ def check_docs(root: Path, reporter: Reporter) -> None:
             "Release procedure SPEC count must match README completed SPEC list "
             f"({completed_spec_count})"
         )
-    if "3882 passed" in procedure_doc and "Flutter: 415 passed" in procedure_doc:
+    if "3884 passed" in procedure_doc and "Flutter: 415 passed" in procedure_doc:
         reporter.ok("Release procedure backend test count matches latest full pytest evidence")
     else:
         reporter.fail(
-            "Release procedure test counts must match latest 3882 backend / 415 Flutter evidence"
+            "Release procedure test counts must match latest 3884 backend / 415 Flutter evidence"
         )
     app_store_doc = read_text(root / "docs/app-store-metadata.md")
     for snippet in [
@@ -963,6 +963,9 @@ def require_non_empty_string(
     if isinstance(value, str) and value.strip():
         reporter.ok(f"Release E2E evidence includes {label}")
         return value.strip()
+    if key in data:
+        reporter.fail(f"Release E2E evidence {label} must be a string")
+        return ""
     reporter.fail(f"Release E2E evidence missing {label}")
     return ""
 
@@ -1148,7 +1151,9 @@ def check_release_e2e_evidence(path: Path, reporter: Reporter, root: Path | None
             reporter.fail(
                 f"Release E2E evidence includes unknown {platform} device metadata key: {key}"
             )
-        actual_id = str(device.get(id_key, "")).strip()
+        actual_id = require_non_empty_string(
+            reporter, device, id_key, f"{platform} device {id_key}"
+        )
         if actual_id and actual_id == expected_id:
             reporter.ok(f"Release E2E evidence {platform} device matches strict env")
         else:
@@ -1246,7 +1251,11 @@ def check_release_e2e_evidence(path: Path, reporter: Reporter, root: Path | None
                 f"{key}.{result_key}"
             )
         passed = scenario.get("pass")
-        evidence = str(scenario.get("evidence", "")).strip()
+        evidence_value = scenario.get("evidence")
+        if not isinstance(evidence_value, str):
+            reporter.fail(f"Release E2E scenario evidence must be a string: {key}")
+            continue
+        evidence = evidence_value.strip()
         if (
             passed is True
             and len(evidence) >= MIN_RELEASE_E2E_EVIDENCE_CHARS
