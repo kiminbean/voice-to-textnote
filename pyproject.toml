@@ -10,8 +10,8 @@ dependencies = [
     "pydantic-settings>=2.0",
     "celery[redis]>=5.6.2",
     "redis>=5.0",
-    "mlx-whisper>=0.4.3",
-    "mlx>=0.31.1",
+    "mlx-whisper>=0.4.3; platform_system == 'Darwin'",
+    "mlx>=0.31.1; platform_system == 'Darwin'",
     # Linux/CPU 환경에서 STT 가속 (CTranslate2 int8, openai-whisper 대비 ~4-6배 빠름)
     "faster-whisper>=1.0.0",
     "pyannote-audio>=3.1.0",

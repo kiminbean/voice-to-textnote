@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import tomllib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -24,3 +25,12 @@ def test_dockerfile_does_not_copy_ignored_storage_directory():
     assert "storage/" in dockerignore
     assert "COPY storage/" not in dockerfile
     assert "mkdir -p storage/temp storage/results" in dockerfile
+
+
+def test_linux_docker_build_skips_macos_only_mlx_dependencies():
+    pyproject = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    dependencies = pyproject["project"]["dependencies"]
+
+    for package_name in ("mlx-whisper", "mlx"):
+        dependency = next(dep for dep in dependencies if dep.startswith(f"{package_name}>="))
+        assert "platform_system == 'Darwin'" in dependency
