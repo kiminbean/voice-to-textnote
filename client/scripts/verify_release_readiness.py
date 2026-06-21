@@ -841,6 +841,18 @@ def check_readme_release_status(root: Path, reporter: Reporter) -> None:
         reporter.ok("README Android RC status references release APK verification")
     else:
         reporter.fail("README Android RC status must reference release APK verification")
+    require_snippets(
+        reporter,
+        readme,
+        [
+            "ANDROID_KEYSTORE_BASE64",
+            "ANDROID_KEYSTORE_PASSWORD",
+            "ANDROID_KEY_ALIAS",
+            "ANDROID_KEY_PASSWORD",
+            "REQUIRE_ANDROID_RELEASE_SIGNING=true",
+        ],
+        "README strict gate must document Android release signing",
+    )
     if f"{completed_spec_count}개 SPEC" in readme:
         reporter.fail("README should avoid hard-coded completed SPEC counts outside the SPEC list")
     else:

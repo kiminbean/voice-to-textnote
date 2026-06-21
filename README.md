@@ -760,12 +760,15 @@ cd client
 # 로컬/CI 기본 사전검사: Firebase, App Store metadata, native wiring, release docs
 python3 client/scripts/verify_release_readiness.py
 
+# signed Android/iOS native gate: Android keystore secret, 연결 기기, native artifact 필요
+cd client && REQUIRE_ANDROID_RELEASE_SIGNING=true ./scripts/verify_mobile.sh --native
+
 # 실기기 릴리스 게이트: 외부 secret, 연결 기기, Push/딥링크/녹음/공유 evidence 필요
 RELEASE_E2E_EVIDENCE_PATH=docs/release-e2e-evidence.example.json \
 python3 client/scripts/verify_release_readiness.py --strict
 ```
 
-`--strict`는 예제 파일을 그대로 통과시키는 용도가 아니다. `docs/release-e2e-evidence.example.json`을 복사해 실제 Android/iOS 기기 ID, 빌드 산출물, Push/딥링크/백그라운드 녹음/HTTP 정책/PDF 공유 시나리오 증거로 채운 뒤 실행한다. 필요한 환경 변수와 scenario key 매핑은 `docs/e2e-device-checklist.md`에 있다.
+`--strict`는 예제 파일을 그대로 통과시키는 용도가 아니다. `docs/release-e2e-evidence.example.json`을 복사해 실제 Android/iOS 기기 ID, 빌드 산출물, Push/딥링크/백그라운드 녹음/HTTP 정책/PDF 공유 시나리오 증거로 채운 뒤 실행한다. Android release APK는 `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`로 복원한 keystore로 서명하고 `REQUIRE_ANDROID_RELEASE_SIGNING=true ./scripts/verify_mobile.sh --native`에서 `apksigner verify --print-certs`까지 통과해야 한다. 필요한 환경 변수와 scenario key 매핑은 `docs/e2e-device-checklist.md`에 있다.
 
 ```bash
 # Generate an editable scaffold with every required release E2E scenario key
@@ -773,7 +776,7 @@ ANDROID_DEVICE_SERIAL=<adb-device-serial> IOS_DEVICE_UDID=<ios-device-udid> \
 python3 client/scripts/create_release_e2e_evidence.py --output docs/release-e2e-evidence.json
 ```
 
-GitHub Actions에서도 동일한 strict 게이트를 실행할 수 있다. `.github/workflows/mobile.yml`의 `workflow_dispatch`에 `evidence_path`를 입력하면 `mobile-release` GitHub Environment와 `self-hosted`, `macOS`, `mobile-release` 라벨을 가진 러너에서 `python3 client/scripts/verify_mobile_release_runner.py`, `./scripts/verify_mobile.sh --native`, `python3 client/scripts/verify_release_readiness.py --strict` 순서로 실행한다. 필요한 Firebase/APNs/App Store Connect secrets와 Android/iOS device vars는 `docs/e2e-device-checklist.md`의 GitHub Actions strict release gate 표를 따른다.
+GitHub Actions에서도 동일한 strict 게이트를 실행할 수 있다. `.github/workflows/mobile.yml`의 `workflow_dispatch`에 `evidence_path`를 입력하면 `mobile-release` GitHub Environment와 `self-hosted`, `macOS`, `mobile-release` 라벨을 가진 러너에서 `python3 client/scripts/verify_mobile_release_runner.py`, `REQUIRE_ANDROID_RELEASE_SIGNING=true ./scripts/verify_mobile.sh --native`, `python3 client/scripts/verify_release_readiness.py --strict` 순서로 실행한다. 필요한 Android signing/Firebase/APNs/App Store Connect secrets와 Android/iOS device vars는 `docs/e2e-device-checklist.md`의 GitHub Actions strict release gate 표를 따른다.
 
 ```bash
 # macOS runner candidate preflight: toolchain + physical Android/iOS availability
@@ -835,7 +838,7 @@ Copyright (c) 2026 kiminbean. **All Rights Reserved.**
 **마지막 업데이트**: 2026-06-17
 **버전**: 1.7.0
 **상태**: Phase 8 진행 중 — SPEC-OBSIDIAN-001 Obsidian Vault 연계 완료 + UI 재설계(디자인 시스템, 다크모드) 완료, 감정/톤 분석 활성화, 라이선스 All Rights Reserved 전환
-**최근 확인**: 백엔드 3907 테스트 + Flutter 415 테스트 + Flutter analyze + 기본 Release Readiness 통과. Strict release readiness는 Firebase/APNs/App Store Connect secret, Android/iOS 실기기, 실제 E2E evidence가 준비되어야 통과 가능.
+**최근 확인**: 백엔드 3907 테스트 + Flutter 415 테스트 + Flutter analyze + 기본 Release Readiness 통과. Strict release readiness는 Android signing/Firebase/APNs/App Store Connect secret, Android/iOS 실기기, 실제 E2E evidence가 준비되어야 통과 가능.
 
 ### 구현 완료 SPEC 목록
 

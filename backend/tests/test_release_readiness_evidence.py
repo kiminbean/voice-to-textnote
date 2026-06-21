@@ -1350,6 +1350,8 @@ def test_readme_release_status_accepts_release_candidate_language(tmp_path):
         tmp_path,
         (
             "Release Candidate strict 실기기 release evidence 대기 RELEASE_E2E_EVIDENCE_PATH\n"
+            "ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS "
+            "ANDROID_KEY_PASSWORD REQUIRE_ANDROID_RELEASE_SIGNING=true\n"
             "| **Android** | RC | `flutter build apk --release` 검증 완료 |"
         ),
     )
@@ -1408,6 +1410,25 @@ def test_readme_release_status_rejects_android_debug_build_claim(tmp_path):
     module.check_readme_release_status(tmp_path, reporter)
 
     assert any("README Android RC status must reference release APK" in error for error in reporter.errors)
+
+
+def test_readme_release_status_rejects_missing_android_signing_gate(tmp_path):
+    module = load_release_readiness_module()
+    (tmp_path / "README.md").write_text(
+        (
+            "Release Candidate strict 실기기 release evidence 대기 RELEASE_E2E_EVIDENCE_PATH\n"
+            "3907 백엔드 테스트 Flutter 415 4322개\n"
+            "| 백엔드 단위/통합/E2E | 3907개 | 100.00% |\n"
+            "| 총합 | 4322개 | - |\n"
+            "| **Android** | RC | `flutter build apk --release` 검증 완료 |"
+        ),
+        encoding="utf-8",
+    )
+
+    reporter = module.Reporter()
+    module.check_readme_release_status(tmp_path, reporter)
+
+    assert any("README strict gate must document Android release signing" in error for error in reporter.errors)
 
 
 def test_owll_benchmark_doc_accepts_current_competitor_evidence():
