@@ -2,7 +2,6 @@
 앱 설정 모듈 - pydantic-settings 기반 환경 변수 관리
 """
 
-import secrets
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -135,9 +134,7 @@ class Settings(BaseSettings):
 
     # SPEC-TEAM-001: JWT 시크릿 키 (access token 서명용)
     # 프로덕션에서는 반드시 환경 변수로 강력한 키 설정 필요
-    jwt_secret: str = Field(
-        default_factory=lambda: secrets.token_urlsafe(48),
-    )
+    jwt_secret: str = "dev-insecure-change-me"
 
     # SPEC-GUEST-001: 게스트 세션 TTL (시간)
     guest_session_ttl_hours: int = Field(default=24, ge=1, le=168)
@@ -271,6 +268,13 @@ class Settings(BaseSettings):
     def validate_production_security(self) -> "Settings":
         if self.environment == "production" and not self.api_keys:
             raise ValueError("production 환경에서는 API_KEYS를 반드시 설정해야 합니다")
+        jwt_secret = self.jwt_secret.strip()
+        if self.environment == "production" and (
+            not jwt_secret or jwt_secret == "dev-insecure-change-me"
+        ):
+            raise ValueError("production 환경에서는 JWT_SECRET을 반드시 설정해야 합니다")
+        if self.environment == "production" and len(jwt_secret) < 32:
+            raise ValueError("production 환경에서는 JWT_SECRET은 최소 32자 이상이어야 합니다")
         return self
 
     @property

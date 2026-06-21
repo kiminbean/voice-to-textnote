@@ -47,6 +47,7 @@ def test_production_compose_forces_backend_production_environment():
     assert "POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}" in compose
     assert "--requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD is required}" in compose
     assert "- API_KEYS=${API_KEYS:?API_KEYS is required}" in compose
+    assert "- JWT_SECRET=${JWT_SECRET:?JWT_SECRET is required}" in compose
     assert "- OPENAI_API_KEY=${OPENAI_API_KEY:?OPENAI_API_KEY is required}" in compose
 
 

@@ -516,7 +516,8 @@ backend/
 | `MAX_DURATION` | `14400` | 최대 재생 시간 (초) = 4시간 |
 | `CHUNK_DURATION` | `1800` | 청크 크기 (초) = 30분 |
 | `LOG_LEVEL` | `INFO` | 로그 레벨 (DEBUG, INFO, WARNING, ERROR) |
-| `API_KEY_SECRET` | (필수) | API Key 암호화 시크릿 |
+| `API_KEYS` | (프로덕션 필수) | 쉼표로 구분된 API Key 목록 |
+| `JWT_SECRET` | (프로덕션 필수) | JWT 서명 시크릿. 32자 이상의 랜덤 문자열 필요 |
 | `OPENAI_API_KEY` | (필수) | OpenAI API 키 (gpt-4o-mini 모델 - 요약/감정분석) |
 | `RATE_LIMIT` | `60/minute` | IP당 분당 요청 제한 |
 | `DATA_RETENTION_DAYS` | `30` | DB 데이터 보유 기간 |

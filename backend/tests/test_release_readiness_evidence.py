@@ -1131,13 +1131,14 @@ def test_production_compose_check_rejects_external_database_override(tmp_path):
     (tmp_path / "docker-compose.prod.yml").write_text(
         """
 services:
-  api:
-    environment:
-      - DATABASE_URL=${DATABASE_URL}
-      - API_KEYS=${API_KEYS}
-  worker:
-    environment:
-      - ENVIRONMENT=development
+      api:
+        environment:
+          - DATABASE_URL=${DATABASE_URL}
+          - API_KEYS=${API_KEYS}
+          - JWT_SECRET=${JWT_SECRET}
+      worker:
+        environment:
+          - ENVIRONMENT=development
         """,
         encoding="utf-8",
     )

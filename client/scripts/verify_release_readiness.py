@@ -190,6 +190,7 @@ def check_production_compose(root: Path, reporter: Reporter) -> None:
         "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}",
         "${REDIS_PASSWORD:?REDIS_PASSWORD is required}",
         "${API_KEYS:?API_KEYS is required}",
+        "${JWT_SECRET:?JWT_SECRET is required}",
         "${OPENAI_API_KEY:?OPENAI_API_KEY is required}",
     ]
     require_snippets(
