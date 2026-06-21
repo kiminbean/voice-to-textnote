@@ -75,7 +75,14 @@ def test_release_e2e_evidence_artifacts_are_resolved_from_repo_root(
         apk.writestr("AndroidManifest.xml", "<manifest />")
     ios_runner_app.mkdir(parents=True)
     with (ios_runner_app / "Info.plist").open("wb") as plist:
-        plistlib.dump({"CFBundleIdentifier": "com.voicetextnote.app"}, plist)
+        plistlib.dump(
+            {
+                "CFBundleIdentifier": "com.voicetextnote.app",
+                "CFBundleExecutable": "Runner",
+            },
+            plist,
+        )
+    (ios_runner_app / "Runner").write_bytes(b"binary")
     evidence_path = tmp_path / "evidence.json"
     evidence_path.write_text(
         json.dumps(

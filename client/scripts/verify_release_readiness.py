@@ -622,15 +622,15 @@ def check_readme_release_status(root: Path, reporter: Reporter) -> None:
     else:
         reporter.ok("README does not overclaim Production Ready before strict evidence")
     if (
-        "3867 백엔드 테스트" in readme
-        and "3867개" in readme
+        "3868 백엔드 테스트" in readme
+        and "3868개" in readme
         and ("Flutter 415" in readme or "415개" in readme)
-        and "4282개" in readme
+        and "4283개" in readme
     ):
         reporter.ok("README test counts match current release validation evidence")
     else:
         reporter.fail(
-            "README test counts must match current 3867 backend / 415 Flutter / 4282 total evidence"
+            "README test counts must match current 3868 backend / 415 Flutter / 4283 total evidence"
         )
     if f"{completed_spec_count}개 SPEC" in readme:
         reporter.fail("README should avoid hard-coded completed SPEC counts outside the SPEC list")
@@ -705,11 +705,11 @@ def check_docs(root: Path, reporter: Reporter) -> None:
             "Release procedure SPEC count must match README completed SPEC list "
             f"({completed_spec_count})"
         )
-    if "3867 passed" in procedure_doc and "Flutter: 415 passed" in procedure_doc:
+    if "3868 passed" in procedure_doc and "Flutter: 415 passed" in procedure_doc:
         reporter.ok("Release procedure backend test count matches latest full pytest evidence")
     else:
         reporter.fail(
-            "Release procedure test counts must match latest 3867 backend / 415 Flutter evidence"
+            "Release procedure test counts must match latest 3868 backend / 415 Flutter evidence"
         )
     app_store_doc = read_text(root / "docs/app-store-metadata.md")
     for snippet in [
@@ -1030,13 +1030,18 @@ def is_android_apk(path: Path) -> bool:
         return False
 
 
-def ios_app_bundle_id(path: Path) -> str:
+def ios_app_metadata(path: Path) -> dict[str, str]:
     try:
         with (path / "Info.plist").open("rb") as plist:
             data = plistlib.load(plist)
     except (OSError, plistlib.InvalidFileException):
-        return ""
-    return str(data.get("CFBundleIdentifier", "")).strip() if isinstance(data, dict) else ""
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    return {
+        "bundle_id": str(data.get("CFBundleIdentifier", "")).strip(),
+        "executable": str(data.get("CFBundleExecutable", "")).strip(),
+    }
 
 
 def check_release_e2e_evidence(path: Path, reporter: Reporter, root: Path | None = None) -> None:
@@ -1121,9 +1126,15 @@ def check_release_e2e_evidence(path: Path, reporter: Reporter, root: Path | None
             if key == "ios_runner_app" and not (resolved_artifact / "Info.plist").is_file():
                 reporter.fail(f"Release E2E evidence artifact missing Info.plist: {key}")
                 continue
-            if key == "ios_runner_app" and ios_app_bundle_id(resolved_artifact) != IOS_BUNDLE_ID:
-                reporter.fail(f"Release E2E evidence artifact bundle id mismatch: {key}")
-                continue
+            if key == "ios_runner_app":
+                metadata = ios_app_metadata(resolved_artifact)
+                if metadata.get("bundle_id") != IOS_BUNDLE_ID:
+                    reporter.fail(f"Release E2E evidence artifact bundle id mismatch: {key}")
+                    continue
+                executable = metadata.get("executable", "")
+                if not executable or not (resolved_artifact / executable).is_file():
+                    reporter.fail(f"Release E2E evidence artifact missing executable: {key}")
+                    continue
             reporter.ok(f"Release E2E evidence artifact exists: {key}")
         elif resolved_artifact.exists():
             expected_type = "file" if key == "android_apk" else "directory"
