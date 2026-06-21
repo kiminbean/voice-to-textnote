@@ -33,6 +33,10 @@ RELEASE_ARTIFACT_TYPES = {
     "android_apk": "file",
     "ios_runner_app": "directory",
 }
+RELEASE_ARTIFACT_SUFFIXES = {
+    "android_apk": ".apk",
+    "ios_runner_app": ".app",
+}
 
 
 def git_revision(root: Path) -> str:
@@ -56,6 +60,9 @@ def validate_release_artifacts(root: Path, artifacts: dict[str, str]) -> None:
         if not artifact_path_stays_inside_root(root, artifact_path):
             raise ValueError(f"release artifact path must stay inside repo: {key}")
         resolved = resolve_release_artifact_path(root, artifact_path)
+        expected_suffix = RELEASE_ARTIFACT_SUFFIXES[key]
+        if resolved.suffix != expected_suffix:
+            raise ValueError(f"release artifact path must end with {expected_suffix}: {key}")
         expected_type = RELEASE_ARTIFACT_TYPES[key]
         if expected_type == "file" and not resolved.is_file():
             raise ValueError(f"missing release artifact file: {key} ({resolved})")

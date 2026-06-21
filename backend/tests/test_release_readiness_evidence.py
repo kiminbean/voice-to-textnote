@@ -109,10 +109,10 @@ def write_tone_policy_files(root: Path, *, tone_model_line: str = 'tone_model: s
 def write_readme_status(root: Path, content: str) -> None:
     (root / "README.md").write_text(
         (
-            "3893 백엔드 테스트\n"
-            "| 백엔드 단위/통합/E2E | 3893개 | 100.00% |\n"
+            "3895 백엔드 테스트\n"
+            "| 백엔드 단위/통합/E2E | 3895개 | 100.00% |\n"
             "| Flutter 테스트 | 415개 | - |\n"
-            "| 총합 | 4308개 | - |\n"
+            "| 총합 | 4310개 | - |\n"
             f"{content}"
         ),
         encoding="utf-8",

@@ -138,6 +138,24 @@ def test_release_e2e_scaffold_rejects_invalid_android_apk(tmp_path):
         raise AssertionError("build_evidence should reject invalid APK artifacts")
 
 
+def test_release_e2e_scaffold_rejects_android_artifact_without_apk_suffix(tmp_path):
+    create = load_create_evidence_module()
+    android_apk, ios_runner_app = write_release_artifacts(tmp_path)
+    android_text = tmp_path / "app-release.txt"
+    android_apk.rename(android_text)
+
+    try:
+        create.build_evidence(
+            tmp_path,
+            android_apk=android_text.name,
+            ios_runner_app=ios_runner_app.name,
+        )
+    except ValueError as exc:
+        assert "must end with .apk" in str(exc)
+    else:
+        raise AssertionError("build_evidence should reject non-.apk artifacts")
+
+
 def test_release_e2e_scaffold_rejects_invalid_ios_runner_app(tmp_path):
     create = load_create_evidence_module()
     android_apk, ios_runner_app = write_release_artifacts(tmp_path)
@@ -153,6 +171,24 @@ def test_release_e2e_scaffold_rejects_invalid_ios_runner_app(tmp_path):
         assert "missing executable" in str(exc)
     else:
         raise AssertionError("build_evidence should reject invalid iOS app artifacts")
+
+
+def test_release_e2e_scaffold_rejects_ios_artifact_without_app_suffix(tmp_path):
+    create = load_create_evidence_module()
+    android_apk, ios_runner_app = write_release_artifacts(tmp_path)
+    ios_bundle = tmp_path / "Runner.bundle"
+    ios_runner_app.rename(ios_bundle)
+
+    try:
+        create.build_evidence(
+            tmp_path,
+            android_apk=android_apk.name,
+            ios_runner_app=ios_bundle.name,
+        )
+    except ValueError as exc:
+        assert "must end with .app" in str(exc)
+    else:
+        raise AssertionError("build_evidence should reject non-.app artifacts")
 
 
 def test_release_e2e_evidence_artifacts_are_resolved_from_repo_root(
