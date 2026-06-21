@@ -83,10 +83,10 @@ def write_tone_policy_files(root: Path, *, tone_model_line: str = 'tone_model: s
 def write_readme_status(root: Path, content: str) -> None:
     (root / "README.md").write_text(
         (
-            "3856 백엔드 테스트\n"
-            "| 백엔드 단위/통합/E2E | 3856개 | 100.00% |\n"
+            "3857 백엔드 테스트\n"
+            "| 백엔드 단위/통합/E2E | 3857개 | 100.00% |\n"
             "| Flutter 테스트 | 415개 | - |\n"
-            "| 총합 | 4271개 | - |\n"
+            "| 총합 | 4272개 | - |\n"
             f"{content}"
         ),
         encoding="utf-8",
@@ -138,6 +138,20 @@ def test_release_e2e_evidence_rejects_unknown_scenario_key(tmp_path, monkeypatch
     module.check_release_e2e_evidence(evidence_path, reporter)
 
     assert any("unknown scenario" in error for error in reporter.errors)
+
+
+def test_release_e2e_evidence_rejects_non_iso_test_timestamp(tmp_path, monkeypatch):
+    module = load_release_readiness_module()
+    evidence = make_evidence(tmp_path, module)
+    evidence["tested_at"] = "yesterday after the final device run"
+    evidence_path = write_evidence(tmp_path, evidence)
+    monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
+    monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")
+
+    reporter = module.Reporter()
+    module.check_release_e2e_evidence(evidence_path, reporter)
+
+    assert any("test timestamp must be ISO-8601" in error for error in reporter.errors)
 
 
 def test_release_e2e_evidence_rejects_placeholder_scenario_evidence(tmp_path, monkeypatch):
