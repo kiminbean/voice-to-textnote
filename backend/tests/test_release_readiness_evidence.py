@@ -83,10 +83,10 @@ def write_tone_policy_files(root: Path, *, tone_model_line: str = 'tone_model: s
 def write_readme_status(root: Path, content: str) -> None:
     (root / "README.md").write_text(
         (
-            "3854 백엔드 테스트\n"
-            "| 백엔드 단위/통합/E2E | 3854개 | 100.00% |\n"
+            "3855 백엔드 테스트\n"
+            "| 백엔드 단위/통합/E2E | 3855개 | 100.00% |\n"
             "| Flutter 테스트 | 415개 | - |\n"
-            "| 총합 | 4269개 | - |\n"
+            "| 총합 | 4270개 | - |\n"
             f"{content}"
         ),
         encoding="utf-8",
@@ -119,6 +119,25 @@ def test_release_e2e_evidence_rejects_missing_required_scenario(tmp_path, monkey
     module.check_release_e2e_evidence(evidence_path, reporter)
 
     assert any("push_deeplink_cold_start" in error for error in reporter.errors)
+
+
+def test_release_e2e_evidence_rejects_unknown_scenario_key(tmp_path, monkeypatch):
+    module = load_release_readiness_module()
+    evidence = make_evidence(tmp_path, module)
+    scenarios = evidence["scenarios"]
+    assert isinstance(scenarios, dict)
+    scenarios["legacy_push_deeplink"] = {
+        "pass": True,
+        "evidence": "Legacy deeplink scenario verified before release.",
+    }
+    evidence_path = write_evidence(tmp_path, evidence)
+    monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
+    monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")
+
+    reporter = module.Reporter()
+    module.check_release_e2e_evidence(evidence_path, reporter)
+
+    assert any("unknown scenario" in error for error in reporter.errors)
 
 
 def test_release_e2e_evidence_rejects_placeholder_scenario_evidence(tmp_path, monkeypatch):
