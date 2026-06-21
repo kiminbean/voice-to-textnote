@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import plistlib
+import shutil
 import zipfile
 from datetime import UTC, datetime, timedelta
 from functools import lru_cache
@@ -109,10 +110,10 @@ def write_tone_policy_files(root: Path, *, tone_model_line: str = 'tone_model: s
 def write_readme_status(root: Path, content: str) -> None:
     (root / "README.md").write_text(
         (
-            "3900 백엔드 테스트\n"
-            "| 백엔드 단위/통합/E2E | 3900개 | 100.00% |\n"
+            "3901 백엔드 테스트\n"
+            "| 백엔드 단위/통합/E2E | 3901개 | 100.00% |\n"
             "| Flutter 테스트 | 415개 | - |\n"
-            "| 총합 | 4315개 | - |\n"
+            "| 총합 | 4316개 | - |\n"
             f"{content}"
         ),
         encoding="utf-8",
@@ -933,6 +934,43 @@ def test_owll_benchmark_doc_rejects_stale_competitor_evidence(tmp_path):
     module.check_owll_benchmark_doc(tmp_path, reporter)
 
     assert any("Owll benchmark PRD captures current competitor evidence" in error for error in reporter.errors)
+
+
+def test_release_procedure_rejects_version_drift(tmp_path):
+    module = load_release_readiness_module()
+    repo_root = Path(__file__).resolve().parents[2]
+    shutil.copytree(repo_root / "docs", tmp_path / "docs")
+    write_tone_policy_files(tmp_path)
+    write_readme_status(
+        tmp_path,
+        (
+            "Release Candidate strict 실기기 release evidence 대기 RELEASE_E2E_EVIDENCE_PATH\n"
+            "**버전**: 1.7.0\n"
+            "✅ SPEC-ONE\n"
+            "✅ SPEC-TWO\n"
+        ),
+    )
+    (tmp_path / "docs/release-procedure.md").write_text(
+        (
+            "client/scripts/create_release_e2e_evidence.py\n"
+            "17개 required scenario\n"
+            "python3 client/scripts/verify_release_readiness.py --strict\n"
+            "2개 SPEC 전부 완료\n"
+            "2 SPECs completed\n"
+            "3901 passed\n"
+            "Flutter: 415 passed\n"
+            "Production Ready v1.6.0\n"
+            "git tag v1.6.0\n"
+            "gh release create v1.6.0\n"
+            "--title \"v1.6.0 — Production Ready\"\n"
+        ),
+        encoding="utf-8",
+    )
+
+    reporter = module.Reporter()
+    module.check_docs(tmp_path, reporter)
+
+    assert any("version must match README" in error for error in reporter.errors)
 
 
 def test_mobile_workflow_exposes_manual_strict_release_gate():

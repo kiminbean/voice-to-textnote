@@ -625,15 +625,15 @@ def check_readme_release_status(root: Path, reporter: Reporter) -> None:
     else:
         reporter.ok("README does not overclaim Production Ready before strict evidence")
     if (
-        "3900 백엔드 테스트" in readme
-        and "3900개" in readme
+        "3901 백엔드 테스트" in readme
+        and "3901개" in readme
         and ("Flutter 415" in readme or "415개" in readme)
-        and "4315개" in readme
+        and "4316개" in readme
     ):
         reporter.ok("README test counts match current release validation evidence")
     else:
         reporter.fail(
-            "README test counts must match current 3900 backend / 415 Flutter / 4315 total evidence"
+            "README test counts must match current 3901 backend / 415 Flutter / 4316 total evidence"
         )
     if f"{completed_spec_count}개 SPEC" in readme:
         reporter.fail("README should avoid hard-coded completed SPEC counts outside the SPEC list")
@@ -683,6 +683,8 @@ def check_docs(root: Path, reporter: Reporter) -> None:
     procedure_doc = read_text(root / "docs/release-procedure.md")
     readme = read_text(root / "README.md")
     completed_spec_count = len(re.findall(r"^✅ SPEC-", readme, re.MULTILINE))
+    version_match = re.search(r"\*\*버전\*\*:\s*([0-9]+\.[0-9]+\.[0-9]+)", readme)
+    current_version = version_match.group(1) if version_match else ""
     require_snippets(
         reporter,
         procedure_doc,
@@ -710,12 +712,24 @@ def check_docs(root: Path, reporter: Reporter) -> None:
             "Release procedure SPEC count must match README completed SPEC list "
             f"({completed_spec_count})"
         )
-    if "3900 passed" in procedure_doc and "Flutter: 415 passed" in procedure_doc:
+    if "3901 passed" in procedure_doc and "Flutter: 415 passed" in procedure_doc:
         reporter.ok("Release procedure backend test count matches latest full pytest evidence")
     else:
         reporter.fail(
-            "Release procedure test counts must match latest 3900 backend / 415 Flutter evidence"
+            "Release procedure test counts must match latest 3901 backend / 415 Flutter evidence"
         )
+    if current_version and all(
+        snippet in procedure_doc
+        for snippet in (
+            f"Production Ready v{current_version}",
+            f"git tag v{current_version}",
+            f"gh release create v{current_version}",
+            f"--title \"v{current_version} — Production Ready\"",
+        )
+    ):
+        reporter.ok("Release procedure version matches README current version")
+    else:
+        reporter.fail("Release procedure version must match README current version")
     app_store_doc = read_text(root / "docs/app-store-metadata.md")
     for snippet in [
         "App Store Connect",

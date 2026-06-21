@@ -9,7 +9,7 @@
 - [x] 36개 SPEC 전부 완료
 - [x] `verify_release_readiness.py` (default) — 0 errors
 - [x] CI: Test & Lint PASS, Flutter Android PASS, Flutter iOS PASS
-- [x] 백엔드: 3900 passed, Flutter: 415 passed, backend coverage 100.00%
+- [x] 백엔드: 3901 passed, Flutter: 415 passed, backend coverage 100.00%
 - [ ] `verify_release_readiness.py --strict` — **11 errors (이 문서의 목표)**
 
 ---
@@ -173,18 +173,18 @@ Phase 4는 `python3 client/scripts/verify_release_readiness.py --strict`가 0 er
 ### 4.1 README 업데이트
 
 ```markdown
-**상태**: Production Ready v1.6.0 — strict release readiness 0 errors 확인 후 적용
+**상태**: Production Ready v1.7.0 — strict release readiness 0 errors 확인 후 적용
 ```
 
 ### 4.2 Git Tag + GitHub Release
 
 ```bash
-git tag v1.6.0 -m "Production Ready v1.6.0 — 36 SPECs completed"
-git push origin v1.6.0
+git tag v1.7.0 -m "Production Ready v1.7.0 — 36 SPECs completed"
+git push origin v1.7.0
 
 # GitHub Release 생성
-gh release create v1.6.0 \
-  --title "v1.6.0 — Production Ready" \
+gh release create v1.7.0 \
+  --title "v1.7.0 — Production Ready" \
   --notes-file CHANGELOG.md
 ```
 
