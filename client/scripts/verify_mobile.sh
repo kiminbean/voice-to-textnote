@@ -17,6 +17,30 @@ if [[ "$run_native" == true ]]; then
   fi
 fi
 
+verify_file_artifact() {
+  local path="$1"
+  local label="$2"
+  if [[ ! -s "$path" ]]; then
+    echo "$label artifact missing or empty: $path" >&2
+    exit 1
+  fi
+  echo "Verified $label artifact: $path"
+}
+
+verify_directory_artifact() {
+  local path="$1"
+  local label="$2"
+  if [[ ! -d "$path" ]]; then
+    echo "$label artifact directory missing: $path" >&2
+    exit 1
+  fi
+  if [[ -z "$(find "$path" -mindepth 1 -print -quit)" ]]; then
+    echo "$label artifact directory empty: $path" >&2
+    exit 1
+  fi
+  echo "Verified $label artifact directory: $path"
+}
+
 flutter pub get
 flutter analyze
 flutter test
@@ -28,7 +52,10 @@ if [[ "$run_native" != true ]]; then
 fi
 
 flutter build apk --debug
+verify_file_artifact "build/app/outputs/flutter-apk/app-debug.apk" "Android debug APK"
 
 if [[ "$(uname -s)" == "Darwin" ]]; then
   flutter build ios --debug --no-codesign
+  verify_directory_artifact "build/ios/iphoneos/Runner.app" "iOS no-codesign app"
+  verify_file_artifact "build/ios/iphoneos/Runner.app/Info.plist" "iOS Info.plist"
 fi
