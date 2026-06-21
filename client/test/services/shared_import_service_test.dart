@@ -41,6 +41,8 @@ void main() {
         text: '공유된 원문 transcript',
         title: 'Example transcript',
         mimeType: 'text/plain',
+        filePath: '/tmp/shared.pdf',
+        fileName: 'shared.pdf',
       );
 
       final restored =
@@ -50,6 +52,21 @@ void main() {
       expect(restored.text, payload.text);
       expect(restored.title, payload.title);
       expect(restored.mimeType, payload.mimeType);
+      expect(restored.filePath, payload.filePath);
+      expect(restored.fileName, payload.fileName);
+    });
+
+    test('shared file payload keeps copied file path and filename', () {
+      final payload = SharedImportPayload.fromPlatformMap({
+        'filePath': '/cache/shared-imports/whiteboard.png',
+        'fileName': 'whiteboard.png',
+        'mimeType': 'image/png',
+      });
+
+      expect(payload.hasContent, isTrue);
+      expect(payload.filePath, equals('/cache/shared-imports/whiteboard.png'));
+      expect(payload.fileName, equals('whiteboard.png'));
+      expect(payload.title, equals('whiteboard'));
     });
   });
 

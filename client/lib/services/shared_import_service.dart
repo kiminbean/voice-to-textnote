@@ -5,17 +5,22 @@ class SharedImportPayload {
   final String? text;
   final String? title;
   final String? mimeType;
+  final String? filePath;
+  final String? fileName;
 
   const SharedImportPayload({
     this.sourceUrl,
     this.text,
     this.title,
     this.mimeType,
+    this.filePath,
+    this.fileName,
   });
 
   bool get hasContent =>
       (sourceUrl != null && sourceUrl!.isNotEmpty) ||
-      (text != null && text!.isNotEmpty);
+      (text != null && text!.isNotEmpty) ||
+      (filePath != null && filePath!.isNotEmpty);
 
   Map<String, String> toQueryParameters() {
     return {
@@ -23,22 +28,32 @@ class SharedImportPayload {
       if (text != null && text!.isNotEmpty) 'shared_text': text!,
       if (title != null && title!.isNotEmpty) 'shared_title': title!,
       if (mimeType != null && mimeType!.isNotEmpty) 'shared_mime': mimeType!,
+      if (filePath != null && filePath!.isNotEmpty)
+        'shared_file_path': filePath!,
+      if (fileName != null && fileName!.isNotEmpty)
+        'shared_file_name': fileName!,
     };
   }
 
   factory SharedImportPayload.fromPlatformMap(Map<dynamic, dynamic> value) {
     final rawText = (value['text'] as String?)?.trim() ?? '';
     final mimeType = (value['mimeType'] as String?)?.trim();
+    final filePath = (value['filePath'] as String?)?.trim();
+    final fileName = (value['fileName'] as String?)?.trim();
     final url = _firstUrl(rawText);
     final content =
         url == null ? rawText : rawText.replaceFirst(url, '').trim();
-    final title = _titleFromUrl(url) ?? (value['title'] as String?)?.trim();
+    final title = _titleFromUrl(url) ??
+        (value['title'] as String?)?.trim() ??
+        _titleFromFileName(fileName);
 
     return SharedImportPayload(
       sourceUrl: url,
       text: content.isEmpty ? null : content,
       title: title,
       mimeType: mimeType,
+      filePath: filePath == null || filePath.isEmpty ? null : filePath,
+      fileName: fileName == null || fileName.isEmpty ? null : fileName,
     );
   }
 
@@ -48,6 +63,8 @@ class SharedImportPayload {
       text: _emptyToNull(query['shared_text']),
       title: _emptyToNull(query['shared_title']),
       mimeType: _emptyToNull(query['shared_mime']),
+      filePath: _emptyToNull(query['shared_file_path']),
+      fileName: _emptyToNull(query['shared_file_name']),
     );
   }
 
@@ -66,6 +83,13 @@ class SharedImportPayload {
       return 'YouTube transcript';
     }
     return '$host transcript';
+  }
+
+  static String? _titleFromFileName(String? fileName) {
+    if (fileName == null || fileName.isEmpty) return null;
+    final dotIndex = fileName.lastIndexOf('.');
+    if (dotIndex <= 0) return fileName;
+    return fileName.substring(0, dotIndex);
   }
 
   static String? _emptyToNull(String? value) {

@@ -533,8 +533,54 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     _didShowInitialSharedImport = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      if (payload.filePath != null && payload.filePath!.isNotEmpty) {
+        _importSharedDocument(context, payload);
+        return;
+      }
       _showSharedImportSheet(context, payload);
     });
+  }
+
+  Future<void> _importSharedDocument(
+    BuildContext context,
+    SharedImportPayload payload,
+  ) async {
+    final file = File(payload.filePath!);
+    final title = (payload.title == null || payload.title!.trim().isEmpty)
+        ? _documentTitle(payload.fileName ?? file.path.split('/').last)
+        : payload.title!.trim();
+    try {
+      final result = await ref.read(minutesApiProvider).importDocument(
+            file: file,
+            title: title,
+          );
+      final taskId = result['task_id'] as String;
+      final importedTitle = (result['title'] as String?)?.trim();
+      final meetingTitle = importedTitle == null || importedTitle.isEmpty
+          ? title
+          : importedTitle;
+      final sourceUrl = result['source_url'] as String?;
+      final meeting = Meeting(
+        id: taskId,
+        title: meetingTitle,
+        createdAt: DateTime.now(),
+        status: MeetingStatus.completed,
+        sourceUrl: sourceUrl,
+        minutesTaskId: taskId,
+        sharedTeamIds: _sharedTeamIdsFromImportResult(result),
+      );
+      await ref.read(meetingListProvider.notifier).addMeeting(meeting);
+
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$meetingTitle을 가져왔습니다.')),
+      );
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('공유된 문서를 가져올 수 없습니다.')),
+      );
+    }
   }
 
   void _showSharedImportSheet(

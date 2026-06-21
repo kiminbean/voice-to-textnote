@@ -113,6 +113,8 @@ void main() {
     test('Android manifest accepts text/plain ACTION_SEND shares', () {
       expect(manifest, contains('android.intent.action.SEND'));
       expect(manifest, contains('android:mimeType="text/plain"'));
+      expect(manifest, contains('android:mimeType="application/pdf"'));
+      expect(manifest, contains('android:mimeType="image/*"'));
     });
 
     test('MainActivity exposes shared import MethodChannel methods', () {
@@ -124,6 +126,9 @@ void main() {
       expect(mainActivity, contains('consumeLatestSharedImport'));
       expect(mainActivity, contains('Intent.ACTION_SEND'));
       expect(mainActivity, contains('Intent.EXTRA_TEXT'));
+      expect(mainActivity, contains('Intent.EXTRA_STREAM'));
+      expect(mainActivity, contains('OpenableColumns.DISPLAY_NAME'));
+      expect(mainActivity, contains('filePath'));
     });
   });
 

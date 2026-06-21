@@ -414,10 +414,12 @@ def check_android_project(root: Path, reporter: Reporter) -> None:
     if (
         "android.intent.action.SEND" in manifest
         and 'android:mimeType="text/plain"' in manifest
+        and 'android:mimeType="application/pdf"' in manifest
+        and 'android:mimeType="image/*"' in manifest
     ):
-        reporter.ok("Android manifest accepts text/plain share-sheet imports")
+        reporter.ok("Android manifest accepts text/file share-sheet imports")
     else:
-        reporter.fail("Android manifest missing text/plain ACTION_SEND share import")
+        reporter.fail("Android manifest missing ACTION_SEND text/file share import")
 
     main_activity = read_text(main_activity_path)
     shared_import_contract = [
@@ -426,6 +428,9 @@ def check_android_project(root: Path, reporter: Reporter) -> None:
         "consumeLatestSharedImport",
         "Intent.ACTION_SEND",
         "Intent.EXTRA_TEXT",
+        "Intent.EXTRA_STREAM",
+        "OpenableColumns.DISPLAY_NAME",
+        "filePath",
     ]
     missing_shared_import = [
         snippet for snippet in shared_import_contract if snippet not in main_activity
@@ -579,13 +584,13 @@ def check_readme_release_status(root: Path, reporter: Reporter) -> None:
     if (
         "3847 백엔드 테스트" in readme
         and "3847개" in readme
-        and ("Flutter 412" in readme or "412개" in readme)
-        and "4259개" in readme
+        and ("Flutter 413" in readme or "413개" in readme)
+        and "4260개" in readme
     ):
         reporter.ok("README test counts match current release validation evidence")
     else:
         reporter.fail(
-            "README test counts must match current 3847 backend / 412 Flutter / 4259 total evidence"
+            "README test counts must match current 3847 backend / 413 Flutter / 4260 total evidence"
         )
     if f"{completed_spec_count}개 SPEC" in readme:
         reporter.fail("README should avoid hard-coded completed SPEC counts outside the SPEC list")
@@ -660,11 +665,11 @@ def check_docs(root: Path, reporter: Reporter) -> None:
             "Release procedure SPEC count must match README completed SPEC list "
             f"({completed_spec_count})"
         )
-    if "3847 passed" in procedure_doc and "Flutter: 412 passed" in procedure_doc:
+    if "3847 passed" in procedure_doc and "Flutter: 413 passed" in procedure_doc:
         reporter.ok("Release procedure backend test count matches latest full pytest evidence")
     else:
         reporter.fail(
-            "Release procedure test counts must match latest 3847 backend / 412 Flutter evidence"
+            "Release procedure test counts must match latest 3847 backend / 413 Flutter evidence"
         )
     app_store_doc = read_text(root / "docs/app-store-metadata.md")
     for snippet in [
