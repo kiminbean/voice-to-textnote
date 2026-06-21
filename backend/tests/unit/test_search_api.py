@@ -69,6 +69,13 @@ async def populated_db(db_session: AsyncSession):
             result_data={},
             completed_at=datetime(2024, 1, 2, 9, 0, 0),
         ),
+        TaskResult(
+            task_id="search-sales-001",
+            task_type="sales_contact_brief",
+            status="completed",
+            result_data={},
+            completed_at=datetime(2024, 1, 3, 9, 0, 0),
+        ),
     ]
     for r in records:
         db_session.add(r)
@@ -93,6 +100,15 @@ async def populated_db(db_session: AsyncSession):
             "summary_text": "회의 결과 FastAPI 도입을 결정했습니다.",
             "action_items_text": "보고서 작성 완료",
             "created_at": "2024-01-02T09:00:00",
+        },
+        {
+            "task_id": "search-sales-001",
+            "task_type": "sales_contact_brief",
+            "content": "Acme 김민수 CTO",
+            "speaker_names": "",
+            "summary_text": "보안 감사 자동화 데모 요청 견적 확인",
+            "action_items_text": "다음 주 화요일 데모 일정 확정",
+            "created_at": "2024-01-03T09:00:00",
         },
     ]
     for row in rows:
@@ -210,6 +226,18 @@ class TestSearchAPI:
         data = resp.json()
         for item in data["items"]:
             assert item["task_type"] == "minutes"
+
+    def test_search_task_type_filter_sales_contact_brief(self, client):
+        """task_type=sales_contact_brief 필터가 동작해야 함"""
+        resp = client.get(
+            "/api/v1/search",
+            params={"q": "보안", "task_type": "sales_contact_brief"},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["items"]
+        for item in data["items"]:
+            assert item["task_type"] == "sales_contact_brief"
 
     def test_search_no_results_returns_empty(self, client):
         """매칭 없는 쿼리는 빈 items와 total=0 반환해야 함"""

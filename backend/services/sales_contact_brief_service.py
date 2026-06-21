@@ -8,8 +8,10 @@ from typing import Any, cast
 
 import redis.asyncio as aioredis
 from openai import OpenAI
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.config import settings
+from backend.db.search_models import ensure_search_index_table, index_search_entry
 from backend.schemas.sales_contact_brief import (
     SalesContactBriefResponse,
     SalesContactDeal,
@@ -27,6 +29,13 @@ _MINUTES_KEY_PREFIX = "task:min:result:"
 
 def _sales_contact_brief_cache_key(task_id: str) -> str:
     return f"{_SALES_CONTACT_BRIEF_KEY_PREFIX}{task_id}"
+
+
+def _parse_created_at(value: str) -> datetime | None:
+    try:
+        return datetime.fromisoformat(value)
+    except ValueError:
+        return None
 
 
 class SalesContactBriefSourceNotFoundError(ValueError):
@@ -62,6 +71,7 @@ class SalesContactBriefService:
         language: str = "ko",
         max_tokens: int = 1200,
         force_refresh: bool = False,
+        db_session: AsyncSession | None = None,
     ) -> SalesContactBriefResponse:
         """Generate or return a cached sales contact brief for a minutes task."""
         cache_key = _sales_contact_brief_cache_key(task_id)
@@ -119,7 +129,41 @@ class SalesContactBriefService:
             result.model_dump_json(),
             ex=settings.summary_result_ttl,
         )
+        if db_session is not None:
+            await self._index_brief(task_id, result, db_session)
         return result
+
+    async def _index_brief(
+        self,
+        task_id: str,
+        result: SalesContactBriefResponse,
+        db_session: AsyncSession,
+    ) -> None:
+        """Best-effort FTS indexing for generated sales/customer follow-up briefs."""
+        result_data = result.model_dump(mode="json")
+        created_at = _parse_created_at(result.created_at)
+
+        try:
+            await db_session.run_sync(
+                lambda sync_session: ensure_search_index_table(sync_session.connection())
+            )
+            await db_session.run_sync(
+                lambda sync_session: index_search_entry(
+                    sync_session,
+                    task_id=task_id,
+                    task_type="sales_contact_brief",
+                    result_data=result_data,
+                    created_at=created_at,
+                )
+            )
+            await db_session.commit()
+        except Exception as exc:
+            await db_session.rollback()
+            logger.warning(
+                "Sales contact brief search index update failed",
+                task_id=task_id,
+                error=str(exc),
+            )
 
     async def _load_minutes(
         self,

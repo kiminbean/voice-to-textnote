@@ -35,8 +35,11 @@ USING fts5(
 )
 """
 
-# 검색 인덱스 삭제 SQL (upsert 전 기존 항목 제거)
+# 검색 인덱스 삭제 SQL
 _DELETE_ENTRY_SQL = "DELETE FROM search_index WHERE task_id = :task_id"
+_DELETE_ENTRY_FOR_TYPE_SQL = (
+    "DELETE FROM search_index WHERE task_id = :task_id AND task_type = :task_type"
+)
 
 # 검색 인덱스 삽입 SQL
 _INSERT_ENTRY_SQL = """
@@ -47,7 +50,7 @@ VALUES
 """
 
 # 인덱싱 대상 타입
-_INDEXABLE_TASK_TYPES = {"minutes", "summary"}
+_INDEXABLE_TASK_TYPES = {"minutes", "summary", "sales_contact_brief"}
 
 
 def ensure_search_index_table(engine_or_connection: Engine | Connection) -> None:
@@ -75,14 +78,14 @@ def index_search_entry(
     """
     검색 인덱스에 항목 추가 또는 갱신 (best-effort)
 
-    minutes, summary 타입만 인덱싱합니다.
+    minutes, summary, sales_contact_brief 타입만 인덱싱합니다.
     FTS5는 UPDATE를 지원하지 않으므로 DELETE + INSERT로 upsert 처리합니다.
     예외가 발생해도 re-raise하지 않습니다 (best-effort).
 
     Args:
         session: SQLAlchemy 동기 세션
         task_id: 작업 ID
-        task_type: 작업 유형 (minutes, summary만 처리)
+        task_type: 작업 유형 (minutes, summary, sales_contact_brief만 처리)
         result_data: 결과 데이터 JSON
         created_at: 생성 시각 (None이면 현재 시각 사용)
     """
@@ -103,7 +106,10 @@ def index_search_entry(
         )
 
         # FTS5 upsert: 기존 항목 삭제 후 재삽입
-        session.execute(text(_DELETE_ENTRY_SQL), {"task_id": task_id})
+        session.execute(
+            text(_DELETE_ENTRY_FOR_TYPE_SQL),
+            {"task_id": task_id, "task_type": task_type},
+        )
         session.execute(
             text(_INSERT_ENTRY_SQL),
             {
@@ -207,7 +213,56 @@ def _extract_index_data(
             parts.extend(_extract_study_pack_terms(study_pack))
         action_items_text = " ".join(parts)
 
+    elif task_type == "sales_contact_brief":
+        content, summary_text, action_items_text = _extract_sales_contact_brief_terms(
+            result_data
+        )
+
     return content, speaker_names, summary_text, action_items_text
+
+
+def _extract_sales_contact_brief_terms(result_data: dict) -> tuple[str, str, str]:
+    """Flatten a generated sales/contact brief into searchable fields."""
+    contact = result_data.get("contact")
+    deal = result_data.get("deal")
+    contact_parts: list[str] = []
+    summary_parts: list[str] = []
+    action_parts: list[str] = []
+
+    if isinstance(contact, dict):
+        for field in ("name", "company", "role", "email", "phone"):
+            value = str(contact.get(field, "") or "").strip()
+            if value:
+                contact_parts.append(value)
+
+    if isinstance(deal, dict):
+        for field in ("stage", "value_hint", "urgency"):
+            value = str(deal.get(field, "") or "").strip()
+            if value:
+                summary_parts.append(value)
+
+    for field in ("customer_needs", "pain_points", "objections"):
+        values = result_data.get(field) or []
+        if not isinstance(values, list):
+            continue
+        for item in values:
+            value = str(item).strip()
+            if value:
+                summary_parts.append(value)
+
+    follow_up_message = str(result_data.get("follow_up_message", "") or "").strip()
+    if follow_up_message:
+        summary_parts.append(follow_up_message)
+
+    for item in result_data.get("next_steps") or []:
+        if not isinstance(item, dict):
+            continue
+        for field in ("task", "owner", "due"):
+            value = str(item.get(field, "") or "").strip()
+            if value:
+                action_parts.append(value)
+
+    return " ".join(contact_parts), " ".join(summary_parts), " ".join(action_parts)
 
 
 def _extract_study_pack_terms(study_pack: dict) -> list[str]:

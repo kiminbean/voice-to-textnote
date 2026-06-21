@@ -4,7 +4,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from backend.app.dependencies import get_redis_client
+from backend.app.dependencies import get_db_session, get_redis_client
 from backend.app.error_handlers import register_exception_handlers
 from backend.app.exceptions import InternalServerError
 from backend.schemas.sales_contact_brief import (
@@ -31,6 +31,7 @@ def app_client():
     app.include_router(router, prefix="/api/v1")
 
     redis_mock = AsyncMock()
+    db_session = object()
 
     async def override_redis():
         return redis_mock
@@ -41,10 +42,11 @@ def app_client():
         return svc_mock
 
     app.dependency_overrides[get_redis_client] = override_redis
+    app.dependency_overrides[get_db_session] = lambda: db_session
     app.dependency_overrides[get_sales_contact_brief_service] = override_svc
 
     with TestClient(app, raise_server_exceptions=True) as client:
-        yield client, redis_mock, svc_mock
+        yield client, redis_mock, svc_mock, db_session
 
     app.dependency_overrides.clear()
 
@@ -72,18 +74,25 @@ def test_get_sales_contact_brief_service_provider():
 
 
 def test_create_sales_contact_brief_success(app_client):
-    client, _, svc = app_client
+    client, _, svc, db_session = app_client
     svc.generate = AsyncMock(return_value=make_response())
 
     response = client.post("/api/v1/minutes/min-sales-001/sales-contact-brief", json={})
 
     assert response.status_code == 200
     assert response.json()["contact"]["company"] == "Acme"
-    svc.generate.assert_awaited_once()
+    svc.generate.assert_awaited_once_with(
+        "min-sales-001",
+        app_client[1],
+        language="ko",
+        max_tokens=1200,
+        force_refresh=False,
+        db_session=db_session,
+    )
 
 
 def test_get_sales_contact_brief_success(app_client):
-    client, _, svc = app_client
+    client, _, svc, _ = app_client
     svc.get = AsyncMock(return_value=make_response())
 
     response = client.get("/api/v1/minutes/min-sales-001/sales-contact-brief")
@@ -94,7 +103,7 @@ def test_get_sales_contact_brief_success(app_client):
 
 
 def test_create_sales_contact_brief_missing_minutes_returns_404(app_client):
-    client, _, svc = app_client
+    client, _, svc, _ = app_client
     svc.generate = AsyncMock(side_effect=SalesContactBriefSourceNotFoundError("회의록 없음"))
 
     response = client.post("/api/v1/minutes/missing/sales-contact-brief", json={})
@@ -103,7 +112,7 @@ def test_create_sales_contact_brief_missing_minutes_returns_404(app_client):
 
 
 def test_create_sales_contact_brief_malformed_ai_response_returns_422(app_client):
-    client, _, svc = app_client
+    client, _, svc, _ = app_client
     svc.generate = AsyncMock(side_effect=SalesContactBriefValidationError("AI 응답 형식 오류"))
 
     response = client.post("/api/v1/minutes/min-sales-001/sales-contact-brief", json={})
@@ -112,7 +121,7 @@ def test_create_sales_contact_brief_malformed_ai_response_returns_422(app_client
 
 
 def test_get_sales_contact_brief_missing_returns_404(app_client):
-    client, _, svc = app_client
+    client, _, svc, _ = app_client
     svc.get = AsyncMock(side_effect=SalesContactBriefSourceNotFoundError("브리프 없음"))
 
     response = client.get("/api/v1/minutes/missing/sales-contact-brief")
@@ -121,7 +130,7 @@ def test_get_sales_contact_brief_missing_returns_404(app_client):
 
 
 def test_create_sales_contact_brief_passes_voice_note_error_through(app_client):
-    client, _, svc = app_client
+    client, _, svc, _ = app_client
     svc.generate = AsyncMock(
         side_effect=InternalServerError(message="도메인 오류", error_code="TEST")
     )
@@ -133,7 +142,7 @@ def test_create_sales_contact_brief_passes_voice_note_error_through(app_client):
 
 
 def test_create_sales_contact_brief_unexpected_error_returns_500(app_client):
-    client, _, svc = app_client
+    client, _, svc, _ = app_client
     svc.generate = AsyncMock(side_effect=RuntimeError("boom"))
 
     response = client.post("/api/v1/minutes/min-sales-001/sales-contact-brief", json={})

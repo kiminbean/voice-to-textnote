@@ -24,7 +24,7 @@ def get_search_service() -> SearchService:
 
 
 # 유효한 task_type 값
-_VALID_TASK_TYPES = {"all", "summary", "minutes"}
+_VALID_TASK_TYPES = {"all", "summary", "minutes", "sales_contact_brief"}
 
 
 @router.get("/search", response_model=SearchResponse)
@@ -36,7 +36,7 @@ async def search(
     ),
     task_type: str = Query(
         default="all",
-        description="작업 유형 필터 (all, summary, minutes)",
+        description="작업 유형 필터 (all, summary, minutes, sales_contact_brief)",
     ),
     page: int = Query(default=1, ge=1, description="페이지 번호 (1부터 시작)"),
     page_size: int = Query(default=20, ge=1, le=50, description="페이지당 항목 수 (최대 50)"),
@@ -56,11 +56,11 @@ async def search(
     """
     REQ-SEARCH-001/002: FTS5 기반 회의록 전문 검색 (확장)
 
-    회의록(minutes)와 요약(summary) 내용을 검색합니다.
+    회의록(minutes), 요약(summary), 영업 브리프(sales_contact_brief) 내용을 검색합니다.
     다양한 필터와 정렬 옵션을 지원합니다.
 
     - q: 검색 쿼리 (2글자 이상, 공백만 있는 경우 422 반환)
-    - task_type: 'all', 'minutes', 'summary' 중 하나
+    - task_type: 'all', 'minutes', 'summary', 'sales_contact_brief' 중 하나
     - page: 페이지 번호
     - page_size: 페이지당 결과 수 (최대 50)
     - date_from: 시작 날짜 (REQ-SEARCH-007)

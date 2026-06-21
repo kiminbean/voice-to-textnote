@@ -2,8 +2,9 @@
 
 import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.dependencies import get_redis_client
+from backend.app.dependencies import get_db_session, get_redis_client
 from backend.app.errors import internal_error, not_found, unprocessable
 from backend.app.exceptions import VoiceNoteError
 from backend.schemas.sales_contact_brief import (
@@ -36,6 +37,7 @@ async def create_sales_contact_brief(
     task_id: str,
     payload: SalesContactBriefCreateRequest,
     redis_client: aioredis.Redis = Depends(get_redis_client),
+    db: AsyncSession = Depends(get_db_session),
     svc: SalesContactBriefService = Depends(get_sales_contact_brief_service),
 ) -> SalesContactBriefResponse:
     """Generate a transcript-grounded sales/contact follow-up brief."""
@@ -46,6 +48,7 @@ async def create_sales_contact_brief(
             language=payload.language,
             max_tokens=payload.max_tokens,
             force_refresh=payload.force_refresh,
+            db_session=db,
         )
     except SalesContactBriefSourceNotFoundError as exc:
         not_found(str(exc))

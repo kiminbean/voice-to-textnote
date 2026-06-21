@@ -35,7 +35,7 @@
 ✅ **모니터링**: Prometheus 메트릭, 요청 ID 추적, 구조화된 로깅
 ✅ **프로덕션 배포**: Ubuntu systemd + Redis + Tailscale 원격 접속
 ✅ **모던 UI/UX**: 모던 미니멀 디자인 시스템 (인디고/바이올렛), 다크모드 지원, 반응형 레이아웃
-✅ **자동화 테스트**: 3820 백엔드 테스트 (단위/통합/E2E) + Flutter 391, 백엔드 100.00% 커버리지
+✅ **자동화 테스트**: 3827 백엔드 테스트 (단위/통합/E2E) + Flutter 391, 백엔드 100.00% 커버리지
 
 ## 주요 기능
 
@@ -95,7 +95,7 @@
 - **클라이언트**: 내보내기 메뉴 "Obsidian에 저장" + `obsidian://` URI로 "Obsidian에서 열기"
 
 #### 9. Cross-Meeting Q&A 근거 검색
-- **목적**: 특정 회의를 먼저 고르지 않아도 질문과 관련된 회의록/요약/Study Pack 근거를 찾음
+- **목적**: 특정 회의를 먼저 고르지 않아도 질문과 관련된 회의록/요약/Study Pack/영업 브리프 근거를 찾음
 - **방식**: 자연어 질문을 검색 핵심어로 정규화하고 기존 SQLite FTS5 인덱스를 관련도순 검색
 - **출력**: 근거 기반 합성 답변, task ID, 작업 유형, 스니펫, 생성/완료 시각
 - **클라이언트**: 검색 화면 상단에 AI 근거 검색 패널로 관련 회의 바로 열기 지원
@@ -555,10 +555,10 @@ backend/
 
 | 항목 | 개수 | 커버리지 |
 |------|------|---------|
-| 백엔드 단위/통합/E2E | 3820개 | 100.00% |
+| 백엔드 단위/통합/E2E | 3827개 | 100.00% |
 | Flutter 테스트 | 391개 | - |
 | E2E 테스트 | 16개 | 전체 파이프라인 |
-| 총합 | 4211개 | - |
+| 총합 | 4218개 | - |
 
 ## 모니터링 및 로깅
 
@@ -830,7 +830,7 @@ Copyright (c) 2026 kiminbean. **All Rights Reserved.**
 **마지막 업데이트**: 2026-06-17
 **버전**: 1.7.0
 **상태**: Phase 8 진행 중 — SPEC-OBSIDIAN-001 Obsidian Vault 연계 완료 + UI 재설계(디자인 시스템, 다크모드) 완료, 감정/톤 분석 활성화, 라이선스 All Rights Reserved 전환
-**최근 확인**: 백엔드 3820 테스트 + Flutter 391 테스트 + Flutter analyze + 기본 Release Readiness 통과. Strict release readiness는 Firebase/APNs/App Store Connect secret, Android/iOS 실기기, 실제 E2E evidence가 준비되어야 통과 가능.
+**최근 확인**: 백엔드 3827 테스트 + Flutter 391 테스트 + Flutter analyze + 기본 Release Readiness 통과. Strict release readiness는 Firebase/APNs/App Store Connect secret, Android/iOS 실기기, 실제 E2E evidence가 준비되어야 통과 가능.
 
 ### 구현 완료 SPEC 목록
 

@@ -7,6 +7,7 @@ from backend.services.sales_contact_brief_service import (
     SalesContactBriefService,
     SalesContactBriefSourceNotFoundError,
     SalesContactBriefValidationError,
+    _parse_created_at,
 )
 
 
@@ -21,6 +22,26 @@ class FakeRedis:
     async def set(self, key: str, value: str, ex: int | None = None) -> None:
         self.values[key] = value
         self.set_calls.append((key, value, ex))
+
+
+class FakeSyncSession:
+    def connection(self):
+        return object()
+
+
+class FakeDbSession:
+    def __init__(self) -> None:
+        self.committed = False
+        self.rolled_back = False
+
+    async def run_sync(self, fn):
+        return fn(FakeSyncSession())
+
+    async def commit(self) -> None:
+        self.committed = True
+
+    async def rollback(self) -> None:
+        self.rolled_back = True
 
 
 def make_minutes_payload() -> dict:
@@ -101,6 +122,10 @@ def test_get_client_constructs_openai_client(monkeypatch):
     assert constructed["api_key"] == "test-key"
 
 
+def test_parse_created_at_returns_none_for_invalid_timestamp():
+    assert _parse_created_at("not-a-timestamp") is None
+
+
 @pytest.mark.asyncio
 async def test_generate_sales_contact_brief_from_minutes(monkeypatch):
     redis = FakeRedis()
@@ -124,6 +149,67 @@ async def test_generate_sales_contact_brief_from_minutes(monkeypatch):
     assert client.chat.completions.create.call_args.kwargs["response_format"] == {
         "type": "json_object"
     }
+
+
+@pytest.mark.asyncio
+async def test_generate_indexes_sales_contact_brief_for_search(monkeypatch):
+    redis = FakeRedis()
+    redis.values["task:min:result:min-sales-001"] = json.dumps(
+        make_minutes_payload(), ensure_ascii=False
+    )
+    svc = SalesContactBriefService()
+    client = stub_openai_client(make_ai_payload())
+    db_session = FakeDbSession()
+    indexed = {}
+    monkeypatch.setattr(svc, "_get_client", lambda: client)
+    monkeypatch.setattr(
+        "backend.services.sales_contact_brief_service.ensure_search_index_table",
+        lambda connection: indexed.update({"ensured": connection is not None}),
+    )
+
+    def fake_index_search_entry(session, **kwargs):
+        indexed.update(kwargs)
+
+    monkeypatch.setattr(
+        "backend.services.sales_contact_brief_service.index_search_entry",
+        fake_index_search_entry,
+    )
+
+    await svc.generate("min-sales-001", redis, db_session=db_session)
+
+    assert indexed["ensured"] is True
+    assert indexed["task_id"] == "min-sales-001"
+    assert indexed["task_type"] == "sales_contact_brief"
+    assert indexed["result_data"]["contact"]["company"] == "Acme"
+    assert "보안 감사 자동화" in indexed["result_data"]["customer_needs"]
+    assert db_session.committed is True
+    assert db_session.rolled_back is False
+
+
+@pytest.mark.asyncio
+async def test_generate_ignores_sales_contact_brief_index_failure(monkeypatch):
+    redis = FakeRedis()
+    redis.values["task:min:result:min-sales-001"] = json.dumps(
+        make_minutes_payload(), ensure_ascii=False
+    )
+    svc = SalesContactBriefService()
+    client = stub_openai_client(make_ai_payload())
+    db_session = FakeDbSession()
+    monkeypatch.setattr(svc, "_get_client", lambda: client)
+
+    def fail_index(connection):
+        raise RuntimeError("fts unavailable")
+
+    monkeypatch.setattr(
+        "backend.services.sales_contact_brief_service.ensure_search_index_table",
+        fail_index,
+    )
+
+    result = await svc.generate("min-sales-001", redis, db_session=db_session)
+
+    assert result.contact.company == "Acme"
+    assert db_session.committed is False
+    assert db_session.rolled_back is True
 
 
 @pytest.mark.asyncio

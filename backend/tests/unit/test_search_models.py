@@ -91,6 +91,26 @@ SAMPLE_SUMMARY = {
     "completed_at": "2024-01-01T09:15:00",
 }
 
+SAMPLE_SALES_CONTACT_BRIEF = {
+    "contact": {
+        "name": "김민수",
+        "company": "Acme",
+        "role": "CTO",
+        "email": None,
+        "phone": None,
+    },
+    "deal": {
+        "stage": "demo_requested",
+        "value_hint": "연간 보안 감사",
+        "urgency": "high",
+    },
+    "customer_needs": ["보안 감사 자동화", "데모 확인"],
+    "pain_points": ["수동 감사 시간이 오래 걸림"],
+    "objections": ["견적 확인 필요"],
+    "next_steps": [{"task": "다음 주 화요일 데모 일정 확정", "owner": "영업", "due": "화요일"}],
+    "follow_up_message": "요청하신 보안 감사 자동화 데모 일정을 확인드리겠습니다.",
+}
+
 
 # ---------------------------------------------------------------------------
 # Phase 1 테스트: ensure_search_index_table
@@ -203,6 +223,80 @@ class TestIndexSearchEntry:
         assert "프로젝트 일정" in row[2]
         # action_items_text에 action item task 텍스트가 포함되어야 함
         assert "보고서 작성" in row[3]
+
+    def test_index_search_entry_sales_contact_brief(self, sync_engine, sync_session):
+        """sales_contact_brief 결과를 검색 인덱스에 추가해야 함"""
+        from backend.db.search_models import ensure_search_index_table, index_search_entry
+
+        ensure_search_index_table(sync_engine)
+        index_search_entry(
+            session=sync_session,
+            task_id="task-sales-001",
+            task_type="sales_contact_brief",
+            result_data=SAMPLE_SALES_CONTACT_BRIEF,
+        )
+        sync_session.commit()
+
+        with sync_engine.connect() as conn:
+            result = conn.execute(
+                text(
+                    "SELECT task_type, content, summary_text, action_items_text FROM search_index WHERE task_id = 'task-sales-001'"
+                )
+            )
+            row = result.fetchone()
+
+        assert row is not None
+        assert row[0] == "sales_contact_brief"
+        assert "Acme" in row[1]
+        assert "보안 감사 자동화" in row[2]
+        assert "데모 일정 확정" in row[3]
+
+    def test_index_search_entry_keeps_artifact_types_for_same_task(self, sync_engine, sync_session):
+        """같은 task_id의 minutes와 sales_contact_brief가 서로 덮어쓰지 않아야 함"""
+        from backend.db.search_models import ensure_search_index_table, index_search_entry
+
+        ensure_search_index_table(sync_engine)
+        index_search_entry(
+            session=sync_session,
+            task_id="shared-task-001",
+            task_type="minutes",
+            result_data=SAMPLE_MINUTES,
+        )
+        index_search_entry(
+            session=sync_session,
+            task_id="shared-task-001",
+            task_type="sales_contact_brief",
+            result_data=SAMPLE_SALES_CONTACT_BRIEF,
+        )
+        sync_session.commit()
+
+        with sync_engine.connect() as conn:
+            result = conn.execute(
+                text(
+                    "SELECT task_type FROM search_index WHERE task_id = 'shared-task-001' ORDER BY task_type"
+                )
+            )
+            rows = [row[0] for row in result.fetchall()]
+
+        assert rows == ["minutes", "sales_contact_brief"]
+
+    def test_extract_sales_contact_brief_terms_skips_malformed_lists(self):
+        """잘못된 sales brief 목록 필드는 검색 텍스트 생성에서 무시해야 함"""
+        from backend.db.search_models import _extract_sales_contact_brief_terms
+
+        content, summary_text, action_items_text = _extract_sales_contact_brief_terms(
+            {
+                "contact": {"name": "김민수"},
+                "customer_needs": "not-a-list",
+                "pain_points": ["수동 감사"],
+                "next_steps": ["bad", {"task": "데모 확정"}],
+            }
+        )
+
+        assert content == "김민수"
+        assert "수동 감사" in summary_text
+        assert "not-a-list" not in summary_text
+        assert action_items_text == "데모 확정"
 
     def test_index_search_entry_upsert(self, sync_engine, sync_session):
         """같은 task_id로 두 번 추가하면 업데이트되어야 함"""

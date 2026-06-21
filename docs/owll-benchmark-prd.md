@@ -1,6 +1,6 @@
 # Owll Benchmark PRD
 
-**Status**: Study Pack core implemented; Cross-Meeting Q&A evidence search and synthesis exposed in search; follow-up competitive gaps remain  
+**Status**: Study Pack core implemented; Cross-Meeting Q&A evidence search and synthesis exposed in search; sales follow-up briefs are searchable; follow-up competitive gaps remain  
 **Created**: 2026-06-21  
 **Owner**: Voice to TextNote  
 **Scope**: Benchmark Owll AI Note Taker & Assistant and define feature upgrades that fit this project.
@@ -50,7 +50,7 @@ Voice to TextNote already covers many core Owll-equivalent capabilities:
 | OCR for PDFs/images | PDF/DOCX/image document import API and Flutter Home entry point implemented for searchable note context, with optional image OCR runtime support | Native share-sheet ingestion remains | P2 |
 | 100+ language transcription/translation | Backend translation API, Flutter result-screen translation tab, search indexing, and Obsidian export inclusion implemented for persisted minutes/summaries; Korean default and i18n UI exist | Broader multilingual transcript workflow remains | P1 |
 | Online meeting capture for Zoom/Meet/Teams | Roadmap mentions Slack/Teams, no bot/import surface found | Meeting-platform import/integration | P2 |
-| Contact manager for sales notes | Sales follow-up summary mode plus Sales Contact Brief API and Result-screen tab implemented | Persistent CRM/contact list and business-card scanning remain | P3 |
+| Contact manager for sales notes | Sales follow-up summary mode, Sales Contact Brief API, Result-screen tab, and searchable/cross-meeting discoverable sales brief artifacts implemented | Persistent CRM/contact list and business-card scanning remain | P3 |
 | SOAP/healthcare note mode | SOAP smart-summary mode implemented with non-diagnostic disclaimer | Domain tuning/validation and regulated clinical workflows remain out of scope | P3 |
 | Private cloud per team member | Team sharing exists; history sync, meeting cards, result hero team names, team sharing dialog policy labels, and authenticated new import flows now apply team-default sharing policies while preserving private fallback | Broader capture surfaces can reuse the same policy hook | P1 |
 | Summary modes 10+ | Backend smart-summary modes and Flutter result-screen mode generation implemented | Mode tuning and persisted history UX can be improved | P1 |
@@ -166,7 +166,7 @@ Users can currently transcribe, summarize, search, and export meetings, but lear
 
 Extend current per-meeting Q&A into cross-meeting search + answer synthesis. Use existing search index and permissions. This competes with Owll's “Ask AI across your notes” while preserving private/team boundaries.
 
-**Implementation status (2026-06-21)**: First backend and Flutter slice implemented. `POST /api/v1/qa/ask-across` normalizes the user's natural-language question into FTS keywords, searches existing minutes/summary/study-pack search index rows across meetings, and returns a source-grounded synthesized answer with source task IDs, snippets, task types, and timestamps. The Flutter search screen now shows those sources in an "AI 근거 검색" panel above regular search results. If answer synthesis fails or returns empty content, the backend falls back to an extractive source summary instead of fabricating unsupported facts.
+**Implementation status (2026-06-21)**: First backend and Flutter slice implemented. `POST /api/v1/qa/ask-across` normalizes the user's natural-language question into FTS keywords, searches existing minutes/summary/study-pack/sales-contact-brief search index rows across meetings, and returns a source-grounded synthesized answer with source task IDs, snippets, task types, and timestamps. The Flutter search screen now shows those sources in an "AI 근거 검색" panel above regular search results. If answer synthesis fails or returns empty content, the backend falls back to an extractive source summary instead of fabricating unsupported facts.
 
 #### Problem
 
@@ -234,7 +234,7 @@ Make note ownership and sharing state visible everywhere users make sharing deci
 
 Add optional sales/contact follow-up and SOAP-style healthcare templates as configurable modes, without making regulated claims.
 
-**Implementation status (2026-06-21)**: Sales follow-up and SOAP note are available as smart-summary modes. SOAP note structures user-provided content into Subjective, Objective, Assessment 후보, and Plan sections, and explicitly states that it is for record organization only and does not generate medical judgment, diagnosis, or prescription. `POST /api/v1/minutes/{task_id}/sales-contact-brief` now extracts a transcript-grounded customer/contact brief with contact identity, deal stage, customer needs, pain points, objections, next steps, follow-up message draft, and source references; `GET /api/v1/minutes/{task_id}/sales-contact-brief` returns the cached brief. Flutter Result screen exposes the brief in a `영업` tab with customer/deal summary, sections for needs/pain points/objections/next actions, follow-up copy, clipboard export, regenerate, loading/error/empty states, and cache-miss auto-generation. Remaining work: persistent CRM/contact list, business-card scanning, and further domain-specific tuning.
+**Implementation status (2026-06-21)**: Sales follow-up and SOAP note are available as smart-summary modes. SOAP note structures user-provided content into Subjective, Objective, Assessment 후보, and Plan sections, and explicitly states that it is for record organization only and does not generate medical judgment, diagnosis, or prescription. `POST /api/v1/minutes/{task_id}/sales-contact-brief` now extracts a transcript-grounded customer/contact brief with contact identity, deal stage, customer needs, pain points, objections, next steps, follow-up message draft, and source references; `GET /api/v1/minutes/{task_id}/sales-contact-brief` returns the cached brief. Generated sales briefs are indexed as `sales_contact_brief` search artifacts, so customer/company/need/follow-up terms appear in normal search and cross-meeting Q&A evidence without replacing the source minutes row. Flutter Result screen exposes the brief in a `영업` tab with customer/deal summary, sections for needs/pain points/objections/next actions, follow-up copy, clipboard export, regenerate, loading/error/empty states, and cache-miss auto-generation. Remaining work: persistent CRM/contact list, business-card scanning, and further domain-specific tuning.
 
 ## 7. Implementation Plan
 
