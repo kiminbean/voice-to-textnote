@@ -110,10 +110,10 @@ def write_tone_policy_files(root: Path, *, tone_model_line: str = 'tone_model: s
 def write_readme_status(root: Path, content: str) -> None:
     (root / "README.md").write_text(
         (
-            "3904 백엔드 테스트\n"
-            "| 백엔드 단위/통합/E2E | 3904개 | 100.00% |\n"
+            "3907 백엔드 테스트\n"
+            "| 백엔드 단위/통합/E2E | 3907개 | 100.00% |\n"
             "| Flutter 테스트 | 415개 | - |\n"
-            "| 총합 | 4319개 | - |\n"
+            "| 총합 | 4322개 | - |\n"
             f"{content}"
         ),
         encoding="utf-8",
@@ -875,6 +875,52 @@ def test_tracked_secret_leak_check_accepts_current_product_files():
     assert reporter.errors == []
 
 
+def test_local_env_git_policy_accepts_current_repo_policy():
+    module = load_release_readiness_module()
+    root = Path(__file__).resolve().parents[2]
+
+    reporter = module.Reporter()
+    module.check_local_env_git_policy(root, reporter)
+
+    assert reporter.errors == []
+
+
+def test_local_env_git_policy_rejects_tracked_env(monkeypatch, tmp_path):
+    module = load_release_readiness_module()
+
+    def fake_git_lines(root, args):
+        if args[0] == "ls-files":
+            return [".env"]
+        if args[0] == "check-ignore":
+            return [".gitignore:125:.env\t.env", ".gitignore:126:.env.*\t.env.local"]
+        return []
+
+    monkeypatch.setattr(module, "git_lines", fake_git_lines)
+
+    reporter = module.Reporter()
+    module.check_local_env_git_policy(tmp_path, reporter)
+
+    assert any("Local secret env files are tracked: .env" in error for error in reporter.errors)
+
+
+def test_local_env_git_policy_rejects_missing_ignore(monkeypatch, tmp_path):
+    module = load_release_readiness_module()
+
+    def fake_git_lines(root, args):
+        if args[0] == "ls-files":
+            return []
+        if args[0] == "check-ignore":
+            return [".gitignore:125:.env\t.env"]
+        return []
+
+    monkeypatch.setattr(module, "git_lines", fake_git_lines)
+
+    reporter = module.Reporter()
+    module.check_local_env_git_policy(tmp_path, reporter)
+
+    assert any("Local secret env files are not ignored" in error for error in reporter.errors)
+
+
 def test_tracked_secret_leak_check_rejects_real_api_key(tmp_path, monkeypatch):
     module = load_release_readiness_module()
     (tmp_path / "README.md").write_text(
@@ -995,7 +1041,7 @@ def test_release_procedure_rejects_version_drift(tmp_path):
             "python3 client/scripts/verify_release_readiness.py --strict\n"
             "2개 SPEC 전부 완료\n"
             "2 SPECs completed\n"
-            "3904 passed\n"
+            "3907 passed\n"
             "Flutter: 415 passed\n"
             "Production Ready v1.6.0\n"
             "git tag v1.6.0\n"

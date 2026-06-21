@@ -76,6 +76,7 @@ TRACKED_SECRET_PATTERNS = (
     ("Anthropic API key", re.compile(r"\bsk-ant-[A-Za-z0-9_-]{32,}\b")),
     ("obsolete API_KEY_SECRET placeholder", re.compile(r"API_KEY_SECRET\s*=\s*your-secret-key")),
 )
+LOCAL_SECRET_ENV_FILES = (".env", ".env.local", ".env.production")
 
 
 class Reporter:
@@ -99,18 +100,21 @@ def read_text(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
-def tracked_product_files(root: Path) -> list[Path]:
+def git_lines(root: Path, args: list[str]) -> list[str]:
     try:
         output = subprocess.check_output(
-            ["git", "-C", str(root), "ls-files", *SECRET_SCAN_PATHS],
+            ["git", "-C", str(root), *args],
             text=True,
             stderr=subprocess.DEVNULL,
         )
     except (subprocess.CalledProcessError, FileNotFoundError):
         return []
+    return [line for line in output.splitlines() if line]
 
+
+def tracked_product_files(root: Path) -> list[Path]:
     paths: list[Path] = []
-    for relative in output.splitlines():
+    for relative in git_lines(root, ["ls-files", *SECRET_SCAN_PATHS]):
         if not relative or relative in SECRET_SCAN_EXCLUDED_PATHS:
             continue
         if any(relative.startswith(prefix) for prefix in SECRET_SCAN_EXCLUDED_PREFIXES):
@@ -119,6 +123,24 @@ def tracked_product_files(root: Path) -> list[Path]:
         if path.is_file():
             paths.append(path)
     return paths
+
+
+def check_local_env_git_policy(root: Path, reporter: Reporter) -> None:
+    tracked_env_files = set(git_lines(root, ["ls-files", *LOCAL_SECRET_ENV_FILES]))
+    forbidden_tracked = sorted(name for name in LOCAL_SECRET_ENV_FILES if name in tracked_env_files)
+    if forbidden_tracked:
+        reporter.fail("Local secret env files are tracked: " + ", ".join(forbidden_tracked))
+    else:
+        reporter.ok("Local secret env files are not tracked")
+
+    ignored_files = set()
+    for line in git_lines(root, ["check-ignore", "-v", *LOCAL_SECRET_ENV_FILES]):
+        ignored_files.add(line.rsplit(maxsplit=1)[-1])
+    missing_ignore = sorted(name for name in LOCAL_SECRET_ENV_FILES if name not in ignored_files)
+    if missing_ignore:
+        reporter.fail("Local secret env files are not ignored: " + ", ".join(missing_ignore))
+    else:
+        reporter.ok("Local secret env files are ignored by git")
 
 
 def check_tracked_secret_leaks(root: Path, reporter: Reporter) -> None:
@@ -687,15 +709,15 @@ def check_readme_release_status(root: Path, reporter: Reporter) -> None:
     else:
         reporter.ok("README does not overclaim Production Ready before strict evidence")
     if (
-        "3904 백엔드 테스트" in readme
-        and "3904개" in readme
+        "3907 백엔드 테스트" in readme
+        and "3907개" in readme
         and ("Flutter 415" in readme or "415개" in readme)
-        and "4319개" in readme
+        and "4322개" in readme
     ):
         reporter.ok("README test counts match current release validation evidence")
     else:
         reporter.fail(
-            "README test counts must match current 3904 backend / 415 Flutter / 4319 total evidence"
+            "README test counts must match current 3907 backend / 415 Flutter / 4322 total evidence"
         )
     if f"{completed_spec_count}개 SPEC" in readme:
         reporter.fail("README should avoid hard-coded completed SPEC counts outside the SPEC list")
@@ -774,11 +796,11 @@ def check_docs(root: Path, reporter: Reporter) -> None:
             "Release procedure SPEC count must match README completed SPEC list "
             f"({completed_spec_count})"
         )
-    if "3904 passed" in procedure_doc and "Flutter: 415 passed" in procedure_doc:
+    if "3907 passed" in procedure_doc and "Flutter: 415 passed" in procedure_doc:
         reporter.ok("Release procedure backend test count matches latest full pytest evidence")
     else:
         reporter.fail(
-            "Release procedure test counts must match latest 3904 backend / 415 Flutter evidence"
+            "Release procedure test counts must match latest 3907 backend / 415 Flutter evidence"
         )
     if current_version and all(
         snippet in procedure_doc
@@ -1474,6 +1496,7 @@ def main() -> int:
     check_android_project(root, reporter)
     check_backend_push(root, reporter)
     check_tone_release_policy(root, reporter)
+    check_local_env_git_policy(root, reporter)
     check_tracked_secret_leaks(root, reporter)
     check_readme_release_status(root, reporter)
     check_docs(root, reporter)
