@@ -64,6 +64,9 @@ void main() {
               {'task': '데모 일정 확정', 'owner': '영업'},
             ],
             'follow_up_message': '데모 일정을 확인드리겠습니다.',
+            'crm_status': 'follow_up',
+            'crm_note': '금요일 오전 재확인',
+            'crm_updated_at': '2026-06-21T01:00:00+00:00',
             'created_at': '2026-06-21T00:00:00+00:00',
             'completed_at': '2026-06-21T00:00:00',
           }
@@ -78,6 +81,9 @@ void main() {
           'sales-contact-brief:min-sales-001');
       expect(result.items.single.contact.company, 'Acme');
       expect(result.items.single.nextSteps.single.task, '데모 일정 확정');
+      expect(result.items.single.crmStatus, 'follow_up');
+      expect(result.items.single.crmNote, '금요일 오전 재확인');
+      expect(result.items.single.crmUpdatedAt, '2026-06-21T01:00:00+00:00');
     });
   });
 }

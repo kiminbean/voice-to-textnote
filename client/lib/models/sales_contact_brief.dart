@@ -121,6 +121,9 @@ class SalesContactListItem {
   final List<String> painPoints;
   final List<SalesNextStep> nextSteps;
   final String followUpMessage;
+  final String crmStatus;
+  final String crmNote;
+  final String? crmUpdatedAt;
   final String createdAt;
   final String? completedAt;
 
@@ -133,6 +136,9 @@ class SalesContactListItem {
     required this.painPoints,
     required this.nextSteps,
     required this.followUpMessage,
+    this.crmStatus = 'open',
+    this.crmNote = '',
+    this.crmUpdatedAt,
     required this.createdAt,
     this.completedAt,
   });
@@ -154,6 +160,9 @@ class SalesContactListItem {
             .map(SalesNextStep.fromJson)
             .toList(),
         followUpMessage: json['follow_up_message'] as String? ?? '',
+        crmStatus: json['crm_status'] as String? ?? 'open',
+        crmNote: json['crm_note'] as String? ?? '',
+        crmUpdatedAt: json['crm_updated_at'] as String?,
         createdAt: json['created_at'] as String? ?? '',
         completedAt: json['completed_at'] as String?,
       );

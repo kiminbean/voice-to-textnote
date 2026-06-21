@@ -16,6 +16,7 @@ from backend.db.models import TaskResult
 from backend.db.search_models import ensure_search_index_table, index_search_entry
 from backend.schemas.sales_contact_brief import (
     SalesContactBriefResponse,
+    SalesContactCrmUpdateRequest,
     SalesContactDeal,
     SalesContactIdentity,
     SalesContactListItem,
@@ -57,6 +58,8 @@ def _sales_contact_item_text(item: SalesContactListItem) -> str:
         item.deal.stage,
         item.deal.value_hint,
         item.deal.urgency,
+        item.crm_status,
+        item.crm_note,
         item.follow_up_message,
         *item.customer_needs,
         *item.pain_points,
@@ -137,9 +140,7 @@ class SalesContactBriefService:
             contact=SalesContactIdentity.model_validate(payload.get("contact") or {}),
             deal=SalesContactDeal.model_validate(payload.get("deal") or {}),
             customer_needs=[
-                str(item).strip()
-                for item in payload.get("customer_needs", [])
-                if str(item).strip()
+                str(item).strip() for item in payload.get("customer_needs", []) if str(item).strip()
             ],
             pain_points=[
                 str(item).strip() for item in payload.get("pain_points", []) if str(item).strip()
@@ -202,6 +203,34 @@ class SalesContactBriefService:
             page_size=page_size,
         )
 
+    async def update_crm(
+        self,
+        db_session: AsyncSession,
+        artifact_task_id: str,
+        request: SalesContactCrmUpdateRequest,
+    ) -> SalesContactListItem:
+        """Persist editable CRM status/note metadata on a sales contact artifact."""
+        stmt = select(TaskResult).where(
+            TaskResult.task_id == artifact_task_id,
+            TaskResult.task_type == "sales_contact_brief",
+            TaskResult.status == "completed",
+        )
+        query_result = await db_session.execute(stmt)
+        record = query_result.scalar_one_or_none()
+        if record is None:
+            raise SalesContactBriefSourceNotFoundError("영업 연락처를 찾을 수 없습니다.")
+
+        result_data = dict(record.result_data or {})
+        crm = {
+            "status": request.status.strip() or "open",
+            "note": request.note.strip(),
+            "updated_at": datetime.now(UTC).isoformat(),
+        }
+        result_data["crm"] = crm
+        record.result_data = result_data
+        await db_session.commit()
+        return self._record_to_list_item(record)
+
     async def _persist_brief(
         self,
         task_id: str,
@@ -244,6 +273,9 @@ class SalesContactBriefService:
         metadata = record.input_metadata or {}
         source_task_id = str(metadata.get("source_task_id") or data.task_id)
         completed_at = record.completed_at.isoformat() if record.completed_at else None
+        crm = record.result_data.get("crm") if isinstance(record.result_data, dict) else {}
+        if not isinstance(crm, dict):
+            crm = {}
         return SalesContactListItem(
             artifact_task_id=record.task_id,
             source_task_id=source_task_id,
@@ -253,6 +285,11 @@ class SalesContactBriefService:
             pain_points=data.pain_points,
             next_steps=data.next_steps,
             follow_up_message=data.follow_up_message,
+            crm_status=str(crm.get("status") or "open"),
+            crm_note=str(crm.get("note") or ""),
+            crm_updated_at=crm.get("updated_at")
+            if isinstance(crm.get("updated_at"), str)
+            else None,
             created_at=data.created_at,
             completed_at=completed_at,
         )

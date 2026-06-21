@@ -53,4 +53,21 @@ class SalesContactBriefApi {
       response.data as Map<String, dynamic>,
     );
   }
+
+  Future<SalesContactListItem> updateContactCrm({
+    required String artifactTaskId,
+    required String status,
+    required String note,
+  }) async {
+    final response = await _dio.patch(
+      '/sales-contacts/${Uri.encodeComponent(artifactTaskId)}/crm',
+      data: {
+        'status': status,
+        'note': note,
+      },
+    );
+    return SalesContactListItem.fromJson(
+      response.data as Map<String, dynamic>,
+    );
+  }
 }

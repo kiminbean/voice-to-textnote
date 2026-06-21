@@ -70,8 +70,18 @@ class SalesContactListItem(BaseModel):
     pain_points: list[str] = Field(default_factory=list)
     next_steps: list[SalesNextStep] = Field(default_factory=list)
     follow_up_message: str = Field(default="")
+    crm_status: str = Field(default="open", description="User-managed CRM follow-up status")
+    crm_note: str = Field(default="", description="User-managed CRM note")
+    crm_updated_at: str | None = Field(default=None, description="CRM note/status update time")
     created_at: str = Field(..., description="Brief creation timestamp")
     completed_at: str | None = Field(default=None, description="Persisted artifact completion time")
+
+
+class SalesContactCrmUpdateRequest(BaseModel):
+    """Editable CRM fields for a generated sales/contact artifact."""
+
+    status: str = Field(default="open", min_length=1, max_length=32)
+    note: str = Field(default="", max_length=2000)
 
 
 class SalesContactListResponse(BaseModel):

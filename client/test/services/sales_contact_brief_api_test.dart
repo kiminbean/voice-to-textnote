@@ -92,6 +92,8 @@ void main() {
                 {'task': '데모 일정 확정'},
               ],
               'follow_up_message': '확인드리겠습니다.',
+              'crm_status': 'open',
+              'crm_note': '',
               'created_at': '2026-06-21T00:00:00+00:00',
             }
           ],
@@ -115,6 +117,46 @@ void main() {
           'page': 2,
           'page_size': 10,
           'q': 'Acme',
+        },
+      ),
+    ).called(1);
+  });
+
+  test('updateContactCrm patches CRM fields', () async {
+    when(() => mockDio.patch(any(), data: any(named: 'data'))).thenAnswer(
+      (_) async => Response(
+        data: {
+          'artifact_task_id': 'sales-contact-brief:min-sales-001',
+          'source_task_id': 'min-sales-001',
+          'contact': {'company': 'Acme'},
+          'deal': {'stage': 'demo_requested'},
+          'customer_needs': <dynamic>[],
+          'pain_points': <dynamic>[],
+          'next_steps': <dynamic>[],
+          'follow_up_message': '',
+          'crm_status': 'follow_up',
+          'crm_note': '금요일 오전 재확인',
+          'created_at': '2026-06-21T00:00:00+00:00',
+        },
+        statusCode: 200,
+        requestOptions: RequestOptions(path: ''),
+      ),
+    );
+
+    final result = await api.updateContactCrm(
+      artifactTaskId: 'sales-contact-brief:min-sales-001',
+      status: 'follow_up',
+      note: '금요일 오전 재확인',
+    );
+
+    expect(result.crmStatus, 'follow_up');
+    expect(result.crmNote, '금요일 오전 재확인');
+    verify(
+      () => mockDio.patch(
+        '/sales-contacts/sales-contact-brief%3Amin-sales-001/crm',
+        data: {
+          'status': 'follow_up',
+          'note': '금요일 오전 재확인',
         },
       ),
     ).called(1);

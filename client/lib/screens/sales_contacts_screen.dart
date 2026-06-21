@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:voice_to_textnote/models/sales_contact_brief.dart';
 import 'package:voice_to_textnote/providers/sales_contact_brief_provider.dart';
+import 'package:voice_to_textnote/services/sales_contact_brief_api.dart';
 import 'package:voice_to_textnote/theme/app_spacing.dart';
 import 'package:voice_to_textnote/widgets/empty_state_widget.dart';
 
@@ -138,6 +139,12 @@ class _SalesContactsScreenState extends ConsumerState<SalesContactsScreen> {
                               item: item,
                               onTap: () =>
                                   context.push('/result/${item.sourceTaskId}'),
+                              onEditCrm: () => _showCrmEditor(
+                                context,
+                                ref,
+                                request,
+                                item,
+                              ),
                             ),
                             const SizedBox(height: AppSpacing.sm),
                           ],
@@ -152,6 +159,77 @@ class _SalesContactsScreenState extends ConsumerState<SalesContactsScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _showCrmEditor(
+    BuildContext context,
+    WidgetRef ref,
+    SalesContactListRequest request,
+    SalesContactListItem item,
+  ) async {
+    var status = item.crmStatus;
+    var note = item.crmNote;
+    final messenger = ScaffoldMessenger.of(context);
+    final api = ref.read(salesContactBriefApiProvider);
+    try {
+      final saved = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: Text('${_contactTitle(item.contact)} CRM 메모'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                initialValue: status,
+                decoration: const InputDecoration(
+                  labelText: '상태',
+                  hintText: 'open, follow_up, won, lost',
+                ),
+                onChanged: (value) => status = value,
+                textInputAction: TextInputAction.next,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              TextFormField(
+                initialValue: note,
+                decoration: const InputDecoration(
+                  labelText: '메모',
+                  hintText: '다음 연락 시점, 견적 조건, 의사결정자 등',
+                ),
+                onChanged: (value) => note = value,
+                minLines: 3,
+                maxLines: 5,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('취소'),
+            ),
+            FilledButton.icon(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              icon: const Icon(Icons.save_outlined),
+              label: const Text('저장'),
+            ),
+          ],
+        ),
+      );
+      if (saved != true) return;
+
+      await api.updateContactCrm(
+        artifactTaskId: item.artifactTaskId,
+        status: status.trim().isEmpty ? 'open' : status.trim(),
+        note: note.trim(),
+      );
+      ref.invalidate(salesContactListProvider(request));
+      messenger.showSnackBar(
+        const SnackBar(content: Text('CRM 메모를 저장했습니다')),
+      );
+    } catch (_) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('CRM 메모를 저장할 수 없습니다')),
+      );
+    }
   }
 }
 
@@ -254,10 +332,12 @@ class _SearchField extends StatelessWidget {
 class _SalesContactCard extends StatelessWidget {
   final SalesContactListItem item;
   final VoidCallback onTap;
+  final VoidCallback onEditCrm;
 
   const _SalesContactCard({
     required this.item,
     required this.onTap,
+    required this.onEditCrm,
   });
 
   @override
@@ -313,7 +393,34 @@ class _SalesContactCard extends StatelessWidget {
                       ],
                     ),
                   ),
+                  IconButton(
+                    tooltip: 'CRM 메모 편집',
+                    icon: const Icon(Icons.edit_note_rounded),
+                    onPressed: onEditCrm,
+                  ),
                   const Icon(Icons.chevron_right_rounded),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Wrap(
+                spacing: AppSpacing.xs,
+                runSpacing: AppSpacing.xs,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Chip(
+                    visualDensity: VisualDensity.compact,
+                    avatar: const Icon(Icons.edit_calendar_outlined, size: 18),
+                    label: Text(_crmStatusLabel(item.crmStatus)),
+                  ),
+                  if (item.crmNote.trim().isNotEmpty)
+                    Text(
+                      item.crmNote,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: textTheme.bodySmall?.copyWith(
+                        color: colors.onSurfaceVariant,
+                      ),
+                    ),
                 ],
               ),
               if (item.customerNeeds.isNotEmpty) ...[
@@ -403,5 +510,16 @@ String _urgencyLabel(String urgency) {
     'medium' => '보통',
     'low' => '낮음',
     _ => '',
+  };
+}
+
+String _crmStatusLabel(String status) {
+  return switch (status) {
+    'follow_up' => '후속 예정',
+    'won' => '성사',
+    'lost' => '실패',
+    'paused' => '보류',
+    'open' => '열림',
+    _ => status.isEmpty ? '열림' : status,
   };
 }

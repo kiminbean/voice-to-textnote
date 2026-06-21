@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:voice_to_textnote/models/sales_contact_brief.dart';
 import 'package:voice_to_textnote/providers/sales_contact_brief_provider.dart';
 import 'package:voice_to_textnote/screens/sales_contacts_screen.dart';
+import 'package:voice_to_textnote/services/sales_contact_brief_api.dart';
+
+class MockSalesContactBriefApi extends Mock implements SalesContactBriefApi {}
 
 void main() {
   SalesContactListResponse responseWithItems() =>
@@ -18,6 +22,8 @@ void main() {
             painPoints: ['수동 감사'],
             nextSteps: [SalesNextStep(task: '데모 일정 확정')],
             followUpMessage: '데모 일정을 확인드리겠습니다.',
+            crmStatus: 'follow_up',
+            crmNote: '금요일 오전 재확인',
             createdAt: '2026-06-21T00:00:00+00:00',
           ),
           SalesContactListItem(
@@ -29,6 +35,8 @@ void main() {
             painPoints: ['승인 지연'],
             nextSteps: [SalesNextStep(task: '종료 사유 정리')],
             followUpMessage: '논의 내용을 기록해두겠습니다.',
+            crmStatus: 'lost',
+            crmNote: '다음 분기 재시도',
             createdAt: '2026-06-21T01:00:00+00:00',
           ),
         ],
@@ -54,6 +62,8 @@ void main() {
 
     expect(find.text('영업 고객'), findsOneWidget);
     expect(find.text('Acme · 김민수'), findsOneWidget);
+    expect(find.text('후속 예정'), findsOneWidget);
+    expect(find.text('금요일 오전 재확인'), findsOneWidget);
     expect(find.text('보안 감사 자동화'), findsOneWidget);
     expect(find.text('데모 일정 확정'), findsOneWidget);
   });
@@ -82,6 +92,46 @@ void main() {
     expect(find.text('Acme · 김민수'), findsNothing);
     expect(find.text('Beta · 이지은'), findsOneWidget);
     expect(find.text('종료 사유 정리'), findsOneWidget);
+  });
+
+  testWidgets('edits CRM memo for a sales contact', (tester) async {
+    final api = MockSalesContactBriefApi();
+    when(() => api.updateContactCrm(
+          artifactTaskId: 'sales-contact-brief:min-sales-001',
+          status: 'follow_up',
+          note: '다음 주 월요일 재연락',
+        )).thenAnswer((_) async => responseWithItems().items.first);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          salesContactBriefApiProvider.overrideWithValue(api),
+          salesContactListProvider.overrideWith(
+            (ref, request) async => responseWithItems(),
+          ),
+        ],
+        child: const MaterialApp(home: SalesContactsScreen()),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump();
+
+    await tester.tap(find.byTooltip('CRM 메모 편집').first);
+    await tester.pumpAndSettle();
+    await tester.enterText(
+        find.widgetWithText(TextFormField, '상태'), 'follow_up');
+    await tester.enterText(
+        find.widgetWithText(TextFormField, '메모'), '다음 주 월요일 재연락');
+    await tester.tap(find.widgetWithText(FilledButton, '저장'));
+    await tester.pumpAndSettle();
+
+    verify(() => api.updateContactCrm(
+          artifactTaskId: 'sales-contact-brief:min-sales-001',
+          status: 'follow_up',
+          note: '다음 주 월요일 재연락',
+        )).called(1);
+    expect(find.text('CRM 메모를 저장했습니다'), findsOneWidget);
   });
 
   testWidgets('renders empty state when no sales contacts exist',

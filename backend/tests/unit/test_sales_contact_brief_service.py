@@ -6,7 +6,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from backend.db.models import Base, TaskResult
-from backend.schemas.sales_contact_brief import SalesContactBriefResponse
+from backend.schemas.sales_contact_brief import (
+    SalesContactBriefResponse,
+    SalesContactCrmUpdateRequest,
+)
 from backend.services.sales_contact_brief_service import (
     SalesContactBriefService,
     SalesContactBriefSourceNotFoundError,
@@ -248,8 +251,7 @@ async def test_generate_persists_sales_contact_brief_artifact(monkeypatch):
             await svc.generate("min-sales-001", redis, db_session=session)
             result = await session.execute(
                 select(TaskResult).where(
-                    TaskResult.task_id
-                    == _sales_contact_brief_result_task_id("min-sales-001")
+                    TaskResult.task_id == _sales_contact_brief_result_task_id("min-sales-001")
                 )
             )
             record = result.scalar_one()
@@ -299,12 +301,49 @@ async def test_list_contacts_returns_paginated_query_matches():
 
             page = await svc.list_contacts(session, page=1, page_size=1)
             filtered = await svc.list_contacts(session, page=1, page_size=10, query="Acme")
+            updated = await svc.update_crm(
+                session,
+                "sales-contact-brief:min-sales-001",
+                SalesContactCrmUpdateRequest(
+                    status="follow_up",
+                    note="견적서 발송 후 금요일 오전 재확인",
+                ),
+            )
+            crm_filtered = await svc.list_contacts(session, page=1, page_size=10, query="금요일")
 
         assert page.total == 2
         assert len(page.items) == 1
         assert page.items[0].source_task_id == "min-sales-002"
         assert filtered.total == 1
         assert filtered.items[0].contact.company == "Acme"
+        assert updated.crm_status == "follow_up"
+        assert updated.crm_note == "견적서 발송 후 금요일 오전 재확인"
+        assert updated.crm_updated_at is not None
+        assert crm_filtered.total == 1
+        assert crm_filtered.items[0].crm_note == "견적서 발송 후 금요일 오전 재확인"
+    finally:
+        await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_update_crm_raises_when_artifact_is_missing():
+    engine = create_async_engine("sqlite+aiosqlite://", echo=False)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    svc = SalesContactBriefService()
+
+    try:
+        async with factory() as session:
+            with pytest.raises(
+                SalesContactBriefSourceNotFoundError,
+                match="영업 연락처를 찾을 수 없습니다.",
+            ):
+                await svc.update_crm(
+                    session,
+                    "sales-contact-brief:missing",
+                    SalesContactCrmUpdateRequest(status="follow_up", note="재연락"),
+                )
     finally:
         await engine.dispose()
 
