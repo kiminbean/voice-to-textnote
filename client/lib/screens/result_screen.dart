@@ -12,8 +12,10 @@ import 'package:voice_to_textnote/models/action_item.dart';
 import 'package:voice_to_textnote/models/meeting.dart';
 import 'package:voice_to_textnote/models/mind_map_result.dart';
 import 'package:voice_to_textnote/models/summary_result.dart';
+import 'package:voice_to_textnote/models/study_pack.dart';
 import 'package:voice_to_textnote/providers/meeting_list_provider.dart';
 import 'package:voice_to_textnote/providers/result_provider.dart';
+import 'package:voice_to_textnote/providers/study_pack_provider.dart';
 import 'package:voice_to_textnote/services/export_api.dart';
 import 'package:voice_to_textnote/services/statistics_api.dart';
 import 'package:voice_to_textnote/services/sentiment_api.dart';
@@ -348,8 +350,8 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                   _MinutesTab(taskId: summaryTaskId, meeting: meeting),
                   // 마인드맵 탭: 백엔드 AI 생성 API 기반 관계 그래프
                   _MindMapTab(taskId: summaryTaskId),
-                  // 학습 탭: 요약 결과에서 플래시카드와 복습 퀴즈 생성
-                  _StudyTab(taskId: summaryTaskId),
+                  // 학습 탭: 회의록 기반 Study Pack 생성
+                  _StudyTab(taskId: minutesTaskId),
                   // Q&A 탭: 회의 내용 질문/답변 (SPEC-QA-001)
                   _QATab(taskId: summaryTaskId ?? minutesTaskId),
                   _StatisticsTab(taskId: minutesTaskId),
@@ -2788,13 +2790,13 @@ class _StudyTab extends ConsumerWidget {
       return const EmptyStateWidget(
         icon: Icons.school_outlined,
         title: '학습 자료 준비 중',
-        subtitle: '요약이 완료되면 플래시카드와 퀴즈가 생성됩니다',
+        subtitle: '회의록이 완료되면 플래시카드와 퀴즈가 생성됩니다',
       );
     }
 
-    final summaryAsync = ref.watch(summaryResultProvider(taskId!));
+    final studyPackAsync = ref.watch(studyPackProvider(taskId!));
 
-    return summaryAsync.when(
+    return studyPackAsync.when(
       loading: () => const Padding(
         padding: EdgeInsets.all(16),
         child: Card(
@@ -2806,17 +2808,17 @@ class _StudyTab extends ConsumerWidget {
       ),
       error: (error, _) => ErrorRetryWidget(
         message: '학습 자료를 불러올 수 없습니다',
-        onRetry: () => ref.invalidate(summaryResultProvider(taskId!)),
+        onRetry: () => ref.invalidate(studyPackProvider(taskId!)),
       ),
-      data: (result) {
-        final flashcards = _buildStudyCards(result);
-        final quizzes = _buildStudyQuizzes(result);
-
-        if (flashcards.isEmpty && quizzes.isEmpty) {
+      data: (pack) {
+        if (pack.keyConcepts.isEmpty &&
+            pack.flashcards.isEmpty &&
+            pack.quizQuestions.isEmpty &&
+            pack.studyNotes.trim().isEmpty) {
           return const EmptyStateWidget(
             icon: Icons.school_outlined,
             title: '학습 자료가 없습니다',
-            subtitle: '요약, 결정 사항, 다음 단계가 생성되면 복습 자료가 표시됩니다',
+            subtitle: '회의록 내용이 충분하지 않아 학습팩을 만들 수 없습니다',
           );
         }
 
@@ -2827,17 +2829,50 @@ class _StudyTab extends ConsumerWidget {
             children: [
               Align(
                 alignment: Alignment.centerRight,
-                child: OutlinedButton.icon(
-                  onPressed: () => _copyStudyMaterials(
-                    context,
-                    flashcards,
-                    quizzes,
-                  ),
-                  icon: const Icon(Icons.copy_all_outlined),
-                  label: const Text('학습 자료 복사'),
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: () => _copyStudyMaterials(context, pack),
+                      icon: const Icon(Icons.copy_all_outlined),
+                      label: const Text('학습팩 복사'),
+                    ),
+                    FilledButton.tonalIcon(
+                      onPressed: () => ref
+                          .read(studyPackProvider(taskId!).notifier)
+                          .regenerate(),
+                      icon: const Icon(Icons.refresh_rounded),
+                      label: const Text('다시 생성'),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 12),
+              if (pack.studyNotes.trim().isNotEmpty) ...[
+                _StudyNotesCard(notes: pack.studyNotes),
+                const SizedBox(height: 24),
+              ],
+              if (pack.keyConcepts.isNotEmpty) ...[
+                Row(
+                  children: [
+                    const Icon(Icons.lightbulb_outline_rounded),
+                    const SizedBox(width: 8),
+                    Text(
+                      '핵심 개념',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const Spacer(),
+                    Text('${pack.keyConcepts.length}개'),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                ...pack.keyConcepts.map((concept) => _StudyConceptCard(
+                      concept: concept,
+                      sourceRefs: pack.sourceRefs,
+                    )),
+                const SizedBox(height: 24),
+              ],
               Row(
                 children: [
                   const Icon(Icons.school_outlined),
@@ -2847,12 +2882,17 @@ class _StudyTab extends ConsumerWidget {
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   const Spacer(),
-                  Text('${flashcards.length}개'),
+                  Text('${pack.flashcards.length}개'),
                 ],
               ),
               const SizedBox(height: 12),
-              ...flashcards.map((card) => _StudyFlashcard(card: card)),
-              const SizedBox(height: 24),
+              ...pack.flashcards.map(
+                (card) => _StudyFlashcard(
+                  card: card,
+                  sourceRefs: pack.sourceRefs,
+                ),
+              ),
+              if (pack.flashcards.isNotEmpty) const SizedBox(height: 24),
               Row(
                 children: [
                   const Icon(Icons.quiz_outlined),
@@ -2862,14 +2902,15 @@ class _StudyTab extends ConsumerWidget {
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   const Spacer(),
-                  Text('${quizzes.length}문항'),
+                  Text('${pack.quizQuestions.length}문항'),
                 ],
               ),
               const SizedBox(height: 12),
-              ...quizzes.asMap().entries.map(
+              ...pack.quizQuestions.asMap().entries.map(
                     (entry) => _StudyQuizCard(
                       index: entry.key + 1,
                       quiz: entry.value,
+                      sourceRefs: pack.sourceRefs,
                     ),
                   ),
             ],
@@ -2881,29 +2922,43 @@ class _StudyTab extends ConsumerWidget {
 
   Future<void> _copyStudyMaterials(
     BuildContext context,
-    List<_StudyCardData> flashcards,
-    List<_StudyQuizData> quizzes,
+    StudyPack pack,
   ) async {
     final messenger = ScaffoldMessenger.of(context);
     final buffer = StringBuffer()
-      ..writeln('학습 자료')
+      ..writeln('학습팩')
       ..writeln('---');
 
-    if (flashcards.isNotEmpty) {
+    if (pack.studyNotes.trim().isNotEmpty) {
       buffer.writeln();
-      buffer.writeln('플래시카드');
-      for (var index = 0; index < flashcards.length; index++) {
-        final card = flashcards[index];
-        buffer.writeln('${index + 1}. [${card.label}] ${card.prompt}');
-        buffer.writeln('   답: ${card.answer}');
+      buffer.writeln('학습 노트');
+      buffer.writeln(pack.studyNotes);
+    }
+
+    if (pack.keyConcepts.isNotEmpty) {
+      buffer.writeln();
+      buffer.writeln('핵심 개념');
+      for (var index = 0; index < pack.keyConcepts.length; index++) {
+        final concept = pack.keyConcepts[index];
+        buffer.writeln('${index + 1}. ${concept.term}: ${concept.explanation}');
       }
     }
 
-    if (quizzes.isNotEmpty) {
+    if (pack.flashcards.isNotEmpty) {
+      buffer.writeln();
+      buffer.writeln('플래시카드');
+      for (var index = 0; index < pack.flashcards.length; index++) {
+        final card = pack.flashcards[index];
+        buffer.writeln('${index + 1}. ${card.front}');
+        buffer.writeln('   답: ${card.back}');
+      }
+    }
+
+    if (pack.quizQuestions.isNotEmpty) {
       buffer.writeln();
       buffer.writeln('복습 퀴즈');
-      for (var index = 0; index < quizzes.length; index++) {
-        final quiz = quizzes[index];
+      for (var index = 0; index < pack.quizQuestions.length; index++) {
+        final quiz = pack.quizQuestions[index];
         buffer.writeln('${index + 1}. ${quiz.question}');
         buffer.writeln('   정답: ${quiz.answer}');
       }
@@ -2911,121 +2966,76 @@ class _StudyTab extends ConsumerWidget {
 
     await Clipboard.setData(ClipboardData(text: buffer.toString()));
     messenger.showSnackBar(
-      const SnackBar(content: Text('학습 자료를 복사했습니다')),
+      const SnackBar(content: Text('학습팩을 복사했습니다')),
     );
   }
+}
 
-  List<_StudyCardData> _buildStudyCards(SummaryResult result) {
-    final cards = <_StudyCardData>[
-      for (final decision in result.keyDecisions)
-        _StudyCardData(
-          label: '주요 결정',
-          prompt: '회의에서 확정된 결정은?',
-          answer: decision,
+class _StudyNotesCard extends StatelessWidget {
+  final String notes;
+
+  const _StudyNotesCard({required this.notes});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.menu_book_outlined),
+                const SizedBox(width: 8),
+                Text('학습 노트', style: Theme.of(context).textTheme.titleMedium),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(notes, style: const TextStyle(height: 1.5)),
+          ],
         ),
-      for (final step in result.nextSteps)
-        _StudyCardData(
-          label: '다음 단계',
-          prompt: '회의 후 이어서 해야 할 일은?',
-          answer: step,
-        ),
-      for (final item in result.actionItems)
-        _StudyCardData(
-          label: '액션 아이템',
-          prompt:
-              item.assignee == null ? '누가 맡을 작업인가?' : '${item.assignee}의 작업은?',
-          answer: item.deadline == null
-              ? item.task
-              : '${item.task} (${item.deadline})',
-        ),
-    ];
-
-    if (cards.isNotEmpty) return cards;
-
-    return _summarySentences(result.summaryText)
-        .take(3)
-        .map(
-          (sentence) => _StudyCardData(
-            label: '요약',
-            prompt: '회의 핵심 내용은?',
-            answer: sentence,
-          ),
-        )
-        .toList();
-  }
-
-  List<_StudyQuizData> _buildStudyQuizzes(SummaryResult result) {
-    final quizzes = <_StudyQuizData>[];
-
-    if (result.keyDecisions.isNotEmpty) {
-      quizzes.add(_StudyQuizData(
-        question: '이번 회의에서 확정한 주요 결정은 무엇인가요?',
-        answer: result.keyDecisions.first,
-      ));
-    }
-    if (result.nextSteps.isNotEmpty) {
-      quizzes.add(_StudyQuizData(
-        question: '회의 후 가장 먼저 확인할 다음 단계는 무엇인가요?',
-        answer: result.nextSteps.first,
-      ));
-    }
-    if (result.actionItems.isNotEmpty) {
-      final item = result.actionItems.first;
-      quizzes.add(_StudyQuizData(
-        question: item.assignee == null
-            ? '액션 아이템으로 기록된 작업은 무엇인가요?'
-            : '${item.assignee}에게 배정된 작업은 무엇인가요?',
-        answer: item.task,
-      ));
-    }
-
-    if (quizzes.isNotEmpty) return quizzes;
-
-    final sentences = _summarySentences(result.summaryText);
-    if (sentences.isEmpty) return quizzes;
-
-    quizzes.add(_StudyQuizData(
-      question: '요약에서 기억해야 할 핵심 내용은 무엇인가요?',
-      answer: sentences.first,
-    ));
-    return quizzes;
-  }
-
-  List<String> _summarySentences(String summaryText) {
-    return summaryText
-        .split(RegExp(r'(?<=[.!?。！？])\s+|\n+'))
-        .map((line) => line.trim())
-        .where((line) => line.isNotEmpty)
-        .toList();
+      ),
+    );
   }
 }
 
-class _StudyCardData {
-  final String label;
-  final String prompt;
-  final String answer;
+class _StudyConceptCard extends StatelessWidget {
+  final StudyKeyConcept concept;
+  final List<StudySourceRef> sourceRefs;
 
-  const _StudyCardData({
-    required this.label,
-    required this.prompt,
-    required this.answer,
+  const _StudyConceptCard({
+    required this.concept,
+    required this.sourceRefs,
   });
-}
 
-class _StudyQuizData {
-  final String question;
-  final String answer;
-
-  const _StudyQuizData({
-    required this.question,
-    required this.answer,
-  });
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: ListTile(
+        leading: const Icon(Icons.lightbulb_outline_rounded),
+        title: Text(concept.term),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(concept.explanation),
+            _SourceRefText(indexes: concept.sourceRefs, sourceRefs: sourceRefs),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _StudyFlashcard extends StatelessWidget {
-  final _StudyCardData card;
+  final StudyFlashcard card;
+  final List<StudySourceRef> sourceRefs;
 
-  const _StudyFlashcard({required this.card});
+  const _StudyFlashcard({
+    required this.card,
+    required this.sourceRefs,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -3036,17 +3046,18 @@ class _StudyFlashcard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Chip(
-              avatar: const Icon(Icons.style_outlined, size: 18),
-              label: Text(card.label),
+            const Chip(
+              avatar: Icon(Icons.style_outlined, size: 18),
+              label: Text('플래시카드'),
             ),
             const SizedBox(height: 8),
             Text(
-              card.prompt,
+              card.front,
               style: Theme.of(context).textTheme.titleSmall,
             ),
             const SizedBox(height: 8),
-            Text(card.answer, style: const TextStyle(height: 1.5)),
+            Text(card.back, style: const TextStyle(height: 1.5)),
+            _SourceRefText(indexes: card.sourceRefs, sourceRefs: sourceRefs),
           ],
         ),
       ),
@@ -3056,11 +3067,13 @@ class _StudyFlashcard extends StatelessWidget {
 
 class _StudyQuizCard extends StatelessWidget {
   final int index;
-  final _StudyQuizData quiz;
+  final StudyQuizQuestion quiz;
+  final List<StudySourceRef> sourceRefs;
 
   const _StudyQuizCard({
     required this.index,
     required this.quiz,
+    required this.sourceRefs,
   });
 
   @override
@@ -3070,6 +3083,7 @@ class _StudyQuizCard extends StatelessWidget {
       child: ExpansionTile(
         leading: CircleAvatar(child: Text('$index')),
         title: Text(quiz.question),
+        subtitle: Text('난이도: ${quiz.difficulty}'),
         childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         children: [
           Align(
@@ -3079,7 +3093,50 @@ class _StudyQuizCard extends StatelessWidget {
               style: const TextStyle(height: 1.5),
             ),
           ),
+          _SourceRefText(indexes: quiz.sourceRefs, sourceRefs: sourceRefs),
         ],
+      ),
+    );
+  }
+}
+
+class _SourceRefText extends StatelessWidget {
+  final List<int> indexes;
+  final List<StudySourceRef> sourceRefs;
+
+  const _SourceRefText({
+    required this.indexes,
+    required this.sourceRefs,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (indexes.isEmpty || sourceRefs.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final labels = indexes
+        .map((index) =>
+            sourceRefs.where((ref) => ref.segmentIndex == index).firstOrNull)
+        .whereType<StudySourceRef>()
+        .map((ref) {
+          final speaker = ref.speaker == null ? '' : '${ref.speaker} ';
+          final time =
+              ref.start == null ? '' : '@${ref.start!.toStringAsFixed(0)}s';
+          return '$speaker$time'.trim();
+        })
+        .where((label) => label.isNotEmpty)
+        .toList();
+
+    if (labels.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Text(
+        '근거: ${labels.join(', ')}',
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: AppColors.of(context).textSecondary,
+            ),
       ),
     );
   }

@@ -6,14 +6,18 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:voice_to_textnote/models/meeting.dart';
+import 'package:voice_to_textnote/models/study_pack.dart';
 import 'package:voice_to_textnote/providers/meeting_list_provider.dart';
 import 'package:voice_to_textnote/screens/result_screen.dart';
 import 'package:voice_to_textnote/services/minutes_api.dart';
+import 'package:voice_to_textnote/services/study_pack_api.dart';
 import 'package:voice_to_textnote/services/summary_api.dart';
 
 class MockMinutesApi extends Mock implements MinutesApi {}
 
 class MockSummaryApi extends Mock implements SummaryApi {}
+
+class MockStudyPackApi extends Mock implements StudyPackApi {}
 
 // 테스트용 Meeting 목록 Notifier (AsyncNotifier이므로 Future<List<Meeting>> 반환)
 class _MockMeetingListNotifier extends MeetingListNotifier {
@@ -57,6 +61,7 @@ Finder _tabText(String label) {
 void main() {
   late MockMinutesApi mockMinApi;
   late MockSummaryApi mockSumApi;
+  late MockStudyPackApi mockStudyPackApi;
 
   // 테스트용 미팅 데이터 (summaryTaskId 포함)
   final testMeeting = Meeting(
@@ -71,6 +76,7 @@ void main() {
   setUp(() {
     mockMinApi = MockMinutesApi();
     mockSumApi = MockSummaryApi();
+    mockStudyPackApi = MockStudyPackApi();
 
     // 회의록 기본 응답
     when(() => mockMinApi.getResult(any())).thenAnswer(
@@ -97,6 +103,45 @@ void main() {
         'edges': <dynamic>[],
       },
     );
+    when(() => mockStudyPackApi.get(any())).thenAnswer(
+      (_) async => const StudyPack(
+        taskId: 'min-task-001',
+        mode: 'lecture',
+        language: 'ko',
+        studyNotes: 'Owll 벤치마크 결과를 학습 노트로 정리했습니다.',
+        keyConcepts: [
+          StudyKeyConcept(
+            term: 'Owll 벤치마크',
+            explanation: '회의록을 플래시카드와 퀴즈로 전환하는 경쟁 기능입니다.',
+            sourceRefs: [0],
+          ),
+        ],
+        flashcards: [
+          StudyFlashcard(
+            front: 'Owll 벤치마크에서 우선 도입할 기능은?',
+            back: '백엔드 생성 Study Pack입니다.',
+            sourceRefs: [0],
+          ),
+        ],
+        quizQuestions: [
+          StudyQuizQuestion(
+            question: 'Study Pack은 어디에서 생성되나요?',
+            answer: '백엔드 Study Pack API에서 생성됩니다.',
+            difficulty: 'medium',
+            sourceRefs: [0],
+          ),
+        ],
+        sourceRefs: [
+          StudySourceRef(
+            segmentIndex: 0,
+            speaker: '김철수',
+            start: 12,
+            text: 'Owll 벤치마크 결과를 공유했습니다.',
+          ),
+        ],
+        createdAt: '2026-03-22T00:00:00Z',
+      ),
+    );
   });
 
   // 위젯 테스트 헬퍼: ProviderScope + MaterialApp 래핑
@@ -105,6 +150,7 @@ void main() {
       overrides: [
         minutesApiProvider.overrideWithValue(mockMinApi),
         summaryApiProvider.overrideWithValue(mockSumApi),
+        studyPackApiProvider.overrideWithValue(mockStudyPackApi),
         meetingListProvider.overrideWith(
           () => _MockMeetingListNotifier([testMeeting]),
         ),
@@ -230,33 +276,22 @@ void main() {
   });
 
   group('_StudyTab - 플래시카드 및 복습 퀴즈 표시', () {
-    testWidgets('요약 결과에서 학습 카드와 퀴즈를 생성해야 함', (WidgetTester tester) async {
-      // Arrange
-      when(() => mockSumApi.getResult(any())).thenAnswer((_) async => {
-            'summary_text': 'Owll 벤치마크 결과를 공유했습니다.',
-            'action_items': [
-              {
-                'assignee': '김철수',
-                'task': '업로드 플로우 검증',
-                'deadline': '2026-03-25',
-                'priority': 'high',
-              },
-            ],
-            'key_decisions': ['MP4 업로드를 지원한다'],
-            'next_steps': ['학습 탭을 QA한다'],
-          });
-
+    testWidgets('백엔드 Study Pack으로 학습 카드와 퀴즈를 표시해야 함',
+        (WidgetTester tester) async {
       // Act
       await tester.pumpWidget(buildTestWidget([]));
       await _pumpToStudyTab(tester);
 
       // Assert
-      expect(find.text('플래시카드'), findsOneWidget);
+      expect(find.text('학습 노트'), findsOneWidget);
+      expect(find.text('핵심 개념'), findsOneWidget);
+      expect(find.text('플래시카드'), findsWidgets);
       expect(find.text('복습 퀴즈'), findsOneWidget);
-      expect(find.text('MP4 업로드를 지원한다'), findsWidgets);
-      expect(find.text('학습 탭을 QA한다'), findsWidgets);
-      expect(find.text('김철수의 작업은?'), findsOneWidget);
-      expect(find.text('업로드 플로우 검증 (2026-03-25)'), findsOneWidget);
+      expect(find.text('Owll 벤치마크'), findsOneWidget);
+      expect(find.text('Owll 벤치마크에서 우선 도입할 기능은?'), findsOneWidget);
+      expect(find.text('백엔드 생성 Study Pack입니다.'), findsOneWidget);
+      expect(find.text('Study Pack은 어디에서 생성되나요?'), findsOneWidget);
+      expect(find.textContaining('근거: 김철수 @12s'), findsWidgets);
 
       Map<dynamic, dynamic>? clipboardPayload;
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
@@ -271,44 +306,50 @@ void main() {
             .setMockMethodCallHandler(SystemChannels.platform, null);
       });
 
-      await tester.ensureVisible(find.text('학습 자료 복사'));
+      await tester.ensureVisible(find.text('학습팩 복사'));
       await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(OutlinedButton, '학습 자료 복사'));
+      await tester.tap(find.widgetWithText(OutlinedButton, '학습팩 복사'));
       await tester.pump(const Duration(milliseconds: 250));
 
       final clipboardText = clipboardPayload?['text'] as String?;
       expect(clipboardText, contains('플래시카드'));
-      expect(clipboardText, contains('[주요 결정] 회의에서 확정된 결정은?'));
-      expect(clipboardText, contains('답: MP4 업로드를 지원한다'));
+      expect(clipboardText, contains('Owll 벤치마크에서 우선 도입할 기능은?'));
+      expect(clipboardText, contains('답: 백엔드 생성 Study Pack입니다.'));
       expect(clipboardText, contains('복습 퀴즈'));
-      expect(clipboardText, contains('정답: MP4 업로드를 지원한다'));
-      expect(find.text('학습 자료를 복사했습니다'), findsOneWidget);
+      expect(clipboardText, contains('정답: 백엔드 Study Pack API에서 생성됩니다.'));
+      expect(find.text('학습팩을 복사했습니다'), findsOneWidget);
 
-      await tester.ensureVisible(find.text('이번 회의에서 확정한 주요 결정은 무엇인가요?'));
+      await tester.ensureVisible(find.text('Study Pack은 어디에서 생성되나요?'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('이번 회의에서 확정한 주요 결정은 무엇인가요?'));
+      await tester.tap(find.text('Study Pack은 어디에서 생성되나요?'));
       await tester.pumpAndSettle();
-      expect(find.text('정답: MP4 업로드를 지원한다'), findsOneWidget);
+      expect(find.text('정답: 백엔드 Study Pack API에서 생성됩니다.'), findsOneWidget);
     });
 
-    testWidgets('구조화 필드가 없으면 요약 문장으로 학습 자료를 생성해야 함',
+    testWidgets('Study Pack 항목이 비어 있으면 빈 상태를 표시해야 함',
         (WidgetTester tester) async {
       // Arrange
-      when(() => mockSumApi.getResult(any())).thenAnswer((_) async => {
-            'summary_text': '첫 번째 핵심 문장입니다. 두 번째 핵심 문장입니다.',
-            'action_items': <dynamic>[],
-            'key_decisions': <dynamic>[],
-            'next_steps': <dynamic>[],
-          });
+      when(() => mockStudyPackApi.get(any())).thenAnswer(
+        (_) async => const StudyPack(
+          taskId: 'min-task-001',
+          mode: 'lecture',
+          language: 'ko',
+          keyConcepts: [],
+          flashcards: [],
+          quizQuestions: [],
+          studyNotes: '',
+          sourceRefs: [],
+          createdAt: '2026-03-22T00:00:00Z',
+        ),
+      );
 
       // Act
       await tester.pumpWidget(buildTestWidget([]));
       await _pumpToStudyTab(tester);
 
       // Assert
-      expect(find.text('회의 핵심 내용은?'), findsWidgets);
-      expect(find.text('첫 번째 핵심 문장입니다.'), findsWidgets);
-      expect(find.text('요약에서 기억해야 할 핵심 내용은 무엇인가요?'), findsOneWidget);
+      expect(find.text('학습 자료가 없습니다'), findsOneWidget);
+      expect(find.text('회의록 내용이 충분하지 않아 학습팩을 만들 수 없습니다'), findsOneWidget);
     });
   });
 
