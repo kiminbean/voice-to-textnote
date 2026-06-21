@@ -108,10 +108,10 @@ def write_tone_policy_files(root: Path, *, tone_model_line: str = 'tone_model: s
 def write_readme_status(root: Path, content: str) -> None:
     (root / "README.md").write_text(
         (
-            "3875 백엔드 테스트\n"
-            "| 백엔드 단위/통합/E2E | 3875개 | 100.00% |\n"
+            "3877 백엔드 테스트\n"
+            "| 백엔드 단위/통합/E2E | 3877개 | 100.00% |\n"
             "| Flutter 테스트 | 415개 | - |\n"
-            "| 총합 | 4290개 | - |\n"
+            "| 총합 | 4292개 | - |\n"
             f"{content}"
         ),
         encoding="utf-8",
@@ -167,6 +167,27 @@ def test_release_e2e_evidence_rejects_unknown_device_platform(tmp_path, monkeypa
     assert any("unknown device platform: web" in error for error in reporter.errors)
 
 
+def test_release_e2e_evidence_rejects_unknown_device_metadata_key(tmp_path, monkeypatch):
+    module = load_release_readiness_module()
+    evidence = make_evidence(tmp_path, module)
+    devices = evidence["devices"]
+    assert isinstance(devices, dict)
+    android_device = devices["android"]
+    assert isinstance(android_device, dict)
+    android_device["legacy_fingerprint"] = "old-release-device"
+    evidence_path = write_evidence(tmp_path, evidence)
+    monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
+    monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")
+
+    reporter = module.Reporter()
+    module.check_release_e2e_evidence(evidence_path, reporter)
+
+    assert any(
+        "unknown android device metadata key: legacy_fingerprint" in error
+        for error in reporter.errors
+    )
+
+
 def test_release_e2e_evidence_rejects_missing_required_scenario(tmp_path, monkeypatch):
     module = load_release_readiness_module()
     evidence = make_evidence(tmp_path, module)
@@ -200,6 +221,27 @@ def test_release_e2e_evidence_rejects_unknown_scenario_key(tmp_path, monkeypatch
     module.check_release_e2e_evidence(evidence_path, reporter)
 
     assert any("unknown scenario" in error for error in reporter.errors)
+
+
+def test_release_e2e_evidence_rejects_unknown_scenario_result_key(tmp_path, monkeypatch):
+    module = load_release_readiness_module()
+    evidence = make_evidence(tmp_path, module)
+    scenarios = evidence["scenarios"]
+    assert isinstance(scenarios, dict)
+    scenario = scenarios["push_stt_complete"]
+    assert isinstance(scenario, dict)
+    scenario["manual_override"] = True
+    evidence_path = write_evidence(tmp_path, evidence)
+    monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
+    monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")
+
+    reporter = module.Reporter()
+    module.check_release_e2e_evidence(evidence_path, reporter)
+
+    assert any(
+        "unknown scenario result key: push_stt_complete.manual_override" in error
+        for error in reporter.errors
+    )
 
 
 def test_release_e2e_evidence_rejects_non_iso_test_timestamp(tmp_path, monkeypatch):
