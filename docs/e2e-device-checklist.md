@@ -105,6 +105,8 @@ python3 client/scripts/create_release_e2e_evidence.py \
 
 > 참고: Kotlin Gradle Plugin의 Built-in Kotlin 마이그레이션 경고는 현재 빌드 실패가 아니라 미래 호환성 경고다. 경고가 오류로 승격되면 plugin 버전 업그레이드 또는 Flutter Built-in Kotlin 마이그레이션을 별도 작업으로 처리한다.
 
+> 참고: Flutter analyze/test에서 `whisper_ggml_plus`, `sign_in_with_apple`, `flutter_secure_storage`, `flutter_local_notifications` 계열 플러그인이 iOS/macOS Swift Package Manager를 아직 지원하지 않는다는 경고가 출력될 수 있다. 현재는 빌드 실패가 아니지만 Flutter가 이 경고를 오류로 승격하면 Swift Package Manager 지원 플러그인 버전 업그레이드, CocoaPods 유지 정책, 또는 대체 플러그인 검토를 별도 release blocker로 처리한다.
+
 ---
 
 ## 테스트 항목

@@ -673,6 +673,7 @@ def check_docs(root: Path, reporter: Reporter) -> None:
         ("./scripts/verify_mobile.sh --native", ("./scripts/verify_mobile.sh --native",)),
         ("RELEASE_E2E_EVIDENCE_PATH", ("RELEASE_E2E_EVIDENCE_PATH",)),
         ("artifact_sha256", ("artifact_sha256", "SHA-256")),
+        ("Swift Package Manager warning", ("Swift Package Manager", "whisper_ggml_plus")),
     ]
     for label, snippets in e2e_requirements:
         if any(snippet in e2e_doc for snippet in snippets):
