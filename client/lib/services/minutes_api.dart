@@ -42,6 +42,27 @@ class MinutesApi {
     return response.data as Map<String, dynamic>;
   }
 
+  // 사용자가 보유한 외부 URL transcript/text를 회의록 자산으로 가져오기
+  Future<Map<String, dynamic>> importExternalText({
+    required String sourceUrl,
+    required String title,
+    required String content,
+    String sourceType = 'web',
+    String language = 'ko',
+  }) async {
+    final response = await _dio.post(
+      '/imports/external-text',
+      data: {
+        'source_url': sourceUrl,
+        'title': title,
+        'content': content,
+        'source_type': sourceType,
+        'language': language,
+      },
+    );
+    return response.data as Map<String, dynamic>;
+  }
+
   // 태스크 삭제
   Future<void> delete(String taskId) async {
     await _dio.delete('/minutes/$taskId');

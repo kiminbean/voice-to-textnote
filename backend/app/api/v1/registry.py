@@ -65,6 +65,7 @@ from backend.app.api.v1.integrations import (
 from backend.app.api.v1.minutes import (
     action_items,
     action_items_crud,
+    external_import,
     keywords,
     minutes,
     study_pack,
@@ -83,7 +84,7 @@ from backend.app.api.v1.transcription import (
 )
 
 # 각 튜플: (APIRouter, requires_api_key)
-# 총 44개 라우터. 동일 router 중복 등록 금지.
+# 총 45개 라우터. 동일 router 중복 등록 금지.
 ROUTER_REGISTRY: list[tuple[APIRouter, bool]] = [
     # ── 핵심 STT/처리 파이프라인 (API Key 필수) ──────────────────────────────────
     # 주의: batch는 transcription 보다 반드시 먼저 와야 함 (경로 충돌 방지)
@@ -91,6 +92,7 @@ ROUTER_REGISTRY: list[tuple[APIRouter, bool]] = [
     (transcription_module.router, True),
     (diarization.router, True),
     (minutes.router, True),
+    (external_import.router, True),  # SPEC-OWLL-IMPORT-001: external URL/text import
     (smart_summary_router, True),  # 다양한 모드로 스마트 요약 생성 (신규 기능)
     (summary.router, True),
     (study_pack.router, True),  # SPEC-STUDY-001: transcript-grounded study packs

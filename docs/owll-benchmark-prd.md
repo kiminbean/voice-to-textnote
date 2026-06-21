@@ -46,7 +46,7 @@ Voice to TextNote already covers many core Owll-equivalent capabilities:
 | Ask AI across notes/files/summaries | Per-meeting Q&A exists | Cross-meeting knowledge-base Q&A is missing | P1 |
 | Flashcards and AI quizzes | No flashcard/quiz model or UI found | Study pack generation from transcripts/summaries | P0 |
 | Lecture/study mode | Templates exist, but no dedicated study workflow | Dedicated lecture notes + review artifacts | P0 |
-| YouTube summary | No YouTube URL ingestion found | URL import and transcript/summarize pipeline | P1 |
+| YouTube summary | URL/transcript import API and Flutter API client implemented for user-provided external text | Direct platform transcript fetch/download and UI entry point remain | P1 |
 | OCR for PDFs/images | Export exists, OCR import not found | Document/image import into searchable notes | P2 |
 | 100+ language transcription/translation | Backend translation API, Flutter result-screen translation tab, search indexing, and Obsidian export inclusion implemented for persisted minutes/summaries; Korean default and i18n UI exist | Broader multilingual transcript workflow remains | P1 |
 | Online meeting capture for Zoom/Meet/Teams | Roadmap mentions Slack/Teams, no bot/import surface found | Meeting-platform import/integration | P2 |
@@ -208,9 +208,11 @@ Productize reusable summary modes such as executive brief, lecture notes, sales 
 
 **Implementation status (2026-06-21)**: Backend smart summary now exposes 11 selectable modes through `GET /api/v1/smart-summary/modes`, including executive, detailed, bullet, action-oriented, sentiment-focused, lecture notes, sales follow-up, sermon notes, research interview, decision log, and action-only. The Flutter result screen AI summary tab includes a purpose-specific mode selector and can generate mode-specific summaries from the persisted minutes task. Remaining work: tune prompts/output quality per domain and add persisted mode-summary history if users need to compare versions.
 
-### P2: YouTube and External Media Import
+### P1: YouTube and External Media Import
 
 Add URL import and transcript generation for user-provided external media. This requires careful legal, content-source, and rate-limit handling.
+
+**Implementation status (2026-06-21)**: First safe slice implemented. `POST /api/v1/imports/external-text` accepts a user-provided `source_url`, title, source type, language, and transcript/text content, then persists it as a completed minutes-compatible artifact with Redis status/result cache, DB `TaskResult`, FTS search indexing, source metadata, and a standard `/api/v1/minutes/{task_id}` result URL. YouTube URLs are categorized as `youtube` without downloading or scraping platform content. Flutter `MinutesApi.importExternalText()` can call the endpoint. Remaining work: add a product UI entry point, optional clipboard/share-sheet ingestion, and a compliant transcript-fetch strategy for sources that explicitly permit it.
 
 ### P2: OCR Import
 

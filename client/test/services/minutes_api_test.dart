@@ -74,7 +74,49 @@ void main() {
       );
 
       // Act & Assert
-      expect(() => minutesApi.getResult('min-001'), throwsA(isA<DioException>()));
+      expect(
+          () => minutesApi.getResult('min-001'), throwsA(isA<DioException>()));
+    });
+
+    test('importExternalText가 URL transcript를 import API로 전송해야 함', () async {
+      // Arrange
+      when(() => mockDio.post(any(), data: any(named: 'data'))).thenAnswer(
+        (_) async => Response(
+          data: {
+            'task_id': 'ext-001',
+            'status': 'completed',
+            'result_url': '/api/v1/minutes/ext-001',
+            'search_indexed': true,
+          },
+          statusCode: 200,
+          requestOptions: RequestOptions(path: ''),
+        ),
+      );
+
+      // Act
+      final result = await minutesApi.importExternalText(
+        sourceUrl: 'https://youtu.be/example123',
+        title: '영상 transcript',
+        content: '사용자가 보유한 영상 transcript 본문입니다.',
+        sourceType: 'youtube',
+        language: 'ko',
+      );
+
+      // Assert
+      expect(result['task_id'], 'ext-001');
+      expect(result['search_indexed'], true);
+      verify(
+        () => mockDio.post(
+          '/imports/external-text',
+          data: {
+            'source_url': 'https://youtu.be/example123',
+            'title': '영상 transcript',
+            'content': '사용자가 보유한 영상 transcript 본문입니다.',
+            'source_type': 'youtube',
+            'language': 'ko',
+          },
+        ),
+      ).called(1);
     });
   });
 }
