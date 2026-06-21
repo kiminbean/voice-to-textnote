@@ -188,6 +188,69 @@ val payload = "filePath"
     )
 
 
+def write_minimal_ios_project(root: Path, *, deployment_target: str = "15.0") -> None:
+    ios_root = root / "client/ios/Runner"
+    project_root = root / "client/ios/Runner.xcodeproj"
+    ios_root.mkdir(parents=True)
+    project_root.mkdir(parents=True)
+    with (ios_root / "Info.plist").open("wb") as plist:
+        plistlib.dump(
+            {
+                "UIBackgroundModes": ["audio", "remote-notification"],
+                "CFBundleURLTypes": [
+                    {"CFBundleURLSchemes": ["voicetextnote"]},
+                ],
+                "CFBundleDocumentTypes": [
+                    {
+                        "LSItemContentTypes": [
+                            "com.adobe.pdf",
+                            "org.openxmlformats.wordprocessingml.document",
+                            "public.image",
+                        ],
+                    },
+                ],
+            },
+            plist,
+        )
+    with (ios_root / "Runner.entitlements").open("wb") as plist:
+        plistlib.dump({"aps-environment": "production"}, plist)
+    (project_root / "project.pbxproj").write_text(
+        f"""
+PRODUCT_BUNDLE_IDENTIFIER = com.voicetextnote.app;
+DEVELOPMENT_TEAM = ABCDE12345;
+IPHONEOS_DEPLOYMENT_TARGET = {deployment_target};
+        """,
+        encoding="utf-8",
+    )
+    (ios_root / "AppDelegate.swift").write_text(
+        """
+FlutterMethodChannel(
+      name: channelName
+)
+private let channelName = "com.voicetextnote.app/recording"
+method == "startBackgroundTask"
+method == "stopBackgroundTask"
+method == "flushRecording"
+UIApplication.shared.beginBackgroundTask
+UIApplication.shared.endBackgroundTask
+AVAudioSession.interruptionNotification
+AVAudioSession.routeChangeNotification
+method: "onInterruptionBegin"
+method: "onInterruptionEnd"
+method: "onRouteChange"
+private let sharedImportChannelName = "com.voicetextnote.app/shared_import"
+consumeInitialSharedImport
+consumeLatestSharedImport
+override func application(
+sharedImportPayload(from: url)
+copySharedFile(_ url: URL)
+case "png":
+"filePath": target.path
+        """,
+        encoding="utf-8",
+    )
+
+
 def test_release_e2e_evidence_accepts_complete_manual_proof(tmp_path, monkeypatch):
     module = load_release_readiness_module()
     evidence_path = write_evidence(tmp_path, make_evidence(tmp_path, module))
@@ -1238,6 +1301,26 @@ def test_android_project_rejects_stale_play_target_sdk(tmp_path):
     module.check_android_project(tmp_path, reporter)
 
     assert any("targetSdkVersion must be at least 35" in error for error in reporter.errors)
+
+
+def test_ios_project_accepts_current_deployment_target():
+    module = load_release_readiness_module()
+    root = Path(__file__).resolve().parents[2]
+
+    reporter = module.Reporter()
+    module.check_ios_project(root, reporter)
+
+    assert reporter.errors == []
+
+
+def test_ios_project_rejects_stale_deployment_target(tmp_path):
+    module = load_release_readiness_module()
+    write_minimal_ios_project(tmp_path, deployment_target="13.0")
+
+    reporter = module.Reporter()
+    module.check_ios_project(tmp_path, reporter)
+
+    assert any("deployment target must be at least 15.0" in error for error in reporter.errors)
 
 
 def test_readme_release_status_accepts_release_candidate_language(tmp_path):

@@ -26,6 +26,7 @@ PROJECT_ID = "voice-to-textnote"
 ANDROID_PACKAGE = "com.voicetextnote.app"
 IOS_BUNDLE_ID = "com.voicetextnote.app"
 URL_SCHEME = "voicetextnote"
+MIN_IOS_DEPLOYMENT_TARGET = (15, 0)
 MIN_GOOGLE_PLAY_TARGET_SDK = 35
 REQUIRED_E2E_SCENARIOS = {
     "permission_microphone_initial": "Initial microphone permission prompt",
@@ -516,6 +517,23 @@ def check_ios_project(root: Path, reporter: Reporter) -> None:
         reporter.ok(f"iOS bundle id is {IOS_BUNDLE_ID}")
     else:
         reporter.fail(f"iOS bundle id {IOS_BUNDLE_ID} missing from project")
+    deployment_targets = re.findall(r"IPHONEOS_DEPLOYMENT_TARGET = ([0-9]+(?:\.[0-9]+)?);", project)
+    if not deployment_targets:
+        reporter.fail("iOS deployment target missing from Xcode project")
+    else:
+        stale_targets = []
+        for value in deployment_targets:
+            major, _, minor = value.partition(".")
+            parsed = (int(major), int(minor or "0"))
+            if parsed < MIN_IOS_DEPLOYMENT_TARGET:
+                stale_targets.append(value)
+        if stale_targets:
+            reporter.fail(
+                "iOS deployment target must be at least 15.0: "
+                + ", ".join(sorted(set(stale_targets)))
+            )
+        else:
+            reporter.ok("iOS deployment target satisfies release support policy")
     if re.search(r"DEVELOPMENT_TEAM = [A-Z0-9]{10};", project):
         reporter.ok("iOS development team is configured in Xcode project")
     else:
