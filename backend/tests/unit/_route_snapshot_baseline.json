@@ -553,6 +553,20 @@
     "api_key": true
   },
   {
+    "path": "/api/v1/minutes/{task_id}/study-pack",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/minutes/{task_id}/study-pack",
+    "methods": [
+      "POST"
+    ],
+    "api_key": true
+  },
+  {
     "path": "/api/v1/minutes/{task_id}/versions",
     "methods": [
       "GET"
