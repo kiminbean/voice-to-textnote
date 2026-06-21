@@ -24,6 +24,8 @@ class Meeting {
   final String? summaryTaskId;
   // STT 정확도 향상용 사용자 사전 ID (Phase 2)
   final String? vocabularyId;
+  // 팀 공유 대상. 비어 있으면 private-by-default.
+  final List<String> sharedTeamIds;
 
   const Meeting({
     required this.id,
@@ -38,6 +40,7 @@ class Meeting {
     this.minutesTaskId,
     this.summaryTaskId,
     this.vocabularyId,
+    this.sharedTeamIds = const [],
   });
 
   // 특정 필드만 변경한 복사본 반환
@@ -54,6 +57,7 @@ class Meeting {
     String? minutesTaskId,
     String? summaryTaskId,
     String? vocabularyId,
+    List<String>? sharedTeamIds,
   }) {
     return Meeting(
       id: id ?? this.id,
@@ -68,6 +72,7 @@ class Meeting {
       minutesTaskId: minutesTaskId ?? this.minutesTaskId,
       summaryTaskId: summaryTaskId ?? this.summaryTaskId,
       vocabularyId: vocabularyId ?? this.vocabularyId,
+      sharedTeamIds: sharedTeamIds ?? this.sharedTeamIds,
     );
   }
 
@@ -88,6 +93,10 @@ class Meeting {
       minutesTaskId: json['minutesTaskId'] as String?,
       summaryTaskId: json['summaryTaskId'] as String?,
       vocabularyId: json['vocabularyId'] as String?,
+      sharedTeamIds: (json['sharedTeamIds'] as List<dynamic>?)
+              ?.map((item) => item as String)
+              .toList(growable: false) ??
+          const [],
     );
   }
 
@@ -106,6 +115,7 @@ class Meeting {
       'minutesTaskId': minutesTaskId,
       'summaryTaskId': summaryTaskId,
       'vocabularyId': vocabularyId,
+      'sharedTeamIds': sharedTeamIds,
     };
   }
 

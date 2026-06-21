@@ -96,6 +96,8 @@ class MeetingCard extends StatelessWidget {
                           ],
                         ),
                       ],
+                      const SizedBox(height: 8),
+                      _PrivacyBadge(isShared: meeting.sharedTeamIds.isNotEmpty),
                     ],
                   ),
                 ),
@@ -139,5 +141,46 @@ class MeetingCard extends StatelessWidget {
     final minutes = duration.inMinutes;
     final seconds = duration.inSeconds % 60;
     return '$minutes:${seconds.toString().padLeft(2, '0')}';
+  }
+}
+
+class _PrivacyBadge extends StatelessWidget {
+  final bool isShared;
+
+  const _PrivacyBadge({required this.isShared});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = AppColors.of(context);
+    final color = isShared ? scheme.primary : scheme.textTertiary;
+    return Semantics(
+      label: isShared ? '팀에 공유된 노트' : '비공개 노트',
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: color.withAlpha(22),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: color.withAlpha(70)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isShared ? Icons.groups_2_outlined : Icons.lock_outline_rounded,
+              size: 13,
+              color: color,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              isShared ? '팀 공유' : '비공개',
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: color,
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

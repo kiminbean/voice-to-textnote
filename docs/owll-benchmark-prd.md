@@ -52,7 +52,7 @@ Voice to TextNote already covers many core Owll-equivalent capabilities:
 | Online meeting capture for Zoom/Meet/Teams | Roadmap mentions Slack/Teams, no bot/import surface found | Meeting-platform import/integration | P2 |
 | Contact manager for sales notes | Team/auth exist, no CRM/contact model found | Sales follow-up/contact workflows | P3 |
 | SOAP/healthcare note mode | Generic templates exist | Domain-specific summary template | P3 |
-| Private cloud per team member | Team sharing exists | Explicit private-by-default note ownership and sharing policy UX | P1 |
+| Private cloud per team member | Team sharing exists; meeting cards now show private-by-default or team-shared state | Server-backed shared-team sync and policy settings remain | P1 |
 | Summary modes 10+ | Backend smart-summary modes and Flutter result-screen mode generation implemented | Mode tuning and persisted history UX can be improved | P1 |
 
 ## 4. Product Direction
@@ -223,6 +223,12 @@ Import PDFs/images into searchable note context. This is useful for slides, hand
 ### P2: Apple Watch Quick Capture
 
 Create a minimal Apple Watch companion for one-tap recording or recording trigger. This is a native-platform project and should wait until core mobile release evidence is complete.
+
+### P1: Private-by-Default Ownership UX
+
+Make note ownership and sharing state visible everywhere users make sharing decisions. This supports Owll-style private/team cloud expectations while preserving this project's privacy-first posture.
+
+**Implementation status (2026-06-21)**: First Flutter slice implemented. `Meeting` now persists `sharedTeamIds` with backward-compatible empty-list defaults, and `MeetingCard` displays a `비공개` lock badge by default or `팀 공유` when one or more team IDs are present. Remaining work: sync shared team IDs from server history/team APIs, show exact team names on result/detail screens, and add organization policy settings for default sharing behavior.
 
 ### P3: Domain Packs
 

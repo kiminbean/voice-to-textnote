@@ -23,6 +23,7 @@ void main() {
       expect(meeting.diarizationTaskId, isNull);
       expect(meeting.minutesTaskId, isNull);
       expect(meeting.summaryTaskId, isNull);
+      expect(meeting.sharedTeamIds, isEmpty);
     });
 
     // 선택적 필드 포함 생성 테스트
@@ -39,6 +40,7 @@ void main() {
         minutesTaskId: 'min-task-001',
         summaryTaskId: 'sum-task-001',
         vocabularyId: 'vocab-001',
+        sharedTeamIds: const ['team-001'],
       );
 
       expect(meeting.duration, const Duration(minutes: 30));
@@ -48,6 +50,7 @@ void main() {
       expect(meeting.minutesTaskId, 'min-task-001');
       expect(meeting.summaryTaskId, 'sum-task-001');
       expect(meeting.vocabularyId, 'vocab-001');
+      expect(meeting.sharedTeamIds, ['team-001']);
     });
 
     // copyWith 테스트
@@ -63,6 +66,7 @@ void main() {
         status: MeetingStatus.completed,
         sourceUrl: 'https://teams.microsoft.com/l/meetup-join/example',
         transcriptionTaskId: 'stt-task-002',
+        sharedTeamIds: const ['team-002'],
       );
 
       // 변경된 필드 확인
@@ -70,6 +74,7 @@ void main() {
       expect(updated.sourceUrl,
           'https://teams.microsoft.com/l/meetup-join/example');
       expect(updated.transcriptionTaskId, 'stt-task-002');
+      expect(updated.sharedTeamIds, ['team-002']);
 
       // 변경되지 않은 필드 확인
       expect(updated.id, original.id);
@@ -91,6 +96,7 @@ void main() {
         'minutesTaskId': null,
         'summaryTaskId': null,
         'vocabularyId': 'vocab-002',
+        'sharedTeamIds': ['team-003', 'team-004'],
       };
 
       final meeting = Meeting.fromJson(json);
@@ -102,6 +108,18 @@ void main() {
       expect(meeting.sourceUrl, 'https://meet.google.com/abc-defg-hij');
       expect(meeting.transcriptionTaskId, 'stt-001');
       expect(meeting.vocabularyId, 'vocab-002');
+      expect(meeting.sharedTeamIds, ['team-003', 'team-004']);
+    });
+
+    test('fromJson은 sharedTeamIds가 없으면 비공개 기본값을 사용해야 함', () {
+      final meeting = Meeting.fromJson({
+        'id': 'private-001',
+        'title': '비공개 미팅',
+        'createdAt': '2024-01-15T10:00:00.000Z',
+        'status': 'completed',
+      });
+
+      expect(meeting.sharedTeamIds, isEmpty);
     });
 
     // JSON 역직렬화 테스트
@@ -115,6 +133,7 @@ void main() {
         duration: const Duration(minutes: 45),
         sourceUrl: 'https://zoom.us/j/123456789',
         vocabularyId: 'vocab-003',
+        sharedTeamIds: const ['team-005'],
       );
 
       final json = meeting.toJson();
@@ -125,6 +144,7 @@ void main() {
       expect(json['duration'], 2700000); // 45분 (밀리초)
       expect(json['sourceUrl'], 'https://zoom.us/j/123456789');
       expect(json['vocabularyId'], 'vocab-003');
+      expect(json['sharedTeamIds'], ['team-005']);
     });
 
     // MeetingStatus 열거형 테스트
