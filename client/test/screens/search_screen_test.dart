@@ -7,10 +7,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:voice_to_textnote/models/search_result.dart';
 import 'package:voice_to_textnote/providers/connectivity_provider.dart';
+import 'package:voice_to_textnote/providers/qa_provider.dart';
 import 'package:voice_to_textnote/providers/search_provider.dart';
 import 'package:voice_to_textnote/screens/home_screen.dart';
 import 'package:voice_to_textnote/screens/search_screen.dart';
 import 'package:voice_to_textnote/services/connectivity_service.dart';
+import 'package:voice_to_textnote/services/qa_api.dart';
 
 class MockConnectivityService extends Mock implements ConnectivityService {}
 
@@ -100,8 +102,7 @@ void main() {
     });
 
     // 검색어 없을 때 최근 검색어 위젯 표시 (SPEC-SEARCH-002 Phase 5)
-    testWidgets('검색어가 없을 때 최근 검색어 영역이 표시되어야 함',
-        (WidgetTester tester) async {
+    testWidgets('검색어가 없을 때 최근 검색어 영역이 표시되어야 함', (WidgetTester tester) async {
       await tester.pumpWidget(
         const ProviderScope(
           child: MaterialApp(
@@ -153,6 +154,61 @@ void main() {
       // "검색 결과가 없습니다" 텍스트가 화면에 표시되어야 함
       expect(find.text('검색 결과가 없습니다'), findsOneWidget);
     });
+
+    testWidgets('검색어와 관련된 cross-meeting Q&A 근거 패널이 표시되어야 함',
+        (WidgetTester tester) async {
+      const query = 'API 결정';
+      const request = SearchRequest(query: query, sort: 'relevance');
+      final response = SearchResponse(
+        items: [
+          SearchResultItem(
+            taskId: 'sum-search-001',
+            taskType: 'summary',
+            snippet: '회의 결과 <b>FastAPI</b> 사용을 결정했습니다.',
+            createdAt: DateTime(2024, 1, 3, 9),
+          ),
+        ],
+        total: 1,
+        page: 1,
+        pageSize: 20,
+        query: query,
+      );
+      const crossMeetingResponse = CrossMeetingAskResponse(
+        answer: '질문과 관련된 회의 근거 1건을 찾았습니다.',
+        sources: [
+          CrossMeetingSource(
+            taskId: 'sum-search-001',
+            taskType: 'summary',
+            snippet: '회의 결과 <b>FastAPI</b> 사용을 결정했습니다.',
+            createdAt: '2024-01-03T09:00:00',
+          ),
+        ],
+        query: query,
+        total: 1,
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            searchResultProvider(request).overrideWith((_) => response),
+            crossMeetingAskProvider(query)
+                .overrideWith((_) => crossMeetingResponse),
+          ],
+          child: const MaterialApp(
+            home: SearchScreen(),
+          ),
+        ),
+      );
+
+      await tester.enterText(find.byType(TextField), query);
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pumpAndSettle();
+
+      expect(find.text('AI 근거 검색'), findsOneWidget);
+      expect(find.text('1개 근거'), findsOneWidget);
+      expect(find.textContaining('질문과 관련된 회의 근거'), findsOneWidget);
+      expect(find.text('요약 1'), findsOneWidget);
+    });
   });
 
   group('parseSnippet 유틸리티', () {
@@ -164,8 +220,7 @@ void main() {
     });
 
     // <b>태그가 포함된 텍스트 검증 (위젯으로 렌더링)
-    testWidgets('<b>태그가 볼드 TextSpan으로 변환되어야 함',
-        (WidgetTester tester) async {
+    testWidgets('<b>태그가 볼드 TextSpan으로 변환되어야 함', (WidgetTester tester) async {
       final item = SearchResultItem(
         taskId: 'test-id',
         taskType: 'minutes',

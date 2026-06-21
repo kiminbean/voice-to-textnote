@@ -27,11 +27,72 @@ class QAApi {
     return QAResponse.fromJson(res.data as Map<String, dynamic>);
   }
 
+  /// 여러 회의/요약에서 질문과 관련된 근거 검색
+  Future<CrossMeetingAskResponse> askAcross({
+    required String question,
+    int limit = 5,
+  }) async {
+    final res = await _dio.post('/qa/ask-across', data: {
+      'question': question,
+      'limit': limit,
+    });
+    return CrossMeetingAskResponse.fromJson(res.data as Map<String, dynamic>);
+  }
+
   /// Q&A 이력 조회
   Future<QAHistoryResponse> getHistory(String taskId) async {
     final res = await _dio.get('/qa/$taskId/history');
     return QAHistoryResponse.fromJson(res.data as Map<String, dynamic>);
   }
+}
+
+class CrossMeetingSource {
+  final String taskId;
+  final String taskType;
+  final String snippet;
+  final String createdAt;
+  final String? completedAt;
+
+  const CrossMeetingSource({
+    required this.taskId,
+    required this.taskType,
+    required this.snippet,
+    required this.createdAt,
+    this.completedAt,
+  });
+
+  factory CrossMeetingSource.fromJson(Map<String, dynamic> json) =>
+      CrossMeetingSource(
+        taskId: json['task_id'] as String,
+        taskType: json['task_type'] as String,
+        snippet: json['snippet'] as String? ?? '',
+        createdAt: json['created_at'] as String,
+        completedAt: json['completed_at'] as String?,
+      );
+}
+
+class CrossMeetingAskResponse {
+  final String answer;
+  final List<CrossMeetingSource> sources;
+  final String query;
+  final int total;
+
+  const CrossMeetingAskResponse({
+    required this.answer,
+    required this.sources,
+    required this.query,
+    required this.total,
+  });
+
+  factory CrossMeetingAskResponse.fromJson(Map<String, dynamic> json) =>
+      CrossMeetingAskResponse(
+        answer: json['answer'] as String? ?? '',
+        sources: (json['sources'] as List<dynamic>? ?? [])
+            .map((e) => CrossMeetingSource.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        query: json['query'] as String? ?? '',
+        total: json['total'] as int? ?? 0,
+      );
 }
 
 class QASource {

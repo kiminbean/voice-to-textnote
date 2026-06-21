@@ -1,6 +1,6 @@
 # Owll Benchmark PRD
 
-**Status**: Study Pack core implemented; Cross-Meeting Q&A evidence search started; follow-up competitive gaps remain  
+**Status**: Study Pack core implemented; Cross-Meeting Q&A evidence search exposed in search; follow-up competitive gaps remain  
 **Created**: 2026-06-21  
 **Owner**: Voice to TextNote  
 **Scope**: Benchmark Owll AI Note Taker & Assistant and define feature upgrades that fit this project.
@@ -166,7 +166,7 @@ Users can currently transcribe, summarize, search, and export meetings, but lear
 
 Extend current per-meeting Q&A into cross-meeting search + answer synthesis. Use existing search index and permissions. This competes with Owll's “Ask AI across your notes” while preserving private/team boundaries.
 
-**Implementation status (2026-06-21)**: First backend slice implemented as `POST /api/v1/qa/ask-across`. It normalizes the user's natural-language question into FTS keywords, searches existing minutes/summary/study-pack search index rows across meetings, and returns a grounded answer shell with source task IDs, snippets, task types, and timestamps. It intentionally does not synthesize unsupported facts beyond retrieved snippets yet.
+**Implementation status (2026-06-21)**: First backend and Flutter slice implemented. `POST /api/v1/qa/ask-across` normalizes the user's natural-language question into FTS keywords, searches existing minutes/summary/study-pack search index rows across meetings, and returns a grounded answer shell with source task IDs, snippets, task types, and timestamps. The Flutter search screen now shows those sources in an "AI 근거 검색" panel above regular search results. It intentionally does not synthesize unsupported facts beyond retrieved snippets yet.
 
 #### Problem
 
@@ -194,6 +194,7 @@ Per-meeting Q&A only works after the user already knows which recording contains
 - Given a question with no searchable terms, the service rejects it with a deterministic validation error.
 - Given no matching source rows, the API returns 404 without fabricating an answer.
 - Route registry invariance is updated so the new endpoint remains covered by API surface tests.
+- Given a search query in Flutter, the search screen displays available cross-meeting sources above regular results.
 
 ### P1: Multilingual Transcript Translation
 

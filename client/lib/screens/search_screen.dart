@@ -6,7 +6,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:voice_to_textnote/models/search_result.dart';
+import 'package:voice_to_textnote/providers/qa_provider.dart';
 import 'package:voice_to_textnote/providers/search_provider.dart';
+import 'package:voice_to_textnote/services/qa_api.dart';
 import 'package:voice_to_textnote/widgets/empty_state_widget.dart';
 import 'package:voice_to_textnote/widgets/recent_searches_widget.dart';
 import 'package:voice_to_textnote/widgets/search_filter_bottom_sheet.dart';
@@ -136,6 +138,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 
     // 검색 결과 구독
     final searchResult = ref.watch(searchResultProvider(searchRequest));
+    final crossMeetingResult = _activeQuery.length >= 2
+        ? ref.watch(crossMeetingAskProvider(_activeQuery))
+        : null;
 
     return Scaffold(
       appBar: AppBar(
@@ -214,7 +219,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             ),
         ],
       ),
-      body: _buildBody(searchResult, filterState),
+      body: _buildBody(searchResult, filterState, crossMeetingResult),
     );
   }
 
@@ -234,6 +239,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   Widget _buildBody(
     AsyncValue<SearchResponse> result,
     SearchFilterState filterState,
+    AsyncValue<CrossMeetingAskResponse>? crossMeetingResult,
   ) {
     // 검색어 없음: 최근 검색어 표시 (Phase 5)
     if (_activeQuery.isEmpty) {
@@ -273,17 +279,32 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     }
 
     final response = result.value!;
+    final crossMeetingPanel = crossMeetingResult == null
+        ? const SizedBox.shrink()
+        : _CrossMeetingAnswerPanel(
+            result: crossMeetingResult,
+            onTapSource: (taskId) => context.push('/result/$taskId'),
+          );
 
     // 검색 결과 없음
     if (response.items.isEmpty) {
-      return EmptyStateWidget(
-        icon: Icons.search_off_rounded,
-        title: '검색 결과가 없습니다',
-        subtitle: filterState.hasFilters ? '필터를 조정해보세요' : '다른 검색어로 시도해보세요',
-        actionLabel: filterState.hasFilters ? '필터 초기화' : null,
-        onAction: filterState.hasFilters
-            ? () => ref.read(searchFilterProvider.notifier).state = filterState.clear()
-            : null,
+      return Column(
+        children: [
+          crossMeetingPanel,
+          Expanded(
+            child: EmptyStateWidget(
+              icon: Icons.search_off_rounded,
+              title: '검색 결과가 없습니다',
+              subtitle:
+                  filterState.hasFilters ? '필터를 조정해보세요' : '다른 검색어로 시도해보세요',
+              actionLabel: filterState.hasFilters ? '필터 초기화' : null,
+              onAction: filterState.hasFilters
+                  ? () => ref.read(searchFilterProvider.notifier).state =
+                      filterState.clear()
+                  : null,
+            ),
+          ),
+        ],
       );
     }
 
@@ -302,6 +323,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               children: activeFilters,
             ),
           ),
+        crossMeetingPanel,
         // 검색 결과 목록
         Expanded(
           child: ListView.builder(
@@ -382,6 +404,91 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     }
 
     return chips;
+  }
+}
+
+class _CrossMeetingAnswerPanel extends StatelessWidget {
+  final AsyncValue<CrossMeetingAskResponse> result;
+  final ValueChanged<String> onTapSource;
+
+  const _CrossMeetingAnswerPanel({
+    required this.result,
+    required this.onTapSource,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return result.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (response) {
+        if (response.sources.isEmpty) return const SizedBox.shrink();
+
+        final colors = Theme.of(context).colorScheme;
+        final textTheme = Theme.of(context).textTheme;
+
+        return Material(
+          color: colors.surfaceContainerHighest.withValues(alpha: 0.45),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.auto_awesome, size: 18, color: colors.primary),
+                    const SizedBox(width: 8),
+                    Text(
+                      'AI 근거 검색',
+                      style: textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      '${response.total}개 근거',
+                      style: textTheme.labelSmall?.copyWith(
+                        color: colors.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  response.answer,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: textTheme.bodySmall,
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: 36,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: response.sources.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 8),
+                    itemBuilder: (context, index) {
+                      final source = response.sources[index];
+                      final label = source.taskType == 'summary' ? '요약' : '회의록';
+                      return ActionChip(
+                        avatar: Icon(
+                          source.taskType == 'summary'
+                              ? Icons.summarize
+                              : Icons.description,
+                          size: 16,
+                        ),
+                        label: Text('$label ${index + 1}'),
+                        onPressed: () => onTapSource(source.taskId),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 }
 

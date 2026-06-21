@@ -93,3 +93,21 @@ final qaProvider =
   final api = ref.watch(qaApiProvider);
   return QANotifier(api, taskId);
 });
+
+/// 여러 회의에 걸친 Q&A 근거 검색
+final crossMeetingAskProvider =
+    FutureProvider.family<CrossMeetingAskResponse, String>(
+        (ref, question) async {
+  final trimmed = question.trim();
+  if (trimmed.length < 2) {
+    return const CrossMeetingAskResponse(
+      answer: '',
+      sources: [],
+      query: '',
+      total: 0,
+    );
+  }
+
+  final api = ref.watch(qaApiProvider);
+  return api.askAcross(question: trimmed);
+});
