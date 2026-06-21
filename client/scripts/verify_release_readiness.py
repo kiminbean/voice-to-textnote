@@ -55,6 +55,27 @@ UNRESOLVED_EVIDENCE_PATTERNS = (
 )
 MIN_RELEASE_E2E_EVIDENCE_CHARS = 24
 MAX_RELEASE_E2E_EVIDENCE_AGE = timedelta(days=14)
+SECRET_SCAN_PATHS = (
+    ".github/workflows",
+    "README.md",
+    "backend",
+    "client",
+    "docs",
+    "pyproject.toml",
+)
+SECRET_SCAN_EXCLUDED_PATHS = {
+    "docs/release-e2e-evidence.json",
+    "docs/release-e2e-evidence.example.json",
+}
+SECRET_SCAN_EXCLUDED_PREFIXES = (
+    "backend/tests/",
+    "client/test/",
+)
+TRACKED_SECRET_PATTERNS = (
+    ("OpenAI API key", re.compile(r"\bsk-(?:proj-)?[A-Za-z0-9_-]{32,}\b")),
+    ("Anthropic API key", re.compile(r"\bsk-ant-[A-Za-z0-9_-]{32,}\b")),
+    ("obsolete API_KEY_SECRET placeholder", re.compile(r"API_KEY_SECRET\s*=\s*your-secret-key")),
+)
 
 
 class Reporter:
@@ -76,6 +97,47 @@ class Reporter:
 
 def read_text(path: Path) -> str:
     return path.read_text(encoding="utf-8")
+
+
+def tracked_product_files(root: Path) -> list[Path]:
+    try:
+        output = subprocess.check_output(
+            ["git", "-C", str(root), "ls-files", *SECRET_SCAN_PATHS],
+            text=True,
+            stderr=subprocess.DEVNULL,
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return []
+
+    paths: list[Path] = []
+    for relative in output.splitlines():
+        if not relative or relative in SECRET_SCAN_EXCLUDED_PATHS:
+            continue
+        if any(relative.startswith(prefix) for prefix in SECRET_SCAN_EXCLUDED_PREFIXES):
+            continue
+        path = root / relative
+        if path.is_file():
+            paths.append(path)
+    return paths
+
+
+def check_tracked_secret_leaks(root: Path, reporter: Reporter) -> None:
+    leaks: list[str] = []
+    for path in tracked_product_files(root):
+        try:
+            content = read_text(path)
+        except UnicodeDecodeError:
+            continue
+        relative = path.relative_to(root)
+        for label, pattern in TRACKED_SECRET_PATTERNS:
+            if pattern.search(content):
+                leaks.append(f"{relative}: {label}")
+
+    if leaks:
+        for leak in leaks:
+            reporter.fail(f"Tracked secret placeholder or credential detected: {leak}")
+    else:
+        reporter.ok("Tracked product files contain no release-blocking secret placeholders")
 
 
 def require_file(reporter: Reporter, path: Path, label: str) -> bool:
@@ -625,15 +687,15 @@ def check_readme_release_status(root: Path, reporter: Reporter) -> None:
     else:
         reporter.ok("README does not overclaim Production Ready before strict evidence")
     if (
-        "3901 백엔드 테스트" in readme
-        and "3901개" in readme
+        "3904 백엔드 테스트" in readme
+        and "3904개" in readme
         and ("Flutter 415" in readme or "415개" in readme)
-        and "4316개" in readme
+        and "4319개" in readme
     ):
         reporter.ok("README test counts match current release validation evidence")
     else:
         reporter.fail(
-            "README test counts must match current 3901 backend / 415 Flutter / 4316 total evidence"
+            "README test counts must match current 3904 backend / 415 Flutter / 4319 total evidence"
         )
     if f"{completed_spec_count}개 SPEC" in readme:
         reporter.fail("README should avoid hard-coded completed SPEC counts outside the SPEC list")
@@ -712,11 +774,11 @@ def check_docs(root: Path, reporter: Reporter) -> None:
             "Release procedure SPEC count must match README completed SPEC list "
             f"({completed_spec_count})"
         )
-    if "3901 passed" in procedure_doc and "Flutter: 415 passed" in procedure_doc:
+    if "3904 passed" in procedure_doc and "Flutter: 415 passed" in procedure_doc:
         reporter.ok("Release procedure backend test count matches latest full pytest evidence")
     else:
         reporter.fail(
-            "Release procedure test counts must match latest 3901 backend / 415 Flutter evidence"
+            "Release procedure test counts must match latest 3904 backend / 415 Flutter evidence"
         )
     if current_version and all(
         snippet in procedure_doc
@@ -1412,6 +1474,7 @@ def main() -> int:
     check_android_project(root, reporter)
     check_backend_push(root, reporter)
     check_tone_release_policy(root, reporter)
+    check_tracked_secret_leaks(root, reporter)
     check_readme_release_status(root, reporter)
     check_docs(root, reporter)
     check_owll_benchmark_doc(root, reporter)

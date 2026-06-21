@@ -110,10 +110,10 @@ def write_tone_policy_files(root: Path, *, tone_model_line: str = 'tone_model: s
 def write_readme_status(root: Path, content: str) -> None:
     (root / "README.md").write_text(
         (
-            "3901 백엔드 테스트\n"
-            "| 백엔드 단위/통합/E2E | 3901개 | 100.00% |\n"
+            "3904 백엔드 테스트\n"
+            "| 백엔드 단위/통합/E2E | 3904개 | 100.00% |\n"
             "| Flutter 테스트 | 415개 | - |\n"
-            "| 총합 | 4316개 | - |\n"
+            "| 총합 | 4319개 | - |\n"
             f"{content}"
         ),
         encoding="utf-8",
@@ -865,6 +865,44 @@ def test_tone_release_policy_rejects_missing_agpl_readme_warning(tmp_path):
     assert any("README documents opensmile AGPL" in error for error in reporter.errors)
 
 
+def test_tracked_secret_leak_check_accepts_current_product_files():
+    module = load_release_readiness_module()
+    root = Path(__file__).resolve().parents[2]
+
+    reporter = module.Reporter()
+    module.check_tracked_secret_leaks(root, reporter)
+
+    assert reporter.errors == []
+
+
+def test_tracked_secret_leak_check_rejects_real_api_key(tmp_path, monkeypatch):
+    module = load_release_readiness_module()
+    (tmp_path / "README.md").write_text(
+        "OPENAI_API_KEY=sk-proj-" + ("A" * 40),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(module, "tracked_product_files", lambda root: [root / "README.md"])
+
+    reporter = module.Reporter()
+    module.check_tracked_secret_leaks(tmp_path, reporter)
+
+    assert any("OpenAI API key" in error for error in reporter.errors)
+
+
+def test_tracked_secret_leak_check_rejects_obsolete_api_key_secret(tmp_path, monkeypatch):
+    module = load_release_readiness_module()
+    (tmp_path / "README.md").write_text(
+        "API_KEY_SECRET=your-secret-key",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(module, "tracked_product_files", lambda root: [root / "README.md"])
+
+    reporter = module.Reporter()
+    module.check_tracked_secret_leaks(tmp_path, reporter)
+
+    assert any("obsolete API_KEY_SECRET placeholder" in error for error in reporter.errors)
+
+
 def test_readme_release_status_accepts_release_candidate_language(tmp_path):
     module = load_release_readiness_module()
     write_readme_status(
@@ -957,7 +995,7 @@ def test_release_procedure_rejects_version_drift(tmp_path):
             "python3 client/scripts/verify_release_readiness.py --strict\n"
             "2개 SPEC 전부 완료\n"
             "2 SPECs completed\n"
-            "3901 passed\n"
+            "3904 passed\n"
             "Flutter: 415 passed\n"
             "Production Ready v1.6.0\n"
             "git tag v1.6.0\n"
