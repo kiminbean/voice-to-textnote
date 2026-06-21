@@ -102,6 +102,10 @@ IOS_DEVICE_UDID=$IOS_DEVICE_UDID \
 python3 client/scripts/create_release_e2e_evidence.py --output docs/release-e2e-evidence.json
 
 # 17개 required scenario 수동 실행 후 JSON 채우기:
+# - 각 scenario는 `platforms` 배열을 유지해야 함:
+#   - Android+iOS 공통 플로우: `["android", "ios"]`
+#   - Android 전용 플로우: `["android"]`
+#   - iOS 전용 플로우: `["ios"]`
 # - 마이크 권한 최초 요청/거부 복구
 # - iOS 백그라운드 녹음/인터럽트 재개/Bluetooth route change
 # - 미완료 녹음 복구
@@ -208,6 +212,6 @@ gh release create v1.7.0 \
 | 1.2 APNs | `APNS_AUTH_KEY_PATH`, `APNS_KEY_ID`, `APNS_TEAM_ID` | `--strict` APNs 3개 PASS |
 | 1.3 App Store | `APP_STORE_CONNECT_API_KEY_PATH`, `KEY_ID`, `ISSUER_ID` | `--strict` App Store 3개 PASS |
 | 2.1 기기 | `ANDROID_DEVICE_SERIAL`, `IOS_DEVICE_UDID` | `verify_mobile_release_runner.py` PASS |
-| 2.3 E2E | `FIREBASE_TEST_DEVICE_TOKEN`, `RELEASE_E2E_EVIDENCE_PATH` | evidence JSON 17개 required scenario pass:true |
+| 2.3 E2E | `FIREBASE_TEST_DEVICE_TOKEN`, `RELEASE_E2E_EVIDENCE_PATH` | evidence JSON 17개 required scenario `pass:true` + `platforms` 계약 일치 |
 | 3.1 Runner | (GitHub Actions) | `verify_github_mobile_release_env.py` PASS |
 | 4.1 Release | (README + tag) | `git tag` + GitHub Release 확인 |

@@ -797,6 +797,10 @@ def check_docs(root: Path, reporter: Reporter) -> None:
             "python3 client/scripts/verify_mobile_release_runner.py",
             "python3 client/scripts/verify_github_mobile_release_env.py",
             "python3 client/scripts/verify_release_readiness.py --strict",
+            "`platforms`",
+            '["android", "ios"]',
+            '["android"]',
+            '["ios"]',
         ],
         "Release procedure matches current strict E2E evidence workflow",
     )
