@@ -1116,6 +1116,41 @@ def test_tracked_secret_leak_check_rejects_obsolete_api_key_secret(tmp_path, mon
     assert any("obsolete API_KEY_SECRET placeholder" in error for error in reporter.errors)
 
 
+def test_production_compose_check_accepts_current_repo_policy():
+    module = load_release_readiness_module()
+    root = Path(__file__).resolve().parents[2]
+
+    reporter = module.Reporter()
+    module.check_production_compose(root, reporter)
+
+    assert reporter.errors == []
+
+
+def test_production_compose_check_rejects_external_database_override(tmp_path):
+    module = load_release_readiness_module()
+    (tmp_path / "docker-compose.prod.yml").write_text(
+        """
+services:
+  api:
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - API_KEYS=${API_KEYS}
+  worker:
+    environment:
+      - ENVIRONMENT=development
+        """,
+        encoding="utf-8",
+    )
+
+    reporter = module.Reporter()
+    module.check_production_compose(tmp_path, reporter)
+
+    assert any("required secrets are missing" in error for error in reporter.errors)
+    assert any("ENVIRONMENT=production" in error for error in reporter.errors)
+    assert any("internal async Postgres" in error for error in reporter.errors)
+    assert any("external DATABASE_URL override" in error for error in reporter.errors)
+
+
 def test_readme_release_status_accepts_release_candidate_language(tmp_path):
     module = load_release_readiness_module()
     write_readme_status(

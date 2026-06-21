@@ -181,6 +181,45 @@ def check_tracked_secret_leaks(root: Path, reporter: Reporter) -> None:
         reporter.ok("Tracked product files contain no release-blocking secret placeholders")
 
 
+def check_production_compose(root: Path, reporter: Reporter) -> None:
+    path = root / "docker-compose.prod.yml"
+    if not require_file(reporter, path, "Production Docker Compose"):
+        return
+    content = read_text(path)
+    required_snippets = [
+        "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}",
+        "${REDIS_PASSWORD:?REDIS_PASSWORD is required}",
+        "${API_KEYS:?API_KEYS is required}",
+        "${OPENAI_API_KEY:?OPENAI_API_KEY is required}",
+    ]
+    require_snippets(
+        reporter,
+        content,
+        required_snippets,
+        "Production compose fails fast when required secrets are missing",
+    )
+
+    if content.count("ENVIRONMENT=production") >= 2:
+        reporter.ok("Production compose forces backend services into production environment")
+    else:
+        reporter.fail("Production compose must force api and worker ENVIRONMENT=production")
+
+    internal_database_url = (
+        "postgresql+asyncpg://${POSTGRES_USER:-voicenote}:"
+        "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/"
+        "${POSTGRES_DB:-voicenote}"
+    )
+    if content.count(internal_database_url) >= 2:
+        reporter.ok("Production compose forces api and worker to internal async Postgres")
+    else:
+        reporter.fail("Production compose must force api and worker to internal async Postgres")
+
+    if "DATABASE_URL=${DATABASE_URL}" in content:
+        reporter.fail("Production compose must not accept external DATABASE_URL override")
+    else:
+        reporter.ok("Production compose does not accept external DATABASE_URL override")
+
+
 def require_file(reporter: Reporter, path: Path, label: str) -> bool:
     if path.is_file():
         reporter.ok(f"{label}: {path}")
@@ -1631,6 +1670,7 @@ def main() -> int:
     check_tone_release_policy(root, reporter)
     check_local_env_git_policy(root, reporter)
     check_tracked_secret_leaks(root, reporter)
+    check_production_compose(root, reporter)
     check_readme_release_status(root, reporter)
     check_docs(root, reporter)
     check_owll_benchmark_doc(root, reporter)
