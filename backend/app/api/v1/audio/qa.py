@@ -8,11 +8,18 @@ SPEC-QA-001: 회의 Q&A API 엔드포인트
 
 import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.dependencies import get_redis_client
+from backend.app.dependencies import get_db_session, get_redis_client
 from backend.app.errors import internal_error, not_found
 from backend.app.exceptions import VoiceNoteError
-from backend.schemas.qa import MeetingAskRequest, MeetingAskResponse, QAHistoryResponse
+from backend.schemas.qa import (
+    CrossMeetingAskRequest,
+    CrossMeetingAskResponse,
+    MeetingAskRequest,
+    MeetingAskResponse,
+    QAHistoryResponse,
+)
 from backend.services.qa_service import QAService
 
 router = APIRouter(prefix="/qa", tags=["qa"])
@@ -47,6 +54,31 @@ async def ask_question(
         raise
     except Exception as e:
         internal_error(f"Q&A 처리 중 오류가 발생했습니다: {e}")
+
+
+@router.post(
+    "/ask-across",
+    response_model=CrossMeetingAskResponse,
+    responses={404: {"description": "관련 회의 근거 없음"}},
+)
+async def ask_across_meetings(
+    payload: CrossMeetingAskRequest,
+    db: AsyncSession = Depends(get_db_session),
+    svc: QAService = Depends(get_qa_service),
+) -> CrossMeetingAskResponse:
+    """여러 회의/요약에서 질문과 관련된 근거를 검색합니다."""
+    try:
+        return await svc.ask_across_meetings(
+            session=db,
+            question=payload.question,
+            limit=payload.limit,
+        )
+    except ValueError as e:
+        not_found(str(e))
+    except VoiceNoteError:
+        raise
+    except Exception as e:
+        internal_error(f"Cross-meeting Q&A 처리 중 오류가 발생했습니다: {e}")
 
 
 @router.get(

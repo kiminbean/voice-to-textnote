@@ -14,7 +14,15 @@ from fastapi.testclient import TestClient
 
 from backend.app.dependencies import get_redis_client
 from backend.app.error_handlers import register_exception_handlers
-from backend.schemas.qa import MeetingAskResponse, QAHistoryItem, QAHistoryResponse, QASource
+from backend.app.exceptions import NotFoundError
+from backend.schemas.qa import (
+    CrossMeetingAskResponse,
+    CrossMeetingSource,
+    MeetingAskResponse,
+    QAHistoryItem,
+    QAHistoryResponse,
+    QASource,
+)
 
 
 @pytest.fixture
@@ -121,6 +129,72 @@ class TestAskQuestion:
         )
 
         assert resp.status_code == 500
+
+
+class TestCrossMeetingAsk:
+    def test_cross_meeting_context_success(self, app_client):
+        client, _, mock_svc = app_client
+        mock_response = CrossMeetingAskResponse(
+            answer="관련 회의 2건에서 API 개발과 FastAPI 결정이 확인됐습니다.",
+            sources=[
+                CrossMeetingSource(
+                    task_id="sum-search-001",
+                    task_type="summary",
+                    snippet="회의 결과 <b>FastAPI</b> 사용을 결정했습니다.",
+                    created_at="2024-01-03T09:00:00",
+                )
+            ],
+            query="API 개발 결정",
+            total=1,
+        )
+        mock_svc.ask_across_meetings = AsyncMock(return_value=mock_response)
+
+        resp = client.post(
+            "/api/v1/qa/ask-across",
+            json={"question": "API 개발에서 결정된 내용은?"},
+        )
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["query"] == "API 개발 결정"
+        assert body["total"] == 1
+        assert body["sources"][0]["task_id"] == "sum-search-001"
+
+    def test_cross_meeting_empty_context_returns_404(self, app_client):
+        client, _, mock_svc = app_client
+        mock_svc.ask_across_meetings = AsyncMock(
+            side_effect=ValueError("질문과 관련된 회의 근거를 찾을 수 없습니다")
+        )
+
+        resp = client.post(
+            "/api/v1/qa/ask-across",
+            json={"question": "없는 내용은?"},
+        )
+
+        assert resp.status_code == 404
+
+    def test_cross_meeting_internal_error_returns_500(self, app_client):
+        client, _, mock_svc = app_client
+        mock_svc.ask_across_meetings = AsyncMock(side_effect=RuntimeError("DB 장애"))
+
+        resp = client.post(
+            "/api/v1/qa/ask-across",
+            json={"question": "API 결정은?"},
+        )
+
+        assert resp.status_code == 500
+
+    def test_cross_meeting_voicenote_error_is_preserved(self, app_client):
+        client, _, mock_svc = app_client
+        mock_svc.ask_across_meetings = AsyncMock(side_effect=NotFoundError(message="도메인 오류"))
+
+        resp = client.post(
+            "/api/v1/qa/ask-across",
+            json={"question": "API 결정은?"},
+        )
+
+        assert resp.status_code == 404
+        assert resp.json()["error_code"] == "NOT_FOUND"
 
 
 class TestGetQAHistory:

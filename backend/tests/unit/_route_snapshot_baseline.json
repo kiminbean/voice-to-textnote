@@ -644,6 +644,13 @@
     "api_key": true
   },
   {
+    "path": "/api/v1/qa/ask-across",
+    "methods": [
+      "POST"
+    ],
+    "api_key": true
+  },
+  {
     "path": "/api/v1/qa/{task_id}/history",
     "methods": [
       "GET"

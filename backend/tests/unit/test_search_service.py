@@ -286,6 +286,39 @@ class TestSearchService:
         assert result.items[0].task_id == "sum-study-search-001"
 
     @pytest.mark.asyncio
+    async def test_find_contexts_for_cross_meeting_question(self, populated_search_db):
+        """Cross-meeting Q&A는 질문과 관련된 여러 회의 근거를 모아야 함"""
+        from backend.services.search_service import SearchService
+
+        service = SearchService()
+        result = await service.find_answer_contexts(
+            session=populated_search_db,
+            question="API 개발에서 결정된 내용은?",
+            limit=3,
+        )
+
+        assert result.query == "API 개발 결정"
+        assert result.total >= 2
+        assert [item.task_id for item in result.items] == [
+            "sum-search-001",
+            "min-search-002",
+        ]
+        assert result.items[0].snippet
+
+    @pytest.mark.asyncio
+    async def test_find_contexts_rejects_question_without_search_terms(self, populated_search_db):
+        """질문에 검색 가능한 핵심어가 없으면 명확히 거부해야 함"""
+        from backend.services.search_service import SearchService
+
+        service = SearchService()
+
+        with pytest.raises(ValueError, match="검색 가능한 핵심어"):
+            await service.find_answer_contexts(
+                session=populated_search_db,
+                question="이 는 가 을",
+            )
+
+    @pytest.mark.asyncio
     async def test_search_result_schema(self, populated_search_db):
         """SearchResponse 스키마가 올바르게 반환되어야 함"""
         from backend.services.search_service import SearchService

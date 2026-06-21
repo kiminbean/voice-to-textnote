@@ -1,6 +1,6 @@
 # Owll Benchmark PRD
 
-**Status**: Study Pack core implemented; follow-up competitive gaps remain  
+**Status**: Study Pack core implemented; Cross-Meeting Q&A evidence search started; follow-up competitive gaps remain  
 **Created**: 2026-06-21  
 **Owner**: Voice to TextNote  
 **Scope**: Benchmark Owll AI Note Taker & Assistant and define feature upgrades that fit this project.
@@ -165,6 +165,35 @@ Users can currently transcribe, summarize, search, and export meetings, but lear
 ### P1: Cross-Meeting Knowledge Q&A
 
 Extend current per-meeting Q&A into cross-meeting search + answer synthesis. Use existing search index and permissions. This competes with Owll's “Ask AI across your notes” while preserving private/team boundaries.
+
+**Implementation status (2026-06-21)**: First backend slice implemented as `POST /api/v1/qa/ask-across`. It normalizes the user's natural-language question into FTS keywords, searches existing minutes/summary/study-pack search index rows across meetings, and returns a grounded answer shell with source task IDs, snippets, task types, and timestamps. It intentionally does not synthesize unsupported facts beyond retrieved snippets yet.
+
+#### Problem
+
+Per-meeting Q&A only works after the user already knows which recording contains the answer. Owll markets a broader “ask across notes/files/summaries” workflow, so Voice to TextNote should let users ask a question first and discover the relevant meetings second.
+
+#### Goals
+
+- Search across indexed meeting minutes, summaries, and Study Pack terms from one natural-language question.
+- Return source-backed results that can be opened in the existing meeting/result UI later.
+- Reuse existing SQLite FTS5 search infrastructure and release-readiness discipline.
+- Keep the first version extractive and grounded before adding generative answer synthesis.
+
+#### Functional Requirements
+
+- Add a cross-meeting Q&A request schema with `question` and bounded `limit`.
+- Add a response schema with `answer`, `sources`, normalized `query`, and `total`.
+- Reuse the existing `search_index` FTS5 table.
+- Normalize common Korean particles/suffixes so questions like “API 개발에서 결정된 내용은?” search for meaningful terms such as “API 개발 결정”.
+- Return a clear 404 when no relevant meeting context is found.
+- Do not call external LLMs in the first slice; use retrieved snippets as the only answer basis.
+
+#### Acceptance Criteria
+
+- Given indexed minutes and summary rows, when the user asks a cross-meeting question, then the API returns relevant source task IDs and non-empty snippets.
+- Given a question with no searchable terms, the service rejects it with a deterministic validation error.
+- Given no matching source rows, the API returns 404 without fabricating an answer.
+- Route registry invariance is updated so the new endpoint remains covered by API surface tests.
 
 ### P1: Multilingual Transcript Translation
 

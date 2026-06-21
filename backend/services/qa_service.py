@@ -11,9 +11,18 @@ from typing import cast
 import redis.asyncio as aioredis
 from openai import OpenAI
 from openai.types.chat import ChatCompletionMessageParam
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.config import settings
-from backend.schemas.qa import MeetingAskResponse, QAHistoryItem, QAHistoryResponse, QASource
+from backend.schemas.qa import (
+    CrossMeetingAskResponse,
+    CrossMeetingSource,
+    MeetingAskResponse,
+    QAHistoryItem,
+    QAHistoryResponse,
+    QASource,
+)
+from backend.services.search_service import SearchService
 from backend.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -112,6 +121,57 @@ class QAService:
             answer=answer_text,
             sources=sources,
             thread_id=thread_id,
+        )
+
+    async def ask_across_meetings(
+        self,
+        session: AsyncSession,
+        question: str,
+        limit: int = 5,
+        search_service: SearchService | None = None,
+    ) -> CrossMeetingAskResponse:
+        """여러 회의/요약에서 질문과 관련된 근거를 찾고 요약 답변을 반환합니다."""
+        search_service = search_service or SearchService()
+        contexts = await search_service.find_answer_contexts(
+            session=session,
+            question=question,
+            limit=limit,
+        )
+        if not contexts.items:
+            raise ValueError("질문과 관련된 회의 근거를 찾을 수 없습니다")
+
+        sources = [
+            CrossMeetingSource(
+                task_id=item.task_id,
+                task_type=item.task_type,
+                snippet=item.snippet,
+                created_at=item.created_at.isoformat(),
+                completed_at=item.completed_at.isoformat() if item.completed_at else None,
+            )
+            for item in contexts.items
+        ]
+        answer = self._build_cross_meeting_answer(question, sources)
+        return CrossMeetingAskResponse(
+            answer=answer,
+            sources=sources,
+            query=contexts.query,
+            total=contexts.total,
+        )
+
+    def _build_cross_meeting_answer(
+        self,
+        question: str,
+        sources: list[CrossMeetingSource],
+    ) -> str:
+        """검색 근거만 사용해 안전한 1차 답변을 구성합니다."""
+        source_lines = [
+            f"- {source.task_id} ({source.task_type}): {source.snippet}" for source in sources[:5]
+        ]
+        joined_sources = "\n".join(source_lines)
+        return (
+            f"질문 '{question}'와 관련된 회의 근거 {len(sources)}건을 찾았습니다. "
+            "아래 근거를 기준으로 확인하세요.\n"
+            f"{joined_sources}"
         )
 
     async def _build_messages(

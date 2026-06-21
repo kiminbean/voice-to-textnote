@@ -14,7 +14,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from backend.schemas.qa import QAHistoryItem
+from backend.schemas.qa import CrossMeetingSource, QAHistoryItem
 from backend.services.qa_service import QAService
 
 # ---------------------------------------------------------------------------
@@ -235,6 +235,94 @@ class TestAsk:
             )
 
         assert result.thread_id == "existing-thread-123"
+
+
+# ---------------------------------------------------------------------------
+# ask_across_meetings
+# ---------------------------------------------------------------------------
+
+
+class TestAskAcrossMeetings:
+    """여러 회의에 걸친 Q&A 근거 검색."""
+
+    @pytest.mark.asyncio
+    async def test_returns_grounded_context_answer(self):
+        """검색 근거가 있으면 출처 목록과 안전한 요약 답변을 반환한다."""
+        from datetime import datetime
+
+        from backend.schemas.search import SearchResponse, SearchResultItem, SortOption
+
+        svc = QAService()
+        search_service = AsyncMock()
+        search_service.find_answer_contexts.return_value = SearchResponse(
+            items=[
+                SearchResultItem(
+                    task_id="sum-search-001",
+                    task_type="summary",
+                    snippet="회의 결과 <b>FastAPI</b> 사용을 결정했습니다.",
+                    created_at=datetime(2024, 1, 3, 9, 0, 0),
+                    completed_at=datetime(2024, 1, 3, 9, 5, 0),
+                )
+            ],
+            total=1,
+            page=1,
+            page_size=5,
+            query="API 결정",
+            sort=SortOption.RELEVANCE,
+        )
+
+        result = await svc.ask_across_meetings(
+            session=AsyncMock(),
+            question="API 결정은?",
+            search_service=search_service,
+        )
+
+        assert result.query == "API 결정"
+        assert result.total == 1
+        assert result.sources[0].task_id == "sum-search-001"
+        assert "관련된 회의 근거 1건" in result.answer
+
+    @pytest.mark.asyncio
+    async def test_raises_when_no_contexts(self):
+        """검색 근거가 없으면 명확한 ValueError를 낸다."""
+        from backend.schemas.search import SearchResponse, SortOption
+
+        svc = QAService()
+        search_service = AsyncMock()
+        search_service.find_answer_contexts.return_value = SearchResponse(
+            items=[],
+            total=0,
+            page=1,
+            page_size=5,
+            query="없는 질문",
+            sort=SortOption.RELEVANCE,
+        )
+
+        with pytest.raises(ValueError, match="회의 근거를 찾을 수 없습니다"):
+            await svc.ask_across_meetings(
+                session=AsyncMock(),
+                question="없는 질문",
+                search_service=search_service,
+            )
+
+    def test_build_cross_meeting_answer_lists_sources(self):
+        """근거 요약 답변은 검색 스니펫을 그대로 포함한다."""
+        svc = QAService()
+        answer = svc._build_cross_meeting_answer(
+            "API 결정은?",
+            [
+                CrossMeetingSource(
+                    task_id="task-1",
+                    task_type="summary",
+                    snippet="FastAPI 결정",
+                    created_at="2024-01-01T09:00:00",
+                )
+            ],
+        )
+
+        assert "API 결정은?" in answer
+        assert "task-1" in answer
+        assert "FastAPI 결정" in answer
 
 
 # ---------------------------------------------------------------------------

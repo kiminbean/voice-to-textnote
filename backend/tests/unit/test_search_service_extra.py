@@ -74,6 +74,12 @@ class TestBuildMatchQuery:
         query = service._build_match_query("회의록 검색")
         assert query == '"회의록" AND "검색"'
 
+    def test_build_any_match_query_empty_string(self):
+        """Cross-meeting OR 쿼리도 빈 문자열을 거부한다."""
+        service = SearchService()
+        with pytest.raises(ValueError, match="검색 쿼리가 비어 있습니다"):
+            service._build_any_match_query("")
+
 
 class TestSearchService:
     """SearchService.search 메서드 테스트"""
@@ -243,3 +249,50 @@ class TestSearchService:
 
         # None이 0으로 변환됨
         assert result.total == 0
+
+    @pytest.mark.asyncio
+    async def test_find_answer_contexts_handles_query_exception(self):
+        """Cross-meeting 근거 검색 예외는 빈 결과로 반환한다."""
+        service = SearchService()
+        mock_session = AsyncMock(spec=object)
+        mock_session.execute = AsyncMock(side_effect=Exception("DB error"))
+
+        result = await service.find_answer_contexts(
+            session=mock_session,
+            question="API 결정은?",
+        )
+
+        assert result.total == 0
+        assert result.items == []
+        assert result.query == "API 결정"
+
+    @pytest.mark.asyncio
+    async def test_find_answer_contexts_with_invalid_datetime_format(self):
+        """Cross-meeting 근거 검색도 잘못된 날짜 문자열을 현재 시각으로 대체한다."""
+        service = SearchService()
+        mock_session = AsyncMock(spec=object)
+
+        mock_count_result = MagicMock()
+        mock_count_result.scalar.return_value = 1
+
+        mock_rows_result = MagicMock()
+        mock_rows_result.fetchall.return_value = [
+            (
+                "task-ctx",
+                "summary",
+                "<b>API</b> 결정",
+                "invalid-datetime-format",
+                None,
+                0.1,
+            )
+        ]
+
+        mock_session.execute = AsyncMock(side_effect=[mock_count_result, mock_rows_result])
+
+        result = await service.find_answer_contexts(
+            session=mock_session,
+            question="API 결정은?",
+        )
+
+        assert result.total == 1
+        assert result.items[0].task_id == "task-ctx"

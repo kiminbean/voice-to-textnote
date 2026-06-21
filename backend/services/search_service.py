@@ -25,6 +25,41 @@ from backend.utils.logger import get_logger
 logger = get_logger(__name__)
 
 _QUERY_TOKEN_PATTERN = re.compile(r"\S+")
+_CONTEXT_TOKEN_PATTERN = re.compile(r"[0-9A-Za-z가-힣]+")
+_CONTEXT_STOPWORDS = {
+    "내용",
+    "내용은",
+    "관련",
+    "대해",
+    "대한",
+    "무엇",
+    "뭐",
+    "어떤",
+    "어떻게",
+    "알려줘",
+    "설명",
+    "정리",
+}
+_CONTEXT_SUFFIXES = (
+    "에서는",
+    "에서",
+    "으로",
+    "로",
+    "에게",
+    "한테",
+    "부터",
+    "까지",
+    "된",
+    "한",
+    "은",
+    "는",
+    "이",
+    "가",
+    "을",
+    "를",
+    "의",
+    "에",
+)
 
 
 class SearchService:
@@ -49,6 +84,35 @@ class SearchService:
 
         escaped_tokens = [f'"{token.replace(chr(34), chr(34) * 2)}"' for token in tokens]
         return " AND ".join(escaped_tokens)
+
+    @staticmethod
+    def _build_context_query(question: str) -> str:
+        """Cross-meeting Q&A용 질문을 FTS 검색어로 정규화합니다."""
+        normalized: list[str] = []
+        seen: set[str] = set()
+        for raw_token in _CONTEXT_TOKEN_PATTERN.findall(question):
+            token = raw_token.strip()
+            for suffix in _CONTEXT_SUFFIXES:
+                if len(token) > len(suffix) + 1 and token.endswith(suffix):
+                    token = token[: -len(suffix)]
+                    break
+            if len(token) < 2 or token in _CONTEXT_STOPWORDS or token in seen:
+                continue
+            normalized.append(token)
+            seen.add(token)
+
+        if not normalized:
+            raise ValueError("질문에서 검색 가능한 핵심어를 찾을 수 없습니다")
+        return " ".join(normalized)
+
+    @staticmethod
+    def _build_any_match_query(query: str) -> str:
+        """정규화된 검색어 중 하나라도 맞는 FTS5 MATCH 쿼리를 만듭니다."""
+        tokens = _QUERY_TOKEN_PATTERN.findall(query)
+        if not tokens:
+            raise ValueError("검색 쿼리가 비어 있습니다")
+        escaped_tokens = [f'"{token.replace(chr(34), chr(34) * 2)}"' for token in tokens]
+        return " OR ".join(escaped_tokens)
 
     async def search(
         self,
@@ -212,6 +276,76 @@ class SearchService:
             page_size=page_size,
             query=query,
             sort=sort,
+        )
+
+    async def find_answer_contexts(
+        self,
+        session: AsyncSession,
+        question: str,
+        limit: int = 5,
+    ) -> SearchResponse:
+        """Cross-meeting Q&A를 위한 관련 회의/요약 근거를 찾습니다."""
+        context_query = self._build_context_query(question)
+        match_query = self._build_any_match_query(context_query)
+
+        context_sql = """
+        SELECT
+            si.task_id,
+            si.task_type,
+            CASE
+                WHEN si.task_type = 'summary'
+                THEN snippet(search_index, 4, '<b>', '</b>', '...', 30)
+                ELSE snippet(search_index, 2, '<b>', '</b>', '...', 30)
+            END AS snippet,
+            si.created_at,
+            tr.completed_at,
+            rank
+        FROM search_index si
+        LEFT JOIN task_results tr ON si.task_id = tr.task_id
+        WHERE search_index MATCH :query
+        ORDER BY rank ASC, si.created_at DESC
+        LIMIT :limit
+        """
+        count_sql = "SELECT COUNT(*) FROM search_index si WHERE search_index MATCH :query"
+
+        try:
+            params = {"query": match_query}
+            count_result = await session.execute(text(count_sql), params)
+            total = count_result.scalar() or 0
+            rows_result = await session.execute(text(context_sql), {**params, "limit": limit})
+            rows = rows_result.fetchall()
+        except Exception as e:
+            logger.warning("Cross-meeting Q&A 근거 검색 실패", question=question, error=str(e))
+            total = 0
+            rows = []
+
+        items: list[SearchResultItem] = []
+        for task_id, task_type_val, snippet, created_at_str, completed_at, _rank in rows:
+            if isinstance(created_at_str, str):
+                try:
+                    created_at = datetime.fromisoformat(created_at_str)
+                except ValueError:
+                    created_at = datetime.now(UTC).replace(tzinfo=None)  # pragma: no cover
+            else:
+                created_at = created_at_str  # pragma: no cover
+
+            items.append(
+                SearchResultItem(
+                    task_id=task_id,
+                    task_type=task_type_val,
+                    snippet=snippet or "",
+                    created_at=created_at,
+                    completed_at=completed_at,
+                )
+            )
+
+        return SearchResponse(
+            items=items,
+            total=total,
+            page=1,
+            page_size=limit,
+            query=context_query,
+            sort=SortOption.RELEVANCE,
         )
 
     async def get_suggestions(

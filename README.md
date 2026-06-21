@@ -35,7 +35,7 @@
 ✅ **모니터링**: Prometheus 메트릭, 요청 ID 추적, 구조화된 로깅
 ✅ **프로덕션 배포**: Ubuntu systemd + Redis + Tailscale 원격 접속
 ✅ **모던 UI/UX**: 모던 미니멀 디자인 시스템 (인디고/바이올렛), 다크모드 지원, 반응형 레이아웃
-✅ **자동화 테스트**: 3696 백엔드 테스트 (단위/통합/E2E) + Flutter 348, 백엔드 100.00% 커버리지
+✅ **자동화 테스트**: 3708 백엔드 테스트 (단위/통합/E2E) + Flutter 348, 백엔드 100.00% 커버리지
 
 ## 주요 기능
 
@@ -94,6 +94,12 @@
 - **API**: `POST /api/v1/obsidian/config`, `POST /api/v1/obsidian/export/{meeting_id}`, `POST /api/v1/obsidian/validate`
 - **클라이언트**: 내보내기 메뉴 "Obsidian에 저장" + `obsidian://` URI로 "Obsidian에서 열기"
 
+#### 9. Cross-Meeting Q&A 근거 검색
+- **목적**: 특정 회의를 먼저 고르지 않아도 질문과 관련된 회의록/요약/Study Pack 근거를 찾음
+- **방식**: 자연어 질문을 검색 핵심어로 정규화하고 기존 SQLite FTS5 인덱스를 관련도순 검색
+- **출력**: 근거 task ID, 작업 유형, 스니펫, 생성/완료 시각
+- **API**: `POST /api/v1/qa/ask-across`
+
 ### API 엔드포인트
 
 #### 상태 조회
@@ -105,6 +111,11 @@
 - **STT 결과**: `GET /api/v1/transcriptions/{task_id}`
 - **회의록**: `GET /api/v1/minutes/{meeting_id}`
 - **요약**: `GET /api/v1/summary/{summary_id}`
+
+#### Q&A
+- **회의별 질문**: `POST /api/v1/qa/ask`
+- **여러 회의 근거 검색**: `POST /api/v1/qa/ask-across`
+- **Q&A 이력**: `GET /api/v1/qa/{task_id}/history`
 
 #### 회의 관리
 - **목록 조회**: `GET /api/v1/history?page=1&limit=20&filter=status`
@@ -535,10 +546,10 @@ backend/
 
 | 항목 | 개수 | 커버리지 |
 |------|------|---------|
-| 백엔드 단위/통합/E2E | 3696개 | 100.00% |
+| 백엔드 단위/통합/E2E | 3708개 | 100.00% |
 | Flutter 테스트 | 348개 | - |
 | E2E 테스트 | 16개 | 전체 파이프라인 |
-| 총합 | 4044개 | - |
+| 총합 | 4056개 | - |
 
 ## 모니터링 및 로깅
 
@@ -810,7 +821,7 @@ Copyright (c) 2026 kiminbean. **All Rights Reserved.**
 **마지막 업데이트**: 2026-06-17
 **버전**: 1.7.0
 **상태**: Phase 8 진행 중 — SPEC-OBSIDIAN-001 Obsidian Vault 연계 완료 + UI 재설계(디자인 시스템, 다크모드) 완료, 감정/톤 분석 활성화, 라이선스 All Rights Reserved 전환
-**최근 확인**: 백엔드 3696 테스트 + Flutter 348 테스트 + Flutter analyze + 기본 Release Readiness 통과. Strict release readiness는 Firebase/APNs/App Store Connect secret, Android/iOS 실기기, 실제 E2E evidence가 준비되어야 통과 가능.
+**최근 확인**: 백엔드 3708 테스트 + Flutter 348 테스트 + Flutter analyze + 기본 Release Readiness 통과. Strict release readiness는 Firebase/APNs/App Store Connect secret, Android/iOS 실기기, 실제 E2E evidence가 준비되어야 통과 가능.
 
 ### 구현 완료 SPEC 목록
 
