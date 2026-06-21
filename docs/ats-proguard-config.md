@@ -8,44 +8,25 @@
 
 ### 현재 상태
 
-`Info.plist`에서 `NSAllowsArbitraryLoads: true`로 설정되어 있음.
+`Info.plist`는 release 기준으로 임의 HTTP 로드를 차단한다.
 
 ```xml
 <key>NSAppTransportSecurity</key>
 <dict>
     <key>NSAllowsArbitraryLoads</key>
-    <true/>
+    <false/>
 </dict>
 ```
 
-### 프로덕션 권장 설정
+### 프로덕션 정책
 
-로컬 서버(Tailscale IP, HTTP) 통신을 위해 예외 도메인 사용을 권장:
-
-```xml
-<key>NSAppTransportSecurity</key>
-<dict>
-    <key>NSAllowsLocalNetworking</key>
-    <true/>
-    <key>NSExceptionDomains</key>
-    <dict>
-        <key>100.x.x.x</key>  <!-- Tailscale IP -->
-        <dict>
-            <key>NSExceptionAllowsInsecureHTTPLoads</key>
-            <true/>
-            <key>NSIncludesSubdomains</key>
-            <true/>
-        </dict>
-    </dict>
-</dict>
-```
-
-> 주의: `NSAllowsArbitraryLoads: true`는 App Store 심사 시 메타데이터에서 사유를 요구함.
-> 프로덕션 빌드에서는 `NSAllowsLocalNetworking` + `NSExceptionDomains` 조합으로 전환 권장.
+프로덕션 iOS 빌드에는 `NSExceptionAllowsInsecureHTTPLoads: true` 도메인 예외를 두지 않는다.
+로컬/Tailscale HTTP 테스트는 Android debug network security config 또는 개발 전용 실행 인자로 제한하고,
+iOS release E2E에서는 HTTP 요청이 ATS에 의해 차단되는 것을 검증한다.
 
 ### 심사 대응
-- App Store 심사 시 "ATS Configuration" 항목에서 HTTP 통신 사유 작성:
-  - "로컬 네트워크의 자체 호스팅 서버와 통신하기 위해 HTTP를 사용합니다."
+- App Store 제출 메타데이터에서 ATS 예외 사유가 필요하지 않도록 HTTPS-only release 구성을 유지한다.
+- `python3 client/scripts/verify_release_readiness.py`는 iOS ATS가 임의 로드나 insecure HTTP 예외를 허용하면 실패해야 한다.
 
 ---
 

@@ -484,6 +484,29 @@ def check_ios_project(root: Path, reporter: Reporter) -> None:
     else:
         reporter.fail(f"iOS URL scheme {URL_SCHEME} missing")
 
+    ats = info.get("NSAppTransportSecurity", {})
+    if not isinstance(ats, dict):
+        reporter.fail("iOS ATS configuration missing")
+    elif ats.get("NSAllowsArbitraryLoads") is True:
+        reporter.fail("iOS ATS must not allow arbitrary loads")
+    else:
+        insecure_domains = []
+        exception_domains = ats.get("NSExceptionDomains", {})
+        if isinstance(exception_domains, dict):
+            for domain, config in exception_domains.items():
+                if (
+                    isinstance(config, dict)
+                    and config.get("NSExceptionAllowsInsecureHTTPLoads") is True
+                ):
+                    insecure_domains.append(str(domain))
+        if insecure_domains:
+            reporter.fail(
+                "iOS ATS must not allow insecure HTTP loads: "
+                + ", ".join(sorted(insecure_domains))
+            )
+        else:
+            reporter.ok("iOS ATS blocks arbitrary and insecure HTTP loads")
+
     document_types = info.get("CFBundleDocumentTypes", [])
     content_types = {
         content_type

@@ -188,30 +188,41 @@ val payload = "filePath"
     )
 
 
-def write_minimal_ios_project(root: Path, *, deployment_target: str = "15.0") -> None:
+def write_minimal_ios_project(
+    root: Path,
+    *,
+    deployment_target: str = "15.0",
+    insecure_ats_exception: bool = False,
+) -> None:
     ios_root = root / "client/ios/Runner"
     project_root = root / "client/ios/Runner.xcodeproj"
     ios_root.mkdir(parents=True)
     project_root.mkdir(parents=True)
-    with (ios_root / "Info.plist").open("wb") as plist:
-        plistlib.dump(
+    info_plist: dict[str, object] = {
+        "UIBackgroundModes": ["audio", "remote-notification"],
+        "CFBundleURLTypes": [
+            {"CFBundleURLSchemes": ["voicetextnote"]},
+        ],
+        "CFBundleDocumentTypes": [
             {
-                "UIBackgroundModes": ["audio", "remote-notification"],
-                "CFBundleURLTypes": [
-                    {"CFBundleURLSchemes": ["voicetextnote"]},
-                ],
-                "CFBundleDocumentTypes": [
-                    {
-                        "LSItemContentTypes": [
-                            "com.adobe.pdf",
-                            "org.openxmlformats.wordprocessingml.document",
-                            "public.image",
-                        ],
-                    },
+                "LSItemContentTypes": [
+                    "com.adobe.pdf",
+                    "org.openxmlformats.wordprocessingml.document",
+                    "public.image",
                 ],
             },
-            plist,
-        )
+        ],
+        "NSAppTransportSecurity": {"NSAllowsArbitraryLoads": False},
+    }
+    if insecure_ats_exception:
+        info_plist["NSAppTransportSecurity"] = {
+            "NSAllowsArbitraryLoads": False,
+            "NSExceptionDomains": {
+                "localhost": {"NSExceptionAllowsInsecureHTTPLoads": True},
+            },
+        }
+    with (ios_root / "Info.plist").open("wb") as plist:
+        plistlib.dump(info_plist, plist)
     with (ios_root / "Runner.entitlements").open("wb") as plist:
         plistlib.dump({"aps-environment": "production"}, plist)
     (project_root / "project.pbxproj").write_text(
@@ -1321,6 +1332,16 @@ def test_ios_project_rejects_stale_deployment_target(tmp_path):
     module.check_ios_project(tmp_path, reporter)
 
     assert any("deployment target must be at least 15.0" in error for error in reporter.errors)
+
+
+def test_ios_project_rejects_insecure_ats_exception(tmp_path):
+    module = load_release_readiness_module()
+    write_minimal_ios_project(tmp_path, insecure_ats_exception=True)
+
+    reporter = module.Reporter()
+    module.check_ios_project(tmp_path, reporter)
+
+    assert any("ATS must not allow insecure HTTP loads" in error for error in reporter.errors)
 
 
 def test_readme_release_status_accepts_release_candidate_language(tmp_path):
