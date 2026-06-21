@@ -65,6 +65,10 @@ def runner_has_required_labels(runner: dict[str, Any]) -> bool:
     return REQUIRED_RUNNER_LABELS.issubset(labels)
 
 
+def runner_is_online_release_runner(runner: dict[str, Any]) -> bool:
+    return runner_has_required_labels(runner) and runner.get("status") == "online"
+
+
 def check_snapshot(
     *,
     environments: set[str],
@@ -78,11 +82,13 @@ def check_snapshot(
     else:
         reporter.fail(f"GitHub Environment missing: {ENVIRONMENT}")
 
-    if any(runner_has_required_labels(runner) for runner in runners):
-        reporter.ok("Self-hosted runner has labels: " + ", ".join(sorted(REQUIRED_RUNNER_LABELS)))
+    if any(runner_is_online_release_runner(runner) for runner in runners):
+        reporter.ok(
+            "Online self-hosted runner has labels: " + ", ".join(sorted(REQUIRED_RUNNER_LABELS))
+        )
     else:
         reporter.fail(
-            "No self-hosted runner has required labels: "
+            "No online self-hosted runner has required labels: "
             + ", ".join(sorted(REQUIRED_RUNNER_LABELS))
         )
 

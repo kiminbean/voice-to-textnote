@@ -28,7 +28,8 @@ def test_github_mobile_release_env_accepts_complete_snapshot():
                     {"name": "self-hosted"},
                     {"name": "macOS"},
                     {"name": "mobile-release"},
-                ]
+                ],
+                "status": "online",
             }
         ],
         secrets=set(module.REQUIRED_SECRETS),
@@ -54,6 +55,30 @@ def test_github_mobile_release_env_rejects_missing_runner_labels():
     assert any("required labels" in error for error in reporter.errors)
 
 
+def test_github_mobile_release_env_rejects_offline_release_runner():
+    module = load_github_env_module()
+    reporter = module.Reporter()
+
+    module.check_snapshot(
+        environments={module.ENVIRONMENT},
+        runners=[
+            {
+                "labels": [
+                    {"name": "self-hosted"},
+                    {"name": "macOS"},
+                    {"name": "mobile-release"},
+                ],
+                "status": "offline",
+            }
+        ],
+        secrets=set(module.REQUIRED_SECRETS),
+        variables=set(module.REQUIRED_VARIABLES),
+        reporter=reporter,
+    )
+
+    assert any("online" in error for error in reporter.errors)
+
+
 def test_github_mobile_release_env_rejects_missing_secret_and_variable():
     module = load_github_env_module()
     reporter = module.Reporter()
@@ -70,7 +95,8 @@ def test_github_mobile_release_env_rejects_missing_secret_and_variable():
                     {"name": "self-hosted"},
                     {"name": "macOS"},
                     {"name": "mobile-release"},
-                ]
+                ],
+                "status": "online",
             }
         ],
         secrets=secrets,
