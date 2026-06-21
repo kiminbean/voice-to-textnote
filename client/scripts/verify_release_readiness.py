@@ -804,6 +804,15 @@ def check_docs(root: Path, reporter: Reporter) -> None:
         reporter.fail(
             "Release procedure test counts must match latest 3907 backend / 415 Flutter evidence"
         )
+    if (
+        "`verify_mobile_release_runner.py` PASS" in procedure_doc
+        and "`verify_github_mobile_release_env.py` PASS" in procedure_doc
+    ):
+        reporter.ok("Release procedure checklist requires runner and GitHub environment preflights")
+    else:
+        reporter.fail(
+            "Release procedure checklist must require runner and GitHub environment preflights"
+        )
     if current_version and all(
         snippet in procedure_doc
         for snippet in (

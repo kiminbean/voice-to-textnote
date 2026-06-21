@@ -207,7 +207,7 @@ gh release create v1.7.0 \
 | 1.1 Firebase | `FIREBASE_CREDENTIALS_PATH` | `--strict` Firebase PASS |
 | 1.2 APNs | `APNS_AUTH_KEY_PATH`, `APNS_KEY_ID`, `APNS_TEAM_ID` | `--strict` APNs 3개 PASS |
 | 1.3 App Store | `APP_STORE_CONNECT_API_KEY_PATH`, `KEY_ID`, `ISSUER_ID` | `--strict` App Store 3개 PASS |
-| 2.1 기기 | `ANDROID_DEVICE_SERIAL`, `IOS_DEVICE_UDID` | `adb`/`devicectl` 인식 |
+| 2.1 기기 | `ANDROID_DEVICE_SERIAL`, `IOS_DEVICE_UDID` | `verify_mobile_release_runner.py` PASS |
 | 2.3 E2E | `FIREBASE_TEST_DEVICE_TOKEN`, `RELEASE_E2E_EVIDENCE_PATH` | evidence JSON 17개 required scenario pass:true |
 | 3.1 Runner | (GitHub Actions) | `verify_github_mobile_release_env.py` PASS |
 | 4.1 Release | (README + tag) | `git tag` + GitHub Release 확인 |

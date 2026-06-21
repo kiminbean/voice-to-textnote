@@ -1045,6 +1045,8 @@ def test_release_procedure_rejects_version_drift(tmp_path):
             "2 SPECs completed\n"
             "3907 passed\n"
             "Flutter: 415 passed\n"
+            "`verify_mobile_release_runner.py` PASS\n"
+            "`verify_github_mobile_release_env.py` PASS\n"
             "Production Ready v1.6.0\n"
             "git tag v1.6.0\n"
             "gh release create v1.6.0\n"
