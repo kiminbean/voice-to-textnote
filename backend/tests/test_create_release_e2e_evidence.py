@@ -121,6 +121,40 @@ def test_release_e2e_scaffold_rejects_artifacts_outside_repo(tmp_path):
         raise AssertionError("build_evidence should reject artifacts outside repo")
 
 
+def test_release_e2e_scaffold_rejects_invalid_android_apk(tmp_path):
+    create = load_create_evidence_module()
+    android_apk, ios_runner_app = write_release_artifacts(tmp_path)
+    android_apk.write_text("not a zip apk", encoding="utf-8")
+
+    try:
+        create.build_evidence(
+            tmp_path,
+            android_apk=android_apk.name,
+            ios_runner_app=ios_runner_app.name,
+        )
+    except ValueError as exc:
+        assert "valid APK zip" in str(exc)
+    else:
+        raise AssertionError("build_evidence should reject invalid APK artifacts")
+
+
+def test_release_e2e_scaffold_rejects_invalid_ios_runner_app(tmp_path):
+    create = load_create_evidence_module()
+    android_apk, ios_runner_app = write_release_artifacts(tmp_path)
+    (ios_runner_app / "Runner").unlink()
+
+    try:
+        create.build_evidence(
+            tmp_path,
+            android_apk=android_apk.name,
+            ios_runner_app=ios_runner_app.name,
+        )
+    except ValueError as exc:
+        assert "missing executable" in str(exc)
+    else:
+        raise AssertionError("build_evidence should reject invalid iOS app artifacts")
+
+
 def test_release_e2e_evidence_artifacts_are_resolved_from_repo_root(
     monkeypatch, tmp_path
 ):
