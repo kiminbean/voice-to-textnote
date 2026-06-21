@@ -184,6 +184,31 @@ void main() {
       expect(find.textContaining('강의 transcript 본문'), findsOneWidget);
     });
 
+    testWidgets('공유된 온라인 회의 링크는 대기 중인 회의 카드로 등록되어야 함',
+        (WidgetTester tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: _onlineOverrides(mockService),
+          child: const MaterialApp(
+            home: HomeScreen(
+              initialSharedImport: SharedImportPayload(
+                sourceUrl: 'https://meet.google.com/abc-defg-hij',
+                title: 'Google Meet',
+                mimeType: 'text/plain',
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+      await _scrollHomeUntilVisible(tester, 'Google Meet 회의');
+
+      expect(find.text('Google Meet 회의'), findsOneWidget);
+      expect(find.text('대기'), findsOneWidget);
+      expect(find.text('URL/Transcript 가져오기'), findsNothing);
+    });
+
     testWidgets('파일 업로드 바로가기는 업로드 모드 녹음 화면으로 이동해야 함',
         (WidgetTester tester) async {
       final router = GoRouter(

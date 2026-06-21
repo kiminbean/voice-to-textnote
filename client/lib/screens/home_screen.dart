@@ -537,6 +537,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         _importSharedDocument(context, payload);
         return;
       }
+      final sourceUrl = payload.sourceUrl?.trim();
+      if (sourceUrl != null && _isSupportedMeetingUrl(sourceUrl)) {
+        final meeting = _createOnlineMeeting(ref, sourceUrl);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${meeting.title}이 준비되었습니다.')),
+        );
+        return;
+      }
       _showSharedImportSheet(context, payload);
     });
   }
@@ -836,10 +844,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       return '올바른 회의 링크를 입력해주세요';
     }
     final host = uri.host.toLowerCase();
-    final supported = host.contains('zoom.us') ||
+    return _isSupportedMeetingHost(host)
+        ? null
+        : 'Zoom, Google Meet, Teams 링크만 지원합니다';
+  }
+
+  bool _isSupportedMeetingUrl(String url) {
+    final uri = Uri.tryParse(url);
+    if (uri == null || !uri.hasScheme || uri.host.isEmpty) {
+      return false;
+    }
+    return _isSupportedMeetingHost(uri.host.toLowerCase());
+  }
+
+  bool _isSupportedMeetingHost(String host) {
+    return host.contains('zoom.us') ||
         host.contains('meet.google.com') ||
         host.contains('teams.microsoft.com');
-    return supported ? null : 'Zoom, Google Meet, Teams 링크만 지원합니다';
   }
 
   String _onlineMeetingTitle(String url) {
