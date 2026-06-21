@@ -625,15 +625,15 @@ def check_readme_release_status(root: Path, reporter: Reporter) -> None:
     else:
         reporter.ok("README does not overclaim Production Ready before strict evidence")
     if (
-        "3888 백엔드 테스트" in readme
-        and "3888개" in readme
+        "3890 백엔드 테스트" in readme
+        and "3890개" in readme
         and ("Flutter 415" in readme or "415개" in readme)
-        and "4303개" in readme
+        and "4305개" in readme
     ):
         reporter.ok("README test counts match current release validation evidence")
     else:
         reporter.fail(
-            "README test counts must match current 3888 backend / 415 Flutter / 4303 total evidence"
+            "README test counts must match current 3890 backend / 415 Flutter / 4305 total evidence"
         )
     if f"{completed_spec_count}개 SPEC" in readme:
         reporter.fail("README should avoid hard-coded completed SPEC counts outside the SPEC list")
@@ -708,11 +708,11 @@ def check_docs(root: Path, reporter: Reporter) -> None:
             "Release procedure SPEC count must match README completed SPEC list "
             f"({completed_spec_count})"
         )
-    if "3888 passed" in procedure_doc and "Flutter: 415 passed" in procedure_doc:
+    if "3890 passed" in procedure_doc and "Flutter: 415 passed" in procedure_doc:
         reporter.ok("Release procedure backend test count matches latest full pytest evidence")
     else:
         reporter.fail(
-            "Release procedure test counts must match latest 3888 backend / 415 Flutter evidence"
+            "Release procedure test counts must match latest 3890 backend / 415 Flutter evidence"
         )
     app_store_doc = read_text(root / "docs/app-store-metadata.md")
     for snippet in [
@@ -1191,7 +1191,11 @@ def check_release_e2e_evidence(path: Path, reporter: Reporter, root: Path | None
         for key in sorted(set(artifact_hashes) - expected_artifact_keys):
             reporter.fail(f"Release E2E evidence includes unknown artifact hash: {key}")
     for key, type_check in artifact_type_checks.items():
-        artifact_path = str(artifacts.get(key, "")).strip() if artifacts else ""
+        artifact_value = artifacts.get(key, "") if artifacts else ""
+        if not isinstance(artifact_value, str):
+            reporter.fail(f"Release E2E evidence artifact path must be a string: {key}")
+            continue
+        artifact_path = artifact_value.strip()
         if not artifact_path:
             reporter.fail(f"Release E2E evidence missing artifact {key}")
             continue
@@ -1224,7 +1228,11 @@ def check_release_e2e_evidence(path: Path, reporter: Reporter, root: Path | None
                 if not executable or not (resolved_artifact / executable).is_file():
                     reporter.fail(f"Release E2E evidence artifact missing executable: {key}")
                     continue
-            expected_hash = str(artifact_hashes.get(key, "")).strip() if artifact_hashes else ""
+            hash_value = artifact_hashes.get(key, "") if artifact_hashes else ""
+            if not isinstance(hash_value, str):
+                reporter.fail(f"Release E2E evidence artifact hash must be a string: {key}")
+                continue
+            expected_hash = hash_value.strip()
             if not expected_hash:
                 reporter.fail(f"Release E2E evidence missing artifact hash: {key}")
                 continue

@@ -109,10 +109,10 @@ def write_tone_policy_files(root: Path, *, tone_model_line: str = 'tone_model: s
 def write_readme_status(root: Path, content: str) -> None:
     (root / "README.md").write_text(
         (
-            "3888 백엔드 테스트\n"
-            "| 백엔드 단위/통합/E2E | 3888개 | 100.00% |\n"
+            "3890 백엔드 테스트\n"
+            "| 백엔드 단위/통합/E2E | 3890개 | 100.00% |\n"
             "| Flutter 테스트 | 415개 | - |\n"
-            "| 총합 | 4303개 | - |\n"
+            "| 총합 | 4305개 | - |\n"
             f"{content}"
         ),
         encoding="utf-8",
@@ -462,6 +462,22 @@ def test_release_e2e_evidence_rejects_android_apk_directory(tmp_path, monkeypatc
     assert any("artifact must be a file: android_apk" in error for error in reporter.errors)
 
 
+def test_release_e2e_evidence_rejects_non_string_artifact_path(tmp_path, monkeypatch):
+    module = load_release_readiness_module()
+    evidence = make_evidence(tmp_path, module)
+    artifacts = evidence["artifacts"]
+    assert isinstance(artifacts, dict)
+    artifacts["android_apk"] = 12345
+    evidence_path = write_evidence(tmp_path, evidence)
+    monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
+    monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")
+
+    reporter = module.Reporter()
+    module.check_release_e2e_evidence(evidence_path, reporter, tmp_path)
+
+    assert any("artifact path must be a string: android_apk" in error for error in reporter.errors)
+
+
 def test_release_e2e_evidence_rejects_missing_artifact_hashes(tmp_path, monkeypatch):
     module = load_release_readiness_module()
     evidence = make_evidence(tmp_path, module)
@@ -509,6 +525,22 @@ def test_release_e2e_evidence_rejects_invalid_artifact_hash_format(tmp_path, mon
         "artifact hash must be lowercase SHA-256 hex: android_apk" in error
         for error in reporter.errors
     )
+
+
+def test_release_e2e_evidence_rejects_non_string_artifact_hash(tmp_path, monkeypatch):
+    module = load_release_readiness_module()
+    evidence = make_evidence(tmp_path, module)
+    artifact_hashes = evidence["artifact_sha256"]
+    assert isinstance(artifact_hashes, dict)
+    artifact_hashes["android_apk"] = 12345
+    evidence_path = write_evidence(tmp_path, evidence)
+    monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
+    monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")
+
+    reporter = module.Reporter()
+    module.check_release_e2e_evidence(evidence_path, reporter, tmp_path)
+
+    assert any("artifact hash must be a string: android_apk" in error for error in reporter.errors)
 
 
 def test_release_e2e_evidence_rejects_unknown_artifact_key(tmp_path, monkeypatch):
