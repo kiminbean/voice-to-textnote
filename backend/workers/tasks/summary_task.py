@@ -186,9 +186,7 @@ def summary_task(
 
         min_result = _safe_json_load_sync(cast(str | bytes | bytearray, min_result_raw))
         if not min_result:
-            raise FileNotFoundError(
-                f"회의록 결과 파싱 실패: minutes_task_id={minutes_task_id}"
-            )
+            raise FileNotFoundError(f"회의록 결과 파싱 실패: minutes_task_id={minutes_task_id}")
         min_status = min_result.get("status")
         if min_status and min_status != TaskStatus.completed.value:
             # BUGFIX: 회의록 실패 결과를 그대로 요약 단계에 넘기면 빈 입력으로
@@ -277,7 +275,12 @@ def summary_task(
                 result_data=final_result,
             )
         except Exception:  # pragma: no cover
-            logger.warning("DB 결과 저장 실패 - Redis 캐시로 폴백", task_id=task_id, exc_info=True, category="db_fallback")
+            logger.warning(
+                "DB 결과 저장 실패 - Redis 캐시로 폴백",
+                task_id=task_id,
+                exc_info=True,
+                category="db_fallback",
+            )
 
         _update_task_status(task_id, TaskStatus.completed, 1.0, "요약 생성 완료")
 
@@ -327,7 +330,12 @@ def summary_task(
                 error_message=error_msg,
             )
         except Exception:  # pragma: no cover
-            logger.warning("DB 결과 저장 실패 - Redis 캐시로 폴백", task_id=task_id, exc_info=True, category="db_fallback")
+            logger.warning(
+                "DB 결과 저장 실패 - Redis 캐시로 폴백",
+                task_id=task_id,
+                exc_info=True,
+                category="db_fallback",
+            )
 
         if user_id:
             from backend.app.workers.hooks.celery_push_hooks import fire_push_sync
@@ -367,7 +375,12 @@ def summary_task(
                 error_message=error_msg,
             )
         except Exception:  # pragma: no cover
-            logger.warning("DB 결과 저장 실패 - Redis 캐시로 폴백", task_id=task_id, exc_info=True, category="db_fallback")
+            logger.warning(
+                "DB 결과 저장 실패 - Redis 캐시로 폴백",
+                task_id=task_id,
+                exc_info=True,
+                category="db_fallback",
+            )
 
         if user_id:
             from backend.app.workers.hooks.celery_push_hooks import fire_push_sync
@@ -401,9 +414,7 @@ def _safe_json_load_sync(raw) -> dict | None:
 
 def _find_latest_summary_sync(r, minutes_task_id: str):
     """동기 Redis 클라이언트로 completed 상태의 최신 summary를 찾는다."""
-    return _find_latest_completed_by_minutes_sync(
-        r, "task:sum:result:*", minutes_task_id
-    )
+    return _find_latest_completed_by_minutes_sync(r, "task:sum:result:*", minutes_task_id)
 
 
 def _find_latest_completed_by_minutes_sync(r, pattern: str, minutes_task_id: str):
@@ -424,13 +435,28 @@ def _find_latest_completed_by_minutes_sync(r, pattern: str, minutes_task_id: str
     return candidates[0][1]
 
 
+def _find_latest_study_pack_sync(r, minutes_task_id: str):
+    """동기 Redis SCAN으로 최신 Study Pack 캐시를 찾는다."""
+    candidates = []
+    for key in r.scan_iter(match=f"study_pack:{minutes_task_id}:*", count=100):
+        d = _safe_json_load_sync(r.get(key))
+        if not d:
+            continue
+        ts = d.get("created_at") or ""
+        candidates.append((ts, d))
+
+    if not candidates:
+        return None
+    candidates.sort(key=lambda x: x[0], reverse=True)
+    return candidates[0][1]
+
+
 def _trigger_obsidian_auto_export(minutes_task_id: str) -> None:
     """REQ-OBS-007: 파이프라인 완료 후 Obsidian 자동 export (설정 시).
 
     REQ-OBS-014: 모든 예외를 삼켜 파이프라인에 영향을 주지 않는다.
     """
     try:
-
         from backend.app.api.v1.integrations.obsidian import _get_config_from_db
         from backend.services.obsidian_service import obsidian_service
         from backend.workers.redis_client import get_worker_redis
@@ -454,8 +480,11 @@ def _trigger_obsidian_auto_export(minutes_task_id: str) -> None:
             return
         minutes_data = _safe_json_load_sync(minutes_raw)
         if not minutes_data or minutes_data.get("status") != "completed":
-            logger.warning("Obsidian 자동 export 건너뜀: minutes 미완료 또는 파싱 실패",
-                minutes_task_id=minutes_task_id, category="obsidian_auto_export")
+            logger.warning(
+                "Obsidian 자동 export 건너뜀: minutes 미완료 또는 파싱 실패",
+                minutes_task_id=minutes_task_id,
+                category="obsidian_auto_export",
+            )
             return
 
         summary_data = _find_latest_summary_sync(r, minutes_task_id)
@@ -479,6 +508,7 @@ def _trigger_obsidian_auto_export(minutes_task_id: str) -> None:
             sentiment_data = _find_latest_completed_by_minutes_sync(
                 r, "task:sentiment:result:*", minutes_task_id
             )
+        study_pack_data = _find_latest_study_pack_sync(r, minutes_task_id)
 
         if not summary_data:
             logger.info(
@@ -508,6 +538,7 @@ def _trigger_obsidian_auto_export(minutes_task_id: str) -> None:
             summary_data,
             sentiment_data,
             tone_data,
+            study_pack_data=study_pack_data,
             frontmatter_custom=cfg.frontmatter_custom,
         )
 

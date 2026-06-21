@@ -84,6 +84,17 @@ def tone_data():
     }
 
 
+@pytest.fixture
+def study_pack_data():
+    return {
+        "mode": "lecture",
+        "study_notes": "테스트 회의를 복습하기 위한 학습 노트입니다.",
+        "key_concepts": [{"term": "테스트 개념", "explanation": "핵심 설명입니다."}],
+        "flashcards": [{"front": "테스트 질문?", "back": "테스트 답변"}],
+        "quiz_questions": [{"question": "복습 문제?", "answer": "복습 답변", "difficulty": "easy"}],
+    }
+
+
 class TestValidateVault:
     def test_valid_vault(self, service, tmp_vault):
         result = service.validate_vault(str(tmp_vault))
@@ -235,14 +246,30 @@ class TestBuildFrontmatter:
 
 class TestBuildNoteBody:
     def test_all_sections(
-        self, service, meeting_data, minutes_data, summary_data, sentiment_data, tone_data
+        self,
+        service,
+        meeting_data,
+        minutes_data,
+        summary_data,
+        sentiment_data,
+        tone_data,
+        study_pack_data,
     ):
         body = service.build_note_body(
-            meeting_data, minutes_data, summary_data, sentiment_data, tone_data
+            meeting_data,
+            minutes_data,
+            summary_data,
+            sentiment_data,
+            tone_data,
+            study_pack_data,
         )
         assert "# 테스트 회의" in body
         assert "## 📋 개요" in body
         assert "테스트 요약입니다." in body
+        assert "## 🎓 학습팩" in body
+        assert "테스트 개념" in body
+        assert "테스트 질문?" in body
+        assert "복습 문제?" in body
         assert "## ✅ 액션 아이템" in body
         assert "작업 A" in body
         assert "## 📌 주요 결정" in body
@@ -269,6 +296,31 @@ class TestBuildNoteBody:
 
         assert "## 📝 회의록" not in body
         assert "## 🔗 링크" in body
+
+    def test_empty_study_pack_is_omitted(self, service, meeting_data, minutes_data):
+        body = service.build_note_body(
+            meeting_data,
+            minutes_data,
+            None,
+            None,
+            None,
+            {"key_concepts": [], "flashcards": [], "quiz_questions": [], "study_notes": ""},
+        )
+
+        assert "## 🎓 학습팩" not in body
+
+    def test_study_pack_markdown_skips_invalid_items_and_keeps_partial_content(self, service):
+        markdown = service._build_study_pack_md(
+            {
+                "key_concepts": ["bad", {"term": "용어만"}],
+                "flashcards": ["bad", {"front": "앞면만"}],
+                "quiz_questions": ["bad", {"answer": "답만"}],
+            }
+        )
+
+        assert "**용어만**" in markdown
+        assert "**Q.** 앞면만" in markdown
+        assert "정답: 답만" in markdown
 
 
 class TestAtomicWrite:
@@ -385,6 +437,7 @@ class TestObsidianUriAndCompose:
 
         note = service.compose_note(
             meeting_data,
+            None,
             None,
             None,
             None,

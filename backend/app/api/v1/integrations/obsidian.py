@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from inspect import isawaitable
 from typing import Any
 
 import redis.asyncio as aioredis
@@ -174,9 +175,14 @@ async def export_meeting(
             error_code="OBSIDIAN_VAULT_INVALID",
         )
 
-    meeting_data, minutes_data, summary_data, sentiment_data, tone_data = (
-        await _gather_meeting_data(meeting_id, redis_client)
-    )
+    (
+        meeting_data,
+        minutes_data,
+        summary_data,
+        sentiment_data,
+        tone_data,
+    ) = await _gather_meeting_data(meeting_id, redis_client)
+    study_pack_data = await _find_cached_study_pack(redis_client, meeting_id)
 
     if not meeting_data:
         not_found(f"회의를 찾을 수 없습니다: meeting_id={meeting_id}")
@@ -200,6 +206,7 @@ async def export_meeting(
         summary_data,
         sentiment_data,
         tone_data,
+        study_pack_data=study_pack_data,
         frontmatter_custom=cfg.frontmatter_custom,
     )
 
@@ -329,9 +336,7 @@ async def _find_summary_by_meeting(
 
     completed 상태의 summary만 반환하며, 여러 개가 있으면 가장 최신 completed_at 기준.
     """
-    return await _find_by_minutes_task_id(
-        redis_client, "task:sum:result:*", meeting_id
-    )
+    return await _find_by_minutes_task_id(redis_client, "task:sum:result:*", meeting_id)
 
 
 async def _find_by_minutes_task_id(
@@ -357,6 +362,32 @@ async def _find_by_minutes_task_id(
     return candidates[0][1]
 
 
+async def _find_cached_study_pack(
+    redis_client: aioredis.Redis,
+    meeting_id: str,
+) -> dict[str, Any] | None:
+    """Find the latest cached Study Pack for a minutes task."""
+    candidates: list[tuple[str, dict[str, Any]]] = []
+    iterator = redis_client.scan_iter(match=f"study_pack:{meeting_id}:*", count=100)
+    if isawaitable(iterator):
+        iterator = await iterator
+    if not hasattr(iterator, "__aiter__"):
+        return None
+
+    async for key in iterator:
+        raw = await redis_client.get(key)
+        data = _safe_json_load(raw)
+        if not data:
+            continue
+        ts = data.get("created_at") or ""
+        candidates.append((str(ts), data))
+
+    if not candidates:
+        return None
+    candidates.sort(key=lambda item: item[0], reverse=True)
+    return candidates[0][1]
+
+
 async def auto_export_if_enabled(
     meeting_id: str,
     redis_client: aioredis.Redis,
@@ -378,9 +409,14 @@ async def auto_export_if_enabled(
             )
             return
 
-        meeting_data, minutes_data, summary_data, sentiment_data, tone_data = (
-            await _gather_meeting_data(meeting_id, redis_client)
-        )
+        (
+            meeting_data,
+            minutes_data,
+            summary_data,
+            sentiment_data,
+            tone_data,
+        ) = await _gather_meeting_data(meeting_id, redis_client)
+        study_pack_data = await _find_cached_study_pack(redis_client, meeting_id)
 
         if not meeting_data or not summary_data:
             logger.info(
@@ -402,6 +438,7 @@ async def auto_export_if_enabled(
             summary_data,
             sentiment_data,
             tone_data,
+            study_pack_data=study_pack_data,
             frontmatter_custom=cfg.frontmatter_custom,
         )
 

@@ -206,9 +206,7 @@ class ObsidianService:
 
         return f"---\n{yaml_text}\n---"
 
-    def _extract_participants(
-        self, minutes_data: dict[str, Any] | None
-    ) -> list[str]:
+    def _extract_participants(self, minutes_data: dict[str, Any] | None) -> list[str]:
         if not minutes_data:
             return []
         speakers = minutes_data.get("speakers") or []
@@ -232,6 +230,7 @@ class ObsidianService:
         summary_data: dict[str, Any] | None,
         sentiment_data: dict[str, Any] | None,
         tone_data: dict[str, Any] | None,
+        study_pack_data: dict[str, Any] | None = None,
     ) -> str:
         """REQ-OBS-005: 노트 본문 섹션 생성."""
         title = meeting_data.get("title", "회의록")
@@ -268,6 +267,13 @@ class ObsidianService:
                 sections.append(f"- {step}")
             sections.append("")
 
+        if study_pack_data:
+            study_pack_md = self._build_study_pack_md(study_pack_data)
+            if study_pack_md:
+                sections.append("## 🎓 학습팩\n")
+                sections.append(study_pack_md)
+                sections.append("")
+
         if minutes_data:
             transcript_md = self._build_transcript_md(minutes_data)
             if transcript_md:
@@ -296,6 +302,63 @@ class ObsidianService:
         sections.append(f"[[{date_link}]] | [[Meetings]] | [[Voice-to-TextNote]]\n")
 
         return "\n".join(sections)
+
+    def _build_study_pack_md(self, study_pack_data: dict[str, Any]) -> str:
+        lines: list[str] = []
+
+        mode = study_pack_data.get("mode")
+        if mode:
+            lines.append(f"- 모드: `{mode}`")
+            lines.append("")
+
+        study_notes = str(study_pack_data.get("study_notes", "")).strip()
+        if study_notes:
+            lines.append("### 학습 노트")
+            lines.append(study_notes)
+            lines.append("")
+
+        key_concepts = study_pack_data.get("key_concepts") or []
+        if key_concepts:
+            lines.append("### 핵심 개념")
+            for item in key_concepts:
+                if not isinstance(item, dict):
+                    continue
+                term = str(item.get("term", "")).strip()
+                explanation = str(item.get("explanation", "")).strip()
+                if term and explanation:
+                    lines.append(f"- **{term}**: {explanation}")
+                elif term:
+                    lines.append(f"- **{term}**")
+            lines.append("")
+
+        flashcards = study_pack_data.get("flashcards") or []
+        if flashcards:
+            lines.append("### 플래시카드")
+            for index, item in enumerate(flashcards, start=1):
+                if not isinstance(item, dict):
+                    continue
+                front = str(item.get("front", "")).strip()
+                back = str(item.get("back", "")).strip()
+                if front or back:
+                    lines.append(f"{index}. **Q.** {front}")
+                    lines.append(f"   - **A.** {back}")
+            lines.append("")
+
+        quiz_questions = study_pack_data.get("quiz_questions") or []
+        if quiz_questions:
+            lines.append("### 복습 퀴즈")
+            for index, item in enumerate(quiz_questions, start=1):
+                if not isinstance(item, dict):
+                    continue
+                question = str(item.get("question", "")).strip()
+                answer = str(item.get("answer", "")).strip()
+                difficulty = str(item.get("difficulty", "")).strip()
+                suffix = f" ({difficulty})" if difficulty else ""
+                if question or answer:
+                    lines.append(f"{index}. {question}{suffix}")
+                    lines.append(f"   - 정답: {answer}")
+
+        return "\n".join(line for line in lines if line is not None).strip()
 
     def _build_transcript_md(self, minutes_data: dict[str, Any]) -> str:
         segments = minutes_data.get("segments") or []
@@ -326,8 +389,7 @@ class ObsidianService:
                 neu = sp.get("neutral_ratio", 0)
                 neg = sp.get("negative_ratio", 0)
                 lines.append(
-                    f"- **{name}**: {dominant} "
-                    f"(긍정 {pos:.0%} / 중립 {neu:.0%} / 부정 {neg:.0%})"
+                    f"- **{name}**: {dominant} (긍정 {pos:.0%} / 중립 {neu:.0%} / 부정 {neg:.0%})"
                 )
         return "\n".join(lines)
 
@@ -352,9 +414,7 @@ class ObsidianService:
         s = int(seconds % 60)
         return f"{h:02d}:{m:02d}:{s:02d}"
 
-    def atomic_write(
-        self, file_path: Path, content: str, exist_ok: bool = True
-    ) -> bool:
+    def atomic_write(self, file_path: Path, content: str, exist_ok: bool = True) -> bool:
         """REQ-OBS-008: atomic write (temp → fsync → link/replace).
 
         exist_ok=True: os.replace (overwrite always)
@@ -362,9 +422,7 @@ class ObsidianService:
         """
         file_path.parent.mkdir(parents=True, exist_ok=True)
 
-        fd, tmp_path = tempfile.mkstemp(
-            dir=str(file_path.parent), prefix=".obs_", suffix=".tmp"
-        )
+        fd, tmp_path = tempfile.mkstemp(dir=str(file_path.parent), prefix=".obs_", suffix=".tmp")
         try:
             with os.fdopen(fd, "w", encoding="utf-8") as f:
                 f.write(content)
@@ -412,6 +470,7 @@ class ObsidianService:
         summary_data: dict[str, Any] | None,
         sentiment_data: dict[str, Any] | None,
         tone_data: dict[str, Any] | None,
+        study_pack_data: dict[str, Any] | None = None,
         frontmatter_custom: dict[str, Any] | None = None,
     ) -> str:
         frontmatter = self.build_frontmatter(
@@ -423,7 +482,12 @@ class ObsidianService:
             custom=frontmatter_custom,
         )
         body = self.build_note_body(
-            meeting_data, minutes_data, summary_data, sentiment_data, tone_data
+            meeting_data,
+            minutes_data,
+            summary_data,
+            sentiment_data,
+            tone_data,
+            study_pack_data,
         )
         return f"{frontmatter}\n\n{body}"
 

@@ -388,10 +388,11 @@ async def test_export_meeting_reports_skip_policy(monkeypatch, tmp_path):
 async def test_export_meeting_success(monkeypatch, tmp_path):
     cfg = _cfg(vault_path=str(tmp_path))
     target = tmp_path / "n.md"
+    compose = MagicMock(return_value="note")
     monkeypatch.setattr(obsidian, "_get_config_from_db", lambda: cfg)
     monkeypatch.setattr(obsidian.obsidian_service, "validate_vault", lambda path: _valid_vault())
     monkeypatch.setattr(obsidian.obsidian_service, "compute_file_path", lambda *args: target)
-    monkeypatch.setattr(obsidian.obsidian_service, "compose_note", lambda *args, **kwargs: "note")
+    monkeypatch.setattr(obsidian.obsidian_service, "compose_note", compose)
     monkeypatch.setattr(obsidian.obsidian_service, "atomic_write", lambda *args, **kwargs: True)
     monkeypatch.setattr(
         obsidian.obsidian_service, "build_obsidian_uri", lambda *args: "obsidian://open"
@@ -405,6 +406,39 @@ async def test_export_meeting_success(monkeypatch, tmp_path):
     assert response.success is True
     assert response.file_path == "n.md"
     assert response.obsidian_uri == "obsidian://open"
+    assert compose.call_args.kwargs["study_pack_data"] is None
+
+
+@pytest.mark.asyncio
+async def test_export_meeting_passes_cached_study_pack_to_note(monkeypatch, tmp_path):
+    cfg = _cfg(vault_path=str(tmp_path))
+    target = tmp_path / "n.md"
+    compose = MagicMock(return_value="note")
+    monkeypatch.setattr(obsidian, "_get_config_from_db", lambda: cfg)
+    monkeypatch.setattr(obsidian.obsidian_service, "validate_vault", lambda path: _valid_vault())
+    monkeypatch.setattr(obsidian.obsidian_service, "compute_file_path", lambda *args: target)
+    monkeypatch.setattr(obsidian.obsidian_service, "compose_note", compose)
+    monkeypatch.setattr(obsidian.obsidian_service, "atomic_write", lambda *args, **kwargs: True)
+    monkeypatch.setattr(
+        obsidian.obsidian_service, "build_obsidian_uri", lambda *args: "obsidian://open"
+    )
+
+    await obsidian.export_meeting(
+        "meeting-1",
+        _redis_with(
+            {
+                "task:min:result:meeting-1": _completed_minutes(),
+                "study_pack:meeting-1:lecture": {
+                    "mode": "lecture",
+                    "study_notes": "학습 노트",
+                    "created_at": "2026-06-21T00:00:00Z",
+                },
+            },
+            scan_keys=["study_pack:meeting-1:lecture"],
+        ),
+    )
+
+    assert compose.call_args.kwargs["study_pack_data"]["study_notes"] == "학습 노트"
 
 
 @pytest.mark.asyncio
@@ -513,6 +547,43 @@ async def test_find_by_minutes_task_id_skips_invalid_and_incomplete_entries():
     )
 
     assert await obsidian._find_by_minutes_task_id(redis, "task:any:*", "meeting-1") is None
+
+
+@pytest.mark.asyncio
+async def test_find_cached_study_pack_uses_latest_created_at():
+    redis = _redis_with(
+        {
+            "study_pack:meeting-1:lecture": {
+                "mode": "lecture",
+                "study_notes": "오래된 노트",
+                "created_at": "2026-01-01T00:00:00Z",
+            },
+            "study_pack:meeting-1:interview": {
+                "mode": "interview",
+                "study_notes": "최신 노트",
+                "created_at": "2026-06-21T00:00:00Z",
+            },
+            "study_pack:meeting-1:bad": "{bad",
+        },
+        scan_keys=[
+            "study_pack:meeting-1:lecture",
+            "study_pack:meeting-1:interview",
+            "study_pack:meeting-1:bad",
+        ],
+    )
+
+    result = await obsidian._find_cached_study_pack(redis, "meeting-1")
+
+    assert result["mode"] == "interview"
+    assert result["study_notes"] == "최신 노트"
+
+
+@pytest.mark.asyncio
+async def test_find_cached_study_pack_returns_none_when_scan_iter_is_not_async_iterable():
+    redis = AsyncMock()
+    redis.scan_iter.return_value = []
+
+    assert await obsidian._find_cached_study_pack(redis, "meeting-1") is None
 
 
 @pytest.mark.asyncio

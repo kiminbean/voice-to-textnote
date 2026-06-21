@@ -179,6 +179,21 @@ def test_safe_json_and_latest_completed_helpers_cover_invalid_and_sorted_entries
     latest = summary_module._find_latest_summary_sync(redis_client, "minutes-1")
     assert latest["summary_text"] == "new"
 
+    redis_client.scan_iter.return_value = ["bad", "valid"]
+    redis_client.get.side_effect = lambda key: {
+        "bad": "{broken",
+        "valid": json.dumps(
+            {
+                "mode": "lecture",
+                "study_notes": "valid",
+                "created_at": "2026-01-02T00:00:00+00:00",
+            }
+        ),
+    }[key]
+
+    study_pack = summary_module._find_latest_study_pack_sync(redis_client, "minutes-1")
+    assert study_pack["study_notes"] == "valid"
+
 
 def test_update_task_status_preserves_created_at_and_optional_fields():
     redis_client = _redis()
@@ -229,10 +244,18 @@ def test_trigger_obsidian_auto_export_writes_note_with_related_results():
                 "sentiment": "positive",
             }
         ),
+        "study-key": json.dumps(
+            {
+                "mode": "lecture",
+                "study_notes": "학습 노트",
+                "created_at": "2026-01-04T00:00:00+00:00",
+            }
+        ),
     }.get(key)
     redis_client.scan_iter.side_effect = [
         ["summary-key"],
         ["sentiment-key"],
+        ["study-key"],
     ]
     service = MagicMock()
     service.validate_vault.return_value = {"valid": True}
@@ -264,6 +287,7 @@ def test_trigger_obsidian_auto_export_writes_note_with_related_results():
     assert compose_args[2]["summary_text"] == "latest"
     assert compose_args[3]["sentiment"] == "positive"
     assert compose_args[4]["tone"] == "formal"
+    assert service.compose_note.call_args.kwargs["study_pack_data"]["study_notes"] == "학습 노트"
     service.atomic_write.assert_called_once_with("/vault/meeting.md", "# note", exist_ok=True)
 
 
