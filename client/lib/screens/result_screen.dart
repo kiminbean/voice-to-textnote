@@ -15,6 +15,7 @@ import 'package:voice_to_textnote/models/summary_result.dart';
 import 'package:voice_to_textnote/models/study_pack.dart';
 import 'package:voice_to_textnote/models/translation.dart';
 import 'package:voice_to_textnote/providers/meeting_list_provider.dart';
+import 'package:voice_to_textnote/providers/team_provider.dart';
 import 'package:voice_to_textnote/providers/result_provider.dart';
 import 'package:voice_to_textnote/providers/study_pack_provider.dart';
 import 'package:voice_to_textnote/providers/translation_provider.dart';
@@ -229,6 +230,9 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     final meeting = meetings.where((m) => m.id == widget.meetingId).firstOrNull;
     final minutesTaskId = meeting?.minutesTaskId;
     final summaryTaskId = meeting?.summaryTaskId;
+    final sharedTeamsAsync = meeting?.sharedTeamIds.isNotEmpty == true
+        ? ref.watch(teamListProvider)
+        : const AsyncData(<Team>[]);
 
     return DefaultTabController(
       length: 10,
@@ -332,6 +336,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           children: [
             _ResultHero(
               meeting: meeting,
+              sharedTeamsAsync: sharedTeamsAsync,
               onExportTap: () => _showExportSheet(
                 context,
                 minutesTaskId,
@@ -462,11 +467,13 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
 
 class _ResultHero extends StatelessWidget {
   final Meeting? meeting;
+  final AsyncValue<List<Team>> sharedTeamsAsync;
   final VoidCallback onExportTap;
   final VoidCallback onShareTap;
 
   const _ResultHero({
     required this.meeting,
+    required this.sharedTeamsAsync,
     required this.onExportTap,
     required this.onShareTap,
   });
@@ -527,6 +534,11 @@ class _ResultHero extends StatelessWidget {
                             color: scheme.textSecondary,
                           ),
                     ),
+                    const SizedBox(height: AppSpacing.xs),
+                    _ShareVisibilityLine(
+                      meeting: meeting,
+                      teamsAsync: sharedTeamsAsync,
+                    ),
                   ],
                 ),
               ),
@@ -553,6 +565,76 @@ class _ResultHero extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ShareVisibilityLine extends StatelessWidget {
+  final Meeting? meeting;
+  final AsyncValue<List<Team>> teamsAsync;
+
+  const _ShareVisibilityLine({
+    required this.meeting,
+    required this.teamsAsync,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = AppColors.of(context);
+    final sharedTeamIds = meeting?.sharedTeamIds ?? const <String>[];
+    final isShared = sharedTeamIds.isNotEmpty;
+    return Row(
+      children: [
+        Icon(
+          isShared ? Icons.groups_2_outlined : Icons.lock_outline_rounded,
+          size: 14,
+          color: isShared ? scheme.primary : scheme.textSecondary,
+        ),
+        const SizedBox(width: AppSpacing.xs),
+        Expanded(
+          child: Text(
+            _shareVisibilityLabel(sharedTeamIds, teamsAsync),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: isShared ? scheme.primary : scheme.textSecondary,
+                  fontWeight: FontWeight.w700,
+                ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _shareVisibilityLabel(
+    List<String> sharedTeamIds,
+    AsyncValue<List<Team>> teamsAsync,
+  ) {
+    if (sharedTeamIds.isEmpty) {
+      return '비공개 · 나만 볼 수 있음';
+    }
+
+    return teamsAsync.when(
+      data: (teams) {
+        final teamNamesById = {for (final team in teams) team.id: team.name};
+        final names = sharedTeamIds
+            .map((teamId) => teamNamesById[teamId])
+            .whereType<String>()
+            .where((name) => name.isNotEmpty)
+            .toList(growable: false);
+        if (names.isEmpty) {
+          return '팀 공유 · ${sharedTeamIds.length}개 팀';
+        }
+        if (names.length == 1) {
+          return '${names.first} 팀에 공유 중';
+        }
+        if (names.length == 2) {
+          return '${names.join(', ')} 팀에 공유 중';
+        }
+        return '${names.take(2).join(', ')} 외 ${names.length - 2}개 팀에 공유 중';
+      },
+      loading: () => '팀 공유 · 공유 팀 불러오는 중',
+      error: (_, __) => '팀 공유 · ${sharedTeamIds.length}개 팀',
     );
   }
 }

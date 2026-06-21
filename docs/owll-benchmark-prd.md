@@ -52,7 +52,7 @@ Voice to TextNote already covers many core Owll-equivalent capabilities:
 | Online meeting capture for Zoom/Meet/Teams | Roadmap mentions Slack/Teams, no bot/import surface found | Meeting-platform import/integration | P2 |
 | Contact manager for sales notes | Team/auth exist, no CRM/contact model found | Sales follow-up/contact workflows | P3 |
 | SOAP/healthcare note mode | Generic templates exist | Domain-specific summary template | P3 |
-| Private cloud per team member | Team sharing exists; history sync, meeting cards, and the team sharing dialog now show private-by-default or team-shared state | Exact team names on result/detail screens and policy settings remain | P1 |
+| Private cloud per team member | Team sharing exists; history sync, meeting cards, result hero team names, and the team sharing dialog now show private-by-default or team-shared state | Organization policy settings remain | P1 |
 | Summary modes 10+ | Backend smart-summary modes and Flutter result-screen mode generation implemented | Mode tuning and persisted history UX can be improved | P1 |
 
 ## 4. Product Direction
@@ -228,7 +228,7 @@ Create a minimal Apple Watch companion for one-tap recording or recording trigge
 
 Make note ownership and sharing state visible everywhere users make sharing decisions. This supports Owll-style private/team cloud expectations while preserving this project's privacy-first posture.
 
-**Implementation status (2026-06-21)**: Flutter ownership visibility is in place for meeting cards and the team sharing decision surface, and server history sync now carries shared team IDs. `HistoryItem`/`HistoryDetailItem` include `shared_team_ids`, `MeetingListNotifier.refreshFromServer()` maps those IDs into `Meeting.sharedTeamIds` for new and existing local meetings, `MeetingCard` displays a `비공개` lock badge by default or `팀 공유` when one or more team IDs are present, and `TeamShareDialog` states that notes stay private unless selected teams are checked while showing `나만 볼 수 있음` or the active shared-team count. Remaining work: show exact team names on result/detail screens and add organization policy settings for default sharing behavior.
+**Implementation status (2026-06-21)**: Flutter ownership visibility is in place for meeting cards, the result hero, and the team sharing decision surface, and server history sync now carries shared team IDs. `HistoryItem`/`HistoryDetailItem` include `shared_team_ids`, `MeetingListNotifier.refreshFromServer()` maps those IDs into `Meeting.sharedTeamIds` for new and existing local meetings, `MeetingCard` displays a `비공개` lock badge by default or `팀 공유` when one or more team IDs are present, the result hero resolves shared IDs through `teamListProvider` to show exact team names when available, and `TeamShareDialog` states that notes stay private unless selected teams are checked while showing `나만 볼 수 있음` or the active shared-team count. Remaining work: add organization policy settings for default sharing behavior.
 
 ### P3: Domain Packs
 

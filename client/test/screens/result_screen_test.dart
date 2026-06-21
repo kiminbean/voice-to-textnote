@@ -7,8 +7,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:voice_to_textnote/models/meeting.dart';
 import 'package:voice_to_textnote/models/study_pack.dart';
+import 'package:voice_to_textnote/models/team.dart';
 import 'package:voice_to_textnote/models/translation.dart';
 import 'package:voice_to_textnote/providers/meeting_list_provider.dart';
+import 'package:voice_to_textnote/providers/team_provider.dart';
 import 'package:voice_to_textnote/screens/result_screen.dart';
 import 'package:voice_to_textnote/services/minutes_api.dart';
 import 'package:voice_to_textnote/services/study_pack_api.dart';
@@ -191,7 +193,10 @@ void main() {
   });
 
   // 위젯 테스트 헬퍼: ProviderScope + MaterialApp 래핑
-  Widget buildTestWidget(List<Override> overrides) {
+  Widget buildTestWidget(
+    List<Override> overrides, {
+    List<Meeting>? meetings,
+  }) {
     return ProviderScope(
       overrides: [
         minutesApiProvider.overrideWithValue(mockMinApi),
@@ -199,7 +204,7 @@ void main() {
         studyPackApiProvider.overrideWithValue(mockStudyPackApi),
         translationApiProvider.overrideWithValue(mockTranslationApi),
         meetingListProvider.overrideWith(
-          () => _MockMeetingListNotifier([testMeeting]),
+          () => _MockMeetingListNotifier(meetings ?? [testMeeting]),
         ),
         ...overrides,
       ],
@@ -208,6 +213,50 @@ void main() {
       ),
     );
   }
+
+  group('Result hero 공유 상태 표시', () {
+    testWidgets('공유 팀이 없으면 비공개 상태를 표시해야 함', (WidgetTester tester) async {
+      await tester.pumpWidget(buildTestWidget([]));
+      await tester.pumpAndSettle();
+
+      expect(find.text('비공개 · 나만 볼 수 있음'), findsOneWidget);
+    });
+
+    testWidgets('공유 팀 ID가 있으면 팀 이름을 표시해야 함', (WidgetTester tester) async {
+      final sharedMeeting = testMeeting.copyWith(
+        sharedTeamIds: const ['team-001', 'team-002'],
+      );
+
+      await tester.pumpWidget(
+        buildTestWidget(
+          [
+            teamListProvider.overrideWith((ref) async {
+              return [
+                Team(
+                  id: 'team-001',
+                  name: '리서치',
+                  createdBy: 'user-001',
+                  createdAt: DateTime(2026, 3, 22),
+                  memberCount: 3,
+                ),
+                Team(
+                  id: 'team-002',
+                  name: '제품',
+                  createdBy: 'user-001',
+                  createdAt: DateTime(2026, 3, 22),
+                  memberCount: 4,
+                ),
+              ];
+            }),
+          ],
+          meetings: [sharedMeeting],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('리서치, 제품 팀에 공유 중'), findsOneWidget);
+    });
+  });
 
   group('_SummaryTab - 주요 결정 사항 및 다음 단계 표시 (REQ-APP-042, REQ-APP-043)', () {
     // 주요 결정 사항 섹션이 표시되는지 테스트
