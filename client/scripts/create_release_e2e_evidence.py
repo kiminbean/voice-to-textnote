@@ -17,8 +17,11 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from verify_release_readiness import REQUIRED_E2E_SCENARIOS  # noqa: E402, I001
-
+from verify_release_readiness import (  # noqa: E402
+    REQUIRED_E2E_SCENARIOS,
+    release_artifact_sha256,
+    resolve_release_artifact_path,
+)
 
 DEFAULT_ANDROID_APK = "client/build/app/outputs/flutter-apk/app-debug.apk"
 DEFAULT_IOS_RUNNER_APP = "client/build/ios/iphoneos/Runner.app"
@@ -42,6 +45,10 @@ def git_revision(root: Path) -> str:
 
 def build_evidence(root: Path, *, android_apk: str, ios_runner_app: str) -> dict[str, object]:
     revision = git_revision(root)
+    artifacts = {
+        "android_apk": android_apk,
+        "ios_runner_app": ios_runner_app,
+    }
     return {
         "tested_at": datetime.now(UTC).isoformat(),
         "tester": os.environ.get("USER", "release-operator"),
@@ -59,9 +66,10 @@ def build_evidence(root: Path, *, android_apk: str, ios_runner_app: str) -> dict
                 "os_version": "",
             },
         },
-        "artifacts": {
-            "android_apk": android_apk,
-            "ios_runner_app": ios_runner_app,
+        "artifacts": artifacts,
+        "artifact_sha256": {
+            key: release_artifact_sha256(resolve_release_artifact_path(root, artifact_path))
+            for key, artifact_path in artifacts.items()
         },
         "scenarios": {
             key: {

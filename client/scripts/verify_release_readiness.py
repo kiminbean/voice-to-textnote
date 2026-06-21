@@ -9,6 +9,7 @@ and physical-device secrets available.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import plistlib
@@ -622,15 +623,15 @@ def check_readme_release_status(root: Path, reporter: Reporter) -> None:
     else:
         reporter.ok("README does not overclaim Production Ready before strict evidence")
     if (
-        "3868 백엔드 테스트" in readme
-        and "3868개" in readme
+        "3870 백엔드 테스트" in readme
+        and "3870개" in readme
         and ("Flutter 415" in readme or "415개" in readme)
-        and "4283개" in readme
+        and "4285개" in readme
     ):
         reporter.ok("README test counts match current release validation evidence")
     else:
         reporter.fail(
-            "README test counts must match current 3868 backend / 415 Flutter / 4283 total evidence"
+            "README test counts must match current 3870 backend / 415 Flutter / 4285 total evidence"
         )
     if f"{completed_spec_count}개 SPEC" in readme:
         reporter.fail("README should avoid hard-coded completed SPEC counts outside the SPEC list")
@@ -705,11 +706,11 @@ def check_docs(root: Path, reporter: Reporter) -> None:
             "Release procedure SPEC count must match README completed SPEC list "
             f"({completed_spec_count})"
         )
-    if "3868 passed" in procedure_doc and "Flutter: 415 passed" in procedure_doc:
+    if "3870 passed" in procedure_doc and "Flutter: 415 passed" in procedure_doc:
         reporter.ok("Release procedure backend test count matches latest full pytest evidence")
     else:
         reporter.fail(
-            "Release procedure test counts must match latest 3868 backend / 415 Flutter evidence"
+            "Release procedure test counts must match latest 3870 backend / 415 Flutter evidence"
         )
     app_store_doc = read_text(root / "docs/app-store-metadata.md")
     for snippet in [
@@ -1022,6 +1023,21 @@ def resolve_release_artifact_path(root: Path, artifact_path: str) -> Path:
     return root / path
 
 
+def release_artifact_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    if path.is_file():
+        digest.update(path.read_bytes())
+        return digest.hexdigest()
+    if path.is_dir():
+        for file_path in sorted(child for child in path.rglob("*") if child.is_file()):
+            digest.update(file_path.relative_to(path).as_posix().encode("utf-8"))
+            digest.update(b"\0")
+            digest.update(file_path.read_bytes())
+            digest.update(b"\0")
+        return digest.hexdigest()
+    return ""
+
+
 def is_android_apk(path: Path) -> bool:
     try:
         with zipfile.ZipFile(path) as apk:
@@ -1096,6 +1112,9 @@ def check_release_e2e_evidence(path: Path, reporter: Reporter, root: Path | None
             require_non_empty_string(reporter, device, key, f"{platform} device {key}")
 
     artifacts = require_non_empty_mapping(reporter, data, "artifacts", "build artifacts")
+    artifact_hashes = require_non_empty_mapping(
+        reporter, data, "artifact_sha256", "artifact hashes"
+    )
     artifact_type_checks = {
         "android_apk": Path.is_file,
         "ios_runner_app": Path.is_dir,
@@ -1135,6 +1154,14 @@ def check_release_e2e_evidence(path: Path, reporter: Reporter, root: Path | None
                 if not executable or not (resolved_artifact / executable).is_file():
                     reporter.fail(f"Release E2E evidence artifact missing executable: {key}")
                     continue
+            expected_hash = str(artifact_hashes.get(key, "")).strip() if artifact_hashes else ""
+            if not expected_hash:
+                reporter.fail(f"Release E2E evidence missing artifact hash: {key}")
+                continue
+            actual_hash = release_artifact_sha256(resolved_artifact)
+            if actual_hash != expected_hash:
+                reporter.fail(f"Release E2E evidence artifact hash mismatch: {key}")
+                continue
             reporter.ok(f"Release E2E evidence artifact exists: {key}")
         elif resolved_artifact.exists():
             expected_type = "file" if key == "android_apk" else "directory"

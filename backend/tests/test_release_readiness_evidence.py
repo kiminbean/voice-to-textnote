@@ -51,6 +51,10 @@ def make_evidence(tmp_path: Path, module) -> dict[str, object]:
             "android_apk": str(android_apk),
             "ios_runner_app": str(ios_runner),
         },
+        "artifact_sha256": {
+            "android_apk": module.release_artifact_sha256(android_apk),
+            "ios_runner_app": module.release_artifact_sha256(ios_runner),
+        },
         "scenarios": {
             scenario: {
                 "pass": True,
@@ -103,10 +107,10 @@ def write_tone_policy_files(root: Path, *, tone_model_line: str = 'tone_model: s
 def write_readme_status(root: Path, content: str) -> None:
     (root / "README.md").write_text(
         (
-            "3868 백엔드 테스트\n"
-            "| 백엔드 단위/통합/E2E | 3868개 | 100.00% |\n"
+            "3870 백엔드 테스트\n"
+            "| 백엔드 단위/통합/E2E | 3870개 | 100.00% |\n"
             "| Flutter 테스트 | 415개 | - |\n"
-            "| 총합 | 4283개 | - |\n"
+            "| 총합 | 4285개 | - |\n"
             f"{content}"
         ),
         encoding="utf-8",
@@ -264,6 +268,36 @@ def test_release_e2e_evidence_rejects_android_apk_directory(tmp_path, monkeypatc
     module.check_release_e2e_evidence(evidence_path, reporter)
 
     assert any("artifact must be a file: android_apk" in error for error in reporter.errors)
+
+
+def test_release_e2e_evidence_rejects_missing_artifact_hashes(tmp_path, monkeypatch):
+    module = load_release_readiness_module()
+    evidence = make_evidence(tmp_path, module)
+    evidence.pop("artifact_sha256", None)
+    evidence_path = write_evidence(tmp_path, evidence)
+    monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
+    monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")
+
+    reporter = module.Reporter()
+    module.check_release_e2e_evidence(evidence_path, reporter)
+
+    assert any("missing artifact hashes" in error for error in reporter.errors)
+
+
+def test_release_e2e_evidence_rejects_artifact_hash_mismatch(tmp_path, monkeypatch):
+    module = load_release_readiness_module()
+    evidence = make_evidence(tmp_path, module)
+    artifact_hashes = evidence["artifact_sha256"]
+    assert isinstance(artifact_hashes, dict)
+    artifact_hashes["android_apk"] = "0" * 64
+    evidence_path = write_evidence(tmp_path, evidence)
+    monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
+    monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")
+
+    reporter = module.Reporter()
+    module.check_release_e2e_evidence(evidence_path, reporter)
+
+    assert any("artifact hash mismatch: android_apk" in error for error in reporter.errors)
 
 
 def test_release_e2e_evidence_rejects_android_artifact_without_apk_suffix(

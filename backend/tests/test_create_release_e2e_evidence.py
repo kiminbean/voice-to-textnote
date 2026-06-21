@@ -45,6 +45,7 @@ def test_release_e2e_scaffold_contains_every_required_scenario(monkeypatch):
     assert evidence["devices"]["ios"]["udid"] == "ios-udid"
     assert set(evidence["scenarios"]) == set(readiness.REQUIRED_E2E_SCENARIOS)
     assert all(scenario["pass"] is False for scenario in evidence["scenarios"].values())
+    assert set(evidence["artifact_sha256"]) == {"android_apk", "ios_runner_app"}
 
 
 def test_release_e2e_scaffold_round_trips_json(tmp_path):
@@ -61,6 +62,7 @@ def test_release_e2e_scaffold_round_trips_json(tmp_path):
 
     assert loaded["artifacts"]["android_apk"] == "app-debug.apk"
     assert loaded["artifacts"]["ios_runner_app"] == "Runner.app"
+    assert set(loaded["artifact_sha256"]) == {"android_apk", "ios_runner_app"}
 
 
 def test_release_e2e_evidence_artifacts_are_resolved_from_repo_root(
@@ -106,6 +108,10 @@ def test_release_e2e_evidence_artifacts_are_resolved_from_repo_root(
                 "artifacts": {
                     "android_apk": "client/build/app/outputs/flutter-apk/app-debug.apk",
                     "ios_runner_app": "client/build/ios/iphoneos/Runner.app",
+                },
+                "artifact_sha256": {
+                    "android_apk": readiness.release_artifact_sha256(android_apk),
+                    "ios_runner_app": readiness.release_artifact_sha256(ios_runner_app),
                 },
                 "scenarios": {
                     key: {
