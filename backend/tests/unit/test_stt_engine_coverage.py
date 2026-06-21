@@ -103,6 +103,26 @@ class TestWhisperEngineDoubleLock:
                 assert len(results) == 5
                 assert engine.is_loaded is True
 
+    def test_load_returns_when_model_loaded_while_waiting_for_lock(self):
+        """락 대기 중 다른 호출이 모델을 로드하면 로드 작업 없이 반환"""
+        from backend.ml.stt_engine import WhisperEngine
+
+        class MarkLoadedOnEnter:
+            def __enter__(self):
+                WhisperEngine._model_loaded = True
+
+            def __exit__(self, exc_type, exc, traceback):
+                return False
+
+        engine = WhisperEngine.get_instance()
+        engine._lock = MarkLoadedOnEnter()
+
+        with patch.object(engine, "_try_load_mlx") as mock_load_mlx:
+            engine.load()
+
+        mock_load_mlx.assert_not_called()
+        assert engine.is_loaded is True
+
 
 class TestFasterWhisperLoad:
     """라인 208-210: faster-whisper 로드 실패 처리"""

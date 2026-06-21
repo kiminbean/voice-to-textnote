@@ -621,15 +621,15 @@ def check_readme_release_status(root: Path, reporter: Reporter) -> None:
     else:
         reporter.ok("README does not overclaim Production Ready before strict evidence")
     if (
-        "3857 백엔드 테스트" in readme
-        and "3857개" in readme
+        "3859 백엔드 테스트" in readme
+        and "3859개" in readme
         and ("Flutter 415" in readme or "415개" in readme)
-        and "4272개" in readme
+        and "4274개" in readme
     ):
         reporter.ok("README test counts match current release validation evidence")
     else:
         reporter.fail(
-            "README test counts must match current 3857 backend / 415 Flutter / 4272 total evidence"
+            "README test counts must match current 3859 backend / 415 Flutter / 4274 total evidence"
         )
     if f"{completed_spec_count}개 SPEC" in readme:
         reporter.fail("README should avoid hard-coded completed SPEC counts outside the SPEC list")
@@ -704,11 +704,11 @@ def check_docs(root: Path, reporter: Reporter) -> None:
             "Release procedure SPEC count must match README completed SPEC list "
             f"({completed_spec_count})"
         )
-    if "3857 passed" in procedure_doc and "Flutter: 415 passed" in procedure_doc:
+    if "3859 passed" in procedure_doc and "Flutter: 415 passed" in procedure_doc:
         reporter.ok("Release procedure backend test count matches latest full pytest evidence")
     else:
         reporter.fail(
-            "Release procedure test counts must match latest 3857 backend / 415 Flutter evidence"
+            "Release procedure test counts must match latest 3859 backend / 415 Flutter evidence"
         )
     app_store_doc = read_text(root / "docs/app-store-metadata.md")
     for snippet in [
@@ -978,6 +978,19 @@ def require_iso_datetime(
     return value
 
 
+def require_git_revision(
+    reporter: Reporter, data: dict[str, object], key: str, label: str
+) -> str:
+    value = require_non_empty_string(reporter, data, key, label)
+    if not value:
+        return ""
+    if re.fullmatch(r"git:[0-9a-fA-F]{7,40}", value):
+        reporter.ok(f"Release E2E evidence {label} is a git revision")
+        return value
+    reporter.fail(f"Release E2E evidence {label} must be git:<sha>")
+    return ""
+
+
 def has_unresolved_evidence_placeholder(value: str) -> bool:
     return any(re.search(pattern, value, re.IGNORECASE) for pattern in UNRESOLVED_EVIDENCE_PATTERNS)
 
@@ -1005,8 +1018,8 @@ def check_release_e2e_evidence(path: Path, reporter: Reporter, root: Path | None
 
     require_iso_datetime(reporter, data, "tested_at", "test timestamp")
     require_non_empty_string(reporter, data, "tester", "tester")
-    require_non_empty_string(reporter, data, "backend_version", "backend version")
-    require_non_empty_string(reporter, data, "client_version", "client version")
+    require_git_revision(reporter, data, "backend_version", "backend version")
+    require_git_revision(reporter, data, "client_version", "client version")
 
     devices = require_non_empty_mapping(reporter, data, "devices", "device metadata")
     for platform, expected_id in [

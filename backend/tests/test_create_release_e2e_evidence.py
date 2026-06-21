@@ -77,8 +77,8 @@ def test_release_e2e_evidence_artifacts_are_resolved_from_repo_root(
             {
                 "tested_at": "2026-06-21T00:00:00+00:00",
                 "tester": "release-operator",
-                "backend_version": "git:test",
-                "client_version": "git:test",
+                "backend_version": "git:abcdef1",
+                "client_version": "git:abcdef1",
                 "devices": {
                     "android": {
                         "serial": "android-serial",
