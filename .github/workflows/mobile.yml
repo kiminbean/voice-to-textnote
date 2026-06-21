@@ -12,6 +12,8 @@ on:
       - main
     paths:
       - "client/**"
+      - "README.md"
+      - "pyproject.toml"
       - "backend/app/config.py"
       - "backend/services/push_service.py"
       - "backend/app/workers/hooks/celery_push_hooks.py"
@@ -19,9 +21,11 @@ on:
       - "docs/e2e-device-checklist.md"
       - "docs/firebase-setup-guide.md"
       - "docs/privacy-policy.md"
+      - "docs/release-procedure.md"
       - "docs/release-e2e-evidence.json"
       - "docs/release-e2e-evidence.example.json"
       - "docs/screenshot-guide.md"
+      - ".gitignore"
       - "backend/tests/test_configure_github_mobile_release_env.py"
       - "backend/tests/test_create_release_e2e_evidence.py"
       - "backend/tests/test_github_mobile_release_env.py"
@@ -33,6 +37,8 @@ on:
       - main
     paths:
       - "client/**"
+      - "README.md"
+      - "pyproject.toml"
       - "backend/app/config.py"
       - "backend/services/push_service.py"
       - "backend/app/workers/hooks/celery_push_hooks.py"
@@ -40,9 +46,11 @@ on:
       - "docs/e2e-device-checklist.md"
       - "docs/firebase-setup-guide.md"
       - "docs/privacy-policy.md"
+      - "docs/release-procedure.md"
       - "docs/release-e2e-evidence.json"
       - "docs/release-e2e-evidence.example.json"
       - "docs/screenshot-guide.md"
+      - ".gitignore"
       - "backend/tests/test_configure_github_mobile_release_env.py"
       - "backend/tests/test_create_release_e2e_evidence.py"
       - "backend/tests/test_github_mobile_release_env.py"

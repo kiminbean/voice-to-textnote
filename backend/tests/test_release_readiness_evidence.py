@@ -1064,6 +1064,10 @@ def test_mobile_workflow_exposes_manual_strict_release_gate():
     required_snippets = [
         "workflow_dispatch:",
         "evidence_path:",
+        "README.md",
+        "pyproject.toml",
+        ".gitignore",
+        "docs/release-procedure.md",
         "release-strict:",
         "Strict Release Readiness With Physical Devices",
         "- self-hosted",
