@@ -21,6 +21,8 @@ def load_release_readiness_module():
 def make_evidence(tmp_path: Path, module) -> dict[str, object]:
     android_apk = tmp_path / "app-debug.apk"
     ios_runner = tmp_path / "Runner.app"
+    repo_root = Path(__file__).resolve().parents[2]
+    current_revision = module.current_git_revision(repo_root)
     with zipfile.ZipFile(android_apk, "w") as apk:
         apk.writestr("AndroidManifest.xml", "<manifest />")
     ios_runner.mkdir()
@@ -29,8 +31,8 @@ def make_evidence(tmp_path: Path, module) -> dict[str, object]:
     return {
         "tested_at": "2026-06-15T09:00:00+09:00",
         "tester": "release-operator",
-        "backend_version": "git:abcdef1",
-        "client_version": "git:abcdef1",
+        "backend_version": current_revision,
+        "client_version": current_revision,
         "devices": {
             "android": {
                 "serial": "android-serial",
@@ -86,10 +88,10 @@ def write_tone_policy_files(root: Path, *, tone_model_line: str = 'tone_model: s
 def write_readme_status(root: Path, content: str) -> None:
     (root / "README.md").write_text(
         (
-            "3864 백엔드 테스트\n"
-            "| 백엔드 단위/통합/E2E | 3864개 | 100.00% |\n"
+            "3865 백엔드 테스트\n"
+            "| 백엔드 단위/통합/E2E | 3865개 | 100.00% |\n"
             "| Flutter 테스트 | 415개 | - |\n"
-            "| 총합 | 4279개 | - |\n"
+            "| 총합 | 4280개 | - |\n"
             f"{content}"
         ),
         encoding="utf-8",
@@ -169,6 +171,22 @@ def test_release_e2e_evidence_rejects_non_git_revision_versions(tmp_path, monkey
     module.check_release_e2e_evidence(evidence_path, reporter)
 
     assert any("backend version must be git:<sha>" in error for error in reporter.errors)
+
+
+def test_release_e2e_evidence_rejects_version_mismatch_with_current_git(
+    tmp_path, monkeypatch
+):
+    module = load_release_readiness_module()
+    evidence = make_evidence(tmp_path, module)
+    evidence["backend_version"] = "git:0000000"
+    evidence_path = write_evidence(tmp_path, evidence)
+    monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
+    monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")
+
+    reporter = module.Reporter()
+    module.check_release_e2e_evidence(evidence_path, reporter)
+
+    assert any("backend version does not match current git revision" in error for error in reporter.errors)
 
 
 def test_release_e2e_evidence_rejects_placeholder_scenario_evidence(tmp_path, monkeypatch):

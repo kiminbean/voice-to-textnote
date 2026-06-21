@@ -622,15 +622,15 @@ def check_readme_release_status(root: Path, reporter: Reporter) -> None:
     else:
         reporter.ok("README does not overclaim Production Ready before strict evidence")
     if (
-        "3864 백엔드 테스트" in readme
-        and "3864개" in readme
+        "3865 백엔드 테스트" in readme
+        and "3865개" in readme
         and ("Flutter 415" in readme or "415개" in readme)
-        and "4279개" in readme
+        and "4280개" in readme
     ):
         reporter.ok("README test counts match current release validation evidence")
     else:
         reporter.fail(
-            "README test counts must match current 3864 backend / 415 Flutter / 4279 total evidence"
+            "README test counts must match current 3865 backend / 415 Flutter / 4280 total evidence"
         )
     if f"{completed_spec_count}개 SPEC" in readme:
         reporter.fail("README should avoid hard-coded completed SPEC counts outside the SPEC list")
@@ -705,11 +705,11 @@ def check_docs(root: Path, reporter: Reporter) -> None:
             "Release procedure SPEC count must match README completed SPEC list "
             f"({completed_spec_count})"
         )
-    if "3864 passed" in procedure_doc and "Flutter: 415 passed" in procedure_doc:
+    if "3865 passed" in procedure_doc and "Flutter: 415 passed" in procedure_doc:
         reporter.ok("Release procedure backend test count matches latest full pytest evidence")
     else:
         reporter.fail(
-            "Release procedure test counts must match latest 3864 backend / 415 Flutter evidence"
+            "Release procedure test counts must match latest 3865 backend / 415 Flutter evidence"
         )
     app_store_doc = read_text(root / "docs/app-store-metadata.md")
     for snippet in [
@@ -992,6 +992,22 @@ def require_git_revision(
     return ""
 
 
+def current_git_revision(root: Path) -> str:
+    try:
+        completed = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=root,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return "git:unknown"
+    revision = completed.stdout.strip()
+    return f"git:{revision}" if revision else "git:unknown"
+
+
 def has_unresolved_evidence_placeholder(value: str) -> bool:
     return any(re.search(pattern, value, re.IGNORECASE) for pattern in UNRESOLVED_EVIDENCE_PATTERNS)
 
@@ -1027,8 +1043,20 @@ def check_release_e2e_evidence(path: Path, reporter: Reporter, root: Path | None
 
     require_iso_datetime(reporter, data, "tested_at", "test timestamp")
     require_non_empty_string(reporter, data, "tester", "tester")
-    require_git_revision(reporter, data, "backend_version", "backend version")
-    require_git_revision(reporter, data, "client_version", "client version")
+    current_revision = current_git_revision(root)
+    for key, label in [
+        ("backend_version", "backend version"),
+        ("client_version", "client version"),
+    ]:
+        revision = require_git_revision(reporter, data, key, label)
+        if not revision or current_revision == "git:unknown":
+            continue
+        if revision == current_revision:
+            reporter.ok(f"Release E2E evidence {label} matches current git revision")
+        else:
+            reporter.fail(
+                f"Release E2E evidence {label} does not match current git revision"
+            )
 
     devices = require_non_empty_mapping(reporter, data, "devices", "device metadata")
     for platform, expected_id in [
