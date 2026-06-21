@@ -279,6 +279,8 @@ class Settings(BaseSettings):
             raise ValueError(
                 "production 환경에서는 FIREBASE_CREDENTIALS_PATH를 반드시 설정해야 합니다"
             )
+        if self.environment == "production" and not self.openai_api_key.strip():
+            raise ValueError("production 환경에서는 OPENAI_API_KEY를 반드시 설정해야 합니다")
         return self
 
     @property
