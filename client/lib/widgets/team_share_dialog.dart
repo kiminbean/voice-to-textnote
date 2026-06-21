@@ -82,76 +82,150 @@ class _TeamShareDialogState extends ConsumerState<TeamShareDialog> {
       title: const Text('팀에 공유'),
       content: SizedBox(
         width: double.maxFinite,
-        child: teamsAsync.when(
-          loading: () => const SizedBox(
-            height: 100,
-            child: Center(child: CircularProgressIndicator()),
-          ),
-          error: (_, __) => const SizedBox(
-            height: 100,
-            child: Center(child: Text('팀 목록을 불러오지 못했습니다')),
-          ),
-          data: (teams) => teams.isEmpty
-              ? SizedBox(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const _SharePolicyBanner(),
+            const SizedBox(height: 12),
+            _ShareStateSummary(sharedCount: _sharedTeamIds.length),
+            const SizedBox(height: 12),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 320),
+              child: teamsAsync.when(
+                loading: () => const SizedBox(
                   height: 100,
-                  child: Center(
-                    child: Text(
-                      '속한 팀이 없습니다',
-                      style: TextStyle(color: Theme.of(context).colorScheme.outline),
-                    ),
-                  ),
-                )
-              : ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: teams.length,
-                  itemBuilder: (context, index) {
-                    final team = teams[index];
-                    final isShared = _sharedTeamIds.contains(team.id);
-                    final isLoading = _loadingTeamIds.contains(team.id);
-
-                    return CheckboxListTile(
-                      value: isShared,
-                      // 로딩 중에는 변경 불가
-                      onChanged: isLoading
-                          ? null
-                          : (_) => _toggleShare(team),
-                      title: Text(team.name),
-                      subtitle: team.description != null &&
-                              team.description!.isNotEmpty
-                          ? Text(
-                              team.description!,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            )
-                          : null,
-                      secondary: isLoading
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : CircleAvatar(
-                              radius: 16,
-                              backgroundColor: Theme.of(context)
-                                  .colorScheme
-                                  .primaryContainer,
-                              child: Text(
-                                team.name.isNotEmpty
-                                    ? team.name[0].toUpperCase()
-                                    : 'T',
-                                style: const TextStyle(fontSize: 12),
-                              ),
-                            ),
-                      controlAffinity: ListTileControlAffinity.trailing,
-                    );
-                  },
+                  child: Center(child: CircularProgressIndicator()),
                 ),
+                error: (_, __) => const SizedBox(
+                  height: 100,
+                  child: Center(child: Text('팀 목록을 불러오지 못했습니다')),
+                ),
+                data: (teams) => teams.isEmpty
+                    ? SizedBox(
+                        height: 100,
+                        child: Center(
+                          child: Text(
+                            '속한 팀이 없습니다',
+                            style: TextStyle(
+                                color: Theme.of(context).colorScheme.outline),
+                          ),
+                        ),
+                      )
+                    : ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: teams.length,
+                        itemBuilder: (context, index) {
+                          final team = teams[index];
+                          final isShared = _sharedTeamIds.contains(team.id);
+                          final isLoading = _loadingTeamIds.contains(team.id);
+
+                          return CheckboxListTile(
+                            value: isShared,
+                            // 로딩 중에는 변경 불가
+                            onChanged:
+                                isLoading ? null : (_) => _toggleShare(team),
+                            title: Text(team.name),
+                            subtitle: team.description != null &&
+                                    team.description!.isNotEmpty
+                                ? Text(
+                                    team.description!,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  )
+                                : null,
+                            secondary: isLoading
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2),
+                                  )
+                                : CircleAvatar(
+                                    radius: 16,
+                                    backgroundColor: Theme.of(context)
+                                        .colorScheme
+                                        .primaryContainer,
+                                    child: Text(
+                                      team.name.isNotEmpty
+                                          ? team.name[0].toUpperCase()
+                                          : 'T',
+                                      style: const TextStyle(fontSize: 12),
+                                    ),
+                                  ),
+                            controlAffinity: ListTileControlAffinity.trailing,
+                          );
+                        },
+                      ),
+              ),
+            ),
+          ],
         ),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('닫기'),
+        ),
+      ],
+    );
+  }
+}
+
+class _SharePolicyBanner extends StatelessWidget {
+  const _SharePolicyBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest.withAlpha(120),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: colorScheme.outlineVariant),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.lock_outline_rounded,
+              size: 18, color: colorScheme.primary),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              '기본은 비공개입니다. 선택한 팀만 이 노트에 접근할 수 있습니다.',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ShareStateSummary extends StatelessWidget {
+  final int sharedCount;
+
+  const _ShareStateSummary({required this.sharedCount});
+
+  @override
+  Widget build(BuildContext context) {
+    final isShared = sharedCount > 0;
+    final colorScheme = Theme.of(context).colorScheme;
+    return Row(
+      children: [
+        Icon(
+          isShared ? Icons.groups_2_outlined : Icons.lock_outline_rounded,
+          size: 16,
+          color: isShared ? colorScheme.primary : colorScheme.outline,
+        ),
+        const SizedBox(width: 6),
+        Text(
+          isShared ? '$sharedCount개 팀에 공유 중' : '나만 볼 수 있음',
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: isShared ? colorScheme.primary : colorScheme.outline,
+                fontWeight: FontWeight.w700,
+              ),
         ),
       ],
     );
