@@ -12,6 +12,9 @@ import AVFAudio
 
   /// MethodChannel — Android MainActivity.kt와 동일한 인터페이스
   private let channelName = "com.voicetextnote.app/recording"
+  private let sharedImportChannelName = "com.voicetextnote.app/shared_import"
+  private var pendingInitialSharedImport: [String: String]?
+  private var pendingLatestSharedImport: [String: String]?
 
   override func application(
     _ application: UIApplication,
@@ -21,6 +24,7 @@ import AVFAudio
     let result = super.application(application, didFinishLaunchingWithOptions: launchOptions)
 
     setupRecordingMethodChannel()
+    setupSharedImportMethodChannel()
     setupAudioSessionObservers()
 
     return result
@@ -62,6 +66,160 @@ import AVFAudio
       } else {
         result(FlutterMethodNotImplemented)
       }
+    }
+  }
+
+  /// iOS Open In / deep link import를 Android shared_import 채널과 같은 계약으로 노출
+  private func setupSharedImportMethodChannel() {
+    guard let controller = window?.rootViewController as? FlutterViewController else {
+      return
+    }
+
+    let channel = FlutterMethodChannel(
+      name: sharedImportChannelName,
+      binaryMessenger: controller.binaryMessenger
+    )
+
+    channel.setMethodCallHandler { [weak self] (call: FlutterMethodCall, result: @escaping FlutterResult) in
+      guard let self = self else {
+        result(nil)
+        return
+      }
+
+      if call.method == "consumeInitialSharedImport" {
+        let payload = self.pendingInitialSharedImport
+        self.pendingInitialSharedImport = nil
+        self.pendingLatestSharedImport = nil
+        result(payload)
+      } else if call.method == "consumeLatestSharedImport" {
+        let payload = self.pendingLatestSharedImport
+        self.pendingLatestSharedImport = nil
+        result(payload)
+      } else {
+        result(FlutterMethodNotImplemented)
+      }
+    }
+  }
+
+  override func application(
+    _ app: UIApplication,
+    open url: URL,
+    options: [UIApplication.OpenURLOptionsKey: Any] = [:]
+  ) -> Bool {
+    if let payload = sharedImportPayload(from: url) {
+      queueSharedImport(payload)
+      return true
+    }
+
+    return super.application(app, open: url, options: options)
+  }
+
+  private func sharedImportPayload(from url: URL) -> [String: String]? {
+    if url.isFileURL {
+      return copySharedFile(url)
+    }
+
+    guard url.scheme == "voicetextnote",
+          let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+          let items = components.queryItems else {
+      return nil
+    }
+
+    var payload: [String: String] = [:]
+    let supportedKeys = [
+      "shared_url": "text",
+      "shared_text": "text",
+      "shared_title": "title",
+      "shared_mime": "mimeType",
+      "shared_file_path": "filePath",
+      "shared_file_name": "fileName",
+    ]
+
+    for item in items {
+      guard let mappedKey = supportedKeys[item.name],
+            let value = item.value?.trimmingCharacters(in: .whitespacesAndNewlines),
+            !value.isEmpty else {
+        continue
+      }
+
+      if mappedKey == "text" {
+        let existingText = payload[mappedKey].map { "\($0)\n" } ?? ""
+        payload[mappedKey] = "\(existingText)\(value)"
+      } else {
+        payload[mappedKey] = value
+      }
+    }
+
+    return payload.isEmpty ? nil : payload
+  }
+
+  private func queueSharedImport(_ payload: [String: String]) {
+    pendingInitialSharedImport = payload
+    pendingLatestSharedImport = payload
+  }
+
+  private func copySharedFile(_ url: URL) -> [String: String]? {
+    let didAccess = url.startAccessingSecurityScopedResource()
+    defer {
+      if didAccess {
+        url.stopAccessingSecurityScopedResource()
+      }
+    }
+
+    let originalName = url.lastPathComponent.isEmpty ? "shared-import" : url.lastPathComponent
+    let safeName = originalName.replacingOccurrences(
+      of: "[^A-Za-z0-9가-힣._-]",
+      with: "_",
+      options: .regularExpression
+    )
+    let targetDir = FileManager.default.temporaryDirectory
+      .appendingPathComponent("shared-imports", isDirectory: true)
+    let target = targetDir.appendingPathComponent("\(Int(Date().timeIntervalSince1970 * 1000))-\(safeName)")
+
+    do {
+      try FileManager.default.createDirectory(
+        at: targetDir,
+        withIntermediateDirectories: true
+      )
+      if FileManager.default.fileExists(atPath: target.path) {
+        try FileManager.default.removeItem(at: target)
+      }
+      try FileManager.default.copyItem(at: url, to: target)
+    } catch {
+      NSLog("shared import 파일 복사 실패: %@", error.localizedDescription)
+      return nil
+    }
+
+    let mimeType = mimeTypeForSharedFile(url)
+    return [
+      "filePath": target.path,
+      "fileName": originalName,
+      "mimeType": mimeType,
+      "title": (originalName as NSString).deletingPathExtension,
+    ]
+  }
+
+  private func mimeTypeForSharedFile(_ url: URL) -> String {
+    let ext = url.pathExtension.lowercased()
+    if ext == "pdf" {
+      return "application/pdf"
+    }
+    if ext == "docx" {
+      return "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    }
+    switch ext {
+    case "png":
+      return "image/png"
+    case "jpg", "jpeg":
+      return "image/jpeg"
+    case "webp":
+      return "image/webp"
+    case "heic":
+      return "image/heic"
+    case "heif":
+      return "image/heif"
+    default:
+      return "application/octet-stream"
     }
   }
 

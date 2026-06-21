@@ -80,6 +80,28 @@
 				</array>
 			</dict>
 		</array>
+		<key>CFBundleDocumentTypes</key>
+		<array>
+			<dict>
+				<key>CFBundleTypeName</key>
+				<string>Voice TextNote Importable Documents</string>
+				<key>CFBundleTypeRole</key>
+				<string>Viewer</string>
+				<key>LSHandlerRank</key>
+				<string>Owner</string>
+				<key>LSItemContentTypes</key>
+				<array>
+					<string>com.adobe.pdf</string>
+					<string>org.openxmlformats.wordprocessingml.document</string>
+					<string>public.image</string>
+					<string>public.png</string>
+					<string>public.jpeg</string>
+					<string>org.webmproject.webp</string>
+					<string>public.heic</string>
+					<string>public.heif</string>
+				</array>
+			</dict>
+		</array>
 		<!-- Firebase 수동 메시지 핸들링 (Flutter plugin 호환성) -->
 		<key>FirebaseAppDelegateProxyEnabled</key>
 		<false/>

@@ -62,9 +62,11 @@ void main() {
 
   group('REQ-001/003: AppDelegate.swift 정적 계약', () {
     late String appDelegate;
+    late String infoPlist;
 
     setUpAll(() {
       appDelegate = File('ios/Runner/AppDelegate.swift').readAsStringSync();
+      infoPlist = File('ios/Runner/Info.plist').readAsStringSync();
     });
 
     test('녹음 MethodChannel과 5개 호환 메서드를 구현해야 함', () {
@@ -95,6 +97,28 @@ void main() {
       expect(appDelegate, contains('method: "onRouteChange"'));
       expect(appDelegate, contains('"shouldResume": shouldResume'));
       expect(appDelegate, contains('"reason": reasonString'));
+    });
+
+    test('iOS Open In import는 shared_import 채널과 문서 타입을 노출해야 함', () {
+      expect(
+        appDelegate,
+        contains('private let sharedImportChannelName = '
+            '"com.voicetextnote.app/shared_import"'),
+      );
+      expect(appDelegate, contains('consumeInitialSharedImport'));
+      expect(appDelegate, contains('consumeLatestSharedImport'));
+      expect(appDelegate, contains('override func application('));
+      expect(appDelegate, contains('copySharedFile(_ url: URL)'));
+      expect(appDelegate, contains('case "png":'));
+      expect(appDelegate, contains('"filePath": target.path'));
+
+      expect(infoPlist, contains('CFBundleDocumentTypes'));
+      expect(infoPlist, contains('com.adobe.pdf'));
+      expect(
+        infoPlist,
+        contains('org.openxmlformats.wordprocessingml.document'),
+      );
+      expect(infoPlist, contains('public.image'));
     });
   });
 

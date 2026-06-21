@@ -331,6 +331,23 @@ def check_ios_project(root: Path, reporter: Reporter) -> None:
     else:
         reporter.fail(f"iOS URL scheme {URL_SCHEME} missing")
 
+    document_types = info.get("CFBundleDocumentTypes", [])
+    content_types = {
+        content_type
+        for document_type in document_types
+        for content_type in document_type.get("LSItemContentTypes", [])
+    }
+    required_document_types = {
+        "com.adobe.pdf",
+        "org.openxmlformats.wordprocessingml.document",
+        "public.image",
+    }
+    if required_document_types.issubset(content_types):
+        reporter.ok("iOS document types accept PDF/DOCX/image Open In imports")
+    else:
+        missing = sorted(required_document_types - content_types)
+        reporter.fail("iOS document import types missing: " + ", ".join(missing))
+
     entitlements = plistlib.loads(entitlements_path.read_bytes())
     aps_environment = entitlements.get("aps-environment")
     if aps_environment in {"development", "production"}:
@@ -377,6 +394,27 @@ def check_ios_project(root: Path, reporter: Reporter) -> None:
     else:
         reporter.fail(
             "iOS AppDelegate recording contract missing: " + ", ".join(missing_recording_contract)
+        )
+
+    shared_import_contract = [
+        'private let sharedImportChannelName = "com.voicetextnote.app/shared_import"',
+        "consumeInitialSharedImport",
+        "consumeLatestSharedImport",
+        "override func application(",
+        "sharedImportPayload(from: url)",
+        "copySharedFile(_ url: URL)",
+        'case "png":',
+        '"filePath": target.path',
+    ]
+    missing_shared_import = [
+        snippet for snippet in shared_import_contract if snippet not in app_delegate
+    ]
+    if not missing_shared_import:
+        reporter.ok("iOS AppDelegate exposes shared import MethodChannel")
+    else:
+        reporter.fail(
+            "iOS AppDelegate shared import contract missing: "
+            + ", ".join(missing_shared_import)
         )
 
 
@@ -584,13 +622,13 @@ def check_readme_release_status(root: Path, reporter: Reporter) -> None:
     if (
         "3847 백엔드 테스트" in readme
         and "3847개" in readme
-        and ("Flutter 413" in readme or "413개" in readme)
-        and "4260개" in readme
+        and ("Flutter 414" in readme or "414개" in readme)
+        and "4261개" in readme
     ):
         reporter.ok("README test counts match current release validation evidence")
     else:
         reporter.fail(
-            "README test counts must match current 3847 backend / 413 Flutter / 4260 total evidence"
+            "README test counts must match current 3847 backend / 414 Flutter / 4261 total evidence"
         )
     if f"{completed_spec_count}개 SPEC" in readme:
         reporter.fail("README should avoid hard-coded completed SPEC counts outside the SPEC list")
@@ -665,11 +703,11 @@ def check_docs(root: Path, reporter: Reporter) -> None:
             "Release procedure SPEC count must match README completed SPEC list "
             f"({completed_spec_count})"
         )
-    if "3847 passed" in procedure_doc and "Flutter: 413 passed" in procedure_doc:
+    if "3847 passed" in procedure_doc and "Flutter: 414 passed" in procedure_doc:
         reporter.ok("Release procedure backend test count matches latest full pytest evidence")
     else:
         reporter.fail(
-            "Release procedure test counts must match latest 3847 backend / 413 Flutter evidence"
+            "Release procedure test counts must match latest 3847 backend / 414 Flutter evidence"
         )
     app_store_doc = read_text(root / "docs/app-store-metadata.md")
     for snippet in [
