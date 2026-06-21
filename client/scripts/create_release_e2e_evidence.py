@@ -18,6 +18,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from verify_release_readiness import (  # noqa: E402
+    REQUIRED_E2E_SCENARIO_PLATFORMS,
     REQUIRED_E2E_SCENARIOS,
     artifact_path_stays_inside_root,
     release_artifact_sha256,
@@ -96,6 +97,7 @@ def build_evidence(root: Path, *, android_apk: str, ios_runner_app: str) -> dict
         "scenarios": {
             key: {
                 "pass": False,
+                "platforms": list(REQUIRED_E2E_SCENARIO_PLATFORMS[key]),
                 "evidence": f"TODO: {label}",
             }
             for key, label in REQUIRED_E2E_SCENARIOS.items()

@@ -26,70 +26,129 @@
   "scenarios": {
     "permission_microphone_initial": {
       "pass": false,
+      "platforms": [
+        "android",
+        "ios"
+      ],
       "evidence": "TODO: Initial microphone permission prompt"
     },
     "permission_denied_recovery": {
       "pass": false,
+      "platforms": [
+        "android",
+        "ios"
+      ],
       "evidence": "TODO: Permission denial recovery UI"
     },
     "ios_background_recording_lock": {
       "pass": false,
+      "platforms": [
+        "ios"
+      ],
       "evidence": "TODO: iOS background recording while locked"
     },
     "ios_interruption_resume": {
       "pass": false,
+      "platforms": [
+        "ios"
+      ],
       "evidence": "TODO: iOS call interruption resume"
     },
     "ios_bluetooth_route_change": {
       "pass": false,
+      "platforms": [
+        "ios"
+      ],
       "evidence": "TODO: iOS Bluetooth route change"
     },
     "unfinished_recording_recovery": {
       "pass": false,
+      "platforms": [
+        "android",
+        "ios"
+      ],
       "evidence": "TODO: Unfinished recording recovery after restart"
     },
     "push_stt_complete": {
       "pass": false,
+      "platforms": [
+        "android",
+        "ios"
+      ],
       "evidence": "TODO: Push received for STT completion"
     },
     "push_summary_complete": {
       "pass": false,
+      "platforms": [
+        "android",
+        "ios"
+      ],
       "evidence": "TODO: Push received for summary completion"
     },
     "push_failure": {
       "pass": false,
+      "platforms": [
+        "android",
+        "ios"
+      ],
       "evidence": "TODO: Push received for processing failure"
     },
     "push_deeplink_background": {
       "pass": false,
+      "platforms": [
+        "android",
+        "ios"
+      ],
       "evidence": "TODO: Push deeplink while app is backgrounded"
     },
     "push_deeplink_cold_start": {
       "pass": false,
+      "platforms": [
+        "android",
+        "ios"
+      ],
       "evidence": "TODO: Push deeplink from cold start"
     },
     "android_foreground_service": {
       "pass": false,
+      "platforms": [
+        "android"
+      ],
       "evidence": "TODO: Android foreground recording notification"
     },
     "android_debug_tailscale_cleartext_allowed": {
       "pass": false,
+      "platforms": [
+        "android"
+      ],
       "evidence": "TODO: Android debug Tailscale HTTP allowed"
     },
     "android_release_cleartext_blocked": {
       "pass": false,
+      "platforms": [
+        "android"
+      ],
       "evidence": "TODO: Android release HTTP blocked"
     },
     "ios_release_http_blocked": {
       "pass": false,
+      "platforms": [
+        "ios"
+      ],
       "evidence": "TODO: iOS release HTTP blocked"
     },
     "export_share_android": {
       "pass": false,
+      "platforms": [
+        "android"
+      ],
       "evidence": "TODO: Android PDF share sheet"
     },
     "export_share_ios": {
       "pass": false,
+      "platforms": [
+        "ios"
+      ],
       "evidence": "TODO: iOS PDF share sheet"
     }
   }

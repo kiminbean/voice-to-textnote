@@ -45,6 +45,25 @@ REQUIRED_E2E_SCENARIOS = {
     "export_share_android": "Android PDF share sheet",
     "export_share_ios": "iOS PDF share sheet",
 }
+REQUIRED_E2E_SCENARIO_PLATFORMS = {
+    "permission_microphone_initial": ("android", "ios"),
+    "permission_denied_recovery": ("android", "ios"),
+    "ios_background_recording_lock": ("ios",),
+    "ios_interruption_resume": ("ios",),
+    "ios_bluetooth_route_change": ("ios",),
+    "unfinished_recording_recovery": ("android", "ios"),
+    "push_stt_complete": ("android", "ios"),
+    "push_summary_complete": ("android", "ios"),
+    "push_failure": ("android", "ios"),
+    "push_deeplink_background": ("android", "ios"),
+    "push_deeplink_cold_start": ("android", "ios"),
+    "android_foreground_service": ("android",),
+    "android_debug_tailscale_cleartext_allowed": ("android",),
+    "android_release_cleartext_blocked": ("android",),
+    "ios_release_http_blocked": ("ios",),
+    "export_share_android": ("android",),
+    "export_share_ios": ("ios",),
+}
 UNRESOLVED_EVIDENCE_PATTERNS = (
     r"\bTODO\b",
     r"\bTBD\b",
@@ -990,15 +1009,30 @@ def check_tracked_release_e2e_scaffold(root: Path, reporter: Reporter) -> None:
         reporter.fail("Tracked release E2E evidence scaffold missing artifact hashes")
     actual = set(scenarios)
     expected = set(REQUIRED_E2E_SCENARIOS)
-    if actual == expected:
-        reporter.ok("Tracked release E2E evidence scaffold lists every required scenario")
+    if actual != expected:
+        missing = ", ".join(sorted(expected - actual)) or "none"
+        extra = ", ".join(sorted(actual - expected)) or "none"
+        reporter.fail(
+            "Tracked release E2E evidence scaffold scenario keys are stale "
+            f"(missing: {missing}; extra: {extra})"
+        )
         return
-    missing = ", ".join(sorted(expected - actual)) or "none"
-    extra = ", ".join(sorted(actual - expected)) or "none"
-    reporter.fail(
-        "Tracked release E2E evidence scaffold scenario keys are stale "
-        f"(missing: {missing}; extra: {extra})"
-    )
+    reporter.ok("Tracked release E2E evidence scaffold lists every required scenario")
+
+    stale_platform_scenarios = []
+    for key in sorted(REQUIRED_E2E_SCENARIOS):
+        scenario = scenarios.get(key)
+        platforms = scenario.get("platforms") if isinstance(scenario, dict) else None
+        expected_platforms = list(REQUIRED_E2E_SCENARIO_PLATFORMS[key])
+        if platforms != expected_platforms:
+            stale_platform_scenarios.append(key)
+    if stale_platform_scenarios:
+        reporter.fail(
+            "Tracked release E2E evidence scaffold scenario platforms are stale: "
+            + ", ".join(stale_platform_scenarios)
+        )
+    else:
+        reporter.ok("Tracked release E2E evidence scaffold scenario platforms match contract")
 
 
 def check_service_account(path: Path, reporter: Reporter) -> None:
@@ -1432,19 +1466,49 @@ def check_release_e2e_evidence(path: Path, reporter: Reporter, root: Path | None
         if not isinstance(scenario, dict):
             reporter.fail(f"Release E2E evidence missing scenario: {key} ({label})")
             continue
-        for result_key in sorted(set(scenario) - {"pass", "evidence"}):
+        for result_key in sorted(set(scenario) - {"pass", "platforms", "evidence"}):
             reporter.fail(
                 f"Release E2E evidence includes unknown scenario result key: "
                 f"{key}.{result_key}"
             )
         passed = scenario.get("pass")
+        platforms_value = scenario.get("platforms")
         evidence_value = scenario.get("evidence")
+        expected_platforms = set(REQUIRED_E2E_SCENARIO_PLATFORMS[key])
+        scenario_platforms: set[str] = set()
+        if not isinstance(platforms_value, list) or not platforms_value:
+            reporter.fail(f"Release E2E scenario platforms must be a non-empty list: {key}")
+        else:
+            invalid_platform_entries = [
+                platform for platform in platforms_value if not isinstance(platform, str)
+            ]
+            if invalid_platform_entries:
+                reporter.fail(
+                    f"Release E2E scenario platforms must be strings: {key}"
+                )
+            scenario_platforms = {
+                platform.strip() for platform in platforms_value if isinstance(platform, str)
+            }
+            unknown_platforms = sorted(scenario_platforms - expected_device_platforms)
+            if unknown_platforms:
+                reporter.fail(
+                    f"Release E2E scenario platforms include unknown platform: "
+                    f"{key} ({', '.join(unknown_platforms)})"
+                )
+            if scenario_platforms == expected_platforms:
+                reporter.ok(f"Release E2E scenario platforms match contract: {key}")
+            else:
+                reporter.fail(
+                    f"Release E2E scenario platforms mismatch: {key} "
+                    f"expected {','.join(sorted(expected_platforms))}"
+                )
         if not isinstance(evidence_value, str):
             reporter.fail(f"Release E2E scenario evidence must be a string: {key}")
             continue
         evidence = evidence_value.strip()
         if (
             passed is True
+            and scenario_platforms == expected_platforms
             and len(evidence) >= MIN_RELEASE_E2E_EVIDENCE_CHARS
             and not has_unresolved_evidence_placeholder(evidence)
         ):

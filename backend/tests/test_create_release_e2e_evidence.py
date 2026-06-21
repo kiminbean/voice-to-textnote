@@ -65,6 +65,10 @@ def test_release_e2e_scaffold_contains_every_required_scenario(monkeypatch, tmp_
     assert evidence["devices"]["ios"]["udid"] == "ios-udid"
     assert set(evidence["scenarios"]) == set(readiness.REQUIRED_E2E_SCENARIOS)
     assert all(scenario["pass"] is False for scenario in evidence["scenarios"].values())
+    assert {
+        key: tuple(value["platforms"])
+        for key, value in evidence["scenarios"].items()
+    } == readiness.REQUIRED_E2E_SCENARIO_PLATFORMS
     assert set(evidence["artifact_sha256"]) == {"android_apk", "ios_runner_app"}
 
 
@@ -243,6 +247,7 @@ def test_release_e2e_evidence_artifacts_are_resolved_from_repo_root(
                 "scenarios": {
                     key: {
                         "pass": True,
+                        "platforms": list(readiness.REQUIRED_E2E_SCENARIO_PLATFORMS[key]),
                         "evidence": f"Observed physical-device pass for {key}.",
                     }
                     for key in readiness.REQUIRED_E2E_SCENARIOS

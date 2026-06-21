@@ -61,6 +61,7 @@ def make_evidence(tmp_path: Path, module) -> dict[str, object]:
         "scenarios": {
             scenario: {
                 "pass": True,
+                "platforms": list(module.REQUIRED_E2E_SCENARIO_PLATFORMS[scenario]),
                 "evidence": f"{label} verified on release test devices.",
             }
             for scenario, label in module.REQUIRED_E2E_SCENARIOS.items()
@@ -283,6 +284,72 @@ def test_release_e2e_evidence_rejects_unknown_scenario_result_key(tmp_path, monk
 
     assert any(
         "unknown scenario result key: push_stt_complete.manual_override" in error
+        for error in reporter.errors
+    )
+
+
+def test_release_e2e_evidence_rejects_missing_scenario_platforms(tmp_path, monkeypatch):
+    module = load_release_readiness_module()
+    evidence = make_evidence(tmp_path, module)
+    scenarios = evidence["scenarios"]
+    assert isinstance(scenarios, dict)
+    scenario = scenarios["push_stt_complete"]
+    assert isinstance(scenario, dict)
+    scenario.pop("platforms")
+    evidence_path = write_evidence(tmp_path, evidence)
+    monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
+    monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")
+
+    reporter = module.Reporter()
+    module.check_release_e2e_evidence(evidence_path, reporter, tmp_path)
+
+    assert any(
+        "scenario platforms must be a non-empty list: push_stt_complete" in error
+        for error in reporter.errors
+    )
+
+
+def test_release_e2e_evidence_rejects_scenario_platform_mismatch(
+    tmp_path, monkeypatch
+):
+    module = load_release_readiness_module()
+    evidence = make_evidence(tmp_path, module)
+    scenarios = evidence["scenarios"]
+    assert isinstance(scenarios, dict)
+    scenario = scenarios["push_stt_complete"]
+    assert isinstance(scenario, dict)
+    scenario["platforms"] = ["android"]
+    evidence_path = write_evidence(tmp_path, evidence)
+    monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
+    monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")
+
+    reporter = module.Reporter()
+    module.check_release_e2e_evidence(evidence_path, reporter, tmp_path)
+
+    assert any(
+        "scenario platforms mismatch: push_stt_complete expected android,ios" in error
+        for error in reporter.errors
+    )
+
+
+def test_release_e2e_evidence_rejects_unknown_scenario_platform(tmp_path, monkeypatch):
+    module = load_release_readiness_module()
+    evidence = make_evidence(tmp_path, module)
+    scenarios = evidence["scenarios"]
+    assert isinstance(scenarios, dict)
+    scenario = scenarios["ios_release_http_blocked"]
+    assert isinstance(scenario, dict)
+    scenario["platforms"] = ["ios", "web"]
+    evidence_path = write_evidence(tmp_path, evidence)
+    monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
+    monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")
+
+    reporter = module.Reporter()
+    module.check_release_e2e_evidence(evidence_path, reporter, tmp_path)
+
+    assert any(
+        "scenario platforms include unknown platform: ios_release_http_blocked (web)"
+        in error
         for error in reporter.errors
     )
 
@@ -789,6 +856,10 @@ def test_release_e2e_example_lists_every_required_scenario():
     scenarios = example["scenarios"]
 
     assert set(scenarios) == set(module.REQUIRED_E2E_SCENARIOS)
+    assert {
+        key: tuple(value["platforms"])
+        for key, value in scenarios.items()
+    } == module.REQUIRED_E2E_SCENARIO_PLATFORMS
 
 
 def test_release_e2e_example_matches_strict_top_level_schema():
@@ -815,6 +886,32 @@ def test_tracked_release_e2e_scaffold_lists_every_required_scenario():
     scenarios = scaffold["scenarios"]
 
     assert set(scenarios) == set(module.REQUIRED_E2E_SCENARIOS)
+    assert {
+        key: tuple(value["platforms"])
+        for key, value in scenarios.items()
+    } == module.REQUIRED_E2E_SCENARIO_PLATFORMS
+
+
+def test_tracked_release_e2e_scaffold_check_rejects_stale_platforms(tmp_path):
+    module = load_release_readiness_module()
+    root = tmp_path
+    docs = root / "docs"
+    docs.mkdir()
+    scaffold_path = Path(__file__).resolve().parents[2] / "docs/release-e2e-evidence.json"
+    scaffold = json.loads(scaffold_path.read_text(encoding="utf-8"))
+    scaffold["scenarios"]["push_stt_complete"]["platforms"] = ["android"]
+    (docs / "release-e2e-evidence.json").write_text(
+        json.dumps(scaffold),
+        encoding="utf-8",
+    )
+
+    reporter = module.Reporter()
+    module.check_tracked_release_e2e_scaffold(root, reporter)
+
+    assert any(
+        "scaffold scenario platforms are stale: push_stt_complete" in error
+        for error in reporter.errors
+    )
 
 
 def test_tracked_release_e2e_scaffold_matches_strict_top_level_schema():

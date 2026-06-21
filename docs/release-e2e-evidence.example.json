@@ -26,70 +26,129 @@
   "scenarios": {
     "permission_microphone_initial": {
       "pass": true,
+      "platforms": [
+        "android",
+        "ios"
+      ],
       "evidence": "Fresh install showed microphone permission prompt before recording."
     },
     "permission_denied_recovery": {
       "pass": true,
+      "platforms": [
+        "android",
+        "ios"
+      ],
       "evidence": "Permission denial showed settings recovery UI without crash."
     },
     "ios_background_recording_lock": {
       "pass": true,
+      "platforms": [
+        "ios"
+      ],
       "evidence": "iPhone locked for 30 seconds during recording; recording continued after unlock."
     },
     "ios_interruption_resume": {
       "pass": true,
+      "platforms": [
+        "ios"
+      ],
       "evidence": "Incoming call interrupted recording and recording resumed after call ended."
     },
     "ios_bluetooth_route_change": {
       "pass": true,
+      "platforms": [
+        "ios"
+      ],
       "evidence": "Bluetooth route disconnect/reconnect was reflected without stopping recording."
     },
     "unfinished_recording_recovery": {
       "pass": true,
+      "platforms": [
+        "android",
+        "ios"
+      ],
       "evidence": "Force-quit during recording, relaunched app, recovery dialog found saved file."
     },
     "push_stt_complete": {
       "pass": true,
+      "platforms": [
+        "android",
+        "ios"
+      ],
       "evidence": "STT completion push received on registered Android and iOS test devices."
     },
     "push_summary_complete": {
       "pass": true,
+      "platforms": [
+        "android",
+        "ios"
+      ],
       "evidence": "Summary completion push received on registered Android and iOS test devices."
     },
     "push_failure": {
       "pass": true,
+      "platforms": [
+        "android",
+        "ios"
+      ],
       "evidence": "Forced processing failure generated error push."
     },
     "push_deeplink_background": {
       "pass": true,
+      "platforms": [
+        "android",
+        "ios"
+      ],
       "evidence": "Tapped push while app was backgrounded; result screen opened."
     },
     "push_deeplink_cold_start": {
       "pass": true,
+      "platforms": [
+        "android",
+        "ios"
+      ],
       "evidence": "Tapped push after force-closing app; app cold-started into result screen."
     },
     "android_foreground_service": {
       "pass": true,
+      "platforms": [
+        "android"
+      ],
       "evidence": "Android recording notification appeared, updated, and disappeared after stop."
     },
     "android_debug_tailscale_cleartext_allowed": {
       "pass": true,
+      "platforms": [
+        "android"
+      ],
       "evidence": "Debug build reached Tailscale staging HTTP endpoint successfully."
     },
     "android_release_cleartext_blocked": {
       "pass": true,
+      "platforms": [
+        "android"
+      ],
       "evidence": "Release build blocked external HTTP request and showed failure UI."
     },
     "ios_release_http_blocked": {
       "pass": true,
+      "platforms": [
+        "ios"
+      ],
       "evidence": "iOS release build blocked non-HTTPS request with ATS failure path."
     },
     "export_share_android": {
       "pass": true,
+      "platforms": [
+        "android"
+      ],
       "evidence": "Android PDF export opened native share sheet and shared generated PDF."
     },
     "export_share_ios": {
       "pass": true,
+      "platforms": [
+        "ios"
+      ],
       "evidence": "iOS PDF export opened native share sheet and shared generated PDF."
     }
   }
