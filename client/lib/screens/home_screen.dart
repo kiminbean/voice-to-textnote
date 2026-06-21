@@ -346,145 +346,12 @@ class HomeScreen extends ConsumerWidget {
   }
 
   void _showExternalTextImportSheet(BuildContext context, WidgetRef ref) {
-    var draftUrl = '';
-    var draftTitle = '';
-    var draftContent = '';
-    var isSubmitting = false;
-    String? errorText;
-
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(
-          left: AppSpacing.lg,
-          right: AppSpacing.lg,
-          top: AppSpacing.sm,
-          bottom: MediaQuery.of(ctx).viewInsets.bottom + AppSpacing.xl,
-        ),
-        child: StatefulBuilder(
-          builder: (ctx, setSheetState) {
-            Future<void> submit() async {
-              final url = draftUrl.trim();
-              final title = draftTitle.trim();
-              final content = draftContent.trim();
-              final validationError =
-                  _validateExternalImport(url, title, content);
-              if (validationError != null) {
-                setSheetState(() => errorText = validationError);
-                return;
-              }
-
-              setSheetState(() {
-                isSubmitting = true;
-                errorText = null;
-              });
-
-              try {
-                final result =
-                    await ref.read(minutesApiProvider).importExternalText(
-                          sourceUrl: url,
-                          title: title,
-                          content: content,
-                          sourceType: _externalSourceType(url),
-                        );
-                final taskId = result['task_id'] as String;
-                final meeting = Meeting(
-                  id: taskId,
-                  title: title,
-                  createdAt: DateTime.now(),
-                  status: MeetingStatus.completed,
-                  sourceUrl: url,
-                  minutesTaskId: taskId,
-                );
-                await ref
-                    .read(meetingListProvider.notifier)
-                    .addMeeting(meeting);
-
-                if (!context.mounted) return;
-                Navigator.of(ctx).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('$title을 가져왔습니다.')),
-                );
-              } catch (_) {
-                if (!ctx.mounted) return;
-                setSheetState(() {
-                  isSubmitting = false;
-                  errorText = '외부 자료를 가져올 수 없습니다. 잠시 후 다시 시도해주세요.';
-                });
-              }
-            }
-
-            return SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'URL/Transcript 가져오기',
-                    style: Theme.of(ctx).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  Text(
-                    '직접 보유한 transcript나 원문을 붙여넣으면 검색, 요약, 번역이 가능한 회의록으로 저장됩니다.',
-                    style: Theme.of(ctx).textTheme.bodySmall,
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  TextField(
-                    decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.link_rounded),
-                      labelText: '원본 URL',
-                      errorText: errorText,
-                    ),
-                    keyboardType: TextInputType.url,
-                    textInputAction: TextInputAction.next,
-                    onChanged: (value) {
-                      draftUrl = value;
-                      if (errorText != null) {
-                        setSheetState(() => errorText = null);
-                      }
-                    },
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  TextField(
-                    decoration: const InputDecoration(
-                      prefixIcon: Icon(Icons.title_rounded),
-                      labelText: '제목',
-                    ),
-                    textInputAction: TextInputAction.next,
-                    onChanged: (value) => draftTitle = value,
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  TextField(
-                    decoration: const InputDecoration(
-                      alignLabelWithHint: true,
-                      prefixIcon: Icon(Icons.notes_rounded),
-                      labelText: 'Transcript 또는 원문',
-                    ),
-                    minLines: 5,
-                    maxLines: 10,
-                    keyboardType: TextInputType.multiline,
-                    onChanged: (value) => draftContent = value,
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-                  FilledButton.icon(
-                    onPressed: isSubmitting ? null : submit,
-                    icon: isSubmitting
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.library_add_check_rounded),
-                    label: Text(isSubmitting ? '가져오는 중' : '검색 가능한 회의록으로 가져오기'),
-                  ),
-                ],
-              ),
-            );
-          },
-        ),
+      builder: (_) => _ExternalTextImportSheet(
+        validateExternalImport: _validateExternalImport,
+        externalSourceType: _externalSourceType,
       ),
     );
   }
@@ -876,6 +743,208 @@ class HomeScreen extends ConsumerWidget {
     } finally {
       await ref.read(meetingListProvider.notifier).removeMeeting(meetingId);
     }
+  }
+}
+
+class _ExternalTextImportSheet extends ConsumerStatefulWidget {
+  final String? Function(String url, String title, String content)
+      validateExternalImport;
+  final String Function(String url) externalSourceType;
+
+  const _ExternalTextImportSheet({
+    required this.validateExternalImport,
+    required this.externalSourceType,
+  });
+
+  @override
+  ConsumerState<_ExternalTextImportSheet> createState() =>
+      _ExternalTextImportSheetState();
+}
+
+class _ExternalTextImportSheetState
+    extends ConsumerState<_ExternalTextImportSheet> {
+  final TextEditingController _contentController = TextEditingController();
+  String _draftUrl = '';
+  String _draftTitle = '';
+  String _draftContent = '';
+  bool _isSubmitting = false;
+  String? _errorText;
+  String? _clipboardMessage;
+
+  @override
+  void dispose() {
+    _contentController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pasteTranscriptFromClipboard() async {
+    final data = await Clipboard.getData(Clipboard.kTextPlain);
+    final text = data?.text?.trim() ?? '';
+    if (!mounted) return;
+    if (text.isEmpty) {
+      setState(() {
+        _clipboardMessage = '클립보드에 붙여넣을 텍스트가 없습니다.';
+      });
+      return;
+    }
+
+    _contentController.text = text;
+    setState(() {
+      _draftContent = text;
+      _clipboardMessage = '클립보드 transcript를 붙여넣었습니다.';
+      _errorText = null;
+    });
+  }
+
+  Future<void> _submit() async {
+    final url = _draftUrl.trim();
+    final title = _draftTitle.trim();
+    final content = _draftContent.trim();
+    final validationError = widget.validateExternalImport(url, title, content);
+    if (validationError != null) {
+      setState(() => _errorText = validationError);
+      return;
+    }
+
+    setState(() {
+      _isSubmitting = true;
+      _errorText = null;
+    });
+
+    try {
+      final result = await ref.read(minutesApiProvider).importExternalText(
+            sourceUrl: url,
+            title: title,
+            content: content,
+            sourceType: widget.externalSourceType(url),
+          );
+      final taskId = result['task_id'] as String;
+      final meeting = Meeting(
+        id: taskId,
+        title: title,
+        createdAt: DateTime.now(),
+        status: MeetingStatus.completed,
+        sourceUrl: url,
+        minutesTaskId: taskId,
+      );
+      await ref.read(meetingListProvider.notifier).addMeeting(meeting);
+
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$title을 가져왔습니다.')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isSubmitting = false;
+        _errorText = '외부 자료를 가져올 수 없습니다. 잠시 후 다시 시도해주세요.';
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        left: AppSpacing.lg,
+        right: AppSpacing.lg,
+        top: AppSpacing.sm,
+        bottom: MediaQuery.of(context).viewInsets.bottom + AppSpacing.xl,
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'URL/Transcript 가져오기',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              '직접 보유한 transcript나 원문을 붙여넣으면 검색, 요약, 번역이 가능한 회의록으로 저장됩니다.',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            TextField(
+              decoration: InputDecoration(
+                prefixIcon: const Icon(Icons.link_rounded),
+                labelText: '원본 URL',
+                errorText: _errorText,
+              ),
+              keyboardType: TextInputType.url,
+              textInputAction: TextInputAction.next,
+              onChanged: (value) {
+                _draftUrl = value;
+                if (_errorText != null) {
+                  setState(() => _errorText = null);
+                }
+              },
+            ),
+            const SizedBox(height: AppSpacing.md),
+            TextField(
+              decoration: const InputDecoration(
+                prefixIcon: Icon(Icons.title_rounded),
+                labelText: '제목',
+              ),
+              textInputAction: TextInputAction.next,
+              onChanged: (value) => _draftTitle = value,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            TextField(
+              decoration: const InputDecoration(
+                alignLabelWithHint: true,
+                prefixIcon: Icon(Icons.notes_rounded),
+                labelText: 'Transcript 또는 원문',
+              ),
+              controller: _contentController,
+              minLines: 5,
+              maxLines: 10,
+              keyboardType: TextInputType.multiline,
+              onChanged: (value) {
+                _draftContent = value;
+                if (_clipboardMessage != null) {
+                  setState(() => _clipboardMessage = null);
+                }
+              },
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: _pasteTranscriptFromClipboard,
+                icon: const Icon(Icons.content_paste_rounded),
+                label: const Text('클립보드에서 붙여넣기'),
+              ),
+            ),
+            if (_clipboardMessage != null) ...[
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                _clipboardMessage!,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.outline,
+                    ),
+              ),
+            ],
+            const SizedBox(height: AppSpacing.lg),
+            FilledButton.icon(
+              onPressed: _isSubmitting ? null : _submit,
+              icon: _isSubmitting
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.library_add_check_rounded),
+              label: Text(_isSubmitting ? '가져오는 중' : '검색 가능한 회의록으로 가져오기'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

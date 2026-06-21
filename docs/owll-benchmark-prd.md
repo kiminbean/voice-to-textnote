@@ -46,7 +46,7 @@ Voice to TextNote already covers many core Owll-equivalent capabilities:
 | Ask AI across notes/files/summaries | Per-meeting Q&A exists | Cross-meeting knowledge-base Q&A is missing | P1 |
 | Flashcards and AI quizzes | No flashcard/quiz model or UI found | Study pack generation from transcripts/summaries | P0 |
 | Lecture/study mode | Templates exist, but no dedicated study workflow | Dedicated lecture notes + review artifacts | P0 |
-| YouTube summary | URL/transcript import API, Flutter API client, and Home URL/Transcript entry point implemented for user-provided external text | Optional clipboard/share-sheet ingestion and compliant transcript fetching remain | P1 |
+| YouTube summary | URL/transcript import API, Flutter API client, Home URL/Transcript entry point, and clipboard paste ingestion implemented for user-provided external text | Native share-sheet ingestion and compliant transcript fetching remain | P1 |
 | OCR for PDFs/images | PDF/DOCX document import API and Flutter Home entry point implemented for searchable note context | Image OCR engine and native share-sheet ingestion remain | P2 |
 | 100+ language transcription/translation | Backend translation API, Flutter result-screen translation tab, search indexing, and Obsidian export inclusion implemented for persisted minutes/summaries; Korean default and i18n UI exist | Broader multilingual transcript workflow remains | P1 |
 | Online meeting capture for Zoom/Meet/Teams | Roadmap mentions Slack/Teams, no bot/import surface found | Meeting-platform import/integration | P2 |
@@ -212,7 +212,7 @@ Productize reusable summary modes such as executive brief, lecture notes, sales 
 
 Add URL import and transcript generation for user-provided external media. This requires careful legal, content-source, and rate-limit handling.
 
-**Implementation status (2026-06-21)**: First safe slice implemented. `POST /api/v1/imports/external-text` accepts a user-provided `source_url`, title, source type, language, and transcript/text content, then persists it as a completed minutes-compatible artifact with Redis status/result cache, DB `TaskResult`, FTS search indexing, source metadata, and a standard `/api/v1/minutes/{task_id}` result URL. YouTube URLs are categorized as `youtube` without downloading or scraping platform content. Flutter `MinutesApi.importExternalText()` can call the endpoint, and the Home capture shortcuts now include a URL/Transcript sheet that adds imported content as a completed searchable meeting. Remaining work: optional clipboard/share-sheet ingestion and a compliant transcript-fetch strategy for sources that explicitly permit it.
+**Implementation status (2026-06-21)**: Safe import slices implemented. `POST /api/v1/imports/external-text` accepts a user-provided `source_url`, title, source type, language, and transcript/text content, then persists it as a completed minutes-compatible artifact with Redis status/result cache, DB `TaskResult`, FTS search indexing, source metadata, and a standard `/api/v1/minutes/{task_id}` result URL. YouTube URLs are categorized as `youtube` without downloading or scraping platform content. Flutter `MinutesApi.importExternalText()` can call the endpoint, and the Home capture shortcuts now include a URL/Transcript sheet that adds imported content as a completed searchable meeting. That sheet can paste transcript text directly from the clipboard before import. Remaining work: native share-sheet ingestion and a compliant transcript-fetch strategy for sources that explicitly permit it.
 
 ### P2: OCR Import
 

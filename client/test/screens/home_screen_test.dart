@@ -6,6 +6,7 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
@@ -280,6 +281,83 @@ void main() {
             title: '제품 데모 transcript',
             content: '사용자가 보유한 영상 transcript 본문을 검색 가능한 회의록으로 가져옵니다.',
             sourceType: 'youtube',
+            language: 'ko',
+          )).called(1);
+    });
+
+    testWidgets('URL transcript sheet에서 클립보드 본문을 붙여넣어 가져올 수 있어야 함',
+        (WidgetTester tester) async {
+      const clipboardText = '클립보드에 복사해 둔 긴 transcript 본문을 검색 가능한 회의록으로 가져옵니다.';
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (MethodCall call) async {
+          if (call.method == 'Clipboard.getData') {
+            return {'text': clipboardText};
+          }
+          return null;
+        },
+      );
+      addTearDown(() {
+        tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          null,
+        );
+      });
+
+      when(() => mockMinutesApi.importExternalText(
+            sourceUrl: any(named: 'sourceUrl'),
+            title: any(named: 'title'),
+            content: any(named: 'content'),
+            sourceType: any(named: 'sourceType'),
+            language: any(named: 'language'),
+          )).thenAnswer(
+        (_) async => {
+          'task_id': 'clip-001',
+          'status': 'completed',
+          'result_url': '/api/v1/minutes/clip-001',
+          'search_indexed': true,
+        },
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            ..._onlineOverrides(mockService),
+            minutesApiProvider.overrideWithValue(mockMinutesApi),
+          ],
+          child: const MaterialApp(
+            home: HomeScreen(),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('URL/Transcript'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.widgetWithText(TextField, '원본 URL'),
+        'https://example.com/transcript',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextField, '제목'),
+        '클립보드 회의록',
+      );
+      await tester.tap(find.text('클립보드에서 붙여넣기'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('클립보드 transcript를 붙여넣었습니다.'), findsOneWidget);
+
+      await tester.tap(find.text('검색 가능한 회의록으로 가져오기'));
+      await tester.pumpAndSettle();
+      await _scrollHomeUntilVisible(tester, '클립보드 회의록');
+
+      expect(find.text('클립보드 회의록'), findsOneWidget);
+      verify(() => mockMinutesApi.importExternalText(
+            sourceUrl: 'https://example.com/transcript',
+            title: '클립보드 회의록',
+            content: clipboardText,
+            sourceType: 'web',
             language: 'ko',
           )).called(1);
     });
