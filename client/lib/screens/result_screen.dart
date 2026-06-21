@@ -11,10 +11,12 @@ import 'package:share_plus/share_plus.dart';
 import 'package:voice_to_textnote/models/action_item.dart';
 import 'package:voice_to_textnote/models/meeting.dart';
 import 'package:voice_to_textnote/models/mind_map_result.dart';
+import 'package:voice_to_textnote/models/sales_contact_brief.dart';
 import 'package:voice_to_textnote/models/summary_result.dart';
 import 'package:voice_to_textnote/models/study_pack.dart';
 import 'package:voice_to_textnote/models/translation.dart';
 import 'package:voice_to_textnote/providers/meeting_list_provider.dart';
+import 'package:voice_to_textnote/providers/sales_contact_brief_provider.dart';
 import 'package:voice_to_textnote/providers/team_provider.dart';
 import 'package:voice_to_textnote/providers/result_provider.dart';
 import 'package:voice_to_textnote/providers/study_pack_provider.dart';
@@ -235,7 +237,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         : const AsyncData(<Team>[]);
 
     return DefaultTabController(
-      length: 10,
+      length: 11,
       child: Scaffold(
         appBar: AppBar(
           leading: IconButton(
@@ -324,6 +326,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
               Tab(text: '액션 아이템'),
               Tab(text: '회의록'),
               Tab(text: '마인드맵'),
+              Tab(text: '영업'),
               Tab(text: '학습'),
               Tab(text: '번역'),
               Tab(text: 'Q&A'),
@@ -362,6 +365,8 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                   _MinutesTab(taskId: summaryTaskId, meeting: meeting),
                   // 마인드맵 탭: 백엔드 AI 생성 API 기반 관계 그래프
                   _MindMapTab(taskId: summaryTaskId),
+                  // 영업 탭: 고객/딜 후속 브리프
+                  _SalesContactBriefTab(taskId: minutesTaskId),
                   // 학습 탭: 회의록 기반 Study Pack 생성
                   _StudyTab(taskId: minutesTaskId),
                   // 번역 탭: 회의록/요약 기반 다국어 번역
@@ -3508,6 +3513,350 @@ class _TranslationSourceCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class _SalesContactBriefTab extends ConsumerWidget {
+  final String? taskId;
+
+  const _SalesContactBriefTab({required this.taskId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (taskId == null) {
+      return const EmptyStateWidget(
+        icon: Icons.business_center_outlined,
+        title: '영업 브리프 준비 중',
+        subtitle: '회의록이 완료되면 고객 니즈와 후속 조치를 정리합니다',
+      );
+    }
+
+    final request = SalesContactBriefRequest(taskId: taskId!);
+    final briefAsync = ref.watch(salesContactBriefProvider(request));
+
+    return briefAsync.when(
+      loading: () => const Padding(
+        padding: EdgeInsets.all(16),
+        child: Card(
+          child: Padding(
+            padding: EdgeInsets.all(16),
+            child: ShimmerText(lines: 6),
+          ),
+        ),
+      ),
+      error: (error, _) => ErrorRetryWidget(
+        message: '영업 브리프를 불러올 수 없습니다',
+        onRetry: () => ref.invalidate(salesContactBriefProvider(request)),
+      ),
+      data: (brief) {
+        final hasContent = brief.customerNeeds.isNotEmpty ||
+            brief.painPoints.isNotEmpty ||
+            brief.objections.isNotEmpty ||
+            brief.nextSteps.isNotEmpty ||
+            brief.followUpMessage.trim().isNotEmpty;
+
+        if (!hasContent) {
+          return const SingleChildScrollView(
+            padding: EdgeInsets.all(16),
+            child: EmptyStateWidget(
+              icon: Icons.business_center_outlined,
+              title: '영업 브리프가 없습니다',
+              subtitle: '고객 대화 내용이 충분하지 않아 후속 브리프를 만들 수 없습니다',
+            ),
+          );
+        }
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _SalesContactHeader(brief: brief),
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.centerRight,
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: () => _copySalesBrief(context, brief),
+                      icon: const Icon(Icons.copy_all_outlined),
+                      label: const Text('브리프 복사'),
+                    ),
+                    FilledButton.tonalIcon(
+                      onPressed: () => ref
+                          .read(salesContactBriefProvider(request).notifier)
+                          .regenerate(),
+                      icon: const Icon(Icons.refresh_rounded),
+                      label: const Text('다시 생성'),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              _SalesBriefSection(
+                icon: Icons.track_changes_outlined,
+                title: '고객 니즈',
+                items: brief.customerNeeds,
+              ),
+              _SalesBriefSection(
+                icon: Icons.report_problem_outlined,
+                title: 'Pain Points',
+                items: brief.painPoints,
+              ),
+              _SalesBriefSection(
+                icon: Icons.help_outline_rounded,
+                title: 'Objections',
+                items: brief.objections,
+              ),
+              if (brief.nextSteps.isNotEmpty) ...[
+                Row(
+                  children: [
+                    const Icon(Icons.task_alt_outlined),
+                    const SizedBox(width: 8),
+                    Text('다음 액션',
+                        style: Theme.of(context).textTheme.titleMedium),
+                    const Spacer(),
+                    Text('${brief.nextSteps.length}개'),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                ...brief.nextSteps
+                    .map((step) => _SalesNextStepCard(step: step)),
+                const SizedBox(height: 12),
+              ],
+              if (brief.followUpMessage.trim().isNotEmpty)
+                _SalesFollowUpCard(message: brief.followUpMessage),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _copySalesBrief(
+    BuildContext context,
+    SalesContactBrief brief,
+  ) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final buffer = StringBuffer()
+      ..writeln('영업 브리프')
+      ..writeln('---')
+      ..writeln('고객: ${_displayContactName(brief.contact)}')
+      ..writeln('딜 단계: ${brief.deal.stage}')
+      ..writeln('긴급도: ${brief.deal.urgency}');
+
+    void writeList(String title, List<String> items) {
+      if (items.isEmpty) return;
+      buffer.writeln();
+      buffer.writeln(title);
+      for (var index = 0; index < items.length; index++) {
+        buffer.writeln('${index + 1}. ${items[index]}');
+      }
+    }
+
+    writeList('고객 니즈', brief.customerNeeds);
+    writeList('Pain Points', brief.painPoints);
+    writeList('Objections', brief.objections);
+
+    if (brief.nextSteps.isNotEmpty) {
+      buffer.writeln();
+      buffer.writeln('다음 액션');
+      for (var index = 0; index < brief.nextSteps.length; index++) {
+        final step = brief.nextSteps[index];
+        final meta = [
+          if ((step.owner ?? '').isNotEmpty) step.owner,
+          if ((step.due ?? '').isNotEmpty) step.due,
+        ].join(' · ');
+        buffer.writeln(
+          '${index + 1}. ${step.task}${meta.isEmpty ? '' : ' ($meta)'}',
+        );
+      }
+    }
+
+    if (brief.followUpMessage.trim().isNotEmpty) {
+      buffer.writeln();
+      buffer.writeln('후속 메시지');
+      buffer.writeln(brief.followUpMessage);
+    }
+
+    await Clipboard.setData(ClipboardData(text: buffer.toString()));
+    messenger.showSnackBar(
+      const SnackBar(content: Text('영업 브리프를 복사했습니다')),
+    );
+  }
+}
+
+class _SalesContactHeader extends StatelessWidget {
+  final SalesContactBrief brief;
+
+  const _SalesContactHeader({required this.brief});
+
+  @override
+  Widget build(BuildContext context) {
+    final contact = brief.contact;
+    final details = [
+      if ((contact.company ?? '').isNotEmpty) contact.company!,
+      if ((contact.role ?? '').isNotEmpty) contact.role!,
+      if ((contact.email ?? '').isNotEmpty) contact.email!,
+      if ((contact.phone ?? '').isNotEmpty) contact.phone!,
+    ];
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.person_search_outlined),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    _displayContactName(contact),
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+                Chip(
+                  label: Text(brief.deal.stage),
+                  visualDensity: VisualDensity.compact,
+                ),
+              ],
+            ),
+            if (details.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(details.join(' · ')),
+            ],
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                Chip(
+                  avatar: const Icon(Icons.bolt_outlined, size: 18),
+                  label: Text('긴급도 ${brief.deal.urgency}'),
+                  visualDensity: VisualDensity.compact,
+                ),
+                if ((brief.deal.valueHint ?? '').isNotEmpty)
+                  Chip(
+                    avatar: const Icon(Icons.payments_outlined, size: 18),
+                    label: Text(brief.deal.valueHint!),
+                    visualDensity: VisualDensity.compact,
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SalesBriefSection extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final List<String> items;
+
+  const _SalesBriefSection({
+    required this.icon,
+    required this.title,
+    required this.items,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (items.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon),
+              const SizedBox(width: 8),
+              Text(title, style: Theme.of(context).textTheme.titleMedium),
+              const Spacer(),
+              Text('${items.length}개'),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ...items.map(
+            (item) => Card(
+              margin: const EdgeInsets.only(bottom: 8),
+              child: ListTile(
+                dense: true,
+                leading: const Icon(Icons.check_circle_outline_rounded),
+                title: Text(item),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SalesNextStepCard extends StatelessWidget {
+  final SalesNextStep step;
+
+  const _SalesNextStepCard({required this.step});
+
+  @override
+  Widget build(BuildContext context) {
+    final meta = [
+      if ((step.owner ?? '').isNotEmpty) step.owner!,
+      if ((step.due ?? '').isNotEmpty) step.due!,
+    ].join(' · ');
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: ListTile(
+        leading: const Icon(Icons.task_alt_outlined),
+        title: Text(step.task),
+        subtitle: meta.isEmpty ? null : Text(meta),
+      ),
+    );
+  }
+}
+
+class _SalesFollowUpCard extends StatelessWidget {
+  final String message;
+
+  const _SalesFollowUpCard({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.forward_to_inbox_outlined),
+                const SizedBox(width: 8),
+                Text('후속 메시지', style: Theme.of(context).textTheme.titleMedium),
+              ],
+            ),
+            const SizedBox(height: 12),
+            SelectableText(message, style: const TextStyle(height: 1.5)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+String _displayContactName(SalesContactIdentity contact) {
+  final name = contact.name?.trim();
+  if (name != null && name.isNotEmpty) return name;
+  final company = contact.company?.trim();
+  if (company != null && company.isNotEmpty) return company;
+  return '고객 미확인';
 }
 
 class _StudyModeOption {

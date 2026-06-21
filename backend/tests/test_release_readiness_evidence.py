@@ -85,7 +85,8 @@ def write_readme_status(root: Path, content: str) -> None:
         (
             "3820 백엔드 테스트\n"
             "| 백엔드 단위/통합/E2E | 3820개 | 100.00% |\n"
-            "| 총합 | 4202개 | - |\n"
+            "| Flutter 테스트 | 391개 | - |\n"
+            "| 총합 | 4211개 | - |\n"
             f"{content}"
         ),
         encoding="utf-8",

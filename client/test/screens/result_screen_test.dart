@@ -6,10 +6,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:voice_to_textnote/models/meeting.dart';
+import 'package:voice_to_textnote/models/sales_contact_brief.dart';
 import 'package:voice_to_textnote/models/study_pack.dart';
 import 'package:voice_to_textnote/models/team.dart';
 import 'package:voice_to_textnote/models/translation.dart';
 import 'package:voice_to_textnote/providers/meeting_list_provider.dart';
+import 'package:voice_to_textnote/services/sales_contact_brief_api.dart';
 import 'package:voice_to_textnote/providers/team_provider.dart';
 import 'package:voice_to_textnote/screens/result_screen.dart';
 import 'package:voice_to_textnote/services/minutes_api.dart';
@@ -22,6 +24,8 @@ class MockMinutesApi extends Mock implements MinutesApi {}
 class MockSummaryApi extends Mock implements SummaryApi {}
 
 class MockStudyPackApi extends Mock implements StudyPackApi {}
+
+class MockSalesContactBriefApi extends Mock implements SalesContactBriefApi {}
 
 class MockTranslationApi extends Mock implements TranslationApi {}
 
@@ -57,6 +61,13 @@ Future<void> _pumpToStudyTab(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
+Future<void> _pumpToSalesTab(WidgetTester tester) async {
+  await tester.ensureVisible(find.text('영업'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('영업'));
+  await tester.pumpAndSettle();
+}
+
 Future<void> _pumpToTranslationTab(WidgetTester tester) async {
   await tester.ensureVisible(find.text('번역'));
   await tester.pumpAndSettle();
@@ -75,6 +86,7 @@ void main() {
   late MockMinutesApi mockMinApi;
   late MockSummaryApi mockSumApi;
   late MockStudyPackApi mockStudyPackApi;
+  late MockSalesContactBriefApi mockSalesContactBriefApi;
   late MockTranslationApi mockTranslationApi;
 
   // 테스트용 미팅 데이터 (summaryTaskId 포함)
@@ -91,6 +103,7 @@ void main() {
     mockMinApi = MockMinutesApi();
     mockSumApi = MockSummaryApi();
     mockStudyPackApi = MockStudyPackApi();
+    mockSalesContactBriefApi = MockSalesContactBriefApi();
     mockTranslationApi = MockTranslationApi();
 
     // 회의록 기본 응답
@@ -188,6 +201,42 @@ void main() {
         createdAt: '2026-03-22T00:00:00Z',
       ),
     );
+    when(() => mockSalesContactBriefApi.get(any())).thenAnswer(
+      (_) async => const SalesContactBrief(
+        taskId: 'min-task-001',
+        contact: SalesContactIdentity(
+          name: '김민수',
+          company: 'Acme',
+          role: 'CTO',
+          email: 'kim@example.com',
+        ),
+        deal: SalesContactDeal(
+          stage: 'demo_requested',
+          valueHint: 'enterprise',
+          urgency: 'high',
+        ),
+        customerNeeds: ['보안 감사 자동화', '데모 확인'],
+        painPoints: ['수동 감사 시간이 오래 걸림'],
+        objections: ['견적 확인 필요'],
+        nextSteps: [
+          SalesNextStep(
+            task: '다음 주 화요일 데모 일정 확정',
+            owner: '영업',
+            due: '다음 주 화요일',
+          ),
+        ],
+        followUpMessage: '김민수님, 요청하신 데모 일정을 확인드리겠습니다.',
+        sourceRefs: [
+          StudySourceRef(
+            segmentIndex: 0,
+            speaker: '고객',
+            start: 12,
+            text: '데모 요청',
+          ),
+        ],
+        createdAt: '2026-06-21T00:00:00+00:00',
+      ),
+    );
     when(() => mockTranslationApi.get(
           any(),
           targetLanguage: any(named: 'targetLanguage'),
@@ -216,6 +265,8 @@ void main() {
         minutesApiProvider.overrideWithValue(mockMinApi),
         summaryApiProvider.overrideWithValue(mockSumApi),
         studyPackApiProvider.overrideWithValue(mockStudyPackApi),
+        salesContactBriefApiProvider
+            .overrideWithValue(mockSalesContactBriefApi),
         translationApiProvider.overrideWithValue(mockTranslationApi),
         meetingListProvider.overrideWith(
           () => _MockMeetingListNotifier(meetings ?? [testMeeting]),
@@ -549,6 +600,78 @@ void main() {
       expect(find.text('인터뷰'), findsOneWidget);
       verify(() => mockStudyPackApi.get('min-task-001',
           mode: 'interview', language: 'ko')).called(1);
+    });
+  });
+
+  group('_SalesContactBriefTab - 영업 브리프 표시', () {
+    testWidgets('백엔드 Sales Contact Brief로 고객 니즈와 후속 액션을 표시해야 함',
+        (WidgetTester tester) async {
+      await tester.pumpWidget(buildTestWidget([]));
+      await _pumpToSalesTab(tester);
+
+      expect(find.text('김민수'), findsOneWidget);
+      expect(find.text('demo_requested'), findsOneWidget);
+      expect(find.text('긴급도 high'), findsOneWidget);
+      expect(find.text('고객 니즈'), findsOneWidget);
+      expect(find.text('보안 감사 자동화'), findsOneWidget);
+      expect(find.text('Pain Points'), findsOneWidget);
+      expect(find.text('수동 감사 시간이 오래 걸림'), findsOneWidget);
+      expect(find.text('Objections'), findsOneWidget);
+      expect(find.text('견적 확인 필요'), findsOneWidget);
+      expect(find.text('다음 액션'), findsOneWidget);
+      expect(find.text('다음 주 화요일 데모 일정 확정'), findsOneWidget);
+      expect(find.text('후속 메시지'), findsOneWidget);
+      expect(find.text('김민수님, 요청하신 데모 일정을 확인드리겠습니다.'), findsOneWidget);
+
+      Map<dynamic, dynamic>? clipboardPayload;
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(SystemChannels.platform, (call) async {
+        if (call.method == 'Clipboard.setData') {
+          clipboardPayload = call.arguments as Map<dynamic, dynamic>;
+        }
+        return null;
+      });
+      addTearDown(() {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(SystemChannels.platform, null);
+      });
+
+      await tester.ensureVisible(find.text('브리프 복사'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(OutlinedButton, '브리프 복사'));
+      await tester.pump(const Duration(milliseconds: 250));
+
+      final clipboardText = clipboardPayload?['text'] as String?;
+      expect(clipboardText, contains('영업 브리프'));
+      expect(clipboardText, contains('고객: 김민수'));
+      expect(clipboardText, contains('보안 감사 자동화'));
+      expect(clipboardText, contains('다음 주 화요일 데모 일정 확정'));
+      expect(clipboardText, contains('김민수님, 요청하신 데모 일정을 확인드리겠습니다.'));
+      expect(find.text('영업 브리프를 복사했습니다'), findsOneWidget);
+    });
+
+    testWidgets('Sales Contact Brief 항목이 비어 있으면 빈 상태를 표시해야 함',
+        (WidgetTester tester) async {
+      when(() => mockSalesContactBriefApi.get(any())).thenAnswer(
+        (_) async => const SalesContactBrief(
+          taskId: 'min-task-001',
+          contact: SalesContactIdentity(),
+          deal: SalesContactDeal(),
+          customerNeeds: [],
+          painPoints: [],
+          objections: [],
+          nextSteps: [],
+          followUpMessage: '',
+          sourceRefs: [],
+          createdAt: '2026-06-21T00:00:00+00:00',
+        ),
+      );
+
+      await tester.pumpWidget(buildTestWidget([]));
+      await _pumpToSalesTab(tester);
+
+      expect(find.text('영업 브리프가 없습니다'), findsOneWidget);
+      expect(find.text('고객 대화 내용이 충분하지 않아 후속 브리프를 만들 수 없습니다'), findsOneWidget);
     });
   });
 
