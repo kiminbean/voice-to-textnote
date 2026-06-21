@@ -59,3 +59,58 @@ def test_release_e2e_scaffold_round_trips_json(tmp_path):
 
     assert loaded["artifacts"]["android_apk"] == "app-debug.apk"
     assert loaded["artifacts"]["ios_runner_app"] == "Runner.app"
+
+
+def test_release_e2e_evidence_artifacts_are_resolved_from_repo_root(
+    monkeypatch, tmp_path
+):
+    readiness = load_release_readiness_module()
+    root = tmp_path / "repo"
+    android_apk = root / "client/build/app/outputs/flutter-apk/app-debug.apk"
+    ios_runner_app = root / "client/build/ios/iphoneos/Runner.app"
+    android_apk.parent.mkdir(parents=True)
+    android_apk.write_bytes(b"apk")
+    ios_runner_app.mkdir(parents=True)
+    evidence_path = tmp_path / "evidence.json"
+    evidence_path.write_text(
+        json.dumps(
+            {
+                "tested_at": "2026-06-21T00:00:00+00:00",
+                "tester": "release-operator",
+                "backend_version": "git:test",
+                "client_version": "git:test",
+                "devices": {
+                    "android": {
+                        "serial": "android-serial",
+                        "model": "Pixel 8",
+                        "os_version": "Android 16",
+                    },
+                    "ios": {
+                        "udid": "ios-udid",
+                        "model": "iPhone 15",
+                        "os_version": "iOS 18",
+                    },
+                },
+                "artifacts": {
+                    "android_apk": "client/build/app/outputs/flutter-apk/app-debug.apk",
+                    "ios_runner_app": "client/build/ios/iphoneos/Runner.app",
+                },
+                "scenarios": {
+                    key: {
+                        "pass": True,
+                        "evidence": f"Observed physical-device pass for {key}.",
+                    }
+                    for key in readiness.REQUIRED_E2E_SCENARIOS
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
+    monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")
+    monkeypatch.chdir(tmp_path)
+    reporter = readiness.Reporter()
+
+    readiness.check_release_e2e_evidence(evidence_path, reporter, root)
+
+    assert reporter.errors == []

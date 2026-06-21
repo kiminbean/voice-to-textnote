@@ -966,7 +966,15 @@ def has_unresolved_evidence_placeholder(value: str) -> bool:
     return any(re.search(pattern, value, re.IGNORECASE) for pattern in UNRESOLVED_EVIDENCE_PATTERNS)
 
 
-def check_release_e2e_evidence(path: Path, reporter: Reporter) -> None:
+def resolve_release_artifact_path(root: Path, artifact_path: str) -> Path:
+    path = Path(artifact_path).expanduser()
+    if path.is_absolute():
+        return path
+    return root / path
+
+
+def check_release_e2e_evidence(path: Path, reporter: Reporter, root: Path | None = None) -> None:
+    root = root or Path(__file__).resolve().parents[2]
     if not path.is_file():
         reporter.fail(f"RELEASE_E2E_EVIDENCE_PATH does not point to a file: {path}")
         return
@@ -1010,7 +1018,7 @@ def check_release_e2e_evidence(path: Path, reporter: Reporter) -> None:
         if not artifact_path:
             reporter.fail(f"Release E2E evidence missing artifact {key}")
             continue
-        if Path(artifact_path).expanduser().exists():
+        if resolve_release_artifact_path(root, artifact_path).exists():
             reporter.ok(f"Release E2E evidence artifact exists: {key}")
         else:
             reporter.fail(f"Release E2E evidence artifact missing on disk: {key}")
@@ -1055,7 +1063,8 @@ def check_strict_external(reporter: Reporter) -> None:
     require_env_value(reporter, "FIREBASE_TEST_DEVICE_TOKEN", "Firebase test device token")
     evidence = os.environ.get("RELEASE_E2E_EVIDENCE_PATH", "")
     if evidence:
-        check_release_e2e_evidence(Path(evidence).expanduser(), reporter)
+        root = Path(__file__).resolve().parents[2]
+        check_release_e2e_evidence(Path(evidence).expanduser(), reporter, root)
     else:
         reporter.fail("Release E2E evidence: RELEASE_E2E_EVIDENCE_PATH is not set")
 
