@@ -56,6 +56,13 @@ def summary_data():
         "action_items": [{"task": "작업 A", "assignee": "Speaker 1", "deadline": "2026-06-20"}],
         "key_decisions": ["결정 1"],
         "next_steps": ["다음 단계 1"],
+        "translations": {
+            "en": {
+                "source_type": "summary",
+                "target_language": "en",
+                "translated_text": "English meeting summary",
+            }
+        },
     }
 
 
@@ -270,6 +277,8 @@ class TestBuildNoteBody:
         assert "테스트 개념" in body
         assert "테스트 질문?" in body
         assert "복습 문제?" in body
+        assert "## 🌐 번역" in body
+        assert "English meeting summary" in body
         assert "## ✅ 액션 아이템" in body
         assert "작업 A" in body
         assert "## 📌 주요 결정" in body
@@ -309,6 +318,17 @@ class TestBuildNoteBody:
 
         assert "## 🎓 학습팩" not in body
 
+    def test_empty_translations_are_omitted(self, service, meeting_data, minutes_data):
+        body = service.build_note_body(
+            meeting_data,
+            {**minutes_data, "translations": {"bad": "not-a-dict"}},
+            {"translations": {"en": {"translated_text": "  "}}},
+            None,
+            None,
+        )
+
+        assert "## 🌐 번역" not in body
+
     def test_study_pack_markdown_skips_invalid_items_and_keeps_partial_content(self, service):
         markdown = service._build_study_pack_md(
             {
@@ -321,6 +341,39 @@ class TestBuildNoteBody:
         assert "**용어만**" in markdown
         assert "**Q.** 앞면만" in markdown
         assert "정답: 답만" in markdown
+
+    def test_translation_markdown_deduplicates_cached_aliases(self, service):
+        markdown = service._build_translation_md(
+            {
+                "translations": {
+                    "en": {
+                        "source_type": "summary",
+                        "target_language": "en",
+                        "translated_text": "English meeting summary",
+                    },
+                    "summary:en": {
+                        "source_type": "summary",
+                        "target_language": "en",
+                        "translated_text": "English meeting summary",
+                    },
+                    "bad": "not-a-dict",
+                }
+            },
+            {
+                "translations": {
+                    "minutes:ja": {
+                        "source_type": "minutes",
+                        "target_language": "ja",
+                        "translated_text": "日本語の議事録",
+                    }
+                }
+            },
+        )
+
+        assert "### en (요약)" in markdown
+        assert markdown.count("English meeting summary") == 1
+        assert "### ja (회의록)" in markdown
+        assert "日本語の議事録" in markdown
 
 
 class TestAtomicWrite:

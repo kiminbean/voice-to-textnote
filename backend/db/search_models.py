@@ -163,6 +163,9 @@ def _extract_index_data(
         # segments의 텍스트를 합쳐 content 생성
         segments = result_data.get("segments", [])
         content = " ".join(seg.get("text", "") for seg in segments if seg.get("text"))
+        translation_terms = _extract_translation_terms(result_data.get("translations"))
+        if translation_terms:
+            content = " ".join(part for part in (content, " ".join(translation_terms)) if part)
 
         # 화자 이름 추출
         speakers = result_data.get("speakers", [])
@@ -177,6 +180,11 @@ def _extract_index_data(
     elif task_type == "summary":
         # 요약 텍스트
         summary_text = result_data.get("summary_text", "")
+        translation_terms = _extract_translation_terms(result_data.get("translations"))
+        if translation_terms:
+            summary_text = " ".join(
+                part for part in (summary_text, " ".join(translation_terms)) if part
+            )
         study_pack = result_data.get("study_pack")
         if isinstance(study_pack, dict):
             study_notes = str(study_pack.get("study_notes", "")).strip()
@@ -230,4 +238,21 @@ def _extract_study_pack_terms(study_pack: dict) -> list[str]:
             if value:
                 parts.append(value)
 
+    return parts
+
+
+def _extract_translation_terms(translations: object) -> list[str]:
+    """Flatten cached translation payloads into searchable text."""
+    if not isinstance(translations, dict):
+        return []
+
+    parts: list[str] = []
+    seen: set[str] = set()
+    for payload in translations.values():
+        if not isinstance(payload, dict):
+            continue
+        text_value = str(payload.get("translated_text", "")).strip()
+        if text_value and text_value not in seen:
+            seen.add(text_value)
+            parts.append(text_value)
     return parts

@@ -274,6 +274,12 @@ class ObsidianService:
                 sections.append(study_pack_md)
                 sections.append("")
 
+        translation_md = self._build_translation_md(summary_data, minutes_data)
+        if translation_md:
+            sections.append("## 🌐 번역\n")
+            sections.append(translation_md)
+            sections.append("")
+
         if minutes_data:
             transcript_md = self._build_transcript_md(minutes_data)
             if transcript_md:
@@ -359,6 +365,40 @@ class ObsidianService:
                     lines.append(f"   - 정답: {answer}")
 
         return "\n".join(line for line in lines if line is not None).strip()
+
+    def _build_translation_md(
+        self,
+        summary_data: dict[str, Any] | None,
+        minutes_data: dict[str, Any] | None,
+    ) -> str:
+        lines: list[str] = []
+        seen: set[tuple[str, str, str]] = set()
+
+        for fallback_source, data in (("summary", summary_data), ("minutes", minutes_data)):
+            if not data:
+                continue
+            translations = data.get("translations")
+            if not isinstance(translations, dict):
+                continue
+            for payload in translations.values():
+                if not isinstance(payload, dict):
+                    continue
+                translated_text = str(payload.get("translated_text", "")).strip()
+                if not translated_text:
+                    continue
+                source_type = str(payload.get("source_type") or fallback_source)
+                target_language = str(payload.get("target_language") or "").strip()
+                key = (source_type, target_language, translated_text)
+                if key in seen:
+                    continue
+                seen.add(key)
+                language_label = target_language or "unknown"
+                source_label = "요약" if source_type == "summary" else "회의록"
+                lines.append(f"### {language_label} ({source_label})")
+                lines.append(translated_text)
+                lines.append("")
+
+        return "\n".join(lines).strip()
 
     def _build_transcript_md(self, minutes_data: dict[str, Any]) -> str:
         segments = minutes_data.get("segments") or []

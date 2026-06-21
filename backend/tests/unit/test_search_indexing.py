@@ -183,6 +183,86 @@ class TestPersistTaskResultIndexing:
         assert "엽록체" in row[1]
         assert "광합성의 핵심 장소" in row[1]
 
+    def test_persist_task_result_indexes_summary_translations(self):
+        """summary payload의 번역 텍스트도 검색 인덱스에 포함되어야 함"""
+        from sqlalchemy import text
+
+        from backend.db.search_models import ensure_search_index_table
+        from backend.services.sync_service import persist_task_result
+
+        ensure_search_index_table(self.engine)
+
+        persist_task_result(
+            task_id="idx-sum-translation-001",
+            task_type="summary",
+            status="completed",
+            result_data={
+                "summary_text": "회의 요약",
+                "translations": {
+                    "en": {
+                        "source_type": "summary",
+                        "target_language": "en",
+                        "translated_text": "Product launch translation notes",
+                    },
+                    "summary:en": {
+                        "source_type": "summary",
+                        "target_language": "en",
+                        "translated_text": "Product launch translation notes",
+                    },
+                    "bad": "not-a-payload",
+                },
+            },
+        )
+
+        with self.engine.connect() as conn:
+            result = conn.execute(
+                text(
+                    "SELECT summary_text FROM search_index "
+                    "WHERE task_id = 'idx-sum-translation-001'"
+                )
+            )
+            row = result.fetchone()
+
+        assert row is not None
+        assert "회의 요약" in row[0]
+        assert "Product launch translation notes" in row[0]
+        assert row[0].count("Product launch translation notes") == 1
+
+    def test_persist_task_result_indexes_minutes_translations(self):
+        """minutes payload의 번역 텍스트도 검색 인덱스 content에 포함되어야 함"""
+        from sqlalchemy import text
+
+        from backend.db.search_models import ensure_search_index_table
+        from backend.services.sync_service import persist_task_result
+
+        ensure_search_index_table(self.engine)
+
+        persist_task_result(
+            task_id="idx-min-translation-001",
+            task_type="minutes",
+            status="completed",
+            result_data={
+                "segments": [{"speaker_name": "A", "text": "출시 일정을 검토했습니다."}],
+                "translations": {
+                    "minutes:en": {
+                        "source_type": "minutes",
+                        "target_language": "en",
+                        "translated_text": "We reviewed the launch schedule.",
+                    }
+                },
+            },
+        )
+
+        with self.engine.connect() as conn:
+            result = conn.execute(
+                text("SELECT content FROM search_index WHERE task_id = 'idx-min-translation-001'")
+            )
+            row = result.fetchone()
+
+        assert row is not None
+        assert "출시 일정을 검토" in row[0]
+        assert "We reviewed the launch schedule." in row[0]
+
     def test_extract_study_pack_terms_skips_non_dict_items(self):
         """Study Pack 검색어 추출은 잘못된 항목을 무시해야 함"""
         from backend.db.search_models import _extract_study_pack_terms
@@ -196,6 +276,23 @@ class TestPersistTaskResultIndexing:
         )
 
         assert terms == ["개념", "질문", "문제"]
+
+    def test_extract_translation_terms_skips_invalid_and_deduplicates(self):
+        """번역 검색어 추출은 잘못된 항목과 중복 텍스트를 무시해야 함"""
+        from backend.db.search_models import _extract_translation_terms
+
+        terms = _extract_translation_terms(
+            {
+                "en": {"translated_text": "Translated summary"},
+                "summary:en": {"translated_text": "Translated summary"},
+                "ja": {"translated_text": "翻訳された要約"},
+                "bad": "not-a-dict",
+                "empty": {"translated_text": "   "},
+            }
+        )
+
+        assert terms == ["Translated summary", "翻訳された要約"]
+        assert _extract_translation_terms(None) == []
 
     def test_persist_task_result_skips_transcription(self):
         """transcription 작업은 검색 인덱스에 추가되지 않아야 함"""

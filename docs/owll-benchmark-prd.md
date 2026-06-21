@@ -48,7 +48,7 @@ Voice to TextNote already covers many core Owll-equivalent capabilities:
 | Lecture/study mode | Templates exist, but no dedicated study workflow | Dedicated lecture notes + review artifacts | P0 |
 | YouTube summary | No YouTube URL ingestion found | URL import and transcript/summarize pipeline | P1 |
 | OCR for PDFs/images | Export exists, OCR import not found | Document/image import into searchable notes | P2 |
-| 100+ language transcription/translation | Backend translation API and Flutter result-screen translation tab implemented for persisted minutes/summaries; Korean default and i18n UI exist | Export/search translation inclusion and broader multilingual transcript workflow remain | P1 |
+| 100+ language transcription/translation | Backend translation API, Flutter result-screen translation tab, search indexing, and Obsidian export inclusion implemented for persisted minutes/summaries; Korean default and i18n UI exist | Broader multilingual transcript workflow remains | P1 |
 | Online meeting capture for Zoom/Meet/Teams | Roadmap mentions Slack/Teams, no bot/import surface found | Meeting-platform import/integration | P2 |
 | Contact manager for sales notes | Team/auth exist, no CRM/contact model found | Sales follow-up/contact workflows | P3 |
 | SOAP/healthcare note mode | Generic templates exist | Domain-specific summary template | P3 |
@@ -200,7 +200,7 @@ Per-meeting Q&A only works after the user already knows which recording contains
 
 Add transcript and summary translation workflows. The current app has Korean/English UI localization and a configurable Whisper language, but not a productized transcript translation flow.
 
-**Implementation status (2026-06-21)**: Backend and first Flutter slice implemented. `POST /api/v1/minutes/{task_id}/translation` translates persisted minutes or summary text into a target language, preserves speaker/timestamp/markdown structure in the prompt, stores results under `TaskResult.result_data["translations"]`, and `GET /api/v1/minutes/{task_id}/translation?target_language={language}` returns cached translations. The Flutter result screen now has a `번역` tab with summary/minutes source selection, target-language chips, cached result display, copy, and regenerate controls. Remaining work: export/search inclusion and broader multilingual transcript UX.
+**Implementation status (2026-06-21)**: Backend, Flutter, search, and Obsidian slices implemented. `POST /api/v1/minutes/{task_id}/translation` translates persisted minutes or summary text into a target language, preserves speaker/timestamp/markdown structure in the prompt, stores results under `TaskResult.result_data["translations"]`, and `GET /api/v1/minutes/{task_id}/translation?target_language={language}` returns cached translations. The Flutter result screen now has a `번역` tab with summary/minutes source selection, target-language chips, cached result display, copy, and regenerate controls. Cached translation text is included in search indexing and Obsidian exports. Remaining work: broader multilingual transcript UX.
 
 ### P1: Summary Modes
 
