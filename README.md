@@ -35,7 +35,7 @@
 ✅ **모니터링**: Prometheus 메트릭, 요청 ID 추적, 구조화된 로깅
 ✅ **프로덕션 배포**: Ubuntu systemd + Redis + Tailscale 원격 접속
 ✅ **모던 UI/UX**: 모던 미니멀 디자인 시스템 (인디고/바이올렛), 다크모드 지원, 반응형 레이아웃
-✅ **자동화 테스트**: 3852 백엔드 테스트 (단위/통합/E2E) + Flutter 415, 백엔드 100.00% 커버리지
+✅ **자동화 테스트**: 3854 백엔드 테스트 (단위/통합/E2E) + Flutter 415, 백엔드 100.00% 커버리지
 
 ## 주요 기능
 
@@ -211,11 +211,8 @@ pip install -e ".[dev]"
 ```
 
 #### 3. 데이터베이스 초기화 (개발 환경)
-```bash
-# SQLite 자동 초기화 (개발 환경)
-cd backend
-python -c "from app.db.sync_engine import init_db; init_db()"
-```
+
+개발용 SQLite 테이블은 FastAPI 시작 시 `backend.app.lifecycle.validate_startup()`에서 자동 생성됩니다. 별도 초기화 명령 없이 아래 개발 서버를 실행하면 됩니다.
 
 ### 로컬 개발 환경 실행
 
@@ -232,8 +229,8 @@ celery -A backend.workers.celery_app worker --loglevel=info --concurrency=1
 
 #### 터미널 3: FastAPI 개발 서버
 ```bash
-cd backend
-uvicorn app.main:app --reload --host localhost --port 8000
+source venv/bin/activate
+uvicorn backend.app.main:app --reload --host localhost --port 8000
 ```
 
 #### 터미널 4: Flutter 앱 (웹)
@@ -560,10 +557,10 @@ backend/
 
 | 항목 | 개수 | 커버리지 |
 |------|------|---------|
-| 백엔드 단위/통합/E2E | 3852개 | 100.00% |
+| 백엔드 단위/통합/E2E | 3854개 | 100.00% |
 | Flutter 테스트 | 415개 | - |
 | E2E 테스트 | 16개 | 전체 파이프라인 |
-| 총합 | 4267개 | - |
+| 총합 | 4269개 | - |
 
 ## 모니터링 및 로깅
 
@@ -835,7 +832,7 @@ Copyright (c) 2026 kiminbean. **All Rights Reserved.**
 **마지막 업데이트**: 2026-06-17
 **버전**: 1.7.0
 **상태**: Phase 8 진행 중 — SPEC-OBSIDIAN-001 Obsidian Vault 연계 완료 + UI 재설계(디자인 시스템, 다크모드) 완료, 감정/톤 분석 활성화, 라이선스 All Rights Reserved 전환
-**최근 확인**: 백엔드 3852 테스트 + Flutter 415 테스트 + Flutter analyze + 기본 Release Readiness 통과. Strict release readiness는 Firebase/APNs/App Store Connect secret, Android/iOS 실기기, 실제 E2E evidence가 준비되어야 통과 가능.
+**최근 확인**: 백엔드 3854 테스트 + Flutter 415 테스트 + Flutter analyze + 기본 Release Readiness 통과. Strict release readiness는 Firebase/APNs/App Store Connect secret, Android/iOS 실기기, 실제 E2E evidence가 준비되어야 통과 가능.
 
 ### 구현 완료 SPEC 목록
 
