@@ -150,13 +150,70 @@ class QAService:
             )
             for item in contexts.items
         ]
-        answer = self._build_cross_meeting_answer(question, sources)
+        answer = self._synthesize_cross_meeting_answer(question, sources)
         return CrossMeetingAskResponse(
             answer=answer,
             sources=sources,
             query=contexts.query,
             total=contexts.total,
         )
+
+    def _synthesize_cross_meeting_answer(
+        self,
+        question: str,
+        sources: list[CrossMeetingSource],
+    ) -> str:
+        """검색된 근거만 사용해 cross-meeting 답변을 합성합니다."""
+        fallback = self._build_cross_meeting_answer(question, sources)
+        try:
+            client = self._get_client()
+            response = client.chat.completions.create(
+                model=settings.summary_model,
+                max_tokens=900,
+                messages=self._build_cross_meeting_messages(question, sources),
+            )
+            answer = (response.choices[0].message.content or "").strip()
+        except Exception as e:
+            logger.warning("Cross-meeting Q&A 합성 실패", question=question, error=str(e))
+            return fallback
+
+        return answer or fallback
+
+    def _build_cross_meeting_messages(
+        self,
+        question: str,
+        sources: list[CrossMeetingSource],
+    ) -> list[ChatCompletionMessageParam]:
+        """Cross-meeting Q&A 합성용 메시지를 구성합니다."""
+        source_blocks = []
+        for index, source in enumerate(sources[:8], start=1):
+            source_blocks.append(
+                "\n".join(
+                    [
+                        f"[{index}] task_id={source.task_id}",
+                        f"type={source.task_type}",
+                        f"created_at={source.created_at}",
+                        f"snippet={source.snippet}",
+                    ]
+                )
+            )
+
+        joined_sources = "\n\n".join(source_blocks)
+        return [
+            {
+                "role": "system",
+                "content": (
+                    "당신은 여러 회의록과 요약을 분석하는 AI 어시스턴트입니다. "
+                    "반드시 제공된 근거 snippets 안의 정보만 사용하세요. "
+                    "근거에 없는 내용은 추정하지 말고 '검색된 근거에서 확인되지 않았습니다'라고 답하세요. "
+                    "답변은 한국어로 간결하게 작성하고, 관련 task_id를 문장 안에 포함하세요."
+                ),
+            },
+            {
+                "role": "user",
+                "content": f"질문: {question}\n\n검색된 근거:\n{joined_sources}",
+            },
+        ]
 
     def _build_cross_meeting_answer(
         self,

@@ -1,6 +1,6 @@
 # Owll Benchmark PRD
 
-**Status**: Study Pack core implemented; Cross-Meeting Q&A evidence search exposed in search; follow-up competitive gaps remain  
+**Status**: Study Pack core implemented; Cross-Meeting Q&A evidence search and synthesis exposed in search; follow-up competitive gaps remain  
 **Created**: 2026-06-21  
 **Owner**: Voice to TextNote  
 **Scope**: Benchmark Owll AI Note Taker & Assistant and define feature upgrades that fit this project.
@@ -166,7 +166,7 @@ Users can currently transcribe, summarize, search, and export meetings, but lear
 
 Extend current per-meeting Q&A into cross-meeting search + answer synthesis. Use existing search index and permissions. This competes with Owll's “Ask AI across your notes” while preserving private/team boundaries.
 
-**Implementation status (2026-06-21)**: First backend and Flutter slice implemented. `POST /api/v1/qa/ask-across` normalizes the user's natural-language question into FTS keywords, searches existing minutes/summary/study-pack search index rows across meetings, and returns a grounded answer shell with source task IDs, snippets, task types, and timestamps. The Flutter search screen now shows those sources in an "AI 근거 검색" panel above regular search results. It intentionally does not synthesize unsupported facts beyond retrieved snippets yet.
+**Implementation status (2026-06-21)**: First backend and Flutter slice implemented. `POST /api/v1/qa/ask-across` normalizes the user's natural-language question into FTS keywords, searches existing minutes/summary/study-pack search index rows across meetings, and returns a source-grounded synthesized answer with source task IDs, snippets, task types, and timestamps. The Flutter search screen now shows those sources in an "AI 근거 검색" panel above regular search results. If answer synthesis fails or returns empty content, the backend falls back to an extractive source summary instead of fabricating unsupported facts.
 
 #### Problem
 
@@ -177,7 +177,7 @@ Per-meeting Q&A only works after the user already knows which recording contains
 - Search across indexed meeting minutes, summaries, and Study Pack terms from one natural-language question.
 - Return source-backed results that can be opened in the existing meeting/result UI later.
 - Reuse existing SQLite FTS5 search infrastructure and release-readiness discipline.
-- Keep the first version extractive and grounded before adding generative answer synthesis.
+- Keep generated answers grounded in retrieved snippets and preserve source IDs in every response.
 
 #### Functional Requirements
 

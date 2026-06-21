@@ -247,7 +247,7 @@ class TestAskAcrossMeetings:
 
     @pytest.mark.asyncio
     async def test_returns_grounded_context_answer(self):
-        """검색 근거가 있으면 출처 목록과 안전한 요약 답변을 반환한다."""
+        """검색 근거가 있으면 LLM 합성 답변과 출처 목록을 반환한다."""
         from datetime import datetime
 
         from backend.schemas.search import SearchResponse, SearchResultItem, SortOption
@@ -271,16 +271,64 @@ class TestAskAcrossMeetings:
             sort=SortOption.RELEVANCE,
         )
 
-        result = await svc.ask_across_meetings(
-            session=AsyncMock(),
-            question="API 결정은?",
-            search_service=search_service,
-        )
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock()]
+        mock_response.choices[0].message.content = "FastAPI 사용을 결정했습니다."
+
+        with patch.object(svc, "_get_client") as mock_get_client:
+            mock_client = MagicMock()
+            mock_client.chat.completions.create.return_value = mock_response
+            mock_get_client.return_value = mock_client
+
+            result = await svc.ask_across_meetings(
+                session=AsyncMock(),
+                question="API 결정은?",
+                search_service=search_service,
+            )
 
         assert result.query == "API 결정"
         assert result.total == 1
         assert result.sources[0].task_id == "sum-search-001"
+        assert result.answer == "FastAPI 사용을 결정했습니다."
+
+    @pytest.mark.asyncio
+    async def test_falls_back_to_source_summary_when_synthesis_fails(self):
+        """LLM 합성이 실패하면 기존 source-first 답변으로 fallback한다."""
+        from datetime import datetime
+
+        from backend.schemas.search import SearchResponse, SearchResultItem, SortOption
+
+        svc = QAService()
+        search_service = AsyncMock()
+        search_service.find_answer_contexts.return_value = SearchResponse(
+            items=[
+                SearchResultItem(
+                    task_id="sum-search-001",
+                    task_type="summary",
+                    snippet="회의 결과 FastAPI 사용을 결정했습니다.",
+                    created_at=datetime(2024, 1, 3, 9, 0, 0),
+                )
+            ],
+            total=1,
+            page=1,
+            page_size=5,
+            query="API 결정",
+            sort=SortOption.RELEVANCE,
+        )
+
+        with patch.object(svc, "_get_client") as mock_get_client:
+            mock_client = MagicMock()
+            mock_client.chat.completions.create.side_effect = RuntimeError("OpenAI 장애")
+            mock_get_client.return_value = mock_client
+
+            result = await svc.ask_across_meetings(
+                session=AsyncMock(),
+                question="API 결정은?",
+                search_service=search_service,
+            )
+
         assert "관련된 회의 근거 1건" in result.answer
+        assert "sum-search-001" in result.answer
 
     @pytest.mark.asyncio
     async def test_raises_when_no_contexts(self):
