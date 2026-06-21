@@ -47,7 +47,7 @@ Voice to TextNote already covers many core Owll-equivalent capabilities:
 | Flashcards and AI quizzes | No flashcard/quiz model or UI found | Study pack generation from transcripts/summaries | P0 |
 | Lecture/study mode | Templates exist, but no dedicated study workflow | Dedicated lecture notes + review artifacts | P0 |
 | YouTube summary | URL/transcript import API, Flutter API client, and Home URL/Transcript entry point implemented for user-provided external text | Optional clipboard/share-sheet ingestion and compliant transcript fetching remain | P1 |
-| OCR for PDFs/images | Export exists, OCR import not found | Document/image import into searchable notes | P2 |
+| OCR for PDFs/images | PDF/DOCX document import API implemented for searchable note context | Image OCR engine and mobile document UI remain | P2 |
 | 100+ language transcription/translation | Backend translation API, Flutter result-screen translation tab, search indexing, and Obsidian export inclusion implemented for persisted minutes/summaries; Korean default and i18n UI exist | Broader multilingual transcript workflow remains | P1 |
 | Online meeting capture for Zoom/Meet/Teams | Roadmap mentions Slack/Teams, no bot/import surface found | Meeting-platform import/integration | P2 |
 | Contact manager for sales notes | Team/auth exist, no CRM/contact model found | Sales follow-up/contact workflows | P3 |
@@ -217,6 +217,8 @@ Add URL import and transcript generation for user-provided external media. This 
 ### P2: OCR Import
 
 Import PDFs/images into searchable note context. This is useful for slides, handouts, receipts, whiteboards, and screenshots.
+
+**Implementation status (2026-06-21)**: First backend slice implemented. `POST /api/v1/imports/document` accepts user-owned PDF/DOCX uploads, validates extension and magic bytes, extracts full text with existing `pdfplumber`/`python-docx` capabilities, and routes the normalized text through the existing external import pipeline so the document becomes a completed searchable minutes-compatible artifact. Image uploads return a deterministic 422 until an OCR engine is selected. Remaining work: Flutter document import UI, share-sheet/clipboard ingestion, and real OCR for images/screenshots.
 
 ### P2: Apple Watch Quick Capture
 

@@ -12,6 +12,7 @@ class ExternalImportSourceType(StrEnum):
     YOUTUBE = "youtube"
     VIDEO = "video"
     PODCAST = "podcast"
+    DOCUMENT = "document"
     OTHER = "other"
 
 
@@ -41,3 +42,11 @@ class ExternalTextImportResponse(BaseModel):
     language: str
     result_url: str
     search_indexed: bool
+
+
+class DocumentImportResponse(ExternalTextImportResponse):
+    """Imported document result with extraction metadata."""
+
+    file_name: str
+    file_type: str
+    extracted_characters: int

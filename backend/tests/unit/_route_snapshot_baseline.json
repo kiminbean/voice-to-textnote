@@ -476,6 +476,13 @@
     "api_key": true
   },
   {
+    "path": "/api/v1/imports/document",
+    "methods": [
+      "POST"
+    ],
+    "api_key": true
+  },
+  {
     "path": "/api/v1/imports/external-text",
     "methods": [
       "POST"

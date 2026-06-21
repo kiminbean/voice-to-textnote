@@ -1,9 +1,15 @@
+import sys
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from backend.schemas.external_import import ExternalImportSourceType, ExternalTextImportRequest
+from backend.schemas.external_import import (
+    ExternalImportSourceType,
+    ExternalTextImportRequest,
+    ExternalTextImportResponse,
+)
+from backend.services.document_import_service import DocumentImportService
 from backend.services.external_import_service import (
     ExternalImportService,
     ExternalImportValidationError,
@@ -102,3 +108,229 @@ def test_resolve_source_type_respects_explicit_non_web_type():
         )
         == ExternalImportSourceType.PODCAST
     )
+
+
+@pytest.mark.asyncio
+async def test_import_document_extracts_text_and_reuses_external_import_pipeline():
+    external_service = AsyncMock()
+    external_service.import_text = AsyncMock(
+        return_value=ExternalTextImportResponse(
+            task_id="ext-doc-001",
+            status="completed",
+            title="강의 자료",
+            source_url="https://local.voicetextnote/imports/documents/lecture.pdf",
+            source_type=ExternalImportSourceType.DOCUMENT,
+            language="ko",
+            result_url="/api/v1/minutes/ext-doc-001",
+            search_indexed=True,
+        )
+    )
+    service = DocumentImportService(external_service)
+    service._extract_text = (
+        lambda file_type, content: " 첫 문단 \n\n 두 번째 문단과 핵심 개념 및 복습 질문 "
+    )
+
+    response = await service.import_document(
+        filename="lecture.pdf",
+        content=b"%PDF fake",
+        title="강의 자료",
+        language="ko",
+        db=AsyncMock(),
+        redis_client=AsyncMock(),
+    )
+
+    assert response.task_id == "ext-doc-001"
+    assert response.source_type == ExternalImportSourceType.DOCUMENT
+    assert response.file_name == "lecture.pdf"
+    assert response.file_type == "pdf"
+    assert response.extracted_characters == len("첫 문단\n두 번째 문단과 핵심 개념 및 복습 질문")
+    payload = external_service.import_text.await_args.args[0]
+    assert payload.title == "강의 자료"
+    assert payload.content == "첫 문단\n두 번째 문단과 핵심 개념 및 복습 질문"
+    assert payload.source_type == ExternalImportSourceType.DOCUMENT
+
+
+@pytest.mark.asyncio
+async def test_import_document_uses_filename_as_default_title():
+    external_service = AsyncMock()
+    external_service.import_text = AsyncMock(
+        return_value=ExternalTextImportResponse(
+            task_id="ext-doc-002",
+            status="completed",
+            title="meeting-notes",
+            source_url="https://local.voicetextnote/imports/documents/meeting-notes.docx",
+            source_type=ExternalImportSourceType.DOCUMENT,
+            language="en",
+            result_url="/api/v1/minutes/ext-doc-002",
+            search_indexed=True,
+        )
+    )
+    service = DocumentImportService(external_service)
+    service._extract_text = lambda file_type, content: "Meeting notes with enough text"
+
+    await service.import_document(
+        filename="meeting-notes.docx",
+        content=b"PK\x03\x04 fake",
+        title=None,
+        language="en",
+        db=AsyncMock(),
+        redis_client=AsyncMock(),
+    )
+
+    payload = external_service.import_text.await_args.args[0]
+    assert payload.title == "meeting-notes"
+
+
+def test_import_document_rejects_image_until_ocr_engine_is_available():
+    service = DocumentImportService()
+
+    with pytest.raises(ExternalImportValidationError, match="이미지 OCR"):
+        service._validate_document(
+            filename="whiteboard.png",
+            file_type="png",
+            content=b"\x89PNG\r\n\x1a\n",
+        )
+
+
+def test_import_document_rejects_magic_byte_mismatch():
+    service = DocumentImportService()
+
+    with pytest.raises(ExternalImportValidationError, match="시그니처"):
+        service._validate_document(
+            filename="not-a-pdf.pdf",
+            file_type="pdf",
+            content=b"not a pdf",
+        )
+
+
+def test_import_document_rejects_missing_filename_empty_and_large_content():
+    service = DocumentImportService()
+
+    with pytest.raises(ExternalImportValidationError, match="파일명"):
+        service._validate_document(filename="", file_type="", content=b"data")
+
+    with pytest.raises(ExternalImportValidationError, match="빈 문서"):
+        service._validate_document(filename="empty.pdf", file_type="pdf", content=b"")
+
+    with pytest.raises(ExternalImportValidationError, match="20MB"):
+        service._validate_document(
+            filename="large.pdf",
+            file_type="pdf",
+            content=b"x" * (20 * 1024 * 1024 + 1),
+        )
+
+
+def test_import_document_rejects_unsupported_document_type():
+    service = DocumentImportService()
+
+    with pytest.raises(ExternalImportValidationError, match="PDF 또는 DOCX"):
+        service._validate_document(
+            filename="notes.txt",
+            file_type="txt",
+            content=b"plain text",
+        )
+
+
+def test_import_document_extract_text_dispatches_supported_types():
+    service = DocumentImportService()
+    service._extract_pdf_text = lambda content: "pdf text"
+    service._extract_docx_text = lambda content: "docx text"
+
+    assert service._extract_text("pdf", b"pdf") == "pdf text"
+    assert service._extract_text("docx", b"docx") == "docx text"
+
+    with pytest.raises(ExternalImportValidationError, match="지원하지 않는"):
+        service._extract_text("txt", b"text")
+
+
+def test_extract_pdf_text_reads_all_pages(monkeypatch):
+    service = DocumentImportService()
+    page_one = MagicMock()
+    page_one.extract_text.return_value = "첫 페이지"
+    page_two = MagicMock()
+    page_two.extract_text.return_value = ""
+    page_three = MagicMock()
+    page_three.extract_text.return_value = "세 번째 페이지"
+    pdf = MagicMock()
+    pdf.pages = [page_one, page_two, page_three]
+    pdf.__enter__.return_value = pdf
+    pdf.__exit__.return_value = False
+    pdfplumber = MagicMock()
+    pdfplumber.open.return_value = pdf
+    monkeypatch.setitem(sys.modules, "pdfplumber", pdfplumber)
+
+    assert service._extract_pdf_text(b"%PDF fake") == "첫 페이지\n세 번째 페이지"
+    pdfplumber.open.assert_called_once()
+
+
+def test_extract_pdf_text_reports_missing_dependency(monkeypatch):
+    service = DocumentImportService()
+    monkeypatch.setitem(sys.modules, "pdfplumber", None)
+
+    with pytest.raises(ExternalImportValidationError, match="PDF 텍스트 추출 기능"):
+        service._extract_pdf_text(b"%PDF fake")
+
+
+def test_extract_pdf_text_reports_parser_failure(monkeypatch):
+    service = DocumentImportService()
+    pdfplumber = MagicMock()
+    pdfplumber.open.side_effect = RuntimeError("broken")
+    monkeypatch.setitem(sys.modules, "pdfplumber", pdfplumber)
+
+    with pytest.raises(ExternalImportValidationError, match="PDF 텍스트 추출에 실패"):
+        service._extract_pdf_text(b"%PDF fake")
+
+
+def test_extract_docx_text_reads_paragraphs_and_tables(monkeypatch):
+    service = DocumentImportService()
+    fake_document = SimpleNamespace(
+        paragraphs=[SimpleNamespace(text="본문 1"), SimpleNamespace(text="본문 2")],
+        tables=[
+            SimpleNamespace(
+                rows=[
+                    SimpleNamespace(
+                        cells=[SimpleNamespace(text="표 제목"), SimpleNamespace(text="표 값")]
+                    )
+                ]
+            )
+        ],
+    )
+    docx_module = MagicMock()
+    docx_module.Document.return_value = fake_document
+    monkeypatch.setitem(sys.modules, "docx", docx_module)
+
+    assert service._extract_docx_text(b"PK\x03\x04 fake") == "본문 1\n본문 2\n표 제목\n표 값"
+
+
+def test_extract_docx_text_reports_missing_dependency(monkeypatch):
+    service = DocumentImportService()
+    monkeypatch.setitem(sys.modules, "docx", None)
+
+    with pytest.raises(ExternalImportValidationError, match="DOCX 텍스트 추출 기능"):
+        service._extract_docx_text(b"PK\x03\x04 fake")
+
+
+def test_extract_docx_text_reports_parser_failure(monkeypatch):
+    service = DocumentImportService()
+    docx_module = MagicMock()
+    docx_module.Document.side_effect = RuntimeError("broken")
+    monkeypatch.setitem(sys.modules, "docx", docx_module)
+
+    with pytest.raises(ExternalImportValidationError, match="DOCX 텍스트 추출에 실패"):
+        service._extract_docx_text(b"PK\x03\x04 fake")
+
+
+@pytest.mark.asyncio
+async def test_import_document_rejects_short_extracted_text():
+    service = DocumentImportService(AsyncMock())
+    service._extract_text = lambda file_type, content: "짧음"
+
+    with pytest.raises(ExternalImportValidationError, match="충분히"):
+        await service.import_document(
+            filename="short.pdf",
+            content=b"%PDF fake",
+            title="짧은 문서",
+            language="ko",
+            db=AsyncMock(),
+            redis_client=AsyncMock(),
+        )
