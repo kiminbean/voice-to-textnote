@@ -85,6 +85,7 @@ void main() {
       expect(find.text('원탭 녹음'), findsOneWidget);
 
       // 빈 상태 메시지 확인
+      await _scrollHomeUntilVisible(tester, '아직 녹음된 미팅이 없어요');
       expect(find.text('아직 녹음된 미팅이 없어요'), findsOneWidget);
 
       // FAB 버튼 확인
@@ -476,6 +477,97 @@ void main() {
             language: 'ko',
           )).captured;
       expect((captured.single as File).path, '/tmp/whiteboard.png');
+    });
+
+    testWidgets('명함 스캔은 이미지 OCR 노트를 영업 브리프 대상으로 추가해야 함',
+        (WidgetTester tester) async {
+      when(() => mockMinutesApi.importDocument(
+            file: any(named: 'file'),
+            title: any(named: 'title'),
+            language: any(named: 'language'),
+          )).thenAnswer(
+        (_) async => {
+          'task_id': 'card-001',
+          'status': 'completed',
+          'title': '명함 - Acme 김민수',
+          'source_url':
+              'https://local.voicetextnote/imports/documents/acme-card.png',
+          'result_url': '/api/v1/minutes/card-001',
+          'search_indexed': true,
+          'file_name': 'acme-card.png',
+          'file_type': 'png',
+          'extracted_characters': 64,
+          'shared_team_ids': const <String>[],
+        },
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            ..._onlineOverrides(mockService),
+            minutesApiProvider.overrideWithValue(mockMinutesApi),
+            documentImportPickerProvider.overrideWithValue(
+              () async => PlatformFile(
+                name: 'Acme 김민수.png',
+                size: 64,
+                path: '/tmp/acme-card.png',
+              ),
+            ),
+          ],
+          child: const MaterialApp(
+            home: HomeScreen(),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+      await _scrollHomeUntilVisible(tester, '명함 스캔');
+      await tester.tap(find.text('명함 스캔'));
+      await tester.pumpAndSettle();
+      await _scrollHomeUntilVisible(tester, '명함 - Acme 김민수');
+
+      expect(find.text('명함 - Acme 김민수'), findsOneWidget);
+      expect(find.text('비공개'), findsOneWidget);
+      final captured = verify(() => mockMinutesApi.importDocument(
+            file: captureAny(named: 'file'),
+            title: '명함 - Acme 김민수',
+            language: 'ko',
+          )).captured;
+      expect((captured.single as File).path, '/tmp/acme-card.png');
+    });
+
+    testWidgets('명함 스캔은 이미지가 아닌 문서를 거부해야 함', (WidgetTester tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            ..._onlineOverrides(mockService),
+            minutesApiProvider.overrideWithValue(mockMinutesApi),
+            documentImportPickerProvider.overrideWithValue(
+              () async => PlatformFile(
+                name: 'sales-deck.pdf',
+                size: 120,
+                path: '/tmp/sales-deck.pdf',
+              ),
+            ),
+          ],
+          child: const MaterialApp(
+            home: HomeScreen(),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+      await _scrollHomeUntilVisible(tester, '명함 스캔');
+      await tester.tap(find.text('명함 스캔'));
+      await tester.pumpAndSettle();
+
+      expect(
+          find.text('명함 스캔은 PNG, JPG, JPEG, WebP 이미지만 지원합니다.'), findsOneWidget);
+      verifyNever(() => mockMinutesApi.importDocument(
+            file: any(named: 'file'),
+            title: any(named: 'title'),
+            language: any(named: 'language'),
+          ));
     });
 
     // REQ-HSYNC-003: RefreshIndicator가 있어야 함

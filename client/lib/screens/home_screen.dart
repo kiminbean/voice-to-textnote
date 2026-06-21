@@ -293,6 +293,19 @@ class HomeScreen extends ConsumerWidget {
               ),
             ],
           ),
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            children: [
+              Expanded(
+                child: _ShortcutTile(
+                  icon: Icons.badge_rounded,
+                  title: '명함 스캔',
+                  subtitle: '이미지 OCR 후 영업 탭에서 연락처 브리프',
+                  onTap: () => _importBusinessCard(context, ref),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -345,12 +358,77 @@ class HomeScreen extends ConsumerWidget {
     }
   }
 
+  Future<void> _importBusinessCard(BuildContext context, WidgetRef ref) async {
+    final picked = await ref.read(documentImportPickerProvider)();
+    if (!context.mounted || picked == null) return;
+
+    final path = picked.path;
+    if (path == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('선택한 명함 이미지 경로를 확인할 수 없습니다.')),
+      );
+      return;
+    }
+    if (!_isBusinessCardImage(picked.name)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('명함 스캔은 PNG, JPG, JPEG, WebP 이미지만 지원합니다.')),
+      );
+      return;
+    }
+
+    final title = _businessCardTitle(picked.name);
+    try {
+      final result = await ref.read(minutesApiProvider).importDocument(
+            file: File(path),
+            title: title,
+          );
+      final taskId = result['task_id'] as String;
+      final importedTitle = (result['title'] as String?)?.trim();
+      final meetingTitle = importedTitle == null || importedTitle.isEmpty
+          ? title
+          : importedTitle;
+      final sourceUrl = result['source_url'] as String?;
+      final meeting = Meeting(
+        id: taskId,
+        title: meetingTitle,
+        createdAt: DateTime.now(),
+        status: MeetingStatus.completed,
+        sourceUrl: sourceUrl,
+        minutesTaskId: taskId,
+        sharedTeamIds: _sharedTeamIdsFromImportResult(result),
+      );
+      await ref.read(meetingListProvider.notifier).addMeeting(meeting);
+
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$meetingTitle을 가져왔습니다. 영업 탭에서 브리프를 확인하세요.')),
+      );
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('명함 이미지를 가져올 수 없습니다. OCR 지원 상태를 확인해주세요.')),
+      );
+    }
+  }
+
   String _documentTitle(String fileName) {
     final name = fileName.trim();
     if (name.isEmpty) return '가져온 문서';
     final dotIndex = name.lastIndexOf('.');
     if (dotIndex <= 0) return name;
     return name.substring(0, dotIndex);
+  }
+
+  bool _isBusinessCardImage(String fileName) {
+    final extension = fileName.split('.').last.toLowerCase();
+    return const {'png', 'jpg', 'jpeg', 'webp'}.contains(extension);
+  }
+
+  String _businessCardTitle(String fileName) {
+    final baseTitle = _documentTitle(fileName);
+    if (baseTitle.startsWith('명함')) return baseTitle;
+    return '명함 - $baseTitle';
   }
 
   void _showExternalTextImportSheet(BuildContext context, WidgetRef ref) {
