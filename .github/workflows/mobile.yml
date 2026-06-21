@@ -22,6 +22,10 @@ on:
       - "docs/release-e2e-evidence.json"
       - "docs/release-e2e-evidence.example.json"
       - "docs/screenshot-guide.md"
+      - "backend/tests/test_configure_github_mobile_release_env.py"
+      - "backend/tests/test_create_release_e2e_evidence.py"
+      - "backend/tests/test_github_mobile_release_env.py"
+      - "backend/tests/test_mobile_release_runner.py"
       - "backend/tests/test_release_readiness_evidence.py"
       - ".github/workflows/mobile.yml"
   push:
@@ -39,6 +43,10 @@ on:
       - "docs/release-e2e-evidence.json"
       - "docs/release-e2e-evidence.example.json"
       - "docs/screenshot-guide.md"
+      - "backend/tests/test_configure_github_mobile_release_env.py"
+      - "backend/tests/test_create_release_e2e_evidence.py"
+      - "backend/tests/test_github_mobile_release_env.py"
+      - "backend/tests/test_mobile_release_runner.py"
       - "backend/tests/test_release_readiness_evidence.py"
       - ".github/workflows/mobile.yml"
 

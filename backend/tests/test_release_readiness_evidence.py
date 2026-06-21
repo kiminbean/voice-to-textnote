@@ -271,6 +271,11 @@ def test_mobile_workflow_exposes_manual_strict_release_gate():
         "./scripts/verify_mobile.sh --native",
         "python3 client/scripts/verify_release_readiness.py --strict",
         "docs/release-e2e-evidence.json",
+        "backend/tests/test_configure_github_mobile_release_env.py",
+        "backend/tests/test_create_release_e2e_evidence.py",
+        "backend/tests/test_github_mobile_release_env.py",
+        "backend/tests/test_mobile_release_runner.py",
+        "backend/tests/test_release_readiness_evidence.py",
     ]
 
     for snippet in required_snippets:
