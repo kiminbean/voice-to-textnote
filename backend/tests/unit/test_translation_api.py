@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 from backend.app.dependencies import get_db_session
 from backend.app.error_handlers import register_exception_handlers
 from backend.app.exceptions import InternalServerError
-from backend.schemas.translation import TranslationResponse
+from backend.schemas.translation import TranslationResponse, TranslationSourceType
 from backend.services.translation_service import (
     TranslationSourceNotFoundError,
     TranslationValidationError,
@@ -44,7 +44,7 @@ def app_client():
 def make_response(cached: bool = False) -> TranslationResponse:
     return TranslationResponse(
         task_id="min-001",
-        source_type="summary",
+        source_type=TranslationSourceType.SUMMARY,
         source_language="ko",
         target_language="en",
         translated_text="Meeting summary",

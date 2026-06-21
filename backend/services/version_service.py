@@ -72,6 +72,10 @@ class VersionService:
                         status_code=409,
                         detail="버전 생성 충돌이 발생했습니다. 다시 시도해 주세요.",
                     )
+        raise HTTPException(  # pragma: no cover - defensive fallback after bounded retries
+            status_code=409,
+            detail="버전 생성 충돌이 발생했습니다. 다시 시도해 주세요.",
+        )
 
     async def list_versions(
         self,

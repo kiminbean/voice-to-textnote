@@ -10,6 +10,7 @@ from backend.app.exceptions import InternalServerError
 from backend.schemas.study_pack import (
     StudyFlashcard,
     StudyKeyConcept,
+    StudyPackMode,
     StudyPackResponse,
     StudyQuizQuestion,
 )
@@ -56,7 +57,7 @@ def test_get_study_pack_service_provider():
 def make_response() -> StudyPackResponse:
     return StudyPackResponse(
         task_id="min-001",
-        mode="lecture",
+        mode=StudyPackMode.LECTURE,
         language="ko",
         key_concepts=[StudyKeyConcept(term="광합성", explanation="빛 에너지 전환")],
         flashcards=[StudyFlashcard(front="광합성?", back="빛 에너지 전환")],

@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime
+from typing import Any, cast
 
 import pytest
 from fastapi import FastAPI
@@ -20,14 +21,14 @@ from backend.schemas.audio_enhancement import AudioQualityScore, EnhancementResu
 
 class FakeRedis:
     def __init__(self) -> None:
-        self.store: dict[str, str] = {}
+        self.store: dict[str, str | bytes] = {}
 
     async def setex(self, key: str, ttl: int, value: str) -> None:
         assert ttl == 86400
         json.loads(value)
         self.store[key] = value
 
-    async def get(self, key: str) -> str | None:
+    async def get(self, key: str) -> str | bytes | None:
         return self.store.get(key)
 
 
@@ -282,15 +283,15 @@ def test_post_rejects_missing_filename(app_client: TestClient) -> None:
 async def test_enhance_audio_rejects_file_object_without_filename(fake_redis: FakeRedis) -> None:
     with pytest.raises(Exception) as exc_info:
         await enhance.enhance_audio(
-            file=MissingFilenameUpload(),
+            file=cast(Any, MissingFilenameUpload()),
             enhancement_mode=enhance.EnhancementMode.ENHANCED,
             noise_reduction_level=enhance.NoiseReductionLevel.MODERATE,
             voice_enhancement=enhance.VoiceEnhancementMode.NATURAL,
             extract_speech_only=False,
             target_sample_rate=16000,
             normalize_audio=True,
-            redis_client=fake_redis,
-            svc=FakeEnhancementService(),
+            redis_client=cast(Any, fake_redis),
+            svc=cast(Any, FakeEnhancementService()),
         )
 
     assert getattr(exc_info.value, "status_code", None) == 422
@@ -312,7 +313,7 @@ def test_post_records_failed_status_when_service_raises(fake_redis: FakeRedis) -
 @pytest.mark.asyncio
 async def test_write_upload_rejects_empty_file() -> None:
     with pytest.raises(Exception) as exc_info:
-        await enhance._write_upload_to_temp_file(EmptyUpload(), ".wav")
+        await enhance._write_upload_to_temp_file(cast(Any, EmptyUpload()), ".wav")
 
     assert getattr(exc_info.value, "status_code", None) == 422
 
@@ -322,6 +323,6 @@ async def test_write_upload_rejects_file_over_size_limit(monkeypatch) -> None:
     monkeypatch.setattr(enhance, "MAX_UPLOAD_BYTES", 3)
 
     with pytest.raises(Exception) as exc_info:
-        await enhance._write_upload_to_temp_file(ChunkedUpload([b"12", b"34"]), ".wav")
+        await enhance._write_upload_to_temp_file(cast(Any, ChunkedUpload([b"12", b"34"])), ".wav")
 
     assert getattr(exc_info.value, "status_code", None) == 413

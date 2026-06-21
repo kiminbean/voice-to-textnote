@@ -6,8 +6,10 @@ import asyncio
 import uuid
 from io import BytesIO
 from pathlib import Path
+from typing import cast
 
 import redis.asyncio as aioredis
+from pydantic import AnyHttpUrl
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.schemas.external_import import (
@@ -64,7 +66,7 @@ class DocumentImportService:
         source_url = self._document_source_url(filename)
         imported = await self._external_import_service.import_text(
             ExternalTextImportRequest(
-                source_url=source_url,
+                source_url=cast(AnyHttpUrl, source_url),
                 title=document_title,
                 content=normalized_text,
                 source_type=ExternalImportSourceType.DOCUMENT,

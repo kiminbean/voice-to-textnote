@@ -15,6 +15,7 @@ import os
 import platform
 import sys
 import time
+from importlib import import_module
 from pathlib import Path
 from threading import Lock
 from typing import Any
@@ -459,9 +460,9 @@ class WhisperEngine:
             return "cpu"
 
         try:
-            mx = sys.modules.get("mlx.core")
+            mx: Any = sys.modules.get("mlx.core")
             if mx is None:
-                import mlx.core as mx
+                mx = import_module("mlx.core")
 
             _ = mx.array([1.0])
             logger.info("MLX Apple Silicon 가속 사용 가능")
