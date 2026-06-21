@@ -209,6 +209,7 @@ void main() {
           company: 'Acme',
           role: 'CTO',
           email: 'kim@example.com',
+          phone: '010-1234-5678',
         ),
         deal: SalesContactDeal(
           stage: 'demo_requested',
@@ -610,6 +611,11 @@ void main() {
       await _pumpToSalesTab(tester);
 
       expect(find.text('김민수'), findsOneWidget);
+      expect(find.text('연락처 확인'), findsOneWidget);
+      expect(find.text('Acme'), findsOneWidget);
+      expect(find.text('CTO'), findsOneWidget);
+      expect(find.text('kim@example.com'), findsOneWidget);
+      expect(find.text('010-1234-5678'), findsOneWidget);
       expect(find.text('demo_requested'), findsOneWidget);
       expect(find.text('긴급도 high'), findsOneWidget);
       expect(find.text('고객 니즈'), findsOneWidget);
@@ -636,18 +642,39 @@ void main() {
             .setMockMethodCallHandler(SystemChannels.platform, null);
       });
 
+      await tester.ensureVisible(find.text('연락처 복사'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(OutlinedButton, '연락처 복사'));
+      await tester.pump(const Duration(milliseconds: 250));
+
+      var clipboardText = clipboardPayload?['text'] as String?;
+      expect(clipboardText, contains('연락처'));
+      expect(clipboardText, contains('이름: 김민수'));
+      expect(clipboardText, contains('회사: Acme'));
+      expect(clipboardText, contains('직함: CTO'));
+      expect(clipboardText, contains('이메일: kim@example.com'));
+      expect(clipboardText, contains('전화: 010-1234-5678'));
+      expect(find.text('연락처를 복사했습니다'), findsOneWidget);
+
+      await tester.ensureVisible(find.byTooltip('이메일 복사'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('이메일 복사'));
+      await tester.pump(const Duration(milliseconds: 250));
+
+      clipboardText = clipboardPayload?['text'] as String?;
+      expect(clipboardText, 'kim@example.com');
+
       await tester.ensureVisible(find.text('브리프 복사'));
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(OutlinedButton, '브리프 복사'));
       await tester.pump(const Duration(milliseconds: 250));
 
-      final clipboardText = clipboardPayload?['text'] as String?;
+      clipboardText = clipboardPayload?['text'] as String?;
       expect(clipboardText, contains('영업 브리프'));
       expect(clipboardText, contains('고객: 김민수'));
       expect(clipboardText, contains('보안 감사 자동화'));
       expect(clipboardText, contains('다음 주 화요일 데모 일정 확정'));
       expect(clipboardText, contains('김민수님, 요청하신 데모 일정을 확인드리겠습니다.'));
-      expect(find.text('영업 브리프를 복사했습니다'), findsOneWidget);
     });
 
     testWidgets('Sales Contact Brief 항목이 비어 있으면 빈 상태를 표시해야 함',

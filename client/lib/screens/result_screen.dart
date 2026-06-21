@@ -3695,12 +3695,8 @@ class _SalesContactHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final contact = brief.contact;
-    final details = [
-      if ((contact.company ?? '').isNotEmpty) contact.company!,
-      if ((contact.role ?? '').isNotEmpty) contact.role!,
-      if ((contact.email ?? '').isNotEmpty) contact.email!,
-      if ((contact.phone ?? '').isNotEmpty) contact.phone!,
-    ];
+    final hasEmail = (contact.email ?? '').trim().isNotEmpty;
+    final hasPhone = (contact.phone ?? '').trim().isNotEmpty;
 
     return Card(
       child: Padding(
@@ -3713,9 +3709,16 @@ class _SalesContactHeader extends StatelessWidget {
                 const Icon(Icons.person_search_outlined),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text(
-                    _displayContactName(contact),
-                    style: Theme.of(context).textTheme.titleMedium,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('연락처 확인',
+                          style: Theme.of(context).textTheme.labelLarge),
+                      Text(
+                        _displayContactName(contact),
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    ],
                   ),
                 ),
                 Chip(
@@ -3724,9 +3727,48 @@ class _SalesContactHeader extends StatelessWidget {
                 ),
               ],
             ),
-            if (details.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: OutlinedButton.icon(
+                onPressed: () => _copyContactSummary(context, contact),
+                icon: const Icon(Icons.contact_page_outlined),
+                label: const Text('연락처 복사'),
+              ),
+            ),
+            const SizedBox(height: 12),
+            _ContactFieldRow(
+              icon: Icons.business_outlined,
+              label: '회사',
+              value: contact.company,
+            ),
+            _ContactFieldRow(
+              icon: Icons.work_outline_rounded,
+              label: '직함',
+              value: contact.role,
+            ),
+            _ContactFieldRow(
+              icon: Icons.mail_outline_rounded,
+              label: '이메일',
+              value: contact.email,
+              onCopy: hasEmail
+                  ? () => _copyContactValue(context, '이메일', contact.email!)
+                  : null,
+            ),
+            _ContactFieldRow(
+              icon: Icons.phone_outlined,
+              label: '전화',
+              value: contact.phone,
+              onCopy: hasPhone
+                  ? () => _copyContactValue(context, '전화', contact.phone!)
+                  : null,
+            ),
+            if (!hasEmail || !hasPhone) ...[
               const SizedBox(height: 8),
-              Text(details.join(' · ')),
+              Text(
+                '비어 있는 필드는 원본 명함/대화 내용을 확인해 보완하세요.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
             ],
             const SizedBox(height: 8),
             Wrap(
@@ -3748,6 +3790,95 @@ class _SalesContactHeader extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Future<void> _copyContactSummary(
+    BuildContext context,
+    SalesContactIdentity contact,
+  ) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final buffer = StringBuffer()
+      ..writeln('연락처')
+      ..writeln(
+          '이름: ${contact.name?.trim().isNotEmpty == true ? contact.name!.trim() : '미확인'}');
+
+    void writeField(String label, String? value) {
+      final normalized = value?.trim() ?? '';
+      if (normalized.isEmpty) return;
+      buffer.writeln('$label: $normalized');
+    }
+
+    writeField('회사', contact.company);
+    writeField('직함', contact.role);
+    writeField('이메일', contact.email);
+    writeField('전화', contact.phone);
+
+    await Clipboard.setData(ClipboardData(text: buffer.toString()));
+    messenger.showSnackBar(
+      const SnackBar(content: Text('연락처를 복사했습니다')),
+    );
+  }
+
+  Future<void> _copyContactValue(
+    BuildContext context,
+    String label,
+    String value,
+  ) async {
+    final messenger = ScaffoldMessenger.of(context);
+    await Clipboard.setData(ClipboardData(text: value.trim()));
+    messenger.showSnackBar(
+      SnackBar(content: Text('$label을 복사했습니다')),
+    );
+  }
+}
+
+class _ContactFieldRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String? value;
+  final VoidCallback? onCopy;
+
+  const _ContactFieldRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.onCopy,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final normalized = value?.trim() ?? '';
+    final displayValue = normalized.isEmpty ? '미확인' : normalized;
+    final colors = Theme.of(context).colorScheme;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: colors.onSurfaceVariant),
+          const SizedBox(width: 8),
+          SizedBox(
+            width: 54,
+            child: Text(label, style: Theme.of(context).textTheme.labelMedium),
+          ),
+          Expanded(
+            child: SelectableText(
+              displayValue,
+              maxLines: 1,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: normalized.isEmpty ? colors.onSurfaceVariant : null,
+                  ),
+            ),
+          ),
+          if (onCopy != null)
+            IconButton(
+              tooltip: '$label 복사',
+              icon: const Icon(Icons.copy_outlined, size: 18),
+              onPressed: onCopy,
+            ),
+        ],
       ),
     );
   }
