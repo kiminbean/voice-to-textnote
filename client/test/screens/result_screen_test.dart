@@ -131,6 +131,20 @@ void main() {
         },
       },
     );
+    when(() => mockSumApi.getSmartSummaryHistory(any())).thenAnswer(
+      (_) async => {
+        'minutes_task_id': 'min-task-001',
+        'histories': {
+          'lecture_notes': [
+            {
+              'task_id': 'smart-cached-001',
+              'summary_text': '저장된 강의 노트 요약',
+              'created_at': '2026-06-21T00:00:00',
+            },
+          ],
+        },
+      },
+    );
     when(() => mockStudyPackApi.get(
           any(),
           mode: any(named: 'mode'),
@@ -401,6 +415,44 @@ void main() {
             focusAreas: ['all'],
             includeSentiment: true,
           )).called(1);
+    });
+
+    testWidgets('저장된 목적별 요약 히스토리를 선택 모드별로 표시해야 함', (WidgetTester tester) async {
+      // Arrange
+      when(() => mockSumApi.getResult(any())).thenAnswer((_) async => {
+            'summary_text': '회의 요약입니다.',
+            'action_items': <dynamic>[],
+            'key_decisions': <dynamic>[],
+            'next_steps': <dynamic>[],
+          });
+      when(() => mockSumApi.getSmartSummaryHistory('min-task-001')).thenAnswer(
+        (_) async => {
+          'minutes_task_id': 'min-task-001',
+          'histories': {
+            'lecture_notes': [
+              {
+                'task_id': 'smart-cached-001',
+                'summary_text': '저장된 강의 노트 요약',
+                'created_at': '2026-06-21T00:00:00',
+              },
+            ],
+          },
+        },
+      );
+
+      // Act
+      await tester.pumpWidget(buildTestWidget([]));
+      await tester.pumpAndSettle();
+      await tester.tap(_tabText('AI 요약'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('강의 노트'));
+      await tester.pumpAndSettle();
+
+      // Assert
+      verify(() => mockSumApi.getSmartSummaryHistory('min-task-001')).called(1);
+      expect(find.text('저장된 모드 요약'), findsOneWidget);
+      expect(find.text('저장된 버전 1개'), findsOneWidget);
+      expect(find.text('저장된 강의 노트 요약'), findsOneWidget);
     });
   });
 

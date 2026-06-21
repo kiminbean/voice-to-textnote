@@ -206,7 +206,7 @@ Add transcript and summary translation workflows. The current app has Korean/Eng
 
 Productize reusable summary modes such as executive brief, lecture notes, sales follow-up, sermon notes, research interview, action-only, and decision log.
 
-**Implementation status (2026-06-21)**: Backend smart summary now exposes 11 selectable modes through `GET /api/v1/smart-summary/modes`, including executive, detailed, bullet, action-oriented, sentiment-focused, lecture notes, sales follow-up, sermon notes, research interview, decision log, and action-only. The Flutter result screen AI summary tab includes a purpose-specific mode selector and can generate mode-specific summaries from the persisted minutes task. Remaining work: tune prompts/output quality per domain and add persisted mode-summary history if users need to compare versions.
+**Implementation status (2026-06-21)**: Backend smart summary now exposes 11 selectable modes through `GET /api/v1/smart-summary/modes`, including executive, detailed, bullet, action-oriented, sentiment-focused, lecture notes, sales follow-up, sermon notes, research interview, decision log, and action-only. Generated mode-specific summaries are persisted under the source minutes result, `GET /api/v1/smart-summary/history/{minutes_task_id}` returns saved versions, and the Flutter result screen AI summary tab displays saved mode history across revisits while still supporting fresh generation. Remaining work: tune prompts/output quality per domain.
 
 ### P1: YouTube and External Media Import
 

@@ -66,6 +66,13 @@ class SummaryApi {
     return modes.cast<Map<String, dynamic>>();
   }
 
+  // 회의록 태스크 ID로 저장된 목적별 스마트 요약 히스토리 조회
+  Future<Map<String, dynamic>> getSmartSummaryHistory(
+      String minutesTaskId) async {
+    final response = await _dio.get('/smart-summary/history/$minutesTaskId');
+    return response.data as Map<String, dynamic>;
+  }
+
   // 완료된 요약 태스크 ID로 관계 추론형 마인드맵 생성
   Future<Map<String, dynamic>> createMindMap(
     String summaryTaskId, {

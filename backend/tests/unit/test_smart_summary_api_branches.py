@@ -80,6 +80,7 @@ async def test_create_smart_summary_uses_markdown_and_stores_completed_status():
     record = SimpleNamespace(result_data={"markdown": "# 회의록\n내용"})
     db = AsyncMock()
     db.execute = AsyncMock(return_value=_db_result(record))
+    db.commit = AsyncMock()
     redis = AsyncMock()
     svc = AsyncMock()
     svc.generate_smart_summary = AsyncMock(return_value=_summary_result())
@@ -100,6 +101,51 @@ async def test_create_smart_summary_uses_markdown_and_stores_completed_status():
     completed_payload = json.loads(redis.setex.await_args.args[2])
     assert completed_payload["status"] == "completed"
     assert completed_payload["progress"] == 100.0
+    history = record.result_data["smart_summary_history"]
+    assert history["executive"][0]["summary_text"] == "요약"
+    assert history["executive"][0]["task_id"] == response.task_id
+    db.commit.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_get_smart_summary_history_returns_persisted_mode_versions():
+    record = SimpleNamespace(
+        result_data={
+            "smart_summary_history": {
+                "lecture_notes": [
+                    {
+                        "task_id": "smart-1",
+                        "summary_text": "강의 노트 저장본",
+                        "created_at": "2026-06-21T00:00:00",
+                    }
+                ]
+            }
+        }
+    )
+    db = AsyncMock()
+    db.execute = AsyncMock(return_value=_db_result(record))
+
+    response = await api.get_smart_summary_history("minutes-1", db)
+
+    assert response["minutes_task_id"] == "minutes-1"
+    assert response["histories"]["lecture_notes"][0]["summary_text"] == "강의 노트 저장본"
+
+
+@pytest.mark.asyncio
+async def test_get_smart_summary_history_handles_missing_or_invalid_history():
+    db = AsyncMock()
+    db.execute = AsyncMock(return_value=_db_result(None))
+
+    with pytest.raises(VoiceNoteError, match="완료된 회의록을 찾을 수 없습니다"):
+        await api.get_smart_summary_history("missing", db)
+
+    db.execute = AsyncMock(
+        return_value=_db_result(SimpleNamespace(result_data={"smart_summary_history": []}))
+    )
+
+    response = await api.get_smart_summary_history("minutes-1", db)
+
+    assert response == {"minutes_task_id": "minutes-1", "histories": {}}
 
 
 @pytest.mark.asyncio

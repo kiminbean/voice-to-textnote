@@ -546,10 +546,10 @@ def check_readme_release_status(root: Path, reporter: Reporter) -> None:
         )
     else:
         reporter.ok("README does not overclaim Production Ready before strict evidence")
-    if "3772 백엔드 테스트" in readme and "3772개" in readme and "4151개" in readme:
+    if "3775 백엔드 테스트" in readme and "3775개" in readme and "4156개" in readme:
         reporter.ok("README test counts match current release validation evidence")
     else:
-        reporter.fail("README test counts must match current 3772 backend / 4151 total evidence")
+        reporter.fail("README test counts must match current 3775 backend / 4156 total evidence")
     if f"{completed_spec_count}개 SPEC" in readme:
         reporter.fail("README should avoid hard-coded completed SPEC counts outside the SPEC list")
     else:
@@ -623,10 +623,10 @@ def check_docs(root: Path, reporter: Reporter) -> None:
             "Release procedure SPEC count must match README completed SPEC list "
             f"({completed_spec_count})"
         )
-    if "3772 passed" in procedure_doc:
+    if "3775 passed" in procedure_doc:
         reporter.ok("Release procedure backend test count matches latest full pytest evidence")
     else:
-        reporter.fail("Release procedure backend test count must match latest 3772 passed evidence")
+        reporter.fail("Release procedure backend test count must match latest 3775 passed evidence")
     app_store_doc = read_text(root / "docs/app-store-metadata.md")
     for snippet in [
         "App Store Connect",

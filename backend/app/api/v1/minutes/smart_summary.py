@@ -121,6 +121,57 @@ def _parse_status(raw_status: bytes | str) -> dict[str, Any]:
     return parsed
 
 
+def _mode_history_entry(
+    *,
+    summary_task_id: str,
+    request: SummaryRequest,
+    summary_result: SummaryGenerationResult,
+    created_at: datetime,
+    completed_at: datetime,
+) -> dict[str, Any]:
+    return {
+        "task_id": summary_task_id,
+        "summary_mode": request.summary_mode.value,
+        "length": request.length.value,
+        "focus_areas": [area.value for area in request.focus_areas],
+        "summary_text": summary_result.summary_content.summary_text,
+        "created_at": created_at.isoformat(),
+        "completed_at": completed_at.isoformat(),
+        "result": summary_result.model_dump(mode="json"),
+    }
+
+
+async def _persist_mode_summary_history(
+    *,
+    task_record: TaskResult,
+    db: AsyncSession,
+    summary_task_id: str,
+    request: SummaryRequest,
+    summary_result: SummaryGenerationResult,
+    created_at: datetime,
+    completed_at: datetime,
+) -> None:
+    result_data = dict(task_record.result_data or {})
+    raw_history = result_data.get("smart_summary_history")
+    histories: dict[str, list[dict[str, Any]]] = raw_history if isinstance(raw_history, dict) else {}
+    mode_key = request.summary_mode.value
+    mode_versions = list(histories.get(mode_key, []))
+    mode_versions.insert(
+        0,
+        _mode_history_entry(
+            summary_task_id=summary_task_id,
+            request=request,
+            summary_result=summary_result,
+            created_at=created_at,
+            completed_at=completed_at,
+        ),
+    )
+    histories[mode_key] = mode_versions[:10]
+    result_data["smart_summary_history"] = histories
+    task_record.result_data = result_data
+    await db.commit()
+
+
 @router.post(
     "/{minutes_task_id}",
     status_code=status.HTTP_201_CREATED,
@@ -235,6 +286,16 @@ async def create_smart_summary(
 
         await redis_client.setex(redis_key, 86400, _serialize_status(task_status))
 
+        await _persist_mode_summary_history(
+            task_record=task_record,
+            db=db,
+            summary_task_id=summary_task_id,
+            request=request,
+            summary_result=summary_result,
+            created_at=created_at,
+            completed_at=completed_at,
+        )
+
         # 7. 응답 생성
         return SmartSummaryResponse(
             task_id=summary_task_id,
@@ -253,6 +314,37 @@ async def create_smart_summary(
 
         # 재발생
         raise
+
+
+@router.get("/history/{minutes_task_id}")
+async def get_smart_summary_history(
+    minutes_task_id: str,
+    db: AsyncSession = Depends(get_db_session),
+) -> dict[str, Any]:
+    """회의록에 저장된 목적별 스마트 요약 히스토리 조회."""
+    stmt = select(TaskResult).where(
+        TaskResult.task_id == minutes_task_id,
+        TaskResult.task_type == "minutes",
+        TaskResult.status == "completed",
+    )
+    result = await db.execute(stmt)
+    task_record = result.scalars().first()
+
+    if not task_record:
+        raise _smart_summary_error(
+            f"완료된 회의록을 찾을 수 없습니다: {minutes_task_id}",
+            status_code=404,
+        )
+
+    result_data = task_record.result_data or {}
+    histories = result_data.get("smart_summary_history")
+    if not isinstance(histories, dict):
+        histories = {}
+
+    return {
+        "minutes_task_id": minutes_task_id,
+        "histories": histories,
+    }
 
 
 @router.get("/status/{task_id}", response_model=SmartSummaryStatus)

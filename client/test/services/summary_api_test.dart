@@ -185,6 +185,32 @@ void main() {
       verify(() => mockDio.get('/smart-summary/modes')).called(1);
     });
 
+    test('getSmartSummaryHistory가 회의록별 저장된 목적별 요약을 반환해야 함', () async {
+      // Arrange
+      when(() => mockDio.get(any())).thenAnswer(
+        (_) async => Response(
+          data: {
+            'minutes_task_id': 'min-001',
+            'histories': {
+              'lecture_notes': [
+                {'summary_text': '저장된 강의 노트'},
+              ],
+            },
+          },
+          statusCode: 200,
+          requestOptions: RequestOptions(path: ''),
+        ),
+      );
+
+      // Act
+      final result = await summaryApi.getSmartSummaryHistory('min-001');
+
+      // Assert
+      expect(result['minutes_task_id'], 'min-001');
+      expect(result['histories'], isA<Map<String, dynamic>>());
+      verify(() => mockDio.get('/smart-summary/history/min-001')).called(1);
+    });
+
     // delete: 태스크 삭제 성공 테스트
     test('delete가 태스크를 삭제하고 완료해야 함', () async {
       // Arrange

@@ -805,6 +805,13 @@
     "api_key": true
   },
   {
+    "path": "/api/v1/smart-summary/history/{minutes_task_id}",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
     "path": "/api/v1/smart-summary/meeting-types",
     "methods": [
       "GET"

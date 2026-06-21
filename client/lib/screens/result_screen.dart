@@ -2634,6 +2634,22 @@ class _SummaryTabState extends ConsumerState<_SummaryTab> {
   int _currentMatchIndex = 0;
   String _selectedSummaryMode = 'executive';
   AsyncValue<Map<String, dynamic>>? _modeSummary;
+  AsyncValue<Map<String, dynamic>>? _modeSummaryHistory;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadModeSummaryHistory();
+  }
+
+  @override
+  void didUpdateWidget(covariant _SummaryTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.minutesTaskId != widget.minutesTaskId) {
+      _modeSummary = null;
+      _loadModeSummaryHistory();
+    }
+  }
 
   void _updateSearch(String query, SummaryResult result) {
     setState(() {
@@ -2707,6 +2723,12 @@ class _SummaryTabState extends ConsumerState<_SummaryTab> {
     if (!mounted) return;
     setState(() {
       _modeSummary = result;
+      if (result.hasValue) {
+        _modeSummaryHistory = AsyncValue.data(_mergeModeSummaryHistory(
+          _modeSummaryHistory?.valueOrNull,
+          result.value!,
+        ));
+      }
     });
   }
 
@@ -2722,6 +2744,164 @@ class _SummaryTabState extends ConsumerState<_SummaryTab> {
       }
     }
     return '요약 결과가 비어 있습니다.';
+  }
+
+  Future<void> _loadModeSummaryHistory() async {
+    final minutesTaskId = widget.minutesTaskId;
+    if (minutesTaskId == null || minutesTaskId.isEmpty) {
+      return;
+    }
+
+    setState(() {
+      _modeSummaryHistory = const AsyncValue.loading();
+    });
+
+    final api = ref.read(summaryApiProvider);
+    final result = await AsyncValue.guard(
+      () => api.getSmartSummaryHistory(minutesTaskId),
+    );
+
+    if (!mounted) return;
+    setState(() {
+      _modeSummaryHistory = result;
+      final firstStoredMode = _firstStoredMode(result.valueOrNull);
+      if (firstStoredMode != null &&
+          _modeHistoryVersionsForMode(result.valueOrNull, _selectedSummaryMode)
+              .isEmpty) {
+        _selectedSummaryMode = firstStoredMode;
+      }
+    });
+  }
+
+  Map<String, dynamic> _mergeModeSummaryHistory(
+    Map<String, dynamic>? current,
+    Map<String, dynamic> generated,
+  ) {
+    final merged = Map<String, dynamic>.from(
+      current ??
+          {
+            'minutes_task_id': widget.minutesTaskId,
+            'histories': <String, dynamic>{},
+          },
+    );
+    final rawHistories = merged['histories'];
+    final histories = rawHistories is Map
+        ? Map<String, dynamic>.from(rawHistories)
+        : <String, dynamic>{};
+    final versions = histories[_selectedSummaryMode] is List
+        ? List<dynamic>.from(histories[_selectedSummaryMode] as List)
+        : <dynamic>[];
+    versions.insert(0, {
+      'task_id': generated['task_id'],
+      'summary_mode': _selectedSummaryMode,
+      'summary_text': _modeSummaryText(generated),
+      'created_at': generated['created_at'],
+      'completed_at': generated['completed_at'],
+      'result': generated['result'],
+    });
+    histories[_selectedSummaryMode] = versions;
+    merged['histories'] = histories;
+    return merged;
+  }
+
+  List<Map<String, dynamic>> _modeHistoryVersions(Map<String, dynamic> data) {
+    return _modeHistoryVersionsForMode(data, _selectedSummaryMode);
+  }
+
+  List<Map<String, dynamic>> _modeHistoryVersionsForMode(
+    Map<String, dynamic>? data,
+    String mode,
+  ) {
+    if (data == null) {
+      return const [];
+    }
+    final rawHistories = data['histories'];
+    if (rawHistories is! Map) {
+      return const [];
+    }
+    final rawVersions = rawHistories[mode];
+    if (rawVersions is! List) {
+      return const [];
+    }
+    return rawVersions
+        .whereType<Map>()
+        .map((entry) => Map<String, dynamic>.from(entry))
+        .where((entry) {
+      final text = entry['summary_text'];
+      return text is String && text.trim().isNotEmpty;
+    }).toList();
+  }
+
+  String? _firstStoredMode(Map<String, dynamic>? data) {
+    if (data == null) {
+      return null;
+    }
+    final rawHistories = data['histories'];
+    if (rawHistories is! Map) {
+      return null;
+    }
+    for (final entry in rawHistories.entries) {
+      if (_modeHistoryVersionsForMode(data, entry.key.toString()).isNotEmpty) {
+        return entry.key.toString();
+      }
+    }
+    return null;
+  }
+
+  Widget _buildStoredModeSummary(Map<String, dynamic> data) {
+    final versions = _modeHistoryVersions(data).isNotEmpty
+        ? _modeHistoryVersions(data)
+        : _allModeHistoryVersions(data);
+    if (versions.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final latest = versions.first;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Theme.of(context).dividerColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '저장된 모드 요약',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+              ),
+              Text(
+                '저장된 버전 ${versions.length}개',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            latest['summary_text'] as String,
+            style: const TextStyle(height: 1.5),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<Map<String, dynamic>> _allModeHistoryVersions(
+      Map<String, dynamic> data) {
+    final rawHistories = data['histories'];
+    if (rawHistories is! Map) {
+      return const [];
+    }
+    final versions = <Map<String, dynamic>>[];
+    for (final entry in rawHistories.entries) {
+      versions.addAll(_modeHistoryVersionsForMode(data, entry.key.toString()));
+    }
+    return versions;
   }
 
   Widget _buildModeSummaryPanel() {
@@ -2751,6 +2931,7 @@ class _SummaryTabState extends ConsumerState<_SummaryTab> {
                     onSelected: (_) {
                       setState(() {
                         _selectedSummaryMode = mode.value;
+                        _modeSummary = null;
                       });
                     },
                   ),
@@ -2799,6 +2980,15 @@ class _SummaryTabState extends ConsumerState<_SummaryTab> {
                     ],
                   ),
                 ),
+              ),
+            ],
+            if (_modeSummaryHistory != null &&
+                _modeSummary?.valueOrNull == null) ...[
+              const SizedBox(height: 16),
+              _modeSummaryHistory!.when(
+                loading: () => const SizedBox.shrink(),
+                error: (_, __) => const SizedBox.shrink(),
+                data: _buildStoredModeSummary,
               ),
             ],
           ],
