@@ -118,3 +118,9 @@ def test_mobile_workflow_matches_github_release_env_contract():
     assert all(label in workflow for label in module.REQUIRED_RUNNER_LABELS)
     assert all(f"secrets.{secret}" in workflow for secret in module.REQUIRED_SECRETS)
     assert all(f"vars.{variable}" in workflow for variable in module.REQUIRED_VARIABLES)
+    assert "python3 client/scripts/verify_mobile_release_runner.py" in workflow
+    assert (
+        workflow.index("python3 client/scripts/verify_mobile_release_runner.py")
+        < workflow.index("./scripts/verify_mobile.sh --native")
+        < workflow.index("python3 client/scripts/verify_release_readiness.py --strict")
+    )

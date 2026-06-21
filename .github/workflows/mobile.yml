@@ -154,6 +154,12 @@ jobs:
           channel: stable
           cache: true
 
+      - name: Verify mobile release runner
+        env:
+          ANDROID_DEVICE_SERIAL: ${{ vars.ANDROID_DEVICE_SERIAL }}
+          IOS_DEVICE_UDID: ${{ vars.IOS_DEVICE_UDID }}
+        run: python3 client/scripts/verify_mobile_release_runner.py
+
       - name: Set up strict credential files
         env:
           FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}

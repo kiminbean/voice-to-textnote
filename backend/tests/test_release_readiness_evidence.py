@@ -1080,6 +1080,7 @@ def test_mobile_workflow_exposes_manual_strict_release_gate():
         "ANDROID_DEVICE_SERIAL",
         "IOS_DEVICE_UDID",
         "FIREBASE_TEST_DEVICE_TOKEN",
+        "python3 client/scripts/verify_mobile_release_runner.py",
         "./scripts/verify_mobile.sh --native",
         "python3 client/scripts/verify_release_readiness.py --strict",
         "docs/release-e2e-evidence.json",
