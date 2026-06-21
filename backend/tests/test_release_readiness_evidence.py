@@ -108,10 +108,10 @@ def write_tone_policy_files(root: Path, *, tone_model_line: str = 'tone_model: s
 def write_readme_status(root: Path, content: str) -> None:
     (root / "README.md").write_text(
         (
-            "3877 백엔드 테스트\n"
-            "| 백엔드 단위/통합/E2E | 3877개 | 100.00% |\n"
+            "3879 백엔드 테스트\n"
+            "| 백엔드 단위/통합/E2E | 3879개 | 100.00% |\n"
             "| Flutter 테스트 | 415개 | - |\n"
-            "| 총합 | 4292개 | - |\n"
+            "| 총합 | 4294개 | - |\n"
             f"{content}"
         ),
         encoding="utf-8",
@@ -432,6 +432,35 @@ def test_release_e2e_evidence_rejects_android_artifact_without_apk_suffix(
     assert any("artifact path must end with .apk" in error for error in reporter.errors)
 
 
+def test_release_e2e_evidence_rejects_android_artifact_path_traversal(
+    tmp_path, monkeypatch
+):
+    module = load_release_readiness_module()
+    root = tmp_path / "repo"
+    outside = tmp_path / "outside"
+    root.mkdir()
+    outside.mkdir()
+    android_apk = outside / "app-release.apk"
+    with zipfile.ZipFile(android_apk, "w") as apk:
+        apk.writestr("AndroidManifest.xml", "<manifest />")
+        apk.writestr("classes.dex", b"dex\n035\0")
+    evidence = make_evidence(tmp_path, module)
+    artifacts = evidence["artifacts"]
+    assert isinstance(artifacts, dict)
+    artifacts["android_apk"] = "../outside/app-release.apk"
+    artifact_hashes = evidence["artifact_sha256"]
+    assert isinstance(artifact_hashes, dict)
+    artifact_hashes["android_apk"] = module.release_artifact_sha256(android_apk)
+    evidence_path = write_evidence(tmp_path, evidence)
+    monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
+    monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")
+
+    reporter = module.Reporter()
+    module.check_release_e2e_evidence(evidence_path, reporter, root)
+
+    assert any("artifact path must stay inside repo" in error for error in reporter.errors)
+
+
 def test_release_e2e_evidence_rejects_empty_android_apk(tmp_path, monkeypatch):
     module = load_release_readiness_module()
     evidence = make_evidence(tmp_path, module)
@@ -530,6 +559,34 @@ def test_release_e2e_evidence_rejects_ios_runner_missing_executable(
     module.check_release_e2e_evidence(evidence_path, reporter)
 
     assert any("artifact missing executable: ios_runner_app" in error for error in reporter.errors)
+
+
+def test_release_e2e_evidence_rejects_ios_artifact_path_traversal(
+    tmp_path, monkeypatch
+):
+    module = load_release_readiness_module()
+    root = tmp_path / "repo"
+    outside = tmp_path / "outside"
+    root.mkdir()
+    ios_runner = outside / "Runner.app"
+    ios_runner.mkdir(parents=True)
+    write_ios_info_plist(ios_runner / "Info.plist")
+    (ios_runner / "Runner").write_bytes(b"binary")
+    evidence = make_evidence(tmp_path, module)
+    artifacts = evidence["artifacts"]
+    assert isinstance(artifacts, dict)
+    artifacts["ios_runner_app"] = "../outside/Runner.app"
+    artifact_hashes = evidence["artifact_sha256"]
+    assert isinstance(artifact_hashes, dict)
+    artifact_hashes["ios_runner_app"] = module.release_artifact_sha256(ios_runner)
+    evidence_path = write_evidence(tmp_path, evidence)
+    monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
+    monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")
+
+    reporter = module.Reporter()
+    module.check_release_e2e_evidence(evidence_path, reporter, root)
+
+    assert any("artifact path must stay inside repo" in error for error in reporter.errors)
 
 
 def test_release_e2e_example_lists_every_required_scenario():

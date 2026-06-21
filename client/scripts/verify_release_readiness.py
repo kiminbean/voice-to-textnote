@@ -623,15 +623,15 @@ def check_readme_release_status(root: Path, reporter: Reporter) -> None:
     else:
         reporter.ok("README does not overclaim Production Ready before strict evidence")
     if (
-        "3877 백엔드 테스트" in readme
-        and "3877개" in readme
+        "3879 백엔드 테스트" in readme
+        and "3879개" in readme
         and ("Flutter 415" in readme or "415개" in readme)
-        and "4292개" in readme
+        and "4294개" in readme
     ):
         reporter.ok("README test counts match current release validation evidence")
     else:
         reporter.fail(
-            "README test counts must match current 3877 backend / 415 Flutter / 4292 total evidence"
+            "README test counts must match current 3879 backend / 415 Flutter / 4294 total evidence"
         )
     if f"{completed_spec_count}개 SPEC" in readme:
         reporter.fail("README should avoid hard-coded completed SPEC counts outside the SPEC list")
@@ -706,11 +706,11 @@ def check_docs(root: Path, reporter: Reporter) -> None:
             "Release procedure SPEC count must match README completed SPEC list "
             f"({completed_spec_count})"
         )
-    if "3877 passed" in procedure_doc and "Flutter: 415 passed" in procedure_doc:
+    if "3879 passed" in procedure_doc and "Flutter: 415 passed" in procedure_doc:
         reporter.ok("Release procedure backend test count matches latest full pytest evidence")
     else:
         reporter.fail(
-            "Release procedure test counts must match latest 3877 backend / 415 Flutter evidence"
+            "Release procedure test counts must match latest 3879 backend / 415 Flutter evidence"
         )
     app_store_doc = read_text(root / "docs/app-store-metadata.md")
     for snippet in [
@@ -1023,6 +1023,17 @@ def resolve_release_artifact_path(root: Path, artifact_path: str) -> Path:
     return root / path
 
 
+def artifact_path_stays_inside_root(root: Path, artifact_path: str) -> bool:
+    path = Path(artifact_path).expanduser()
+    if path.is_absolute():
+        return True
+    try:
+        (root / path).resolve().relative_to(root.resolve())
+    except ValueError:
+        return False
+    return True
+
+
 def release_artifact_sha256(path: Path) -> str:
     digest = hashlib.sha256()
     if path.is_file():
@@ -1161,6 +1172,9 @@ def check_release_e2e_evidence(path: Path, reporter: Reporter, root: Path | None
         artifact_path = str(artifacts.get(key, "")).strip() if artifacts else ""
         if not artifact_path:
             reporter.fail(f"Release E2E evidence missing artifact {key}")
+            continue
+        if not artifact_path_stays_inside_root(root, artifact_path):
+            reporter.fail(f"Release E2E evidence artifact path must stay inside repo: {key}")
             continue
         resolved_artifact = resolve_release_artifact_path(root, artifact_path)
         expected_suffix = artifact_suffixes[key]
