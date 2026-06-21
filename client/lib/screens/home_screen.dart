@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:voice_to_textnote/models/meeting.dart';
 import 'package:voice_to_textnote/providers/auth_provider.dart';
@@ -31,6 +32,16 @@ final documentImportPickerProvider =
       withData: false,
     );
     return result?.files.single;
+  };
+});
+
+final businessCardCameraPickerProvider =
+    Provider<Future<XFile?> Function()>((ref) {
+  return () async {
+    return ImagePicker().pickImage(
+      source: ImageSource.camera,
+      imageQuality: 92,
+    );
   };
 });
 
@@ -300,8 +311,8 @@ class HomeScreen extends ConsumerWidget {
                 child: _ShortcutTile(
                   icon: Icons.badge_rounded,
                   title: '명함 스캔',
-                  subtitle: '이미지 OCR 후 영업 탭에서 연락처 브리프',
-                  onTap: () => _importBusinessCard(context, ref),
+                  subtitle: '촬영 또는 이미지 OCR 후 영업 탭에서 연락처 브리프',
+                  onTap: () => _showBusinessCardImportSheet(context, ref),
                 ),
               ),
             ],
@@ -358,7 +369,50 @@ class HomeScreen extends ConsumerWidget {
     }
   }
 
-  Future<void> _importBusinessCard(BuildContext context, WidgetRef ref) async {
+  void _showBusinessCardImportSheet(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_camera_rounded),
+              title: const Text('카메라로 촬영'),
+              onTap: () {
+                Navigator.of(sheetContext).pop();
+                _importBusinessCardFromCamera(context, ref);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.image_search_rounded),
+              title: const Text('이미지 파일 선택'),
+              onTap: () {
+                Navigator.of(sheetContext).pop();
+                _importBusinessCardFromFile(context, ref);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _importBusinessCardFromCamera(
+      BuildContext context, WidgetRef ref) async {
+    final captured = await ref.read(businessCardCameraPickerProvider)();
+    if (!context.mounted || captured == null) return;
+
+    await _importBusinessCardImage(
+      context,
+      ref,
+      file: File(captured.path),
+      fileName: '촬영 명함.jpg',
+    );
+  }
+
+  Future<void> _importBusinessCardFromFile(
+      BuildContext context, WidgetRef ref) async {
     final picked = await ref.read(documentImportPickerProvider)();
     if (!context.mounted || picked == null) return;
 
@@ -377,10 +431,24 @@ class HomeScreen extends ConsumerWidget {
       return;
     }
 
-    final title = _businessCardTitle(picked.name);
+    await _importBusinessCardImage(
+      context,
+      ref,
+      file: File(path),
+      fileName: picked.name,
+    );
+  }
+
+  Future<void> _importBusinessCardImage(
+    BuildContext context,
+    WidgetRef ref, {
+    required File file,
+    required String fileName,
+  }) async {
+    final title = _businessCardTitle(fileName);
     try {
       final result = await ref.read(minutesApiProvider).importDocument(
-            file: File(path),
+            file: file,
             title: title,
           );
       final taskId = result['task_id'] as String;

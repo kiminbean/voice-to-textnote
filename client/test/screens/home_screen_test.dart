@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:voice_to_textnote/models/meeting.dart';
@@ -524,6 +525,8 @@ void main() {
       await _scrollHomeUntilVisible(tester, '명함 스캔');
       await tester.tap(find.text('명함 스캔'));
       await tester.pumpAndSettle();
+      await tester.tap(find.text('이미지 파일 선택'));
+      await tester.pumpAndSettle();
       await _scrollHomeUntilVisible(tester, '명함 - Acme 김민수');
 
       expect(find.text('명함 - Acme 김민수'), findsOneWidget);
@@ -534,6 +537,63 @@ void main() {
             language: 'ko',
           )).captured;
       expect((captured.single as File).path, '/tmp/acme-card.png');
+    });
+
+    testWidgets('명함 스캔은 카메라 촬영 이미지를 OCR 노트로 추가해야 함',
+        (WidgetTester tester) async {
+      when(() => mockMinutesApi.importDocument(
+            file: any(named: 'file'),
+            title: any(named: 'title'),
+            language: any(named: 'language'),
+          )).thenAnswer(
+        (_) async => {
+          'task_id': 'card-camera-001',
+          'status': 'completed',
+          'title': '명함 - 촬영 명함',
+          'source_url':
+              'https://local.voicetextnote/imports/documents/captured-card.jpg',
+          'result_url': '/api/v1/minutes/card-camera-001',
+          'search_indexed': true,
+          'file_name': 'captured-card.jpg',
+          'file_type': 'jpg',
+          'extracted_characters': 72,
+          'shared_team_ids': const <String>[],
+        },
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            ..._onlineOverrides(mockService),
+            minutesApiProvider.overrideWithValue(mockMinutesApi),
+            businessCardCameraPickerProvider.overrideWithValue(
+              () async => XFile(
+                '/tmp/captured-card.jpg',
+                name: '촬영 명함.jpg',
+              ),
+            ),
+          ],
+          child: const MaterialApp(
+            home: HomeScreen(),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+      await _scrollHomeUntilVisible(tester, '명함 스캔');
+      await tester.tap(find.text('명함 스캔'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('카메라로 촬영'));
+      await tester.pumpAndSettle();
+      await _scrollHomeUntilVisible(tester, '명함 - 촬영 명함');
+
+      expect(find.text('명함 - 촬영 명함'), findsOneWidget);
+      final captured = verify(() => mockMinutesApi.importDocument(
+            file: captureAny(named: 'file'),
+            title: '명함 - 촬영 명함',
+            language: 'ko',
+          )).captured;
+      expect((captured.single as File).path, '/tmp/captured-card.jpg');
     });
 
     testWidgets('명함 스캔은 이미지가 아닌 문서를 거부해야 함', (WidgetTester tester) async {
@@ -559,6 +619,8 @@ void main() {
       await tester.pumpAndSettle();
       await _scrollHomeUntilVisible(tester, '명함 스캔');
       await tester.tap(find.text('명함 스캔'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('이미지 파일 선택'));
       await tester.pumpAndSettle();
 
       expect(
