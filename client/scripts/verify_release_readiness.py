@@ -53,6 +53,7 @@ UNRESOLVED_EVIDENCE_PATTERNS = (
     r"requires manual",
     r"not yet configured",
 )
+MIN_RELEASE_E2E_EVIDENCE_CHARS = 24
 
 
 class Reporter:
@@ -623,15 +624,15 @@ def check_readme_release_status(root: Path, reporter: Reporter) -> None:
     else:
         reporter.ok("README does not overclaim Production Ready before strict evidence")
     if (
-        "3879 백엔드 테스트" in readme
-        and "3879개" in readme
+        "3880 백엔드 테스트" in readme
+        and "3880개" in readme
         and ("Flutter 415" in readme or "415개" in readme)
-        and "4294개" in readme
+        and "4295개" in readme
     ):
         reporter.ok("README test counts match current release validation evidence")
     else:
         reporter.fail(
-            "README test counts must match current 3879 backend / 415 Flutter / 4294 total evidence"
+            "README test counts must match current 3880 backend / 415 Flutter / 4295 total evidence"
         )
     if f"{completed_spec_count}개 SPEC" in readme:
         reporter.fail("README should avoid hard-coded completed SPEC counts outside the SPEC list")
@@ -706,11 +707,11 @@ def check_docs(root: Path, reporter: Reporter) -> None:
             "Release procedure SPEC count must match README completed SPEC list "
             f"({completed_spec_count})"
         )
-    if "3879 passed" in procedure_doc and "Flutter: 415 passed" in procedure_doc:
+    if "3880 passed" in procedure_doc and "Flutter: 415 passed" in procedure_doc:
         reporter.ok("Release procedure backend test count matches latest full pytest evidence")
     else:
         reporter.fail(
-            "Release procedure test counts must match latest 3879 backend / 415 Flutter evidence"
+            "Release procedure test counts must match latest 3880 backend / 415 Flutter evidence"
         )
     app_store_doc = read_text(root / "docs/app-store-metadata.md")
     for snippet in [
@@ -1233,12 +1234,18 @@ def check_release_e2e_evidence(path: Path, reporter: Reporter, root: Path | None
             )
         passed = scenario.get("pass")
         evidence = str(scenario.get("evidence", "")).strip()
-        if passed is True and evidence and not has_unresolved_evidence_placeholder(evidence):
+        if (
+            passed is True
+            and len(evidence) >= MIN_RELEASE_E2E_EVIDENCE_CHARS
+            and not has_unresolved_evidence_placeholder(evidence)
+        ):
             reporter.ok(f"Release E2E scenario passed: {key}")
         elif passed is not True:
             reporter.fail(f"Release E2E scenario not marked pass: {key}")
         elif has_unresolved_evidence_placeholder(evidence):
             reporter.fail(f"Release E2E scenario has placeholder evidence: {key}")
+        elif evidence:
+            reporter.fail(f"Release E2E scenario evidence note is too short: {key}")
         else:
             reporter.fail(f"Release E2E scenario missing evidence note: {key}")
 
