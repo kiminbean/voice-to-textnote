@@ -9,6 +9,10 @@ elif [[ "${1:-}" != "" ]]; then
   exit 2
 fi
 
+ANDROID_DEBUG_APK="build/app/outputs/flutter-apk/app-debug.apk"
+IOS_RUNNER_APP="build/ios/iphoneos/Runner.app"
+IOS_INFO_PLIST="$IOS_RUNNER_APP/Info.plist"
+
 if [[ "$run_native" == true ]]; then
   android_sdk="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
   if [[ -z "$android_sdk" || ! -d "$android_sdk" ]]; then
@@ -52,10 +56,10 @@ if [[ "$run_native" != true ]]; then
 fi
 
 flutter build apk --debug
-verify_file_artifact "build/app/outputs/flutter-apk/app-debug.apk" "Android debug APK"
+verify_file_artifact "$ANDROID_DEBUG_APK" "Android debug APK"
 
 if [[ "$(uname -s)" == "Darwin" ]]; then
   flutter build ios --debug --no-codesign
-  verify_directory_artifact "build/ios/iphoneos/Runner.app" "iOS no-codesign app"
-  verify_file_artifact "build/ios/iphoneos/Runner.app/Info.plist" "iOS Info.plist"
+  verify_directory_artifact "$IOS_RUNNER_APP" "iOS no-codesign app"
+  verify_file_artifact "$IOS_INFO_PLIST" "iOS Info.plist"
 fi
