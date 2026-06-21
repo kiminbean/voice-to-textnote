@@ -405,13 +405,13 @@ flutter test
 
 ```bash
 # 린터 (ruff)
-ruff check backend/
+ruff check backend/ client/scripts
 
 # 자동 포맷팅
 ruff format backend/
 
-# 타입 체킹 (선택)
-mypy backend/ --ignore-missing-imports
+# 타입 체킹
+mypy backend/ client/scripts --ignore-missing-imports
 ```
 
 ### 환경 변수 설정

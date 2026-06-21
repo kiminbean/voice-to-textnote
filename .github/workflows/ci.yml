@@ -43,7 +43,10 @@ jobs:
 
       # REQ-INFRA-004: ruff 린팅 검사
       - name: Run ruff linting
-        run: ruff check backend/
+        run: ruff check backend/ client/scripts
+
+      - name: Run mypy type checking
+        run: mypy backend/ client/scripts --ignore-missing-imports
 
       # REQ-INFRA-001, REQ-INFRA-003: 테스트 실행 및 커버리지 85% 게이트
       - name: Run tests with coverage
