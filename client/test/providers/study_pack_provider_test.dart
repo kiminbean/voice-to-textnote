@@ -34,17 +34,27 @@ void main() {
   tearDown(() => container.dispose());
 
   test('loads cached study pack first', () async {
-    when(() => api.get(any())).thenAnswer((_) async => pack('cached'));
+    when(() => api.get(
+          any(),
+          mode: any(named: 'mode'),
+          language: any(named: 'language'),
+        )).thenAnswer((_) async => pack('cached'));
 
-    final result = await container.read(studyPackProvider('min-001').future);
+    final result = await container.read(
+      studyPackProvider(const StudyPackRequest(taskId: 'min-001')).future,
+    );
 
     expect(result.studyNotes, 'cached');
-    verify(() => api.get('min-001')).called(1);
+    verify(() => api.get('min-001', mode: 'lecture', language: 'ko')).called(1);
     verifyNever(() => api.create(any()));
   });
 
   test('creates study pack when cache is missing', () async {
-    when(() => api.get(any())).thenThrow(
+    when(() => api.get(
+          any(),
+          mode: any(named: 'mode'),
+          language: any(named: 'language'),
+        )).thenThrow(
       DioException(
         requestOptions: RequestOptions(path: ''),
         response: Response(
@@ -54,24 +64,47 @@ void main() {
         type: DioExceptionType.badResponse,
       ),
     );
-    when(() => api.create(any())).thenAnswer((_) async => pack('created'));
+    when(() => api.create(any(),
+            mode: any(named: 'mode'), language: any(named: 'language')))
+        .thenAnswer((_) async => pack('created'));
 
-    final result = await container.read(studyPackProvider('min-001').future);
+    final result = await container.read(
+      studyPackProvider(
+              const StudyPackRequest(taskId: 'min-001', mode: 'interview'))
+          .future,
+    );
 
     expect(result.studyNotes, 'created');
-    verify(() => api.create('min-001')).called(1);
+    verify(() => api.create('min-001', mode: 'interview', language: 'ko'))
+        .called(1);
   });
 
   test('regenerate forces refresh', () async {
-    when(() => api.get(any())).thenAnswer((_) async => pack('cached'));
-    when(() => api.create(any(), forceRefresh: any(named: 'forceRefresh')))
-        .thenAnswer((_) async => pack('fresh'));
+    when(() => api.get(
+          any(),
+          mode: any(named: 'mode'),
+          language: any(named: 'language'),
+        )).thenAnswer((_) async => pack('cached'));
+    when(() => api.create(
+          any(),
+          mode: any(named: 'mode'),
+          language: any(named: 'language'),
+          forceRefresh: any(named: 'forceRefresh'),
+        )).thenAnswer((_) async => pack('fresh'));
 
-    await container.read(studyPackProvider('min-001').future);
-    await container.read(studyPackProvider('min-001').notifier).regenerate();
+    const request = StudyPackRequest(taskId: 'min-001', mode: 'sermon');
+    await container.read(studyPackProvider(request).future);
+    await container.read(studyPackProvider(request).notifier).regenerate();
 
-    expect(container.read(studyPackProvider('min-001')).value!.studyNotes,
-        'fresh');
-    verify(() => api.create('min-001', forceRefresh: true)).called(1);
+    expect(
+        container.read(studyPackProvider(request)).value!.studyNotes, 'fresh');
+    verify(
+      () => api.create(
+        'min-001',
+        mode: 'sermon',
+        language: 'ko',
+        forceRefresh: true,
+      ),
+    ).called(1);
   });
 }

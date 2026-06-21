@@ -1,6 +1,6 @@
 # Owll Benchmark PRD
 
-**Status**: Draft for implementation  
+**Status**: Study Pack core implemented; follow-up competitive gaps remain  
 **Created**: 2026-06-21  
 **Owner**: Voice to TextNote  
 **Scope**: Benchmark Owll AI Note Taker & Assistant and define feature upgrades that fit this project.
@@ -63,6 +63,8 @@ The first implementation should be a Study Pack feature because it is high-impac
 
 ## 5. PRD: Study Pack Generation
 
+**Implementation status (2026-06-21)**: Backend schema/service/API, mode-specific caching, Flutter API/provider/model, Result screen Study tab, copy/regenerate controls, source references, loading/empty/error states, and mode selection are implemented. Export/search and Obsidian study sections remain follow-up work.
+
 ### 5.1 Problem
 
 Users can currently transcribe, summarize, search, and export meetings, but learners and researchers still need to manually convert long transcripts into revision material. Owll markets flashcards, quizzes, lecture notes, and study guides as a key advantage. Voice to TextNote should provide a privacy-first version that turns existing meeting artifacts into structured study material.
@@ -117,7 +119,7 @@ Users can currently transcribe, summarize, search, and export meetings, but lear
 - Cache or persist generated study packs consistently with current result storage conventions.
 - Expose endpoints:
   - `POST /api/v1/minutes/{task_id}/study-pack`
-  - `GET /api/v1/minutes/{task_id}/study-pack`
+  - `GET /api/v1/minutes/{task_id}/study-pack?mode={mode}`
 - Return deterministic validation errors when source transcript/minutes are unavailable.
 - Include prompt-level guardrails to avoid inventing facts not present in the transcript.
 
@@ -205,4 +207,3 @@ Add optional sales/contact follow-up and SOAP-style healthcare templates as conf
 - Privacy: do not share generated study packs outside existing meeting/team permissions.
 - UX clutter: keep Study Pack inside result context rather than adding a new top-level destination initially.
 - Scope creep: defer YouTube/OCR/Watch until Study Pack is shipped and verified.
-

@@ -31,8 +31,15 @@ class StudyPackApi {
     return StudyPack.fromJson(response.data as Map<String, dynamic>);
   }
 
-  Future<StudyPack> get(String minutesTaskId) async {
-    final response = await _dio.get('/minutes/$minutesTaskId/study-pack');
+  Future<StudyPack> get(
+    String minutesTaskId, {
+    String mode = 'lecture',
+    String language = 'ko',
+  }) async {
+    final response = await _dio.get(
+      '/minutes/$minutesTaskId/study-pack',
+      queryParameters: {'mode': mode},
+    );
     return StudyPack.fromJson(response.data as Map<String, dynamic>);
   }
 }

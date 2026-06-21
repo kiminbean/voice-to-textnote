@@ -2779,14 +2779,36 @@ class _SummaryTabState extends ConsumerState<_SummaryTab> {
   }
 }
 
-class _StudyTab extends ConsumerWidget {
+class _StudyModeOption {
+  final String value;
+  final String label;
+
+  const _StudyModeOption(this.value, this.label);
+}
+
+const _studyModeOptions = [
+  _StudyModeOption('lecture', '강의'),
+  _StudyModeOption('meeting', '회의'),
+  _StudyModeOption('interview', '인터뷰'),
+  _StudyModeOption('sermon', '설교'),
+  _StudyModeOption('general', '일반'),
+];
+
+class _StudyTab extends ConsumerStatefulWidget {
   final String? taskId;
 
   const _StudyTab({required this.taskId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    if (taskId == null) {
+  ConsumerState<_StudyTab> createState() => _StudyTabState();
+}
+
+class _StudyTabState extends ConsumerState<_StudyTab> {
+  String _selectedMode = 'lecture';
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.taskId == null) {
       return const EmptyStateWidget(
         icon: Icons.school_outlined,
         title: '학습 자료 준비 중',
@@ -2794,7 +2816,11 @@ class _StudyTab extends ConsumerWidget {
       );
     }
 
-    final studyPackAsync = ref.watch(studyPackProvider(taskId!));
+    final request = StudyPackRequest(
+      taskId: widget.taskId!,
+      mode: _selectedMode,
+    );
+    final studyPackAsync = ref.watch(studyPackProvider(request));
 
     return studyPackAsync.when(
       loading: () => const Padding(
@@ -2808,17 +2834,29 @@ class _StudyTab extends ConsumerWidget {
       ),
       error: (error, _) => ErrorRetryWidget(
         message: '학습 자료를 불러올 수 없습니다',
-        onRetry: () => ref.invalidate(studyPackProvider(taskId!)),
+        onRetry: () => ref.invalidate(studyPackProvider(request)),
       ),
       data: (pack) {
         if (pack.keyConcepts.isEmpty &&
             pack.flashcards.isEmpty &&
             pack.quizQuestions.isEmpty &&
             pack.studyNotes.trim().isEmpty) {
-          return const EmptyStateWidget(
-            icon: Icons.school_outlined,
-            title: '학습 자료가 없습니다',
-            subtitle: '회의록 내용이 충분하지 않아 학습팩을 만들 수 없습니다',
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                _StudyModeSelector(
+                  selectedMode: _selectedMode,
+                  onChanged: _setStudyMode,
+                ),
+                const SizedBox(height: 16),
+                const EmptyStateWidget(
+                  icon: Icons.school_outlined,
+                  title: '학습 자료가 없습니다',
+                  subtitle: '회의록 내용이 충분하지 않아 학습팩을 만들 수 없습니다',
+                ),
+              ],
+            ),
           );
         }
 
@@ -2827,6 +2865,11 @@ class _StudyTab extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              _StudyModeSelector(
+                selectedMode: _selectedMode,
+                onChanged: _setStudyMode,
+              ),
+              const SizedBox(height: 12),
               Align(
                 alignment: Alignment.centerRight,
                 child: Wrap(
@@ -2840,7 +2883,7 @@ class _StudyTab extends ConsumerWidget {
                     ),
                     FilledButton.tonalIcon(
                       onPressed: () => ref
-                          .read(studyPackProvider(taskId!).notifier)
+                          .read(studyPackProvider(request).notifier)
                           .regenerate(),
                       icon: const Icon(Icons.refresh_rounded),
                       label: const Text('다시 생성'),
@@ -2920,6 +2963,11 @@ class _StudyTab extends ConsumerWidget {
     );
   }
 
+  void _setStudyMode(String mode) {
+    if (mode == _selectedMode) return;
+    setState(() => _selectedMode = mode);
+  }
+
   Future<void> _copyStudyMaterials(
     BuildContext context,
     StudyPack pack,
@@ -2967,6 +3015,32 @@ class _StudyTab extends ConsumerWidget {
     await Clipboard.setData(ClipboardData(text: buffer.toString()));
     messenger.showSnackBar(
       const SnackBar(content: Text('학습팩을 복사했습니다')),
+    );
+  }
+}
+
+class _StudyModeSelector extends StatelessWidget {
+  final String selectedMode;
+  final ValueChanged<String> onChanged;
+
+  const _StudyModeSelector({
+    required this.selectedMode,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        for (final option in _studyModeOptions)
+          ChoiceChip(
+            label: Text(option.label),
+            selected: option.value == selectedMode,
+            onSelected: (_) => onChanged(option.value),
+          ),
+      ],
     );
   }
 }

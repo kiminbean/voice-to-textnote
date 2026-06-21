@@ -3,18 +3,52 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:voice_to_textnote/models/study_pack.dart';
 import 'package:voice_to_textnote/services/study_pack_api.dart';
 
-class StudyPackNotifier
-    extends AutoDisposeFamilyAsyncNotifier<StudyPack, String> {
-  late final StudyPackApi _api;
+class StudyPackRequest {
+  final String taskId;
+  final String mode;
+  final String language;
+
+  const StudyPackRequest({
+    required this.taskId,
+    this.mode = 'lecture',
+    this.language = 'ko',
+  });
 
   @override
-  Future<StudyPack> build(String arg) async {
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is StudyPackRequest &&
+          runtimeType == other.runtimeType &&
+          taskId == other.taskId &&
+          mode == other.mode &&
+          language == other.language;
+
+  @override
+  int get hashCode => Object.hash(taskId, mode, language);
+}
+
+class StudyPackNotifier
+    extends AutoDisposeFamilyAsyncNotifier<StudyPack, StudyPackRequest> {
+  late final StudyPackApi _api;
+  late final StudyPackRequest _request;
+
+  @override
+  Future<StudyPack> build(StudyPackRequest arg) async {
+    _request = arg;
     _api = ref.watch(studyPackApiProvider);
     try {
-      return await _api.get(arg);
+      return await _api.get(
+        arg.taskId,
+        mode: arg.mode,
+        language: arg.language,
+      );
     } on DioException catch (error) {
       if (error.response?.statusCode == 404) {
-        return _api.create(arg);
+        return _api.create(
+          arg.taskId,
+          mode: arg.mode,
+          language: arg.language,
+        );
       }
       rethrow;
     }
@@ -23,10 +57,15 @@ class StudyPackNotifier
   Future<void> regenerate() async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(
-      () => _api.create(arg, forceRefresh: true),
+      () => _api.create(
+        _request.taskId,
+        mode: _request.mode,
+        language: _request.language,
+        forceRefresh: true,
+      ),
     );
   }
 }
 
 final studyPackProvider = AutoDisposeAsyncNotifierProviderFamily<
-    StudyPackNotifier, StudyPack, String>(StudyPackNotifier.new);
+    StudyPackNotifier, StudyPack, StudyPackRequest>(StudyPackNotifier.new);

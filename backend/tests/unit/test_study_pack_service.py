@@ -80,7 +80,9 @@ def make_ai_payload() -> dict:
 
 def stub_openai_client(payload: dict | str) -> MagicMock:
     message = MagicMock()
-    message.content = json.dumps(payload, ensure_ascii=False) if isinstance(payload, dict) else payload
+    message.content = (
+        json.dumps(payload, ensure_ascii=False) if isinstance(payload, dict) else payload
+    )
     choice = MagicMock()
     choice.message = message
     response = MagicMock()
@@ -106,7 +108,7 @@ async def test_generate_study_pack_from_minutes(monkeypatch):
     assert len(result.flashcards) == 3
     assert len(result.quiz_questions) == 3
     assert result.source_refs[0].segment_index == 0
-    assert redis.set_calls[0][0] == "study_pack:min-001"
+    assert redis.set_calls[0][0] == "study_pack:min-001:lecture"
     assert client.chat.completions.create.call_args.kwargs["response_format"] == {
         "type": "json_object"
     }
@@ -126,7 +128,7 @@ async def test_generate_returns_cached_study_pack(monkeypatch):
         "source_refs": [],
         "created_at": "2026-06-21T00:00:00+00:00",
     }
-    redis.values["study_pack:min-001"] = json.dumps(cached, ensure_ascii=False)
+    redis.values["study_pack:min-001:general"] = json.dumps(cached, ensure_ascii=False)
     svc = StudyPackService()
     client = stub_openai_client(make_ai_payload())
     monkeypatch.setattr(svc, "_get_client", lambda: client)
@@ -151,12 +153,62 @@ async def test_get_returns_cached_study_pack():
         "source_refs": [],
         "created_at": "2026-06-21T00:00:00+00:00",
     }
-    redis.values["study_pack:min-001"] = json.dumps(cached, ensure_ascii=False)
+    redis.values["study_pack:min-001:general"] = json.dumps(cached, ensure_ascii=False)
     svc = StudyPackService()
 
     result = await svc.get("min-001", redis)
 
     assert result.study_notes == "캐시된 학습팩"
+
+
+@pytest.mark.asyncio
+async def test_generate_uses_mode_specific_cache(monkeypatch):
+    redis = FakeRedis()
+    redis.values["task:min:result:min-001"] = json.dumps(make_minutes_payload(), ensure_ascii=False)
+    cached = {
+        "task_id": "min-001",
+        "mode": "lecture",
+        "language": "ko",
+        "key_concepts": [{"term": "강의", "explanation": "강의 모드"}],
+        "flashcards": [{"front": "강의?", "back": "강의 모드"}],
+        "quiz_questions": [{"question": "강의?", "answer": "강의 모드", "difficulty": "easy"}],
+        "study_notes": "강의 모드 캐시",
+        "source_refs": [],
+        "created_at": "2026-06-21T00:00:00+00:00",
+    }
+    redis.values["study_pack:min-001:lecture"] = json.dumps(cached, ensure_ascii=False)
+    svc = StudyPackService()
+    client = stub_openai_client(make_ai_payload())
+    monkeypatch.setattr(svc, "_get_client", lambda: client)
+
+    result = await svc.generate("min-001", redis, mode=StudyPackMode.INTERVIEW)
+
+    assert result.mode == StudyPackMode.INTERVIEW
+    assert redis.set_calls[0][0] == "study_pack:min-001:interview"
+    client.chat.completions.create.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_get_uses_mode_specific_cache():
+    redis = FakeRedis()
+    cached = {
+        "task_id": "min-001",
+        "mode": "interview",
+        "language": "ko",
+        "key_concepts": [{"term": "인터뷰", "explanation": "인터뷰 모드"}],
+        "flashcards": [{"front": "인터뷰?", "back": "인터뷰 모드"}],
+        "quiz_questions": [{"question": "인터뷰?", "answer": "인터뷰 모드", "difficulty": "easy"}],
+        "study_notes": "인터뷰 모드 캐시",
+        "source_refs": [],
+        "created_at": "2026-06-21T00:00:00+00:00",
+    }
+    redis.values["study_pack:min-001:interview"] = json.dumps(cached, ensure_ascii=False)
+    svc = StudyPackService()
+
+    result = await svc.get("min-001", redis, mode=StudyPackMode.INTERVIEW)
+
+    assert result.mode == StudyPackMode.INTERVIEW
+    assert result.study_notes == "인터뷰 모드 캐시"
 
 
 def test_get_client_constructs_openai_client(monkeypatch):

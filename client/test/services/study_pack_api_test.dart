@@ -61,7 +61,9 @@ void main() {
   });
 
   test('get loads cached study pack', () async {
-    when(() => mockDio.get(any())).thenAnswer(
+    when(() =>
+            mockDio.get(any(), queryParameters: any(named: 'queryParameters')))
+        .thenAnswer(
       (_) async => Response(
         data: payload(),
         statusCode: 200,
@@ -69,9 +71,14 @@ void main() {
       ),
     );
 
-    final result = await api.get('min-001');
+    final result = await api.get('min-001', mode: 'interview');
 
     expect(result.studyNotes, '노트');
-    verify(() => mockDio.get('/minutes/min-001/study-pack')).called(1);
+    verify(
+      () => mockDio.get(
+        '/minutes/min-001/study-pack',
+        queryParameters: {'mode': 'interview'},
+      ),
+    ).called(1);
   });
 }

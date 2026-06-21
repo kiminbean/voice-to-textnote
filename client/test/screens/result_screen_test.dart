@@ -103,7 +103,11 @@ void main() {
         'edges': <dynamic>[],
       },
     );
-    when(() => mockStudyPackApi.get(any())).thenAnswer(
+    when(() => mockStudyPackApi.get(
+          any(),
+          mode: any(named: 'mode'),
+          language: any(named: 'language'),
+        )).thenAnswer(
       (_) async => const StudyPack(
         taskId: 'min-task-001',
         mode: 'lecture',
@@ -329,7 +333,11 @@ void main() {
     testWidgets('Study Pack 항목이 비어 있으면 빈 상태를 표시해야 함',
         (WidgetTester tester) async {
       // Arrange
-      when(() => mockStudyPackApi.get(any())).thenAnswer(
+      when(() => mockStudyPackApi.get(
+            any(),
+            mode: any(named: 'mode'),
+            language: any(named: 'language'),
+          )).thenAnswer(
         (_) async => const StudyPack(
           taskId: 'min-task-001',
           mode: 'lecture',
@@ -350,6 +358,20 @@ void main() {
       // Assert
       expect(find.text('학습 자료가 없습니다'), findsOneWidget);
       expect(find.text('회의록 내용이 충분하지 않아 학습팩을 만들 수 없습니다'), findsOneWidget);
+    });
+
+    testWidgets('학습 모드 선택 시 해당 모드로 Study Pack을 요청해야 함',
+        (WidgetTester tester) async {
+      // Act
+      await tester.pumpWidget(buildTestWidget([]));
+      await _pumpToStudyTab(tester);
+      await tester.tap(find.text('인터뷰'));
+      await tester.pumpAndSettle();
+
+      // Assert
+      expect(find.text('인터뷰'), findsOneWidget);
+      verify(() => mockStudyPackApi.get('min-task-001',
+          mode: 'interview', language: 'ko')).called(1);
     });
   });
 

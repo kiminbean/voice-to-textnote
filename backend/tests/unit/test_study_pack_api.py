@@ -86,10 +86,12 @@ def test_get_study_pack_success(app_client):
     client, _, svc = app_client
     svc.get = AsyncMock(return_value=make_response())
 
-    response = client.get("/api/v1/minutes/min-001/study-pack")
+    response = client.get("/api/v1/minutes/min-001/study-pack?mode=interview")
 
     assert response.status_code == 200
     assert response.json()["study_notes"] == "광합성 핵심 노트"
+    svc.get.assert_awaited_once()
+    assert svc.get.await_args.kwargs["mode"] == "interview"
 
 
 def test_create_study_pack_missing_minutes_returns_404(app_client):

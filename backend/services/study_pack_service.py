@@ -26,6 +26,10 @@ _STUDY_PACK_KEY_PREFIX = "study_pack:"
 _MINUTES_KEY_PREFIX = "task:min:result:"
 
 
+def _study_pack_cache_key(task_id: str, mode: StudyPackMode) -> str:
+    return f"{_STUDY_PACK_KEY_PREFIX}{task_id}:{mode.value}"
+
+
 class StudyPackSourceNotFoundError(ValueError):
     """Raised when source minutes/transcript content is missing."""
 
@@ -44,9 +48,11 @@ class StudyPackService:
         self,
         task_id: str,
         redis_client: aioredis.Redis,
+        *,
+        mode: StudyPackMode = StudyPackMode.GENERAL,
     ) -> StudyPackResponse:
         """Load a cached study pack."""
-        raw = await redis_client.get(f"{_STUDY_PACK_KEY_PREFIX}{task_id}")
+        raw = await redis_client.get(_study_pack_cache_key(task_id, mode))
         if raw is None:
             raise StudyPackSourceNotFoundError("학습팩을 찾을 수 없습니다.")
         return StudyPackResponse.model_validate_json(cast(str | bytes | bytearray, raw))
@@ -62,7 +68,7 @@ class StudyPackService:
         force_refresh: bool = False,
     ) -> StudyPackResponse:
         """Generate or return a cached study pack for a minutes task."""
-        cache_key = f"{_STUDY_PACK_KEY_PREFIX}{task_id}"
+        cache_key = _study_pack_cache_key(task_id, mode)
         if not force_refresh:
             cached = await redis_client.get(cache_key)
             if cached is not None:
@@ -123,7 +129,9 @@ class StudyPackService:
     ) -> dict[str, Any]:
         raw = await redis_client.get(f"{_MINUTES_KEY_PREFIX}{task_id}")
         if raw is None:
-            raise StudyPackSourceNotFoundError("회의록을 찾을 수 없습니다. 처리가 완료되었는지 확인하세요.")
+            raise StudyPackSourceNotFoundError(
+                "회의록을 찾을 수 없습니다. 처리가 완료되었는지 확인하세요."
+            )
         try:
             data = json.loads(cast(str | bytes | bytearray, raw))
         except json.JSONDecodeError as exc:
@@ -215,4 +223,3 @@ class StudyPackService:
             raise StudyPackValidationError("AI 응답에 quiz_questions가 없습니다.")
         if not result.study_notes.strip():
             raise StudyPackValidationError("AI 응답에 study_notes가 없습니다.")
-
