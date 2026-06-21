@@ -109,10 +109,10 @@ def write_tone_policy_files(root: Path, *, tone_model_line: str = 'tone_model: s
 def write_readme_status(root: Path, content: str) -> None:
     (root / "README.md").write_text(
         (
-            "3895 백엔드 테스트\n"
-            "| 백엔드 단위/통합/E2E | 3895개 | 100.00% |\n"
+            "3897 백엔드 테스트\n"
+            "| 백엔드 단위/통합/E2E | 3897개 | 100.00% |\n"
             "| Flutter 테스트 | 415개 | - |\n"
-            "| 총합 | 4310개 | - |\n"
+            "| 총합 | 4312개 | - |\n"
             f"{content}"
         ),
         encoding="utf-8",
@@ -875,6 +875,30 @@ def test_readme_release_status_rejects_stale_test_counts(tmp_path):
     module.check_readme_release_status(tmp_path, reporter)
 
     assert any("test counts must match" in error for error in reporter.errors)
+
+
+def test_owll_benchmark_doc_accepts_current_competitor_evidence():
+    module = load_release_readiness_module()
+    root = Path(__file__).resolve().parents[2]
+
+    reporter = module.Reporter()
+    module.check_owll_benchmark_doc(root, reporter)
+
+    assert reporter.errors == []
+
+
+def test_owll_benchmark_doc_rejects_stale_competitor_evidence(tmp_path):
+    module = load_release_readiness_module()
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs/owll-benchmark-prd.md").write_text(
+        "Owll benchmark without current store evidence.",
+        encoding="utf-8",
+    )
+
+    reporter = module.Reporter()
+    module.check_owll_benchmark_doc(tmp_path, reporter)
+
+    assert any("Owll benchmark PRD captures current competitor evidence" in error for error in reporter.errors)
 
 
 def test_mobile_workflow_exposes_manual_strict_release_gate():

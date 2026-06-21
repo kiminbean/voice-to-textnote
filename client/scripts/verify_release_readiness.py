@@ -625,15 +625,15 @@ def check_readme_release_status(root: Path, reporter: Reporter) -> None:
     else:
         reporter.ok("README does not overclaim Production Ready before strict evidence")
     if (
-        "3895 백엔드 테스트" in readme
-        and "3895개" in readme
+        "3897 백엔드 테스트" in readme
+        and "3897개" in readme
         and ("Flutter 415" in readme or "415개" in readme)
-        and "4310개" in readme
+        and "4312개" in readme
     ):
         reporter.ok("README test counts match current release validation evidence")
     else:
         reporter.fail(
-            "README test counts must match current 3895 backend / 415 Flutter / 4310 total evidence"
+            "README test counts must match current 3897 backend / 415 Flutter / 4312 total evidence"
         )
     if f"{completed_spec_count}개 SPEC" in readme:
         reporter.fail("README should avoid hard-coded completed SPEC counts outside the SPEC list")
@@ -708,11 +708,11 @@ def check_docs(root: Path, reporter: Reporter) -> None:
             "Release procedure SPEC count must match README completed SPEC list "
             f"({completed_spec_count})"
         )
-    if "3895 passed" in procedure_doc and "Flutter: 415 passed" in procedure_doc:
+    if "3897 passed" in procedure_doc and "Flutter: 415 passed" in procedure_doc:
         reporter.ok("Release procedure backend test count matches latest full pytest evidence")
     else:
         reporter.fail(
-            "Release procedure test counts must match latest 3895 backend / 415 Flutter evidence"
+            "Release procedure test counts must match latest 3897 backend / 415 Flutter evidence"
         )
     app_store_doc = read_text(root / "docs/app-store-metadata.md")
     for snippet in [
@@ -781,6 +781,32 @@ def check_docs(root: Path, reporter: Reporter) -> None:
         "iOS AppIcon 1024",
         (1024, 1024),
         allow_alpha=False,
+    )
+
+
+def check_owll_benchmark_doc(root: Path, reporter: Reporter) -> None:
+    path = root / "docs/owll-benchmark-prd.md"
+    if not require_file(reporter, path, "Owll benchmark PRD"):
+        return
+    content = read_text(path)
+    require_snippets(
+        reporter,
+        content,
+        [
+            "**Last verified**: 2026-06-21",
+            "https://apps.apple.com/us/app/owll-ai-note-taker-assistant/id6450300197",
+            "https://play.google.com/store/apps/details?id=com.hmd.quickrecorder",
+            "https://owll.ai/blog/ai-note-taker-for-teams",
+            "3.16.0",
+            "Jun 17, 2026",
+            "900 minutes per month",
+            "100+ languages",
+            "10+ summary modes",
+            "Data safety",
+            "privacy-first differentiation",
+            "Source discrepancy to monitor",
+        ],
+        "Owll benchmark PRD captures current competitor evidence and gaps",
     )
 
 
@@ -1338,6 +1364,7 @@ def main() -> int:
     check_tone_release_policy(root, reporter)
     check_readme_release_status(root, reporter)
     check_docs(root, reporter)
+    check_owll_benchmark_doc(root, reporter)
     check_tracked_release_e2e_scaffold(root, reporter)
 
     if args.strict:

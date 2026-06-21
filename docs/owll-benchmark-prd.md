@@ -1,7 +1,8 @@
 # Owll Benchmark PRD
 
-**Status**: Study Pack core implemented; Cross-Meeting Q&A evidence search and synthesis exposed in search; sales follow-up briefs are searchable and listable; follow-up competitive gaps remain  
+**Status**: Study Pack core implemented; Cross-Meeting Q&A evidence search and synthesis exposed in search; sales follow-up briefs are searchable and listable; 2026-06-21 benchmark refreshed; follow-up competitive gaps remain
 **Created**: 2026-06-21  
+**Last verified**: 2026-06-21
 **Owner**: Voice to TextNote  
 **Scope**: Benchmark Owll AI Note Taker & Assistant and define feature upgrades that fit this project.
 
@@ -18,6 +19,15 @@ Sources checked:
 - Owll meeting recorder blog: https://owll.ai/blog/best-meeting-recorder-app
 - Owll team plan blog: https://owll.ai/blog/ai-note-taker-for-teams
 - Owll transcription workflow blog: https://owll.ai/blog/best-ai-transcription-tools-how-to-turn-meetings-into-action
+
+2026-06-21 freshness notes:
+
+- App Store listing shows Owll 3.16.0 released 4 days before verification, 4.8 rating from 2.6K ratings, and iPhone/iPad/Apple Watch support.
+- App Store positioning now explicitly includes AI Contact Manager for Sales & Client Notes, faith/sermon notes, smart folders, note sharing, Ask Owll AI, 100+ languages, YouTube import, OCR, flashcards, lecture notes, and AI quizzes.
+- Google Play listing confirms Android positioning as an AI note taker and recorder; its Data safety section says the app may share messages, app activity, and other data types with third parties. This reinforces this project's privacy-first differentiation.
+- Owll website still presents Zoom, Microsoft Teams, Google Meet, phone recordings, and YouTube as core inputs, plus email/Slack sharing, flashcards, summaries, encrypted cloud access, and instant translation.
+- Owll Team Plan blog published Jun 17, 2026 says each seat gets 900 minutes per month, personal private cloud, 100+ languages, unlimited AI notes/chat, unlimited large uploads, one-click YouTube summary, 10+ summary modes, centralized billing, and Web/iOS/Android access.
+- Source discrepancy to monitor: Owll website marketing says 50+ transcription languages, while App Store and Team Plan copy say 100+ languages.
 
 ## 2. Current Project Baseline
 
