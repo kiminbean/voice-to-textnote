@@ -20,8 +20,19 @@ void main() {
             followUpMessage: '데모 일정을 확인드리겠습니다.',
             createdAt: '2026-06-21T00:00:00+00:00',
           ),
+          SalesContactListItem(
+            artifactTaskId: 'sales-contact-brief:min-sales-002',
+            sourceTaskId: 'min-sales-002',
+            contact: SalesContactIdentity(name: '이지은', company: 'Beta'),
+            deal: SalesContactDeal(stage: 'closed', urgency: 'low'),
+            customerNeeds: ['계약 갱신'],
+            painPoints: ['승인 지연'],
+            nextSteps: [SalesNextStep(task: '종료 사유 정리')],
+            followUpMessage: '논의 내용을 기록해두겠습니다.',
+            createdAt: '2026-06-21T01:00:00+00:00',
+          ),
         ],
-        total: 1,
+        total: 2,
         page: 1,
         pageSize: 20,
       );
@@ -45,6 +56,32 @@ void main() {
     expect(find.text('Acme · 김민수'), findsOneWidget);
     expect(find.text('보안 감사 자동화'), findsOneWidget);
     expect(find.text('데모 일정 확정'), findsOneWidget);
+  });
+
+  testWidgets('filters contacts by lifecycle stage', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          salesContactListProvider.overrideWith(
+            (ref, request) async => responseWithItems(),
+          ),
+        ],
+        child: const MaterialApp(home: SalesContactsScreen()),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('Acme · 김민수'), findsOneWidget);
+    expect(find.text('Beta · 이지은'), findsOneWidget);
+
+    await tester.tap(find.text('종료'));
+    await tester.pump();
+
+    expect(find.text('Acme · 김민수'), findsNothing);
+    expect(find.text('Beta · 이지은'), findsOneWidget);
+    expect(find.text('종료 사유 정리'), findsOneWidget);
   });
 
   testWidgets('renders empty state when no sales contacts exist',

@@ -20,6 +20,7 @@ class _SalesContactsScreenState extends ConsumerState<SalesContactsScreen> {
   final TextEditingController _controller = TextEditingController();
   Timer? _debounce;
   String _query = '';
+  _SalesStageFilter _stageFilter = _SalesStageFilter.all;
 
   @override
   void initState() {
@@ -92,6 +93,9 @@ class _SalesContactsScreenState extends ConsumerState<SalesContactsScreen> {
                 ),
               ),
               data: (response) {
+                final visibleItems = response.items
+                    .where((item) => _stageFilter.matches(item))
+                    .toList();
                 if (response.items.isEmpty) {
                   return SliverFillRemaining(
                     hasScrollBody: false,
@@ -112,18 +116,34 @@ class _SalesContactsScreenState extends ConsumerState<SalesContactsScreen> {
                     AppSpacing.lg,
                     AppSpacing.xxxl,
                   ),
-                  sliver: SliverList.separated(
-                    itemCount: response.items.length,
-                    separatorBuilder: (_, __) =>
-                        const SizedBox(height: AppSpacing.sm),
-                    itemBuilder: (context, index) {
-                      final item = response.items[index];
-                      return _SalesContactCard(
-                        item: item,
-                        onTap: () =>
-                            context.push('/result/${item.sourceTaskId}'),
-                      );
-                    },
+                  sliver: SliverList(
+                    delegate: SliverChildListDelegate(
+                      [
+                        _LifecycleFilterBar(
+                          selected: _stageFilter,
+                          items: response.items,
+                          onSelected: (filter) =>
+                              setState(() => _stageFilter = filter),
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        if (visibleItems.isEmpty)
+                          EmptyStateWidget(
+                            icon: Icons.filter_alt_off_rounded,
+                            title: '${_stageFilter.label} 고객이 없습니다',
+                            subtitle: '다른 단계 필터를 선택해보세요',
+                          )
+                        else ...[
+                          for (final item in visibleItems) ...[
+                            _SalesContactCard(
+                              item: item,
+                              onTap: () =>
+                                  context.push('/result/${item.sourceTaskId}'),
+                            ),
+                            const SizedBox(height: AppSpacing.sm),
+                          ],
+                        ],
+                      ],
+                    ),
                   ),
                 );
               },
@@ -131,6 +151,81 @@ class _SalesContactsScreenState extends ConsumerState<SalesContactsScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+enum _SalesStageFilter {
+  all('전체'),
+  active('진행 중'),
+  demo('데모/제안'),
+  urgent('긴급'),
+  closed('종료');
+
+  final String label;
+
+  const _SalesStageFilter(this.label);
+
+  bool matches(SalesContactListItem item) {
+    final stage = item.deal.stage.trim();
+    final urgency = item.deal.urgency.trim();
+    return switch (this) {
+      _SalesStageFilter.all => true,
+      _SalesStageFilter.active =>
+        stage != 'closed' && stage != 'lost' && stage != 'unknown',
+      _SalesStageFilter.demo =>
+        stage == 'demo_requested' || stage == 'proposal',
+      _SalesStageFilter.urgent => urgency == 'high',
+      _SalesStageFilter.closed => stage == 'closed' || stage == 'lost',
+    };
+  }
+}
+
+class _LifecycleFilterBar extends StatelessWidget {
+  final _SalesStageFilter selected;
+  final List<SalesContactListItem> items;
+  final ValueChanged<_SalesStageFilter> onSelected;
+
+  const _LifecycleFilterBar({
+    required this.selected,
+    required this.items,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final openCount = items.where(_SalesStageFilter.active.matches).length;
+    final urgentCount = items.where(_SalesStageFilter.urgent.matches).length;
+    final closedCount = items.where(_SalesStageFilter.closed.matches).length;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '후속관리 단계',
+          style: textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        Text(
+          '진행 중 $openCount · 긴급 $urgentCount · 종료 $closedCount',
+          style: textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Wrap(
+          spacing: AppSpacing.xs,
+          runSpacing: AppSpacing.xs,
+          children: [
+            for (final filter in _SalesStageFilter.values)
+              ChoiceChip(
+                label: Text(filter.label),
+                selected: selected == filter,
+                onSelected: (_) => onSelected(filter),
+              ),
+          ],
+        ),
+      ],
     );
   }
 }
