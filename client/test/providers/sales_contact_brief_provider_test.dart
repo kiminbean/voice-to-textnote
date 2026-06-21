@@ -25,6 +25,25 @@ void main() {
         createdAt: '2026-06-21T00:00:00+00:00',
       );
 
+  SalesContactListResponse contactList() => const SalesContactListResponse(
+        items: [
+          SalesContactListItem(
+            artifactTaskId: 'sales-contact-brief:min-sales-001',
+            sourceTaskId: 'min-sales-001',
+            contact: SalesContactIdentity(name: '김민수', company: 'Acme'),
+            deal: SalesContactDeal(stage: 'demo_requested', urgency: 'high'),
+            customerNeeds: ['보안 감사 자동화'],
+            painPoints: [],
+            nextSteps: [SalesNextStep(task: '데모 일정 확정')],
+            followUpMessage: '확인드리겠습니다.',
+            createdAt: '2026-06-21T00:00:00+00:00',
+          ),
+        ],
+        total: 1,
+        page: 1,
+        pageSize: 20,
+      );
+
   setUp(() {
     api = MockSalesContactBriefApi();
     container = ProviderContainer(
@@ -96,6 +115,23 @@ void main() {
         language: 'ko',
         forceRefresh: true,
       ),
+    ).called(1);
+  });
+
+  test('loads sales contact list with query', () async {
+    when(() => api.listContacts(
+          query: any(named: 'query'),
+          page: any(named: 'page'),
+          pageSize: any(named: 'pageSize'),
+        )).thenAnswer((_) async => contactList());
+
+    const request = SalesContactListRequest(query: 'Acme');
+    final result =
+        await container.read(salesContactListProvider(request).future);
+
+    expect(result.items.single.contact.company, 'Acme');
+    verify(
+      () => api.listContacts(query: 'Acme', page: 1, pageSize: 20),
     ).called(1);
   });
 }

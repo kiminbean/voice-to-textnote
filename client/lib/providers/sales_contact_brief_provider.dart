@@ -59,3 +59,38 @@ final salesContactBriefProvider = AutoDisposeAsyncNotifierProviderFamily<
     SalesContactBriefNotifier,
     SalesContactBrief,
     SalesContactBriefRequest>(SalesContactBriefNotifier.new);
+
+class SalesContactListRequest {
+  final String query;
+  final int page;
+  final int pageSize;
+
+  const SalesContactListRequest({
+    this.query = '',
+    this.page = 1,
+    this.pageSize = 20,
+  });
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is SalesContactListRequest &&
+          runtimeType == other.runtimeType &&
+          query == other.query &&
+          page == other.page &&
+          pageSize == other.pageSize;
+
+  @override
+  int get hashCode => Object.hash(query, page, pageSize);
+}
+
+final salesContactListProvider = FutureProvider.autoDispose
+    .family<SalesContactListResponse, SalesContactListRequest>(
+        (ref, request) async {
+  final api = ref.watch(salesContactBriefApiProvider);
+  return api.listContacts(
+    query: request.query,
+    page: request.page,
+    pageSize: request.pageSize,
+  );
+});

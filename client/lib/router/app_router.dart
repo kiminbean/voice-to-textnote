@@ -9,6 +9,7 @@ import 'package:voice_to_textnote/screens/processing_screen.dart';
 import 'package:voice_to_textnote/screens/recording_screen.dart';
 import 'package:voice_to_textnote/screens/register_screen.dart';
 import 'package:voice_to_textnote/screens/result_screen.dart';
+import 'package:voice_to_textnote/screens/sales_contacts_screen.dart';
 import 'package:voice_to_textnote/screens/settings_screen.dart';
 import 'package:voice_to_textnote/screens/model_download_screen.dart';
 // SPEC-TMPL-001: 양식 관리 화면 추가
@@ -100,6 +101,11 @@ GoRouter createRouter(ProviderContainer container) {
       GoRoute(
         path: '/search',
         builder: (_, __) => const SearchScreen(),
+      ),
+      // 영업 고객 목록
+      GoRoute(
+        path: '/sales-contacts',
+        builder: (_, __) => const SalesContactsScreen(),
       ),
       // 양식 관리 화면 (SPEC-TMPL-001 REQ-TMPL-007)
       GoRoute(

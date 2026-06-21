@@ -632,6 +632,8 @@ class HomeScreen extends ConsumerWidget {
         switch (value) {
           case 'search':
             context.push('/search');
+          case 'sales_contacts':
+            context.push('/sales-contacts');
           case 'toggle_theme':
             ref.read(themeModeProvider.notifier).setMode(
                   currentMode == AppThemeMode.dark
@@ -646,6 +648,13 @@ class HomeScreen extends ConsumerWidget {
         const PopupMenuItem(
             value: 'search',
             child: _MenuItem(icon: Icons.search_rounded, label: '검색')),
+        const PopupMenuItem(
+          value: 'sales_contacts',
+          child: _MenuItem(
+            icon: Icons.business_center_outlined,
+            label: '영업 고객',
+          ),
+        ),
         PopupMenuItem(
           value: 'toggle_theme',
           child: _MenuItem(

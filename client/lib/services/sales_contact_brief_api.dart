@@ -35,4 +35,22 @@ class SalesContactBriefApi {
     );
     return SalesContactBrief.fromJson(response.data as Map<String, dynamic>);
   }
+
+  Future<SalesContactListResponse> listContacts({
+    String? query,
+    int page = 1,
+    int pageSize = 20,
+  }) async {
+    final response = await _dio.get(
+      '/sales-contacts',
+      queryParameters: {
+        'page': page,
+        'page_size': pageSize,
+        if (query != null && query.trim().isNotEmpty) 'q': query.trim(),
+      },
+    );
+    return SalesContactListResponse.fromJson(
+      response.data as Map<String, dynamic>,
+    );
+  }
 }

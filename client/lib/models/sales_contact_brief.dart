@@ -112,6 +112,78 @@ class SalesContactBrief {
       );
 }
 
+class SalesContactListItem {
+  final String artifactTaskId;
+  final String sourceTaskId;
+  final SalesContactIdentity contact;
+  final SalesContactDeal deal;
+  final List<String> customerNeeds;
+  final List<String> painPoints;
+  final List<SalesNextStep> nextSteps;
+  final String followUpMessage;
+  final String createdAt;
+  final String? completedAt;
+
+  const SalesContactListItem({
+    required this.artifactTaskId,
+    required this.sourceTaskId,
+    required this.contact,
+    required this.deal,
+    required this.customerNeeds,
+    required this.painPoints,
+    required this.nextSteps,
+    required this.followUpMessage,
+    required this.createdAt,
+    this.completedAt,
+  });
+
+  factory SalesContactListItem.fromJson(Map<String, dynamic> json) =>
+      SalesContactListItem(
+        artifactTaskId: json['artifact_task_id'] as String? ?? '',
+        sourceTaskId: json['source_task_id'] as String? ?? '',
+        contact: SalesContactIdentity.fromJson(
+          json['contact'] as Map<String, dynamic>? ?? const {},
+        ),
+        deal: SalesContactDeal.fromJson(
+          json['deal'] as Map<String, dynamic>? ?? const {},
+        ),
+        customerNeeds: _parseStringList(json['customer_needs']),
+        painPoints: _parseStringList(json['pain_points']),
+        nextSteps: (json['next_steps'] as List<dynamic>? ?? [])
+            .whereType<Map<String, dynamic>>()
+            .map(SalesNextStep.fromJson)
+            .toList(),
+        followUpMessage: json['follow_up_message'] as String? ?? '',
+        createdAt: json['created_at'] as String? ?? '',
+        completedAt: json['completed_at'] as String?,
+      );
+}
+
+class SalesContactListResponse {
+  final List<SalesContactListItem> items;
+  final int total;
+  final int page;
+  final int pageSize;
+
+  const SalesContactListResponse({
+    required this.items,
+    required this.total,
+    required this.page,
+    required this.pageSize,
+  });
+
+  factory SalesContactListResponse.fromJson(Map<String, dynamic> json) =>
+      SalesContactListResponse(
+        items: (json['items'] as List<dynamic>? ?? [])
+            .whereType<Map<String, dynamic>>()
+            .map(SalesContactListItem.fromJson)
+            .toList(),
+        total: json['total'] as int? ?? 0,
+        page: json['page'] as int? ?? 1,
+        pageSize: json['page_size'] as int? ?? 20,
+      );
+}
+
 List<String> _parseStringList(dynamic value) {
   if (value is! List) return [];
   return value

@@ -49,5 +49,35 @@ void main() {
       expect(result.nextSteps, isEmpty);
       expect(result.followUpMessage, '');
     });
+
+    test('list response parses customer follow-up entries', () {
+      final result = SalesContactListResponse.fromJson({
+        'items': [
+          {
+            'artifact_task_id': 'sales-contact-brief:min-sales-001',
+            'source_task_id': 'min-sales-001',
+            'contact': {'name': '김민수', 'company': 'Acme'},
+            'deal': {'stage': 'demo_requested', 'urgency': 'high'},
+            'customer_needs': ['보안 감사 자동화'],
+            'pain_points': ['수동 감사'],
+            'next_steps': [
+              {'task': '데모 일정 확정', 'owner': '영업'},
+            ],
+            'follow_up_message': '데모 일정을 확인드리겠습니다.',
+            'created_at': '2026-06-21T00:00:00+00:00',
+            'completed_at': '2026-06-21T00:00:00',
+          }
+        ],
+        'total': 1,
+        'page': 1,
+        'page_size': 20,
+      });
+
+      expect(result.total, 1);
+      expect(result.items.single.artifactTaskId,
+          'sales-contact-brief:min-sales-001');
+      expect(result.items.single.contact.company, 'Acme');
+      expect(result.items.single.nextSteps.single.task, '데모 일정 확정');
+    });
   });
 }

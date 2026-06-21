@@ -73,4 +73,50 @@ void main() {
       () => mockDio.get('/minutes/min-sales-001/sales-contact-brief'),
     ).called(1);
   });
+
+  test('listContacts passes pagination and query parameters', () async {
+    when(() =>
+            mockDio.get(any(), queryParameters: any(named: 'queryParameters')))
+        .thenAnswer(
+      (_) async => Response(
+        data: {
+          'items': [
+            {
+              'artifact_task_id': 'sales-contact-brief:min-sales-001',
+              'source_task_id': 'min-sales-001',
+              'contact': {'company': 'Acme'},
+              'deal': {'stage': 'demo_requested'},
+              'customer_needs': ['보안 감사 자동화'],
+              'pain_points': <dynamic>[],
+              'next_steps': [
+                {'task': '데모 일정 확정'},
+              ],
+              'follow_up_message': '확인드리겠습니다.',
+              'created_at': '2026-06-21T00:00:00+00:00',
+            }
+          ],
+          'total': 1,
+          'page': 2,
+          'page_size': 10,
+        },
+        statusCode: 200,
+        requestOptions: RequestOptions(path: ''),
+      ),
+    );
+
+    final result =
+        await api.listContacts(query: ' Acme ', page: 2, pageSize: 10);
+
+    expect(result.items.single.contact.company, 'Acme');
+    verify(
+      () => mockDio.get(
+        '/sales-contacts',
+        queryParameters: {
+          'page': 2,
+          'page_size': 10,
+          'q': 'Acme',
+        },
+      ),
+    ).called(1);
+  });
 }
