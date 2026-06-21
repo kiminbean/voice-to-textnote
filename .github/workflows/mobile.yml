@@ -107,6 +107,10 @@ jobs:
         working-directory: client
         run: flutter build apk --debug
 
+      - name: Verify Android debug APK artifact
+        working-directory: client
+        run: test -s build/app/outputs/flutter-apk/app-debug.apk
+
   ios:
     name: Flutter iOS No-Codesign Build
     runs-on: macos-latest
@@ -128,6 +132,12 @@ jobs:
       - name: Build iOS debug without codesigning
         working-directory: client
         run: flutter build ios --debug --no-codesign
+
+      - name: Verify iOS no-codesign app artifact
+        working-directory: client
+        run: |
+          test -d build/ios/iphoneos/Runner.app
+          test -s build/ios/iphoneos/Runner.app/Info.plist
 
   release-strict:
     name: Strict Release Readiness With Physical Devices
