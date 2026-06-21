@@ -1,8 +1,21 @@
 // FirebaseConfig 테스트
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:voice_to_textnote/config/firebase_config.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  late DebugPrintCallback originalDebugPrint;
+
+  setUpAll(() {
+    originalDebugPrint = debugPrint;
+    debugPrint = (String? message, {int? wrapWidth}) {};
+  });
+
+  tearDownAll(() {
+    debugPrint = originalDebugPrint;
+  });
+
   group('FirebaseInitResult', () {
     test('성공 상태를 올바르게 생성해야 함', () {
       // Arrange & Act

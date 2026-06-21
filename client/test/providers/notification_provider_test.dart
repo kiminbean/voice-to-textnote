@@ -1,4 +1,5 @@
 // NotificationProvider 테스트
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -19,9 +20,16 @@ void main() {
   late MockPushNotificationService mockPushService;
   late MockPermissionService mockPermissionService;
   late MockDeviceApi mockDeviceApi;
+  late DebugPrintCallback originalDebugPrint;
 
   setUpAll(() {
     registerFallbackValue(const Duration(seconds: 1));
+    originalDebugPrint = debugPrint;
+    debugPrint = (String? message, {int? wrapWidth}) {};
+  });
+
+  tearDownAll(() {
+    debugPrint = originalDebugPrint;
   });
 
   setUp(() {
