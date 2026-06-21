@@ -781,6 +781,10 @@ def check_readme_release_status(root: Path, reporter: Reporter) -> None:
         reporter.fail(
             "README test counts must match current 3907 backend / 415 Flutter / 4322 total evidence"
         )
+    if "`flutter build apk --release`" in readme and "`flutter build apk --debug`" not in readme:
+        reporter.ok("README Android RC status references release APK verification")
+    else:
+        reporter.fail("README Android RC status must reference release APK verification")
     if f"{completed_spec_count}개 SPEC" in readme:
         reporter.fail("README should avoid hard-coded completed SPEC counts outside the SPEC list")
     else:

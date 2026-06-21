@@ -131,13 +131,13 @@ def test_mobile_workflow_verifies_ci_build_artifacts():
         Path(__file__).resolve().parents[2] / ".github/workflows/mobile.yml"
     ).read_text(encoding="utf-8")
 
-    assert "Verify Android debug APK artifact" in workflow
-    assert "test -s build/app/outputs/flutter-apk/app-debug.apk" in workflow
+    assert "Verify Android release APK artifact" in workflow
+    assert "test -s build/app/outputs/flutter-apk/app-release.apk" in workflow
     assert "Verify iOS no-codesign app artifact" in workflow
     assert "test -d build/ios/iphoneos/Runner.app" in workflow
     assert "test -s build/ios/iphoneos/Runner.app/Info.plist" in workflow
-    assert workflow.index("flutter build apk --debug") < workflow.index(
-        "test -s build/app/outputs/flutter-apk/app-debug.apk"
+    assert workflow.index("flutter build apk --release") < workflow.index(
+        "test -s build/app/outputs/flutter-apk/app-release.apk"
     )
     assert workflow.index("flutter build ios --debug --no-codesign") < workflow.index(
         "test -d build/ios/iphoneos/Runner.app"

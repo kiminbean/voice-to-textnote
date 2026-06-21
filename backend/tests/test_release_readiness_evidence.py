@@ -1157,7 +1157,10 @@ def test_readme_release_status_accepts_release_candidate_language(tmp_path):
     module = load_release_readiness_module()
     write_readme_status(
         tmp_path,
-        "Release Candidate strict 실기기 release evidence 대기 RELEASE_E2E_EVIDENCE_PATH",
+        (
+            "Release Candidate strict 실기기 release evidence 대기 RELEASE_E2E_EVIDENCE_PATH\n"
+            "| **Android** | RC | `flutter build apk --release` 검증 완료 |"
+        ),
     )
 
     reporter = module.Reporter()
@@ -1198,6 +1201,22 @@ def test_readme_release_status_rejects_stale_test_counts(tmp_path):
     module.check_readme_release_status(tmp_path, reporter)
 
     assert any("test counts must match" in error for error in reporter.errors)
+
+
+def test_readme_release_status_rejects_android_debug_build_claim(tmp_path):
+    module = load_release_readiness_module()
+    write_readme_status(
+        tmp_path,
+        (
+            "Release Candidate strict 실기기 release evidence 대기 RELEASE_E2E_EVIDENCE_PATH\n"
+            "| **Android** | RC | `flutter build apk --debug` 검증 완료 |"
+        ),
+    )
+
+    reporter = module.Reporter()
+    module.check_readme_release_status(tmp_path, reporter)
+
+    assert any("README Android RC status must reference release APK" in error for error in reporter.errors)
 
 
 def test_owll_benchmark_doc_accepts_current_competitor_evidence():

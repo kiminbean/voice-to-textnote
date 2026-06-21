@@ -652,7 +652,7 @@ celery -A backend.workers.celery_app worker --loglevel=info
 | **Web** | ✅ 완료 | Chrome, Firefox, Safari 지원 |
 | **macOS** | ✅ 완료 | ARM64 (Apple Silicon) |
 | **iOS** | RC | `flutter build ios --debug --no-codesign` 검증 완료, strict 실기기 release evidence 필요 |
-| **Android** | RC | `flutter build apk --debug` 검증 완료, strict 실기기 release evidence 필요 |
+| **Android** | RC | `flutter build apk --release` 검증 완료, strict 실기기 release evidence 필요 |
 
 ### 기술 제약
 

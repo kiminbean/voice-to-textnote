@@ -103,13 +103,13 @@ jobs:
         working-directory: client
         run: flutter test
 
-      - name: Build Android debug APK
+      - name: Build Android release APK
         working-directory: client
-        run: flutter build apk --debug
+        run: flutter build apk --release
 
-      - name: Verify Android debug APK artifact
+      - name: Verify Android release APK artifact
         working-directory: client
-        run: test -s build/app/outputs/flutter-apk/app-debug.apk
+        run: test -s build/app/outputs/flutter-apk/app-release.apk
 
   ios:
     name: Flutter iOS No-Codesign Build
