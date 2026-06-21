@@ -23,6 +23,7 @@
 # 2. 다운로드한 JSON을 안전한 위치에 저장
 # 3. 환경 변수 설정
 export FIREBASE_CREDENTIALS_PATH=/secure/path/service-account.json
+export REQUIRE_ANDROID_RELEASE_SIGNING=true
 
 # 4. 백엔드 재시작 후 MOCK 모드 해제 확인
 # 로그에 "Firebase Admin SDK 초기화 완료 (프로덕션 모드)"가 표시되어야 함
@@ -218,7 +219,7 @@ gh release create v1.7.0 \
 
 | 단계 | 환경 변수 | 검증 방법 |
 |------|-----------|-----------|
-| 0.1 Android signing | `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD` | `REQUIRE_ANDROID_RELEASE_SIGNING=true ./scripts/verify_mobile.sh --native` |
+| 0.1 Android signing | `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`, `REQUIRE_ANDROID_RELEASE_SIGNING=true` | `REQUIRE_ANDROID_RELEASE_SIGNING=true ./scripts/verify_mobile.sh --native` + `--strict` signed mode PASS |
 | 1.1 Firebase | `FIREBASE_CREDENTIALS_PATH` | `--strict` Firebase PASS |
 | 1.2 APNs | `APNS_AUTH_KEY_PATH`, `APNS_KEY_ID`, `APNS_TEAM_ID` | `--strict` APNs 3개 PASS |
 | 1.3 App Store | `APP_STORE_CONNECT_API_KEY_PATH`, `KEY_ID`, `ISSUER_ID` | `--strict` App Store 3개 PASS |

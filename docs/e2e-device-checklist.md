@@ -37,6 +37,7 @@
 
 | 환경 변수 | 목적 |
 |-----------|------|
+| `REQUIRE_ANDROID_RELEASE_SIGNING=true` | strict readiness가 signed Android release APK 검증 모드와 같은 release 조건에서 실행되었는지 확인 |
 | `FIREBASE_CREDENTIALS_PATH` | Backend Firebase Admin SDK 서비스 계정 JSON |
 | `APNS_AUTH_KEY_PATH` | Firebase Console에 업로드한 APNs `.p8` 키 파일 |
 | `APNS_KEY_ID` / `APNS_TEAM_ID` | Apple Developer APNs 키 식별자 |
@@ -94,7 +95,7 @@ IOS_DEVICE_UDID=<ios-device-udid> \
 python3 client/scripts/configure_github_mobile_release_env.py --repo kiminbean/voice-to-textnote
 ```
 
-`--strict`는 환경변수 존재만 확인하지 않는다. `docs/app-store-metadata.md`, `docs/privacy-policy.md`, `docs/e2e-device-checklist.md`에 release placeholder가 없어야 한다. 또한 `ANDROID_DEVICE_SERIAL`은 `adb devices -l`에 `device` 상태로 표시되어야 하고, `IOS_DEVICE_UDID`는 `xcrun devicectl list devices`에서 `available` 상태로 표시되어야 한다. `RELEASE_E2E_EVIDENCE_PATH`는 체크아웃된 repo 내부 JSON 파일이어야 하며 Android/iOS device id가 strict 환경변수와 일치하고, Push/딥링크/백그라운드 녹음/HTTP 정책/PDF 공유 시나리오가 모두 `pass: true`와 증거 문구를 가져야 한다. 따라서 Firebase/APNs/App Store Connect secret이 있어도 문서 placeholder가 남아 있거나 물리 기기가 연결되지 않았거나 trust/pairing이 완료되지 않았거나 실제 시나리오 증거가 없으면 E2E 진입 전 실패한다.
+`--strict`는 환경변수 존재만 확인하지 않는다. `REQUIRE_ANDROID_RELEASE_SIGNING=true`가 설정되어 signed Android release gate와 같은 release 조건임을 먼저 확인하고, `docs/app-store-metadata.md`, `docs/privacy-policy.md`, `docs/e2e-device-checklist.md`에 release placeholder가 없어야 한다. 또한 `ANDROID_DEVICE_SERIAL`은 `adb devices -l`에 `device` 상태로 표시되어야 하고, `IOS_DEVICE_UDID`는 `xcrun devicectl list devices`에서 `available` 상태로 표시되어야 한다. `RELEASE_E2E_EVIDENCE_PATH`는 체크아웃된 repo 내부 JSON 파일이어야 하며 Android/iOS device id가 strict 환경변수와 일치하고, Push/딥링크/백그라운드 녹음/HTTP 정책/PDF 공유 시나리오가 모두 `pass: true`와 증거 문구를 가져야 한다. 따라서 signed Android release 모드, Firebase/APNs/App Store Connect secret이 있어도 문서 placeholder가 남아 있거나 물리 기기가 연결되지 않았거나 trust/pairing이 완료되지 않았거나 실제 시나리오 증거가 없으면 E2E 진입 전 실패한다.
 
 ### Release E2E evidence scaffold
 

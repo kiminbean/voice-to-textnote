@@ -1515,6 +1515,7 @@ def test_release_procedure_rejects_version_drift(tmp_path):
             '["ios"]\n'
             "python3 client/scripts/verify_mobile_release_runner.py\n"
             "python3 client/scripts/verify_github_mobile_release_env.py\n"
+            "REQUIRE_ANDROID_RELEASE_SIGNING=true\n"
             "python3 client/scripts/verify_release_readiness.py --strict\n"
             "2개 SPEC 전부 완료\n"
             "2 SPECs completed\n"
@@ -1562,6 +1563,42 @@ def test_release_procedure_rejects_missing_platform_contract(tmp_path):
     assert any(
         "Release procedure matches current strict E2E evidence workflow" in error
         and "`platforms`" in error
+        for error in reporter.errors
+    )
+
+
+def test_release_docs_reject_missing_strict_android_signing_env(tmp_path):
+    module = load_release_readiness_module()
+    repo_root = Path(__file__).resolve().parents[2]
+    shutil.copytree(repo_root / "docs", tmp_path / "docs")
+    write_tone_policy_files(tmp_path)
+    write_readme_status(
+        tmp_path,
+        (
+            "Release Candidate strict 실기기 release evidence 대기 RELEASE_E2E_EVIDENCE_PATH\n"
+            "**버전**: 1.7.0\n"
+            "✅ SPEC-ONE\n"
+            "✅ SPEC-TWO\n"
+        ),
+    )
+    checklist = (tmp_path / "docs/e2e-device-checklist.md").read_text(encoding="utf-8")
+    procedure = (tmp_path / "docs/release-procedure.md").read_text(encoding="utf-8")
+    (tmp_path / "docs/e2e-device-checklist.md").write_text(
+        checklist.replace("REQUIRE_ANDROID_RELEASE_SIGNING", "ANDROID_SIGNING_MODE"),
+        encoding="utf-8",
+    )
+    (tmp_path / "docs/release-procedure.md").write_text(
+        procedure.replace("REQUIRE_ANDROID_RELEASE_SIGNING=true", "ANDROID_SIGNING_MODE=true"),
+        encoding="utf-8",
+    )
+
+    reporter = module.Reporter()
+    module.check_docs(tmp_path, reporter)
+
+    assert any("E2E checklist missing REQUIRE_ANDROID_RELEASE_SIGNING" in error for error in reporter.errors)
+    assert any(
+        "Release procedure matches current strict E2E evidence workflow" in error
+        and "REQUIRE_ANDROID_RELEASE_SIGNING=true" in error
         for error in reporter.errors
     )
 

@@ -764,6 +764,7 @@ python3 client/scripts/verify_release_readiness.py
 cd client && REQUIRE_ANDROID_RELEASE_SIGNING=true ./scripts/verify_mobile.sh --native
 
 # 실기기 릴리스 게이트: 외부 secret, 연결 기기, Push/딥링크/녹음/공유 evidence 필요
+REQUIRE_ANDROID_RELEASE_SIGNING=true \
 RELEASE_E2E_EVIDENCE_PATH=docs/release-e2e-evidence.example.json \
 python3 client/scripts/verify_release_readiness.py --strict
 ```

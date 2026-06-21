@@ -890,6 +890,10 @@ def check_docs(root: Path, reporter: Reporter) -> None:
         ("verify_mobile_release_runner.py", ("verify_mobile_release_runner.py",)),
         ("xcodebuild -version", ("xcodebuild -version",)),
         ("./scripts/verify_mobile.sh --native", ("./scripts/verify_mobile.sh --native",)),
+        (
+            "REQUIRE_ANDROID_RELEASE_SIGNING",
+            ("REQUIRE_ANDROID_RELEASE_SIGNING", "Android release signing gate"),
+        ),
         ("RELEASE_E2E_EVIDENCE_PATH", ("RELEASE_E2E_EVIDENCE_PATH",)),
         ("artifact_sha256", ("artifact_sha256", "SHA-256")),
         ("Android release APK", ("app-release.apk", "Android release APK")),
@@ -914,6 +918,7 @@ def check_docs(root: Path, reporter: Reporter) -> None:
             "python3 client/scripts/verify_mobile_release_runner.py",
             "python3 client/scripts/verify_github_mobile_release_env.py",
             "python3 client/scripts/verify_release_readiness.py --strict",
+            "REQUIRE_ANDROID_RELEASE_SIGNING=true",
             "`platforms`",
             '["android", "ios"]',
             '["android"]',
