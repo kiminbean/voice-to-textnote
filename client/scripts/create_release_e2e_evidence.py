@@ -19,6 +19,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from verify_release_readiness import (  # noqa: E402
     REQUIRED_E2E_SCENARIOS,
+    artifact_path_stays_inside_root,
     release_artifact_sha256,
     resolve_release_artifact_path,
 )
@@ -49,6 +50,8 @@ def git_revision(root: Path) -> str:
 
 def validate_release_artifacts(root: Path, artifacts: dict[str, str]) -> None:
     for key, artifact_path in artifacts.items():
+        if not artifact_path_stays_inside_root(root, artifact_path):
+            raise ValueError(f"release artifact path must stay inside repo: {key}")
         resolved = resolve_release_artifact_path(root, artifact_path)
         expected_type = RELEASE_ARTIFACT_TYPES[key]
         if expected_type == "file" and not resolved.is_file():

@@ -101,6 +101,26 @@ def test_release_e2e_scaffold_rejects_missing_artifacts(tmp_path):
         raise AssertionError("build_evidence should reject missing release artifacts")
 
 
+def test_release_e2e_scaffold_rejects_artifacts_outside_repo(tmp_path):
+    create = load_create_evidence_module()
+    root = tmp_path / "repo"
+    outside = tmp_path / "outside"
+    root.mkdir()
+    outside.mkdir()
+    android_apk, ios_runner_app = write_release_artifacts(outside)
+
+    try:
+        create.build_evidence(
+            root,
+            android_apk=str(android_apk),
+            ios_runner_app=str(ios_runner_app),
+        )
+    except ValueError as exc:
+        assert "must stay inside repo" in str(exc)
+    else:
+        raise AssertionError("build_evidence should reject artifacts outside repo")
+
+
 def test_release_e2e_evidence_artifacts_are_resolved_from_repo_root(
     monkeypatch, tmp_path
 ):
