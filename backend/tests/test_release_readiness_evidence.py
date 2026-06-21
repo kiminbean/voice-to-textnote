@@ -109,10 +109,10 @@ def write_tone_policy_files(root: Path, *, tone_model_line: str = 'tone_model: s
 def write_readme_status(root: Path, content: str) -> None:
     (root / "README.md").write_text(
         (
-            "3886 백엔드 테스트\n"
-            "| 백엔드 단위/통합/E2E | 3886개 | 100.00% |\n"
+            "3887 백엔드 테스트\n"
+            "| 백엔드 단위/통합/E2E | 3887개 | 100.00% |\n"
             "| Flutter 테스트 | 415개 | - |\n"
-            "| 총합 | 4301개 | - |\n"
+            "| 총합 | 4302개 | - |\n"
             f"{content}"
         ),
         encoding="utf-8",
@@ -205,6 +205,29 @@ def test_release_e2e_evidence_rejects_non_string_device_id(tmp_path, monkeypatch
     module.check_release_e2e_evidence(evidence_path, reporter)
 
     assert any("android device serial must be a string" in error for error in reporter.errors)
+
+
+def test_release_e2e_evidence_rejects_placeholder_device_metadata(
+    tmp_path, monkeypatch
+):
+    module = load_release_readiness_module()
+    evidence = make_evidence(tmp_path, module)
+    devices = evidence["devices"]
+    assert isinstance(devices, dict)
+    android_device = devices["android"]
+    assert isinstance(android_device, dict)
+    android_device["model"] = "TBD"
+    evidence_path = write_evidence(tmp_path, evidence)
+    monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
+    monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")
+
+    reporter = module.Reporter()
+    module.check_release_e2e_evidence(evidence_path, reporter)
+
+    assert any(
+        "android device model contains unresolved placeholder" in error
+        for error in reporter.errors
+    )
 
 
 def test_release_e2e_evidence_rejects_missing_required_scenario(tmp_path, monkeypatch):

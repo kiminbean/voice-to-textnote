@@ -625,15 +625,15 @@ def check_readme_release_status(root: Path, reporter: Reporter) -> None:
     else:
         reporter.ok("README does not overclaim Production Ready before strict evidence")
     if (
-        "3886 백엔드 테스트" in readme
-        and "3886개" in readme
+        "3887 백엔드 테스트" in readme
+        and "3887개" in readme
         and ("Flutter 415" in readme or "415개" in readme)
-        and "4301개" in readme
+        and "4302개" in readme
     ):
         reporter.ok("README test counts match current release validation evidence")
     else:
         reporter.fail(
-            "README test counts must match current 3886 backend / 415 Flutter / 4301 total evidence"
+            "README test counts must match current 3887 backend / 415 Flutter / 4302 total evidence"
         )
     if f"{completed_spec_count}개 SPEC" in readme:
         reporter.fail("README should avoid hard-coded completed SPEC counts outside the SPEC list")
@@ -708,11 +708,11 @@ def check_docs(root: Path, reporter: Reporter) -> None:
             "Release procedure SPEC count must match README completed SPEC list "
             f"({completed_spec_count})"
         )
-    if "3886 passed" in procedure_doc and "Flutter: 415 passed" in procedure_doc:
+    if "3887 passed" in procedure_doc and "Flutter: 415 passed" in procedure_doc:
         reporter.ok("Release procedure backend test count matches latest full pytest evidence")
     else:
         reporter.fail(
-            "Release procedure test counts must match latest 3886 backend / 415 Flutter evidence"
+            "Release procedure test counts must match latest 3887 backend / 415 Flutter evidence"
         )
     app_store_doc = read_text(root / "docs/app-store-metadata.md")
     for snippet in [
@@ -1163,7 +1163,14 @@ def check_release_e2e_evidence(path: Path, reporter: Reporter, root: Path | None
                 f"Release E2E evidence {platform} device {id_key} does not match strict env"
             )
         for key in ["model", "os_version"]:
-            require_non_empty_string(reporter, device, key, f"{platform} device {key}")
+            device_value = require_non_empty_string(
+                reporter, device, key, f"{platform} device {key}"
+            )
+            if device_value and has_unresolved_evidence_placeholder(device_value):
+                reporter.fail(
+                    f"Release E2E evidence {platform} device {key} "
+                    "contains unresolved placeholder"
+                )
 
     artifacts = require_non_empty_mapping(reporter, data, "artifacts", "build artifacts")
     artifact_hashes = require_non_empty_mapping(
