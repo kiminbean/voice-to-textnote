@@ -118,3 +118,14 @@ async def get_current_user(
         raise HTTPException(status_code=401, detail="사용자를 찾을 수 없습니다")
 
     return user
+
+
+async def get_optional_current_user(
+    request: Request,
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Return the current user when a bearer token is present, otherwise None."""
+    auth_header = request.headers.get("Authorization")
+    if not auth_header:
+        return None
+    return await get_current_user(request=request, db=db)

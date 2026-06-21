@@ -8,6 +8,7 @@
 - get_current_user(): JWT 인증 및 현재 사용자 반환
 """
 
+import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -185,6 +186,44 @@ class TestGetCurrentUser:
 
         assert exc.value.status_code == 401
         assert "인증이 필요합니다" in exc.value.detail
+
+    @pytest.mark.asyncio
+    async def test_optional_current_user_without_authorization_returns_none(
+        self, mock_request, mock_db_session
+    ):
+        """선택 인증은 Authorization 헤더가 없으면 None을 반환한다."""
+        from backend.app.dependencies import get_optional_current_user
+
+        mock_request.headers.get = MagicMock(return_value=None)
+
+        assert await get_optional_current_user(mock_request, mock_db_session) is None
+
+    @pytest.mark.asyncio
+    async def test_optional_current_user_with_authorization_delegates_to_current_user(
+        self, mock_request, mock_db_session
+    ):
+        """선택 인증은 Authorization 헤더가 있으면 기존 JWT 검증으로 위임한다."""
+        from backend.app.dependencies import get_optional_current_user
+        from backend.db.auth_models import User
+
+        mock_request.headers.get = MagicMock(return_value="Bearer valid_token")
+        mock_user = MagicMock(spec=User)
+        mock_user.id = uuid.uuid4()
+        mock_user.is_active = True
+
+        with patch("backend.services.auth_service.AuthService") as mock_auth_service_class:
+            mock_auth_service = MagicMock()
+            mock_auth_service.decode_access_token = MagicMock(
+                return_value={"sub": str(mock_user.id)}
+            )
+            mock_auth_service_class.return_value = mock_auth_service
+            mock_result = AsyncMock()
+            mock_result.scalar_one_or_none = MagicMock(return_value=mock_user)
+            mock_db_session.execute.return_value = mock_result
+
+            user = await get_optional_current_user(mock_request, mock_db_session)
+
+        assert user is mock_user
 
     @pytest.mark.asyncio
     async def test_invalid_bearer_format(self, mock_request, mock_db_session):

@@ -17,7 +17,7 @@ import pytest
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.db.auth_models import MeetingOwnership
+from backend.db.auth_models import MeetingOwnership, Team
 from backend.db.models import TaskResult
 
 # ---------------------------------------------------------------------------
@@ -139,6 +139,115 @@ async def test_share_meeting_duplicate_conflict(
         )
 
     assert exc_info.value.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_apply_default_team_sharing_policy_creates_owner_and_team_default_share(
+    meeting_service, mock_session, sample_task_id, sample_owner_id, sample_team_id
+):
+    """team_default 정책 팀은 새 task 생성 시 자동 공유 후보로 적용된다."""
+    private_team_id = uuid.uuid4()
+    default_team = Team()
+    default_team.id = sample_team_id
+    default_team.sharing_policy = {"default_visibility": "team_default"}
+    private_team = Team()
+    private_team.id = private_team_id
+    private_team.sharing_policy = {"default_visibility": "private"}
+
+    missing_owner_result = MagicMock()
+    missing_owner_result.scalar_one_or_none.return_value = None
+    team_result = MagicMock()
+    team_result.scalars.return_value.all.return_value = [default_team, private_team]
+    missing_share_result = MagicMock()
+    missing_share_result.scalar_one_or_none.return_value = None
+    mock_session.execute.side_effect = [
+        missing_owner_result,
+        team_result,
+        missing_share_result,
+    ]
+
+    shared_team_ids = await meeting_service.apply_default_team_sharing_policy(
+        session=mock_session,
+        task_id=sample_task_id,
+        owner_id=sample_owner_id,
+    )
+
+    assert shared_team_ids == [sample_team_id]
+    assert mock_session.add.call_count == 2
+    owner_record = mock_session.add.call_args_list[0].args[0]
+    team_record = mock_session.add.call_args_list[1].args[0]
+    assert owner_record.team_id is None
+    assert owner_record.shared_at is None
+    assert team_record.team_id == sample_team_id
+    assert team_record.shared_at is not None
+    mock_session.commit.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_apply_default_team_sharing_policy_skips_existing_default_share(
+    meeting_service, mock_session, sample_task_id, sample_owner_id, sample_team_id
+):
+    """이미 공유된 team_default 팀은 중복 공유하지 않는다."""
+    default_team = Team()
+    default_team.id = sample_team_id
+    default_team.sharing_policy = {"default_visibility": "team_default"}
+    existing_owner = MeetingOwnership()
+    existing_owner.id = uuid.uuid4()
+    existing_owner.task_id = sample_task_id
+    existing_owner.owner_id = sample_owner_id
+    existing_owner.team_id = None
+    existing_share = MeetingOwnership()
+    existing_share.id = uuid.uuid4()
+    existing_share.task_id = sample_task_id
+    existing_share.owner_id = sample_owner_id
+    existing_share.team_id = sample_team_id
+
+    owner_result = MagicMock()
+    owner_result.scalar_one_or_none.return_value = existing_owner
+    team_result = MagicMock()
+    team_result.scalars.return_value.all.return_value = [default_team]
+    existing_share_result = MagicMock()
+    existing_share_result.scalar_one_or_none.return_value = existing_share
+    mock_session.execute.side_effect = [
+        owner_result,
+        team_result,
+        existing_share_result,
+    ]
+
+    shared_team_ids = await meeting_service.apply_default_team_sharing_policy(
+        session=mock_session,
+        task_id=sample_task_id,
+        owner_id=sample_owner_id,
+    )
+
+    assert shared_team_ids == []
+    mock_session.add.assert_not_called()
+    mock_session.commit.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_apply_default_team_sharing_policy_keeps_private_when_no_default_team(
+    meeting_service, mock_session, sample_task_id, sample_owner_id
+):
+    """team_default 정책 팀이 없어도 새 task 소유권은 비공개로 기록한다."""
+    missing_owner_result = MagicMock()
+    missing_owner_result.scalar_one_or_none.return_value = None
+    team_result = MagicMock()
+    team_result.scalars.return_value.all.return_value = []
+    mock_session.execute.side_effect = [missing_owner_result, team_result]
+
+    shared_team_ids = await meeting_service.apply_default_team_sharing_policy(
+        session=mock_session,
+        task_id=sample_task_id,
+        owner_id=sample_owner_id,
+    )
+
+    assert shared_team_ids == []
+    mock_session.add.assert_called_once()
+    owner_record = mock_session.add.call_args.args[0]
+    assert owner_record.team_id is None
+    assert owner_record.shared_at is None
+    mock_session.commit.assert_called_once()
 
 
 # ---------------------------------------------------------------------------

@@ -4,7 +4,7 @@ import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends, File, Form, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.dependencies import get_db_session, get_redis_client
+from backend.app.dependencies import get_db_session, get_optional_current_user, get_redis_client
 from backend.app.errors import internal_error, unprocessable
 from backend.schemas.external_import import (
     DocumentImportResponse,
@@ -39,11 +39,17 @@ async def import_external_text(
     payload: ExternalTextImportRequest,
     db: AsyncSession = Depends(get_db_session),
     redis_client: aioredis.Redis = Depends(get_redis_client),
+    current_user=Depends(get_optional_current_user),
     svc: ExternalImportService = Depends(get_external_import_service),
 ) -> ExternalTextImportResponse:
     """Import user-provided URL transcript/text as a completed minutes artifact."""
     try:
-        return await svc.import_text(payload, db, redis_client)
+        return await svc.import_text(
+            payload,
+            db,
+            redis_client,
+            owner_id=getattr(current_user, "id", None),
+        )
     except ExternalImportValidationError as exc:
         unprocessable(str(exc))
     except Exception as exc:
@@ -61,6 +67,7 @@ async def import_document(
     language: str = Form(default="ko", min_length=2, max_length=16, description="콘텐츠 언어"),
     db: AsyncSession = Depends(get_db_session),
     redis_client: aioredis.Redis = Depends(get_redis_client),
+    current_user=Depends(get_optional_current_user),
     svc: DocumentImportService = Depends(get_document_import_service),
 ) -> DocumentImportResponse:
     """Import a user-owned PDF/DOCX document as searchable minutes-compatible content."""
@@ -72,6 +79,7 @@ async def import_document(
             language=language,
             db=db,
             redis_client=redis_client,
+            owner_id=getattr(current_user, "id", None),
         )
     except ExternalImportValidationError as exc:
         unprocessable(str(exc))

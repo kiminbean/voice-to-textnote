@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import uuid
 from io import BytesIO
 from pathlib import Path
 
@@ -41,6 +42,7 @@ class DocumentImportService:
         language: str,
         db: AsyncSession,
         redis_client: aioredis.Redis,
+        owner_id: uuid.UUID | None = None,
     ) -> DocumentImportResponse:
         """Import a PDF/DOCX document as a completed searchable minutes artifact."""
         file_type = self._file_type(filename)
@@ -69,6 +71,7 @@ class DocumentImportService:
             ),
             db,
             redis_client,
+            owner_id=owner_id,
         )
 
         return DocumentImportResponse(

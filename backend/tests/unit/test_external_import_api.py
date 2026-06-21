@@ -95,6 +95,31 @@ def test_import_external_text_success(app_client):
     svc.import_text.assert_awaited_once()
 
 
+def test_import_external_text_passes_authenticated_owner_id(app_client):
+    from backend.app.api.v1.minutes.external_import import get_optional_current_user
+
+    client, svc, _ = app_client
+    user = type("User", (), {"id": "user-001"})()
+    svc.import_text = AsyncMock(return_value=_response())
+
+    async def override_user():
+        return user
+
+    client.app.dependency_overrides[get_optional_current_user] = override_user
+
+    response = client.post(
+        "/api/v1/imports/external-text",
+        json={
+            "source_url": "https://youtu.be/example123",
+            "title": "영상 요약",
+            "content": "사용자가 보유한 영상 transcript를 가져옵니다.",
+        },
+    )
+
+    assert response.status_code == 200
+    assert svc.import_text.await_args.kwargs["owner_id"] == "user-001"
+
+
 def test_import_external_text_validation_error_returns_422(app_client):
     client, svc, _ = app_client
     svc.import_text = AsyncMock(side_effect=ExternalImportValidationError("본문 없음"))
@@ -178,6 +203,7 @@ def test_import_document_success(app_client):
     assert body["task_id"] == "ext-doc-001"
     assert body["source_type"] == "document"
     assert body["file_type"] == "pdf"
+    document_svc.import_document.assert_awaited_once()
     assert body["extracted_characters"] == 42
     document_svc.import_document.assert_awaited_once()
 

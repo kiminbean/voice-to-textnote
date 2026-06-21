@@ -18,6 +18,7 @@ from backend.schemas.external_import import (
     ExternalTextImportRequest,
     ExternalTextImportResponse,
 )
+from backend.services.meeting_share_service import MeetingShareService
 
 
 class ExternalImportValidationError(ValueError):
@@ -32,6 +33,7 @@ class ExternalImportService:
         payload: ExternalTextImportRequest,
         db: AsyncSession,
         redis_client: aioredis.Redis,
+        owner_id: uuid.UUID | None = None,
     ) -> ExternalTextImportResponse:
         """Persist external text as a completed minutes result and index it."""
         content = self._normalize_content(payload.content)
@@ -73,6 +75,14 @@ class ExternalImportService:
         )
         await self._cache_result(redis_client, task_id, result_data, now)
         search_indexed = await self._index_result(db, task_id, result_data, now)
+        shared_team_ids: list[str] = []
+        if owner_id is not None:
+            applied_team_ids = await MeetingShareService().apply_default_team_sharing_policy(
+                session=db,
+                task_id=task_id,
+                owner_id=owner_id,
+            )
+            shared_team_ids = [str(team_id) for team_id in applied_team_ids]
 
         return ExternalTextImportResponse(
             task_id=task_id,
@@ -83,6 +93,7 @@ class ExternalImportService:
             language=payload.language,
             result_url=f"/api/v1/minutes/{task_id}",
             search_indexed=search_indexed,
+            shared_team_ids=shared_team_ids,
         )
 
     def _normalize_content(self, content: str) -> str:

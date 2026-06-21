@@ -16,8 +16,9 @@ from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.db.auth_models import MeetingOwnership, TeamMember
+from backend.db.auth_models import MeetingOwnership, Team, TeamMember
 from backend.db.models import TaskResult
+from backend.services.team_service import normalize_sharing_policy
 
 
 class MeetingShareService:
@@ -145,6 +146,85 @@ class MeetingShareService:
         await session.commit()
 
         return ownership
+
+    async def apply_default_team_sharing_policy(
+        self,
+        session: AsyncSession,
+        task_id: str,
+        owner_id: uuid.UUID,
+    ) -> list[uuid.UUID]:
+        """Apply team_default sharing policies to a newly created meeting artifact.
+
+        Existing meetings are intentionally unaffected. The owner record is created
+        first so private ownership remains explicit even when no team defaults apply.
+        """
+        owner_created = await self._ensure_owner_record(session, task_id, owner_id)
+
+        teams_result = await session.execute(
+            select(Team)
+            .join(TeamMember, TeamMember.team_id == Team.id)
+            .where(TeamMember.user_id == owner_id)
+        )
+        teams = teams_result.scalars().all()
+        default_team_ids = [
+            team.id
+            for team in teams
+            if normalize_sharing_policy(team.sharing_policy)["default_visibility"]
+            == "team_default"
+        ]
+        if not default_team_ids:
+            if owner_created:
+                await session.commit()
+            return []
+
+        applied: list[uuid.UUID] = []
+        for team_id in default_team_ids:
+            existing_result = await session.execute(
+                select(MeetingOwnership).where(
+                    MeetingOwnership.task_id == task_id,
+                    MeetingOwnership.team_id == team_id,
+                )
+            )
+            if existing_result.scalar_one_or_none() is not None:
+                continue
+
+            ownership = MeetingOwnership()
+            ownership.id = uuid.uuid4()
+            ownership.task_id = task_id
+            ownership.owner_id = owner_id
+            ownership.team_id = team_id
+            ownership.shared_at = datetime.now(UTC).replace(tzinfo=None)
+            session.add(ownership)
+            applied.append(team_id)
+
+        if owner_created or applied:
+            await session.commit()
+        return applied
+
+    async def _ensure_owner_record(
+        self,
+        session: AsyncSession,
+        task_id: str,
+        owner_id: uuid.UUID,
+    ) -> bool:
+        result = await session.execute(
+            select(MeetingOwnership).where(
+                MeetingOwnership.task_id == task_id,
+                MeetingOwnership.owner_id == owner_id,
+                MeetingOwnership.team_id.is_(None),
+            )
+        )
+        if result.scalar_one_or_none() is not None:
+            return False
+
+        ownership = MeetingOwnership()
+        ownership.id = uuid.uuid4()
+        ownership.task_id = task_id
+        ownership.owner_id = owner_id
+        ownership.team_id = None
+        ownership.shared_at = None
+        session.add(ownership)
+        return True
 
     async def unshare_meeting(
         self,

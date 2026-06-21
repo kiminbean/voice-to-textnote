@@ -237,6 +237,7 @@ void main() {
           'status': 'completed',
           'result_url': '/api/v1/minutes/ext-001',
           'search_indexed': true,
+          'shared_team_ids': ['team-default'],
         },
       );
 
@@ -276,6 +277,7 @@ void main() {
 
       expect(find.text('제품 데모 transcript'), findsOneWidget);
       expect(find.text('완료'), findsOneWidget);
+      expect(find.text('팀 공유'), findsOneWidget);
       verify(() => mockMinutesApi.importExternalText(
             sourceUrl: 'https://youtu.be/example123',
             title: '제품 데모 transcript',
@@ -380,6 +382,7 @@ void main() {
           'file_name': 'lecture.pdf',
           'file_type': 'pdf',
           'extracted_characters': 120,
+          'shared_team_ids': ['team-default'],
         },
       );
 
@@ -409,6 +412,7 @@ void main() {
 
       expect(find.text('강의 슬라이드'), findsOneWidget);
       expect(find.text('완료'), findsOneWidget);
+      expect(find.text('팀 공유'), findsOneWidget);
       final captured = verify(() => mockMinutesApi.importDocument(
             file: captureAny(named: 'file'),
             title: '강의 슬라이드',

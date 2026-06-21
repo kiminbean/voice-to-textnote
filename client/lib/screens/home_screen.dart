@@ -34,6 +34,13 @@ final documentImportPickerProvider =
   };
 });
 
+List<String> _sharedTeamIdsFromImportResult(Map<String, dynamic> result) {
+  return (result['shared_team_ids'] as List<dynamic>?)
+          ?.whereType<String>()
+          .toList(growable: false) ??
+      const [];
+}
+
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
@@ -322,6 +329,7 @@ class HomeScreen extends ConsumerWidget {
         status: MeetingStatus.completed,
         sourceUrl: sourceUrl,
         minutesTaskId: taskId,
+        sharedTeamIds: _sharedTeamIdsFromImportResult(result),
       );
       await ref.read(meetingListProvider.notifier).addMeeting(meeting);
 
@@ -826,6 +834,7 @@ class _ExternalTextImportSheetState
         status: MeetingStatus.completed,
         sourceUrl: url,
         minutesTaskId: taskId,
+        sharedTeamIds: _sharedTeamIdsFromImportResult(result),
       );
       await ref.read(meetingListProvider.notifier).addMeeting(meeting);
 

@@ -1,4 +1,5 @@
 import sys
+import uuid
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -78,6 +79,44 @@ async def test_import_text_reports_search_index_best_effort_failure():
     db.rollback.assert_awaited_once()
 
 
+@pytest.mark.asyncio
+async def test_import_text_applies_default_team_policy_for_authenticated_owner():
+    service = ExternalImportService()
+    db = AsyncMock()
+    redis = AsyncMock()
+    db.run_sync = AsyncMock()
+    db.commit = AsyncMock()
+    owner_id = uuid.uuid4()
+    payload = ExternalTextImportRequest(
+        source_url="https://example.com/transcript",
+        title="팀 기본 공유 회의",
+        content="팀 기본 공유 정책을 적용할 만큼 충분한 외부 transcript 본문입니다.",
+    )
+
+    with (
+        patch(
+            "backend.services.external_import_service.ResultService.save_result",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "backend.services.external_import_service.MeetingShareService"
+        ) as share_service_cls,
+    ):
+        share_service = share_service_cls.return_value
+        shared_team_id = uuid.uuid4()
+        share_service.apply_default_team_sharing_policy = AsyncMock(
+            return_value=[shared_team_id]
+        )
+        response = await service.import_text(payload, db, redis, owner_id=owner_id)
+
+    share_service.apply_default_team_sharing_policy.assert_awaited_once_with(
+        session=db,
+        task_id=response.task_id,
+        owner_id=owner_id,
+    )
+    assert response.shared_team_ids == [str(shared_team_id)]
+
+
 def test_normalize_content_rejects_empty_import_text():
     service = ExternalImportService()
 
@@ -137,6 +176,7 @@ async def test_import_document_extracts_text_and_reuses_external_import_pipeline
         language="ko",
         db=AsyncMock(),
         redis_client=AsyncMock(),
+        owner_id=uuid.UUID("00000000-0000-0000-0000-000000000001"),
     )
 
     assert response.task_id == "ext-doc-001"
@@ -148,6 +188,9 @@ async def test_import_document_extracts_text_and_reuses_external_import_pipeline
     assert payload.title == "강의 자료"
     assert payload.content == "첫 문단\n두 번째 문단과 핵심 개념 및 복습 질문"
     assert payload.source_type == ExternalImportSourceType.DOCUMENT
+    assert external_service.import_text.await_args.kwargs["owner_id"] == uuid.UUID(
+        "00000000-0000-0000-0000-000000000001"
+    )
 
 
 @pytest.mark.asyncio

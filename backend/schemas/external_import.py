@@ -42,6 +42,7 @@ class ExternalTextImportResponse(BaseModel):
     language: str
     result_url: str
     search_indexed: bool
+    shared_team_ids: list[str] = Field(default_factory=list)
 
 
 class DocumentImportResponse(ExternalTextImportResponse):
