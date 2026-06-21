@@ -177,6 +177,11 @@ def _extract_index_data(
     elif task_type == "summary":
         # 요약 텍스트
         summary_text = result_data.get("summary_text", "")
+        study_pack = result_data.get("study_pack")
+        if isinstance(study_pack, dict):
+            study_notes = str(study_pack.get("study_notes", "")).strip()
+            if study_notes:
+                summary_text = " ".join(part for part in (summary_text, study_notes) if part)
 
         # action_items, key_decisions, next_steps를 합쳐 action_items_text 생성
         parts = []
@@ -190,6 +195,39 @@ def _extract_index_data(
         for step in result_data.get("next_steps", []):
             if step:
                 parts.append(step)
+        if isinstance(study_pack, dict):
+            parts.extend(_extract_study_pack_terms(study_pack))
         action_items_text = " ".join(parts)
 
     return content, speaker_names, summary_text, action_items_text
+
+
+def _extract_study_pack_terms(study_pack: dict) -> list[str]:
+    """Flatten Study Pack learning artifacts into searchable text."""
+    parts: list[str] = []
+
+    for item in study_pack.get("key_concepts", []) or []:
+        if not isinstance(item, dict):
+            continue
+        for field in ("term", "explanation"):
+            value = str(item.get(field, "")).strip()
+            if value:
+                parts.append(value)
+
+    for item in study_pack.get("flashcards", []) or []:
+        if not isinstance(item, dict):
+            continue
+        for field in ("front", "back"):
+            value = str(item.get(field, "")).strip()
+            if value:
+                parts.append(value)
+
+    for item in study_pack.get("quiz_questions", []) or []:
+        if not isinstance(item, dict):
+            continue
+        for field in ("question", "answer"):
+            value = str(item.get(field, "")).strip()
+            if value:
+                parts.append(value)
+
+    return parts

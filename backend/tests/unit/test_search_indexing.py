@@ -135,6 +135,68 @@ class TestPersistTaskResultIndexing:
         assert row[1] == "summary"
         assert "검색 인덱스" in row[2]
 
+    def test_persist_task_result_indexes_summary_study_pack(self):
+        """summary payload의 Study Pack 텍스트도 검색 인덱스에 포함되어야 함"""
+        from sqlalchemy import text
+
+        from backend.db.search_models import ensure_search_index_table
+        from backend.services.sync_service import persist_task_result
+
+        ensure_search_index_table(self.engine)
+
+        summary_data = {
+            "summary_text": "회의 요약",
+            "study_pack": {
+                "study_notes": "광합성 복습 노트",
+                "key_concepts": [{"term": "엽록체", "explanation": "광합성이 일어나는 장소"}],
+                "flashcards": [{"front": "엽록체의 역할은?", "back": "광합성 장소"}],
+                "quiz_questions": [
+                    {
+                        "question": "광합성의 핵심 장소는?",
+                        "answer": "엽록체",
+                        "difficulty": "easy",
+                    }
+                ],
+            },
+            "created_at": "2024-01-01T09:00:00",
+            "completed_at": "2024-01-01T09:05:00",
+        }
+
+        persist_task_result(
+            task_id="idx-sum-study-001",
+            task_type="summary",
+            status="completed",
+            result_data=summary_data,
+        )
+
+        with self.engine.connect() as conn:
+            result = conn.execute(
+                text(
+                    "SELECT summary_text, action_items_text FROM search_index "
+                    "WHERE task_id = 'idx-sum-study-001'"
+                )
+            )
+            row = result.fetchone()
+
+        assert row is not None
+        assert "광합성 복습 노트" in row[0]
+        assert "엽록체" in row[1]
+        assert "광합성의 핵심 장소" in row[1]
+
+    def test_extract_study_pack_terms_skips_non_dict_items(self):
+        """Study Pack 검색어 추출은 잘못된 항목을 무시해야 함"""
+        from backend.db.search_models import _extract_study_pack_terms
+
+        terms = _extract_study_pack_terms(
+            {
+                "key_concepts": ["bad", {"term": "개념", "explanation": ""}],
+                "flashcards": ["bad", {"front": "질문", "back": ""}],
+                "quiz_questions": ["bad", {"question": "문제", "answer": ""}],
+            }
+        )
+
+        assert terms == ["개념", "질문", "문제"]
+
     def test_persist_task_result_skips_transcription(self):
         """transcription 작업은 검색 인덱스에 추가되지 않아야 함"""
         from sqlalchemy import text

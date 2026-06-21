@@ -63,7 +63,7 @@ The first implementation should be a Study Pack feature because it is high-impac
 
 ## 5. PRD: Study Pack Generation
 
-**Implementation status (2026-06-21)**: Backend schema/service/API, mode-specific caching, Flutter API/provider/model, Result screen Study tab, copy/regenerate controls, source references, loading/empty/error states, mode selection, and Obsidian study sections are implemented. Search indexing remains follow-up work.
+**Implementation status (2026-06-21)**: Backend schema/service/API, mode-specific caching, Flutter API/provider/model, Result screen Study tab, copy/regenerate controls, source references, loading/empty/error states, mode selection, Obsidian study sections, and summary search indexing for Study Pack text are implemented.
 
 ### 5.1 Problem
 
@@ -139,7 +139,7 @@ Users can currently transcribe, summarize, search, and export meetings, but lear
 #### Export/Search
 
 - Include study pack content in existing export flow where practical. *(Implemented for Obsidian manual/auto export.)*
-- Make generated key concepts searchable or at least visible from the meeting result.
+- Make generated key concepts searchable or at least visible from the meeting result. *(Implemented for summary search indexing when Study Pack content is present in the summary payload.)*
 - Preserve Obsidian export compatibility by adding a study section to exported markdown later. *(Implemented.)*
 
 ### 5.7 Acceptance Criteria

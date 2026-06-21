@@ -247,6 +247,45 @@ class TestSearchService:
             assert len(result.items[0].snippet) > 0
 
     @pytest.mark.asyncio
+    async def test_search_finds_study_pack_terms(self, populated_search_db):
+        """Study Pack에서 인덱싱된 핵심 개념도 검색되어야 함"""
+        from backend.db.models import TaskResult
+        from backend.services.search_service import SearchService
+
+        populated_search_db.add(
+            TaskResult(
+                task_id="sum-study-search-001",
+                task_type="summary",
+                status="completed",
+                result_data={},
+                completed_at=datetime(2024, 1, 5, 9, 0, 0),
+            )
+        )
+        await populated_search_db.execute(
+            text(
+                "INSERT INTO search_index "
+                "(task_id, task_type, content, speaker_names, summary_text, action_items_text, created_at) "
+                "VALUES (:task_id, :task_type, :content, :speaker_names, :summary_text, :action_items_text, :created_at)"
+            ),
+            {
+                "task_id": "sum-study-search-001",
+                "task_type": "summary",
+                "content": "",
+                "speaker_names": "",
+                "summary_text": "광합성 복습 노트",
+                "action_items_text": "엽록체 광합성 장소",
+                "created_at": "2024-01-05T09:00:00",
+            },
+        )
+        await populated_search_db.commit()
+
+        service = SearchService()
+        result = await service.search(session=populated_search_db, query="엽록체")
+
+        assert result.total == 1
+        assert result.items[0].task_id == "sum-study-search-001"
+
+    @pytest.mark.asyncio
     async def test_search_result_schema(self, populated_search_db):
         """SearchResponse 스키마가 올바르게 반환되어야 함"""
         from backend.services.search_service import SearchService
