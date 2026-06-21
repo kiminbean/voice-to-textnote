@@ -625,15 +625,15 @@ def check_readme_release_status(root: Path, reporter: Reporter) -> None:
     else:
         reporter.ok("README does not overclaim Production Ready before strict evidence")
     if (
-        "3887 백엔드 테스트" in readme
-        and "3887개" in readme
+        "3888 백엔드 테스트" in readme
+        and "3888개" in readme
         and ("Flutter 415" in readme or "415개" in readme)
-        and "4302개" in readme
+        and "4303개" in readme
     ):
         reporter.ok("README test counts match current release validation evidence")
     else:
         reporter.fail(
-            "README test counts must match current 3887 backend / 415 Flutter / 4302 total evidence"
+            "README test counts must match current 3888 backend / 415 Flutter / 4303 total evidence"
         )
     if f"{completed_spec_count}개 SPEC" in readme:
         reporter.fail("README should avoid hard-coded completed SPEC counts outside the SPEC list")
@@ -708,11 +708,11 @@ def check_docs(root: Path, reporter: Reporter) -> None:
             "Release procedure SPEC count must match README completed SPEC list "
             f"({completed_spec_count})"
         )
-    if "3887 passed" in procedure_doc and "Flutter: 415 passed" in procedure_doc:
+    if "3888 passed" in procedure_doc and "Flutter: 415 passed" in procedure_doc:
         reporter.ok("Release procedure backend test count matches latest full pytest evidence")
     else:
         reporter.fail(
-            "Release procedure test counts must match latest 3887 backend / 415 Flutter evidence"
+            "Release procedure test counts must match latest 3888 backend / 415 Flutter evidence"
         )
     app_store_doc = read_text(root / "docs/app-store-metadata.md")
     for snippet in [
@@ -1033,10 +1033,9 @@ def resolve_release_artifact_path(root: Path, artifact_path: str) -> Path:
 
 def artifact_path_stays_inside_root(root: Path, artifact_path: str) -> bool:
     path = Path(artifact_path).expanduser()
-    if path.is_absolute():
-        return True
     try:
-        (root / path).resolve().relative_to(root.resolve())
+        resolved = path.resolve() if path.is_absolute() else (root / path).resolve()
+        resolved.relative_to(root.resolve())
     except ValueError:
         return False
     return True
