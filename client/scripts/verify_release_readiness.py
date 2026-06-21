@@ -775,6 +775,8 @@ def check_docs(root: Path, reporter: Reporter) -> None:
         [
             "client/scripts/create_release_e2e_evidence.py",
             "17개 required scenario",
+            "python3 client/scripts/verify_mobile_release_runner.py",
+            "python3 client/scripts/verify_github_mobile_release_env.py",
             "python3 client/scripts/verify_release_readiness.py --strict",
         ],
         "Release procedure matches current strict E2E evidence workflow",

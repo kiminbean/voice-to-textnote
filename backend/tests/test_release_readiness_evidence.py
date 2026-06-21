@@ -1038,6 +1038,8 @@ def test_release_procedure_rejects_version_drift(tmp_path):
         (
             "client/scripts/create_release_e2e_evidence.py\n"
             "17개 required scenario\n"
+            "python3 client/scripts/verify_mobile_release_runner.py\n"
+            "python3 client/scripts/verify_github_mobile_release_env.py\n"
             "python3 client/scripts/verify_release_readiness.py --strict\n"
             "2개 SPEC 전부 완료\n"
             "2 SPECs completed\n"

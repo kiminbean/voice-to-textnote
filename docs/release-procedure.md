@@ -140,6 +140,14 @@ python3 client/scripts/verify_release_readiness.py --strict
 ./run.sh  # 또는 brew services로 daemon 등록
 ```
 
+러너를 등록한 뒤 strict workflow를 실행하기 전에 같은 macOS 장비에서 실기기와 툴체인을 확인합니다.
+
+```bash
+ANDROID_DEVICE_SERIAL=$ANDROID_DEVICE_SERIAL \
+IOS_DEVICE_UDID=$IOS_DEVICE_UDID \
+python3 client/scripts/verify_mobile_release_runner.py
+```
+
 ### 3.2 GitHub Environment 설정
 
 ```bash
@@ -153,6 +161,8 @@ APP_STORE_CONNECT_KEY_ID=$APP_STORE_CONNECT_KEY_ID \
 APP_STORE_CONNECT_ISSUER_ID=$APP_STORE_CONNECT_ISSUER_ID \
 FIREBASE_TEST_DEVICE_TOKEN=$FIREBASE_TEST_DEVICE_TOKEN \
 python3 client/scripts/configure_github_mobile_release_env.py --repo kiminbean/voice-to-textnote
+
+python3 client/scripts/verify_github_mobile_release_env.py --repo kiminbean/voice-to-textnote
 ```
 
 ### 3.3 Strict Gate CI 실행
