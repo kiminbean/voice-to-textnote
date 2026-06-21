@@ -68,6 +68,7 @@ from backend.app.api.v1.minutes import (
     external_import,
     keywords,
     minutes,
+    sales_contact_brief,
     study_pack,
     summary,
     tags,
@@ -95,6 +96,7 @@ ROUTER_REGISTRY: list[tuple[APIRouter, bool]] = [
     (external_import.router, True),  # SPEC-OWLL-IMPORT-001: external URL/text import
     (smart_summary_router, True),  # 다양한 모드로 스마트 요약 생성 (신규 기능)
     (summary.router, True),
+    (sales_contact_brief.router, True),  # SPEC-OWLL-SALES-001: sales/contact follow-up brief
     (study_pack.router, True),  # SPEC-STUDY-001: transcript-grounded study packs
     (translation.router, True),  # SPEC-OWLL-TRANSLATION-001: persisted artifact translation
     # ── 공개 엔드포인트 (API Key 불필요) ────────────────────────────────────────

@@ -560,6 +560,20 @@
     "api_key": true
   },
   {
+    "path": "/api/v1/minutes/{task_id}/sales-contact-brief",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/minutes/{task_id}/sales-contact-brief",
+    "methods": [
+      "POST"
+    ],
+    "api_key": true
+  },
+  {
     "path": "/api/v1/minutes/{task_id}/status",
     "methods": [
       "GET"

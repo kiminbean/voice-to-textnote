@@ -83,9 +83,9 @@ def write_tone_policy_files(root: Path, *, tone_model_line: str = 'tone_model: s
 def write_readme_status(root: Path, content: str) -> None:
     (root / "README.md").write_text(
         (
-            "3794 백엔드 테스트\n"
-            "| 백엔드 단위/통합/E2E | 3794개 | 100.00% |\n"
-            "| 총합 | 4176개 | - |\n"
+            "3820 백엔드 테스트\n"
+            "| 백엔드 단위/통합/E2E | 3820개 | 100.00% |\n"
+            "| 총합 | 4202개 | - |\n"
             f"{content}"
         ),
         encoding="utf-8",
