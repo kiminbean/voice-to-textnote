@@ -7,17 +7,21 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:voice_to_textnote/models/meeting.dart';
 import 'package:voice_to_textnote/models/study_pack.dart';
+import 'package:voice_to_textnote/models/translation.dart';
 import 'package:voice_to_textnote/providers/meeting_list_provider.dart';
 import 'package:voice_to_textnote/screens/result_screen.dart';
 import 'package:voice_to_textnote/services/minutes_api.dart';
 import 'package:voice_to_textnote/services/study_pack_api.dart';
 import 'package:voice_to_textnote/services/summary_api.dart';
+import 'package:voice_to_textnote/services/translation_api.dart';
 
 class MockMinutesApi extends Mock implements MinutesApi {}
 
 class MockSummaryApi extends Mock implements SummaryApi {}
 
 class MockStudyPackApi extends Mock implements StudyPackApi {}
+
+class MockTranslationApi extends Mock implements TranslationApi {}
 
 // 테스트용 Meeting 목록 Notifier (AsyncNotifier이므로 Future<List<Meeting>> 반환)
 class _MockMeetingListNotifier extends MeetingListNotifier {
@@ -51,6 +55,13 @@ Future<void> _pumpToStudyTab(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
+Future<void> _pumpToTranslationTab(WidgetTester tester) async {
+  await tester.ensureVisible(find.text('번역'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('번역'));
+  await tester.pumpAndSettle();
+}
+
 Finder _tabText(String label) {
   return find.descendant(
     of: find.byType(TabBar),
@@ -62,6 +73,7 @@ void main() {
   late MockMinutesApi mockMinApi;
   late MockSummaryApi mockSumApi;
   late MockStudyPackApi mockStudyPackApi;
+  late MockTranslationApi mockTranslationApi;
 
   // 테스트용 미팅 데이터 (summaryTaskId 포함)
   final testMeeting = Meeting(
@@ -77,6 +89,7 @@ void main() {
     mockMinApi = MockMinutesApi();
     mockSumApi = MockSummaryApi();
     mockStudyPackApi = MockStudyPackApi();
+    mockTranslationApi = MockTranslationApi();
 
     // 회의록 기본 응답
     when(() => mockMinApi.getResult(any())).thenAnswer(
@@ -146,6 +159,22 @@ void main() {
         createdAt: '2026-03-22T00:00:00Z',
       ),
     );
+    when(() => mockTranslationApi.get(
+          any(),
+          targetLanguage: any(named: 'targetLanguage'),
+          sourceType: any(named: 'sourceType'),
+        )).thenAnswer(
+      (_) async => const TranslationResult(
+        taskId: 'sum-task-001',
+        sourceType: 'summary',
+        sourceLanguage: 'ko',
+        targetLanguage: 'en',
+        translatedText: 'Meeting summary translated into English.',
+        sourceExcerpt: '회의 요약 원문',
+        cached: true,
+        createdAt: '2026-06-21T00:00:00+00:00',
+      ),
+    );
   });
 
   // 위젯 테스트 헬퍼: ProviderScope + MaterialApp 래핑
@@ -155,6 +184,7 @@ void main() {
         minutesApiProvider.overrideWithValue(mockMinApi),
         summaryApiProvider.overrideWithValue(mockSumApi),
         studyPackApiProvider.overrideWithValue(mockStudyPackApi),
+        translationApiProvider.overrideWithValue(mockTranslationApi),
         meetingListProvider.overrideWith(
           () => _MockMeetingListNotifier([testMeeting]),
         ),
@@ -372,6 +402,85 @@ void main() {
       expect(find.text('인터뷰'), findsOneWidget);
       verify(() => mockStudyPackApi.get('min-task-001',
           mode: 'interview', language: 'ko')).called(1);
+    });
+  });
+
+  group('_TranslationTab - 회의록/요약 번역 표시', () {
+    testWidgets('캐시된 요약 번역을 표시하고 복사할 수 있어야 함', (WidgetTester tester) async {
+      // Act
+      await tester.pumpWidget(buildTestWidget([]));
+      await _pumpToTranslationTab(tester);
+
+      // Assert
+      expect(find.text('번역 소스'), findsOneWidget);
+      expect(find.text('대상 언어'), findsOneWidget);
+      expect(find.text('번역 결과'), findsOneWidget);
+      expect(find.text('Meeting summary translated into English.'),
+          findsOneWidget);
+      expect(find.text('캐시됨'), findsOneWidget);
+      verify(() => mockTranslationApi.get(
+            'sum-task-001',
+            targetLanguage: 'en',
+            sourceType: 'summary',
+          )).called(1);
+
+      Map<dynamic, dynamic>? clipboardPayload;
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(SystemChannels.platform, (call) async {
+        if (call.method == 'Clipboard.setData') {
+          clipboardPayload = call.arguments as Map<dynamic, dynamic>;
+        }
+        return null;
+      });
+      addTearDown(() {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(SystemChannels.platform, null);
+      });
+
+      await tester.tap(find.widgetWithText(OutlinedButton, '번역 복사'));
+      await tester.pump(const Duration(milliseconds: 250));
+
+      expect(
+        clipboardPayload?['text'],
+        'Meeting summary translated into English.',
+      );
+      expect(find.text('번역을 복사했습니다'), findsOneWidget);
+    });
+
+    testWidgets('대상 언어 변경 시 해당 언어로 번역을 요청해야 함', (WidgetTester tester) async {
+      // Act
+      await tester.pumpWidget(buildTestWidget([]));
+      await _pumpToTranslationTab(tester);
+      await tester.tap(find.text('日本語'));
+      await tester.pumpAndSettle();
+
+      // Assert
+      verify(() => mockTranslationApi.get(
+            'sum-task-001',
+            targetLanguage: 'ja',
+            sourceType: 'summary',
+          )).called(1);
+    });
+
+    testWidgets('회의록 소스 선택 시 minutes task로 번역을 요청해야 함',
+        (WidgetTester tester) async {
+      // Act
+      await tester.pumpWidget(buildTestWidget([]));
+      await _pumpToTranslationTab(tester);
+      await tester.tap(
+        find.descendant(
+          of: find.byType(SegmentedButton<String>),
+          matching: find.text('회의록'),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Assert
+      verify(() => mockTranslationApi.get(
+            'min-task-001',
+            targetLanguage: 'en',
+            sourceType: 'minutes',
+          )).called(1);
     });
   });
 

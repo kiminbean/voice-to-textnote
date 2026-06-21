@@ -13,9 +13,11 @@ import 'package:voice_to_textnote/models/meeting.dart';
 import 'package:voice_to_textnote/models/mind_map_result.dart';
 import 'package:voice_to_textnote/models/summary_result.dart';
 import 'package:voice_to_textnote/models/study_pack.dart';
+import 'package:voice_to_textnote/models/translation.dart';
 import 'package:voice_to_textnote/providers/meeting_list_provider.dart';
 import 'package:voice_to_textnote/providers/result_provider.dart';
 import 'package:voice_to_textnote/providers/study_pack_provider.dart';
+import 'package:voice_to_textnote/providers/translation_provider.dart';
 import 'package:voice_to_textnote/services/export_api.dart';
 import 'package:voice_to_textnote/services/statistics_api.dart';
 import 'package:voice_to_textnote/services/sentiment_api.dart';
@@ -228,7 +230,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     final summaryTaskId = meeting?.summaryTaskId;
 
     return DefaultTabController(
-      length: 9,
+      length: 10,
       child: Scaffold(
         appBar: AppBar(
           leading: IconButton(
@@ -318,6 +320,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
               Tab(text: '회의록'),
               Tab(text: '마인드맵'),
               Tab(text: '학습'),
+              Tab(text: '번역'),
               Tab(text: 'Q&A'),
               Tab(text: '통계'),
               Tab(text: '감정 분석'),
@@ -352,6 +355,11 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                   _MindMapTab(taskId: summaryTaskId),
                   // 학습 탭: 회의록 기반 Study Pack 생성
                   _StudyTab(taskId: minutesTaskId),
+                  // 번역 탭: 회의록/요약 기반 다국어 번역
+                  _TranslationTab(
+                    minutesTaskId: minutesTaskId,
+                    summaryTaskId: summaryTaskId,
+                  ),
                   // Q&A 탭: 회의 내용 질문/답변 (SPEC-QA-001)
                   _QATab(taskId: summaryTaskId ?? minutesTaskId),
                   _StatisticsTab(taskId: minutesTaskId),
@@ -2773,6 +2781,297 @@ class _SummaryTabState extends ConsumerState<_SummaryTab> {
               ShimmerText(lines: 5),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TranslationLanguageOption {
+  final String value;
+  final String label;
+
+  const _TranslationLanguageOption(this.value, this.label);
+}
+
+const _translationLanguageOptions = [
+  _TranslationLanguageOption('en', 'English'),
+  _TranslationLanguageOption('ko', '한국어'),
+  _TranslationLanguageOption('ja', '日本語'),
+  _TranslationLanguageOption('zh', '中文'),
+];
+
+class _TranslationTab extends ConsumerStatefulWidget {
+  final String? minutesTaskId;
+  final String? summaryTaskId;
+
+  const _TranslationTab({
+    required this.minutesTaskId,
+    required this.summaryTaskId,
+  });
+
+  @override
+  ConsumerState<_TranslationTab> createState() => _TranslationTabState();
+}
+
+class _TranslationTabState extends ConsumerState<_TranslationTab> {
+  String _targetLanguage = 'en';
+  String _sourceType = 'summary';
+
+  @override
+  Widget build(BuildContext context) {
+    final taskId = _sourceType == 'summary'
+        ? widget.summaryTaskId ?? widget.minutesTaskId
+        : widget.minutesTaskId ?? widget.summaryTaskId;
+
+    if (taskId == null) {
+      return const EmptyStateWidget(
+        icon: Icons.translate_outlined,
+        title: '번역할 결과가 없습니다',
+        subtitle: '회의록 또는 요약이 완료되면 번역을 생성할 수 있습니다',
+      );
+    }
+
+    final request = TranslationRequest(
+      taskId: taskId,
+      targetLanguage: _targetLanguage,
+      sourceType: _sourceType,
+    );
+    final translationAsync = ref.watch(translationProvider(request));
+
+    return translationAsync.when(
+      loading: () => const Padding(
+        padding: EdgeInsets.all(16),
+        child: Card(
+          child: Padding(
+            padding: EdgeInsets.all(16),
+            child: ShimmerText(lines: 6),
+          ),
+        ),
+      ),
+      error: (error, _) => SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            _TranslationControls(
+              sourceType: _sourceType,
+              targetLanguage: _targetLanguage,
+              hasSummary: widget.summaryTaskId != null,
+              hasMinutes: widget.minutesTaskId != null,
+              onSourceChanged: _setSourceType,
+              onLanguageChanged: _setTargetLanguage,
+            ),
+            const SizedBox(height: 16),
+            ErrorRetryWidget(
+              message: '번역을 불러올 수 없습니다',
+              onRetry: () => ref.invalidate(translationProvider(request)),
+            ),
+          ],
+        ),
+      ),
+      data: (translation) => SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _TranslationControls(
+              sourceType: _sourceType,
+              targetLanguage: _targetLanguage,
+              hasSummary: widget.summaryTaskId != null,
+              hasMinutes: widget.minutesTaskId != null,
+              onSourceChanged: _setSourceType,
+              onLanguageChanged: _setTargetLanguage,
+            ),
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: () => _copyTranslation(context, translation),
+                    icon: const Icon(Icons.copy_all_outlined),
+                    label: const Text('번역 복사'),
+                  ),
+                  FilledButton.tonalIcon(
+                    onPressed: () => ref
+                        .read(translationProvider(request).notifier)
+                        .regenerate(),
+                    icon: const Icon(Icons.refresh_rounded),
+                    label: const Text('다시 번역'),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            _TranslationResultCard(translation: translation),
+            if (translation.sourceExcerpt.trim().isNotEmpty) ...[
+              const SizedBox(height: 12),
+              _TranslationSourceCard(translation: translation),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _setSourceType(String sourceType) {
+    if (sourceType == _sourceType) return;
+    setState(() => _sourceType = sourceType);
+  }
+
+  void _setTargetLanguage(String targetLanguage) {
+    if (targetLanguage == _targetLanguage) return;
+    setState(() => _targetLanguage = targetLanguage);
+  }
+
+  Future<void> _copyTranslation(
+    BuildContext context,
+    TranslationResult translation,
+  ) async {
+    final messenger = ScaffoldMessenger.of(context);
+    await Clipboard.setData(
+      ClipboardData(text: translation.translatedText),
+    );
+    messenger.showSnackBar(
+      const SnackBar(content: Text('번역을 복사했습니다')),
+    );
+  }
+}
+
+class _TranslationControls extends StatelessWidget {
+  final String sourceType;
+  final String targetLanguage;
+  final bool hasSummary;
+  final bool hasMinutes;
+  final ValueChanged<String> onSourceChanged;
+  final ValueChanged<String> onLanguageChanged;
+
+  const _TranslationControls({
+    required this.sourceType,
+    required this.targetLanguage,
+    required this.hasSummary,
+    required this.hasMinutes,
+    required this.onSourceChanged,
+    required this.onLanguageChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('번역 소스', style: Theme.of(context).textTheme.titleSmall),
+        const SizedBox(height: 8),
+        SegmentedButton<String>(
+          segments: [
+            ButtonSegment<String>(
+              value: 'summary',
+              label: const Text('요약'),
+              icon: const Icon(Icons.summarize_outlined),
+              enabled: hasSummary,
+            ),
+            ButtonSegment<String>(
+              value: 'minutes',
+              label: const Text('회의록'),
+              icon: const Icon(Icons.notes_outlined),
+              enabled: hasMinutes,
+            ),
+          ],
+          selected: {sourceType},
+          onSelectionChanged: (values) => onSourceChanged(values.first),
+        ),
+        const SizedBox(height: 16),
+        Text('대상 언어', style: Theme.of(context).textTheme.titleSmall),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final option in _translationLanguageOptions)
+              ChoiceChip(
+                label: Text(option.label),
+                selected: option.value == targetLanguage,
+                onSelected: (_) => onLanguageChanged(option.value),
+              ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _TranslationResultCard extends StatelessWidget {
+  final TranslationResult translation;
+
+  const _TranslationResultCard({required this.translation});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.translate_outlined),
+                const SizedBox(width: 8),
+                Text('번역 결과', style: Theme.of(context).textTheme.titleMedium),
+                const Spacer(),
+                if (translation.cached)
+                  const Chip(
+                    label: Text('캐시됨'),
+                    visualDensity: VisualDensity.compact,
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            SelectableText(
+              translation.translatedText,
+              style: const TextStyle(height: 1.5),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TranslationSourceCard extends StatelessWidget {
+  final TranslationResult translation;
+
+  const _TranslationSourceCard({required this.translation});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.article_outlined),
+                const SizedBox(width: 8),
+                Text('원문 일부', style: Theme.of(context).textTheme.titleSmall),
+                const Spacer(),
+                Text(
+                  translation.sourceType == 'summary' ? '요약' : '회의록',
+                  style: Theme.of(context).textTheme.labelMedium,
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            SelectableText(
+              translation.sourceExcerpt,
+              maxLines: 8,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
         ),
       ),
     );
