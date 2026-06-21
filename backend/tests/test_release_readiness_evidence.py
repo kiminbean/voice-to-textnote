@@ -121,6 +121,73 @@ def write_readme_status(root: Path, content: str) -> None:
     )
 
 
+def write_minimal_android_project(root: Path, *, target_sdk: int = 35) -> None:
+    android_root = root / "client/android/app"
+    (android_root / "src/main/kotlin/com/voicetextnote/app").mkdir(parents=True)
+    (android_root / "src/main/res/xml").mkdir(parents=True)
+    (android_root / "src/debug/res/xml").mkdir(parents=True)
+    (android_root / "build.gradle").write_text(
+        f"""
+android {{
+    namespace 'com.voicetextnote.app'
+    compileSdk 36
+    defaultConfig {{
+        applicationId "com.voicetextnote.app"
+        minSdkVersion 29
+        targetSdkVersion {target_sdk}
+    }}
+}}
+        """,
+        encoding="utf-8",
+    )
+    (android_root / "src/main/AndroidManifest.xml").write_text(
+        """
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <application android:networkSecurityConfig="@xml/network_security_config">
+    <activity>
+      <intent-filter>
+        <action android:name="android.intent.action.SEND" />
+        <data android:mimeType="text/plain" />
+        <data android:mimeType="application/pdf" />
+        <data android:mimeType="image/*" />
+      </intent-filter>
+    </activity>
+  </application>
+</manifest>
+        """,
+        encoding="utf-8",
+    )
+    (android_root / "src/main/kotlin/com/voicetextnote/app/MainActivity.kt").write_text(
+        """
+const val channel = "com.voicetextnote.app/shared_import"
+fun consumeInitialSharedImport() {}
+fun consumeLatestSharedImport() {}
+val action = Intent.ACTION_SEND
+val text = Intent.EXTRA_TEXT
+val stream = Intent.EXTRA_STREAM
+val display = OpenableColumns.DISPLAY_NAME
+val payload = "filePath"
+        """,
+        encoding="utf-8",
+    )
+    (android_root / "src/main/res/xml/network_security_config.xml").write_text(
+        '<network-security-config><base-config cleartextTrafficPermitted="false"></base-config></network-security-config>',
+        encoding="utf-8",
+    )
+    (android_root / "src/debug/res/xml/network_security_config.xml").write_text(
+        """
+<network-security-config>
+  <base-config cleartextTrafficPermitted="false"></base-config>
+  <domain-config cleartextTrafficPermitted="true">
+    <domain>localhost</domain>
+    <domain>100.110.255.105</domain>
+  </domain-config>
+</network-security-config>
+        """,
+        encoding="utf-8",
+    )
+
+
 def test_release_e2e_evidence_accepts_complete_manual_proof(tmp_path, monkeypatch):
     module = load_release_readiness_module()
     evidence_path = write_evidence(tmp_path, make_evidence(tmp_path, module))
@@ -1151,6 +1218,26 @@ services:
     assert any("ENVIRONMENT=production" in error for error in reporter.errors)
     assert any("internal async Postgres" in error for error in reporter.errors)
     assert any("external DATABASE_URL override" in error for error in reporter.errors)
+
+
+def test_android_project_accepts_current_play_target_sdk():
+    module = load_release_readiness_module()
+    root = Path(__file__).resolve().parents[2]
+
+    reporter = module.Reporter()
+    module.check_android_project(root, reporter)
+
+    assert reporter.errors == []
+
+
+def test_android_project_rejects_stale_play_target_sdk(tmp_path):
+    module = load_release_readiness_module()
+    write_minimal_android_project(tmp_path, target_sdk=34)
+
+    reporter = module.Reporter()
+    module.check_android_project(tmp_path, reporter)
+
+    assert any("targetSdkVersion must be at least 35" in error for error in reporter.errors)
 
 
 def test_readme_release_status_accepts_release_candidate_language(tmp_path):

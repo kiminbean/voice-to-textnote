@@ -26,6 +26,7 @@ PROJECT_ID = "voice-to-textnote"
 ANDROID_PACKAGE = "com.voicetextnote.app"
 IOS_BUNDLE_ID = "com.voicetextnote.app"
 URL_SCHEME = "voicetextnote"
+MIN_GOOGLE_PLAY_TARGET_SDK = 35
 REQUIRED_E2E_SCENARIOS = {
     "permission_microphone_initial": "Initial microphone permission prompt",
     "permission_denied_recovery": "Permission denial recovery UI",
@@ -594,6 +595,20 @@ def check_android_project(root: Path, reporter: Reporter) -> None:
         reporter.ok(f"Android package/application id is {ANDROID_PACKAGE}")
     else:
         reporter.fail(f"Android package/application id {ANDROID_PACKAGE} missing")
+    target_sdk_match = re.search(r"\btargetSdkVersion\s+(\d+)\b", gradle)
+    if not target_sdk_match:
+        reporter.fail("Android targetSdkVersion missing from Gradle config")
+    else:
+        target_sdk = int(target_sdk_match.group(1))
+        if target_sdk >= MIN_GOOGLE_PLAY_TARGET_SDK:
+            reporter.ok(
+                "Android targetSdkVersion satisfies Google Play target API policy"
+            )
+        else:
+            reporter.fail(
+                "Android targetSdkVersion must be at least "
+                f"{MIN_GOOGLE_PLAY_TARGET_SDK} for Google Play submissions"
+            )
 
     manifest = read_text(manifest_path)
     if 'android:networkSecurityConfig="@xml/network_security_config"' in manifest:

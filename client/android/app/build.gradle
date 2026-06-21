@@ -1,5 +1,5 @@
 // build.gradle - Android 모듈 수준 설정
-// Min SDK: 29, Target SDK: 34, Compile SDK: 36
+// Min SDK: 29, Target SDK: 35, Compile SDK: 36
 
 plugins {
     id 'com.android.application'
@@ -25,7 +25,7 @@ android {
     defaultConfig {
         applicationId "com.voicetextnote.app"
         minSdkVersion 29
-        targetSdkVersion 34
+        targetSdkVersion 35
         versionCode 1
         versionName "1.0.0"
 
