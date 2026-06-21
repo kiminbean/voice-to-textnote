@@ -773,6 +773,7 @@ def check_docs(root: Path, reporter: Reporter) -> None:
         ("백그라운드 녹음", ("백그라운드 녹음",)),
         ("create_release_e2e_evidence.py", ("create_release_e2e_evidence.py",)),
         ("verify_mobile_release_runner.py", ("verify_mobile_release_runner.py",)),
+        ("xcodebuild -version", ("xcodebuild -version",)),
         ("./scripts/verify_mobile.sh --native", ("./scripts/verify_mobile.sh --native",)),
         ("RELEASE_E2E_EVIDENCE_PATH", ("RELEASE_E2E_EVIDENCE_PATH",)),
         ("artifact_sha256", ("artifact_sha256", "SHA-256")),

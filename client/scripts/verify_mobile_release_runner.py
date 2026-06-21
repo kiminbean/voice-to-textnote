@@ -81,6 +81,15 @@ def check_flutter_doctor(output: str, reporter: Reporter) -> None:
         reporter.warn("flutter doctor reports issues; physical devices may still be unavailable")
 
 
+def check_xcodebuild_version(output: str, reporter: Reporter) -> None:
+    required = ["Xcode", "Build version"]
+    missing = [snippet for snippet in required if snippet not in output]
+    if missing:
+        reporter.fail("xcodebuild -version missing: " + ", ".join(missing))
+    else:
+        reporter.ok("xcodebuild reports Xcode and build version")
+
+
 def check_android_device(serial: str, adb_output: str, reporter: Reporter) -> None:
     if not serial:
         reporter.fail("ANDROID_DEVICE_SERIAL is not set")
@@ -112,6 +121,7 @@ def check_runner_snapshot(
     system_name: str,
     commands: set[str],
     flutter_doctor_output: str,
+    xcodebuild_output: str,
     android_serial: str,
     adb_output: str,
     ios_udid: str,
@@ -119,19 +129,20 @@ def check_runner_snapshot(
     reporter: Reporter,
 ) -> None:
     check_macos(system_name, reporter)
-    for command in ["flutter", "dart", "adb", "xcrun", "pod", "java"]:
+    for command in ["flutter", "dart", "adb", "xcrun", "xcodebuild", "pod", "java"]:
         if command in commands:
             reporter.ok(f"Command available: {command}")
         else:
             reporter.fail(f"Command missing: {command}")
     check_flutter_doctor(flutter_doctor_output, reporter)
+    check_xcodebuild_version(xcodebuild_output, reporter)
     check_android_device(android_serial, adb_output, reporter)
     check_ios_device(ios_udid, devicectl_output, reporter)
 
 
 def fetch_and_check(reporter: Reporter) -> None:
     check_macos(platform.system(), reporter)
-    for command in ["flutter", "dart", "adb", "xcrun", "pod", "java"]:
+    for command in ["flutter", "dart", "adb", "xcrun", "xcodebuild", "pod", "java"]:
         check_command(command, reporter)
 
     code, output = command_output(["flutter", "doctor", "-v"])
@@ -139,6 +150,9 @@ def fetch_and_check(reporter: Reporter) -> None:
         check_flutter_doctor(output, reporter)
     else:
         reporter.fail("flutter doctor failed without output")
+
+    _, xcodebuild_output = command_output(["xcodebuild", "-version"])
+    check_xcodebuild_version(xcodebuild_output, reporter)
 
     _, adb_output = command_output(["adb", "devices", "-l"])
     check_android_device(os.environ.get("ANDROID_DEVICE_SERIAL", ""), adb_output, reporter)
