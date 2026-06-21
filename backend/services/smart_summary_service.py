@@ -282,23 +282,70 @@ class SmartSummaryService:
                 [
                     "## 강의 핵심",
                     *[f"- {sentence}" for sentence in sentences[:4]],
+                    "## 핵심 개념",
+                    *self._format_bullets(
+                        self._extract_labeled_items(content, ["핵심 개념", "개념", "concept"]),
+                        ["명시적인 핵심 개념이 충분하지 않습니다."],
+                    ),
+                    "## 예시/근거",
+                    *self._format_bullets(
+                        self._extract_labeled_items(content, ["예시", "사례", "근거", "example"]),
+                        ["강의 예시나 근거를 원문에서 추가 확인하세요."],
+                    ),
                     "## 복습 포인트",
                     *[f"- {point}" for point in self._extract_key_points(content)[:3]],
+                    "## 복습 질문",
+                    "- 핵심 개념을 실제 상황에 어떻게 적용할 수 있나요?",
                 ]
             )
 
         elif mode == SummaryMode.SALES_FOLLOW_UP:
+            needs = self._extract_labeled_items(
+                content,
+                ["고객 니즈", "니즈", "요구사항", "필요", "needs", "need"],
+            )
+            pain_points = self._extract_labeled_items(
+                content,
+                ["Pain point", "pain point", "페인포인트", "문제", "이슈", "불편", "어려움"],
+            )
+            objections = self._extract_labeled_items(
+                content,
+                ["반대 의견", "이의", "우려", "objection", "concern"],
+            )
+            next_actions = self._extract_labeled_items(
+                content,
+                ["후속 조치", "다음 액션", "다음 단계", "액션아이템", "할일", "follow-up", "next step"],
+            )
+            fallback_actions = self._generate_summary_by_mode(
+                content,
+                SummaryMode.ACTION_ORIENTED,
+                SummaryLength.MEDIUM,
+                [FocusArea.ALL],
+            )
+            if not next_actions and fallback_actions:
+                next_actions = [fallback_actions]
+            first_need = needs[0] if needs else "논의된 고객 니즈"
+            first_action = next_actions[0] if next_actions else "다음 연락에서 의사결정 기준 확인"
             summary = "\n".join(
                 [
                     "## 고객 니즈",
-                    *[f"- {point}" for point in self._extract_key_points(content)[:3]],
-                    "## 후속 조치",
-                    self._generate_summary_by_mode(
-                        content,
-                        SummaryMode.ACTION_ORIENTED,
-                        SummaryLength.MEDIUM,
-                        [FocusArea.ALL],
+                    *self._format_bullets(needs or self._extract_key_points(content)[:3]),
+                    "## Pain Points / 이슈",
+                    *self._format_bullets(
+                        pain_points,
+                        ["명시적인 이슈나 장애 요인을 추가 확인하세요."],
                     ),
+                    "## 반대 의견",
+                    *self._format_bullets(
+                        objections,
+                        ["명시적인 반대 의견은 기록되지 않았습니다."],
+                    ),
+                    "## 후속 조치",
+                    *self._format_bullets(next_actions),
+                    "## 다음 액션",
+                    *self._format_bullets(next_actions),
+                    "## 팔로업 메시지 초안",
+                    f"- {first_need} 관련해 {first_action} 일정과 기대 결과를 확인합니다.",
                 ]
             )
 
@@ -308,43 +355,111 @@ class SmartSummaryService:
                 [
                     "## 본문/주제",
                     sentences[0] if sentences else "설교 주제가 명시적으로 감지되지 않았습니다.",
+                    "## 핵심 메시지",
+                    *self._format_bullets(
+                        self._extract_labeled_items(content, ["핵심 메시지", "메시지", "주제"]),
+                        [sentences[0] if sentences else "핵심 메시지를 원문에서 추가 확인하세요."],
+                    ),
                     "## 묵상 포인트",
                     *[f"- {sentence}" for sentence in sentences[1:4]],
+                    "## 묵상 질문",
+                    "- 오늘 본문이 드러내는 태도나 선택은 무엇인가요?",
                     "## 적용",
                     "- 이번 주 실천할 내용을 정리하세요.",
+                    "## 다음 실천",
+                    "- 적용 내용을 한 가지 행동으로 좁혀 기록하세요.",
                 ]
             )
 
         elif mode == SummaryMode.RESEARCH_INTERVIEW:
             sentences = [s.strip() for s in re.split(r"[.!?]+", content) if s.strip()]
+            observations = self._extract_labeled_items(content, ["관찰", "observation"])
+            quotes = self._extract_labeled_items(
+                content,
+                ["사용자 발화", "발화", "인용", "quote", "participant quote"],
+            )
+            hypotheses = self._extract_labeled_items(
+                content,
+                ["가설", "인사이트", "insight", "hypothesis"],
+            )
+            follow_up_questions = self._extract_labeled_items(
+                content,
+                ["후속 질문", "추가 질문", "질문", "follow-up question"],
+            )
             summary = "\n".join(
                 [
                     "## 관찰",
-                    *[f"- {sentence}" for sentence in sentences[:3]],
+                    *self._format_bullets(observations or sentences[:3]),
+                    "## 사용자 발화",
+                    *self._format_bullets(
+                        quotes,
+                        ["직접 인용 가능한 사용자 발화가 명시적으로 충분하지 않습니다."],
+                    ),
                     "## 인사이트 후보",
                     *[f"- {point}" for point in self._extract_key_points(content)[:3]],
+                    "## 검증할 가설",
+                    *self._format_bullets(
+                        [f"{hypothesis} (원문 확인이 필요합니다.)" for hypothesis in hypotheses],
+                        ["가설은 원문 확인이 필요합니다."],
+                    ),
                     "## 후속 질문",
-                    "- 추가 확인이 필요한 가설을 정리하세요.",
+                    *self._format_bullets(
+                        follow_up_questions,
+                        ["추가 확인이 필요한 가설을 정리하세요."],
+                    ),
                 ]
             )
 
         elif mode == SummaryMode.DECISION_LOG:
-            decisions = self._generate_summary_by_mode(
+            decisions = self._extract_labeled_items(content, ["결정사항", "결정", "약속", "decision"])
+            rationale = self._extract_labeled_items(content, ["근거", "이유", "배경", "rationale"])
+            owners = self._extract_labeled_items(content, ["담당", "owner", "담당자"])
+            deadlines = self._extract_labeled_items(content, ["기한", "마감", "due"])
+            open_issues = self._extract_labeled_items(
                 content,
-                SummaryMode.EXECUTIVE,
-                SummaryLength.MEDIUM,
-                [FocusArea.DECISIONS_ONLY],
+                ["미결 쟁점", "미결", "쟁점", "리스크", "open issue"],
             )
-            summary = f"## 결정 로그\n{decisions or '명시적인 결정 사항이 없습니다.'}"
+            owner_deadline_items = [*owners, *deadlines]
+            summary = "\n".join(
+                [
+                    "## 결정 로그",
+                    "## 결정",
+                    *self._format_bullets(decisions, ["명시적인 결정 사항이 없습니다."]),
+                    "## 근거",
+                    *self._format_bullets(rationale, ["결정 근거가 명시적으로 충분하지 않습니다."]),
+                    "## 담당/기한",
+                    *self._format_bullets(
+                        owner_deadline_items,
+                        ["담당자나 기한이 명시적으로 충분하지 않습니다."],
+                    ),
+                    "## 미결 쟁점",
+                    *self._format_bullets(open_issues, ["미결 쟁점은 기록되지 않았습니다."]),
+                ]
+            )
 
         elif mode == SummaryMode.SOAP_NOTE:
             sentences = [s.strip() for s in re.split(r"[.!?]+", content) if s.strip()]
-            subjective = [f"- {sentence}" for sentence in sentences[:2]] or [
-                "- 주관적 진술이 명시적으로 충분하지 않습니다."
-            ]
-            objective = [f"- {point}" for point in self._extract_key_points(content)[:2]] or [
-                "- 객관적 관찰 내용이 명시적으로 충분하지 않습니다."
-            ]
+            subjective_items = self._extract_labeled_items(
+                content,
+                ["Subjective", "주관", "증상", "환자 말"],
+            )
+            objective_items = self._extract_labeled_items(
+                content,
+                ["Objective", "객관", "관찰", "수치", "검사"],
+            )
+            plan_items = self._extract_labeled_items(content, ["Plan", "계획", "후속", "follow-up"])
+            subjective = self._format_bullets(
+                subjective_items or sentences[:2],
+                ["주관적 진술이 명시적으로 충분하지 않습니다."],
+            )
+            objective = self._format_bullets(
+                objective_items or self._extract_key_points(content)[:2],
+                ["객관적 관찰 내용이 명시적으로 충분하지 않습니다."],
+            )
+            plan = self._format_bullets(
+                plan_items,
+                ["확인할 질문과 후속 기록 필요 사항을 정리하세요."],
+            )
             summary = "\n".join(
                 [
                     "## Subjective",
@@ -354,7 +469,10 @@ class SmartSummaryService:
                     "## Assessment 후보",
                     "- 사용자가 제공한 내용 기반의 정리 후보입니다. 진단으로 사용하지 마세요.",
                     "## Plan",
-                    "- 확인할 질문과 후속 기록 필요 사항을 정리하세요.",
+                    *plan,
+                    "## Safety / Scope",
+                    "- 진단/처방/응급 판단 아님",
+                    "- 의료 전문가 검토 필요",
                     "주의: 이 노트는 기록 정리용이며 의료 판단, 진단, 처방을 생성하지 않습니다.",
                 ]
             )
@@ -373,6 +491,33 @@ class SmartSummaryService:
             summary = summary[: target_length - 3] + "..."
 
         return summary.strip()
+
+    def _extract_labeled_items(self, content: str, labels: list[str]) -> list[str]:
+        """라벨이 붙은 도메인 필드를 원문 순서대로 추출한다."""
+        if not labels:
+            return []
+
+        escaped_labels = "|".join(re.escape(label) for label in labels)
+        pattern = rf"^\s*(?:{escaped_labels})\s*[:：-]\s*(.*?)(?=\n|$)"
+        items: list[str] = []
+        seen: set[str] = set()
+
+        for match in re.findall(pattern, content, re.IGNORECASE | re.MULTILINE):
+            item = match.strip().strip("-• ").strip()
+            if item and item not in seen:
+                seen.add(item)
+                items.append(item)
+
+        return items[:5]
+
+    def _format_bullets(
+        self,
+        items: list[str],
+        fallback: list[str] | None = None,
+    ) -> list[str]:
+        """요약 섹션 항목을 일관된 불릿으로 정리한다."""
+        source_items = items or fallback or ["명시적인 내용이 충분하지 않습니다."]
+        return [f"- {item.strip()}" for item in source_items if item.strip()]
 
     def _extract_key_points(self, content: str) -> list[str]:
         """핵심 포인트 추출"""

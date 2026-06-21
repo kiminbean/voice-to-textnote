@@ -344,6 +344,101 @@ class TestSmartSummaryService:
         for section in expected_sections:
             assert section in summary
 
+    def test_generate_sales_follow_up_summary_surfaces_sales_fields(self):
+        """영업 팔로업 모드는 니즈, 이슈, 반대 의견, 다음 액션을 분리한다."""
+        content = """
+        고객 니즈: 보안 감사 자동화가 필요합니다.
+        Pain point: 수동 감사 리포트 작성에 시간이 오래 걸립니다.
+        반대 의견: 예산 승인이 아직 필요합니다.
+        후속 조치: 화요일 데모 일정을 확정합니다.
+        """
+
+        summary = self.service._generate_summary_by_mode(
+            content,
+            SummaryMode.SALES_FOLLOW_UP,
+            SummaryLength.DETAILED,
+            [FocusArea.ALL],
+        )
+
+        assert "## 고객 니즈" in summary
+        assert "## Pain Points / 이슈" in summary
+        assert "## 반대 의견" in summary
+        assert "## 다음 액션" in summary
+        assert "## 팔로업 메시지 초안" in summary
+        assert "보안 감사 자동화" in summary
+        assert "화요일 데모" in summary
+
+    def test_generate_research_interview_summary_marks_hypotheses_as_unvalidated(self):
+        """리서치 인터뷰 모드는 관찰과 검증 전 가설을 구분한다."""
+        content = """
+        관찰: 참여자는 알림이 업무 흐름을 자주 끊는다고 말했습니다.
+        사용자 발화: "조용한 시간에는 알림이 오지 않았으면 좋겠어요."
+        가설: 집중 시간 보호 설정이 유지율을 높일 수 있습니다.
+        후속 질문: 알림을 허용하는 시간대를 확인해야 합니다.
+        """
+
+        summary = self.service._generate_summary_by_mode(
+            content,
+            SummaryMode.RESEARCH_INTERVIEW,
+            SummaryLength.DETAILED,
+            [FocusArea.ALL],
+        )
+
+        assert "## 사용자 발화" in summary
+        assert "## 검증할 가설" in summary
+        assert "원문 확인이 필요" in summary
+        assert "조용한 시간" in summary
+        assert "알림을 허용하는 시간대" in summary
+
+    def test_generate_decision_log_summary_separates_rationale_and_open_issues(self):
+        """결정 로그 모드는 결정, 근거, 담당/기한, 미결 쟁점을 분리한다."""
+        content = """
+        결정: 베타 출시를 다음 주로 확정했습니다.
+        근거: 고객 5곳이 조기 접근을 요청했습니다.
+        담당: PM이 공지문을 작성합니다.
+        기한: 금요일까지 배포 체크리스트를 완료합니다.
+        미결 쟁점: 롤백 기준은 추가 합의가 필요합니다.
+        """
+
+        summary = self.service._generate_summary_by_mode(
+            content,
+            SummaryMode.DECISION_LOG,
+            SummaryLength.DETAILED,
+            [FocusArea.ALL],
+        )
+
+        assert "## 결정" in summary
+        assert "## 근거" in summary
+        assert "## 담당/기한" in summary
+        assert "## 미결 쟁점" in summary
+        assert "베타 출시" in summary
+        assert "롤백 기준" in summary
+
+    def test_generate_soap_note_summary_includes_scope_safety_section(self):
+        """SOAP 모드는 의료 판단으로 오해되지 않도록 안전 범위를 명시한다."""
+        content = """
+        Subjective: 환자는 어제부터 목 통증이 있다고 말했습니다.
+        Objective: 체온은 37.2도이고 기침은 관찰되지 않았습니다.
+        Plan: 증상 변화와 복용 약물을 다음 방문 때 확인합니다.
+        """
+
+        summary = self.service._generate_summary_by_mode(
+            content,
+            SummaryMode.SOAP_NOTE,
+            SummaryLength.DETAILED,
+            [FocusArea.ALL],
+        )
+
+        assert "## Safety / Scope" in summary
+        assert "진단/처방/응급 판단 아님" in summary
+        assert "의료 전문가 검토 필요" in summary
+        assert "목 통증" in summary
+        assert "37.2도" in summary
+
+    def test_extract_labeled_items_without_labels_returns_empty_list(self):
+        """라벨 목록이 비어 있으면 라벨 추출은 빈 목록을 반환한다."""
+        assert self.service._extract_labeled_items("결정: 베타 출시", []) == []
+
     def test_extract_key_points(self):
         """핵심 포인트 추출 테스트"""
         content = """
