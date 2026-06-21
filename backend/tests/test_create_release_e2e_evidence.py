@@ -90,6 +90,31 @@ def test_release_e2e_scaffold_round_trips_json(tmp_path):
     assert set(loaded["artifact_sha256"]) == {"android_apk", "ios_runner_app"}
 
 
+def test_release_e2e_scaffold_output_resolves_from_repo_root(tmp_path):
+    create = load_create_evidence_module()
+    root = tmp_path / "repo"
+    root.mkdir()
+
+    output_path = create.resolve_output_path(root, "docs/release-e2e-evidence.json")
+
+    assert output_path == root / "docs/release-e2e-evidence.json"
+
+
+def test_release_e2e_scaffold_rejects_output_outside_repo(tmp_path):
+    create = load_create_evidence_module()
+    root = tmp_path / "repo"
+    outside = tmp_path / "outside"
+    root.mkdir()
+    outside.mkdir()
+
+    try:
+        create.resolve_output_path(root, str(outside / "release-e2e-evidence.json"))
+    except ValueError as exc:
+        assert "output path must stay inside repo" in str(exc)
+    else:
+        raise AssertionError("resolve_output_path should reject output outside repo")
+
+
 def test_release_e2e_scaffold_rejects_missing_artifacts(tmp_path):
     create = load_create_evidence_module()
 

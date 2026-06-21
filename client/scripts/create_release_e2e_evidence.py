@@ -21,9 +21,11 @@ from verify_release_readiness import (  # noqa: E402
     REQUIRED_E2E_SCENARIO_PLATFORMS,
     REQUIRED_E2E_SCENARIOS,
     artifact_path_stays_inside_root,
+    evidence_path_stays_inside_root,
     release_artifact_sha256,
     release_artifact_structure_error,
     resolve_release_artifact_path,
+    resolve_release_evidence_path,
 )
 
 DEFAULT_ANDROID_APK = "client/build/app/outputs/flutter-apk/app-debug.apk"
@@ -105,6 +107,12 @@ def build_evidence(root: Path, *, android_apk: str, ios_runner_app: str) -> dict
     }
 
 
+def resolve_output_path(root: Path, output_path: str) -> Path:
+    if not evidence_path_stays_inside_root(root, output_path):
+        raise ValueError("release evidence output path must stay inside repo")
+    return resolve_release_evidence_path(root, output_path)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", required=True, help="Path to write release evidence JSON.")
@@ -114,7 +122,11 @@ def main() -> int:
     args = parser.parse_args()
 
     root = Path(__file__).resolve().parents[2]
-    output_path = Path(args.output).expanduser()
+    try:
+        output_path = resolve_output_path(root, args.output)
+    except ValueError as exc:
+        print(f"Cannot create release E2E evidence scaffold: {exc}", file=sys.stderr)
+        return 1
     if output_path.exists() and not args.force:
         print(f"Refusing to overwrite existing file: {output_path}", file=sys.stderr)
         return 1
