@@ -4,6 +4,7 @@ import importlib.util
 import json
 import plistlib
 import zipfile
+from datetime import UTC, datetime, timedelta
 from functools import lru_cache
 from pathlib import Path
 
@@ -32,7 +33,7 @@ def make_evidence(tmp_path: Path, module) -> dict[str, object]:
     (ios_runner / "Runner").write_bytes(b"binary")
 
     return {
-        "tested_at": "2026-06-15T09:00:00+09:00",
+        "tested_at": datetime.now(UTC).isoformat(),
         "tester": "release-operator",
         "backend_version": current_revision,
         "client_version": current_revision,
@@ -108,10 +109,10 @@ def write_tone_policy_files(root: Path, *, tone_model_line: str = 'tone_model: s
 def write_readme_status(root: Path, content: str) -> None:
     (root / "README.md").write_text(
         (
-            "3881 백엔드 테스트\n"
-            "| 백엔드 단위/통합/E2E | 3881개 | 100.00% |\n"
+            "3882 백엔드 테스트\n"
+            "| 백엔드 단위/통합/E2E | 3882개 | 100.00% |\n"
             "| Flutter 테스트 | 415개 | - |\n"
-            "| 총합 | 4296개 | - |\n"
+            "| 총합 | 4297개 | - |\n"
             f"{content}"
         ),
         encoding="utf-8",
@@ -270,6 +271,20 @@ def test_release_e2e_evidence_rejects_future_test_timestamp(tmp_path, monkeypatc
     module.check_release_e2e_evidence(evidence_path, reporter)
 
     assert any("test timestamp must not be in the future" in error for error in reporter.errors)
+
+
+def test_release_e2e_evidence_rejects_stale_test_timestamp(tmp_path, monkeypatch):
+    module = load_release_readiness_module()
+    evidence = make_evidence(tmp_path, module)
+    evidence["tested_at"] = (datetime.now(UTC) - timedelta(days=15)).isoformat()
+    evidence_path = write_evidence(tmp_path, evidence)
+    monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
+    monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")
+
+    reporter = module.Reporter()
+    module.check_release_e2e_evidence(evidence_path, reporter)
+
+    assert any("test timestamp is stale" in error for error in reporter.errors)
 
 
 def test_release_e2e_evidence_rejects_non_git_revision_versions(tmp_path, monkeypatch):

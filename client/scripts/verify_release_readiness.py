@@ -19,7 +19,7 @@ import struct
 import subprocess
 import sys
 import zipfile
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 PROJECT_ID = "voice-to-textnote"
@@ -54,6 +54,7 @@ UNRESOLVED_EVIDENCE_PATTERNS = (
     r"not yet configured",
 )
 MIN_RELEASE_E2E_EVIDENCE_CHARS = 24
+MAX_RELEASE_E2E_EVIDENCE_AGE = timedelta(days=14)
 
 
 class Reporter:
@@ -624,15 +625,15 @@ def check_readme_release_status(root: Path, reporter: Reporter) -> None:
     else:
         reporter.ok("README does not overclaim Production Ready before strict evidence")
     if (
-        "3881 백엔드 테스트" in readme
-        and "3881개" in readme
+        "3882 백엔드 테스트" in readme
+        and "3882개" in readme
         and ("Flutter 415" in readme or "415개" in readme)
-        and "4296개" in readme
+        and "4297개" in readme
     ):
         reporter.ok("README test counts match current release validation evidence")
     else:
         reporter.fail(
-            "README test counts must match current 3881 backend / 415 Flutter / 4296 total evidence"
+            "README test counts must match current 3882 backend / 415 Flutter / 4297 total evidence"
         )
     if f"{completed_spec_count}개 SPEC" in readme:
         reporter.fail("README should avoid hard-coded completed SPEC counts outside the SPEC list")
@@ -707,11 +708,11 @@ def check_docs(root: Path, reporter: Reporter) -> None:
             "Release procedure SPEC count must match README completed SPEC list "
             f"({completed_spec_count})"
         )
-    if "3881 passed" in procedure_doc and "Flutter: 415 passed" in procedure_doc:
+    if "3882 passed" in procedure_doc and "Flutter: 415 passed" in procedure_doc:
         reporter.ok("Release procedure backend test count matches latest full pytest evidence")
     else:
         reporter.fail(
-            "Release procedure test counts must match latest 3881 backend / 415 Flutter evidence"
+            "Release procedure test counts must match latest 3882 backend / 415 Flutter evidence"
         )
     app_store_doc = read_text(root / "docs/app-store-metadata.md")
     for snippet in [
@@ -979,8 +980,11 @@ def require_iso_datetime(
         return ""
     reporter.ok(f"Release E2E evidence {label} is ISO-8601")
     comparable = parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
-    if comparable > datetime.now(UTC):
+    now = datetime.now(UTC)
+    if comparable > now:
         reporter.fail(f"Release E2E evidence {label} must not be in the future")
+    elif now - comparable > MAX_RELEASE_E2E_EVIDENCE_AGE:
+        reporter.fail(f"Release E2E evidence {label} is stale")
     return value
 
 
