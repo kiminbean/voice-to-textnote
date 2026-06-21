@@ -108,10 +108,10 @@ def write_tone_policy_files(root: Path, *, tone_model_line: str = 'tone_model: s
 def write_readme_status(root: Path, content: str) -> None:
     (root / "README.md").write_text(
         (
-            "3873 백엔드 테스트\n"
-            "| 백엔드 단위/통합/E2E | 3873개 | 100.00% |\n"
+            "3875 백엔드 테스트\n"
+            "| 백엔드 단위/통합/E2E | 3875개 | 100.00% |\n"
             "| Flutter 테스트 | 415개 | - |\n"
-            "| 총합 | 4288개 | - |\n"
+            "| 총합 | 4290개 | - |\n"
             f"{content}"
         ),
         encoding="utf-8",
@@ -128,6 +128,43 @@ def test_release_e2e_evidence_accepts_complete_manual_proof(tmp_path, monkeypatc
     module.check_release_e2e_evidence(evidence_path, reporter)
 
     assert reporter.errors == []
+
+
+def test_release_e2e_evidence_rejects_unknown_top_level_key(tmp_path, monkeypatch):
+    module = load_release_readiness_module()
+    evidence = make_evidence(tmp_path, module)
+    evidence["legacy_report_url"] = "https://example.invalid/release-e2e"
+    evidence_path = write_evidence(tmp_path, evidence)
+    monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
+    monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")
+
+    reporter = module.Reporter()
+    module.check_release_e2e_evidence(evidence_path, reporter)
+
+    assert any(
+        "unknown top-level key: legacy_report_url" in error
+        for error in reporter.errors
+    )
+
+
+def test_release_e2e_evidence_rejects_unknown_device_platform(tmp_path, monkeypatch):
+    module = load_release_readiness_module()
+    evidence = make_evidence(tmp_path, module)
+    devices = evidence["devices"]
+    assert isinstance(devices, dict)
+    devices["web"] = {
+        "serial": "browser-session",
+        "model": "Chrome",
+        "os_version": "macOS",
+    }
+    evidence_path = write_evidence(tmp_path, evidence)
+    monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
+    monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")
+
+    reporter = module.Reporter()
+    module.check_release_e2e_evidence(evidence_path, reporter)
+
+    assert any("unknown device platform: web" in error for error in reporter.errors)
 
 
 def test_release_e2e_evidence_rejects_missing_required_scenario(tmp_path, monkeypatch):
