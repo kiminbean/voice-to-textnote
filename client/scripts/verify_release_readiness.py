@@ -621,15 +621,15 @@ def check_readme_release_status(root: Path, reporter: Reporter) -> None:
     else:
         reporter.ok("README does not overclaim Production Ready before strict evidence")
     if (
-        "3860 백엔드 테스트" in readme
-        and "3860개" in readme
+        "3861 백엔드 테스트" in readme
+        and "3861개" in readme
         and ("Flutter 415" in readme or "415개" in readme)
-        and "4275개" in readme
+        and "4276개" in readme
     ):
         reporter.ok("README test counts match current release validation evidence")
     else:
         reporter.fail(
-            "README test counts must match current 3860 backend / 415 Flutter / 4275 total evidence"
+            "README test counts must match current 3861 backend / 415 Flutter / 4276 total evidence"
         )
     if f"{completed_spec_count}개 SPEC" in readme:
         reporter.fail("README should avoid hard-coded completed SPEC counts outside the SPEC list")
@@ -704,11 +704,11 @@ def check_docs(root: Path, reporter: Reporter) -> None:
             "Release procedure SPEC count must match README completed SPEC list "
             f"({completed_spec_count})"
         )
-    if "3860 passed" in procedure_doc and "Flutter: 415 passed" in procedure_doc:
+    if "3861 passed" in procedure_doc and "Flutter: 415 passed" in procedure_doc:
         reporter.ok("Release procedure backend test count matches latest full pytest evidence")
     else:
         reporter.fail(
-            "Release procedure test counts must match latest 3860 backend / 415 Flutter evidence"
+            "Release procedure test counts must match latest 3861 backend / 415 Flutter evidence"
         )
     app_store_doc = read_text(root / "docs/app-store-metadata.md")
     for snippet in [
@@ -1046,12 +1046,22 @@ def check_release_e2e_evidence(path: Path, reporter: Reporter, root: Path | None
         "android_apk": Path.is_file,
         "ios_runner_app": Path.is_dir,
     }
+    artifact_suffixes = {
+        "android_apk": ".apk",
+        "ios_runner_app": ".app",
+    }
     for key, type_check in artifact_type_checks.items():
         artifact_path = str(artifacts.get(key, "")).strip() if artifacts else ""
         if not artifact_path:
             reporter.fail(f"Release E2E evidence missing artifact {key}")
             continue
         resolved_artifact = resolve_release_artifact_path(root, artifact_path)
+        expected_suffix = artifact_suffixes[key]
+        if resolved_artifact.suffix != expected_suffix:
+            reporter.fail(
+                f"Release E2E evidence artifact path must end with {expected_suffix}: {key}"
+            )
+            continue
         if type_check(resolved_artifact):
             reporter.ok(f"Release E2E evidence artifact exists: {key}")
         elif resolved_artifact.exists():

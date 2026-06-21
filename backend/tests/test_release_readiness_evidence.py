@@ -83,10 +83,10 @@ def write_tone_policy_files(root: Path, *, tone_model_line: str = 'tone_model: s
 def write_readme_status(root: Path, content: str) -> None:
     (root / "README.md").write_text(
         (
-            "3860 백엔드 테스트\n"
-            "| 백엔드 단위/통합/E2E | 3860개 | 100.00% |\n"
+            "3861 백엔드 테스트\n"
+            "| 백엔드 단위/통합/E2E | 3861개 | 100.00% |\n"
             "| Flutter 테스트 | 415개 | - |\n"
-            "| 총합 | 4275개 | - |\n"
+            "| 총합 | 4276개 | - |\n"
             f"{content}"
         ),
         encoding="utf-8",
@@ -214,6 +214,26 @@ def test_release_e2e_evidence_rejects_android_apk_directory(tmp_path, monkeypatc
     module.check_release_e2e_evidence(evidence_path, reporter)
 
     assert any("artifact must be a file: android_apk" in error for error in reporter.errors)
+
+
+def test_release_e2e_evidence_rejects_android_artifact_without_apk_suffix(
+    tmp_path, monkeypatch
+):
+    module = load_release_readiness_module()
+    evidence = make_evidence(tmp_path, module)
+    android_artifact = tmp_path / "app-release.txt"
+    android_artifact.write_text("not an apk", encoding="utf-8")
+    artifacts = evidence["artifacts"]
+    assert isinstance(artifacts, dict)
+    artifacts["android_apk"] = str(android_artifact)
+    evidence_path = write_evidence(tmp_path, evidence)
+    monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
+    monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")
+
+    reporter = module.Reporter()
+    module.check_release_e2e_evidence(evidence_path, reporter)
+
+    assert any("artifact path must end with .apk" in error for error in reporter.errors)
 
 
 def test_release_e2e_example_lists_every_required_scenario():
