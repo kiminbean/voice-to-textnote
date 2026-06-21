@@ -21,3 +21,10 @@ def test_main_build_enforces_lint_and_type_gates_for_release_scripts():
 
     assert "ruff check backend/ client/scripts" in workflow
     assert "mypy backend/ client/scripts --ignore-missing-imports" in workflow
+
+
+def test_main_build_docker_push_has_bounded_timeout():
+    workflow = workflow_text("build.yml")
+
+    docker_job = workflow.split("  docker-build-push:", 1)[1]
+    assert "    timeout-minutes: 45" in docker_job
