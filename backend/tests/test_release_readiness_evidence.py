@@ -22,7 +22,7 @@ def load_release_readiness_module():
 
 
 def make_evidence(tmp_path: Path, module) -> dict[str, object]:
-    android_apk = tmp_path / "app-debug.apk"
+    android_apk = tmp_path / "app-release.apk"
     ios_runner = tmp_path / "Runner.app"
     repo_root = Path(__file__).resolve().parents[2]
     current_revision = module.current_git_revision(repo_root)
@@ -663,6 +663,28 @@ def test_release_e2e_evidence_rejects_android_artifact_without_apk_suffix(
     assert any("artifact path must end with .apk" in error for error in reporter.errors)
 
 
+def test_release_e2e_evidence_rejects_android_debug_artifact(tmp_path, monkeypatch):
+    module = load_release_readiness_module()
+    evidence = make_evidence(tmp_path, module)
+    android_apk = Path(str(evidence["artifacts"]["android_apk"]))
+    android_debug_apk = tmp_path / "app-debug.apk"
+    android_apk.rename(android_debug_apk)
+    artifacts = evidence["artifacts"]
+    assert isinstance(artifacts, dict)
+    artifacts["android_apk"] = str(android_debug_apk)
+    artifact_hashes = evidence["artifact_sha256"]
+    assert isinstance(artifact_hashes, dict)
+    artifact_hashes["android_apk"] = module.release_artifact_sha256(android_debug_apk)
+    evidence_path = write_evidence(tmp_path, evidence)
+    monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
+    monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")
+
+    reporter = module.Reporter()
+    module.check_release_e2e_evidence(evidence_path, reporter, tmp_path)
+
+    assert any("artifact must be a release APK: android_apk" in error for error in reporter.errors)
+
+
 def test_release_e2e_evidence_rejects_android_artifact_path_traversal(
     tmp_path, monkeypatch
 ):
@@ -913,6 +935,13 @@ def test_release_e2e_example_matches_strict_top_level_schema():
     assert set(example["artifact_sha256"]) == set(example["artifacts"])
 
 
+def test_release_e2e_example_uses_release_android_artifact_path():
+    example_path = Path(__file__).resolve().parents[2] / "docs/release-e2e-evidence.example.json"
+    example = json.loads(example_path.read_text(encoding="utf-8"))
+
+    assert example["artifacts"]["android_apk"].endswith("app-release.apk")
+
+
 def test_tracked_release_e2e_scaffold_lists_every_required_scenario():
     module = load_release_readiness_module()
     scaffold_path = Path(__file__).resolve().parents[2] / "docs/release-e2e-evidence.json"
@@ -963,6 +992,13 @@ def test_tracked_release_e2e_scaffold_matches_strict_top_level_schema():
         "scenarios",
     }
     assert set(scaffold["artifact_sha256"]) == set(scaffold["artifacts"])
+
+
+def test_tracked_release_e2e_scaffold_uses_release_android_artifact_path():
+    scaffold_path = Path(__file__).resolve().parents[2] / "docs/release-e2e-evidence.json"
+    scaffold = json.loads(scaffold_path.read_text(encoding="utf-8"))
+
+    assert scaffold["artifacts"]["android_apk"].endswith("app-release.apk")
 
 
 def test_tone_release_policy_accepts_current_repo_policy():

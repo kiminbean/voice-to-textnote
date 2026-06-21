@@ -777,6 +777,7 @@ def check_docs(root: Path, reporter: Reporter) -> None:
         ("./scripts/verify_mobile.sh --native", ("./scripts/verify_mobile.sh --native",)),
         ("RELEASE_E2E_EVIDENCE_PATH", ("RELEASE_E2E_EVIDENCE_PATH",)),
         ("artifact_sha256", ("artifact_sha256", "SHA-256")),
+        ("Android release APK", ("app-release.apk", "Android release APK")),
         ("Swift Package Manager warning", ("Swift Package Manager", "whisper_ggml_plus")),
     ]
     for label, snippets in e2e_requirements:
@@ -1012,6 +1013,25 @@ def check_tracked_release_e2e_scaffold(root: Path, reporter: Reporter) -> None:
             )
     else:
         reporter.fail("Tracked release E2E evidence scaffold missing artifact hashes")
+    if isinstance(artifacts, dict):
+        for key in sorted(set(artifacts) & {"android_apk", "ios_runner_app"}):
+            artifact_path = artifacts.get(key)
+            if isinstance(artifact_path, str):
+                contract_error = release_artifact_path_contract_error(root, key, artifact_path)
+                if contract_error:
+                    reporter.fail(
+                        "Tracked release E2E evidence scaffold "
+                        f"{contract_error}"
+                    )
+                else:
+                    reporter.ok(
+                        f"Tracked release E2E evidence scaffold artifact path contract: {key}"
+                    )
+            else:
+                reporter.fail(
+                    "Tracked release E2E evidence scaffold artifact path must be a string: "
+                    f"{key}"
+                )
     actual = set(scenarios)
     expected = set(REQUIRED_E2E_SCENARIOS)
     if actual != expected:
@@ -1311,11 +1331,9 @@ def ios_app_metadata(path: Path) -> dict[str, str]:
     }
 
 
-def release_artifact_structure_error(root: Path, key: str, artifact_path: str) -> str | None:
-    artifact_type_checks = {
-        "android_apk": Path.is_file,
-        "ios_runner_app": Path.is_dir,
-    }
+def release_artifact_path_contract_error(
+    root: Path, key: str, artifact_path: str
+) -> str | None:
     artifact_suffixes = {
         "android_apk": ".apk",
         "ios_runner_app": ".app",
@@ -1326,6 +1344,22 @@ def release_artifact_structure_error(root: Path, key: str, artifact_path: str) -
     expected_suffix = artifact_suffixes[key]
     if resolved_artifact.suffix != expected_suffix:
         return f"artifact path must end with {expected_suffix}: {key}"
+    if key == "android_apk":
+        artifact_name = resolved_artifact.name.lower()
+        if "debug" in artifact_name or "release" not in artifact_name:
+            return f"artifact must be a release APK: {key}"
+    return None
+
+
+def release_artifact_structure_error(root: Path, key: str, artifact_path: str) -> str | None:
+    artifact_type_checks = {
+        "android_apk": Path.is_file,
+        "ios_runner_app": Path.is_dir,
+    }
+    contract_error = release_artifact_path_contract_error(root, key, artifact_path)
+    if contract_error:
+        return contract_error
+    resolved_artifact = resolve_release_artifact_path(root, artifact_path)
     type_check = artifact_type_checks[key]
     if type_check(resolved_artifact):
         if key == "android_apk" and resolved_artifact.stat().st_size == 0:

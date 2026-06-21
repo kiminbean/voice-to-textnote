@@ -28,7 +28,7 @@ from verify_release_readiness import (  # noqa: E402
     resolve_release_evidence_path,
 )
 
-DEFAULT_ANDROID_APK = "client/build/app/outputs/flutter-apk/app-debug.apk"
+DEFAULT_ANDROID_APK = "client/build/app/outputs/flutter-apk/app-release.apk"
 DEFAULT_IOS_RUNNER_APP = "client/build/ios/iphoneos/Runner.app"
 RELEASE_ARTIFACT_TYPES = {
     "android_apk": "file",

@@ -16,7 +16,7 @@
     }
   },
   "artifacts": {
-    "android_apk": "client/build/app/outputs/flutter-apk/app-debug.apk",
+    "android_apk": "client/build/app/outputs/flutter-apk/app-release.apk",
     "ios_runner_app": "client/build/ios/iphoneos/Runner.app"
   },
   "artifact_sha256": {

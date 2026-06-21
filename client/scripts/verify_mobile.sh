@@ -9,7 +9,7 @@ elif [[ "${1:-}" != "" ]]; then
   exit 2
 fi
 
-ANDROID_DEBUG_APK="build/app/outputs/flutter-apk/app-debug.apk"
+ANDROID_RELEASE_APK="build/app/outputs/flutter-apk/app-release.apk"
 IOS_RUNNER_APP="build/ios/iphoneos/Runner.app"
 IOS_INFO_PLIST="$IOS_RUNNER_APP/Info.plist"
 
@@ -55,8 +55,8 @@ if [[ "$run_native" != true ]]; then
   exit 0
 fi
 
-flutter build apk --debug
-verify_file_artifact "$ANDROID_DEBUG_APK" "Android debug APK"
+flutter build apk --release
+verify_file_artifact "$ANDROID_RELEASE_APK" "Android release APK"
 
 if [[ "$(uname -s)" == "Darwin" ]]; then
   flutter build ios --debug --no-codesign

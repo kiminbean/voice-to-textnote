@@ -32,11 +32,11 @@ def shell_constant(script: str, name: str) -> str:
 def test_verify_mobile_script_checks_native_artifact_outputs():
     script = read_verify_mobile_script()
 
-    assert 'verify_file_artifact "$ANDROID_DEBUG_APK"' in script
+    assert 'verify_file_artifact "$ANDROID_RELEASE_APK"' in script
     assert 'verify_directory_artifact "$IOS_RUNNER_APP"' in script
     assert 'verify_file_artifact "$IOS_INFO_PLIST"' in script
-    assert script.index("flutter build apk --debug") < script.index(
-        'verify_file_artifact "$ANDROID_DEBUG_APK"'
+    assert script.index("flutter build apk --release") < script.index(
+        'verify_file_artifact "$ANDROID_RELEASE_APK"'
     )
     assert script.index("flutter build ios --debug --no-codesign") < script.index(
         'verify_directory_artifact "$IOS_RUNNER_APP"'
@@ -55,6 +55,6 @@ def test_verify_mobile_script_artifact_paths_match_release_evidence_defaults():
     create = load_create_evidence_module()
     script = read_verify_mobile_script()
 
-    assert create.DEFAULT_ANDROID_APK == f"client/{shell_constant(script, 'ANDROID_DEBUG_APK')}"
+    assert create.DEFAULT_ANDROID_APK == f"client/{shell_constant(script, 'ANDROID_RELEASE_APK')}"
     assert create.DEFAULT_IOS_RUNNER_APP == f"client/{shell_constant(script, 'IOS_RUNNER_APP')}"
     assert shell_constant(script, "IOS_INFO_PLIST") == "$IOS_RUNNER_APP/Info.plist"

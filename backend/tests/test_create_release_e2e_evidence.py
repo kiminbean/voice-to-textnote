@@ -30,7 +30,7 @@ def load_release_readiness_module():
 
 
 def write_release_artifacts(root: Path) -> tuple[Path, Path]:
-    android_apk = root / "app-debug.apk"
+    android_apk = root / "app-release.apk"
     ios_runner_app = root / "Runner.app"
     with zipfile.ZipFile(android_apk, "w") as apk:
         apk.writestr("AndroidManifest.xml", "<manifest />")
@@ -185,6 +185,24 @@ def test_release_e2e_scaffold_rejects_android_artifact_without_apk_suffix(tmp_pa
         raise AssertionError("build_evidence should reject non-.apk artifacts")
 
 
+def test_release_e2e_scaffold_rejects_android_debug_artifact(tmp_path):
+    create = load_create_evidence_module()
+    android_apk, ios_runner_app = write_release_artifacts(tmp_path)
+    android_debug_apk = tmp_path / "app-debug.apk"
+    android_apk.rename(android_debug_apk)
+
+    try:
+        create.build_evidence(
+            tmp_path,
+            android_apk=android_debug_apk.name,
+            ios_runner_app=ios_runner_app.name,
+        )
+    except ValueError as exc:
+        assert "release APK" in str(exc)
+    else:
+        raise AssertionError("build_evidence should reject debug Android artifacts")
+
+
 def test_release_e2e_scaffold_rejects_invalid_ios_runner_app(tmp_path):
     create = load_create_evidence_module()
     android_apk, ios_runner_app = write_release_artifacts(tmp_path)
@@ -225,7 +243,7 @@ def test_release_e2e_evidence_artifacts_are_resolved_from_repo_root(
 ):
     readiness = load_release_readiness_module()
     root = tmp_path / "repo"
-    android_apk = root / "client/build/app/outputs/flutter-apk/app-debug.apk"
+    android_apk = root / "client/build/app/outputs/flutter-apk/app-release.apk"
     ios_runner_app = root / "client/build/ios/iphoneos/Runner.app"
     android_apk.parent.mkdir(parents=True)
     with zipfile.ZipFile(android_apk, "w") as apk:
@@ -262,7 +280,7 @@ def test_release_e2e_evidence_artifacts_are_resolved_from_repo_root(
                     },
                 },
                 "artifacts": {
-                    "android_apk": "client/build/app/outputs/flutter-apk/app-debug.apk",
+                    "android_apk": "client/build/app/outputs/flutter-apk/app-release.apk",
                     "ios_runner_app": "client/build/ios/iphoneos/Runner.app",
                 },
                 "artifact_sha256": {
