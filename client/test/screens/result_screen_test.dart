@@ -116,6 +116,19 @@ void main() {
         'edges': <dynamic>[],
       },
     );
+    when(() => mockSumApi.createSmartSummary(
+          any(),
+          summaryMode: any(named: 'summaryMode'),
+          length: any(named: 'length'),
+          focusAreas: any(named: 'focusAreas'),
+          includeSentiment: any(named: 'includeSentiment'),
+        )).thenAnswer(
+      (_) async => {
+        'result': {
+          'summary_content': {'summary_text': 'Lecture-mode summary'},
+        },
+      },
+    );
     when(() => mockStudyPackApi.get(
           any(),
           mode: any(named: 'mode'),
@@ -306,6 +319,39 @@ void main() {
       expect(find.text('1. 첫 번째 결정'), findsOneWidget);
       expect(find.text('2. 두 번째 결정'), findsOneWidget);
       expect(find.text('3. 세 번째 결정'), findsOneWidget);
+    });
+
+    testWidgets('목적별 요약 모드를 선택해 스마트 요약을 생성할 수 있어야 함',
+        (WidgetTester tester) async {
+      // Arrange
+      when(() => mockSumApi.getResult(any())).thenAnswer((_) async => {
+            'summary_text': '회의 요약입니다.',
+            'action_items': <dynamic>[],
+            'key_decisions': <dynamic>[],
+            'next_steps': <dynamic>[],
+          });
+
+      // Act
+      await tester.pumpWidget(buildTestWidget([]));
+      await tester.pumpAndSettle();
+      await tester.tap(_tabText('AI 요약'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('강의 노트'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, '모드 요약 생성'));
+      await tester.pumpAndSettle();
+
+      // Assert
+      expect(find.text('목적별 요약'), findsOneWidget);
+      expect(find.text('모드 요약 결과'), findsOneWidget);
+      expect(find.text('Lecture-mode summary'), findsOneWidget);
+      verify(() => mockSumApi.createSmartSummary(
+            'min-task-001',
+            summaryMode: 'lecture_notes',
+            length: 'medium',
+            focusAreas: ['all'],
+            includeSentiment: true,
+          )).called(1);
     });
   });
 

@@ -19,6 +19,7 @@ from backend.schemas.smart_summary import (
     SmartSummaryResponse,
     SmartSummaryStatus,
     SummaryGenerationResult,
+    SummaryMode,
     SummaryRequest,
 )
 from backend.services.smart_summary_service import SmartSummaryService
@@ -26,9 +27,74 @@ from backend.services.smart_summary_service import SmartSummaryService
 router = APIRouter(prefix="/smart-summary", tags=["smart-summary"])
 
 
+_SUMMARY_MODE_PRESETS = [
+    {
+        "value": SummaryMode.EXECUTIVE.value,
+        "label": "경영진 요약",
+        "description": "핵심 결정과 리스크를 짧게 정리합니다.",
+    },
+    {
+        "value": SummaryMode.DETAILED.value,
+        "label": "상세 요약",
+        "description": "논의 맥락을 길게 보존합니다.",
+    },
+    {
+        "value": SummaryMode.BULLET_POINTS.value,
+        "label": "불릿 요약",
+        "description": "긴 논의를 빠르게 훑는 항목형 요약입니다.",
+    },
+    {
+        "value": SummaryMode.ACTION_ORIENTED.value,
+        "label": "액션 중심",
+        "description": "해야 할 일과 후속 조치를 우선합니다.",
+    },
+    {
+        "value": SummaryMode.SENTIMENT_FOCUSED.value,
+        "label": "감정 중심",
+        "description": "회의 분위기와 감정 신호를 정리합니다.",
+    },
+    {
+        "value": SummaryMode.LECTURE_NOTES.value,
+        "label": "강의 노트",
+        "description": "학습과 복습에 맞춘 노트 구조입니다.",
+    },
+    {
+        "value": SummaryMode.SALES_FOLLOW_UP.value,
+        "label": "영업 후속",
+        "description": "고객 니즈와 다음 연락 액션을 정리합니다.",
+    },
+    {
+        "value": SummaryMode.SERMON_NOTES.value,
+        "label": "설교 노트",
+        "description": "주제, 묵상 포인트, 적용을 분리합니다.",
+    },
+    {
+        "value": SummaryMode.RESEARCH_INTERVIEW.value,
+        "label": "리서치 인터뷰",
+        "description": "관찰, 인사이트 후보, 후속 질문을 정리합니다.",
+    },
+    {
+        "value": SummaryMode.DECISION_LOG.value,
+        "label": "결정 로그",
+        "description": "결정 사항만 추려 추적하기 쉽게 만듭니다.",
+    },
+    {
+        "value": SummaryMode.ACTION_ONLY.value,
+        "label": "액션만",
+        "description": "실행 항목만 빠르게 추출합니다.",
+    },
+]
+
+
 def get_smart_summary_service() -> SmartSummaryService:
     """SmartSummaryService 인스턴스 제공"""
     return SmartSummaryService()
+
+
+@router.get("/modes")
+async def get_available_summary_modes() -> dict[str, list[dict[str, str]]]:
+    """사용자 선택 가능한 스마트 요약 모드 프리셋 목록."""
+    return {"modes": _SUMMARY_MODE_PRESETS}
 
 
 def _smart_summary_error(message: str, status_code: int = 400) -> VoiceNoteError:

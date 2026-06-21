@@ -19,6 +19,7 @@ import 'package:voice_to_textnote/providers/result_provider.dart';
 import 'package:voice_to_textnote/providers/study_pack_provider.dart';
 import 'package:voice_to_textnote/providers/translation_provider.dart';
 import 'package:voice_to_textnote/services/export_api.dart';
+import 'package:voice_to_textnote/services/summary_api.dart';
 import 'package:voice_to_textnote/services/statistics_api.dart';
 import 'package:voice_to_textnote/services/sentiment_api.dart';
 import 'package:voice_to_textnote/services/bookmark_api.dart';
@@ -342,7 +343,10 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
               child: TabBarView(
                 children: [
                   // AI 요약 탭: 구조화된 분석 (주요 결정 사항 + 다음 단계)
-                  _SummaryTab(taskId: summaryTaskId),
+                  _SummaryTab(
+                    taskId: summaryTaskId,
+                    minutesTaskId: minutesTaskId,
+                  ),
                   // 회의 내용 탭: 화자별 원본 발화 세그먼트
                   _TranscriptTab(
                       taskId: minutesTaskId,
@@ -2509,18 +2513,45 @@ class _MinutesTabState extends ConsumerState<_MinutesTab> {
 // AI 요약 탭
 class _SummaryTab extends ConsumerStatefulWidget {
   final String? taskId;
+  final String? minutesTaskId;
 
-  const _SummaryTab({required this.taskId});
+  const _SummaryTab({
+    required this.taskId,
+    required this.minutesTaskId,
+  });
 
   @override
   ConsumerState<_SummaryTab> createState() => _SummaryTabState();
 }
+
+class _SmartSummaryModeOption {
+  final String value;
+  final String label;
+
+  const _SmartSummaryModeOption(this.value, this.label);
+}
+
+const _smartSummaryModeOptions = [
+  _SmartSummaryModeOption('executive', '경영진'),
+  _SmartSummaryModeOption('detailed', '상세'),
+  _SmartSummaryModeOption('bullet_points', '불릿'),
+  _SmartSummaryModeOption('action_oriented', '액션 중심'),
+  _SmartSummaryModeOption('sentiment_focused', '감정'),
+  _SmartSummaryModeOption('lecture_notes', '강의 노트'),
+  _SmartSummaryModeOption('sales_follow_up', '영업 후속'),
+  _SmartSummaryModeOption('sermon_notes', '설교 노트'),
+  _SmartSummaryModeOption('research_interview', '리서치'),
+  _SmartSummaryModeOption('decision_log', '결정 로그'),
+  _SmartSummaryModeOption('action_only', '액션만'),
+];
 
 class _SummaryTabState extends ConsumerState<_SummaryTab> {
   bool _showSearch = false;
   String _searchQuery = '';
   int _matchCount = 0;
   int _currentMatchIndex = 0;
+  String _selectedSummaryMode = 'executive';
+  AsyncValue<Map<String, dynamic>>? _modeSummary;
 
   void _updateSearch(String query, SummaryResult result) {
     setState(() {
@@ -2570,6 +2601,127 @@ class _SummaryTabState extends ConsumerState<_SummaryTab> {
     Clipboard.setData(ClipboardData(text: buffer.toString()));
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('클립보드에 복사되었습니다')),
+    );
+  }
+
+  Future<void> _generateModeSummary() async {
+    final minutesTaskId = widget.minutesTaskId;
+    if (minutesTaskId == null || minutesTaskId.isEmpty) {
+      return;
+    }
+
+    setState(() {
+      _modeSummary = const AsyncValue.loading();
+    });
+
+    final api = ref.read(summaryApiProvider);
+    final result = await AsyncValue.guard(
+      () => api.createSmartSummary(
+        minutesTaskId,
+        summaryMode: _selectedSummaryMode,
+      ),
+    );
+
+    if (!mounted) return;
+    setState(() {
+      _modeSummary = result;
+    });
+  }
+
+  String _modeSummaryText(Map<String, dynamic> data) {
+    final result = data['result'];
+    if (result is Map<String, dynamic>) {
+      final content = result['summary_content'];
+      if (content is Map<String, dynamic>) {
+        final summaryText = content['summary_text'];
+        if (summaryText is String && summaryText.trim().isNotEmpty) {
+          return summaryText;
+        }
+      }
+    }
+    return '요약 결과가 비어 있습니다.';
+  }
+
+  Widget _buildModeSummaryPanel() {
+    final modeSummary = _modeSummary;
+    final canGenerate =
+        widget.minutesTaskId != null && widget.minutesTaskId!.isNotEmpty;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '목적별 요약',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final mode in _smartSummaryModeOptions)
+                  ChoiceChip(
+                    label: Text(mode.label),
+                    selected: _selectedSummaryMode == mode.value,
+                    onSelected: (_) {
+                      setState(() {
+                        _selectedSummaryMode = mode.value;
+                      });
+                    },
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              onPressed: canGenerate ? _generateModeSummary : null,
+              icon: const Icon(Icons.auto_awesome),
+              label: const Text('모드 요약 생성'),
+            ),
+            if (!canGenerate) ...[
+              const SizedBox(height: 8),
+              Text(
+                '회의록 처리가 완료되면 목적별 요약을 생성할 수 있습니다.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+            if (modeSummary != null) ...[
+              const SizedBox(height: 16),
+              modeSummary.when(
+                loading: () => const ShimmerText(lines: 3),
+                error: (error, _) => Text(
+                  '목적별 요약을 생성할 수 없습니다.',
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+                data: (data) => Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Theme.of(context).dividerColor),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '모드 요약 결과',
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _modeSummaryText(data),
+                        style: const TextStyle(height: 1.5),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 
@@ -2702,60 +2854,67 @@ class _SummaryTabState extends ConsumerState<_SummaryTab> {
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(16),
-                child: Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'AI 요약',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        const Divider(),
-                        _buildHighlightedText(
-                          result.summaryText,
-                          const TextStyle(height: 1.6),
-                        ),
-                        // 주요 결정 사항 섹션 (SPEC-APP-004 REQ-APP-042)
-                        if (result.keyDecisions.isNotEmpty) ...[
-                          const SizedBox(height: 16),
-                          Text(
-                            '주요 결정 사항',
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                          const Divider(),
-                          ...result.keyDecisions.asMap().entries.map(
-                                (e) => Padding(
-                                  padding: const EdgeInsets.only(bottom: 4),
-                                  child: _buildHighlightedText(
-                                    '${e.key + 1}. ${e.value}',
-                                    const TextStyle(height: 1.6),
-                                  ),
-                                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildModeSummaryPanel(),
+                    const SizedBox(height: 16),
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'AI 요약',
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                            const Divider(),
+                            _buildHighlightedText(
+                              result.summaryText,
+                              const TextStyle(height: 1.6),
+                            ),
+                            // 주요 결정 사항 섹션 (SPEC-APP-004 REQ-APP-042)
+                            if (result.keyDecisions.isNotEmpty) ...[
+                              const SizedBox(height: 16),
+                              Text(
+                                '주요 결정 사항',
+                                style: Theme.of(context).textTheme.titleMedium,
                               ),
-                        ],
-                        // 다음 단계 섹션 (SPEC-APP-004 REQ-APP-043)
-                        if (result.nextSteps.isNotEmpty) ...[
-                          const SizedBox(height: 16),
-                          Text(
-                            '다음 단계',
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                          const Divider(),
-                          ...result.nextSteps.asMap().entries.map(
-                                (e) => Padding(
-                                  padding: const EdgeInsets.only(bottom: 4),
-                                  child: _buildHighlightedText(
-                                    '${e.key + 1}. ${e.value}',
-                                    const TextStyle(height: 1.6),
+                              const Divider(),
+                              ...result.keyDecisions.asMap().entries.map(
+                                    (e) => Padding(
+                                      padding: const EdgeInsets.only(bottom: 4),
+                                      child: _buildHighlightedText(
+                                        '${e.key + 1}. ${e.value}',
+                                        const TextStyle(height: 1.6),
+                                      ),
+                                    ),
                                   ),
-                                ),
+                            ],
+                            // 다음 단계 섹션 (SPEC-APP-004 REQ-APP-043)
+                            if (result.nextSteps.isNotEmpty) ...[
+                              const SizedBox(height: 16),
+                              Text(
+                                '다음 단계',
+                                style: Theme.of(context).textTheme.titleMedium,
                               ),
-                        ],
-                      ],
+                              const Divider(),
+                              ...result.nextSteps.asMap().entries.map(
+                                    (e) => Padding(
+                                      padding: const EdgeInsets.only(bottom: 4),
+                                      child: _buildHighlightedText(
+                                        '${e.key + 1}. ${e.value}',
+                                        const TextStyle(height: 1.6),
+                                      ),
+                                    ),
+                                  ),
+                            ],
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
+                  ],
                 ),
               ),
             ),

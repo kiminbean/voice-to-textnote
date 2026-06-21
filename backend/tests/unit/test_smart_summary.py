@@ -2,7 +2,6 @@
 Smart Summary Service Unit Tests
 """
 
-
 import pytest
 
 from backend.schemas.smart_summary import (
@@ -286,6 +285,59 @@ class TestSmartSummaryService:
 
         assert "전체 감정: positive" in summary
         assert "주요 감정 표현" in summary
+
+    def test_summary_modes_include_owll_benchmark_purpose_presets(self):
+        """Owll 벤치마크 수준의 목적별 요약 모드를 제공한다."""
+        expected_modes = {
+            "executive",
+            "detailed",
+            "bullet_points",
+            "action_oriented",
+            "sentiment_focused",
+            "lecture_notes",
+            "sales_follow_up",
+            "sermon_notes",
+            "research_interview",
+            "decision_log",
+            "action_only",
+        }
+
+        assert {mode.value for mode in SummaryMode} == expected_modes
+        assert len(SummaryMode) >= 10
+
+    @pytest.mark.parametrize(
+        ("mode", "expected_sections"),
+        [
+            (SummaryMode.LECTURE_NOTES, ["## 강의 핵심", "## 복습 포인트"]),
+            (SummaryMode.SALES_FOLLOW_UP, ["## 고객 니즈", "## 후속 조치"]),
+            (SummaryMode.SERMON_NOTES, ["## 본문/주제", "## 묵상 포인트", "## 적용"]),
+            (
+                SummaryMode.RESEARCH_INTERVIEW,
+                ["## 관찰", "## 인사이트 후보", "## 후속 질문"],
+            ),
+            (SummaryMode.DECISION_LOG, ["## 결정 로그", "베타 출시"]),
+            (SummaryMode.ACTION_ONLY, ["## 실행 항목", "개발팀은"]),
+        ],
+    )
+    def test_generate_purpose_specific_owll_benchmark_summary_modes(self, mode, expected_sections):
+        """목적별 모드는 서로 다른 구조의 요약 결과를 생성한다."""
+        content = """
+        강의에서는 고객 온보딩 전략의 핵심 개념을 설명했습니다.
+        고객은 도입 후 교육 자료가 부족하다고 말했습니다.
+        결정사항: 베타 출시를 다음 주로 확정했습니다.
+        개발팀은 금요일까지 온보딩 화면을 구현해야 합니다.
+        인터뷰 참여자는 알림 빈도가 너무 높다는 불편을 공유했습니다.
+        """
+
+        summary = self.service._generate_summary_by_mode(
+            content,
+            mode,
+            SummaryLength.MEDIUM,
+            [FocusArea.ALL],
+        )
+
+        for section in expected_sections:
+            assert section in summary
 
     def test_extract_key_points(self):
         """핵심 포인트 추출 테스트"""

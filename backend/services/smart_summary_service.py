@@ -264,7 +264,7 @@ class SmartSummaryService:
             if not summary:
                 summary = "회의 결과에 대한 실행 계획이 명시적으로 언급되지 않았습니다."
 
-        else:  # SENTIMENT_FOCUSED
+        elif mode == SummaryMode.SENTIMENT_FOCUSED:
             # 감정 분석 중심
             sentiment_analysis = self._analyze_sentiment(content)
             summary = f"전체 감정: {sentiment_analysis.overall_sentiment} (점수: {sentiment_analysis.sentiment_score:.2f})"
@@ -275,6 +275,76 @@ class SmartSummaryService:
                         for seg in sentiment_analysis.emotional_segments[:3]
                     ]
                 )
+
+        elif mode == SummaryMode.LECTURE_NOTES:
+            sentences = [s.strip() for s in re.split(r"[.!?]+", content) if s.strip()]
+            summary = "\n".join(
+                [
+                    "## 강의 핵심",
+                    *[f"- {sentence}" for sentence in sentences[:4]],
+                    "## 복습 포인트",
+                    *[f"- {point}" for point in self._extract_key_points(content)[:3]],
+                ]
+            )
+
+        elif mode == SummaryMode.SALES_FOLLOW_UP:
+            summary = "\n".join(
+                [
+                    "## 고객 니즈",
+                    *[f"- {point}" for point in self._extract_key_points(content)[:3]],
+                    "## 후속 조치",
+                    self._generate_summary_by_mode(
+                        content,
+                        SummaryMode.ACTION_ORIENTED,
+                        SummaryLength.MEDIUM,
+                        [FocusArea.ALL],
+                    ),
+                ]
+            )
+
+        elif mode == SummaryMode.SERMON_NOTES:
+            sentences = [s.strip() for s in re.split(r"[.!?]+", content) if s.strip()]
+            summary = "\n".join(
+                [
+                    "## 본문/주제",
+                    sentences[0] if sentences else "설교 주제가 명시적으로 감지되지 않았습니다.",
+                    "## 묵상 포인트",
+                    *[f"- {sentence}" for sentence in sentences[1:4]],
+                    "## 적용",
+                    "- 이번 주 실천할 내용을 정리하세요.",
+                ]
+            )
+
+        elif mode == SummaryMode.RESEARCH_INTERVIEW:
+            sentences = [s.strip() for s in re.split(r"[.!?]+", content) if s.strip()]
+            summary = "\n".join(
+                [
+                    "## 관찰",
+                    *[f"- {sentence}" for sentence in sentences[:3]],
+                    "## 인사이트 후보",
+                    *[f"- {point}" for point in self._extract_key_points(content)[:3]],
+                    "## 후속 질문",
+                    "- 추가 확인이 필요한 가설을 정리하세요.",
+                ]
+            )
+
+        elif mode == SummaryMode.DECISION_LOG:
+            decisions = self._generate_summary_by_mode(
+                content,
+                SummaryMode.EXECUTIVE,
+                SummaryLength.MEDIUM,
+                [FocusArea.DECISIONS_ONLY],
+            )
+            summary = f"## 결정 로그\n{decisions or '명시적인 결정 사항이 없습니다.'}"
+
+        else:  # ACTION_ONLY
+            actions = self._generate_summary_by_mode(
+                content,
+                SummaryMode.ACTION_ORIENTED,
+                SummaryLength.MEDIUM,
+                [FocusArea.ALL],
+            )
+            summary = f"## 실행 항목\n{actions}"
 
         # 길이 제한
         if len(summary) > target_length:

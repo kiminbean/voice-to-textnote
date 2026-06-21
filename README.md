@@ -35,7 +35,7 @@
 ✅ **모니터링**: Prometheus 메트릭, 요청 ID 추적, 구조화된 로깅
 ✅ **프로덕션 배포**: Ubuntu systemd + Redis + Tailscale 원격 접속
 ✅ **모던 UI/UX**: 모던 미니멀 디자인 시스템 (인디고/바이올렛), 다크모드 지원, 반응형 레이아웃
-✅ **자동화 테스트**: 3736 백엔드 테스트 (단위/통합/E2E) + Flutter 362, 백엔드 100.00% 커버리지
+✅ **자동화 테스트**: 3744 백엔드 테스트 (단위/통합/E2E) + Flutter 365, 백엔드 100.00% 커버리지
 
 ## 주요 기능
 
@@ -551,10 +551,10 @@ backend/
 
 | 항목 | 개수 | 커버리지 |
 |------|------|---------|
-| 백엔드 단위/통합/E2E | 3736개 | 100.00% |
-| Flutter 테스트 | 362개 | - |
+| 백엔드 단위/통합/E2E | 3744개 | 100.00% |
+| Flutter 테스트 | 365개 | - |
 | E2E 테스트 | 16개 | 전체 파이프라인 |
-| 총합 | 4098개 | - |
+| 총합 | 4109개 | - |
 
 ## 모니터링 및 로깅
 
@@ -826,7 +826,7 @@ Copyright (c) 2026 kiminbean. **All Rights Reserved.**
 **마지막 업데이트**: 2026-06-17
 **버전**: 1.7.0
 **상태**: Phase 8 진행 중 — SPEC-OBSIDIAN-001 Obsidian Vault 연계 완료 + UI 재설계(디자인 시스템, 다크모드) 완료, 감정/톤 분석 활성화, 라이선스 All Rights Reserved 전환
-**최근 확인**: 백엔드 3736 테스트 + Flutter 362 테스트 + Flutter analyze + 기본 Release Readiness 통과. Strict release readiness는 Firebase/APNs/App Store Connect secret, Android/iOS 실기기, 실제 E2E evidence가 준비되어야 통과 가능.
+**최근 확인**: 백엔드 3744 테스트 + Flutter 365 테스트 + Flutter analyze + 기본 Release Readiness 통과. Strict release readiness는 Firebase/APNs/App Store Connect secret, Android/iOS 실기기, 실제 E2E evidence가 준비되어야 통과 가능.
 
 ### 구현 완료 SPEC 목록
 

@@ -798,6 +798,13 @@
     "api_key": true
   },
   {
+    "path": "/api/v1/smart-summary/modes",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
     "path": "/api/v1/smart-summary/results/{task_id}",
     "methods": [
       "GET"

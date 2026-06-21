@@ -38,6 +38,34 @@ class SummaryApi {
     return response.data as Map<String, dynamic>;
   }
 
+  // 회의록 태스크 ID로 목적별 스마트 요약 생성
+  Future<Map<String, dynamic>> createSmartSummary(
+    String minutesTaskId, {
+    required String summaryMode,
+    String length = 'medium',
+    List<String> focusAreas = const ['all'],
+    bool includeSentiment = true,
+  }) async {
+    final response = await _dio.post(
+      '/smart-summary/$minutesTaskId',
+      data: {
+        'summary_mode': summaryMode,
+        'length': length,
+        'focus_areas': focusAreas,
+        'include_sentiment': includeSentiment,
+      },
+    );
+    return response.data as Map<String, dynamic>;
+  }
+
+  // 사용 가능한 목적별 스마트 요약 모드 조회
+  Future<List<Map<String, dynamic>>> getSmartSummaryModes() async {
+    final response = await _dio.get('/smart-summary/modes');
+    final data = response.data as Map<String, dynamic>;
+    final modes = data['modes'] as List<dynamic>? ?? [];
+    return modes.cast<Map<String, dynamic>>();
+  }
+
   // 완료된 요약 태스크 ID로 관계 추론형 마인드맵 생성
   Future<Map<String, dynamic>> createMindMap(
     String summaryTaskId, {

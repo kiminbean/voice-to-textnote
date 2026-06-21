@@ -228,3 +228,28 @@ async def test_get_available_meeting_types_returns_all_enum_values():
     values = {item["value"] for item in response["meeting_types"]}
     assert values == {meeting_type.value for meeting_type in MeetingType}
     assert all(item["keywords"] for item in response["meeting_types"])
+
+
+@pytest.mark.asyncio
+async def test_get_available_summary_modes_returns_owll_benchmark_presets():
+    response = await api.get_available_summary_modes()
+
+    modes = response["modes"]
+    values = {item["value"] for item in modes}
+    assert values == {summary_mode.value for summary_mode in SummaryMode}
+    assert len(modes) >= 10
+    assert {
+        "value": "lecture_notes",
+        "label": "강의 노트",
+        "description": "학습과 복습에 맞춘 노트 구조입니다.",
+    } in modes
+    assert {
+        "value": "sales_follow_up",
+        "label": "영업 후속",
+        "description": "고객 니즈와 다음 연락 액션을 정리합니다.",
+    } in modes
+    assert {
+        "value": "action_only",
+        "label": "액션만",
+        "description": "실행 항목만 빠르게 추출합니다.",
+    } in modes

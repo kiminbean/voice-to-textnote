@@ -34,7 +34,9 @@ void main() {
       // Assert
       expect(result['task_id'], 'sum-001');
       expect(result['status'], 'pending');
-      verify(() => mockDio.post('/summaries', data: {'minutes_task_id': 'min-001'})).called(1);
+      verify(() =>
+              mockDio.post('/summaries', data: {'minutes_task_id': 'min-001'}))
+          .called(1);
     });
 
     // create: 네트워크 오류 시 예외 전파 테스트
@@ -72,7 +74,8 @@ void main() {
     });
 
     // getResult: 요약 결과 조회 성공 테스트 (key_decisions, next_steps 포함)
-    test('getResult가 summary_text, key_decisions, next_steps를 포함한 결과를 반환해야 함', () async {
+    test('getResult가 summary_text, key_decisions, next_steps를 포함한 결과를 반환해야 함',
+        () async {
       // Arrange
       when(() => mockDio.get(any())).thenAnswer(
         (_) async => Response(
@@ -114,7 +117,72 @@ void main() {
       );
 
       // Act & Assert
-      expect(() => summaryApi.getResult('unknown-id'), throwsA(isA<DioException>()));
+      expect(() => summaryApi.getResult('unknown-id'),
+          throwsA(isA<DioException>()));
+    });
+
+    test('createSmartSummary가 목적별 스마트 요약 payload를 전송해야 함', () async {
+      // Arrange
+      when(() => mockDio.post(any(), data: any(named: 'data'))).thenAnswer(
+        (_) async => Response(
+          data: {
+            'task_id': 'smart-001',
+            'status': 'completed',
+            'result': {
+              'summary_content': {'summary_text': '강의 노트 요약'},
+            },
+          },
+          statusCode: 200,
+          requestOptions: RequestOptions(path: ''),
+        ),
+      );
+
+      // Act
+      final result = await summaryApi.createSmartSummary(
+        'min-001',
+        summaryMode: 'lecture_notes',
+        length: 'short',
+        focusAreas: ['decisions_only'],
+        includeSentiment: false,
+      );
+
+      // Assert
+      expect(result['task_id'], 'smart-001');
+      verify(
+        () => mockDio.post(
+          '/smart-summary/min-001',
+          data: {
+            'summary_mode': 'lecture_notes',
+            'length': 'short',
+            'focus_areas': ['decisions_only'],
+            'include_sentiment': false,
+          },
+        ),
+      ).called(1);
+    });
+
+    test('getSmartSummaryModes가 사용 가능한 목적별 요약 모드를 반환해야 함', () async {
+      // Arrange
+      when(() => mockDio.get(any())).thenAnswer(
+        (_) async => Response(
+          data: {
+            'modes': [
+              {'value': 'lecture_notes', 'label': '강의 노트'},
+              {'value': 'action_only', 'label': '액션만'},
+            ],
+          },
+          statusCode: 200,
+          requestOptions: RequestOptions(path: ''),
+        ),
+      );
+
+      // Act
+      final result = await summaryApi.getSmartSummaryModes();
+
+      // Assert
+      expect(result, hasLength(2));
+      expect(result.first['value'], 'lecture_notes');
+      verify(() => mockDio.get('/smart-summary/modes')).called(1);
     });
 
     // delete: 태스크 삭제 성공 테스트

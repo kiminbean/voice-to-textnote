@@ -53,7 +53,7 @@ Voice to TextNote already covers many core Owll-equivalent capabilities:
 | Contact manager for sales notes | Team/auth exist, no CRM/contact model found | Sales follow-up/contact workflows | P3 |
 | SOAP/healthcare note mode | Generic templates exist | Domain-specific summary template | P3 |
 | Private cloud per team member | Team sharing exists | Explicit private-by-default note ownership and sharing policy UX | P1 |
-| Summary modes 10+ | Templates/summaries exist | User-selectable summary modes should be productized | P1 |
+| Summary modes 10+ | Backend smart-summary modes and Flutter result-screen mode generation implemented | Mode tuning and persisted history UX can be improved | P1 |
 
 ## 4. Product Direction
 
@@ -205,6 +205,8 @@ Add transcript and summary translation workflows. The current app has Korean/Eng
 ### P1: Summary Modes
 
 Productize reusable summary modes such as executive brief, lecture notes, sales follow-up, sermon notes, research interview, action-only, and decision log.
+
+**Implementation status (2026-06-21)**: Backend smart summary now exposes 11 selectable modes through `GET /api/v1/smart-summary/modes`, including executive, detailed, bullet, action-oriented, sentiment-focused, lecture notes, sales follow-up, sermon notes, research interview, decision log, and action-only. The Flutter result screen AI summary tab includes a purpose-specific mode selector and can generate mode-specific summaries from the persisted minutes task. Remaining work: tune prompts/output quality per domain and add persisted mode-summary history if users need to compare versions.
 
 ### P2: YouTube and External Media Import
 
