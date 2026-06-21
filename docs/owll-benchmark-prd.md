@@ -48,7 +48,7 @@ Voice to TextNote already covers many core Owll-equivalent capabilities:
 | Lecture/study mode | Templates exist, but no dedicated study workflow | Dedicated lecture notes + review artifacts | P0 |
 | YouTube summary | No YouTube URL ingestion found | URL import and transcript/summarize pipeline | P1 |
 | OCR for PDFs/images | Export exists, OCR import not found | Document/image import into searchable notes | P2 |
-| 100+ language transcription/translation | Korean default, i18n UI exists | Translation and multilingual transcript workflow | P1 |
+| 100+ language transcription/translation | Backend translation API implemented for persisted minutes/summaries; Korean default and i18n UI exist | Flutter translation UI, export/search integration, and broader multilingual transcript workflow remain | P1 |
 | Online meeting capture for Zoom/Meet/Teams | Roadmap mentions Slack/Teams, no bot/import surface found | Meeting-platform import/integration | P2 |
 | Contact manager for sales notes | Team/auth exist, no CRM/contact model found | Sales follow-up/contact workflows | P3 |
 | SOAP/healthcare note mode | Generic templates exist | Domain-specific summary template | P3 |
@@ -199,6 +199,8 @@ Per-meeting Q&A only works after the user already knows which recording contains
 ### P1: Multilingual Transcript Translation
 
 Add transcript and summary translation workflows. The current app has Korean/English UI localization and a configurable Whisper language, but not a productized transcript translation flow.
+
+**Implementation status (2026-06-21)**: First backend slice implemented. `POST /api/v1/minutes/{task_id}/translation` translates persisted minutes or summary text into a target language, preserves speaker/timestamp/markdown structure in the prompt, stores results under `TaskResult.result_data["translations"]`, and `GET /api/v1/minutes/{task_id}/translation?target_language={language}` returns cached translations. Remaining work: Flutter result-screen UI, export/search inclusion, and broader multilingual transcript UX.
 
 ### P1: Summary Modes
 

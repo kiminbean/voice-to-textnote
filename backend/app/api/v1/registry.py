@@ -70,6 +70,7 @@ from backend.app.api.v1.minutes import (
     study_pack,
     summary,
     tags,
+    translation,
 )
 from backend.app.api.v1.minutes.smart_summary import router as smart_summary_router
 from backend.app.api.v1.transcription import (
@@ -93,6 +94,7 @@ ROUTER_REGISTRY: list[tuple[APIRouter, bool]] = [
     (smart_summary_router, True),  # 다양한 모드로 스마트 요약 생성 (신규 기능)
     (summary.router, True),
     (study_pack.router, True),  # SPEC-STUDY-001: transcript-grounded study packs
+    (translation.router, True),  # SPEC-OWLL-TRANSLATION-001: persisted artifact translation
     # ── 공개 엔드포인트 (API Key 불필요) ────────────────────────────────────────
     (health.router, False),
     # ── 스트리밍 / 이력 (API Key 필수) ──────────────────────────────────────────
