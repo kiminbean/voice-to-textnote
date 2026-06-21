@@ -1085,6 +1085,43 @@ def ios_app_metadata(path: Path) -> dict[str, str]:
     }
 
 
+def release_artifact_structure_error(root: Path, key: str, artifact_path: str) -> str | None:
+    artifact_type_checks = {
+        "android_apk": Path.is_file,
+        "ios_runner_app": Path.is_dir,
+    }
+    artifact_suffixes = {
+        "android_apk": ".apk",
+        "ios_runner_app": ".app",
+    }
+    if not artifact_path_stays_inside_root(root, artifact_path):
+        return f"artifact path must stay inside repo: {key}"
+    resolved_artifact = resolve_release_artifact_path(root, artifact_path)
+    expected_suffix = artifact_suffixes[key]
+    if resolved_artifact.suffix != expected_suffix:
+        return f"artifact path must end with {expected_suffix}: {key}"
+    type_check = artifact_type_checks[key]
+    if type_check(resolved_artifact):
+        if key == "android_apk" and resolved_artifact.stat().st_size == 0:
+            return f"artifact must be non-empty: {key}"
+        if key == "android_apk" and not is_android_apk(resolved_artifact):
+            return f"artifact must be a valid APK zip: {key}"
+        if key == "ios_runner_app" and not (resolved_artifact / "Info.plist").is_file():
+            return f"artifact missing Info.plist: {key}"
+        if key == "ios_runner_app":
+            metadata = ios_app_metadata(resolved_artifact)
+            if metadata.get("bundle_id") != IOS_BUNDLE_ID:
+                return f"artifact bundle id mismatch: {key}"
+            executable = metadata.get("executable", "")
+            if not executable or not (resolved_artifact / executable).is_file():
+                return f"artifact missing executable: {key}"
+        return None
+    if resolved_artifact.exists():
+        expected_type = "file" if key == "android_apk" else "directory"
+        return f"artifact must be a {expected_type}: {key}"
+    return f"artifact missing on disk: {key}"
+
+
 def check_release_e2e_evidence(path: Path, reporter: Reporter, root: Path | None = None) -> None:
     root = root or Path(__file__).resolve().parents[2]
     if not path.is_file():
@@ -1175,22 +1212,14 @@ def check_release_e2e_evidence(path: Path, reporter: Reporter, root: Path | None
     artifact_hashes = require_non_empty_mapping(
         reporter, data, "artifact_sha256", "artifact hashes"
     )
-    artifact_type_checks = {
-        "android_apk": Path.is_file,
-        "ios_runner_app": Path.is_dir,
-    }
-    artifact_suffixes = {
-        "android_apk": ".apk",
-        "ios_runner_app": ".app",
-    }
-    expected_artifact_keys = set(artifact_type_checks)
+    expected_artifact_keys = {"android_apk", "ios_runner_app"}
     if artifacts:
         for key in sorted(set(artifacts) - expected_artifact_keys):
             reporter.fail(f"Release E2E evidence includes unknown artifact: {key}")
     if artifact_hashes:
         for key in sorted(set(artifact_hashes) - expected_artifact_keys):
             reporter.fail(f"Release E2E evidence includes unknown artifact hash: {key}")
-    for key, type_check in artifact_type_checks.items():
+    for key in sorted(expected_artifact_keys):
         artifact_value = artifacts.get(key, "") if artifacts else ""
         if not isinstance(artifact_value, str):
             reporter.fail(f"Release E2E evidence artifact path must be a string: {key}")
@@ -1199,58 +1228,29 @@ def check_release_e2e_evidence(path: Path, reporter: Reporter, root: Path | None
         if not artifact_path:
             reporter.fail(f"Release E2E evidence missing artifact {key}")
             continue
-        if not artifact_path_stays_inside_root(root, artifact_path):
-            reporter.fail(f"Release E2E evidence artifact path must stay inside repo: {key}")
+        structure_error = release_artifact_structure_error(root, key, artifact_path)
+        if structure_error:
+            reporter.fail(f"Release E2E evidence {structure_error}")
             continue
         resolved_artifact = resolve_release_artifact_path(root, artifact_path)
-        expected_suffix = artifact_suffixes[key]
-        if resolved_artifact.suffix != expected_suffix:
+        hash_value = artifact_hashes.get(key, "") if artifact_hashes else ""
+        if not isinstance(hash_value, str):
+            reporter.fail(f"Release E2E evidence artifact hash must be a string: {key}")
+            continue
+        expected_hash = hash_value.strip()
+        if not expected_hash:
+            reporter.fail(f"Release E2E evidence missing artifact hash: {key}")
+            continue
+        if not is_sha256_hex(expected_hash):
             reporter.fail(
-                f"Release E2E evidence artifact path must end with {expected_suffix}: {key}"
+                f"Release E2E evidence artifact hash must be lowercase SHA-256 hex: {key}"
             )
             continue
-        if type_check(resolved_artifact):
-            if key == "android_apk" and resolved_artifact.stat().st_size == 0:
-                reporter.fail(f"Release E2E evidence artifact must be non-empty: {key}")
-                continue
-            if key == "android_apk" and not is_android_apk(resolved_artifact):
-                reporter.fail(f"Release E2E evidence artifact must be a valid APK zip: {key}")
-                continue
-            if key == "ios_runner_app" and not (resolved_artifact / "Info.plist").is_file():
-                reporter.fail(f"Release E2E evidence artifact missing Info.plist: {key}")
-                continue
-            if key == "ios_runner_app":
-                metadata = ios_app_metadata(resolved_artifact)
-                if metadata.get("bundle_id") != IOS_BUNDLE_ID:
-                    reporter.fail(f"Release E2E evidence artifact bundle id mismatch: {key}")
-                    continue
-                executable = metadata.get("executable", "")
-                if not executable or not (resolved_artifact / executable).is_file():
-                    reporter.fail(f"Release E2E evidence artifact missing executable: {key}")
-                    continue
-            hash_value = artifact_hashes.get(key, "") if artifact_hashes else ""
-            if not isinstance(hash_value, str):
-                reporter.fail(f"Release E2E evidence artifact hash must be a string: {key}")
-                continue
-            expected_hash = hash_value.strip()
-            if not expected_hash:
-                reporter.fail(f"Release E2E evidence missing artifact hash: {key}")
-                continue
-            if not is_sha256_hex(expected_hash):
-                reporter.fail(
-                    f"Release E2E evidence artifact hash must be lowercase SHA-256 hex: {key}"
-                )
-                continue
-            actual_hash = release_artifact_sha256(resolved_artifact)
-            if actual_hash != expected_hash:
-                reporter.fail(f"Release E2E evidence artifact hash mismatch: {key}")
-                continue
-            reporter.ok(f"Release E2E evidence artifact exists: {key}")
-        elif resolved_artifact.exists():
-            expected_type = "file" if key == "android_apk" else "directory"
-            reporter.fail(f"Release E2E evidence artifact must be a {expected_type}: {key}")
-        else:
-            reporter.fail(f"Release E2E evidence artifact missing on disk: {key}")
+        actual_hash = release_artifact_sha256(resolved_artifact)
+        if actual_hash != expected_hash:
+            reporter.fail(f"Release E2E evidence artifact hash mismatch: {key}")
+            continue
+        reporter.ok(f"Release E2E evidence artifact exists: {key}")
 
     scenarios = require_non_empty_mapping(reporter, data, "scenarios", "scenario results")
     extra_scenarios = sorted(set(scenarios) - set(REQUIRED_E2E_SCENARIOS))

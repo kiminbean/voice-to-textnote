@@ -18,12 +18,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from verify_release_readiness import (  # noqa: E402
-    IOS_BUNDLE_ID,
     REQUIRED_E2E_SCENARIOS,
     artifact_path_stays_inside_root,
-    ios_app_metadata,
-    is_android_apk,
     release_artifact_sha256,
+    release_artifact_structure_error,
     resolve_release_artifact_path,
 )
 
@@ -32,10 +30,6 @@ DEFAULT_IOS_RUNNER_APP = "client/build/ios/iphoneos/Runner.app"
 RELEASE_ARTIFACT_TYPES = {
     "android_apk": "file",
     "ios_runner_app": "directory",
-}
-RELEASE_ARTIFACT_SUFFIXES = {
-    "android_apk": ".apk",
-    "ios_runner_app": ".app",
 }
 
 
@@ -60,25 +54,14 @@ def validate_release_artifacts(root: Path, artifacts: dict[str, str]) -> None:
         if not artifact_path_stays_inside_root(root, artifact_path):
             raise ValueError(f"release artifact path must stay inside repo: {key}")
         resolved = resolve_release_artifact_path(root, artifact_path)
-        expected_suffix = RELEASE_ARTIFACT_SUFFIXES[key]
-        if resolved.suffix != expected_suffix:
-            raise ValueError(f"release artifact path must end with {expected_suffix}: {key}")
         expected_type = RELEASE_ARTIFACT_TYPES[key]
         if expected_type == "file" and not resolved.is_file():
             raise ValueError(f"missing release artifact file: {key} ({resolved})")
         if expected_type == "directory" and not resolved.is_dir():
             raise ValueError(f"missing release artifact directory: {key} ({resolved})")
-        if key == "android_apk" and not is_android_apk(resolved):
-            raise ValueError(f"release artifact must be a valid APK zip: {key}")
-        if key == "ios_runner_app" and not (resolved / "Info.plist").is_file():
-            raise ValueError(f"release artifact missing Info.plist: {key}")
-        if key == "ios_runner_app":
-            metadata = ios_app_metadata(resolved)
-            if metadata.get("bundle_id") != IOS_BUNDLE_ID:
-                raise ValueError(f"release artifact bundle id mismatch: {key}")
-            executable = metadata.get("executable", "")
-            if not executable or not (resolved / executable).is_file():
-                raise ValueError(f"release artifact missing executable: {key}")
+        structure_error = release_artifact_structure_error(root, key, artifact_path)
+        if structure_error:
+            raise ValueError(f"release {structure_error}")
 
 
 def build_evidence(root: Path, *, android_apk: str, ios_runner_app: str) -> dict[str, object]:
