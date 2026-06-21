@@ -108,10 +108,10 @@ def write_tone_policy_files(root: Path, *, tone_model_line: str = 'tone_model: s
 def write_readme_status(root: Path, content: str) -> None:
     (root / "README.md").write_text(
         (
-            "3880 백엔드 테스트\n"
-            "| 백엔드 단위/통합/E2E | 3880개 | 100.00% |\n"
+            "3881 백엔드 테스트\n"
+            "| 백엔드 단위/통합/E2E | 3881개 | 100.00% |\n"
             "| Flutter 테스트 | 415개 | - |\n"
-            "| 총합 | 4295개 | - |\n"
+            "| 총합 | 4296개 | - |\n"
             f"{content}"
         ),
         encoding="utf-8",
@@ -399,6 +399,25 @@ def test_release_e2e_evidence_rejects_artifact_hash_mismatch(tmp_path, monkeypat
     module.check_release_e2e_evidence(evidence_path, reporter)
 
     assert any("artifact hash mismatch: android_apk" in error for error in reporter.errors)
+
+
+def test_release_e2e_evidence_rejects_invalid_artifact_hash_format(tmp_path, monkeypatch):
+    module = load_release_readiness_module()
+    evidence = make_evidence(tmp_path, module)
+    artifact_hashes = evidence["artifact_sha256"]
+    assert isinstance(artifact_hashes, dict)
+    artifact_hashes["android_apk"] = "not-a-sha256"
+    evidence_path = write_evidence(tmp_path, evidence)
+    monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
+    monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")
+
+    reporter = module.Reporter()
+    module.check_release_e2e_evidence(evidence_path, reporter)
+
+    assert any(
+        "artifact hash must be lowercase SHA-256 hex: android_apk" in error
+        for error in reporter.errors
+    )
 
 
 def test_release_e2e_evidence_rejects_unknown_artifact_key(tmp_path, monkeypatch):

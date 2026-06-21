@@ -624,15 +624,15 @@ def check_readme_release_status(root: Path, reporter: Reporter) -> None:
     else:
         reporter.ok("README does not overclaim Production Ready before strict evidence")
     if (
-        "3880 백엔드 테스트" in readme
-        and "3880개" in readme
+        "3881 백엔드 테스트" in readme
+        and "3881개" in readme
         and ("Flutter 415" in readme or "415개" in readme)
-        and "4295개" in readme
+        and "4296개" in readme
     ):
         reporter.ok("README test counts match current release validation evidence")
     else:
         reporter.fail(
-            "README test counts must match current 3880 backend / 415 Flutter / 4295 total evidence"
+            "README test counts must match current 3881 backend / 415 Flutter / 4296 total evidence"
         )
     if f"{completed_spec_count}개 SPEC" in readme:
         reporter.fail("README should avoid hard-coded completed SPEC counts outside the SPEC list")
@@ -707,11 +707,11 @@ def check_docs(root: Path, reporter: Reporter) -> None:
             "Release procedure SPEC count must match README completed SPEC list "
             f"({completed_spec_count})"
         )
-    if "3880 passed" in procedure_doc and "Flutter: 415 passed" in procedure_doc:
+    if "3881 passed" in procedure_doc and "Flutter: 415 passed" in procedure_doc:
         reporter.ok("Release procedure backend test count matches latest full pytest evidence")
     else:
         reporter.fail(
-            "Release procedure test counts must match latest 3880 backend / 415 Flutter evidence"
+            "Release procedure test counts must match latest 3881 backend / 415 Flutter evidence"
         )
     app_store_doc = read_text(root / "docs/app-store-metadata.md")
     for snippet in [
@@ -1050,6 +1050,10 @@ def release_artifact_sha256(path: Path) -> str:
     return ""
 
 
+def is_sha256_hex(value: str) -> bool:
+    return bool(re.fullmatch(r"[0-9a-f]{64}", value))
+
+
 def is_android_apk(path: Path) -> bool:
     try:
         with zipfile.ZipFile(path) as apk:
@@ -1206,6 +1210,11 @@ def check_release_e2e_evidence(path: Path, reporter: Reporter, root: Path | None
             expected_hash = str(artifact_hashes.get(key, "")).strip() if artifact_hashes else ""
             if not expected_hash:
                 reporter.fail(f"Release E2E evidence missing artifact hash: {key}")
+                continue
+            if not is_sha256_hex(expected_hash):
+                reporter.fail(
+                    f"Release E2E evidence artifact hash must be lowercase SHA-256 hex: {key}"
+                )
                 continue
             actual_hash = release_artifact_sha256(resolved_artifact)
             if actual_hash != expected_hash:
