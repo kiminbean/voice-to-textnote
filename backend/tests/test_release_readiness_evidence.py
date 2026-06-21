@@ -109,10 +109,10 @@ def write_tone_policy_files(root: Path, *, tone_model_line: str = 'tone_model: s
 def write_readme_status(root: Path, content: str) -> None:
     (root / "README.md").write_text(
         (
-            "3897 백엔드 테스트\n"
-            "| 백엔드 단위/통합/E2E | 3897개 | 100.00% |\n"
+            "3899 백엔드 테스트\n"
+            "| 백엔드 단위/통합/E2E | 3899개 | 100.00% |\n"
             "| Flutter 테스트 | 415개 | - |\n"
-            "| 총합 | 4312개 | - |\n"
+            "| 총합 | 4314개 | - |\n"
             f"{content}"
         ),
         encoding="utf-8",
@@ -790,6 +790,23 @@ def test_release_e2e_example_lists_every_required_scenario():
     assert set(scenarios) == set(module.REQUIRED_E2E_SCENARIOS)
 
 
+def test_release_e2e_example_matches_strict_top_level_schema():
+    example_path = Path(__file__).resolve().parents[2] / "docs/release-e2e-evidence.example.json"
+    example = json.loads(example_path.read_text(encoding="utf-8"))
+
+    assert set(example) == {
+        "tested_at",
+        "tester",
+        "backend_version",
+        "client_version",
+        "devices",
+        "artifacts",
+        "artifact_sha256",
+        "scenarios",
+    }
+    assert set(example["artifact_sha256"]) == set(example["artifacts"])
+
+
 def test_tracked_release_e2e_scaffold_lists_every_required_scenario():
     module = load_release_readiness_module()
     scaffold_path = Path(__file__).resolve().parents[2] / "docs/release-e2e-evidence.json"
@@ -797,6 +814,23 @@ def test_tracked_release_e2e_scaffold_lists_every_required_scenario():
     scenarios = scaffold["scenarios"]
 
     assert set(scenarios) == set(module.REQUIRED_E2E_SCENARIOS)
+
+
+def test_tracked_release_e2e_scaffold_matches_strict_top_level_schema():
+    scaffold_path = Path(__file__).resolve().parents[2] / "docs/release-e2e-evidence.json"
+    scaffold = json.loads(scaffold_path.read_text(encoding="utf-8"))
+
+    assert set(scaffold) == {
+        "tested_at",
+        "tester",
+        "backend_version",
+        "client_version",
+        "devices",
+        "artifacts",
+        "artifact_sha256",
+        "scenarios",
+    }
+    assert set(scaffold["artifact_sha256"]) == set(scaffold["artifacts"])
 
 
 def test_tone_release_policy_accepts_current_repo_policy():

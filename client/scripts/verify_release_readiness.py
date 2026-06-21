@@ -625,15 +625,15 @@ def check_readme_release_status(root: Path, reporter: Reporter) -> None:
     else:
         reporter.ok("README does not overclaim Production Ready before strict evidence")
     if (
-        "3897 백엔드 테스트" in readme
-        and "3897개" in readme
+        "3899 백엔드 테스트" in readme
+        and "3899개" in readme
         and ("Flutter 415" in readme or "415개" in readme)
-        and "4312개" in readme
+        and "4314개" in readme
     ):
         reporter.ok("README test counts match current release validation evidence")
     else:
         reporter.fail(
-            "README test counts must match current 3897 backend / 415 Flutter / 4312 total evidence"
+            "README test counts must match current 3899 backend / 415 Flutter / 4314 total evidence"
         )
     if f"{completed_spec_count}개 SPEC" in readme:
         reporter.fail("README should avoid hard-coded completed SPEC counts outside the SPEC list")
@@ -672,6 +672,7 @@ def check_docs(root: Path, reporter: Reporter) -> None:
         ("verify_mobile_release_runner.py", ("verify_mobile_release_runner.py",)),
         ("./scripts/verify_mobile.sh --native", ("./scripts/verify_mobile.sh --native",)),
         ("RELEASE_E2E_EVIDENCE_PATH", ("RELEASE_E2E_EVIDENCE_PATH",)),
+        ("artifact_sha256", ("artifact_sha256", "SHA-256")),
     ]
     for label, snippets in e2e_requirements:
         if any(snippet in e2e_doc for snippet in snippets):
@@ -708,11 +709,11 @@ def check_docs(root: Path, reporter: Reporter) -> None:
             "Release procedure SPEC count must match README completed SPEC list "
             f"({completed_spec_count})"
         )
-    if "3897 passed" in procedure_doc and "Flutter: 415 passed" in procedure_doc:
+    if "3899 passed" in procedure_doc and "Flutter: 415 passed" in procedure_doc:
         reporter.ok("Release procedure backend test count matches latest full pytest evidence")
     else:
         reporter.fail(
-            "Release procedure test counts must match latest 3897 backend / 415 Flutter evidence"
+            "Release procedure test counts must match latest 3899 backend / 415 Flutter evidence"
         )
     app_store_doc = read_text(root / "docs/app-store-metadata.md")
     for snippet in [
@@ -839,10 +840,44 @@ def check_tracked_release_e2e_scaffold(root: Path, reporter: Reporter) -> None:
     except json.JSONDecodeError as exc:
         reporter.fail(f"Tracked release E2E evidence scaffold JSON is invalid: {exc}")
         return
+    expected_top_level_keys = {
+        "tested_at",
+        "tester",
+        "backend_version",
+        "client_version",
+        "devices",
+        "artifacts",
+        "artifact_sha256",
+        "scenarios",
+    }
+    actual_top_level_keys = set(data) if isinstance(data, dict) else set()
+    if actual_top_level_keys == expected_top_level_keys:
+        reporter.ok("Tracked release E2E evidence scaffold matches strict schema keys")
+    else:
+        missing = ", ".join(sorted(expected_top_level_keys - actual_top_level_keys)) or "none"
+        extra = ", ".join(sorted(actual_top_level_keys - expected_top_level_keys)) or "none"
+        reporter.fail(
+            "Tracked release E2E evidence scaffold schema keys are stale "
+            f"(missing: {missing}; extra: {extra})"
+        )
     scenarios = data.get("scenarios") if isinstance(data, dict) else None
     if not isinstance(scenarios, dict):
         reporter.fail("Tracked release E2E evidence scaffold missing scenario results")
         return
+    artifacts = data.get("artifacts")
+    artifact_hashes = data.get("artifact_sha256")
+    if isinstance(artifacts, dict) and isinstance(artifact_hashes, dict):
+        if set(artifact_hashes) == set(artifacts):
+            reporter.ok("Tracked release E2E evidence scaffold hashes every artifact key")
+        else:
+            missing = ", ".join(sorted(set(artifacts) - set(artifact_hashes))) or "none"
+            extra = ", ".join(sorted(set(artifact_hashes) - set(artifacts))) or "none"
+            reporter.fail(
+                "Tracked release E2E evidence scaffold artifact hash keys are stale "
+                f"(missing: {missing}; extra: {extra})"
+            )
+    else:
+        reporter.fail("Tracked release E2E evidence scaffold missing artifact hashes")
     actual = set(scenarios)
     expected = set(REQUIRED_E2E_SCENARIOS)
     if actual == expected:

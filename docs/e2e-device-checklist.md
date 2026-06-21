@@ -94,7 +94,7 @@ python3 client/scripts/configure_github_mobile_release_env.py --repo kiminbean/v
 
 ### Release E2E evidence scaffold
 
-아래 명령은 현재 git revision, `ANDROID_DEVICE_SERIAL`, `IOS_DEVICE_UDID`, 기본 Android/iOS build artifact 경로, 모든 required scenario key를 포함한 JSON scaffold를 생성한다. 생성 직후 scenario는 모두 `pass: false`이며, 실제 실기기 관측 증거를 채우기 전에는 strict readiness가 실패해야 정상이다.
+아래 명령은 현재 git revision, `ANDROID_DEVICE_SERIAL`, `IOS_DEVICE_UDID`, 기본 Android/iOS build artifact 경로, `artifact_sha256`, 모든 required scenario key를 포함한 JSON scaffold를 생성한다. 생성 직후 scenario는 모두 `pass: false`이며, 실제 실기기 관측 증거를 채우기 전에는 strict readiness가 실패해야 정상이다.
 
 ```bash
 ANDROID_DEVICE_SERIAL=<adb-device-serial> \
@@ -168,7 +168,7 @@ python3 client/scripts/create_release_e2e_evidence.py \
 
 ## Release E2E Evidence JSON 매핑
 
-`RELEASE_E2E_EVIDENCE_PATH`는 아래 scenario key를 모두 포함해야 한다. 각 항목은 `pass: true`와 실제 관측 증거 문구를 가져야 하며, Android/iOS device id는 strict 환경변수와 일치해야 한다.
+`RELEASE_E2E_EVIDENCE_PATH`는 아래 scenario key를 모두 포함해야 한다. 각 항목은 `pass: true`와 실제 관측 증거 문구를 가져야 하며, Android/iOS device id는 strict 환경변수와 일치해야 한다. `artifact_sha256`은 `artifacts`의 모든 key를 포함해야 하고, 실제 release 산출물 파일/디렉터리 내용의 SHA-256과 일치해야 한다.
 
 | Evidence key | 체크리스트 범위 |
 |--------------|----------------|
