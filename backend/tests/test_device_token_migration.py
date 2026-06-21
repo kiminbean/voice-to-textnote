@@ -144,4 +144,8 @@ class TestDeviceTokenMigration:
         assert "ix_device_tokens_device_id" in indexes
         assert "ix_device_tokens_user_device_id" in indexes
         assert version is not None
-        assert "003_add_device_id_to_device_tokens" in version[0] or version[0].startswith("004")
+        assert (
+            "003_add_device_id_to_device_tokens" in version[0]
+            or version[0].startswith("004")
+            or version[0].startswith("005")
+        )

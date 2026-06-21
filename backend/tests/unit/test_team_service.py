@@ -16,6 +16,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.db.auth_models import Team, TeamMember, User
+from backend.services.team_service import normalize_sharing_policy
 
 # ---------------------------------------------------------------------------
 # 픽스처
@@ -28,6 +29,13 @@ def team_service():
     from backend.services.team_service import TeamService
 
     return TeamService()
+
+
+def test_normalize_sharing_policy_falls_back_to_private_for_invalid_values():
+    assert normalize_sharing_policy(None) == {"default_visibility": "private"}
+    assert normalize_sharing_policy({"default_visibility": "public"}) == {
+        "default_visibility": "private"
+    }
 
 
 @pytest.fixture
@@ -94,6 +102,7 @@ async def test_create_team_with_admin_member(team_service, mock_session, sample_
     assert team.name == "새 팀"
     assert team.description == "팀 설명"
     assert team.created_by == sample_user.id
+    assert team.sharing_policy == {"default_visibility": "private"}
     # Team + TeamMember 2번 add
     assert mock_session.add.call_count == 2
     mock_session.commit.assert_called_once()
@@ -204,10 +213,12 @@ async def test_update_team(team_service, mock_session, sample_team):
         team_id=sample_team.id,
         name="수정된 팀명",
         description="새 설명",
+        sharing_policy={"default_visibility": "team_default"},
     )
 
     assert updated.name == "수정된 팀명"
     assert updated.description == "새 설명"
+    assert updated.sharing_policy == {"default_visibility": "team_default"}
     mock_session.commit.assert_called_once()
 
 

@@ -1,5 +1,24 @@
 // 팀 관련 데이터 모델 (SPEC-TEAM-001 REQ-TEAM-006)
 
+class SharingPolicy {
+  final String defaultVisibility;
+
+  const SharingPolicy({this.defaultVisibility = 'private'});
+
+  factory SharingPolicy.fromJson(Map<String, dynamic>? json) {
+    final visibility = json?['default_visibility'] as String?;
+    return SharingPolicy(
+      defaultVisibility: visibility == 'team_default' ? visibility! : 'private',
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {'default_visibility': defaultVisibility};
+  }
+
+  bool get isTeamDefault => defaultVisibility == 'team_default';
+}
+
 // 팀 기본 모델
 class Team {
   final String id;
@@ -8,6 +27,7 @@ class Team {
   final String createdBy;
   final DateTime createdAt;
   final int memberCount;
+  final SharingPolicy sharingPolicy;
 
   const Team({
     required this.id,
@@ -16,6 +36,7 @@ class Team {
     required this.createdBy,
     required this.createdAt,
     required this.memberCount,
+    this.sharingPolicy = const SharingPolicy(),
   });
 
   // JSON에서 Team 객체 생성
@@ -27,6 +48,9 @@ class Team {
       createdBy: json['created_by'] as String,
       createdAt: DateTime.parse(json['created_at'] as String),
       memberCount: json['member_count'] as int,
+      sharingPolicy: SharingPolicy.fromJson(
+        json['sharing_policy'] as Map<String, dynamic>?,
+      ),
     );
   }
 
@@ -39,6 +63,7 @@ class Team {
       'created_by': createdBy,
       'created_at': createdAt.toIso8601String(),
       'member_count': memberCount,
+      'sharing_policy': sharingPolicy.toJson(),
     };
   }
 
@@ -50,6 +75,7 @@ class Team {
     String? createdBy,
     DateTime? createdAt,
     int? memberCount,
+    SharingPolicy? sharingPolicy,
   }) {
     return Team(
       id: id ?? this.id,
@@ -58,6 +84,7 @@ class Team {
       createdBy: createdBy ?? this.createdBy,
       createdAt: createdAt ?? this.createdAt,
       memberCount: memberCount ?? this.memberCount,
+      sharingPolicy: sharingPolicy ?? this.sharingPolicy,
     );
   }
 }
@@ -133,6 +160,7 @@ class TeamDetail extends Team {
     required super.createdBy,
     required super.createdAt,
     required super.memberCount,
+    super.sharingPolicy,
     required this.members,
   });
 
@@ -150,6 +178,9 @@ class TeamDetail extends Team {
       createdBy: json['created_by'] as String,
       createdAt: DateTime.parse(json['created_at'] as String),
       memberCount: json['member_count'] as int,
+      sharingPolicy: SharingPolicy.fromJson(
+        json['sharing_policy'] as Map<String, dynamic>?,
+      ),
       members: membersList,
     );
   }
@@ -169,6 +200,7 @@ class TeamDetail extends Team {
     String? createdBy,
     DateTime? createdAt,
     int? memberCount,
+    SharingPolicy? sharingPolicy,
     List<TeamMember>? members,
   }) {
     return TeamDetail(
@@ -178,6 +210,7 @@ class TeamDetail extends Team {
       createdBy: createdBy ?? this.createdBy,
       createdAt: createdAt ?? this.createdAt,
       memberCount: memberCount ?? this.memberCount,
+      sharingPolicy: sharingPolicy ?? this.sharingPolicy,
       members: members ?? this.members,
     );
   }

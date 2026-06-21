@@ -126,14 +126,7 @@ class _TeamShareDialogState extends ConsumerState<TeamShareDialog> {
                             onChanged:
                                 isLoading ? null : (_) => _toggleShare(team),
                             title: Text(team.name),
-                            subtitle: team.description != null &&
-                                    team.description!.isNotEmpty
-                                ? Text(
-                                    team.description!,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  )
-                                : null,
+                            subtitle: _TeamShareSubtitle(team: team),
                             secondary: isLoading
                                 ? const SizedBox(
                                     width: 20,
@@ -168,6 +161,53 @@ class _TeamShareDialogState extends ConsumerState<TeamShareDialog> {
           child: const Text('닫기'),
         ),
       ],
+    );
+  }
+}
+
+class _TeamShareSubtitle extends StatelessWidget {
+  final Team team;
+
+  const _TeamShareSubtitle({required this.team});
+
+  @override
+  Widget build(BuildContext context) {
+    final description = team.description;
+    final hasDescription = description != null && description.isNotEmpty;
+    final isPolicyDefault = team.sharingPolicy.isTeamDefault;
+
+    if (!hasDescription && !isPolicyDefault) {
+      return const SizedBox.shrink();
+    }
+
+    final children = <Widget>[];
+    if (hasDescription) {
+      children.add(
+        Text(
+          description,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      );
+    }
+    if (isPolicyDefault) {
+      children.add(
+        Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Text(
+            '팀 기본 공유 정책 대상',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.primary,
+                  fontWeight: FontWeight.w700,
+                ),
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: children,
     );
   }
 }

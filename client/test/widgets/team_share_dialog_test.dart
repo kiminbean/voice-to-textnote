@@ -12,6 +12,7 @@ Team _team({
   required String id,
   required String name,
   String? description,
+  SharingPolicy sharingPolicy = const SharingPolicy(),
 }) =>
     Team(
       id: id,
@@ -20,6 +21,7 @@ Team _team({
       createdBy: 'user-001',
       createdAt: DateTime(2024, 1, 15),
       memberCount: 3,
+      sharingPolicy: sharingPolicy,
     );
 
 void main() {
@@ -34,6 +36,8 @@ void main() {
             id: 'team-001',
             name: '리서치 팀',
             description: '사용자 인터뷰 공유',
+            sharingPolicy:
+                const SharingPolicy(defaultVisibility: 'team_default'),
           ),
           _team(id: 'team-002', name: '제품 팀'),
         ],
@@ -72,6 +76,7 @@ void main() {
       await pumpDialog(tester);
 
       expect(find.text('기본은 비공개입니다. 선택한 팀만 이 노트에 접근할 수 있습니다.'), findsOneWidget);
+      expect(find.text('팀 기본 공유 정책 대상'), findsOneWidget);
       expect(find.text('나만 볼 수 있음'), findsOneWidget);
       expect(find.text('리서치 팀'), findsOneWidget);
       expect(find.text('사용자 인터뷰 공유'), findsOneWidget);

@@ -16,6 +16,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
+from backend.app.api.v1.collaboration.teams import _sharing_policy_from_raw
+from backend.schemas.team import SharingPolicy
+
 # ---------------------------------------------------------------------------
 # 공통 픽스처
 # ---------------------------------------------------------------------------
@@ -41,7 +44,14 @@ def _make_team(creator_id=None):
     team.created_by = creator_id or uuid.uuid4()
     team.created_at = datetime.now(UTC).replace(tzinfo=None)
     team.updated_at = datetime.now(UTC).replace(tzinfo=None)
+    team.sharing_policy = {"default_visibility": "private"}
     return team
+
+
+def test_sharing_policy_from_raw_returns_existing_schema_instance():
+    policy = SharingPolicy(default_visibility="team_default")
+
+    assert _sharing_policy_from_raw(policy) is policy
 
 
 @pytest.fixture
@@ -121,6 +131,7 @@ def test_create_team_201(team_client, admin_user):
     assert response.status_code == 201
     data = response.json()
     assert data["name"] == "개발팀"
+    assert data["sharing_policy"] == {"default_visibility": "private"}
 
 
 # ---------------------------------------------------------------------------
@@ -142,6 +153,7 @@ def test_list_teams(team_client, admin_user):
                 "created_by": str(team.created_by),
                 "created_at": team.created_at,
                 "member_count": 1,
+                "sharing_policy": {"default_visibility": "team_default"},
             }
         ]
     )
@@ -151,6 +163,7 @@ def test_list_teams(team_client, admin_user):
     data = response.json()
     assert data["total"] == 1
     assert len(data["items"]) == 1
+    assert data["items"][0]["sharing_policy"] == {"default_visibility": "team_default"}
 
 
 # ---------------------------------------------------------------------------

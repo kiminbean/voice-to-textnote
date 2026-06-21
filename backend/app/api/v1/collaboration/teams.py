@@ -27,6 +27,7 @@ from backend.schemas.team import (
     MemberInviteRequest,
     MemberListResponse,
     MemberRoleUpdateRequest,
+    SharingPolicy,
     TeamCreateRequest,
     TeamDetailResponse,
     TeamListResponse,
@@ -50,6 +51,14 @@ def get_meeting_share_service() -> MeetingShareService:
     return MeetingShareService()
 
 
+def _sharing_policy_from_raw(raw: dict | SharingPolicy | None) -> SharingPolicy:
+    if isinstance(raw, SharingPolicy):
+        return raw
+    if isinstance(raw, dict):
+        return SharingPolicy.model_validate(raw)
+    return SharingPolicy()
+
+
 @router.post(
     "",
     response_model=TeamResponse,
@@ -71,6 +80,9 @@ async def create_team(
         name=req.name,
         description=req.description,
         creator_id=current_user.id,
+        sharing_policy=req.sharing_policy.model_dump(mode="json")
+        if req.sharing_policy is not None
+        else None,
     )
     return TeamResponse(
         id=str(team.id),
@@ -79,6 +91,7 @@ async def create_team(
         created_by=str(team.created_by),
         created_at=team.created_at,
         member_count=1,  # 생성 직후 creator 1명
+        sharing_policy=_sharing_policy_from_raw(getattr(team, "sharing_policy", None)),
     )
 
 
@@ -104,6 +117,7 @@ async def list_teams(
             created_by=t["created_by"],
             created_at=t["created_at"],
             member_count=t["member_count"],
+            sharing_policy=_sharing_policy_from_raw(t.get("sharing_policy")),
         )
         for t in teams
     ]
@@ -146,6 +160,7 @@ async def get_team(
         created_by=detail["created_by"],
         created_at=detail["created_at"],
         member_count=detail["member_count"],
+        sharing_policy=_sharing_policy_from_raw(detail.get("sharing_policy")),
         members=[TeamMemberResponse(**m) for m in detail["members"]],
     )
 
@@ -181,6 +196,9 @@ async def update_team(
         team_id=team_uuid,
         name=req.name,
         description=req.description,
+        sharing_policy=req.sharing_policy.model_dump(mode="json")
+        if req.sharing_policy is not None
+        else None,
     )
     return TeamResponse(
         id=str(team.id),
@@ -189,6 +207,7 @@ async def update_team(
         created_by=str(team.created_by),
         created_at=team.created_at,
         member_count=0,  # 수정 응답에서는 별도 집계 생략
+        sharing_policy=_sharing_policy_from_raw(getattr(team, "sharing_policy", None)),
     )
 
 

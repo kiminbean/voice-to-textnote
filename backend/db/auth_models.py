@@ -12,6 +12,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import (
+    JSON,
     Boolean,
     DateTime,
     ForeignKey,
@@ -130,6 +131,9 @@ class Team(Base):
         Text,
         nullable=True,
     )
+
+    # 팀 단위 공유 정책. 기본은 항상 비공개이며, admin이 명시적으로 변경할 수 있다.
+    sharing_policy: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
     # 생성자 ID (users.id 외래 키)
     created_by: Mapped[uuid.UUID] = mapped_column(

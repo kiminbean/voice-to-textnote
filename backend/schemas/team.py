@@ -8,8 +8,18 @@ REQ-TEAM-004: TeamUpdateRequest
 """
 
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
+
+
+class SharingPolicy(BaseModel):
+    """팀 기본 공유 정책."""
+
+    default_visibility: Literal["private", "team_default"] = Field(
+        default="private",
+        description="새 노트의 기본 공유 정책. private은 명시 선택 전까지 비공개입니다.",
+    )
 
 
 class TeamCreateRequest(BaseModel):
@@ -17,6 +27,9 @@ class TeamCreateRequest(BaseModel):
 
     name: str = Field(min_length=1, max_length=200, description="팀 이름")
     description: str | None = Field(default=None, description="팀 설명")
+    sharing_policy: SharingPolicy | None = Field(
+        default=None, description="팀 기본 공유 정책"
+    )
 
 
 class TeamUpdateRequest(BaseModel):
@@ -24,6 +37,9 @@ class TeamUpdateRequest(BaseModel):
 
     name: str | None = Field(default=None, min_length=1, max_length=200, description="팀 이름")
     description: str | None = Field(default=None, description="팀 설명")
+    sharing_policy: SharingPolicy | None = Field(
+        default=None, description="팀 기본 공유 정책"
+    )
 
 
 class TeamMemberResponse(BaseModel):
@@ -45,6 +61,7 @@ class TeamResponse(BaseModel):
     created_by: str
     created_at: datetime
     member_count: int
+    sharing_policy: SharingPolicy = Field(default_factory=SharingPolicy)
 
 
 class TeamListResponse(BaseModel):

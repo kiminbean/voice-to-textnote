@@ -25,10 +25,12 @@ class TeamApi {
   Future<Team> createTeam({
     required String name,
     String? description,
+    SharingPolicy? sharingPolicy,
   }) async {
     final response = await _dio.post('/teams', data: {
       'name': name,
       if (description != null) 'description': description,
+      if (sharingPolicy != null) 'sharing_policy': sharingPolicy.toJson(),
     });
     return Team.fromJson(response.data as Map<String, dynamic>);
   }
@@ -56,10 +58,12 @@ class TeamApi {
     String teamId, {
     String? name,
     String? description,
+    SharingPolicy? sharingPolicy,
   }) async {
     final response = await _dio.put('/teams/$teamId', data: {
       if (name != null) 'name': name,
       if (description != null) 'description': description,
+      if (sharingPolicy != null) 'sharing_policy': sharingPolicy.toJson(),
     });
     return Team.fromJson(response.data as Map<String, dynamic>);
   }

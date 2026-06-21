@@ -17,6 +17,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.db.auth_models import Team, TeamMember, User
 
+DEFAULT_SHARING_POLICY = {"default_visibility": "private"}
+
+
+def normalize_sharing_policy(policy: dict | None) -> dict:
+    """팀 공유 정책을 안전한 기본 비공개 정책으로 정규화."""
+    if not isinstance(policy, dict):
+        return dict(DEFAULT_SHARING_POLICY)
+    visibility = policy.get("default_visibility")
+    if visibility not in {"private", "team_default"}:
+        visibility = "private"
+    return {"default_visibility": visibility}
+
 
 class TeamService:
     """팀 CRUD 서비스"""
@@ -27,6 +39,7 @@ class TeamService:
         name: str,
         description: str | None,
         creator_id: uuid.UUID,
+        sharing_policy: dict | None = None,
     ) -> Team:
         """
         팀 생성.
@@ -41,6 +54,7 @@ class TeamService:
         team.name = name
         team.description = description
         team.created_by = creator_id
+        team.sharing_policy = normalize_sharing_policy(sharing_policy)
         session.add(team)
 
         # 생성자를 admin으로 팀에 추가
@@ -84,6 +98,7 @@ class TeamService:
                 "created_by": str(row[0].created_by),
                 "created_at": row[0].created_at,
                 "member_count": row[1],
+                "sharing_policy": normalize_sharing_policy(row[0].sharing_policy),
             }
             for row in rows
         ]
@@ -141,6 +156,7 @@ class TeamService:
             "created_by": str(team.created_by),
             "created_at": team.created_at,
             "member_count": len(members),
+            "sharing_policy": normalize_sharing_policy(team.sharing_policy),
             "members": members,
         }
 
@@ -150,6 +166,7 @@ class TeamService:
         team_id: uuid.UUID,
         name: str | None = None,
         description: str | None = None,
+        sharing_policy: dict | None = None,
     ) -> Team:
         """
         팀 정보 수정 (부분 업데이트).
@@ -168,6 +185,8 @@ class TeamService:
             team.name = name
         if description is not None:
             team.description = description
+        if sharing_policy is not None:
+            team.sharing_policy = normalize_sharing_policy(sharing_policy)
 
         await session.commit()
         return team
