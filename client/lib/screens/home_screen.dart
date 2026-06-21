@@ -1,5 +1,8 @@
 // 홈 화면 - 미팅 목록 표시 (모던 미니멀)
 // @MX:NOTE: SPEC-TMPL/SEARCH/TEAM/HISTSYNC/GUEST 통합 진입점
+import 'dart:io';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -17,6 +20,19 @@ import 'package:voice_to_textnote/widgets/empty_state_widget.dart';
 import 'package:voice_to_textnote/widgets/meeting_card.dart';
 import 'package:voice_to_textnote/widgets/offline_banner.dart';
 import 'package:voice_to_textnote/widgets/shimmer_card.dart';
+
+final documentImportPickerProvider =
+    Provider<Future<PlatformFile?> Function()>((ref) {
+  return () async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const ['pdf', 'docx'],
+      allowMultiple: false,
+      withData: false,
+    );
+    return result?.files.single;
+  };
+});
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -249,15 +265,84 @@ class HomeScreen extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
-          _ShortcutTile(
-            icon: Icons.link_rounded,
-            title: 'URL/Transcript',
-            subtitle: 'YouTube, 웹 글, 외부 자료를 검색 가능한 회의록으로 가져오기',
-            onTap: () => _showExternalTextImportSheet(context, ref),
+          Row(
+            children: [
+              Expanded(
+                child: _ShortcutTile(
+                  icon: Icons.description_rounded,
+                  title: '문서 가져오기',
+                  subtitle: 'PDF/DOCX 검색 노트',
+                  onTap: () => _importDocument(context, ref),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: _ShortcutTile(
+                  icon: Icons.link_rounded,
+                  title: 'URL/Transcript',
+                  subtitle: 'YouTube, 웹 글, 외부 자료',
+                  onTap: () => _showExternalTextImportSheet(context, ref),
+                ),
+              ),
+            ],
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _importDocument(BuildContext context, WidgetRef ref) async {
+    final picked = await ref.read(documentImportPickerProvider)();
+    if (!context.mounted || picked == null) return;
+
+    final path = picked.path;
+    if (path == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('선택한 문서 경로를 확인할 수 없습니다.')),
+      );
+      return;
+    }
+
+    final title = _documentTitle(picked.name);
+    try {
+      final result = await ref.read(minutesApiProvider).importDocument(
+            file: File(path),
+            title: title,
+          );
+      final taskId = result['task_id'] as String;
+      final importedTitle = (result['title'] as String?)?.trim();
+      final meetingTitle = importedTitle == null || importedTitle.isEmpty
+          ? title
+          : importedTitle;
+      final sourceUrl = result['source_url'] as String?;
+      final meeting = Meeting(
+        id: taskId,
+        title: meetingTitle,
+        createdAt: DateTime.now(),
+        status: MeetingStatus.completed,
+        sourceUrl: sourceUrl,
+        minutesTaskId: taskId,
+      );
+      await ref.read(meetingListProvider.notifier).addMeeting(meeting);
+
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$meetingTitle을 가져왔습니다.')),
+      );
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('문서를 가져올 수 없습니다. PDF 또는 DOCX를 확인해주세요.')),
+      );
+    }
+  }
+
+  String _documentTitle(String fileName) {
+    final name = fileName.trim();
+    if (name.isEmpty) return '가져온 문서';
+    final dotIndex = name.lastIndexOf('.');
+    if (dotIndex <= 0) return name;
+    return name.substring(0, dotIndex);
   }
 
   void _showExternalTextImportSheet(BuildContext context, WidgetRef ref) {

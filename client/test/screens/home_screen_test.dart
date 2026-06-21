@@ -1,7 +1,9 @@
 // HomeScreen 위젯 테스트
 // SPEC-HISTSYNC-001: RefreshIndicator, 삭제, 오류 처리 포함
 import 'dart:async';
+import 'dart:io';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -48,6 +50,7 @@ void main() {
   setUpAll(() {
     TestWidgetsFlutterBinding.ensureInitialized();
     registerFallbackValue(const Duration(seconds: 30));
+    registerFallbackValue(File('/tmp/fallback.pdf'));
   });
 
   group('HomeScreen', () {
@@ -279,6 +282,61 @@ void main() {
             sourceType: 'youtube',
             language: 'ko',
           )).called(1);
+    });
+
+    testWidgets('PDF 문서를 가져오면 완료된 미팅으로 목록에 추가되어야 함',
+        (WidgetTester tester) async {
+      when(() => mockMinutesApi.importDocument(
+            file: any(named: 'file'),
+            title: any(named: 'title'),
+            language: any(named: 'language'),
+          )).thenAnswer(
+        (_) async => {
+          'task_id': 'doc-001',
+          'status': 'completed',
+          'title': '강의 슬라이드',
+          'source_url':
+              'https://local.voicetextnote/imports/documents/lecture.pdf',
+          'result_url': '/api/v1/minutes/doc-001',
+          'search_indexed': true,
+          'file_name': 'lecture.pdf',
+          'file_type': 'pdf',
+          'extracted_characters': 120,
+        },
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            ..._onlineOverrides(mockService),
+            minutesApiProvider.overrideWithValue(mockMinutesApi),
+            documentImportPickerProvider.overrideWithValue(
+              () async => PlatformFile(
+                name: '강의 슬라이드.pdf',
+                size: 120,
+                path: '/tmp/lecture.pdf',
+              ),
+            ),
+          ],
+          child: const MaterialApp(
+            home: HomeScreen(),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('문서 가져오기'));
+      await tester.pumpAndSettle();
+      await _scrollHomeUntilVisible(tester, '강의 슬라이드');
+
+      expect(find.text('강의 슬라이드'), findsOneWidget);
+      expect(find.text('완료'), findsOneWidget);
+      final captured = verify(() => mockMinutesApi.importDocument(
+            file: captureAny(named: 'file'),
+            title: '강의 슬라이드',
+            language: 'ko',
+          )).captured;
+      expect((captured.single as File).path, '/tmp/lecture.pdf');
     });
 
     // REQ-HSYNC-003: RefreshIndicator가 있어야 함

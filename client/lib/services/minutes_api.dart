@@ -1,4 +1,6 @@
 // 회의록 생성 API 서비스
+import 'dart:io';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'api_client.dart';
@@ -59,6 +61,30 @@ class MinutesApi {
         'source_type': sourceType,
         'language': language,
       },
+    );
+    return response.data as Map<String, dynamic>;
+  }
+
+  // PDF/DOCX 문서를 검색 가능한 회의록 자산으로 가져오기
+  Future<Map<String, dynamic>> importDocument({
+    required File file,
+    String? title,
+    String language = 'ko',
+  }) async {
+    final fileName = file.path.split('/').last;
+    final formData = FormData.fromMap({
+      'file': await MultipartFile.fromFile(
+        file.path,
+        filename: fileName,
+      ),
+      if (title != null && title.trim().isNotEmpty) 'title': title.trim(),
+      'language': language,
+    });
+
+    final response = await _dio.post(
+      '/imports/document',
+      data: formData,
+      options: Options(contentType: 'multipart/form-data'),
     );
     return response.data as Map<String, dynamic>;
   }

@@ -1,4 +1,6 @@
 // MinutesApi 서비스 테스트 - SPEC-APP-004 REQ-APP-044
+import 'dart:io';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -117,6 +119,70 @@ void main() {
           },
         ),
       ).called(1);
+    });
+
+    test('importDocument가 PDF/DOCX 문서를 document import API로 전송해야 함', () async {
+      final tempDir = await Directory.systemTemp.createTemp('minutes-api-test');
+      final file = File('${tempDir.path}/강의자료.pdf');
+      await file
+          .writeAsBytes([0x25, 0x50, 0x44, 0x46, 0x20, 0x74, 0x65, 0x78, 0x74]);
+      addTearDown(() async {
+        if (await tempDir.exists()) {
+          await tempDir.delete(recursive: true);
+        }
+      });
+
+      when(
+        () => mockDio.post(
+          any(),
+          data: any(named: 'data'),
+          options: any(named: 'options'),
+        ),
+      ).thenAnswer(
+        (_) async => Response(
+          data: {
+            'task_id': 'doc-001',
+            'status': 'completed',
+            'title': '강의자료',
+            'result_url': '/api/v1/minutes/doc-001',
+            'search_indexed': true,
+          },
+          statusCode: 200,
+          requestOptions: RequestOptions(path: ''),
+        ),
+      );
+
+      final result = await minutesApi.importDocument(
+        file: file,
+        title: '강의자료',
+        language: 'ko',
+      );
+
+      expect(result['task_id'], 'doc-001');
+      final captured = verify(
+        () => mockDio.post(
+          '/imports/document',
+          data: captureAny(named: 'data'),
+          options: captureAny(named: 'options'),
+        ),
+      ).captured;
+      final formData = captured[0] as FormData;
+      final options = captured[1] as Options;
+      expect(formData.files.single.key, 'file');
+      expect(formData.files.single.value.filename, '강의자료.pdf');
+      expect(
+        formData.fields,
+        contains(predicate<MapEntry<String, String>>(
+          (entry) => entry.key == 'title' && entry.value == '강의자료',
+        )),
+      );
+      expect(
+        formData.fields,
+        contains(predicate<MapEntry<String, String>>(
+          (entry) => entry.key == 'language' && entry.value == 'ko',
+        )),
+      );
+      expect(options.contentType, 'multipart/form-data');
     });
   });
 }
