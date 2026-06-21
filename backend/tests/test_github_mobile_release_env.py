@@ -106,3 +106,15 @@ def test_github_mobile_release_env_rejects_missing_secret_and_variable():
 
     assert any("APNS_AUTH_KEY_P8" in error for error in reporter.errors)
     assert any("IOS_DEVICE_UDID" in error for error in reporter.errors)
+
+
+def test_mobile_workflow_matches_github_release_env_contract():
+    module = load_github_env_module()
+    workflow = (
+        Path(__file__).resolve().parents[2] / ".github/workflows/mobile.yml"
+    ).read_text(encoding="utf-8")
+
+    assert f"environment: {module.ENVIRONMENT}" in workflow
+    assert all(label in workflow for label in module.REQUIRED_RUNNER_LABELS)
+    assert all(f"secrets.{secret}" in workflow for secret in module.REQUIRED_SECRETS)
+    assert all(f"vars.{variable}" in workflow for variable in module.REQUIRED_VARIABLES)
