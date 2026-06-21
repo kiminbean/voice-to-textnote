@@ -3,6 +3,8 @@
 SPEC-AUDIO-ANALYSIS-001: 오디오 파일 품질 분석, 무음 구간 감지, STT 적합성 평가
 """
 
+import wave
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -14,6 +16,18 @@ from backend.ml.audio_analysis_engine import (
     _evaluate_quality,
     analyze_audio,
 )
+
+
+def _write_silent_wav(path: Path, duration_seconds: int = 1) -> Path:
+    """테스트용 무음 WAV 파일을 생성한다."""
+    sample_rate = 16000
+    frame_count = sample_rate * duration_seconds
+    with wave.open(str(path), "wb") as wav_file:
+        wav_file.setnchannels(1)
+        wav_file.setsampwidth(2)
+        wav_file.setframerate(sample_rate)
+        wav_file.writeframes(b"\x00\x00" * frame_count)
+    return path
 
 
 class TestSilenceSegment:
@@ -273,32 +287,14 @@ class TestAnalyzeAudio:
         with pytest.raises(FileNotFoundError):
             analyze_audio("/nonexistent/file.mp3")
 
-    @patch("pydub.AudioSegment")
-    @patch("pydub.utils.mediainfo")
-    @patch("pathlib.Path.stat")
-    def test_analyze_audio_basic_info(self, mock_stat, mock_mediainfo, mock_audio_segment):
+    def test_analyze_audio_basic_info(self, tmp_path: Path):
         """기본 오디오 정보 추출"""
-        # Arrange
-        mock_audio = MagicMock()
-        mock_audio.frame_rate = 16000
-        mock_audio.channels = 1
-        mock_audio.sample_width = 2
-        mock_audio.max_dBFS = -3.0
-        mock_audio.dBFS = -15.0
-        mock_audio.rms = 1000
-        mock_audio.__len__ = MagicMock(return_value=60000)  # 60초
+        audio_path = _write_silent_wav(tmp_path / "test.wav")
 
-        mock_audio_segment.from_file.return_value = mock_audio
-        mock_mediainfo.return_value = {"bit_rate": "128000"}
-        mock_stat.return_value.st_size = 1024000
+        result = analyze_audio(audio_path, include_silence_detection=False)
 
-        # Create temp file mock
-        with patch("pathlib.Path.name", "test.mp3"):
-            with patch("pathlib.Path.suffix", ".mp3"):
-                # Act
-                result = analyze_audio("test.mp3", include_silence_detection=False)
-
-                # Assert
-                assert result.sample_rate == 16000
-                assert result.channels == 1
-                assert result.bitrate == "128 kbps"
+        assert result.filename == "test.wav"
+        assert result.format == "WAV"
+        assert result.sample_rate == 16000
+        assert result.channels == 1
+        assert result.sample_width == 2
