@@ -13,8 +13,11 @@ import 'package:voice_to_textnote/providers/connectivity_provider.dart';
 import 'package:voice_to_textnote/providers/meeting_list_provider.dart';
 import 'package:voice_to_textnote/screens/home_screen.dart';
 import 'package:voice_to_textnote/services/connectivity_service.dart';
+import 'package:voice_to_textnote/services/minutes_api.dart';
 
 class MockConnectivityService extends Mock implements ConnectivityService {}
+
+class MockMinutesApi extends Mock implements MinutesApi {}
 
 // 테스트용 온라인 상태 오버라이드
 List<Override> _onlineOverrides(MockConnectivityService mockService) {
@@ -32,6 +35,15 @@ List<Override> _onlineOverrides(MockConnectivityService mockService) {
   ];
 }
 
+Future<void> _scrollHomeUntilVisible(WidgetTester tester, String text) async {
+  await tester.scrollUntilVisible(
+    find.text(text),
+    320,
+    scrollable: find.byType(Scrollable).first,
+  );
+  await tester.pumpAndSettle();
+}
+
 void main() {
   setUpAll(() {
     TestWidgetsFlutterBinding.ensureInitialized();
@@ -40,11 +52,13 @@ void main() {
 
   group('HomeScreen', () {
     late MockConnectivityService mockService;
+    late MockMinutesApi mockMinutesApi;
 
     setUp(() {
       // SharedPreferences mock 초기화 (meetingListProvider 기본값 사용 시 필요)
       SharedPreferences.setMockInitialValues({});
       mockService = MockConnectivityService();
+      mockMinutesApi = MockMinutesApi();
     });
 
     // 빈 상태 표시 테스트
@@ -99,6 +113,7 @@ void main() {
 
       // AsyncNotifier 초기화 대기
       await tester.pumpAndSettle();
+      await _scrollHomeUntilVisible(tester, '테스트 미팅');
 
       // 미팅 카드가 표시되어야 함
       expect(find.text('테스트 미팅'), findsOneWidget);
@@ -129,6 +144,7 @@ void main() {
       );
       await tester.tap(find.text('AI 기록 봇 준비'));
       await tester.pumpAndSettle();
+      await _scrollHomeUntilVisible(tester, 'Google Meet 회의');
 
       expect(find.text('Google Meet 회의'), findsOneWidget);
       expect(find.text('대기'), findsOneWidget);
@@ -192,6 +208,7 @@ void main() {
       );
 
       await tester.pumpAndSettle();
+      await _scrollHomeUntilVisible(tester, 'Microsoft Teams 회의');
       await tester.tap(find.text('Microsoft Teams 회의'));
       await tester.pumpAndSettle();
 
@@ -200,6 +217,68 @@ void main() {
       expect(find.text('회의 열기'), findsOneWidget);
       expect(find.text('캘린더 추가'), findsOneWidget);
       expect(find.text('링크 복사'), findsOneWidget);
+    });
+
+    testWidgets('URL transcript를 가져오면 완료된 미팅으로 목록에 추가되어야 함',
+        (WidgetTester tester) async {
+      when(() => mockMinutesApi.importExternalText(
+            sourceUrl: any(named: 'sourceUrl'),
+            title: any(named: 'title'),
+            content: any(named: 'content'),
+            sourceType: any(named: 'sourceType'),
+            language: any(named: 'language'),
+          )).thenAnswer(
+        (_) async => {
+          'task_id': 'ext-001',
+          'status': 'completed',
+          'result_url': '/api/v1/minutes/ext-001',
+          'search_indexed': true,
+        },
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            ..._onlineOverrides(mockService),
+            minutesApiProvider.overrideWithValue(mockMinutesApi),
+          ],
+          child: const MaterialApp(
+            home: HomeScreen(),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('URL/Transcript'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('URL/Transcript 가져오기'), findsOneWidget);
+
+      await tester.enterText(
+        find.widgetWithText(TextField, '원본 URL'),
+        'https://youtu.be/example123',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextField, '제목'),
+        '제품 데모 transcript',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Transcript 또는 원문'),
+        '사용자가 보유한 영상 transcript 본문을 검색 가능한 회의록으로 가져옵니다.',
+      );
+      await tester.tap(find.text('검색 가능한 회의록으로 가져오기'));
+      await tester.pumpAndSettle();
+      await _scrollHomeUntilVisible(tester, '제품 데모 transcript');
+
+      expect(find.text('제품 데모 transcript'), findsOneWidget);
+      expect(find.text('완료'), findsOneWidget);
+      verify(() => mockMinutesApi.importExternalText(
+            sourceUrl: 'https://youtu.be/example123',
+            title: '제품 데모 transcript',
+            content: '사용자가 보유한 영상 transcript 본문을 검색 가능한 회의록으로 가져옵니다.',
+            sourceType: 'youtube',
+            language: 'ko',
+          )).called(1);
     });
 
     // REQ-HSYNC-003: RefreshIndicator가 있어야 함
@@ -257,6 +336,7 @@ void main() {
       );
 
       await tester.pump();
+      await _scrollHomeUntilVisible(tester, '삭제할 미팅');
 
       // 미팅 카드를 길게 누름
       await tester.longPress(find.text('삭제할 미팅'));

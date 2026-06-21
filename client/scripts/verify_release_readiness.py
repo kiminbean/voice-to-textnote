@@ -546,10 +546,10 @@ def check_readme_release_status(root: Path, reporter: Reporter) -> None:
         )
     else:
         reporter.ok("README does not overclaim Production Ready before strict evidence")
-    if "3754 백엔드 테스트" in readme and "3754개" in readme and "4120개" in readme:
+    if "3754 백엔드 테스트" in readme and "3754개" in readme and "4121개" in readme:
         reporter.ok("README test counts match current release validation evidence")
     else:
-        reporter.fail("README test counts must match current 3754 backend / 4120 total evidence")
+        reporter.fail("README test counts must match current 3754 backend / 4121 total evidence")
     if f"{completed_spec_count}개 SPEC" in readme:
         reporter.fail("README should avoid hard-coded completed SPEC counts outside the SPEC list")
     else:
