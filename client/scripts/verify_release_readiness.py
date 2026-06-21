@@ -1100,6 +1100,7 @@ def check_tracked_release_e2e_scaffold(root: Path, reporter: Reporter) -> None:
         "tester",
         "backend_version",
         "client_version",
+        "release_gate",
         "devices",
         "artifacts",
         "artifact_sha256",
@@ -1133,6 +1134,17 @@ def check_tracked_release_e2e_scaffold(root: Path, reporter: Reporter) -> None:
             )
     else:
         reporter.fail("Tracked release E2E evidence scaffold missing artifact hashes")
+    release_gate = data.get("release_gate") if isinstance(data, dict) else None
+    if not isinstance(release_gate, dict):
+        reporter.fail("Tracked release E2E evidence scaffold missing release gate metadata")
+    elif release_gate == {"android_release_signing": True}:
+        reporter.ok(
+            "Tracked release E2E evidence scaffold records signed Android release gate"
+        )
+    else:
+        reporter.fail(
+            "Tracked release E2E evidence scaffold release gate metadata is stale"
+        )
     if isinstance(artifacts, dict):
         for key in sorted(set(artifacts) & {"android_apk", "ios_runner_app"}):
             artifact_path = artifacts.get(key)
@@ -1521,6 +1533,7 @@ def check_release_e2e_evidence(path: Path, reporter: Reporter, root: Path | None
         "tester",
         "backend_version",
         "client_version",
+        "release_gate",
         "devices",
         "artifacts",
         "artifact_sha256",
@@ -1546,6 +1559,20 @@ def check_release_e2e_evidence(path: Path, reporter: Reporter, root: Path | None
         else:
             reporter.fail(
                 f"Release E2E evidence {label} does not match current git revision"
+            )
+
+    release_gate = require_non_empty_mapping(
+        reporter, data, "release_gate", "release gate metadata"
+    )
+    if release_gate:
+        expected_release_gate_keys = {"android_release_signing"}
+        for key in sorted(set(release_gate) - expected_release_gate_keys):
+            reporter.fail(f"Release E2E evidence includes unknown release gate: {key}")
+        if release_gate.get("android_release_signing") is True:
+            reporter.ok("Release E2E evidence records signed Android release gate")
+        else:
+            reporter.fail(
+                "Release E2E evidence must record signed Android release gate"
             )
 
     devices = require_non_empty_mapping(reporter, data, "devices", "device metadata")

@@ -17,7 +17,7 @@
 - [ ] Android release APK 산출물 및 서명 확인: `client/build/app/outputs/flutter-apk/app-release.apk`, `apksigner verify --print-certs`
 - [ ] iOS no-codesign 산출물 확인: `client/build/ios/iphoneos/Runner.app`
 - [ ] Release readiness 기본 사전검사 통과: `python3 client/scripts/verify_release_readiness.py`
-- [ ] Release E2E evidence scaffold 생성: `python3 client/scripts/create_release_e2e_evidence.py --output docs/release-e2e-evidence.json`
+- [ ] Release E2E evidence scaffold 생성: `REQUIRE_ANDROID_RELEASE_SIGNING=true python3 client/scripts/create_release_e2e_evidence.py --output docs/release-e2e-evidence.json`
 - [ ] Release E2E evidence 작성: 생성된 repo 내부 JSON을 실제 기기/빌드/시나리오 증거로 채운 뒤 `RELEASE_E2E_EVIDENCE_PATH`에 repo 내부 경로로 지정
 - [ ] Strict release readiness 통과(placeholder 없는 release 문서, 서비스 계정/APNs/App Store Connect/실기기 secret 및 실제 연결 기기 포함): `python3 client/scripts/verify_release_readiness.py --strict`
 - [ ] GitHub release environment 사전검사 통과: `python3 client/scripts/verify_github_mobile_release_env.py --repo kiminbean/voice-to-textnote`
@@ -104,6 +104,7 @@ python3 client/scripts/configure_github_mobile_release_env.py --repo kiminbean/v
 ```bash
 ANDROID_DEVICE_SERIAL=<adb-device-serial> \
 IOS_DEVICE_UDID=<ios-device-udid> \
+REQUIRE_ANDROID_RELEASE_SIGNING=true \
 python3 client/scripts/create_release_e2e_evidence.py \
   --output docs/release-e2e-evidence.json
 ```

@@ -54,6 +54,7 @@ def test_release_e2e_scaffold_contains_every_required_scenario(monkeypatch, tmp_
     android_apk, ios_runner_app = write_release_artifacts(tmp_path)
     monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
     monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")
+    monkeypatch.setenv("REQUIRE_ANDROID_RELEASE_SIGNING", "true")
 
     evidence = create.build_evidence(
         tmp_path,
@@ -63,6 +64,7 @@ def test_release_e2e_scaffold_contains_every_required_scenario(monkeypatch, tmp_
 
     assert evidence["devices"]["android"]["serial"] == "android-serial"
     assert evidence["devices"]["ios"]["udid"] == "ios-udid"
+    assert evidence["release_gate"] == {"android_release_signing": True}
     assert set(evidence["scenarios"]) == set(readiness.REQUIRED_E2E_SCENARIOS)
     assert all(scenario["pass"] is False for scenario in evidence["scenarios"].values())
     assert {
@@ -70,6 +72,19 @@ def test_release_e2e_scaffold_contains_every_required_scenario(monkeypatch, tmp_
         for key, value in evidence["scenarios"].items()
     } == readiness.REQUIRED_E2E_SCENARIO_PLATFORMS
     assert set(evidence["artifact_sha256"]) == {"android_apk", "ios_runner_app"}
+
+
+def test_release_e2e_scaffold_records_unsigned_android_gate_when_env_missing(tmp_path):
+    create = load_create_evidence_module()
+    android_apk, ios_runner_app = write_release_artifacts(tmp_path)
+
+    evidence = create.build_evidence(
+        tmp_path,
+        android_apk=android_apk.name,
+        ios_runner_app=ios_runner_app.name,
+    )
+
+    assert evidence["release_gate"] == {"android_release_signing": False}
 
 
 def test_release_e2e_scaffold_round_trips_json(tmp_path):
@@ -267,6 +282,9 @@ def test_release_e2e_evidence_artifacts_are_resolved_from_repo_root(
                 "tester": "release-operator",
                 "backend_version": "git:abcdef1",
                 "client_version": "git:abcdef1",
+                "release_gate": {
+                    "android_release_signing": True,
+                },
                 "devices": {
                     "android": {
                         "serial": "android-serial",

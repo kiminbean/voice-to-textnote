@@ -3,6 +3,9 @@
   "tester": "release-operator",
   "backend_version": "git:c9a6013",
   "client_version": "git:c9a6013",
+  "release_gate": {
+    "android_release_signing": true
+  },
   "devices": {
     "android": {
       "serial": "ANDROID_DEVICE_SERIAL_FROM_ADB",

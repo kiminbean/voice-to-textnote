@@ -38,6 +38,9 @@ def make_evidence(tmp_path: Path, module) -> dict[str, object]:
         "tester": "release-operator",
         "backend_version": current_revision,
         "client_version": current_revision,
+        "release_gate": {
+            "android_release_signing": True,
+        },
         "devices": {
             "android": {
                 "serial": "android-serial",
@@ -287,6 +290,58 @@ def test_release_e2e_evidence_rejects_unknown_top_level_key(tmp_path, monkeypatc
 
     assert any(
         "unknown top-level key: legacy_report_url" in error
+        for error in reporter.errors
+    )
+
+
+def test_release_e2e_evidence_rejects_missing_release_gate(tmp_path, monkeypatch):
+    module = load_release_readiness_module()
+    evidence = make_evidence(tmp_path, module)
+    evidence.pop("release_gate")
+    evidence_path = write_evidence(tmp_path, evidence)
+    monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
+    monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")
+
+    reporter = module.Reporter()
+    module.check_release_e2e_evidence(evidence_path, reporter, tmp_path)
+
+    assert any("missing release gate metadata" in error for error in reporter.errors)
+
+
+def test_release_e2e_evidence_rejects_unsigned_android_release_gate(
+    tmp_path, monkeypatch
+):
+    module = load_release_readiness_module()
+    evidence = make_evidence(tmp_path, module)
+    evidence["release_gate"] = {"android_release_signing": False}
+    evidence_path = write_evidence(tmp_path, evidence)
+    monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
+    monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")
+
+    reporter = module.Reporter()
+    module.check_release_e2e_evidence(evidence_path, reporter, tmp_path)
+
+    assert any(
+        "must record signed Android release gate" in error
+        for error in reporter.errors
+    )
+
+
+def test_release_e2e_evidence_rejects_unknown_release_gate_key(tmp_path, monkeypatch):
+    module = load_release_readiness_module()
+    evidence = make_evidence(tmp_path, module)
+    release_gate = evidence["release_gate"]
+    assert isinstance(release_gate, dict)
+    release_gate["legacy_signing_mode"] = "release"
+    evidence_path = write_evidence(tmp_path, evidence)
+    monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
+    monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")
+
+    reporter = module.Reporter()
+    module.check_release_e2e_evidence(evidence_path, reporter, tmp_path)
+
+    assert any(
+        "unknown release gate: legacy_signing_mode" in error
         for error in reporter.errors
     )
 
@@ -1104,11 +1159,13 @@ def test_release_e2e_example_matches_strict_top_level_schema():
         "tester",
         "backend_version",
         "client_version",
+        "release_gate",
         "devices",
         "artifacts",
         "artifact_sha256",
         "scenarios",
     }
+    assert example["release_gate"] == {"android_release_signing": True}
     assert set(example["artifact_sha256"]) == set(example["artifacts"])
 
 
@@ -1163,11 +1220,13 @@ def test_tracked_release_e2e_scaffold_matches_strict_top_level_schema():
         "tester",
         "backend_version",
         "client_version",
+        "release_gate",
         "devices",
         "artifacts",
         "artifact_sha256",
         "scenarios",
     }
+    assert scaffold["release_gate"] == {"android_release_signing": True}
     assert set(scaffold["artifact_sha256"]) == set(scaffold["artifacts"])
 
 

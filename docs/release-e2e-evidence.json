@@ -3,6 +3,9 @@
   "tester": "ibkim",
   "backend_version": "git:10df238",
   "client_version": "git:10df238",
+  "release_gate": {
+    "android_release_signing": true
+  },
   "devices": {
     "android": {
       "serial": "",

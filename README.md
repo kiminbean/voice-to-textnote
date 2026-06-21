@@ -774,6 +774,7 @@ python3 client/scripts/verify_release_readiness.py --strict
 ```bash
 # Generate an editable scaffold with every required release E2E scenario key
 ANDROID_DEVICE_SERIAL=<adb-device-serial> IOS_DEVICE_UDID=<ios-device-udid> \
+REQUIRE_ANDROID_RELEASE_SIGNING=true \
 python3 client/scripts/create_release_e2e_evidence.py --output docs/release-e2e-evidence.json
 ```
 

@@ -106,6 +106,7 @@ flutter build ios --release
 # evidence scaffold 생성
 ANDROID_DEVICE_SERIAL=$ANDROID_DEVICE_SERIAL \
 IOS_DEVICE_UDID=$IOS_DEVICE_UDID \
+REQUIRE_ANDROID_RELEASE_SIGNING=true \
 python3 client/scripts/create_release_e2e_evidence.py --output docs/release-e2e-evidence.json
 
 # 17개 required scenario 수동 실행 후 JSON 채우기:

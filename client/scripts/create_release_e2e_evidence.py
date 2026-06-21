@@ -79,6 +79,10 @@ def build_evidence(root: Path, *, android_apk: str, ios_runner_app: str) -> dict
         "tester": os.environ.get("USER", "release-operator"),
         "backend_version": revision,
         "client_version": revision,
+        "release_gate": {
+            "android_release_signing": os.environ.get("REQUIRE_ANDROID_RELEASE_SIGNING")
+            == "true",
+        },
         "devices": {
             "android": {
                 "serial": os.environ.get("ANDROID_DEVICE_SERIAL", ""),
