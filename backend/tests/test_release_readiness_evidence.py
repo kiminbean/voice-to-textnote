@@ -165,10 +165,10 @@ def write_tone_policy_files(root: Path, *, tone_model_line: str = 'tone_model: s
 def write_readme_status(root: Path, content: str) -> None:
     (root / "README.md").write_text(
         (
-            "4000 백엔드 테스트\n"
-            "| 백엔드 단위/통합/E2E | 4000개 | 100.00% |\n"
+            "4002 백엔드 테스트\n"
+            "| 백엔드 단위/통합/E2E | 4002개 | 100.00% |\n"
             "| Flutter 테스트 | 415개 | - |\n"
-            "| 총합 | 4415개 | - |\n"
+            "| 총합 | 4417개 | - |\n"
             f"{content}"
         ),
         encoding="utf-8",
@@ -2246,9 +2246,9 @@ def test_readme_release_status_rejects_missing_android_signing_gate(tmp_path):
     (tmp_path / "README.md").write_text(
         (
             "Release Candidate strict 실기기 release evidence 대기 RELEASE_E2E_EVIDENCE_PATH\n"
-            "4000 백엔드 테스트 Flutter 415 4415개\n"
-            "| 백엔드 단위/통합/E2E | 4000개 | 100.00% |\n"
-            "| 총합 | 4415개 | - |\n"
+            "4002 백엔드 테스트 Flutter 415 4417개\n"
+            "| 백엔드 단위/통합/E2E | 4002개 | 100.00% |\n"
+            "| 총합 | 4417개 | - |\n"
             "| **Android** | RC | `flutter build apk --release` 검증 완료 |"
         ),
         encoding="utf-8",
@@ -2335,7 +2335,7 @@ def test_release_procedure_rejects_version_drift(tmp_path):
             "python3 client/scripts/verify_release_readiness.py --strict\n"
             "2개 SPEC 전부 완료\n"
             "2 SPECs completed\n"
-            "4000 passed\n"
+            "4002 passed\n"
             "Flutter: 415 passed\n"
             "`verify_mobile_release_runner.py` PASS\n"
             "`verify_github_mobile_release_env.py` PASS\n"

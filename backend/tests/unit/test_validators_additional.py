@@ -128,9 +128,14 @@ class TestvalidatewebhookUrlScheme:
             validate_webhook_url("ftp://example.com/webhook")
 
     def test_accepts_http_scheme(self):
-        """HTTP scheme 허용"""
-        result = validate_webhook_url("http://example.com/webhook")
+        """HTTP scheme은 명시적으로 허용한 경우에만 통과"""
+        result = validate_webhook_url("http://example.com/webhook", allow_http=True)
         assert result.startswith("http://")
+
+    def test_rejects_http_scheme_by_default(self):
+        """기본 웹훅 URL 정책은 HTTPS만 허용"""
+        with pytest.raises(ValueError, match="HTTPS"):
+            validate_webhook_url("http://example.com/webhook")
 
     def test_accepts_https_scheme(self):
         """HTTPS scheme 허용"""

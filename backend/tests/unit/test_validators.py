@@ -183,8 +183,12 @@ class TestValidateWebhookUrl:
         assert result == "https://example.com/webhook"
 
     def test_valid_http_url(self):
-        result = validate_webhook_url("http://example.com/hook")
-        assert "example.com" in result
+        with pytest.raises(ValueError, match="HTTPS"):
+            validate_webhook_url("http://example.com/hook")
+
+    def test_http_url_allowed_only_when_explicit(self):
+        result = validate_webhook_url("http://example.com/hook", allow_http=True)
+        assert result == "http://example.com/hook"
 
     def test_invalid_scheme_rejected(self):
         with pytest.raises(ValueError):

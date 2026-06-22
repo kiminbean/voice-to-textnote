@@ -137,12 +137,19 @@ def _assert_public_webhook_host(hostname: str, port: int | None, resolve_host: b
             raise ValueError("웹훅 URL은 사설/로컬 네트워크로 해석될 수 없습니다")
 
 
-def validate_webhook_url(value: object, *, resolve_host: bool = False) -> str:
+def validate_webhook_url(
+    value: object,
+    *,
+    resolve_host: bool = False,
+    allow_http: bool = False,
+) -> str:
     """
     웹훅 수신 URL을 검증하고 정규화한다.
 
-    HTTP(S) URL만 허용하며, SSRF 방지를 위해 localhost/사설망/링크 로컬/예약
-    주소를 거부한다. resolve_host=True이면 실제 전송 직전에 DNS 결과도 검사한다.
+    기본적으로 HTTPS URL만 허용한다. 테스트 또는 내부 도구에서 HTTP를 허용해야
+    하는 경우 allow_http=True를 명시해야 한다. SSRF 방지를 위해 localhost/사설망/
+    링크 로컬/예약 주소를 거부한다. resolve_host=True이면 실제 전송 직전에 DNS
+    결과도 검사한다.
     """
     try:
         url = str(_WEBHOOK_URL_ADAPTER.validate_python(value))
@@ -156,4 +163,6 @@ def validate_webhook_url(value: object, *, resolve_host: bool = False) -> str:
         raise ValueError("웹훅 URL에는 사용자 정보를 포함할 수 없습니다")
 
     _assert_public_webhook_host(parsed.hostname, parsed.port, resolve_host)
+    if parsed.scheme == "http" and not allow_http:
+        raise ValueError("웹훅 URL은 HTTPS만 허용됩니다")
     return url
