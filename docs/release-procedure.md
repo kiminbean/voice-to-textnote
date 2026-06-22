@@ -9,7 +9,7 @@
 - [x] 36개 SPEC 전부 완료
 - [x] `verify_release_readiness.py` (default) — 0 errors
 - [x] CI: Test & Lint PASS, Flutter Android PASS, Flutter iOS PASS
-- [x] 백엔드: 3963 passed, Flutter: 415 passed, backend coverage 100.00%
+- [x] 백엔드: 3966 passed, Flutter: 415 passed, backend coverage 100.00%
 - [ ] `verify_release_readiness.py --strict` — **13 errors (이 문서의 목표)**
 
 ---
@@ -252,6 +252,6 @@ gh release create v1.7.0 \
 | 1.3 App Store | `APP_STORE_CONNECT_API_KEY_PATH`, `KEY_ID`, `ISSUER_ID` | `--strict` App Store 3개 PASS |
 | 1.4 iOS entitlement | `IOS_RELEASE_ENTITLEMENTS_PATH`, `release_gate.ios_entitlements_sha256` | signed release app entitlements plist에서 `aps-environment=production`, `get-task-allow=false`, App ID/Team ID 일치, evidence hash 일치 |
 | 2.1 기기 | `ANDROID_DEVICE_SERIAL`, `IOS_DEVICE_UDID` | `verify_mobile_release_runner.py` PASS |
-| 2.3 E2E | `FIREBASE_TEST_DEVICE_TOKEN`, `RELEASE_E2E_EVIDENCE_PATH` | repo 내부 evidence JSON 17개 required scenario `pass:true` + `platforms` 계약 일치 |
+| 2.3 E2E | `FIREBASE_TEST_DEVICE_TOKEN`, `RELEASE_E2E_EVIDENCE_PATH` | repo 내부 evidence JSON 17개 required scenario `pass:true` + `platforms` 계약 일치 + scenario별 device id + 중복 없는 screenshot/log/video/trace/attachment 관측 산출물 단서 |
 | 3.1 Runner | (GitHub Actions) | `verify_github_mobile_release_env.py` PASS |
 | 4.1 Release | (README + tag) | `git tag` + GitHub Release 확인 |

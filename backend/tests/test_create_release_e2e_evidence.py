@@ -383,7 +383,7 @@ def test_release_e2e_evidence_artifacts_are_resolved_from_repo_root(
                                 }[platform]
                                 for platform in readiness.REQUIRED_E2E_SCENARIO_PLATFORMS[key]
                             )
-                            + "."
+                            + ". Screenshot and device log captured."
                         ),
                     }
                     for key in readiness.REQUIRED_E2E_SCENARIOS
