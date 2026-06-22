@@ -35,7 +35,7 @@
 ✅ **모니터링**: Prometheus 메트릭, 요청 ID 추적, 구조화된 로깅
 ✅ **프로덕션 배포**: Ubuntu systemd + Redis + Tailscale 원격 접속
 ✅ **모던 UI/UX**: 모던 미니멀 디자인 시스템 (인디고/바이올렛), 다크모드 지원, 반응형 레이아웃
-✅ **자동화 테스트**: 3962 백엔드 테스트 (단위/통합/E2E) + Flutter 415, 백엔드 100.00% 커버리지
+✅ **자동화 테스트**: 3963 백엔드 테스트 (단위/통합/E2E) + Flutter 415, 백엔드 100.00% 커버리지
 
 ## 주요 기능
 
@@ -560,10 +560,10 @@ backend/
 
 | 항목 | 개수 | 커버리지 |
 |------|------|---------|
-| 백엔드 단위/통합/E2E | 3962개 | 100.00% |
+| 백엔드 단위/통합/E2E | 3963개 | 100.00% |
 | Flutter 테스트 | 415개 | - |
 | E2E 테스트 | 16개 | 전체 파이프라인 |
-| 총합 | 4377개 | - |
+| 총합 | 4378개 | - |
 
 ## 모니터링 및 로깅
 
@@ -765,11 +765,11 @@ cd client && REQUIRE_ANDROID_RELEASE_SIGNING=true ./scripts/verify_mobile.sh --n
 
 # 실기기 릴리스 게이트: 외부 secret, 연결 기기, Push/딥링크/녹음/공유 evidence 필요
 REQUIRE_ANDROID_RELEASE_SIGNING=true \
-RELEASE_E2E_EVIDENCE_PATH=docs/release-e2e-evidence.example.json \
+RELEASE_E2E_EVIDENCE_PATH=docs/release-e2e-evidence.json \
 python3 client/scripts/verify_release_readiness.py --strict
 ```
 
-`--strict`는 예제 파일을 그대로 통과시키는 용도가 아니다. `docs/release-e2e-evidence.example.json`을 복사해 실제 Android/iOS 기기 ID, 빌드 산출물, Push/딥링크/백그라운드 녹음/HTTP 정책/PDF 공유 시나리오 증거로 채운 뒤 실행한다. Android release APK는 `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`로 복원한 keystore로 서명하고 `REQUIRE_ANDROID_RELEASE_SIGNING=true ./scripts/verify_mobile.sh --native`에서 `apksigner verify --print-certs`까지 통과해야 한다. iOS는 signed release app에서 `codesign -d --entitlements :-`로 추출한 repo 내부 `IOS_RELEASE_ENTITLEMENTS_PATH`가 `aps-environment=production`, `get-task-allow=false`, App ID/Team ID 일치를 증명해야 한다. release evidence의 `release_gate.ios_entitlements_sha256`은 해당 plist의 SHA-256과 일치해야 하므로, entitlement 증거를 바꾸면 E2E evidence도 다시 생성/갱신해야 한다. 필요한 환경 변수와 scenario key 매핑은 `docs/e2e-device-checklist.md`에 있다.
+`--strict`는 예제 파일을 그대로 통과시키는 용도가 아니다. `docs/release-e2e-evidence.example.json`은 참고용 schema fixture이며, strict 입력값은 실제 Android/iOS 기기 ID, 빌드 산출물, Push/딥링크/백그라운드 녹음/HTTP 정책/PDF 공유 시나리오 증거로 채운 `docs/release-e2e-evidence.json`이어야 한다. Android release APK는 `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`로 복원한 keystore로 서명하고 `REQUIRE_ANDROID_RELEASE_SIGNING=true ./scripts/verify_mobile.sh --native`에서 `apksigner verify --print-certs`까지 통과해야 한다. iOS는 signed release app에서 `codesign -d --entitlements :-`로 추출한 repo 내부 `IOS_RELEASE_ENTITLEMENTS_PATH`가 `aps-environment=production`, `get-task-allow=false`, App ID/Team ID 일치를 증명해야 한다. release evidence의 `release_gate.ios_entitlements_sha256`은 해당 plist의 SHA-256과 일치해야 하므로, entitlement 증거를 바꾸면 E2E evidence도 다시 생성/갱신해야 한다. 필요한 환경 변수와 scenario key 매핑은 `docs/e2e-device-checklist.md`에 있다.
 
 ```bash
 # Generate an editable scaffold with every required release E2E scenario key
@@ -840,7 +840,7 @@ Copyright (c) 2026 kiminbean. **All Rights Reserved.**
 **마지막 업데이트**: 2026-06-17
 **버전**: 1.7.0
 **상태**: Phase 8 진행 중 — SPEC-OBSIDIAN-001 Obsidian Vault 연계 완료 + UI 재설계(디자인 시스템, 다크모드) 완료, 감정/톤 분석 활성화, 라이선스 All Rights Reserved 전환
-**최근 확인**: 백엔드 3962 테스트 + Flutter 415 테스트 + Flutter analyze + 기본 Release Readiness 통과. Strict release readiness는 Android signing/Firebase/APNs/App Store Connect secret, Android/iOS 실기기, 실제 E2E evidence가 준비되어야 통과 가능.
+**최근 확인**: 백엔드 3963 테스트 + Flutter 415 테스트 + Flutter analyze + 기본 Release Readiness 통과. Strict release readiness는 Android signing/Firebase/APNs/App Store Connect secret, Android/iOS 실기기, 실제 E2E evidence가 준비되어야 통과 가능.
 
 ### 구현 완료 SPEC 목록
 

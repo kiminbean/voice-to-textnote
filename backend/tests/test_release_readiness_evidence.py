@@ -160,10 +160,10 @@ def write_tone_policy_files(root: Path, *, tone_model_line: str = 'tone_model: s
 def write_readme_status(root: Path, content: str) -> None:
     (root / "README.md").write_text(
         (
-            "3962 백엔드 테스트\n"
-            "| 백엔드 단위/통합/E2E | 3962개 | 100.00% |\n"
+            "3963 백엔드 테스트\n"
+            "| 백엔드 단위/통합/E2E | 3963개 | 100.00% |\n"
             "| Flutter 테스트 | 415개 | - |\n"
-            "| 총합 | 4377개 | - |\n"
+            "| 총합 | 4378개 | - |\n"
             f"{content}"
         ),
         encoding="utf-8",
@@ -1772,6 +1772,7 @@ def test_readme_release_status_accepts_release_candidate_language(tmp_path):
             "Release Candidate strict 실기기 release evidence 대기 RELEASE_E2E_EVIDENCE_PATH\n"
             "ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS "
             "ANDROID_KEY_PASSWORD REQUIRE_ANDROID_RELEASE_SIGNING=true\n"
+            "RELEASE_E2E_EVIDENCE_PATH=docs/release-e2e-evidence.json\n"
             "| **Android** | RC | `flutter build apk --release` 검증 완료 |"
         ),
     )
@@ -1837,9 +1838,9 @@ def test_readme_release_status_rejects_missing_android_signing_gate(tmp_path):
     (tmp_path / "README.md").write_text(
         (
             "Release Candidate strict 실기기 release evidence 대기 RELEASE_E2E_EVIDENCE_PATH\n"
-            "3962 백엔드 테스트 Flutter 415 4377개\n"
-            "| 백엔드 단위/통합/E2E | 3962개 | 100.00% |\n"
-            "| 총합 | 4377개 | - |\n"
+            "3963 백엔드 테스트 Flutter 415 4378개\n"
+            "| 백엔드 단위/통합/E2E | 3963개 | 100.00% |\n"
+            "| 총합 | 4378개 | - |\n"
             "| **Android** | RC | `flutter build apk --release` 검증 완료 |"
         ),
         encoding="utf-8",
@@ -1849,6 +1850,25 @@ def test_readme_release_status_rejects_missing_android_signing_gate(tmp_path):
     module.check_readme_release_status(tmp_path, reporter)
 
     assert any("README strict gate must document Android release signing" in error for error in reporter.errors)
+
+
+def test_readme_release_status_rejects_example_evidence_as_strict_input(tmp_path):
+    module = load_release_readiness_module()
+    write_readme_status(
+        tmp_path,
+        (
+            "Release Candidate strict 실기기 release evidence 대기 RELEASE_E2E_EVIDENCE_PATH\n"
+            "ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS "
+            "ANDROID_KEY_PASSWORD REQUIRE_ANDROID_RELEASE_SIGNING=true\n"
+            "RELEASE_E2E_EVIDENCE_PATH=docs/release-e2e-evidence.example.json\n"
+            "| **Android** | RC | `flutter build apk --release` 검증 완료 |"
+        ),
+    )
+
+    reporter = module.Reporter()
+    module.check_readme_release_status(tmp_path, reporter)
+
+    assert any("must not use example release E2E evidence" in error for error in reporter.errors)
 
 
 def test_owll_benchmark_doc_accepts_current_competitor_evidence():
@@ -1907,7 +1927,7 @@ def test_release_procedure_rejects_version_drift(tmp_path):
             "python3 client/scripts/verify_release_readiness.py --strict\n"
             "2개 SPEC 전부 완료\n"
             "2 SPECs completed\n"
-            "3962 passed\n"
+            "3963 passed\n"
             "Flutter: 415 passed\n"
             "`verify_mobile_release_runner.py` PASS\n"
             "`verify_github_mobile_release_env.py` PASS\n"

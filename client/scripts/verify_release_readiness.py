@@ -71,7 +71,7 @@ CANONICAL_RELEASE_ARTIFACT_PATHS = {
     "ios_runner_app": "client/build/ios/iphoneos/Runner.app",
 }
 EXPECTED_STRICT_MISSING_INPUT_ERRORS = 13
-CURRENT_BACKEND_TEST_COUNT = 3962
+CURRENT_BACKEND_TEST_COUNT = 3963
 CURRENT_FLUTTER_TEST_COUNT = 415
 CURRENT_TOTAL_TEST_COUNT = CURRENT_BACKEND_TEST_COUNT + CURRENT_FLUTTER_TEST_COUNT
 UNRESOLVED_EVIDENCE_PATTERNS = (
@@ -867,6 +867,12 @@ def check_readme_release_status(root: Path, reporter: Reporter) -> None:
         ],
         "README strict gate must document Android release signing",
     )
+    if "RELEASE_E2E_EVIDENCE_PATH=docs/release-e2e-evidence.example.json" in readme:
+        reporter.fail("README strict command must not use example release E2E evidence")
+    elif "RELEASE_E2E_EVIDENCE_PATH=docs/release-e2e-evidence.json" in readme:
+        reporter.ok("README strict command uses real release E2E evidence path")
+    else:
+        reporter.fail("README strict command must set RELEASE_E2E_EVIDENCE_PATH")
     if f"{completed_spec_count}개 SPEC" in readme:
         reporter.fail("README should avoid hard-coded completed SPEC counts outside the SPEC list")
     else:
