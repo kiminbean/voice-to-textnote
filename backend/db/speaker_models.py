@@ -10,7 +10,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import DateTime, ForeignKey, Index, String, Text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.db.models import Base, _utcnow
 
@@ -67,6 +67,12 @@ class SpeakerProfile(Base):
         nullable=False,
         default=_utcnow,
         onupdate=_utcnow,
+    )
+
+    # 그룹 관계
+    groups: Mapped[list["SpeakerGroupMember"]] = relationship(
+        back_populates="speaker",
+        viewonly=True,
     )
 
     # (user_id, speaker_label, task_id) 조합 인덱스 (조회 최적화)

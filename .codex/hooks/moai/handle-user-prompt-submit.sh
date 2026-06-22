@@ -10,19 +10,29 @@ trap 'rm -f "$temp_file"' EXIT
 # Read stdin into temp file
 cat > "$temp_file"
 
+run_moai_hook() {
+	# MoAI currently emits Claude-style UserPromptSubmit output that Codex treats
+	# as an invalid hook result. Keep the hook side effects, but do not forward
+	# that stdout to Codex.
+	"$@" hook user-prompt-submit < "$temp_file" > /dev/null
+}
+
 # Try moai command in PATH
 if command -v moai &> /dev/null; then
-	exec moai hook user-prompt-submit < "$temp_file"
+	run_moai_hook moai
+	exit 0
 fi
 
 # Try detected Go bin path from initialization
 if [ -f "/Users/ibkim/go/bin/moai" ]; then
-	exec "/Users/ibkim/go/bin/moai" hook user-prompt-submit < "$temp_file"
+	run_moai_hook "/Users/ibkim/go/bin/moai"
+	exit 0
 fi
 
 # Try default ~/go/bin/moai
 if [ -f "$HOME/go/bin/moai" ]; then
-	exec "$HOME/go/bin/moai" hook user-prompt-submit < "$temp_file"
+	run_moai_hook "$HOME/go/bin/moai"
+	exit 0
 fi
 
 # Not found - exit silently (Claude Code handles missing hooks gracefully)

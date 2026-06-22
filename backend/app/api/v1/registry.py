@@ -54,6 +54,8 @@ from backend.app.api.v1.collaboration import (
     bookmarks,
     collab,
     meetings,
+    speaker_groups,
+    speaker_statistics,
     speakers,
     teams,
     versions,
@@ -125,6 +127,8 @@ ROUTER_REGISTRY: list[tuple[APIRouter, bool]] = [
     (teams.router, False),  # SPEC-TEAM-001
     (meetings.router, False),  # SPEC-TEAM-001 REQ-TEAM-005
     (bookmarks.router, False),  # SPEC-BOOKMARK-001
+    (speaker_groups.router, False),  # 화자 그룁 관리
+    (speaker_statistics.router, True),  # 화자별 통계
     (speakers.router, False),  # SPEC-SPEAKER-001
     (webhooks.router, False),  # SPEC-WEBHOOK-001
     (versions.router, False),  # SPEC-VERSION-001
