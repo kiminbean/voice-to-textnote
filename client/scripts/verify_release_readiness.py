@@ -71,7 +71,7 @@ CANONICAL_RELEASE_ARTIFACT_PATHS = {
     "ios_runner_app": "client/build/ios/iphoneos/Runner.app",
 }
 EXPECTED_STRICT_MISSING_INPUT_ERRORS = 13
-CURRENT_BACKEND_TEST_COUNT = 3967
+CURRENT_BACKEND_TEST_COUNT = 3968
 CURRENT_FLUTTER_TEST_COUNT = 415
 CURRENT_TOTAL_TEST_COUNT = CURRENT_BACKEND_TEST_COUNT + CURRENT_FLUTTER_TEST_COUNT
 UNRESOLVED_EVIDENCE_PATTERNS = (
@@ -1506,6 +1506,14 @@ def has_observation_artifact_reference(value: str) -> bool:
     )
 
 
+def observation_artifact_references(value: str) -> set[str]:
+    references: set[str] = set()
+    for pattern in RELEASE_E2E_OBSERVATION_REFERENCE_PATTERNS:
+        for match in re.finditer(pattern, value, re.IGNORECASE):
+            references.add(match.group(0).rstrip(".,);]").casefold())
+    return references
+
+
 def resolve_release_artifact_path(root: Path, artifact_path: str) -> Path:
     path = Path(artifact_path).expanduser()
     if path.is_absolute():
@@ -1831,6 +1839,7 @@ def check_release_e2e_evidence(path: Path, reporter: Reporter, root: Path | None
     for key in extra_scenarios:
         reporter.fail(f"Release E2E evidence includes unknown scenario: {key}")
     passed_evidence_notes: dict[str, list[str]] = {}
+    passed_observation_references: dict[str, list[str]] = {}
     for key, label in REQUIRED_E2E_SCENARIOS.items():
         scenario = scenarios.get(key) if isinstance(scenarios, dict) else None
         if not isinstance(scenario, dict):
@@ -1893,6 +1902,8 @@ def check_release_e2e_evidence(path: Path, reporter: Reporter, root: Path | None
             reporter.ok(f"Release E2E scenario passed: {key}")
             normalized_evidence = normalize_evidence_note(evidence)
             passed_evidence_notes.setdefault(normalized_evidence, []).append(key)
+            for reference in observation_artifact_references(evidence):
+                passed_observation_references.setdefault(reference, []).append(key)
         elif passed is not True:
             reporter.fail(f"Release E2E scenario not marked pass: {key}")
         elif has_unresolved_evidence_placeholder(evidence):
@@ -1919,6 +1930,12 @@ def check_release_e2e_evidence(path: Path, reporter: Reporter, root: Path | None
             reporter.fail(
                 "Release E2E scenario evidence is duplicated: "
                 + ", ".join(sorted(scenario_keys))
+            )
+    for reference, scenario_keys in passed_observation_references.items():
+        if len(scenario_keys) > 1:
+            reporter.fail(
+                "Release E2E scenario observation artifact reference is duplicated: "
+                f"{reference} ({', '.join(sorted(scenario_keys))})"
             )
 
 

@@ -163,10 +163,10 @@ def write_tone_policy_files(root: Path, *, tone_model_line: str = 'tone_model: s
 def write_readme_status(root: Path, content: str) -> None:
     (root / "README.md").write_text(
         (
-            "3967 백엔드 테스트\n"
-            "| 백엔드 단위/통합/E2E | 3967개 | 100.00% |\n"
+            "3968 백엔드 테스트\n"
+            "| 백엔드 단위/통합/E2E | 3968개 | 100.00% |\n"
             "| Flutter 테스트 | 415개 | - |\n"
-            "| 총합 | 4382개 | - |\n"
+            "| 총합 | 4383개 | - |\n"
             f"{content}"
         ),
         encoding="utf-8",
@@ -834,6 +834,40 @@ def test_release_e2e_evidence_rejects_duplicate_scenario_evidence(tmp_path, monk
 
     assert any(
         "scenario evidence is duplicated: push_stt_complete, push_summary_complete"
+        in error
+        for error in reporter.errors
+    )
+
+
+def test_release_e2e_evidence_rejects_duplicate_observation_reference(
+    tmp_path, monkeypatch
+):
+    module = load_release_readiness_module()
+    evidence = make_evidence(tmp_path, module)
+    scenarios = evidence["scenarios"]
+    assert isinstance(scenarios, dict)
+    first = scenarios["push_stt_complete"]
+    second = scenarios["push_summary_complete"]
+    assert isinstance(first, dict)
+    assert isinstance(second, dict)
+    first["evidence"] = (
+        "STT completion observed on android-serial and ios-udid with screenshot "
+        "release-e2e/shared-push.png and device log release-e2e/stt.log."
+    )
+    second["evidence"] = (
+        "Summary completion observed on android-serial and ios-udid with screenshot "
+        "release-e2e/shared-push.png and device log release-e2e/summary.log."
+    )
+    evidence_path = write_evidence(tmp_path, evidence)
+    monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
+    monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")
+
+    reporter = module.Reporter()
+    module.check_release_e2e_evidence(evidence_path, reporter, tmp_path)
+
+    assert any(
+        "scenario observation artifact reference is duplicated: "
+        "release-e2e/shared-push.png (push_stt_complete, push_summary_complete)"
         in error
         for error in reporter.errors
     )
@@ -1931,9 +1965,9 @@ def test_readme_release_status_rejects_missing_android_signing_gate(tmp_path):
     (tmp_path / "README.md").write_text(
         (
             "Release Candidate strict 실기기 release evidence 대기 RELEASE_E2E_EVIDENCE_PATH\n"
-            "3967 백엔드 테스트 Flutter 415 4382개\n"
-            "| 백엔드 단위/통합/E2E | 3967개 | 100.00% |\n"
-            "| 총합 | 4382개 | - |\n"
+            "3968 백엔드 테스트 Flutter 415 4383개\n"
+            "| 백엔드 단위/통합/E2E | 3968개 | 100.00% |\n"
+            "| 총합 | 4383개 | - |\n"
             "| **Android** | RC | `flutter build apk --release` 검증 완료 |"
         ),
         encoding="utf-8",
@@ -2020,7 +2054,7 @@ def test_release_procedure_rejects_version_drift(tmp_path):
             "python3 client/scripts/verify_release_readiness.py --strict\n"
             "2개 SPEC 전부 완료\n"
             "2 SPECs completed\n"
-            "3967 passed\n"
+            "3968 passed\n"
             "Flutter: 415 passed\n"
             "`verify_mobile_release_runner.py` PASS\n"
             "`verify_github_mobile_release_env.py` PASS\n"
