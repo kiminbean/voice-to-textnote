@@ -48,14 +48,29 @@ def write_release_artifacts(root: Path) -> tuple[Path, Path]:
     return android_apk, ios_runner_app
 
 
+def write_ios_release_entitlements(path: Path) -> None:
+    with path.open("wb") as plist:
+        plistlib.dump(
+            {
+                "aps-environment": "production",
+                "get-task-allow": False,
+                "com.apple.developer.team-identifier": "KLMNOPQRST",
+                "application-identifier": "KLMNOPQRST.com.voicetextnote.app",
+            },
+            plist,
+        )
+
+
 def test_release_e2e_scaffold_contains_every_required_scenario(monkeypatch, tmp_path):
     create = load_create_evidence_module()
     readiness = load_release_readiness_module()
     android_apk, ios_runner_app = write_release_artifacts(tmp_path)
+    entitlements_path = tmp_path / "ios-release-entitlements.plist"
+    write_ios_release_entitlements(entitlements_path)
     monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
     monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")
     monkeypatch.setenv("REQUIRE_ANDROID_RELEASE_SIGNING", "true")
-    monkeypatch.setenv("IOS_RELEASE_ENTITLEMENTS_PATH", "docs/ios-release-entitlements.plist")
+    monkeypatch.setenv("IOS_RELEASE_ENTITLEMENTS_PATH", entitlements_path.name)
 
     evidence = create.build_evidence(
         tmp_path,
@@ -68,6 +83,7 @@ def test_release_e2e_scaffold_contains_every_required_scenario(monkeypatch, tmp_
     assert evidence["release_gate"] == {
         "android_release_signing": True,
         "ios_production_entitlements": True,
+        "ios_entitlements_sha256": readiness.release_artifact_sha256(entitlements_path),
     }
     assert set(evidence["scenarios"]) == set(readiness.REQUIRED_E2E_SCENARIOS)
     assert all(scenario["pass"] is False for scenario in evidence["scenarios"].values())
@@ -93,6 +109,7 @@ def test_release_e2e_scaffold_records_release_gate_state_from_env(tmp_path, monk
     assert evidence["release_gate"] == {
         "android_release_signing": False,
         "ios_production_entitlements": False,
+        "ios_entitlements_sha256": "",
     }
 
 
@@ -294,6 +311,7 @@ def test_release_e2e_evidence_artifacts_are_resolved_from_repo_root(
                 "release_gate": {
                     "android_release_signing": True,
                     "ios_production_entitlements": True,
+                    "ios_entitlements_sha256": "0" * 64,
                 },
                 "devices": {
                     "android": {

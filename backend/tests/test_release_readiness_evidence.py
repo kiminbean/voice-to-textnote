@@ -24,6 +24,7 @@ def load_release_readiness_module():
 def make_evidence(tmp_path: Path, module) -> dict[str, object]:
     android_apk = tmp_path / "app-release.apk"
     ios_runner = tmp_path / "Runner.app"
+    ios_entitlements = tmp_path / "ios-release-entitlements.plist"
     repo_root = Path(__file__).resolve().parents[2]
     current_revision = module.current_git_revision(repo_root)
     with zipfile.ZipFile(android_apk, "w") as apk:
@@ -32,6 +33,7 @@ def make_evidence(tmp_path: Path, module) -> dict[str, object]:
     ios_runner.mkdir()
     write_ios_info_plist(ios_runner / "Info.plist")
     (ios_runner / "Runner").write_bytes(b"binary")
+    write_ios_release_entitlements(ios_entitlements)
 
     return {
         "tested_at": datetime.now(UTC).isoformat(),
@@ -41,6 +43,7 @@ def make_evidence(tmp_path: Path, module) -> dict[str, object]:
         "release_gate": {
             "android_release_signing": True,
             "ios_production_entitlements": True,
+            "ios_entitlements_sha256": module.release_artifact_sha256(ios_entitlements),
         },
         "devices": {
             "android": {
@@ -82,6 +85,25 @@ def write_ios_info_plist(
     with path.open("wb") as plist:
         plistlib.dump(
             {"CFBundleIdentifier": bundle_id, "CFBundleExecutable": executable},
+            plist,
+        )
+
+
+def write_ios_release_entitlements(
+    path: Path,
+    *,
+    aps_environment: str = "production",
+    get_task_allow: bool = False,
+    team_id: str = "KLMNOPQRST",
+) -> None:
+    with path.open("wb") as plist:
+        plistlib.dump(
+            {
+                "aps-environment": aps_environment,
+                "get-task-allow": get_task_allow,
+                "com.apple.developer.team-identifier": team_id,
+                "application-identifier": f"{team_id}.com.voicetextnote.app",
+            },
             plist,
         )
 
@@ -339,6 +361,7 @@ def test_release_e2e_evidence_rejects_missing_ios_entitlement_gate(
     evidence["release_gate"] = {
         "android_release_signing": True,
         "ios_production_entitlements": False,
+        "ios_entitlements_sha256": "0" * 64,
     }
     evidence_path = write_evidence(tmp_path, evidence)
     monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
@@ -350,6 +373,67 @@ def test_release_e2e_evidence_rejects_missing_ios_entitlement_gate(
     assert any(
         "must record production iOS entitlement gate" in error
         for error in reporter.errors
+    )
+
+
+def test_release_e2e_evidence_rejects_missing_ios_entitlement_hash(
+    tmp_path, monkeypatch
+):
+    module = load_release_readiness_module()
+    evidence = make_evidence(tmp_path, module)
+    release_gate = evidence["release_gate"]
+    assert isinstance(release_gate, dict)
+    release_gate.pop("ios_entitlements_sha256")
+    evidence_path = write_evidence(tmp_path, evidence)
+    monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
+    monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")
+
+    reporter = module.Reporter()
+    module.check_release_e2e_evidence(evidence_path, reporter, tmp_path)
+
+    assert any(
+        "iOS entitlements hash must be a string" in error for error in reporter.errors
+    )
+
+
+def test_release_e2e_evidence_rejects_invalid_ios_entitlement_hash(
+    tmp_path, monkeypatch
+):
+    module = load_release_readiness_module()
+    evidence = make_evidence(tmp_path, module)
+    release_gate = evidence["release_gate"]
+    assert isinstance(release_gate, dict)
+    release_gate["ios_entitlements_sha256"] = "not-a-sha256"
+    evidence_path = write_evidence(tmp_path, evidence)
+    monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
+    monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")
+
+    reporter = module.Reporter()
+    module.check_release_e2e_evidence(evidence_path, reporter, tmp_path)
+
+    assert any(
+        "iOS entitlements hash must be lowercase SHA-256 hex" in error
+        for error in reporter.errors
+    )
+
+
+def test_release_e2e_evidence_rejects_ios_entitlement_hash_mismatch(
+    tmp_path, monkeypatch
+):
+    module = load_release_readiness_module()
+    evidence = make_evidence(tmp_path, module)
+    entitlements_path = tmp_path / "ios-release-entitlements.plist"
+    write_ios_release_entitlements(entitlements_path, team_id="ZYXWVUTSRQ")
+    evidence_path = write_evidence(tmp_path, evidence)
+    monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
+    monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")
+    monkeypatch.setenv("IOS_RELEASE_ENTITLEMENTS_PATH", str(entitlements_path))
+
+    reporter = module.Reporter()
+    module.check_release_e2e_evidence(evidence_path, reporter, tmp_path)
+
+    assert any(
+        "iOS entitlements hash mismatch" in error for error in reporter.errors
     )
 
 
@@ -1280,6 +1364,7 @@ def test_release_e2e_example_matches_strict_top_level_schema():
     assert example["release_gate"] == {
         "android_release_signing": True,
         "ios_production_entitlements": True,
+        "ios_entitlements_sha256": "0" * 64,
     }
     assert set(example["artifact_sha256"]) == set(example["artifacts"])
 
@@ -1344,6 +1429,7 @@ def test_tracked_release_e2e_scaffold_matches_strict_top_level_schema():
     assert scaffold["release_gate"] == {
         "android_release_signing": True,
         "ios_production_entitlements": True,
+        "ios_entitlements_sha256": "0" * 64,
     }
     assert set(scaffold["artifact_sha256"]) == set(scaffold["artifacts"])
 

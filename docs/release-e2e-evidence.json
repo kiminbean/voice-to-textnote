@@ -5,7 +5,8 @@
   "client_version": "git:10df238",
   "release_gate": {
     "android_release_signing": true,
-    "ios_production_entitlements": true
+    "ios_production_entitlements": true,
+    "ios_entitlements_sha256": "0000000000000000000000000000000000000000000000000000000000000000"
   },
   "devices": {
     "android": {

@@ -74,6 +74,12 @@ def build_evidence(root: Path, *, android_apk: str, ios_runner_app: str) -> dict
         "ios_runner_app": ios_runner_app,
     }
     validate_release_artifacts(root, artifacts)
+    ios_entitlements = os.environ.get("IOS_RELEASE_ENTITLEMENTS_PATH", "")
+    ios_entitlements_hash = ""
+    if ios_entitlements and evidence_path_stays_inside_root(root, ios_entitlements):
+        ios_entitlements_path = resolve_release_evidence_path(root, ios_entitlements)
+        if ios_entitlements_path.is_file():
+            ios_entitlements_hash = release_artifact_sha256(ios_entitlements_path)
     return {
         "tested_at": datetime.now(UTC).isoformat(),
         "tester": os.environ.get("USER", "release-operator"),
@@ -82,9 +88,8 @@ def build_evidence(root: Path, *, android_apk: str, ios_runner_app: str) -> dict
         "release_gate": {
             "android_release_signing": os.environ.get("REQUIRE_ANDROID_RELEASE_SIGNING")
             == "true",
-            "ios_production_entitlements": bool(
-                os.environ.get("IOS_RELEASE_ENTITLEMENTS_PATH")
-            ),
+            "ios_production_entitlements": bool(ios_entitlements_hash),
+            "ios_entitlements_sha256": ios_entitlements_hash,
         },
         "devices": {
             "android": {

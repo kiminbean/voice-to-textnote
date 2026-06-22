@@ -1148,6 +1148,7 @@ def check_tracked_release_e2e_scaffold(root: Path, reporter: Reporter) -> None:
     elif release_gate == {
         "android_release_signing": True,
         "ios_production_entitlements": True,
+        "ios_entitlements_sha256": "0" * 64,
     }:
         reporter.ok(
             "Tracked release E2E evidence scaffold records signed mobile release gates"
@@ -1619,6 +1620,7 @@ def check_release_e2e_evidence(path: Path, reporter: Reporter, root: Path | None
     if release_gate:
         expected_release_gate_keys = {
             "android_release_signing",
+            "ios_entitlements_sha256",
             "ios_production_entitlements",
         }
         for key in sorted(set(release_gate) - expected_release_gate_keys):
@@ -1635,6 +1637,37 @@ def check_release_e2e_evidence(path: Path, reporter: Reporter, root: Path | None
             reporter.fail(
                 "Release E2E evidence must record production iOS entitlement gate"
             )
+        ios_entitlements_hash = release_gate.get("ios_entitlements_sha256")
+        if isinstance(ios_entitlements_hash, str):
+            expected_hash = ios_entitlements_hash.strip()
+            if not expected_hash:
+                reporter.fail(
+                    "Release E2E evidence must record iOS entitlements SHA-256"
+                )
+            elif not is_sha256_hex(expected_hash):
+                reporter.fail(
+                    "Release E2E evidence iOS entitlements hash must be lowercase "
+                    "SHA-256 hex"
+                )
+            else:
+                ios_entitlements_path = os.environ.get("IOS_RELEASE_ENTITLEMENTS_PATH", "")
+                if ios_entitlements_path:
+                    resolved_entitlements = resolve_release_evidence_path(
+                        root, ios_entitlements_path
+                    )
+                    actual_hash = release_artifact_sha256(resolved_entitlements)
+                    if actual_hash == expected_hash:
+                        reporter.ok(
+                            "Release E2E evidence iOS entitlements hash matches strict env"
+                        )
+                    else:
+                        reporter.fail(
+                            "Release E2E evidence iOS entitlements hash mismatch"
+                        )
+                else:
+                    reporter.ok("Release E2E evidence records iOS entitlements hash")
+        else:
+            reporter.fail("Release E2E evidence iOS entitlements hash must be a string")
 
     devices = require_non_empty_mapping(reporter, data, "devices", "device metadata")
     expected_device_platforms = {"android", "ios"}
