@@ -45,6 +45,7 @@
 | `APP_STORE_CONNECT_KEY_ID` / `APP_STORE_CONNECT_ISSUER_ID` | App Store Connect API 식별자 |
 | `ANDROID_DEVICE_SERIAL` | `adb devices`에 표시되는 Android 실기기 serial |
 | `IOS_DEVICE_UDID` | Xcode/idevice_id에 표시되는 iOS 실기기 UDID |
+| `IOS_RELEASE_ENTITLEMENTS_PATH` | signed iOS release app에서 추출한 repo 내부 entitlements plist. `aps-environment=production`, `get-task-allow=false`, App ID/Team ID 일치 필요 |
 | `FIREBASE_TEST_DEVICE_TOKEN` | 앱이 서버에 등록한 테스트용 FCM token |
 | `RELEASE_E2E_EVIDENCE_PATH` | 실기기 Push/딥링크/백그라운드 녹음/공유/HTTP 정책 시나리오 pass 증거 JSON |
 
@@ -59,7 +60,7 @@
 | Required secrets | `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`, `FIREBASE_SERVICE_ACCOUNT_JSON`, `APNS_AUTH_KEY_P8`, `APNS_KEY_ID`, `APNS_TEAM_ID`, `APP_STORE_CONNECT_API_KEY_P8`, `APP_STORE_CONNECT_KEY_ID`, `APP_STORE_CONNECT_ISSUER_ID`, `FIREBASE_TEST_DEVICE_TOKEN` |
 | Required vars | `ANDROID_DEVICE_SERIAL`, `IOS_DEVICE_UDID` |
 
-이 job은 먼저 `python3 client/scripts/verify_mobile_release_runner.py`로 macOS runner, Flutter doctor, `xcodebuild -version`, Android authorized device, iOS available device를 확인한다. 그 다음 Android signing secret을 임시 keystore와 `client/android/key.properties`로 materialize하고 `REQUIRE_ANDROID_RELEASE_SIGNING=true client/scripts/verify_mobile.sh --native`로 Flutter analyze/test/local STT smoke/Android signed release APK/iOS no-codesign build를 실행한 뒤, Firebase/APNs/App Store Connect secret을 임시 파일로 materialize하고 `python3 client/scripts/verify_release_readiness.py --strict`를 실행한다. `evidence_path` 입력값은 실제 release evidence JSON을 가리켜야 하며, 예제 파일을 그대로 사용하면 device id와 artifact/evidence가 실제 strict 입력과 맞지 않아 실패해야 정상이다.
+이 job은 먼저 `python3 client/scripts/verify_mobile_release_runner.py`로 macOS runner, Flutter doctor, `xcodebuild -version`, Android authorized device, iOS available device를 확인한다. 그 다음 Android signing secret을 임시 keystore와 `client/android/key.properties`로 materialize하고 `REQUIRE_ANDROID_RELEASE_SIGNING=true client/scripts/verify_mobile.sh --native`로 Flutter analyze/test/local STT smoke/Android signed release APK/iOS no-codesign build를 실행한 뒤, Firebase/APNs/App Store Connect secret을 임시 파일로 materialize하고 `python3 client/scripts/verify_release_readiness.py --strict`를 실행한다. `evidence_path` 입력값은 실제 release evidence JSON을 가리켜야 하며, `ios_entitlements_path` 입력값은 signed iOS release app에서 추출한 repo 내부 plist여야 한다. 예제 파일을 그대로 사용하면 device id와 artifact/evidence가 실제 strict 입력과 맞지 않아 실패해야 정상이다.
 
 GitHub runner를 등록하기 전 macOS 후보 장비에서 아래 명령을 먼저 실행한다. 이 검사는 macOS, Flutter doctor, Android SDK 36, Xcode/CocoaPods, `xcodebuild -version`, Android authorized device, iOS `available` device를 확인한다.
 
@@ -95,7 +96,7 @@ IOS_DEVICE_UDID=<ios-device-udid> \
 python3 client/scripts/configure_github_mobile_release_env.py --repo kiminbean/voice-to-textnote
 ```
 
-`--strict`는 환경변수 존재만 확인하지 않는다. `REQUIRE_ANDROID_RELEASE_SIGNING=true`가 설정되어 signed Android release gate와 같은 release 조건임을 먼저 확인하고, `docs/app-store-metadata.md`, `docs/privacy-policy.md`, `docs/e2e-device-checklist.md`에 release placeholder가 없어야 한다. 또한 `ANDROID_DEVICE_SERIAL`은 `adb devices -l`에 `device` 상태로 표시되어야 하고, `IOS_DEVICE_UDID`는 `xcrun devicectl list devices`에서 `available` 상태로 표시되어야 한다. `RELEASE_E2E_EVIDENCE_PATH`는 체크아웃된 repo 내부 JSON 파일이어야 하며 Android/iOS device id가 strict 환경변수와 일치하고, Push/딥링크/백그라운드 녹음/HTTP 정책/PDF 공유 시나리오가 모두 `pass: true`와 증거 문구를 가져야 한다. 따라서 signed Android release 모드, Firebase/APNs/App Store Connect secret이 있어도 문서 placeholder가 남아 있거나 물리 기기가 연결되지 않았거나 trust/pairing이 완료되지 않았거나 실제 시나리오 증거가 없으면 E2E 진입 전 실패한다.
+`--strict`는 환경변수 존재만 확인하지 않는다. `REQUIRE_ANDROID_RELEASE_SIGNING=true`가 설정되어 signed Android release gate와 같은 release 조건임을 먼저 확인하고, `docs/app-store-metadata.md`, `docs/privacy-policy.md`, `docs/e2e-device-checklist.md`에 release placeholder가 없어야 한다. 또한 `ANDROID_DEVICE_SERIAL`은 `adb devices -l`에 `device` 상태로 표시되어야 하고, `IOS_DEVICE_UDID`는 `xcrun devicectl list devices`에서 `available` 상태로 표시되어야 한다. `IOS_RELEASE_ENTITLEMENTS_PATH`는 체크아웃된 repo 내부 plist여야 하며 signed iOS release app에서 추출한 `aps-environment=production`, `get-task-allow=false`, App ID/Team ID 일치를 증명해야 한다. `RELEASE_E2E_EVIDENCE_PATH`는 체크아웃된 repo 내부 JSON 파일이어야 하며 Android/iOS device id가 strict 환경변수와 일치하고, Push/딥링크/백그라운드 녹음/HTTP 정책/PDF 공유 시나리오가 모두 `pass: true`와 증거 문구를 가져야 한다. 따라서 signed Android release 모드, Firebase/APNs/App Store Connect secret이 있어도 문서 placeholder가 남아 있거나 물리 기기가 연결되지 않았거나 trust/pairing이 완료되지 않았거나 실제 시나리오 증거가 없으면 E2E 진입 전 실패한다.
 
 ### Release E2E evidence scaffold
 

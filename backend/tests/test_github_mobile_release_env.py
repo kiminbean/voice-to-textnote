@@ -118,6 +118,8 @@ def test_mobile_workflow_matches_github_release_env_contract():
     assert all(label in workflow for label in module.REQUIRED_RUNNER_LABELS)
     assert all(f"secrets.{secret}" in workflow for secret in module.REQUIRED_SECRETS)
     assert all(f"vars.{variable}" in workflow for variable in module.REQUIRED_VARIABLES)
+    assert "ios_entitlements_path:" in workflow
+    assert "IOS_RELEASE_ENTITLEMENTS_PATH: ${{ inputs.ios_entitlements_path }}" in workflow
     assert "ANDROID_KEYSTORE_BASE64" in module.REQUIRED_SECRETS
     assert "ANDROID_KEYSTORE_PATH" in workflow
     assert workflow.count("REQUIRE_ANDROID_RELEASE_SIGNING: \"true\"") == 2

@@ -769,7 +769,7 @@ RELEASE_E2E_EVIDENCE_PATH=docs/release-e2e-evidence.example.json \
 python3 client/scripts/verify_release_readiness.py --strict
 ```
 
-`--strict`는 예제 파일을 그대로 통과시키는 용도가 아니다. `docs/release-e2e-evidence.example.json`을 복사해 실제 Android/iOS 기기 ID, 빌드 산출물, Push/딥링크/백그라운드 녹음/HTTP 정책/PDF 공유 시나리오 증거로 채운 뒤 실행한다. Android release APK는 `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`로 복원한 keystore로 서명하고 `REQUIRE_ANDROID_RELEASE_SIGNING=true ./scripts/verify_mobile.sh --native`에서 `apksigner verify --print-certs`까지 통과해야 한다. 필요한 환경 변수와 scenario key 매핑은 `docs/e2e-device-checklist.md`에 있다.
+`--strict`는 예제 파일을 그대로 통과시키는 용도가 아니다. `docs/release-e2e-evidence.example.json`을 복사해 실제 Android/iOS 기기 ID, 빌드 산출물, Push/딥링크/백그라운드 녹음/HTTP 정책/PDF 공유 시나리오 증거로 채운 뒤 실행한다. Android release APK는 `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`로 복원한 keystore로 서명하고 `REQUIRE_ANDROID_RELEASE_SIGNING=true ./scripts/verify_mobile.sh --native`에서 `apksigner verify --print-certs`까지 통과해야 한다. iOS는 signed release app에서 `codesign -d --entitlements :-`로 추출한 repo 내부 `IOS_RELEASE_ENTITLEMENTS_PATH`가 `aps-environment=production`, `get-task-allow=false`, App ID/Team ID 일치를 증명해야 한다. 필요한 환경 변수와 scenario key 매핑은 `docs/e2e-device-checklist.md`에 있다.
 
 ```bash
 # Generate an editable scaffold with every required release E2E scenario key

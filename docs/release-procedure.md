@@ -64,6 +64,24 @@ python3 client/scripts/verify_release_readiness.py --strict 2>&1 | grep "App Sto
 # 기대: PASS App Store Connect API key, key id, issuer id
 ```
 
+### 1.4 iOS production entitlement evidence
+
+```bash
+# signed App Store/Profile release app에서 entitlement를 추출
+# 예: Xcode Organizer archive/export 또는 CI 서명 산출물의 Runner.app 사용
+mkdir -p docs
+codesign -d --entitlements :- /path/to/signed-release/Runner.app \
+  > docs/ios-release-entitlements.plist
+
+export IOS_RELEASE_ENTITLEMENTS_PATH=docs/ios-release-entitlements.plist
+
+# 검증 조건:
+# - aps-environment = production
+# - get-task-allow = false
+# - application-identifier = <APNS_TEAM_ID>.com.voicetextnote.app
+python3 client/scripts/verify_release_readiness.py --strict 2>&1 | grep "iOS release entitlements"
+```
+
 ---
 
 ## Phase 2: 물리 기기 + E2E 증거
@@ -126,6 +144,7 @@ python3 client/scripts/create_release_e2e_evidence.py --output docs/release-e2e-
 # FCM 테스트 토큰 (앱에서 등록한 토큰)
 export FIREBASE_TEST_DEVICE_TOKEN=<fcm-token-from-app>
 
+export IOS_RELEASE_ENTITLEMENTS_PATH=docs/ios-release-entitlements.plist
 export RELEASE_E2E_EVIDENCE_PATH=docs/release-e2e-evidence.json
 ```
 
@@ -224,6 +243,7 @@ gh release create v1.7.0 \
 | 1.1 Firebase | `FIREBASE_CREDENTIALS_PATH` | `--strict` Firebase PASS |
 | 1.2 APNs | `APNS_AUTH_KEY_PATH`, `APNS_KEY_ID`, `APNS_TEAM_ID` | `--strict` APNs 3개 PASS |
 | 1.3 App Store | `APP_STORE_CONNECT_API_KEY_PATH`, `KEY_ID`, `ISSUER_ID` | `--strict` App Store 3개 PASS |
+| 1.4 iOS entitlement | `IOS_RELEASE_ENTITLEMENTS_PATH` | signed release app entitlements plist에서 `aps-environment=production`, `get-task-allow=false`, App ID/Team ID 일치 |
 | 2.1 기기 | `ANDROID_DEVICE_SERIAL`, `IOS_DEVICE_UDID` | `verify_mobile_release_runner.py` PASS |
 | 2.3 E2E | `FIREBASE_TEST_DEVICE_TOKEN`, `RELEASE_E2E_EVIDENCE_PATH` | repo 내부 evidence JSON 17개 required scenario `pass:true` + `platforms` 계약 일치 |
 | 3.1 Runner | (GitHub Actions) | `verify_github_mobile_release_env.py` PASS |

@@ -1082,6 +1082,7 @@ def test_strict_external_rejects_evidence_path_outside_repo(tmp_path, monkeypatc
     monkeypatch.setenv("APP_STORE_CONNECT_ISSUER_ID", "issuer-id")
     monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
     monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")
+    monkeypatch.setenv("IOS_RELEASE_ENTITLEMENTS_PATH", "docs/ios-release-entitlements.plist")
     monkeypatch.setenv("FIREBASE_TEST_DEVICE_TOKEN", "firebase-token")
     monkeypatch.setenv("RELEASE_E2E_EVIDENCE_PATH", str(outside_evidence))
 
@@ -1090,6 +1091,7 @@ def test_strict_external_rejects_evidence_path_outside_repo(tmp_path, monkeypatc
     monkeypatch.setattr(module, "require_env_value", lambda *_args: None)
     monkeypatch.setattr(module, "require_android_device", lambda *_args: None)
     monkeypatch.setattr(module, "require_ios_device", lambda *_args: None)
+    monkeypatch.setattr(module, "check_ios_release_entitlements", lambda *_args: None)
 
     def reject_unreachable_evidence_check(*_args):
         raise AssertionError("outside evidence must be rejected before JSON validation")
@@ -1116,6 +1118,7 @@ def test_strict_external_requires_android_release_signing_mode(monkeypatch):
     monkeypatch.setenv("APP_STORE_CONNECT_ISSUER_ID", "issuer-id")
     monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
     monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")
+    monkeypatch.setenv("IOS_RELEASE_ENTITLEMENTS_PATH", "docs/ios-release-entitlements.plist")
     monkeypatch.setenv("FIREBASE_TEST_DEVICE_TOKEN", "firebase-token")
     monkeypatch.setenv(
         "RELEASE_E2E_EVIDENCE_PATH",
@@ -1126,6 +1129,7 @@ def test_strict_external_requires_android_release_signing_mode(monkeypatch):
     monkeypatch.setattr(module, "require_env_file", lambda *_args: None)
     monkeypatch.setattr(module, "require_android_device", lambda *_args: None)
     monkeypatch.setattr(module, "require_ios_device", lambda *_args: None)
+    monkeypatch.setattr(module, "check_ios_release_entitlements", lambda *_args: None)
     monkeypatch.setattr(module, "check_release_e2e_evidence", lambda *_args: None)
 
     reporter = module.Reporter()
@@ -1133,6 +1137,88 @@ def test_strict_external_requires_android_release_signing_mode(monkeypatch):
 
     assert (
         "Android release signing gate: REQUIRE_ANDROID_RELEASE_SIGNING is not set"
+        in reporter.errors
+    )
+
+
+def test_ios_release_entitlements_accepts_production_app_store_profile(
+    tmp_path, monkeypatch
+):
+    module = load_release_readiness_module()
+    entitlements_path = tmp_path / "ios-release-entitlements.plist"
+    with entitlements_path.open("wb") as plist:
+        plistlib.dump(
+            {
+                "aps-environment": "production",
+                "get-task-allow": False,
+                "com.apple.developer.team-identifier": "KLMNOPQRST",
+                "application-identifier": "KLMNOPQRST.com.voicetextnote.app",
+            },
+            plist,
+        )
+    monkeypatch.setenv("APNS_TEAM_ID", "KLMNOPQRST")
+
+    reporter = module.Reporter()
+    module.check_ios_release_entitlements(entitlements_path, reporter)
+
+    assert reporter.errors == []
+
+
+def test_ios_release_entitlements_rejects_development_profile(tmp_path, monkeypatch):
+    module = load_release_readiness_module()
+    entitlements_path = tmp_path / "ios-release-entitlements.plist"
+    with entitlements_path.open("wb") as plist:
+        plistlib.dump(
+            {
+                "aps-environment": "development",
+                "get-task-allow": True,
+                "com.apple.developer.team-identifier": "KLMNOPQRST",
+                "application-identifier": "KLMNOPQRST.com.voicetextnote.app",
+            },
+            plist,
+        )
+    monkeypatch.setenv("APNS_TEAM_ID", "KLMNOPQRST")
+
+    reporter = module.Reporter()
+    module.check_ios_release_entitlements(entitlements_path, reporter)
+
+    assert "iOS release entitlements must use production APNs environment" in reporter.errors
+    assert "iOS release entitlements must set get-task-allow to false" in reporter.errors
+
+
+def test_strict_external_requires_ios_release_entitlements(monkeypatch):
+    module = load_release_readiness_module()
+    repo_root = Path(__file__).resolve().parents[2]
+
+    monkeypatch.setenv("REQUIRE_ANDROID_RELEASE_SIGNING", "true")
+    monkeypatch.setenv("FIREBASE_CREDENTIALS_PATH", str(repo_root / "firebase.json"))
+    monkeypatch.setenv("APNS_AUTH_KEY_PATH", str(repo_root / "AuthKey_APNS.p8"))
+    monkeypatch.setenv("APNS_KEY_ID", "ABCDEFGHIJ")
+    monkeypatch.setenv("APNS_TEAM_ID", "KLMNOPQRST")
+    monkeypatch.setenv("APP_STORE_CONNECT_API_KEY_PATH", str(repo_root / "AuthKey_ASC.p8"))
+    monkeypatch.setenv("APP_STORE_CONNECT_KEY_ID", "UVWXYZ1234")
+    monkeypatch.setenv("APP_STORE_CONNECT_ISSUER_ID", "issuer-id")
+    monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
+    monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")
+    monkeypatch.delenv("IOS_RELEASE_ENTITLEMENTS_PATH", raising=False)
+    monkeypatch.setenv("FIREBASE_TEST_DEVICE_TOKEN", "firebase-token")
+    monkeypatch.setenv(
+        "RELEASE_E2E_EVIDENCE_PATH",
+        str(repo_root / "docs/release-e2e-evidence.example.json"),
+    )
+
+    monkeypatch.setattr(module, "check_service_account", lambda *_args: None)
+    monkeypatch.setattr(module, "require_env_file", lambda *_args: None)
+    monkeypatch.setattr(module, "require_env_value", lambda *_args: None)
+    monkeypatch.setattr(module, "require_android_device", lambda *_args: None)
+    monkeypatch.setattr(module, "require_ios_device", lambda *_args: None)
+    monkeypatch.setattr(module, "check_release_e2e_evidence", lambda *_args: None)
+
+    reporter = module.Reporter()
+    module.check_strict_external(reporter)
+
+    assert (
+        "iOS release entitlements evidence: IOS_RELEASE_ENTITLEMENTS_PATH is not set"
         in reporter.errors
     )
 
@@ -1575,6 +1661,10 @@ def test_release_procedure_rejects_version_drift(tmp_path):
             "python3 client/scripts/verify_mobile_release_runner.py\n"
             "python3 client/scripts/verify_github_mobile_release_env.py\n"
             "REQUIRE_ANDROID_RELEASE_SIGNING=true\n"
+            "IOS_RELEASE_ENTITLEMENTS_PATH\n"
+            "ios-release-entitlements.plist\n"
+            "aps-environment\n"
+            "get-task-allow\n"
             "python3 client/scripts/verify_release_readiness.py --strict\n"
             "2개 SPEC 전부 완료\n"
             "2 SPECs completed\n"

@@ -894,6 +894,10 @@ def check_docs(root: Path, reporter: Reporter) -> None:
             "REQUIRE_ANDROID_RELEASE_SIGNING",
             ("REQUIRE_ANDROID_RELEASE_SIGNING", "Android release signing gate"),
         ),
+        (
+            "IOS_RELEASE_ENTITLEMENTS_PATH",
+            ("IOS_RELEASE_ENTITLEMENTS_PATH", "ios-release-entitlements.plist"),
+        ),
         ("RELEASE_E2E_EVIDENCE_PATH", ("RELEASE_E2E_EVIDENCE_PATH",)),
         ("artifact_sha256", ("artifact_sha256", "SHA-256")),
         ("Android release APK", ("app-release.apk", "Android release APK")),
@@ -919,6 +923,10 @@ def check_docs(root: Path, reporter: Reporter) -> None:
             "python3 client/scripts/verify_github_mobile_release_env.py",
             "python3 client/scripts/verify_release_readiness.py --strict",
             "REQUIRE_ANDROID_RELEASE_SIGNING=true",
+            "IOS_RELEASE_ENTITLEMENTS_PATH",
+            "ios-release-entitlements.plist",
+            "aps-environment",
+            "get-task-allow",
             "`platforms`",
             '["android", "ios"]',
             '["android"]',
@@ -1305,6 +1313,47 @@ def require_ios_device(reporter: Reporter) -> None:
         reporter.fail(f"iOS physical test device UDID {udid} is known but not available")
     else:
         reporter.fail(f"iOS physical test device UDID {udid} is not visible to xcrun devicectl")
+
+
+def check_ios_release_entitlements(entitlements_path: Path, reporter: Reporter) -> None:
+    if not require_file(reporter, entitlements_path, "iOS release entitlements evidence"):
+        return
+    try:
+        entitlements = plistlib.loads(entitlements_path.read_bytes())
+    except (plistlib.InvalidFileException, ValueError) as exc:
+        reporter.fail(f"iOS release entitlements evidence plist is invalid: {exc}")
+        return
+    if not isinstance(entitlements, dict):
+        reporter.fail("iOS release entitlements evidence must be a plist dictionary")
+        return
+
+    aps_environment = entitlements.get("aps-environment")
+    if aps_environment == "production":
+        reporter.ok("iOS release entitlements use production APNs environment")
+    else:
+        reporter.fail("iOS release entitlements must use production APNs environment")
+
+    get_task_allow = entitlements.get("get-task-allow")
+    if get_task_allow is False:
+        reporter.ok("iOS release entitlements disable debugger attachment")
+    else:
+        reporter.fail("iOS release entitlements must set get-task-allow to false")
+
+    team_id = os.environ.get("APNS_TEAM_ID", "")
+    entitlement_team = entitlements.get("com.apple.developer.team-identifier")
+    if team_id and entitlement_team == team_id:
+        reporter.ok("iOS release entitlements team identifier matches APNs team")
+    elif team_id:
+        reporter.fail("iOS release entitlements team identifier does not match APNs team")
+
+    application_id = entitlements.get("application-identifier")
+    expected_app_id = f"{team_id}.{IOS_BUNDLE_ID}" if team_id else ""
+    if expected_app_id and application_id == expected_app_id:
+        reporter.ok("iOS release entitlements application identifier matches bundle id")
+    elif expected_app_id:
+        reporter.fail(
+            "iOS release entitlements application identifier does not match bundle id"
+        )
 
 
 def require_non_empty_mapping(
@@ -1751,10 +1800,23 @@ def check_strict_external(reporter: Reporter) -> None:
 
     require_android_device(reporter)
     require_ios_device(reporter)
+    root = Path(__file__).resolve().parents[2]
+    ios_entitlements = os.environ.get("IOS_RELEASE_ENTITLEMENTS_PATH", "")
+    if ios_entitlements:
+        if evidence_path_stays_inside_root(root, ios_entitlements):
+            check_ios_release_entitlements(
+                resolve_release_evidence_path(root, ios_entitlements),
+                reporter,
+            )
+        else:
+            reporter.fail("iOS release entitlements evidence path must stay inside repo")
+    else:
+        reporter.fail(
+            "iOS release entitlements evidence: IOS_RELEASE_ENTITLEMENTS_PATH is not set"
+        )
     require_env_value(reporter, "FIREBASE_TEST_DEVICE_TOKEN", "Firebase test device token")
     evidence = os.environ.get("RELEASE_E2E_EVIDENCE_PATH", "")
     if evidence:
-        root = Path(__file__).resolve().parents[2]
         if evidence_path_stays_inside_root(root, evidence):
             check_release_e2e_evidence(resolve_release_evidence_path(root, evidence), reporter, root)
         else:

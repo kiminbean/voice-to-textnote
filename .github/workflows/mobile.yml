@@ -7,6 +7,10 @@ on:
         description: "Path to the completed release E2E evidence JSON"
         required: true
         default: "docs/release-e2e-evidence.json"
+      ios_entitlements_path:
+        description: "Path to the signed iOS release entitlements plist"
+        required: true
+        default: "docs/ios-release-entitlements.plist"
   pull_request:
     branches:
       - main
@@ -217,6 +221,7 @@ jobs:
           APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
           ANDROID_DEVICE_SERIAL: ${{ vars.ANDROID_DEVICE_SERIAL }}
           IOS_DEVICE_UDID: ${{ vars.IOS_DEVICE_UDID }}
+          IOS_RELEASE_ENTITLEMENTS_PATH: ${{ inputs.ios_entitlements_path }}
           FIREBASE_TEST_DEVICE_TOKEN: ${{ secrets.FIREBASE_TEST_DEVICE_TOKEN }}
           RELEASE_E2E_EVIDENCE_PATH: ${{ inputs.evidence_path }}
         run: python3 client/scripts/verify_release_readiness.py --strict
