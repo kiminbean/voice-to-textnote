@@ -41,6 +41,8 @@ class MeetingShareService:
         Returns:
             MeetingOwnership 인스턴스
         """
+        await self._require_task_result(session, task_id)
+
         result = await session.execute(
             select(MeetingOwnership).where(
                 MeetingOwnership.task_id == task_id,
@@ -96,7 +98,11 @@ class MeetingShareService:
             select(func.count(MeetingOwnership.id)).where(MeetingOwnership.task_id == task_id)
         )
         count = count_result.scalar_one()
-        return count == 0
+        if count != 0:
+            return False
+
+        task_result = await self._get_task_result(session, task_id)
+        return task_result is not None
 
     async def share_meeting(
         self,
@@ -120,8 +126,11 @@ class MeetingShareService:
             생성된 MeetingOwnership 인스턴스
 
         Raises:
+            HTTPException(404): 회의록이 존재하지 않는 경우
             HTTPException(409): 이미 같은 팀에 공유된 경우
         """
+        await self._require_task_result(session, task_id)
+
         # 중복 공유 확인
         existing_result = await session.execute(
             select(MeetingOwnership).where(
@@ -200,6 +209,27 @@ class MeetingShareService:
         if owner_created or applied:
             await session.commit()
         return applied
+
+    async def _get_task_result(
+        self,
+        session: AsyncSession,
+        task_id: str,
+    ) -> TaskResult | None:
+        result = await session.execute(select(TaskResult).where(TaskResult.task_id == task_id))
+        return result.scalar_one_or_none()
+
+    async def _require_task_result(
+        self,
+        session: AsyncSession,
+        task_id: str,
+    ) -> TaskResult:
+        task_result = await self._get_task_result(session, task_id)
+        if task_result is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="회의록을 찾을 수 없습니다",
+            )
+        return task_result
 
     async def _ensure_owner_record(
         self,
