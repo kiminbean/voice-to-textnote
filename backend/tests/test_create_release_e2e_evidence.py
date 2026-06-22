@@ -36,6 +36,8 @@ def write_release_artifacts(root: Path) -> tuple[Path, Path]:
     with zipfile.ZipFile(android_apk, "w") as apk:
         apk.writestr("AndroidManifest.xml", "<manifest />")
         apk.writestr("classes.dex", b"dex\n035\0")
+        apk.writestr("META-INF/CERT.SF", "Signature-Version: 1.0\n")
+        apk.writestr("META-INF/CERT.RSA", b"signature")
     ios_runner_app.mkdir(parents=True)
     with (ios_runner_app / "Info.plist").open("wb") as plist:
         plistlib.dump(
@@ -327,6 +329,8 @@ def test_release_e2e_evidence_artifacts_are_resolved_from_repo_root(
     with zipfile.ZipFile(android_apk, "w") as apk:
         apk.writestr("AndroidManifest.xml", "<manifest />")
         apk.writestr("classes.dex", b"dex\n035\0")
+        apk.writestr("META-INF/CERT.SF", "Signature-Version: 1.0\n")
+        apk.writestr("META-INF/CERT.RSA", b"signature")
     ios_runner_app.mkdir(parents=True)
     with (ios_runner_app / "Info.plist").open("wb") as plist:
         plistlib.dump(

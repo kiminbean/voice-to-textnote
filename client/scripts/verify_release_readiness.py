@@ -71,7 +71,7 @@ CANONICAL_RELEASE_ARTIFACT_PATHS = {
     "ios_runner_app": "client/build/ios/iphoneos/Runner.app",
 }
 EXPECTED_STRICT_MISSING_INPUT_ERRORS = 13
-CURRENT_BACKEND_TEST_COUNT = 3989
+CURRENT_BACKEND_TEST_COUNT = 3990
 CURRENT_FLUTTER_TEST_COUNT = 415
 CURRENT_TOTAL_TEST_COUNT = CURRENT_BACKEND_TEST_COUNT + CURRENT_FLUTTER_TEST_COUNT
 APP_STORE_CONNECT_ISSUER_ID_PATTERN = (
@@ -107,6 +107,7 @@ RELEASE_E2E_OBSERVATION_REFERENCE_PATTERNS = (
 )
 MIN_RELEASE_E2E_EVIDENCE_CHARS = 24
 MAX_RELEASE_E2E_EVIDENCE_AGE = timedelta(days=14)
+APK_SIGNATURE_BLOCK_MAGIC = b"APK Sig Block 42"
 SECRET_SCAN_PATHS = (
     ".github/workflows",
     "README.md",
@@ -1626,6 +1627,59 @@ def is_android_apk(path: Path) -> bool:
         return False
 
 
+def has_apk_v1_signature(names: set[str]) -> bool:
+    signature_files = {
+        name.upper()
+        for name in names
+        if name.upper().startswith("META-INF/") and not name.endswith("/")
+    }
+    has_signature_manifest = any(name.endswith(".SF") for name in signature_files)
+    has_signature_block = any(
+        name.endswith((".RSA", ".DSA", ".EC")) for name in signature_files
+    )
+    return has_signature_manifest and has_signature_block
+
+
+def has_apk_signing_block(path: Path) -> bool:
+    try:
+        data = path.read_bytes()
+    except OSError:
+        return False
+    eocd_offset = data.rfind(b"PK\x05\x06")
+    if eocd_offset == -1 or eocd_offset + 20 > len(data):
+        return False
+    central_directory_offset = struct.unpack_from("<I", data, eocd_offset + 16)[0]
+    if central_directory_offset < 24 or central_directory_offset > len(data):
+        return False
+    if (
+        data[
+            central_directory_offset
+            - len(APK_SIGNATURE_BLOCK_MAGIC) : central_directory_offset
+        ]
+        != APK_SIGNATURE_BLOCK_MAGIC
+    ):
+        return False
+    signing_block_size = struct.unpack_from(
+        "<Q", data, central_directory_offset - len(APK_SIGNATURE_BLOCK_MAGIC) - 8
+    )[0]
+    signing_block_start = central_directory_offset - signing_block_size - 8
+    if signing_block_start < 0 or signing_block_start + 8 > len(data):
+        return False
+    return (
+        struct.unpack_from("<Q", data, signing_block_start)[0]
+        == signing_block_size
+    )
+
+
+def is_signed_android_apk(path: Path) -> bool:
+    try:
+        with zipfile.ZipFile(path) as apk:
+            names = set(apk.namelist())
+    except zipfile.BadZipFile:
+        return False
+    return has_apk_v1_signature(names) or has_apk_signing_block(path)
+
+
 def ios_app_metadata(path: Path) -> dict[str, str]:
     try:
         with (path / "Info.plist").open("rb") as plist:
@@ -1679,6 +1733,8 @@ def release_artifact_structure_error(root: Path, key: str, artifact_path: str) -
             return f"artifact must be non-empty: {key}"
         if key == "android_apk" and not is_android_apk(resolved_artifact):
             return f"artifact must be a valid APK zip: {key}"
+        if key == "android_apk" and not is_signed_android_apk(resolved_artifact):
+            return f"artifact must be signed: {key}"
         if key == "ios_runner_app" and not (resolved_artifact / "Info.plist").is_file():
             return f"artifact missing Info.plist: {key}"
         if key == "ios_runner_app":
