@@ -83,7 +83,10 @@ def make_evidence(tmp_path: Path, module) -> dict[str, object]:
                         }[platform]
                         for platform in module.REQUIRED_E2E_SCENARIO_PLATFORMS[scenario]
                     )
-                    + ". Screenshot and device log captured for this scenario."
+                    + (
+                        f". Screenshot release-e2e/{scenario}.png and device log "
+                        f"release-e2e/{scenario}.log captured for this scenario."
+                    )
                 ),
             }
             for scenario, label in module.REQUIRED_E2E_SCENARIOS.items()
@@ -160,10 +163,10 @@ def write_tone_policy_files(root: Path, *, tone_model_line: str = 'tone_model: s
 def write_readme_status(root: Path, content: str) -> None:
     (root / "README.md").write_text(
         (
-            "3966 백엔드 테스트\n"
-            "| 백엔드 단위/통합/E2E | 3966개 | 100.00% |\n"
+            "3967 백엔드 테스트\n"
+            "| 백엔드 단위/통합/E2E | 3967개 | 100.00% |\n"
             "| Flutter 테스트 | 415개 | - |\n"
-            "| 총합 | 4381개 | - |\n"
+            "| 총합 | 4382개 | - |\n"
             f"{content}"
         ),
         encoding="utf-8",
@@ -815,7 +818,8 @@ def test_release_e2e_evidence_rejects_duplicate_scenario_evidence(tmp_path, monk
     assert isinstance(scenarios, dict)
     duplicate_note = (
         "Release E2E observation captured on android-serial and ios-udid with "
-        "screenshots and logs attached for the physical release devices."
+        "screenshot release-e2e/shared.png and log release-e2e/shared.log attached "
+        "for the physical release devices."
     )
     for key in ["push_stt_complete", "push_summary_complete"]:
         scenario = scenarios[key]
@@ -862,6 +866,33 @@ def test_release_e2e_evidence_rejects_scenario_evidence_without_observation_arti
     )
 
 
+def test_release_e2e_evidence_rejects_scenario_evidence_without_observation_reference(
+    tmp_path, monkeypatch
+):
+    module = load_release_readiness_module()
+    evidence = make_evidence(tmp_path, module)
+    scenarios = evidence["scenarios"]
+    assert isinstance(scenarios, dict)
+    scenario = scenarios["push_stt_complete"]
+    assert isinstance(scenario, dict)
+    scenario["evidence"] = (
+        "STT completion was verified on release test devices android-serial and "
+        "ios-udid with screenshot and device log captured."
+    )
+    evidence_path = write_evidence(tmp_path, evidence)
+    monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
+    monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")
+
+    reporter = module.Reporter()
+    module.check_release_e2e_evidence(evidence_path, reporter, tmp_path)
+
+    assert any(
+        "scenario evidence missing observation artifact reference: push_stt_complete"
+        in error
+        for error in reporter.errors
+    )
+
+
 def test_release_e2e_evidence_rejects_non_string_scenario_evidence(tmp_path, monkeypatch):
     module = load_release_readiness_module()
     evidence = make_evidence(tmp_path, module)
@@ -894,7 +925,8 @@ def test_release_e2e_evidence_rejects_scenario_evidence_without_android_device_i
     assert isinstance(scenario, dict)
     scenario["evidence"] = (
         "Android release HTTP blocked on a physical release device. "
-        "Screenshot and device log captured."
+        "Screenshot release-e2e/android_release_cleartext_blocked.png and device log "
+        "release-e2e/android_release_cleartext_blocked.log captured."
     )
     evidence_path = write_evidence(tmp_path, evidence)
     monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
@@ -921,7 +953,8 @@ def test_release_e2e_evidence_rejects_scenario_evidence_without_ios_device_id(
     assert isinstance(scenario, dict)
     scenario["evidence"] = (
         "iOS release HTTP blocked on a physical release device. "
-        "Screenshot and device log captured."
+        "Screenshot release-e2e/ios_release_http_blocked.png and device log "
+        "release-e2e/ios_release_http_blocked.log captured."
     )
     evidence_path = write_evidence(tmp_path, evidence)
     monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
@@ -1898,9 +1931,9 @@ def test_readme_release_status_rejects_missing_android_signing_gate(tmp_path):
     (tmp_path / "README.md").write_text(
         (
             "Release Candidate strict 실기기 release evidence 대기 RELEASE_E2E_EVIDENCE_PATH\n"
-            "3966 백엔드 테스트 Flutter 415 4381개\n"
-            "| 백엔드 단위/통합/E2E | 3966개 | 100.00% |\n"
-            "| 총합 | 4381개 | - |\n"
+            "3967 백엔드 테스트 Flutter 415 4382개\n"
+            "| 백엔드 단위/통합/E2E | 3967개 | 100.00% |\n"
+            "| 총합 | 4382개 | - |\n"
             "| **Android** | RC | `flutter build apk --release` 검증 완료 |"
         ),
         encoding="utf-8",
@@ -1987,7 +2020,7 @@ def test_release_procedure_rejects_version_drift(tmp_path):
             "python3 client/scripts/verify_release_readiness.py --strict\n"
             "2개 SPEC 전부 완료\n"
             "2 SPECs completed\n"
-            "3966 passed\n"
+            "3967 passed\n"
             "Flutter: 415 passed\n"
             "`verify_mobile_release_runner.py` PASS\n"
             "`verify_github_mobile_release_env.py` PASS\n"

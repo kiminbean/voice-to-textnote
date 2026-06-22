@@ -71,7 +71,7 @@ CANONICAL_RELEASE_ARTIFACT_PATHS = {
     "ios_runner_app": "client/build/ios/iphoneos/Runner.app",
 }
 EXPECTED_STRICT_MISSING_INPUT_ERRORS = 13
-CURRENT_BACKEND_TEST_COUNT = 3966
+CURRENT_BACKEND_TEST_COUNT = 3967
 CURRENT_FLUTTER_TEST_COUNT = 415
 CURRENT_TOTAL_TEST_COUNT = CURRENT_BACKEND_TEST_COUNT + CURRENT_FLUTTER_TEST_COUNT
 UNRESOLVED_EVIDENCE_PATTERNS = (
@@ -94,6 +94,12 @@ RELEASE_E2E_OBSERVATION_ARTIFACT_PATTERNS = (
     r"동영상",
     r"로그",
     r"첨부",
+)
+RELEASE_E2E_OBSERVATION_REFERENCE_PATTERNS = (
+    r"https?://\S+",
+    r"\b[\w./-]+\.(?:heic|jpeg|jpg|log|mov|mp4|png|trace|txt|zip)\b",
+    r"\bartifact:[A-Za-z0-9._/-]+\b",
+    r"\battachment:[A-Za-z0-9._/-]+\b",
 )
 MIN_RELEASE_E2E_EVIDENCE_CHARS = 24
 MAX_RELEASE_E2E_EVIDENCE_AGE = timedelta(days=14)
@@ -1493,6 +1499,13 @@ def has_observation_artifact_marker(value: str) -> bool:
     )
 
 
+def has_observation_artifact_reference(value: str) -> bool:
+    return any(
+        re.search(pattern, value, re.IGNORECASE)
+        for pattern in RELEASE_E2E_OBSERVATION_REFERENCE_PATTERNS
+    )
+
+
 def resolve_release_artifact_path(root: Path, artifact_path: str) -> Path:
     path = Path(artifact_path).expanduser()
     if path.is_absolute():
@@ -1874,6 +1887,7 @@ def check_release_e2e_evidence(path: Path, reporter: Reporter, root: Path | None
             and len(evidence) >= MIN_RELEASE_E2E_EVIDENCE_CHARS
             and not has_unresolved_evidence_placeholder(evidence)
             and has_observation_artifact_marker(evidence)
+            and has_observation_artifact_reference(evidence)
             and not missing_device_ids
         ):
             reporter.ok(f"Release E2E scenario passed: {key}")
@@ -1888,6 +1902,10 @@ def check_release_e2e_evidence(path: Path, reporter: Reporter, root: Path | None
         elif not has_observation_artifact_marker(evidence):
             reporter.fail(
                 f"Release E2E scenario evidence missing observation artifact marker: {key}"
+            )
+        elif not has_observation_artifact_reference(evidence):
+            reporter.fail(
+                f"Release E2E scenario evidence missing observation artifact reference: {key}"
             )
         elif missing_device_ids:
             reporter.fail(

@@ -177,7 +177,7 @@ python3 client/scripts/create_release_e2e_evidence.py \
 
 ## Release E2E Evidence JSON 매핑
 
-`RELEASE_E2E_EVIDENCE_PATH`는 아래 scenario key를 모두 포함해야 한다. 각 항목은 `pass: true`와 실제 관측 증거 문구를 가져야 하며, 해당 scenario 플랫폼의 Android serial/iOS UDID를 증거 문구에 포함해야 한다. 통과 evidence 문구는 서로 복붙되면 안 되고, 각 scenario별 screenshot, screen recording, device log, trace, attachment 또는 이에 준하는 스크린샷/화면 녹화/로그/첨부 관측 산출물 단서를 포함해야 한다. Android/iOS device id는 strict 환경변수와 일치해야 한다. `release_gate.android_release_signing=true`, `release_gate.ios_production_entitlements=true`, `release_gate.ios_entitlements_sha256=<IOS_RELEASE_ENTITLEMENTS_PATH SHA-256>`를 기록해 signed Android APK와 production iOS entitlement 조건에서 수행된 evidence임을 남겨야 한다. `artifacts`는 repo-relative 표준 release output 경로만 허용되며, `artifact_sha256`은 `artifacts`의 모든 key를 포함하고 실제 release 산출물 파일/디렉터리 내용의 SHA-256과 일치해야 한다.
+`RELEASE_E2E_EVIDENCE_PATH`는 아래 scenario key를 모두 포함해야 한다. 각 항목은 `pass: true`와 실제 관측 증거 문구를 가져야 하며, 해당 scenario 플랫폼의 Android serial/iOS UDID를 증거 문구에 포함해야 한다. 통과 evidence 문구는 서로 복붙되면 안 되고, 각 scenario별 screenshot, screen recording, device log, trace, attachment 또는 이에 준하는 스크린샷/화면 녹화/로그/첨부 관측 산출물 단서와 실제 파일명/URL/`artifact:`/`attachment:` 식별자를 포함해야 한다. Android/iOS device id는 strict 환경변수와 일치해야 한다. `release_gate.android_release_signing=true`, `release_gate.ios_production_entitlements=true`, `release_gate.ios_entitlements_sha256=<IOS_RELEASE_ENTITLEMENTS_PATH SHA-256>`를 기록해 signed Android APK와 production iOS entitlement 조건에서 수행된 evidence임을 남겨야 한다. `artifacts`는 repo-relative 표준 release output 경로만 허용되며, `artifact_sha256`은 `artifacts`의 모든 key를 포함하고 실제 release 산출물 파일/디렉터리 내용의 SHA-256과 일치해야 한다.
 
 | Evidence key | 체크리스트 범위 |
 |--------------|----------------|
