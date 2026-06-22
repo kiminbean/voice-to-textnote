@@ -174,6 +174,21 @@ jobs:
           IOS_DEVICE_UDID: ${{ vars.IOS_DEVICE_UDID }}
         run: python3 client/scripts/verify_mobile_release_runner.py
 
+      - name: Verify strict release input paths
+        env:
+          RELEASE_E2E_EVIDENCE_PATH: ${{ inputs.evidence_path }}
+          IOS_RELEASE_ENTITLEMENTS_PATH: ${{ inputs.ios_entitlements_path }}
+        run: |
+          test "$RELEASE_E2E_EVIDENCE_PATH" != "docs/release-e2e-evidence.example.json"
+          case "$RELEASE_E2E_EVIDENCE_PATH" in
+            /*|../*|*/../*) exit 1 ;;
+          esac
+          case "$IOS_RELEASE_ENTITLEMENTS_PATH" in
+            /*|../*|*/../*) exit 1 ;;
+          esac
+          test -f "$RELEASE_E2E_EVIDENCE_PATH"
+          test -f "$IOS_RELEASE_ENTITLEMENTS_PATH"
+
       - name: Set up strict credential files
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
