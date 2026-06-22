@@ -163,10 +163,10 @@ def write_tone_policy_files(root: Path, *, tone_model_line: str = 'tone_model: s
 def write_readme_status(root: Path, content: str) -> None:
     (root / "README.md").write_text(
         (
-            "3987 백엔드 테스트\n"
-            "| 백엔드 단위/통합/E2E | 3987개 | 100.00% |\n"
+            "3988 백엔드 테스트\n"
+            "| 백엔드 단위/통합/E2E | 3988개 | 100.00% |\n"
             "| Flutter 테스트 | 415개 | - |\n"
-            "| 총합 | 4402개 | - |\n"
+            "| 총합 | 4403개 | - |\n"
             f"{content}"
         ),
         encoding="utf-8",
@@ -1542,6 +1542,24 @@ def test_strict_private_key_file_accepts_private_key_pem(tmp_path, monkeypatch):
     assert reporter.errors == []
 
 
+def test_android_device_check_accepts_whitespace_separated_adb_device(monkeypatch):
+    module = load_release_readiness_module()
+    monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
+    monkeypatch.setattr(
+        module,
+        "read_command_output",
+        lambda command: (
+            0,
+            "List of devices attached\nandroid-serial device product:pixel\n",
+        ),
+    )
+
+    reporter = module.Reporter()
+    module.require_android_device(reporter)
+
+    assert reporter.errors == []
+
+
 def test_firebase_service_account_rejects_non_object_json(tmp_path):
     module = load_release_readiness_module()
     service_account = tmp_path / "firebase.json"
@@ -2182,9 +2200,9 @@ def test_readme_release_status_rejects_missing_android_signing_gate(tmp_path):
     (tmp_path / "README.md").write_text(
         (
             "Release Candidate strict 실기기 release evidence 대기 RELEASE_E2E_EVIDENCE_PATH\n"
-            "3987 백엔드 테스트 Flutter 415 4402개\n"
-            "| 백엔드 단위/통합/E2E | 3987개 | 100.00% |\n"
-            "| 총합 | 4402개 | - |\n"
+            "3988 백엔드 테스트 Flutter 415 4403개\n"
+            "| 백엔드 단위/통합/E2E | 3988개 | 100.00% |\n"
+            "| 총합 | 4403개 | - |\n"
             "| **Android** | RC | `flutter build apk --release` 검증 완료 |"
         ),
         encoding="utf-8",
@@ -2271,7 +2289,7 @@ def test_release_procedure_rejects_version_drift(tmp_path):
             "python3 client/scripts/verify_release_readiness.py --strict\n"
             "2개 SPEC 전부 완료\n"
             "2 SPECs completed\n"
-            "3987 passed\n"
+            "3988 passed\n"
             "Flutter: 415 passed\n"
             "`verify_mobile_release_runner.py` PASS\n"
             "`verify_github_mobile_release_env.py` PASS\n"

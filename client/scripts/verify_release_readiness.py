@@ -71,7 +71,7 @@ CANONICAL_RELEASE_ARTIFACT_PATHS = {
     "ios_runner_app": "client/build/ios/iphoneos/Runner.app",
 }
 EXPECTED_STRICT_MISSING_INPUT_ERRORS = 13
-CURRENT_BACKEND_TEST_COUNT = 3987
+CURRENT_BACKEND_TEST_COUNT = 3988
 CURRENT_FLUTTER_TEST_COUNT = 415
 CURRENT_TOTAL_TEST_COUNT = CURRENT_BACKEND_TEST_COUNT + CURRENT_FLUTTER_TEST_COUNT
 APP_STORE_CONNECT_ISSUER_ID_PATTERN = (
@@ -1377,7 +1377,9 @@ def require_android_device(reporter: Reporter) -> None:
         )
         return
     connected_serials = {
-        line.split()[0] for line in output.splitlines() if line.strip() and "\tdevice" in line
+        line.split()[0]
+        for line in output.splitlines()
+        if re.match(r"^\S+\s+device\b", line)
     }
     if serial in connected_serials:
         reporter.ok("Android physical test device serial is connected via adb")
