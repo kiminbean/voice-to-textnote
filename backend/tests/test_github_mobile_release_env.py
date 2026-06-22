@@ -108,6 +108,44 @@ def test_github_mobile_release_env_rejects_missing_secret_and_variable():
     assert any("IOS_DEVICE_UDID" in error for error in reporter.errors)
 
 
+def test_github_mobile_release_env_collects_paginated_api_fields():
+    module = load_github_env_module()
+
+    pages = [
+        {"environments": [{"name": "staging"}]},
+        {"environments": [{"name": module.ENVIRONMENT}]},
+        {"runners": [{"labels": [{"name": "self-hosted"}], "status": "online"}]},
+        {
+            "runners": [
+                {
+                    "labels": [
+                        {"name": "self-hosted"},
+                        {"name": "macOS"},
+                        {"name": "mobile-release"},
+                    ],
+                    "status": "online",
+                }
+            ]
+        },
+    ]
+
+    environments = {
+        item["name"] for item in module.collect_paginated_field(pages, "environments")
+    }
+    runners = module.collect_paginated_field(pages, "runners")
+    reporter = module.Reporter()
+
+    module.check_snapshot(
+        environments=environments,
+        runners=runners,
+        secrets=set(module.REQUIRED_SECRETS),
+        variables=set(module.REQUIRED_VARIABLES),
+        reporter=reporter,
+    )
+
+    assert reporter.errors == []
+
+
 def test_mobile_workflow_matches_github_release_env_contract():
     module = load_github_env_module()
     workflow = (

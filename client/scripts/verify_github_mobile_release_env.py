@@ -49,9 +49,25 @@ class Reporter:
         print(f"FAIL {message}")
 
 
-def run_json(args: list[str]) -> Any:
-    output = subprocess.check_output(args, text=True, stderr=subprocess.PIPE)
-    return json.loads(output)
+def run_slurped_pages(args: list[str]) -> list[dict[str, Any]]:
+    output = subprocess.check_output(
+        [*args, "--paginate", "--slurp"],
+        text=True,
+        stderr=subprocess.PIPE,
+    )
+    data = json.loads(output)
+    if not isinstance(data, list):
+        return []
+    return [page for page in data if isinstance(page, dict)]
+
+
+def collect_paginated_field(pages: list[dict[str, Any]], field: str) -> list[dict[str, Any]]:
+    items: list[dict[str, Any]] = []
+    for page in pages:
+        value = page.get(field, [])
+        if isinstance(value, list):
+            items.extend(item for item in value if isinstance(item, dict))
+    return items
 
 
 def run_name_list(args: list[str]) -> set[str]:
@@ -114,13 +130,18 @@ def fetch_and_check(repo: str, reporter: Reporter) -> None:
         reporter.fail("GitHub CLI missing: gh")
         return
 
-    environments_payload = run_json(["gh", "api", f"repos/{repo}/environments", "--jq", "."])
+    environment_pages = run_slurped_pages(
+        ["gh", "api", f"repos/{repo}/environments?per_page=100"]
+    )
     environments = {
-        item["name"] for item in environments_payload.get("environments", []) if item.get("name")
+        item["name"] for item in collect_paginated_field(environment_pages, "environments")
+        if item.get("name")
     }
 
-    runners_payload = run_json(["gh", "api", f"repos/{repo}/actions/runners", "--jq", "."])
-    runners = runners_payload.get("runners", [])
+    runner_pages = run_slurped_pages(
+        ["gh", "api", f"repos/{repo}/actions/runners?per_page=100"]
+    )
+    runners = collect_paginated_field(runner_pages, "runners")
 
     try:
         secrets = run_name_list(
