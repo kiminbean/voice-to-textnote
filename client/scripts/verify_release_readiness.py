@@ -71,7 +71,7 @@ CANONICAL_RELEASE_ARTIFACT_PATHS = {
     "ios_runner_app": "client/build/ios/iphoneos/Runner.app",
 }
 EXPECTED_STRICT_MISSING_INPUT_ERRORS = 13
-CURRENT_BACKEND_TEST_COUNT = 3968
+CURRENT_BACKEND_TEST_COUNT = 3969
 CURRENT_FLUTTER_TEST_COUNT = 415
 CURRENT_TOTAL_TEST_COUNT = CURRENT_BACKEND_TEST_COUNT + CURRENT_FLUTTER_TEST_COUNT
 UNRESOLVED_EVIDENCE_PATTERNS = (
@@ -1446,7 +1446,11 @@ def require_iso_datetime(
         reporter.fail(f"Release E2E evidence {label} must be ISO-8601")
         return ""
     reporter.ok(f"Release E2E evidence {label} is ISO-8601")
-    comparable = parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
+    if parsed.tzinfo is None:
+        reporter.fail(f"Release E2E evidence {label} must include timezone")
+        comparable = parsed.replace(tzinfo=UTC)
+    else:
+        comparable = parsed
     now = datetime.now(UTC)
     if comparable > now:
         reporter.fail(f"Release E2E evidence {label} must not be in the future")

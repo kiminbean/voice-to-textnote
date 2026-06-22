@@ -163,10 +163,10 @@ def write_tone_policy_files(root: Path, *, tone_model_line: str = 'tone_model: s
 def write_readme_status(root: Path, content: str) -> None:
     (root / "README.md").write_text(
         (
-            "3968 백엔드 테스트\n"
-            "| 백엔드 단위/통합/E2E | 3968개 | 100.00% |\n"
+            "3969 백엔드 테스트\n"
+            "| 백엔드 단위/통합/E2E | 3969개 | 100.00% |\n"
             "| Flutter 테스트 | 415개 | - |\n"
-            "| 총합 | 4383개 | - |\n"
+            "| 총합 | 4384개 | - |\n"
             f"{content}"
         ),
         encoding="utf-8",
@@ -698,6 +698,22 @@ def test_release_e2e_evidence_rejects_non_iso_test_timestamp(tmp_path, monkeypat
     module.check_release_e2e_evidence(evidence_path, reporter, tmp_path)
 
     assert any("test timestamp must be ISO-8601" in error for error in reporter.errors)
+
+
+def test_release_e2e_evidence_rejects_naive_test_timestamp(tmp_path, monkeypatch):
+    module = load_release_readiness_module()
+    evidence = make_evidence(tmp_path, module)
+    evidence["tested_at"] = datetime.now().replace(microsecond=0).isoformat()
+    evidence_path = write_evidence(tmp_path, evidence)
+    monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
+    monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")
+
+    reporter = module.Reporter()
+    module.check_release_e2e_evidence(evidence_path, reporter, tmp_path)
+
+    assert any(
+        "test timestamp must include timezone" in error for error in reporter.errors
+    )
 
 
 def test_release_e2e_evidence_rejects_placeholder_tester(tmp_path, monkeypatch):
@@ -1965,9 +1981,9 @@ def test_readme_release_status_rejects_missing_android_signing_gate(tmp_path):
     (tmp_path / "README.md").write_text(
         (
             "Release Candidate strict 실기기 release evidence 대기 RELEASE_E2E_EVIDENCE_PATH\n"
-            "3968 백엔드 테스트 Flutter 415 4383개\n"
-            "| 백엔드 단위/통합/E2E | 3968개 | 100.00% |\n"
-            "| 총합 | 4383개 | - |\n"
+            "3969 백엔드 테스트 Flutter 415 4384개\n"
+            "| 백엔드 단위/통합/E2E | 3969개 | 100.00% |\n"
+            "| 총합 | 4384개 | - |\n"
             "| **Android** | RC | `flutter build apk --release` 검증 완료 |"
         ),
         encoding="utf-8",
@@ -2054,7 +2070,7 @@ def test_release_procedure_rejects_version_drift(tmp_path):
             "python3 client/scripts/verify_release_readiness.py --strict\n"
             "2개 SPEC 전부 완료\n"
             "2 SPECs completed\n"
-            "3968 passed\n"
+            "3969 passed\n"
             "Flutter: 415 passed\n"
             "`verify_mobile_release_runner.py` PASS\n"
             "`verify_github_mobile_release_env.py` PASS\n"
