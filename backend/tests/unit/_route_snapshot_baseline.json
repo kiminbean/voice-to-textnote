@@ -522,7 +522,7 @@
     "methods": [
       "GET"
     ],
-    "api_key": false
+    "api_key": true
   },
   {
     "path": "/api/v1/meetings/{task_id}/share",

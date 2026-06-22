@@ -145,8 +145,8 @@ ROUTER_REGISTRY: list[tuple[APIRouter, bool]] = [
     (quality_assessment.router, True),  # SPEC-QUALITY-001
     (calendar.router, True),  # SPEC-CAL-001
     (vocabulary.router, True),  # REQ-VOCAB-001
-    # ── 오디오 파일 서빙 / QA (혼합 인증) ───────────────────────────────────────
-    (audio.router, False),  # 공개 엔드포인트
+    # ── 오디오 파일 서빙 / QA ──────────────────────────────────────────────────
+    (audio.router, True),  # 원본 회의 오디오 파일 서빙 (API Key 필수)
     (qa.router, True),
     # ── 외부 도구 연계 (API Key 필수) ────────────────────────────────────────────
     (obsidian.router, True),  # SPEC-OBSIDIAN-001: Obsidian vault export

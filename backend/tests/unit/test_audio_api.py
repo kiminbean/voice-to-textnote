@@ -61,6 +61,32 @@ class TestGetMeetingAudio:
             "application/octet-stream",
         )
 
+    def test_requires_api_key_for_audio_file_in_production(self, temp_audio_dir):
+        """프로덕션에서는 원본 회의 오디오 파일을 API key 없이 다운로드할 수 없다."""
+        from backend.app.main import app
+
+        audio_file = temp_audio_dir / "task-123.wav"
+        audio_file.write_bytes(b"RIFF" + b"\x00" * 100)
+
+        with (
+            patch("backend.app.api.v1.audio.audio.settings") as mock_audio_settings,
+            patch("backend.app.middleware.auth.settings") as mock_auth_settings,
+            patch("backend.app.main.WhisperEngine") as mock_engine_cls,
+        ):
+            mock_audio_settings.temp_dir = temp_audio_dir
+            mock_auth_settings.api_keys = ["prod-key"]
+            mock_auth_settings.environment = "production"
+            mock_engine_inst = MagicMock()
+            mock_engine_inst.is_loaded = True
+            mock_engine_inst.load.return_value = None
+            mock_engine_cls.get_instance.return_value = mock_engine_inst
+
+            response = TestClient(app, raise_server_exceptions=True).get(
+                "/api/v1/meetings/task-123/audio"
+            )
+
+        assert response.status_code == 401
+
     def test_returns_mp3_file(self, client_with_audio, temp_audio_dir):
         """mp3 확장자 파일 반환"""
         audio_file = temp_audio_dir / "task-mp3.mp3"
