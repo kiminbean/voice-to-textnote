@@ -77,10 +77,13 @@ def build_evidence(root: Path, *, android_apk: str, ios_runner_app: str) -> dict
     validate_release_artifacts(root, artifacts)
     ios_entitlements = os.environ.get("IOS_RELEASE_ENTITLEMENTS_PATH", "")
     ios_entitlements_hash = ""
-    if ios_entitlements and evidence_path_stays_inside_root(root, ios_entitlements):
+    if ios_entitlements and not evidence_path_stays_inside_root(root, ios_entitlements):
+        raise ValueError("iOS entitlements evidence path must stay inside repo")
+    if ios_entitlements:
         ios_entitlements_path = resolve_release_evidence_path(root, ios_entitlements)
-        if ios_entitlements_path.is_file():
-            ios_entitlements_hash = release_artifact_sha256(ios_entitlements_path)
+        if not ios_entitlements_path.is_file():
+            raise ValueError("iOS entitlements evidence file is missing")
+        ios_entitlements_hash = release_artifact_sha256(ios_entitlements_path)
     return {
         "tested_at": datetime.now(UTC).isoformat(),
         "tester": os.environ.get("USER", "release-operator"),

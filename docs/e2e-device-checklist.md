@@ -106,6 +106,7 @@ python3 client/scripts/configure_github_mobile_release_env.py --repo kiminbean/v
 ANDROID_DEVICE_SERIAL=<adb-device-serial> \
 IOS_DEVICE_UDID=<ios-device-udid> \
 REQUIRE_ANDROID_RELEASE_SIGNING=true \
+IOS_RELEASE_ENTITLEMENTS_PATH=docs/ios-release-entitlements.plist \
 python3 client/scripts/create_release_e2e_evidence.py \
   --output docs/release-e2e-evidence.json
 ```

@@ -116,6 +116,46 @@ def test_release_e2e_scaffold_records_release_gate_state_from_env(tmp_path, monk
     }
 
 
+def test_release_e2e_scaffold_rejects_missing_ios_entitlements_env_path(
+    tmp_path, monkeypatch
+):
+    create = load_create_evidence_module()
+    android_apk, ios_runner_app = write_release_artifacts(tmp_path)
+    monkeypatch.setenv("IOS_RELEASE_ENTITLEMENTS_PATH", "missing-entitlements.plist")
+
+    try:
+        create.build_evidence(
+            tmp_path,
+            android_apk=android_apk.relative_to(tmp_path).as_posix(),
+            ios_runner_app=ios_runner_app.relative_to(tmp_path).as_posix(),
+        )
+    except ValueError as exc:
+        assert "iOS entitlements evidence file is missing" in str(exc)
+    else:
+        raise AssertionError("build_evidence should reject missing iOS entitlements")
+
+
+def test_release_e2e_scaffold_rejects_ios_entitlements_outside_repo(
+    tmp_path, monkeypatch
+):
+    create = load_create_evidence_module()
+    android_apk, ios_runner_app = write_release_artifacts(tmp_path)
+    outside_entitlements = tmp_path.parent / "ios-release-entitlements.plist"
+    write_ios_release_entitlements(outside_entitlements)
+    monkeypatch.setenv("IOS_RELEASE_ENTITLEMENTS_PATH", str(outside_entitlements))
+
+    try:
+        create.build_evidence(
+            tmp_path,
+            android_apk=android_apk.relative_to(tmp_path).as_posix(),
+            ios_runner_app=ios_runner_app.relative_to(tmp_path).as_posix(),
+        )
+    except ValueError as exc:
+        assert "iOS entitlements evidence path must stay inside repo" in str(exc)
+    else:
+        raise AssertionError("build_evidence should reject outside iOS entitlements")
+
+
 def test_release_e2e_scaffold_round_trips_json(tmp_path):
     create = load_create_evidence_module()
     android_apk, ios_runner_app = write_release_artifacts(tmp_path)

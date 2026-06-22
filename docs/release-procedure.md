@@ -9,7 +9,7 @@
 - [x] 36개 SPEC 전부 완료
 - [x] `verify_release_readiness.py` (default) — 0 errors
 - [x] CI: Test & Lint PASS, Flutter Android PASS, Flutter iOS PASS
-- [x] 백엔드: 3990 passed, Flutter: 415 passed, backend coverage 100.00%
+- [x] 백엔드: 3992 passed, Flutter: 415 passed, backend coverage 100.00%
 - [ ] `verify_release_readiness.py --strict` — **13 errors (이 문서의 목표)**
 
 ---
@@ -127,6 +127,7 @@ flutter build ios --release
 ANDROID_DEVICE_SERIAL=$ANDROID_DEVICE_SERIAL \
 IOS_DEVICE_UDID=$IOS_DEVICE_UDID \
 REQUIRE_ANDROID_RELEASE_SIGNING=true \
+IOS_RELEASE_ENTITLEMENTS_PATH=docs/ios-release-entitlements.plist \
 python3 client/scripts/create_release_e2e_evidence.py --output docs/release-e2e-evidence.json
 
 # artifacts 값은 운영 장비 절대경로나 임의 release 파일이 아니라 아래 표준 repo-relative 경로여야 함:
