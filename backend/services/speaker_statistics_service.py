@@ -4,8 +4,10 @@
 
 import uuid
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy import String, func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.exceptions import NotFoundError
 from backend.db.models import TaskResult
@@ -22,6 +24,96 @@ from backend.schemas.speaker_statistics import (
 class SpeakerStatisticsService:
     """화자별 통계 서비스"""
 
+    async def _get_speaker(
+        self,
+        session: AsyncSession,
+        speaker_id: uuid.UUID,
+        user_id: uuid.UUID,
+    ) -> SpeakerProfile:
+        result = await session.execute(
+            select(SpeakerProfile).where(
+                SpeakerProfile.id == speaker_id,
+                SpeakerProfile.user_id == user_id,
+            )
+        )
+        speaker = result.scalar_one_or_none()
+        if not speaker:
+            raise NotFoundError(message="화자 프로필을 찾을 수 없습니다.")
+        return speaker
+
+    async def _load_segmented_tasks(
+        self,
+        session: AsyncSession,
+        date_from: datetime | None,
+        date_to: datetime | None,
+    ) -> list[TaskResult]:
+        query = select(TaskResult).where(
+            TaskResult.task_type.in_(["minutes", "summary"]),
+            func.json_extract(TaskResult.result_data, "$.segments").isnot(None),
+            func.json_extract(TaskResult.result_data, "$.segments").cast(String) != "[]",
+        )
+        if date_from:
+            query = query.where(TaskResult.created_at >= date_from)
+        if date_to:
+            query = query.where(TaskResult.created_at <= date_to)
+
+        result = await session.execute(query.order_by(TaskResult.created_at.desc()))
+        return list(result.scalars().all())
+
+    def _segments_for_task(self, task: TaskResult) -> list[dict[str, Any]]:
+        result_data = task.result_data if isinstance(task.result_data, dict) else {}
+        segments = result_data.get("segments", [])
+        if not isinstance(segments, list):
+            return []
+        return [segment for segment in segments if isinstance(segment, dict)]
+
+    def _speaker_segments(
+        self,
+        segments: list[dict[str, Any]],
+        speaker_label: str,
+    ) -> list[dict[str, Any]]:
+        return [segment for segment in segments if segment.get("speaker") == speaker_label]
+
+    def _segment_duration(self, segment: dict[str, Any]) -> int:
+        start = segment.get("start", 0) or 0
+        end = segment.get("end", 0) or 0
+        try:
+            return max(0, int(round(float(end) - float(start))))
+        except (TypeError, ValueError):
+            return 0
+
+    def _speaker_duration(self, segments: list[dict[str, Any]]) -> int:
+        return sum(self._segment_duration(segment) for segment in segments)
+
+    def _meeting_title(self, task: TaskResult) -> str | None:
+        result_data = task.result_data if isinstance(task.result_data, dict) else {}
+        input_metadata = task.input_metadata if isinstance(task.input_metadata, dict) else {}
+        title = result_data.get("title") or result_data.get("task_name") or input_metadata.get("title")
+        return str(title) if title is not None else None
+
+    def _meeting_duration(self, task: TaskResult, segments: list[dict[str, Any]]) -> int:
+        result_data = task.result_data if isinstance(task.result_data, dict) else {}
+        input_metadata = task.input_metadata if isinstance(task.input_metadata, dict) else {}
+        explicit_duration = (
+            result_data.get("duration_seconds")
+            or result_data.get("duration")
+            or input_metadata.get("duration_seconds")
+            or input_metadata.get("duration")
+        )
+        if explicit_duration is not None:
+            try:
+                return max(0, int(round(float(explicit_duration))))
+            except (TypeError, ValueError):
+                pass
+
+        ends = []
+        for segment in segments:
+            try:
+                ends.append(int(round(float(segment.get("end", 0) or 0))))
+            except (TypeError, ValueError):
+                continue
+        return max(ends, default=0)
+
     async def get_speaker_meetings(
         self,
         session,
@@ -33,65 +125,28 @@ class SpeakerStatisticsService:
         offset: int = 0,
     ) -> tuple[list[SpeakerMeeting], int]:
         """화자가 참여한 회의 목록 조회."""
-        # 화자 프로필 존재 확인
-        speaker_result = await session.execute(
-            select(SpeakerProfile).where(
-                SpeakerProfile.id == speaker_id,
-                SpeakerProfile.user_id == user_id,
-            )
-        )
-        speaker = speaker_result.scalar_one_or_none()
-        if not speaker:
-            raise NotFoundError(message="화자 프로필을 찾을 수 없습니다.")
+        speaker = await self._get_speaker(session, speaker_id, user_id)
+        tasks = await self._load_segmented_tasks(session, date_from, date_to)
 
-        query = select(TaskResult).where(
-            TaskResult.task_type.in_(["minutes", "summary"]),
-            # 해당 화자의 segments가 있는 회의만 선택
-            func.json_extract(TaskResult.result_data, "$.segments").isnot(None),
-            func.json_extract(TaskResult.result_data, "$.segments").cast(String) != "[]",
-        )
-
-        # 날짜 필터
-        if date_from:
-            query = query.where(TaskResult.created_at >= date_from)
-        if date_to:
-            query = query.where(TaskResult.created_at <= date_to)
-
-        # 총 개수 조회
-        total_query = query.with_only_columns(func.count(TaskResult.id))
-        total = await session.scalar(total_query)
-
-        # 상세 조회 - segments에서 해당 화자 데이터 추출
         meetings = []
-        result = await session.execute(
-            query.order_by(TaskResult.created_at.desc()).offset(offset).limit(limit)
-        )
-        tasks = result.scalars().all()
-
         for task in tasks:
-            try:
-                segments = task.result_data.get("segments", [])
-                speaker_segments = [
-                    s for s in segments if s.get("speaker") == speaker.speaker_label
-                ]
-
-                if speaker_segments:
-                    meeting = SpeakerMeeting(
-                        task_id=task.task_id,
-                        title=task.task_name,
-                        created_at=task.created_at,
-                        duration_seconds=task.duration_seconds,
-                        speaker_segments_count=len(speaker_segments),
-            speaker_duration_seconds=sum(
-                s.get("end", 0) - s.get("start", 0) for s in speaker_segments
-            ),
-                    )
-                    meetings.append(meeting)
-            except Exception:
-                # 데이터 파싱 오류는 건너뜀
+            segments = self._segments_for_task(task)
+            speaker_segments = self._speaker_segments(segments, speaker.speaker_label)
+            if not speaker_segments:
                 continue
 
-        return meetings, total
+            meetings.append(
+                SpeakerMeeting(
+                    task_id=task.task_id,
+                    title=self._meeting_title(task),
+                    created_at=task.created_at,
+                    duration_seconds=self._meeting_duration(task, segments),
+                    speaker_segments_count=len(speaker_segments),
+                    speaker_duration_seconds=self._speaker_duration(speaker_segments),
+                )
+            )
+
+        return meetings[offset : offset + limit], len(meetings)
 
     async def get_speaker_statistics(
         self,
@@ -102,31 +157,8 @@ class SpeakerStatisticsService:
         date_to: datetime | None = None,
     ) -> SpeakerStatisticsResponse:
         """화자별 회의 통계 계산."""
-        # 화자 프로필 존재 확인
-        speaker_result = await session.execute(
-            select(SpeakerProfile).where(
-                SpeakerProfile.id == speaker_id,
-                SpeakerProfile.user_id == user_id,
-            )
-        )
-        speaker = speaker_result.scalar_one_or_none()
-        if not speaker:
-            raise NotFoundError(message="화자 프로필을 찾을 수 없습니다.")
-
-        query = select(TaskResult).where(
-            TaskResult.task_type.in_(["minutes", "summary"]),
-            func.json_extract(TaskResult.result_data, "$.segments").isnot(None),
-            func.json_extract(TaskResult.result_data, "$.segments").cast(String) != "[]",
-        )
-
-        # 날짜 필터
-        if date_from:
-            query = query.where(TaskResult.created_at >= date_from)
-        if date_to:
-            query = query.where(TaskResult.created_at <= date_to)
-
-        result = await session.execute(query)
-        tasks = result.scalars().all()
+        speaker = await self._get_speaker(session, speaker_id, user_id)
+        tasks = await self._load_segmented_tasks(session, date_from, date_to)
 
         if not tasks:
             return SpeakerStatisticsResponse(
@@ -149,34 +181,25 @@ class SpeakerStatisticsService:
         total_speaker_duration = 0
         total_meetings_duration = 0
         speaker_segments_count = 0
-        speaker_durations = []
         meeting_speaker_data = {}  # meeting별 화자 데이터
 
         for task in tasks:
-            try:
-                segments = task.result_data.get("segments", [])
-                speaker_segments = [
-                    s for s in segments if s.get("speaker") == speaker.speaker_label
-                ]
-
-                if speaker_segments:
-                    meeting_duration = task.duration_seconds or 0
-                    speaker_duration = sum(
-                        s.get("end", 0) - s.get("start", 0) for s in speaker_segments
-                    )
-
-                    total_meetings_duration += meeting_duration
-                    total_speaker_duration += speaker_duration
-                    speaker_segments_count += len(speaker_segments)
-                    speaker_durations.append(speaker_duration)
-
-                    meeting_speaker_data[task.task_id] = {
-                        "meeting_duration": meeting_duration,
-                        "speaker_duration": speaker_duration,
-                    }
-
-            except Exception:
+            segments = self._segments_for_task(task)
+            speaker_segments = self._speaker_segments(segments, speaker.speaker_label)
+            if not speaker_segments:
                 continue
+
+            meeting_duration = self._meeting_duration(task, segments)
+            speaker_duration = self._speaker_duration(speaker_segments)
+
+            total_meetings_duration += meeting_duration
+            total_speaker_duration += speaker_duration
+            speaker_segments_count += len(speaker_segments)
+
+            meeting_speaker_data[task.task_id] = {
+                "meeting_duration": meeting_duration,
+                "speaker_duration": speaker_duration,
+            }
 
         # 통계 계산
         total_meetings = len(meeting_speaker_data)
@@ -193,7 +216,7 @@ class SpeakerStatisticsService:
         if meeting_speaker_data:
             most_active_meeting = max(
                 meeting_speaker_data.items(),
-                key=lambda x: x[1]["speaker_duration"]
+                key=lambda x: x[1]["speaker_duration"],
             )[0]
 
         return SpeakerStatisticsResponse(
@@ -223,52 +246,29 @@ class SpeakerStatisticsService:
         date_to: datetime | None = None,
     ):
         """화자별 활동 시간대 분석."""
-        speaker_result = await session.execute(
-            select(SpeakerProfile).where(
-                SpeakerProfile.id == speaker_id,
-                SpeakerProfile.user_id == user_id,
-            )
-        )
-        speaker = speaker_result.scalar_one_or_none()
-        if not speaker:
-            raise NotFoundError(message="화자 프로필을 찾을 수 없습니다.")
+        speaker = await self._get_speaker(session, speaker_id, user_id)
 
         # 시간대별 활동 데이터 집계
         hourly_activity = {hour: {"segment_count": 0, "duration_seconds": 0} for hour in range(24)}
 
-        query = select(TaskResult).where(
-            TaskResult.task_type.in_(["minutes", "summary"]),
-            func.json_extract(TaskResult.result_data, "$.segments").isnot(None),
-        )
-
-        if date_from:
-            query = query.where(TaskResult.created_at >= date_from)
-        if date_to:
-            query = query.where(TaskResult.created_at <= date_to)
-
-        result = await session.execute(query)
-        tasks = result.scalars().all()
+        tasks = await self._load_segmented_tasks(session, date_from, date_to)
 
         total_activity_seconds = 0
 
         for task in tasks:
-            try:
-                segments = task.result_data.get("segments", [])
-                speaker_segments = [
-                    s for s in segments if s.get("speaker") == speaker.speaker_label
-                ]
+            segments = self._segments_for_task(task)
+            speaker_segments = self._speaker_segments(segments, speaker.speaker_label)
+            for segment in speaker_segments:
+                try:
+                    start_time = float(segment.get("start", 0) or 0)
+                except (TypeError, ValueError):
+                    start_time = 0
+                hour = int(start_time // 3600) % 24
 
-                for segment in speaker_segments:
-                    start_time = segment.get("start", 0)
-                    hour = int(start_time // 3600) % 24  # 0-23 시간
-
-                    duration = segment.get("end", 0) - segment.get("start", 0)
-                    hourly_activity[hour]["segment_count"] += 1
-                    hourly_activity[hour]["duration_seconds"] += duration
-                    total_activity_seconds += duration
-
-            except Exception:
-                continue
+                duration = self._segment_duration(segment)
+                hourly_activity[hour]["segment_count"] += 1
+                hourly_activity[hour]["duration_seconds"] += duration
+                total_activity_seconds += duration
 
         # ActivityHour 객체로 변환
         activity_hours = []
@@ -309,66 +309,38 @@ class SpeakerStatisticsService:
         date_to: datetime | None = None,
     ):
         """화자별 참여도 분석."""
-        speaker_result = await session.execute(
-            select(SpeakerProfile).where(
-                SpeakerProfile.id == speaker_id,
-                SpeakerProfile.user_id == user_id,
-            )
-        )
-        speaker = speaker_result.scalar_one_or_none()
-        if not speaker:
-            raise NotFoundError(message="화자 프로필을 찾을 수 없습니다.")
-
-        query = select(TaskResult).where(
-            TaskResult.task_type.in_(["minutes", "summary"]),
-            func.json_extract(TaskResult.result_data, "$.segments").isnot(None),
-        )
-
-        if date_from:
-            query = query.where(TaskResult.created_at >= date_from)
-        if date_to:
-            query = query.where(TaskResult.created_at <= date_to)
-
-        result = await session.execute(query)
-        tasks = result.scalars().all()
+        speaker = await self._get_speaker(session, speaker_id, user_id)
+        tasks = await self._load_segmented_tasks(session, date_from, date_to)
 
         meetings = []
-        total_participation_percentage = 0
+        total_participation_percentage = 0.0
         participations = []
 
         for task in tasks:
-            try:
-                segments = task.result_data.get("segments", [])
-                speaker_segments = [
-                    s for s in segments if s.get("speaker") == speaker.speaker_label
-                ]
-
-                if speaker_segments:
-                    meeting_duration = task.duration_seconds or 0
-                    speaker_duration = sum(
-                        s.get("end", 0) - s.get("start", 0) for s in speaker_segments
-                    )
-                    participation_percentage = (
-                        speaker_duration / meeting_duration * 100
-                    ) if meeting_duration > 0 else 0
-
-                    participations.append(participation_percentage)
-                    total_participation_percentage += participation_percentage
-
-                    meeting = ParticipationMeeting(
-                        task_id=task.task_id,
-                        title=task.task_name,
-                        meeting_duration_seconds=meeting_duration,
-                        speaker_duration_seconds=speaker_duration,
-                        participation_percentage=round(participation_percentage, 2),
-                        segment_count=len(speaker_segments),
-                        is_most_participated=False,  # 나중에 설정
-                    )
-                    meetings.append(meeting)
-
-            except Exception:
+            segments = self._segments_for_task(task)
+            speaker_segments = self._speaker_segments(segments, speaker.speaker_label)
+            if not speaker_segments:
                 continue
 
+            meeting_duration = self._meeting_duration(task, segments)
+            speaker_duration = self._speaker_duration(speaker_segments)
+            participation_percentage = (
+                speaker_duration / meeting_duration * 100
+            ) if meeting_duration > 0 else 0.0
+
+            participations.append(participation_percentage)
+            total_participation_percentage += participation_percentage
+
+            meeting = ParticipationMeeting(
+                task_id=task.task_id,
+                title=self._meeting_title(task),
+                meeting_duration_seconds=meeting_duration,
+                speaker_duration_seconds=speaker_duration,
+                participation_percentage=round(participation_percentage, 2),
+                segment_count=len(speaker_segments),
+                is_most_participated=False,
+            )
+            meetings.append(meeting)
         # 평균 참여도 계산
         average_participation = (
             total_participation_percentage / len(participations) if participations else 0

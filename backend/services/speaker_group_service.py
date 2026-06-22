@@ -87,7 +87,9 @@ class SpeakerGroupService:
         )
 
         if include_members:
-            query = query.options(selectinload(SpeakerGroup.members))
+            query = query.options(
+                selectinload(SpeakerGroup.members).selectinload(SpeakerGroupMember.speaker)
+            )
 
         result = await session.execute(query)
         group = result.scalar_one_or_none()

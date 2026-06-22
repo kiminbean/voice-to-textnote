@@ -55,6 +55,17 @@ class SpeakerGroupMemberBase(BaseModel):
     joined_at: datetime
 
 
+class SpeakerGroupMemberSpeakerResponse(BaseModel):
+    """화자 그룹 멤버의 화자 요약 응답 스키마"""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    speaker_label: str
+    display_name: str
+    role: str | None = None
+
+
 class SpeakerGroupMemberResponse(SpeakerGroupMemberBase):
     """화자 그룁 멤버 응답 스키마"""
 
@@ -62,7 +73,7 @@ class SpeakerGroupMemberResponse(SpeakerGroupMemberBase):
 
     id: uuid.UUID
     group_id: uuid.UUID
-    speaker: dict | None = None  # SpeakerProfile 간단한 정보
+    speaker: SpeakerGroupMemberSpeakerResponse | None = None
 
 
 class SpeakerGroupWithMembersResponse(SpeakerGroupResponse):

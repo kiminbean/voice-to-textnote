@@ -84,7 +84,7 @@ async def get_speaker_group(
     svc: SpeakerGroupService = Depends(get_speaker_group_service),
 ) -> SpeakerGroupWithMembersResponse:
     """화자 그룹 상세 조회 (멤버 포함)."""
-    group = await svc.get_by_id(db, group_id, user.id)
+    group = await svc.get_by_id(db, group_id, user.id, include_members=True)
     return SpeakerGroupWithMembersResponse.model_validate(group)
 
 
