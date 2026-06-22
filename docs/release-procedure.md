@@ -129,6 +129,10 @@ IOS_DEVICE_UDID=$IOS_DEVICE_UDID \
 REQUIRE_ANDROID_RELEASE_SIGNING=true \
 python3 client/scripts/create_release_e2e_evidence.py --output docs/release-e2e-evidence.json
 
+# artifacts 값은 운영 장비 절대경로가 아니라 repo-relative 경로여야 함:
+# - client/build/app/outputs/flutter-apk/app-release.apk
+# - client/build/ios/iphoneos/Runner.app
+
 # 17개 required scenario 수동 실행 후 JSON 채우기:
 # - 각 scenario는 `platforms` 배열을 유지해야 함:
 #   - Android+iOS 공통 플로우: `["android", "ios"]`

@@ -191,6 +191,22 @@ def test_release_e2e_scaffold_rejects_artifacts_outside_repo(tmp_path):
         raise AssertionError("build_evidence should reject artifacts outside repo")
 
 
+def test_release_e2e_scaffold_rejects_absolute_artifact_inside_repo(tmp_path):
+    create = load_create_evidence_module()
+    android_apk, ios_runner_app = write_release_artifacts(tmp_path)
+
+    try:
+        create.build_evidence(
+            tmp_path,
+            android_apk=str(android_apk),
+            ios_runner_app=ios_runner_app.name,
+        )
+    except ValueError as exc:
+        assert "repo-relative" in str(exc)
+    else:
+        raise AssertionError("build_evidence should reject absolute artifact paths")
+
+
 def test_release_e2e_scaffold_rejects_invalid_android_apk(tmp_path):
     create = load_create_evidence_module()
     android_apk, ios_runner_app = write_release_artifacts(tmp_path)

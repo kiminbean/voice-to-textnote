@@ -22,17 +22,20 @@ def load_release_readiness_module():
 
 
 def make_evidence(tmp_path: Path, module) -> dict[str, object]:
-    android_apk = tmp_path / "app-release.apk"
-    ios_runner = tmp_path / "Runner.app"
+    android_artifact_path = "client/build/app/outputs/flutter-apk/app-release.apk"
+    ios_artifact_path = "client/build/ios/iphoneos/Runner.app"
+    android_apk = tmp_path / android_artifact_path
+    ios_runner = tmp_path / ios_artifact_path
     ios_entitlements = tmp_path / "ios-release-entitlements.plist"
     repo_root = Path(__file__).resolve().parents[2]
     current_revision = module.current_git_revision(repo_root)
     android_serial = "android-serial"
     ios_udid = "ios-udid"
+    android_apk.parent.mkdir(parents=True)
     with zipfile.ZipFile(android_apk, "w") as apk:
         apk.writestr("AndroidManifest.xml", "<manifest />")
         apk.writestr("classes.dex", b"dex\n035\0")
-    ios_runner.mkdir()
+    ios_runner.mkdir(parents=True)
     write_ios_info_plist(ios_runner / "Info.plist")
     (ios_runner / "Runner").write_bytes(b"binary")
     write_ios_release_entitlements(ios_entitlements)
@@ -60,8 +63,8 @@ def make_evidence(tmp_path: Path, module) -> dict[str, object]:
             },
         },
         "artifacts": {
-            "android_apk": str(android_apk),
-            "ios_runner_app": str(ios_runner),
+            "android_apk": android_artifact_path,
+            "ios_runner_app": ios_artifact_path,
         },
         "artifact_sha256": {
             "android_apk": module.release_artifact_sha256(android_apk),
@@ -124,6 +127,14 @@ def write_evidence(tmp_path: Path, evidence: dict[str, object]) -> Path:
     evidence_path = tmp_path / "release-e2e-evidence.json"
     evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
     return evidence_path
+
+
+def resolve_evidence_artifact(root: Path, evidence: dict[str, object], key: str) -> Path:
+    artifacts = evidence["artifacts"]
+    assert isinstance(artifacts, dict)
+    artifact_path = artifacts[key]
+    assert isinstance(artifact_path, str)
+    return root / artifact_path
 
 
 def write_tone_policy_files(root: Path, *, tone_model_line: str = 'tone_model: str = ""') -> None:
@@ -882,7 +893,7 @@ def test_release_e2e_evidence_rejects_device_id_mismatch(tmp_path, monkeypatch):
 def test_release_e2e_evidence_rejects_android_apk_directory(tmp_path, monkeypatch):
     module = load_release_readiness_module()
     evidence = make_evidence(tmp_path, module)
-    android_apk = Path(str(evidence["artifacts"]["android_apk"]))
+    android_apk = resolve_evidence_artifact(tmp_path, evidence, "android_apk")
     android_apk.unlink()
     android_apk.mkdir()
     evidence_path = write_evidence(tmp_path, evidence)
@@ -909,6 +920,27 @@ def test_release_e2e_evidence_rejects_non_string_artifact_path(tmp_path, monkeyp
     module.check_release_e2e_evidence(evidence_path, reporter, tmp_path)
 
     assert any("artifact path must be a string: android_apk" in error for error in reporter.errors)
+
+
+def test_release_e2e_evidence_rejects_absolute_artifact_path_inside_repo(
+    tmp_path, monkeypatch
+):
+    module = load_release_readiness_module()
+    evidence = make_evidence(tmp_path, module)
+    artifacts = evidence["artifacts"]
+    assert isinstance(artifacts, dict)
+    artifacts["android_apk"] = str(tmp_path / str(artifacts["android_apk"]))
+    evidence_path = write_evidence(tmp_path, evidence)
+    monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
+    monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")
+
+    reporter = module.Reporter()
+    module.check_release_e2e_evidence(evidence_path, reporter, tmp_path)
+
+    assert any(
+        "artifact path must be repo-relative: android_apk" in error
+        for error in reporter.errors
+    )
 
 
 def test_release_e2e_evidence_rejects_missing_artifact_hashes(tmp_path, monkeypatch):
@@ -1017,7 +1049,7 @@ def test_release_e2e_evidence_rejects_android_artifact_without_apk_suffix(
     android_artifact.write_text("not an apk", encoding="utf-8")
     artifacts = evidence["artifacts"]
     assert isinstance(artifacts, dict)
-    artifacts["android_apk"] = str(android_artifact)
+    artifacts["android_apk"] = android_artifact.relative_to(tmp_path).as_posix()
     evidence_path = write_evidence(tmp_path, evidence)
     monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
     monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")
@@ -1031,12 +1063,12 @@ def test_release_e2e_evidence_rejects_android_artifact_without_apk_suffix(
 def test_release_e2e_evidence_rejects_android_debug_artifact(tmp_path, monkeypatch):
     module = load_release_readiness_module()
     evidence = make_evidence(tmp_path, module)
-    android_apk = Path(str(evidence["artifacts"]["android_apk"]))
+    android_apk = resolve_evidence_artifact(tmp_path, evidence, "android_apk")
     android_debug_apk = tmp_path / "app-debug.apk"
     android_apk.rename(android_debug_apk)
     artifacts = evidence["artifacts"]
     assert isinstance(artifacts, dict)
-    artifacts["android_apk"] = str(android_debug_apk)
+    artifacts["android_apk"] = android_debug_apk.relative_to(tmp_path).as_posix()
     artifact_hashes = evidence["artifact_sha256"]
     assert isinstance(artifact_hashes, dict)
     artifact_hashes["android_apk"] = module.release_artifact_sha256(android_debug_apk)
@@ -1105,13 +1137,13 @@ def test_release_e2e_evidence_rejects_absolute_artifact_outside_repo(
     reporter = module.Reporter()
     module.check_release_e2e_evidence(evidence_path, reporter, root)
 
-    assert any("artifact path must stay inside repo" in error for error in reporter.errors)
+    assert any("artifact path must be repo-relative" in error for error in reporter.errors)
 
 
 def test_release_e2e_evidence_rejects_empty_android_apk(tmp_path, monkeypatch):
     module = load_release_readiness_module()
     evidence = make_evidence(tmp_path, module)
-    android_apk = Path(str(evidence["artifacts"]["android_apk"]))
+    android_apk = resolve_evidence_artifact(tmp_path, evidence, "android_apk")
     android_apk.write_bytes(b"")
     evidence_path = write_evidence(tmp_path, evidence)
     monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
@@ -1126,7 +1158,7 @@ def test_release_e2e_evidence_rejects_empty_android_apk(tmp_path, monkeypatch):
 def test_release_e2e_evidence_rejects_non_zip_android_apk(tmp_path, monkeypatch):
     module = load_release_readiness_module()
     evidence = make_evidence(tmp_path, module)
-    android_apk = Path(str(evidence["artifacts"]["android_apk"]))
+    android_apk = resolve_evidence_artifact(tmp_path, evidence, "android_apk")
     android_apk.write_text("not a zip apk", encoding="utf-8")
     evidence_path = write_evidence(tmp_path, evidence)
     monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
@@ -1141,7 +1173,7 @@ def test_release_e2e_evidence_rejects_non_zip_android_apk(tmp_path, monkeypatch)
 def test_release_e2e_evidence_rejects_android_apk_without_dex(tmp_path, monkeypatch):
     module = load_release_readiness_module()
     evidence = make_evidence(tmp_path, module)
-    android_apk = Path(str(evidence["artifacts"]["android_apk"]))
+    android_apk = resolve_evidence_artifact(tmp_path, evidence, "android_apk")
     with zipfile.ZipFile(android_apk, "w") as apk:
         apk.writestr("AndroidManifest.xml", "<manifest />")
     artifact_hashes = evidence["artifact_sha256"]
@@ -1162,7 +1194,7 @@ def test_release_e2e_evidence_rejects_ios_runner_without_info_plist(
 ):
     module = load_release_readiness_module()
     evidence = make_evidence(tmp_path, module)
-    ios_runner = Path(str(evidence["artifacts"]["ios_runner_app"]))
+    ios_runner = resolve_evidence_artifact(tmp_path, evidence, "ios_runner_app")
     (ios_runner / "Info.plist").unlink()
     evidence_path = write_evidence(tmp_path, evidence)
     monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
@@ -1179,7 +1211,7 @@ def test_release_e2e_evidence_rejects_ios_runner_bundle_id_mismatch(
 ):
     module = load_release_readiness_module()
     evidence = make_evidence(tmp_path, module)
-    ios_runner = Path(str(evidence["artifacts"]["ios_runner_app"]))
+    ios_runner = resolve_evidence_artifact(tmp_path, evidence, "ios_runner_app")
     write_ios_info_plist(ios_runner / "Info.plist", bundle_id="com.example.wrong")
     evidence_path = write_evidence(tmp_path, evidence)
     monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
@@ -1196,7 +1228,7 @@ def test_release_e2e_evidence_rejects_ios_runner_missing_executable(
 ):
     module = load_release_readiness_module()
     evidence = make_evidence(tmp_path, module)
-    ios_runner = Path(str(evidence["artifacts"]["ios_runner_app"]))
+    ios_runner = resolve_evidence_artifact(tmp_path, evidence, "ios_runner_app")
     (ios_runner / "Runner").unlink()
     evidence_path = write_evidence(tmp_path, evidence)
     monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")

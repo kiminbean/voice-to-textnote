@@ -1523,6 +1523,8 @@ def release_artifact_path_contract_error(
         "android_apk": ".apk",
         "ios_runner_app": ".app",
     }
+    if Path(artifact_path).expanduser().is_absolute():
+        return f"artifact path must be repo-relative: {key}"
     if not artifact_path_stays_inside_root(root, artifact_path):
         return f"artifact path must stay inside repo: {key}"
     resolved_artifact = resolve_release_artifact_path(root, artifact_path)
