@@ -192,3 +192,25 @@ class TestReadinessCeleryCheck:
             response = client_with_healthy_redis.get("/api/v1/health/ready")
             # Redis 정상이면 200, workers는 false
             assert response.status_code == 200
+
+    def test_readiness_returns_503_without_workers_in_production(
+        self, client_with_healthy_redis
+    ):
+        """프로덕션에서는 Celery 워커가 없으면 트래픽 ready가 아니다."""
+        with (
+            patch("backend.app.api.v1.admin.health.settings") as mock_settings,
+            patch("backend.app.api.v1.admin.health.celery_app.control.inspect") as mock_inspect,
+        ):
+            mock_settings.environment = "production"
+            mock_inspect_instance = MagicMock()
+            mock_inspect_instance.ping.return_value = None
+            mock_inspect.return_value = mock_inspect_instance
+
+            response = client_with_healthy_redis.get("/api/v1/health/ready")
+
+        assert response.status_code == 503
+        assert response.json() == {
+            "status": "not_ready",
+            "redis": True,
+            "workers": False,
+        }

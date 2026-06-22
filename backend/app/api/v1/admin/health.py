@@ -13,6 +13,7 @@ import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
+from backend.app.config import settings
 from backend.app.dependencies import get_diarization_engine, get_redis_client, get_whisper_engine
 from backend.app.lifecycle import get_app_started_at
 from backend.ml.diarization_engine import DiarizationEngine
@@ -159,7 +160,7 @@ async def readiness_check(
     except Exception as e:
         logger.debug("Readiness 체크: Celery 워커 확인 실패 (개발 환경에서 정상)", error=str(e))
 
-    # Redis 실패 시 503, Celery 없어도 Redis 정상이면 200
+    # Redis 실패 시 503, Celery는 개발 환경에서만 선택 의존성으로 허용
     if not redis_ok:
         return JSONResponse(
             status_code=503,
@@ -167,6 +168,16 @@ async def readiness_check(
                 "status": "not_ready",
                 "redis": False,
                 "workers": workers_ok,
+            },
+        )
+
+    if settings.environment == "production" and not workers_ok:
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "not_ready",
+                "redis": True,
+                "workers": False,
             },
         )
 
