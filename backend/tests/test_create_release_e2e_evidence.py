@@ -337,7 +337,17 @@ def test_release_e2e_evidence_artifacts_are_resolved_from_repo_root(
                     key: {
                         "pass": True,
                         "platforms": list(readiness.REQUIRED_E2E_SCENARIO_PLATFORMS[key]),
-                        "evidence": f"Observed physical-device pass for {key}.",
+                        "evidence": (
+                            f"Observed physical-device pass for {key} on "
+                            + ", ".join(
+                                {
+                                    "android": "android-serial",
+                                    "ios": "ios-udid",
+                                }[platform]
+                                for platform in readiness.REQUIRED_E2E_SCENARIO_PLATFORMS[key]
+                            )
+                            + "."
+                        ),
                     }
                     for key in readiness.REQUIRED_E2E_SCENARIOS
                 },

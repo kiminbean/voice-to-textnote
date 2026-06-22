@@ -27,6 +27,8 @@ def make_evidence(tmp_path: Path, module) -> dict[str, object]:
     ios_entitlements = tmp_path / "ios-release-entitlements.plist"
     repo_root = Path(__file__).resolve().parents[2]
     current_revision = module.current_git_revision(repo_root)
+    android_serial = "android-serial"
+    ios_udid = "ios-udid"
     with zipfile.ZipFile(android_apk, "w") as apk:
         apk.writestr("AndroidManifest.xml", "<manifest />")
         apk.writestr("classes.dex", b"dex\n035\0")
@@ -47,12 +49,12 @@ def make_evidence(tmp_path: Path, module) -> dict[str, object]:
         },
         "devices": {
             "android": {
-                "serial": "android-serial",
+                "serial": android_serial,
                 "model": "Pixel 8",
                 "os_version": "Android 16",
             },
             "ios": {
-                "udid": "ios-udid",
+                "udid": ios_udid,
                 "model": "iPhone 15 Pro",
                 "os_version": "iOS 18",
             },
@@ -69,7 +71,17 @@ def make_evidence(tmp_path: Path, module) -> dict[str, object]:
             scenario: {
                 "pass": True,
                 "platforms": list(module.REQUIRED_E2E_SCENARIO_PLATFORMS[scenario]),
-                "evidence": f"{label} verified on release test devices.",
+                "evidence": (
+                    f"{label} verified on release test devices: "
+                    + ", ".join(
+                        {
+                            "android": android_serial,
+                            "ios": ios_udid,
+                        }[platform]
+                        for platform in module.REQUIRED_E2E_SCENARIO_PLATFORMS[scenario]
+                    )
+                    + "."
+                ),
             }
             for scenario, label in module.REQUIRED_E2E_SCENARIOS.items()
         },
@@ -802,6 +814,53 @@ def test_release_e2e_evidence_rejects_non_string_scenario_evidence(tmp_path, mon
 
     assert any(
         "scenario evidence must be a string: push_stt_complete" in error
+        for error in reporter.errors
+    )
+
+
+def test_release_e2e_evidence_rejects_scenario_evidence_without_android_device_id(
+    tmp_path, monkeypatch
+):
+    module = load_release_readiness_module()
+    evidence = make_evidence(tmp_path, module)
+    scenarios = evidence["scenarios"]
+    assert isinstance(scenarios, dict)
+    scenario = scenarios["android_release_cleartext_blocked"]
+    assert isinstance(scenario, dict)
+    scenario["evidence"] = "Android release HTTP blocked on a physical release device."
+    evidence_path = write_evidence(tmp_path, evidence)
+    monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
+    monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")
+
+    reporter = module.Reporter()
+    module.check_release_e2e_evidence(evidence_path, reporter, tmp_path)
+
+    assert any(
+        "scenario evidence missing device id: android_release_cleartext_blocked (android)"
+        in error
+        for error in reporter.errors
+    )
+
+
+def test_release_e2e_evidence_rejects_scenario_evidence_without_ios_device_id(
+    tmp_path, monkeypatch
+):
+    module = load_release_readiness_module()
+    evidence = make_evidence(tmp_path, module)
+    scenarios = evidence["scenarios"]
+    assert isinstance(scenarios, dict)
+    scenario = scenarios["ios_release_http_blocked"]
+    assert isinstance(scenario, dict)
+    scenario["evidence"] = "iOS release HTTP blocked on a physical release device."
+    evidence_path = write_evidence(tmp_path, evidence)
+    monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
+    monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")
+
+    reporter = module.Reporter()
+    module.check_release_e2e_evidence(evidence_path, reporter, tmp_path)
+
+    assert any(
+        "scenario evidence missing device id: ios_release_http_blocked (ios)" in error
         for error in reporter.errors
     )
 

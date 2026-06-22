@@ -1671,6 +1671,7 @@ def check_release_e2e_evidence(path: Path, reporter: Reporter, root: Path | None
 
     devices = require_non_empty_mapping(reporter, data, "devices", "device metadata")
     expected_device_platforms = {"android", "ios"}
+    evidence_device_ids: dict[str, str] = {}
     if devices:
         for platform in sorted(set(devices) - expected_device_platforms):
             reporter.fail(
@@ -1695,6 +1696,7 @@ def check_release_e2e_evidence(path: Path, reporter: Reporter, root: Path | None
         )
         if actual_id and actual_id == expected_id:
             reporter.ok(f"Release E2E evidence {platform} device matches strict env")
+            evidence_device_ids[platform] = actual_id
         else:
             reporter.fail(
                 f"Release E2E evidence {platform} device {id_key} does not match strict env"
@@ -1802,19 +1804,30 @@ def check_release_e2e_evidence(path: Path, reporter: Reporter, root: Path | None
             reporter.fail(f"Release E2E scenario evidence must be a string: {key}")
             continue
         evidence = evidence_value.strip()
+        missing_device_ids = sorted(
+            platform
+            for platform in expected_platforms
+            if evidence_device_ids.get(platform) and evidence_device_ids[platform] not in evidence
+        )
         if (
             passed is True
             and scenario_platforms == expected_platforms
             and len(evidence) >= MIN_RELEASE_E2E_EVIDENCE_CHARS
             and not has_unresolved_evidence_placeholder(evidence)
+            and not missing_device_ids
         ):
             reporter.ok(f"Release E2E scenario passed: {key}")
         elif passed is not True:
             reporter.fail(f"Release E2E scenario not marked pass: {key}")
         elif has_unresolved_evidence_placeholder(evidence):
             reporter.fail(f"Release E2E scenario has placeholder evidence: {key}")
-        elif evidence:
+        elif evidence and len(evidence) < MIN_RELEASE_E2E_EVIDENCE_CHARS:
             reporter.fail(f"Release E2E scenario evidence note is too short: {key}")
+        elif missing_device_ids:
+            reporter.fail(
+                f"Release E2E scenario evidence missing device id: "
+                f"{key} ({', '.join(missing_device_ids)})"
+            )
         else:
             reporter.fail(f"Release E2E scenario missing evidence note: {key}")
 
