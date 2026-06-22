@@ -12,16 +12,12 @@
 """
 
 import uuid
-from typing import Optional
 
-from fastapi import APIRouter, Depends, File, Query, UploadFile, status
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from backend.app.dependencies import get_current_user, get_db_session
 from backend.db.auth_models import User
-from backend.db.speaker_group_models import SpeakerGroup, SpeakerGroupMember
 from backend.schemas.speaker_group import (
     SpeakerGroupCreate,
     SpeakerGroupListResponse,
@@ -60,7 +56,7 @@ async def create_speaker_group(
 async def list_speaker_groups(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
-    name: Optional[str] = Query(default=None, description="그룹명 필터"),
+    name: str | None = Query(default=None, description="그룹명 필터"),
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(get_current_user),
     svc: SpeakerGroupService = Depends(get_speaker_group_service),

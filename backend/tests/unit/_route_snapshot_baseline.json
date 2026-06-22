@@ -784,6 +784,55 @@
     "api_key": true
   },
   {
+    "path": "/api/v1/speaker-groups",
+    "methods": [
+      "GET"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/speaker-groups",
+    "methods": [
+      "POST"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/speaker-groups/{group_id}",
+    "methods": [
+      "DELETE"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/speaker-groups/{group_id}",
+    "methods": [
+      "GET"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/speaker-groups/{group_id}",
+    "methods": [
+      "PATCH"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/speaker-groups/{group_id}/members",
+    "methods": [
+      "POST"
+    ],
+    "api_key": false
+  },
+  {
+    "path": "/api/v1/speaker-groups/{group_id}/members/{speaker_id}",
+    "methods": [
+      "DELETE"
+    ],
+    "api_key": false
+  },
+  {
     "path": "/api/v1/sentiment",
     "methods": [
       "POST"
@@ -917,11 +966,39 @@
     "api_key": false
   },
   {
+    "path": "/api/v1/speakers/{speaker_id}/activity-timeline",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
     "path": "/api/v1/speakers/{speaker_id}/analyze-samples",
     "methods": [
       "POST"
     ],
     "api_key": false
+  },
+  {
+    "path": "/api/v1/speakers/{speaker_id}/meetings",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/speakers/{speaker_id}/participation",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
+  },
+  {
+    "path": "/api/v1/speakers/{speaker_id}/statistics",
+    "methods": [
+      "GET"
+    ],
+    "api_key": true
   },
   {
     "path": "/api/v1/speakers/{speaker_id}/voice-characteristics",

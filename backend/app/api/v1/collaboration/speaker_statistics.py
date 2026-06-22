@@ -10,16 +10,12 @@
 
 import uuid
 from datetime import datetime
-from typing import Optional
 
-from fastapi import APIRouter, Depends, Query, status
-from sqlalchemy import func, select
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.dependencies import get_current_user, get_db_session
 from backend.db.auth_models import User
-from backend.db.models import TaskResult
-from backend.db.speaker_models import SpeakerProfile
 from backend.schemas.speaker_statistics import (
     SpeakerActivityTimelineResponse,
     SpeakerMeetingsResponse,
@@ -41,8 +37,8 @@ async def get_speaker_meetings(
     speaker_id: uuid.UUID,
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
-    date_from: Optional[datetime] = Query(None, description="시작 날짜"),
-    date_to: Optional[datetime] = Query(None, description="종료 날짜"),
+    date_from: datetime | None = Query(None, description="시작 날짜"),
+    date_to: datetime | None = Query(None, description="종료 날짜"),
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(get_current_user),
     svc: SpeakerStatisticsService = Depends(get_speaker_statistics_service),
@@ -69,8 +65,8 @@ async def get_speaker_meetings(
 @router.get("/{speaker_id}/statistics", response_model=SpeakerStatisticsResponse)
 async def get_speaker_statistics(
     speaker_id: uuid.UUID,
-    date_from: Optional[datetime] = Query(None, description="통계 시작 날짜"),
-    date_to: Optional[datetime] = Query(None, description="통계 종료 날짜"),
+    date_from: datetime | None = Query(None, description="통계 시작 날짜"),
+    date_to: datetime | None = Query(None, description="통계 종료 날짜"),
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(get_current_user),
     svc: SpeakerStatisticsService = Depends(get_speaker_statistics_service),
@@ -89,8 +85,8 @@ async def get_speaker_statistics(
 @router.get("/{speaker_id}/activity-timeline", response_model=SpeakerActivityTimelineResponse)
 async def get_speaker_activity_timeline(
     speaker_id: uuid.UUID,
-    date_from: Optional[datetime] = Query(None, description="분석 시작 날짜"),
-    date_to: Optional[datetime] = Query(None, description="분석 종료 날짜"),
+    date_from: datetime | None = Query(None, description="분석 시작 날짜"),
+    date_to: datetime | None = Query(None, description="분석 종료 날짜"),
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(get_current_user),
     svc: SpeakerStatisticsService = Depends(get_speaker_statistics_service),
@@ -109,8 +105,8 @@ async def get_speaker_activity_timeline(
 @router.get("/{speaker_id}/participation", response_model=SpeakerParticipationResponse)
 async def get_speaker_participation(
     speaker_id: uuid.UUID,
-    date_from: Optional[datetime] = Query(None, description="분석 시작 날짜"),
-    date_to: Optional[datetime] = Query(None, description="분석 종료 날짜"),
+    date_from: datetime | None = Query(None, description="분석 시작 날짜"),
+    date_to: datetime | None = Query(None, description="분석 종료 날짜"),
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(get_current_user),
     svc: SpeakerStatisticsService = Depends(get_speaker_statistics_service),
