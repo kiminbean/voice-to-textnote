@@ -4,14 +4,17 @@ Phase 2 (REQ-AUDIO-001): 인앱 오디오 재생을 위한 엔드포인트
 """
 
 import mimetypes
+import re
 
 from fastapi import APIRouter
 from fastapi.responses import FileResponse
 
 from backend.app.config import settings
-from backend.app.errors import not_found
+from backend.app.errors import bad_request, not_found
 
 router = APIRouter()
+
+_SAFE_TASK_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{1,128}$")
 
 
 @router.get(
@@ -25,6 +28,9 @@ async def get_meeting_audio(task_id: str) -> FileResponse:
     task_id에 해당하는 원본 오디오 파일을 반환한다.
     파일이 임시 보관 기간 이후 삭제된 경우 404를 반환한다.
     """
+    if not _SAFE_TASK_ID_PATTERN.fullmatch(task_id):
+        bad_request("유효하지 않은 task_id입니다")
+
     # task_id 기반 파일 검색 (업로드 시 {task_id}{ext} 형식으로 저장됨)
     temp_dir = settings.temp_dir
     if not temp_dir.exists():

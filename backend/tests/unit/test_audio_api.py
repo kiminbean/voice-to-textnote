@@ -8,6 +8,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
+from backend.app.exceptions import BadRequestError
+
 # ---------------------------------------------------------------------------
 # 픽스처
 # ---------------------------------------------------------------------------
@@ -119,3 +121,20 @@ class TestGetMeetingAudio:
         assert "task-multi.wav" in response.headers.get(
             "content-disposition", ""
         ) or response.headers["content-type"] in ("audio/wav", "audio/x-wav")
+
+    @pytest.mark.asyncio
+    async def test_rejects_task_id_path_traversal_before_file_lookup(self, temp_audio_dir):
+        """함수 직접 호출에서도 temp_dir 밖 파일을 task_id로 참조하지 않는다."""
+        from backend.app.api.v1.audio.audio import get_meeting_audio
+
+        outside_audio = temp_audio_dir.parent / "outside.wav"
+        outside_audio.write_bytes(b"RIFF" + b"\x00" * 10)
+
+        with patch("backend.app.api.v1.audio.audio.settings") as mock_settings:
+            mock_settings.temp_dir = temp_audio_dir
+
+            with pytest.raises(BadRequestError) as exc_info:
+                await get_meeting_audio("../outside")
+
+        assert exc_info.value.status_code == 400
+        assert outside_audio.exists()
