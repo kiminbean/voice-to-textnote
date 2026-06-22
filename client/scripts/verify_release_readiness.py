@@ -71,7 +71,7 @@ CANONICAL_RELEASE_ARTIFACT_PATHS = {
     "ios_runner_app": "client/build/ios/iphoneos/Runner.app",
 }
 EXPECTED_STRICT_MISSING_INPUT_ERRORS = 13
-CURRENT_BACKEND_TEST_COUNT = 3972
+CURRENT_BACKEND_TEST_COUNT = 3975
 CURRENT_FLUTTER_TEST_COUNT = 415
 CURRENT_TOTAL_TEST_COUNT = CURRENT_BACKEND_TEST_COUNT + CURRENT_FLUTTER_TEST_COUNT
 UNRESOLVED_EVIDENCE_PATTERNS = (
@@ -1262,6 +1262,9 @@ def check_service_account(path: Path, reporter: Reporter) -> None:
     except json.JSONDecodeError as exc:
         reporter.fail(f"Firebase service account JSON is invalid: {exc}")
         return
+    if not isinstance(data, dict):
+        reporter.fail("Firebase service account JSON must be an object")
+        return
     expected = {
         "type": "service_account",
         "project_id": PROJECT_ID,
@@ -1273,11 +1276,14 @@ def check_service_account(path: Path, reporter: Reporter) -> None:
             reporter.fail(f"Firebase service account {key} is not {value}")
     private_key = data.get("private_key", "")
     client_email = data.get("client_email", "")
-    if "BEGIN PRIVATE KEY" in private_key:
+    if (
+        "-----BEGIN PRIVATE KEY-----" in private_key
+        and "-----END PRIVATE KEY-----" in private_key
+    ):
         reporter.ok("Firebase service account private key is present")
     else:
         reporter.fail("Firebase service account private key missing")
-    if client_email.endswith(".gserviceaccount.com"):
+    if client_email.endswith(f"@{PROJECT_ID}.iam.gserviceaccount.com"):
         reporter.ok("Firebase service account client_email is present")
     else:
         reporter.fail("Firebase service account client_email missing or invalid")
