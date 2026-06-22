@@ -71,7 +71,7 @@ CANONICAL_RELEASE_ARTIFACT_PATHS = {
     "ios_runner_app": "client/build/ios/iphoneos/Runner.app",
 }
 EXPECTED_STRICT_MISSING_INPUT_ERRORS = 13
-CURRENT_BACKEND_TEST_COUNT = 3988
+CURRENT_BACKEND_TEST_COUNT = 3989
 CURRENT_FLUTTER_TEST_COUNT = 415
 CURRENT_TOTAL_TEST_COUNT = CURRENT_BACKEND_TEST_COUNT + CURRENT_FLUTTER_TEST_COUNT
 APP_STORE_CONNECT_ISSUER_ID_PATTERN = (
@@ -1914,8 +1914,23 @@ def check_release_e2e_evidence(path: Path, reporter: Reporter, root: Path | None
                 reporter.fail(
                     f"Release E2E scenario platforms must be strings: {key}"
                 )
-            scenario_platforms = {
+            normalized_platforms = [
                 platform.strip() for platform in platforms_value if isinstance(platform, str)
+            ]
+            duplicate_platforms = sorted(
+                {
+                    platform
+                    for platform in normalized_platforms
+                    if platform and normalized_platforms.count(platform) > 1
+                }
+            )
+            if duplicate_platforms:
+                reporter.fail(
+                    f"Release E2E scenario platforms include duplicates: "
+                    f"{key} ({', '.join(duplicate_platforms)})"
+                )
+            scenario_platforms = {
+                platform for platform in normalized_platforms
             }
             unknown_platforms = sorted(scenario_platforms - expected_device_platforms)
             if unknown_platforms:
