@@ -281,6 +281,18 @@ class Settings(BaseSettings):
             )
         if self.environment == "production" and not self.openai_api_key.strip():
             raise ValueError("production 환경에서는 OPENAI_API_KEY를 반드시 설정해야 합니다")
+        if self.environment == "production":
+            for origin in self.cors_allow_origins:
+                parsed = urlparse(origin)
+                hostname = (parsed.hostname or "").lower()
+                if hostname in {"localhost", "127.0.0.1", "::1"} or hostname.endswith(
+                    ".localhost"
+                ):
+                    raise ValueError(
+                        "production 환경에서는 localhost CORS origin을 사용할 수 없습니다"
+                    )
+                if parsed.scheme != "https":
+                    raise ValueError("production 환경에서는 HTTPS CORS origin만 허용됩니다")
         return self
 
     @property

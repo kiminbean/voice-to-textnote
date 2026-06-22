@@ -69,6 +69,7 @@ class TestValidateEnvironment:
             old_jwt = os.environ.get("JWT_SECRET")
             old_firebase = os.environ.get("FIREBASE_CREDENTIALS_PATH")
             old_openai = os.environ.get("OPENAI_API_KEY")
+            old_cors = os.environ.get("CORS_ALLOW_ORIGINS")
             try:
                 os.environ["ENVIRONMENT"] = env
                 # production 환경에서는 API_KEYS/JWT_SECRET/FIREBASE_CREDENTIALS_PATH/OPENAI_API_KEY 필요
@@ -77,6 +78,7 @@ class TestValidateEnvironment:
                     os.environ["JWT_SECRET"] = "x" * 48
                     os.environ["FIREBASE_CREDENTIALS_PATH"] = "/tmp/firebase.json"
                     os.environ["OPENAI_API_KEY"] = "sk-test-openai"
+                    os.environ["CORS_ALLOW_ORIGINS"] = '["https://app.example.com"]'
                 # Settings 생성 시 검증됨
                 settings = Settings()
                 assert settings.environment == env
@@ -101,6 +103,10 @@ class TestValidateEnvironment:
                     os.environ["OPENAI_API_KEY"] = old_openai
                 else:
                     os.environ.pop("OPENAI_API_KEY", None)
+                if old_cors:
+                    os.environ["CORS_ALLOW_ORIGINS"] = old_cors
+                else:
+                    os.environ.pop("CORS_ALLOW_ORIGINS", None)
 
     def test_invalid_environment(self):
         """유효하지 않은 환경값 (라인 218-219)"""
@@ -449,6 +455,34 @@ class TestValidateProductionSecurity:
             else:
                 os.environ.pop("OPENAI_API_KEY", None)
 
+    def test_production_rejects_localhost_cors_origin(self):
+        """production 환경에서는 localhost CORS origin을 허용하지 않는다"""
+        with pytest.raises(ValidationError) as exc_info:
+            Settings(
+                environment="production",
+                api_keys=["test-key"],
+                jwt_secret="x" * 48,
+                firebase_credentials_path="/tmp/firebase.json",
+                openai_api_key="sk-test-openai",
+                cors_allow_origins=["http://localhost:3000"],
+            )
+        assert "production 환경에서는 localhost CORS origin을 사용할 수 없습니다" in str(
+            exc_info.value
+        )
+
+    def test_production_rejects_insecure_http_cors_origin(self):
+        """production 환경에서는 HTTPS CORS origin만 허용한다"""
+        with pytest.raises(ValidationError) as exc_info:
+            Settings(
+                environment="production",
+                api_keys=["test-key"],
+                jwt_secret="x" * 48,
+                firebase_credentials_path="/tmp/firebase.json",
+                openai_api_key="sk-test-openai",
+                cors_allow_origins=["http://app.example.com"],
+            )
+        assert "production 환경에서는 HTTPS CORS origin만 허용됩니다" in str(exc_info.value)
+
     def test_development_without_api_keys_ok(self):
         """development 환경에서는 API_KEYS 없어도 OK"""
         import os
@@ -516,12 +550,14 @@ class TestSettingsIntegration:
         old_jwt = os.environ.get("JWT_SECRET")
         old_firebase = os.environ.get("FIREBASE_CREDENTIALS_PATH")
         old_openai = os.environ.get("OPENAI_API_KEY")
+        old_cors = os.environ.get("CORS_ALLOW_ORIGINS")
         try:
             os.environ["API_KEYS"] = "test-key"
             os.environ["ENVIRONMENT"] = "production"
             os.environ["JWT_SECRET"] = "x" * 48
             os.environ["FIREBASE_CREDENTIALS_PATH"] = "/tmp/firebase.json"
             os.environ["OPENAI_API_KEY"] = "sk-test-openai"
+            os.environ["CORS_ALLOW_ORIGINS"] = '["https://app.example.com"]'
             settings = Settings(max_file_size_mb=1000, max_concurrent_jobs=5)
             assert settings.max_file_size_mb == 1000
             assert settings.max_concurrent_jobs == 5
@@ -547,6 +583,10 @@ class TestSettingsIntegration:
                 os.environ["OPENAI_API_KEY"] = old_openai
             else:
                 os.environ.pop("OPENAI_API_KEY", None)
+            if old_cors:
+                os.environ["CORS_ALLOW_ORIGINS"] = old_cors
+            else:
+                os.environ.pop("CORS_ALLOW_ORIGINS", None)
 
     def test_field_validators(self):
         """필드 검증기 통합 테스트"""
