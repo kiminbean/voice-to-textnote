@@ -71,9 +71,13 @@ CANONICAL_RELEASE_ARTIFACT_PATHS = {
     "ios_runner_app": "client/build/ios/iphoneos/Runner.app",
 }
 EXPECTED_STRICT_MISSING_INPUT_ERRORS = 13
-CURRENT_BACKEND_TEST_COUNT = 3975
+CURRENT_BACKEND_TEST_COUNT = 3979
 CURRENT_FLUTTER_TEST_COUNT = 415
 CURRENT_TOTAL_TEST_COUNT = CURRENT_BACKEND_TEST_COUNT + CURRENT_FLUTTER_TEST_COUNT
+APP_STORE_CONNECT_ISSUER_ID_PATTERN = (
+    r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-"
+    r"[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+)
 UNRESOLVED_EVIDENCE_PATTERNS = (
     r"\bTODO\b",
     r"\bTBD\b",
@@ -1276,14 +1280,18 @@ def check_service_account(path: Path, reporter: Reporter) -> None:
             reporter.fail(f"Firebase service account {key} is not {value}")
     private_key = data.get("private_key", "")
     client_email = data.get("client_email", "")
-    if (
+    if not isinstance(private_key, str):
+        reporter.fail("Firebase service account private_key must be a string")
+    elif (
         "-----BEGIN PRIVATE KEY-----" in private_key
         and "-----END PRIVATE KEY-----" in private_key
     ):
         reporter.ok("Firebase service account private key is present")
     else:
         reporter.fail("Firebase service account private key missing")
-    if client_email.endswith(f"@{PROJECT_ID}.iam.gserviceaccount.com"):
+    if not isinstance(client_email, str):
+        reporter.fail("Firebase service account client_email must be a string")
+    elif client_email.endswith(f"@{PROJECT_ID}.iam.gserviceaccount.com"):
         reporter.ok("Firebase service account client_email is present")
     else:
         reporter.fail("Firebase service account client_email missing or invalid")
@@ -2008,7 +2016,12 @@ def check_strict_external(reporter: Reporter) -> None:
     require_env_value(
         reporter, "APP_STORE_CONNECT_KEY_ID", "App Store Connect key id", r"[A-Z0-9]{10}"
     )
-    require_env_value(reporter, "APP_STORE_CONNECT_ISSUER_ID", "App Store Connect issuer id")
+    require_env_value(
+        reporter,
+        "APP_STORE_CONNECT_ISSUER_ID",
+        "App Store Connect issuer id",
+        APP_STORE_CONNECT_ISSUER_ID_PATTERN,
+    )
 
     require_android_device(reporter)
     require_ios_device(reporter)
