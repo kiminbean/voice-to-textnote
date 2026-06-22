@@ -808,6 +808,33 @@ def test_release_e2e_evidence_rejects_too_short_scenario_evidence(tmp_path, monk
     )
 
 
+def test_release_e2e_evidence_rejects_duplicate_scenario_evidence(tmp_path, monkeypatch):
+    module = load_release_readiness_module()
+    evidence = make_evidence(tmp_path, module)
+    scenarios = evidence["scenarios"]
+    assert isinstance(scenarios, dict)
+    duplicate_note = (
+        "Release E2E observation captured on android-serial and ios-udid with "
+        "screenshots and logs attached for the physical release devices."
+    )
+    for key in ["push_stt_complete", "push_summary_complete"]:
+        scenario = scenarios[key]
+        assert isinstance(scenario, dict)
+        scenario["evidence"] = duplicate_note
+    evidence_path = write_evidence(tmp_path, evidence)
+    monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
+    monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")
+
+    reporter = module.Reporter()
+    module.check_release_e2e_evidence(evidence_path, reporter, tmp_path)
+
+    assert any(
+        "scenario evidence is duplicated: push_stt_complete, push_summary_complete"
+        in error
+        for error in reporter.errors
+    )
+
+
 def test_release_e2e_evidence_rejects_non_string_scenario_evidence(tmp_path, monkeypatch):
     module = load_release_readiness_module()
     evidence = make_evidence(tmp_path, module)

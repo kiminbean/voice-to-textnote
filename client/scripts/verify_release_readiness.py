@@ -1469,6 +1469,10 @@ def has_unresolved_evidence_placeholder(value: str) -> bool:
     return any(re.search(pattern, value, re.IGNORECASE) for pattern in UNRESOLVED_EVIDENCE_PATTERNS)
 
 
+def normalize_evidence_note(value: str) -> str:
+    return re.sub(r"\s+", " ", value.strip()).casefold()
+
+
 def resolve_release_artifact_path(root: Path, artifact_path: str) -> Path:
     path = Path(artifact_path).expanduser()
     if path.is_absolute():
@@ -1793,6 +1797,7 @@ def check_release_e2e_evidence(path: Path, reporter: Reporter, root: Path | None
     extra_scenarios = sorted(set(scenarios) - set(REQUIRED_E2E_SCENARIOS))
     for key in extra_scenarios:
         reporter.fail(f"Release E2E evidence includes unknown scenario: {key}")
+    passed_evidence_notes: dict[str, list[str]] = {}
     for key, label in REQUIRED_E2E_SCENARIOS.items():
         scenario = scenarios.get(key) if isinstance(scenarios, dict) else None
         if not isinstance(scenario, dict):
@@ -1851,6 +1856,8 @@ def check_release_e2e_evidence(path: Path, reporter: Reporter, root: Path | None
             and not missing_device_ids
         ):
             reporter.ok(f"Release E2E scenario passed: {key}")
+            normalized_evidence = normalize_evidence_note(evidence)
+            passed_evidence_notes.setdefault(normalized_evidence, []).append(key)
         elif passed is not True:
             reporter.fail(f"Release E2E scenario not marked pass: {key}")
         elif has_unresolved_evidence_placeholder(evidence):
@@ -1864,6 +1871,12 @@ def check_release_e2e_evidence(path: Path, reporter: Reporter, root: Path | None
             )
         else:
             reporter.fail(f"Release E2E scenario missing evidence note: {key}")
+    for scenario_keys in passed_evidence_notes.values():
+        if len(scenario_keys) > 1:
+            reporter.fail(
+                "Release E2E scenario evidence is duplicated: "
+                + ", ".join(sorted(scenario_keys))
+            )
 
 
 def check_strict_external(reporter: Reporter) -> None:
