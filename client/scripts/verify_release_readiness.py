@@ -71,7 +71,7 @@ CANONICAL_RELEASE_ARTIFACT_PATHS = {
     "ios_runner_app": "client/build/ios/iphoneos/Runner.app",
 }
 EXPECTED_STRICT_MISSING_INPUT_ERRORS = 13
-CURRENT_BACKEND_TEST_COUNT = 3970
+CURRENT_BACKEND_TEST_COUNT = 3972
 CURRENT_FLUTTER_TEST_COUNT = 415
 CURRENT_TOTAL_TEST_COUNT = CURRENT_BACKEND_TEST_COUNT + CURRENT_FLUTTER_TEST_COUNT
 UNRESOLVED_EVIDENCE_PATTERNS = (
@@ -1300,6 +1300,30 @@ def require_env_file(
         reporter.fail(f"{label}: {env_name} file missing at {path}")
 
 
+def require_env_private_key_file(
+    reporter: Reporter, env_name: str, label: str, suffix: str = ".p8"
+) -> None:
+    value = os.environ.get(env_name, "")
+    if not value:
+        reporter.fail(f"{label}: {env_name} is not set")
+        return
+    path = Path(value).expanduser()
+    if path.suffix != suffix:
+        reporter.fail(f"{label}: {env_name} must point to a {suffix} file")
+        return
+    if not path.is_file():
+        reporter.fail(f"{label}: {env_name} file missing at {path}")
+        return
+    key_text = read_text(path).strip()
+    if (
+        "-----BEGIN PRIVATE KEY-----" in key_text
+        and "-----END PRIVATE KEY-----" in key_text
+    ):
+        reporter.ok(f"{label}: {env_name} private key is present")
+    else:
+        reporter.fail(f"{label}: {env_name} private key PEM is invalid")
+
+
 def require_env_value(
     reporter: Reporter, env_name: str, label: str, pattern: str | None = None
 ) -> None:
@@ -1968,11 +1992,13 @@ def check_strict_external(reporter: Reporter) -> None:
     else:
         reporter.fail("Firebase service account: FIREBASE_CREDENTIALS_PATH is not set")
 
-    require_env_file(reporter, "APNS_AUTH_KEY_PATH", "APNs auth key", ".p8")
+    require_env_private_key_file(reporter, "APNS_AUTH_KEY_PATH", "APNs auth key")
     require_env_value(reporter, "APNS_KEY_ID", "APNs key id", r"[A-Z0-9]{10}")
     require_env_value(reporter, "APNS_TEAM_ID", "APNs team id", r"[A-Z0-9]{10}")
 
-    require_env_file(reporter, "APP_STORE_CONNECT_API_KEY_PATH", "App Store Connect API key", ".p8")
+    require_env_private_key_file(
+        reporter, "APP_STORE_CONNECT_API_KEY_PATH", "App Store Connect API key"
+    )
     require_env_value(
         reporter, "APP_STORE_CONNECT_KEY_ID", "App Store Connect key id", r"[A-Z0-9]{10}"
     )

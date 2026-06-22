@@ -163,10 +163,10 @@ def write_tone_policy_files(root: Path, *, tone_model_line: str = 'tone_model: s
 def write_readme_status(root: Path, content: str) -> None:
     (root / "README.md").write_text(
         (
-            "3970 백엔드 테스트\n"
-            "| 백엔드 단위/통합/E2E | 3970개 | 100.00% |\n"
+            "3972 백엔드 테스트\n"
+            "| 백엔드 단위/통합/E2E | 3972개 | 100.00% |\n"
             "| Flutter 테스트 | 415개 | - |\n"
-            "| 총합 | 4385개 | - |\n"
+            "| 총합 | 4387개 | - |\n"
             f"{content}"
         ),
         encoding="utf-8",
@@ -1496,6 +1496,7 @@ def test_strict_external_rejects_evidence_path_outside_repo(tmp_path, monkeypatc
 
     monkeypatch.setattr(module, "check_service_account", lambda *_args: None)
     monkeypatch.setattr(module, "require_env_file", lambda *_args: None)
+    monkeypatch.setattr(module, "require_env_private_key_file", lambda *_args: None)
     monkeypatch.setattr(module, "require_env_value", lambda *_args: None)
     monkeypatch.setattr(module, "require_android_device", lambda *_args: None)
     monkeypatch.setattr(module, "require_ios_device", lambda *_args: None)
@@ -1510,6 +1511,35 @@ def test_strict_external_rejects_evidence_path_outside_repo(tmp_path, monkeypatc
     module.check_strict_external(reporter)
 
     assert "Release E2E evidence path must stay inside repo" in reporter.errors
+
+
+def test_strict_private_key_file_rejects_invalid_pem(tmp_path, monkeypatch):
+    module = load_release_readiness_module()
+    key_path = tmp_path / "AuthKey_APNS.p8"
+    key_path.write_text("not a pem private key", encoding="utf-8")
+    monkeypatch.setenv("APNS_AUTH_KEY_PATH", str(key_path))
+
+    reporter = module.Reporter()
+    module.require_env_private_key_file(reporter, "APNS_AUTH_KEY_PATH", "APNs auth key")
+
+    assert "APNs auth key: APNS_AUTH_KEY_PATH private key PEM is invalid" in reporter.errors
+
+
+def test_strict_private_key_file_accepts_private_key_pem(tmp_path, monkeypatch):
+    module = load_release_readiness_module()
+    key_path = tmp_path / "AuthKey_ASC.p8"
+    key_path.write_text(
+        "-----BEGIN PRIVATE KEY-----\nabc123\n-----END PRIVATE KEY-----\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("APP_STORE_CONNECT_API_KEY_PATH", str(key_path))
+
+    reporter = module.Reporter()
+    module.require_env_private_key_file(
+        reporter, "APP_STORE_CONNECT_API_KEY_PATH", "App Store Connect API key"
+    )
+
+    assert reporter.errors == []
 
 
 def test_strict_external_requires_android_release_signing_mode(monkeypatch):
@@ -1535,6 +1565,7 @@ def test_strict_external_requires_android_release_signing_mode(monkeypatch):
 
     monkeypatch.setattr(module, "check_service_account", lambda *_args: None)
     monkeypatch.setattr(module, "require_env_file", lambda *_args: None)
+    monkeypatch.setattr(module, "require_env_private_key_file", lambda *_args: None)
     monkeypatch.setattr(module, "require_android_device", lambda *_args: None)
     monkeypatch.setattr(module, "require_ios_device", lambda *_args: None)
     monkeypatch.setattr(module, "check_ios_release_entitlements", lambda *_args: None)
@@ -1617,6 +1648,7 @@ def test_strict_external_requires_ios_release_entitlements(monkeypatch):
 
     monkeypatch.setattr(module, "check_service_account", lambda *_args: None)
     monkeypatch.setattr(module, "require_env_file", lambda *_args: None)
+    monkeypatch.setattr(module, "require_env_private_key_file", lambda *_args: None)
     monkeypatch.setattr(module, "require_env_value", lambda *_args: None)
     monkeypatch.setattr(module, "require_android_device", lambda *_args: None)
     monkeypatch.setattr(module, "require_ios_device", lambda *_args: None)
@@ -2015,9 +2047,9 @@ def test_readme_release_status_rejects_missing_android_signing_gate(tmp_path):
     (tmp_path / "README.md").write_text(
         (
             "Release Candidate strict 실기기 release evidence 대기 RELEASE_E2E_EVIDENCE_PATH\n"
-            "3970 백엔드 테스트 Flutter 415 4385개\n"
-            "| 백엔드 단위/통합/E2E | 3970개 | 100.00% |\n"
-            "| 총합 | 4385개 | - |\n"
+            "3972 백엔드 테스트 Flutter 415 4387개\n"
+            "| 백엔드 단위/통합/E2E | 3972개 | 100.00% |\n"
+            "| 총합 | 4387개 | - |\n"
             "| **Android** | RC | `flutter build apk --release` 검증 완료 |"
         ),
         encoding="utf-8",
@@ -2104,7 +2136,7 @@ def test_release_procedure_rejects_version_drift(tmp_path):
             "python3 client/scripts/verify_release_readiness.py --strict\n"
             "2개 SPEC 전부 완료\n"
             "2 SPECs completed\n"
-            "3970 passed\n"
+            "3972 passed\n"
             "Flutter: 415 passed\n"
             "`verify_mobile_release_runner.py` PASS\n"
             "`verify_github_mobile_release_env.py` PASS\n"
