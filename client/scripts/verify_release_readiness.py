@@ -70,6 +70,10 @@ CANONICAL_RELEASE_ARTIFACT_PATHS = {
     "android_apk": "client/build/app/outputs/flutter-apk/app-release.apk",
     "ios_runner_app": "client/build/ios/iphoneos/Runner.app",
 }
+EXPECTED_STRICT_MISSING_INPUT_ERRORS = 13
+CURRENT_BACKEND_TEST_COUNT = 3962
+CURRENT_FLUTTER_TEST_COUNT = 415
+CURRENT_TOTAL_TEST_COUNT = CURRENT_BACKEND_TEST_COUNT + CURRENT_FLUTTER_TEST_COUNT
 UNRESOLVED_EVIDENCE_PATTERNS = (
     r"\bTODO\b",
     r"\bTBD\b",
@@ -831,15 +835,21 @@ def check_readme_release_status(root: Path, reporter: Reporter) -> None:
     else:
         reporter.ok("README does not overclaim Production Ready before strict evidence")
     if (
-        "3907 백엔드 테스트" in readme
-        and "3907개" in readme
-        and ("Flutter 415" in readme or "415개" in readme)
-        and "4322개" in readme
+        f"{CURRENT_BACKEND_TEST_COUNT} 백엔드 테스트" in readme
+        and f"{CURRENT_BACKEND_TEST_COUNT}개" in readme
+        and (
+            f"Flutter {CURRENT_FLUTTER_TEST_COUNT}" in readme
+            or f"{CURRENT_FLUTTER_TEST_COUNT}개" in readme
+        )
+        and f"{CURRENT_TOTAL_TEST_COUNT}개" in readme
     ):
         reporter.ok("README test counts match current release validation evidence")
     else:
         reporter.fail(
-            "README test counts must match current 3907 backend / 415 Flutter / 4322 total evidence"
+            "README test counts must match current "
+            f"{CURRENT_BACKEND_TEST_COUNT} backend / "
+            f"{CURRENT_FLUTTER_TEST_COUNT} Flutter / "
+            f"{CURRENT_TOTAL_TEST_COUNT} total evidence"
         )
     if "`flutter build apk --release`" in readme and "`flutter build apk --debug`" not in readme:
         reporter.ok("README Android RC status references release APK verification")
@@ -921,6 +931,7 @@ def check_docs(root: Path, reporter: Reporter) -> None:
         reporter,
         procedure_doc,
         [
+            f"**{EXPECTED_STRICT_MISSING_INPUT_ERRORS} errors",
             "client/scripts/create_release_e2e_evidence.py",
             "17개 required scenario",
             "python3 client/scripts/verify_mobile_release_runner.py",
@@ -955,11 +966,15 @@ def check_docs(root: Path, reporter: Reporter) -> None:
             "Release procedure SPEC count must match README completed SPEC list "
             f"({completed_spec_count})"
         )
-    if "3907 passed" in procedure_doc and "Flutter: 415 passed" in procedure_doc:
+    if (
+        f"{CURRENT_BACKEND_TEST_COUNT} passed" in procedure_doc
+        and f"Flutter: {CURRENT_FLUTTER_TEST_COUNT} passed" in procedure_doc
+    ):
         reporter.ok("Release procedure backend test count matches latest full pytest evidence")
     else:
         reporter.fail(
-            "Release procedure test counts must match latest 3907 backend / 415 Flutter evidence"
+            "Release procedure test counts must match latest "
+            f"{CURRENT_BACKEND_TEST_COUNT} backend / {CURRENT_FLUTTER_TEST_COUNT} Flutter evidence"
         )
     if (
         "`verify_mobile_release_runner.py` PASS" in procedure_doc

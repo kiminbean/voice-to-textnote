@@ -9,8 +9,8 @@
 - [x] 36개 SPEC 전부 완료
 - [x] `verify_release_readiness.py` (default) — 0 errors
 - [x] CI: Test & Lint PASS, Flutter Android PASS, Flutter iOS PASS
-- [x] 백엔드: 3907 passed, Flutter: 415 passed, backend coverage 100.00%
-- [ ] `verify_release_readiness.py --strict` — **12 errors (이 문서의 목표)**
+- [x] 백엔드: 3962 passed, Flutter: 415 passed, backend coverage 100.00%
+- [ ] `verify_release_readiness.py --strict` — **13 errors (이 문서의 목표)**
 
 ---
 
