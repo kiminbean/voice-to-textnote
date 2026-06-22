@@ -943,6 +943,36 @@ def test_release_e2e_evidence_rejects_absolute_artifact_path_inside_repo(
     )
 
 
+def test_release_e2e_evidence_rejects_non_default_artifact_path(
+    tmp_path, monkeypatch
+):
+    module = load_release_readiness_module()
+    evidence = make_evidence(tmp_path, module)
+    alternate_apk_path = "client/build/app/outputs/flutter-apk/custom-release.apk"
+    alternate_apk = tmp_path / alternate_apk_path
+    alternate_apk.parent.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(alternate_apk, "w") as apk:
+        apk.writestr("AndroidManifest.xml", "<manifest />")
+        apk.writestr("classes.dex", b"dex\n035\0")
+    artifacts = evidence["artifacts"]
+    assert isinstance(artifacts, dict)
+    artifacts["android_apk"] = alternate_apk_path
+    artifact_hashes = evidence["artifact_sha256"]
+    assert isinstance(artifact_hashes, dict)
+    artifact_hashes["android_apk"] = module.release_artifact_sha256(alternate_apk)
+    evidence_path = write_evidence(tmp_path, evidence)
+    monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
+    monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")
+
+    reporter = module.Reporter()
+    module.check_release_e2e_evidence(evidence_path, reporter, tmp_path)
+
+    assert any(
+        "artifact path must match canonical release output: android_apk" in error
+        for error in reporter.errors
+    )
+
+
 def test_release_e2e_evidence_rejects_missing_artifact_hashes(tmp_path, monkeypatch):
     module = load_release_readiness_module()
     evidence = make_evidence(tmp_path, module)

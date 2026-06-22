@@ -18,6 +18,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from verify_release_readiness import (  # noqa: E402
+    CANONICAL_RELEASE_ARTIFACT_PATHS,
     REQUIRED_E2E_SCENARIO_PLATFORMS,
     REQUIRED_E2E_SCENARIOS,
     artifact_path_stays_inside_root,
@@ -28,8 +29,8 @@ from verify_release_readiness import (  # noqa: E402
     resolve_release_evidence_path,
 )
 
-DEFAULT_ANDROID_APK = "client/build/app/outputs/flutter-apk/app-release.apk"
-DEFAULT_IOS_RUNNER_APP = "client/build/ios/iphoneos/Runner.app"
+DEFAULT_ANDROID_APK = CANONICAL_RELEASE_ARTIFACT_PATHS["android_apk"]
+DEFAULT_IOS_RUNNER_APP = CANONICAL_RELEASE_ARTIFACT_PATHS["ios_runner_app"]
 RELEASE_ARTIFACT_TYPES = {
     "android_apk": "file",
     "ios_runner_app": "directory",

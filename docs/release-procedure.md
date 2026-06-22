@@ -129,7 +129,7 @@ IOS_DEVICE_UDID=$IOS_DEVICE_UDID \
 REQUIRE_ANDROID_RELEASE_SIGNING=true \
 python3 client/scripts/create_release_e2e_evidence.py --output docs/release-e2e-evidence.json
 
-# artifacts 값은 운영 장비 절대경로가 아니라 repo-relative 경로여야 함:
+# artifacts 값은 운영 장비 절대경로나 임의 release 파일이 아니라 아래 표준 repo-relative 경로여야 함:
 # - client/build/app/outputs/flutter-apk/app-release.apk
 # - client/build/ios/iphoneos/Runner.app
 

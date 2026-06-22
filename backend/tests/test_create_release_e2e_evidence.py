@@ -30,12 +30,13 @@ def load_release_readiness_module():
 
 
 def write_release_artifacts(root: Path) -> tuple[Path, Path]:
-    android_apk = root / "app-release.apk"
-    ios_runner_app = root / "Runner.app"
+    android_apk = root / "client/build/app/outputs/flutter-apk/app-release.apk"
+    ios_runner_app = root / "client/build/ios/iphoneos/Runner.app"
+    android_apk.parent.mkdir(parents=True)
     with zipfile.ZipFile(android_apk, "w") as apk:
         apk.writestr("AndroidManifest.xml", "<manifest />")
         apk.writestr("classes.dex", b"dex\n035\0")
-    ios_runner_app.mkdir()
+    ios_runner_app.mkdir(parents=True)
     with (ios_runner_app / "Info.plist").open("wb") as plist:
         plistlib.dump(
             {
@@ -74,8 +75,8 @@ def test_release_e2e_scaffold_contains_every_required_scenario(monkeypatch, tmp_
 
     evidence = create.build_evidence(
         tmp_path,
-        android_apk=android_apk.name,
-        ios_runner_app=ios_runner_app.name,
+        android_apk=android_apk.relative_to(tmp_path).as_posix(),
+        ios_runner_app=ios_runner_app.relative_to(tmp_path).as_posix(),
     )
 
     assert evidence["devices"]["android"]["serial"] == "android-serial"
@@ -102,8 +103,8 @@ def test_release_e2e_scaffold_records_release_gate_state_from_env(tmp_path, monk
 
     evidence = create.build_evidence(
         tmp_path,
-        android_apk=android_apk.name,
-        ios_runner_app=ios_runner_app.name,
+        android_apk=android_apk.relative_to(tmp_path).as_posix(),
+        ios_runner_app=ios_runner_app.relative_to(tmp_path).as_posix(),
     )
 
     assert evidence["release_gate"] == {
@@ -118,16 +119,16 @@ def test_release_e2e_scaffold_round_trips_json(tmp_path):
     android_apk, ios_runner_app = write_release_artifacts(tmp_path)
     evidence = create.build_evidence(
         tmp_path,
-        android_apk=android_apk.name,
-        ios_runner_app=ios_runner_app.name,
+        android_apk=android_apk.relative_to(tmp_path).as_posix(),
+        ios_runner_app=ios_runner_app.relative_to(tmp_path).as_posix(),
     )
     path = tmp_path / "release-e2e-evidence.json"
     path.write_text(json.dumps(evidence), encoding="utf-8")
 
     loaded = json.loads(path.read_text(encoding="utf-8"))
 
-    assert loaded["artifacts"]["android_apk"] == android_apk.name
-    assert loaded["artifacts"]["ios_runner_app"] == ios_runner_app.name
+    assert loaded["artifacts"]["android_apk"] == android_apk.relative_to(tmp_path).as_posix()
+    assert loaded["artifacts"]["ios_runner_app"] == ios_runner_app.relative_to(tmp_path).as_posix()
     assert set(loaded["artifact_sha256"]) == {"android_apk", "ios_runner_app"}
 
 
@@ -199,12 +200,32 @@ def test_release_e2e_scaffold_rejects_absolute_artifact_inside_repo(tmp_path):
         create.build_evidence(
             tmp_path,
             android_apk=str(android_apk),
-            ios_runner_app=ios_runner_app.name,
+            ios_runner_app=ios_runner_app.relative_to(tmp_path).as_posix(),
         )
     except ValueError as exc:
         assert "repo-relative" in str(exc)
     else:
         raise AssertionError("build_evidence should reject absolute artifact paths")
+
+
+def test_release_e2e_scaffold_rejects_non_default_artifact_path(tmp_path):
+    create = load_create_evidence_module()
+    _, ios_runner_app = write_release_artifacts(tmp_path)
+    custom_apk = tmp_path / "custom-release.apk"
+    with zipfile.ZipFile(custom_apk, "w") as apk:
+        apk.writestr("AndroidManifest.xml", "<manifest />")
+        apk.writestr("classes.dex", b"dex\n035\0")
+
+    try:
+        create.build_evidence(
+            tmp_path,
+            android_apk=custom_apk.relative_to(tmp_path).as_posix(),
+            ios_runner_app=ios_runner_app.relative_to(tmp_path).as_posix(),
+        )
+    except ValueError as exc:
+        assert "canonical release output" in str(exc)
+    else:
+        raise AssertionError("build_evidence should reject non-default artifact paths")
 
 
 def test_release_e2e_scaffold_rejects_invalid_android_apk(tmp_path):
@@ -215,8 +236,8 @@ def test_release_e2e_scaffold_rejects_invalid_android_apk(tmp_path):
     try:
         create.build_evidence(
             tmp_path,
-            android_apk=android_apk.name,
-            ios_runner_app=ios_runner_app.name,
+            android_apk=android_apk.relative_to(tmp_path).as_posix(),
+            ios_runner_app=ios_runner_app.relative_to(tmp_path).as_posix(),
         )
     except ValueError as exc:
         assert "valid APK zip" in str(exc)
@@ -233,8 +254,8 @@ def test_release_e2e_scaffold_rejects_android_artifact_without_apk_suffix(tmp_pa
     try:
         create.build_evidence(
             tmp_path,
-            android_apk=android_text.name,
-            ios_runner_app=ios_runner_app.name,
+            android_apk=android_text.relative_to(tmp_path).as_posix(),
+            ios_runner_app=ios_runner_app.relative_to(tmp_path).as_posix(),
         )
     except ValueError as exc:
         assert "must end with .apk" in str(exc)
@@ -251,8 +272,8 @@ def test_release_e2e_scaffold_rejects_android_debug_artifact(tmp_path):
     try:
         create.build_evidence(
             tmp_path,
-            android_apk=android_debug_apk.name,
-            ios_runner_app=ios_runner_app.name,
+            android_apk=android_debug_apk.relative_to(tmp_path).as_posix(),
+            ios_runner_app=ios_runner_app.relative_to(tmp_path).as_posix(),
         )
     except ValueError as exc:
         assert "release APK" in str(exc)
@@ -268,8 +289,8 @@ def test_release_e2e_scaffold_rejects_invalid_ios_runner_app(tmp_path):
     try:
         create.build_evidence(
             tmp_path,
-            android_apk=android_apk.name,
-            ios_runner_app=ios_runner_app.name,
+            android_apk=android_apk.relative_to(tmp_path).as_posix(),
+            ios_runner_app=ios_runner_app.relative_to(tmp_path).as_posix(),
         )
     except ValueError as exc:
         assert "missing executable" in str(exc)
@@ -286,8 +307,8 @@ def test_release_e2e_scaffold_rejects_ios_artifact_without_app_suffix(tmp_path):
     try:
         create.build_evidence(
             tmp_path,
-            android_apk=android_apk.name,
-            ios_runner_app=ios_bundle.name,
+            android_apk=android_apk.relative_to(tmp_path).as_posix(),
+            ios_runner_app=ios_bundle.relative_to(tmp_path).as_posix(),
         )
     except ValueError as exc:
         assert "must end with .app" in str(exc)

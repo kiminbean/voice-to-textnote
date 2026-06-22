@@ -66,6 +66,10 @@ REQUIRED_E2E_SCENARIO_PLATFORMS = {
     "export_share_android": ("android",),
     "export_share_ios": ("ios",),
 }
+CANONICAL_RELEASE_ARTIFACT_PATHS = {
+    "android_apk": "client/build/app/outputs/flutter-apk/app-release.apk",
+    "ios_runner_app": "client/build/ios/iphoneos/Runner.app",
+}
 UNRESOLVED_EVIDENCE_PATTERNS = (
     r"\bTODO\b",
     r"\bTBD\b",
@@ -1535,6 +1539,8 @@ def release_artifact_path_contract_error(
         artifact_name = resolved_artifact.name.lower()
         if "debug" in artifact_name or "release" not in artifact_name:
             return f"artifact must be a release APK: {key}"
+    if artifact_path != CANONICAL_RELEASE_ARTIFACT_PATHS[key]:
+        return f"artifact path must match canonical release output: {key}"
     return None
 
 
