@@ -163,10 +163,10 @@ def write_tone_policy_files(root: Path, *, tone_model_line: str = 'tone_model: s
 def write_readme_status(root: Path, content: str) -> None:
     (root / "README.md").write_text(
         (
-            "3969 백엔드 테스트\n"
-            "| 백엔드 단위/통합/E2E | 3969개 | 100.00% |\n"
+            "3970 백엔드 테스트\n"
+            "| 백엔드 단위/통합/E2E | 3970개 | 100.00% |\n"
             "| Flutter 테스트 | 415개 | - |\n"
-            "| 총합 | 4384개 | - |\n"
+            "| 총합 | 4385개 | - |\n"
             f"{content}"
         ),
         encoding="utf-8",
@@ -834,8 +834,10 @@ def test_release_e2e_evidence_rejects_duplicate_scenario_evidence(tmp_path, monk
     assert isinstance(scenarios, dict)
     duplicate_note = (
         "Release E2E observation captured on android-serial and ios-udid with "
-        "screenshot release-e2e/shared.png and log release-e2e/shared.log attached "
-        "for the physical release devices."
+        "screenshot release-e2e/push_stt_complete.png, screenshot "
+        "release-e2e/push_summary_complete.png, and log "
+        "release-e2e/push_stt_complete-push_summary_complete.log attached for the "
+        "physical release devices."
     )
     for key in ["push_stt_complete", "push_summary_complete"]:
         scenario = scenarios[key]
@@ -868,11 +870,13 @@ def test_release_e2e_evidence_rejects_duplicate_observation_reference(
     assert isinstance(second, dict)
     first["evidence"] = (
         "STT completion observed on android-serial and ios-udid with screenshot "
-        "release-e2e/shared-push.png and device log release-e2e/stt.log."
+        "release-e2e/push_stt_complete-push_summary_complete-shared.png and "
+        "device log release-e2e/push_stt_complete.log."
     )
     second["evidence"] = (
         "Summary completion observed on android-serial and ios-udid with screenshot "
-        "release-e2e/shared-push.png and device log release-e2e/summary.log."
+        "release-e2e/push_stt_complete-push_summary_complete-shared.png and "
+        "device log release-e2e/push_summary_complete.log."
     )
     evidence_path = write_evidence(tmp_path, evidence)
     monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
@@ -883,7 +887,8 @@ def test_release_e2e_evidence_rejects_duplicate_observation_reference(
 
     assert any(
         "scenario observation artifact reference is duplicated: "
-        "release-e2e/shared-push.png (push_stt_complete, push_summary_complete)"
+        "release-e2e/push_stt_complete-push_summary_complete-shared.png "
+        "(push_stt_complete, push_summary_complete)"
         in error
         for error in reporter.errors
     )
@@ -938,6 +943,35 @@ def test_release_e2e_evidence_rejects_scenario_evidence_without_observation_refe
 
     assert any(
         "scenario evidence missing observation artifact reference: push_stt_complete"
+        in error
+        for error in reporter.errors
+    )
+
+
+def test_release_e2e_evidence_rejects_scenario_evidence_without_specific_reference(
+    tmp_path, monkeypatch
+):
+    module = load_release_readiness_module()
+    evidence = make_evidence(tmp_path, module)
+    scenarios = evidence["scenarios"]
+    assert isinstance(scenarios, dict)
+    scenario = scenarios["push_stt_complete"]
+    assert isinstance(scenario, dict)
+    scenario["evidence"] = (
+        "STT completion was verified on release test devices android-serial and "
+        "ios-udid with screenshot release-e2e/push_summary_complete.png and "
+        "device log release-e2e/push_summary_complete.log captured."
+    )
+    evidence_path = write_evidence(tmp_path, evidence)
+    monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
+    monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")
+
+    reporter = module.Reporter()
+    module.check_release_e2e_evidence(evidence_path, reporter, tmp_path)
+
+    assert any(
+        "scenario evidence missing scenario-specific observation artifact reference: "
+        "push_stt_complete"
         in error
         for error in reporter.errors
     )
@@ -1981,9 +2015,9 @@ def test_readme_release_status_rejects_missing_android_signing_gate(tmp_path):
     (tmp_path / "README.md").write_text(
         (
             "Release Candidate strict 실기기 release evidence 대기 RELEASE_E2E_EVIDENCE_PATH\n"
-            "3969 백엔드 테스트 Flutter 415 4384개\n"
-            "| 백엔드 단위/통합/E2E | 3969개 | 100.00% |\n"
-            "| 총합 | 4384개 | - |\n"
+            "3970 백엔드 테스트 Flutter 415 4385개\n"
+            "| 백엔드 단위/통합/E2E | 3970개 | 100.00% |\n"
+            "| 총합 | 4385개 | - |\n"
             "| **Android** | RC | `flutter build apk --release` 검증 완료 |"
         ),
         encoding="utf-8",
@@ -2070,7 +2104,7 @@ def test_release_procedure_rejects_version_drift(tmp_path):
             "python3 client/scripts/verify_release_readiness.py --strict\n"
             "2개 SPEC 전부 완료\n"
             "2 SPECs completed\n"
-            "3969 passed\n"
+            "3970 passed\n"
             "Flutter: 415 passed\n"
             "`verify_mobile_release_runner.py` PASS\n"
             "`verify_github_mobile_release_env.py` PASS\n"

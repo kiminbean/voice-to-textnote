@@ -71,7 +71,7 @@ CANONICAL_RELEASE_ARTIFACT_PATHS = {
     "ios_runner_app": "client/build/ios/iphoneos/Runner.app",
 }
 EXPECTED_STRICT_MISSING_INPUT_ERRORS = 13
-CURRENT_BACKEND_TEST_COUNT = 3969
+CURRENT_BACKEND_TEST_COUNT = 3970
 CURRENT_FLUTTER_TEST_COUNT = 415
 CURRENT_TOTAL_TEST_COUNT = CURRENT_BACKEND_TEST_COUNT + CURRENT_FLUTTER_TEST_COUNT
 UNRESOLVED_EVIDENCE_PATTERNS = (
@@ -1518,6 +1518,11 @@ def observation_artifact_references(value: str) -> set[str]:
     return references
 
 
+def has_scenario_observation_artifact_reference(value: str, scenario_key: str) -> bool:
+    scenario_key = scenario_key.casefold()
+    return any(scenario_key in reference for reference in observation_artifact_references(value))
+
+
 def resolve_release_artifact_path(root: Path, artifact_path: str) -> Path:
     path = Path(artifact_path).expanduser()
     if path.is_absolute():
@@ -1901,6 +1906,7 @@ def check_release_e2e_evidence(path: Path, reporter: Reporter, root: Path | None
             and not has_unresolved_evidence_placeholder(evidence)
             and has_observation_artifact_marker(evidence)
             and has_observation_artifact_reference(evidence)
+            and has_scenario_observation_artifact_reference(evidence, key)
             and not missing_device_ids
         ):
             reporter.ok(f"Release E2E scenario passed: {key}")
@@ -1921,6 +1927,11 @@ def check_release_e2e_evidence(path: Path, reporter: Reporter, root: Path | None
         elif not has_observation_artifact_reference(evidence):
             reporter.fail(
                 f"Release E2E scenario evidence missing observation artifact reference: {key}"
+            )
+        elif not has_scenario_observation_artifact_reference(evidence, key):
+            reporter.fail(
+                "Release E2E scenario evidence missing scenario-specific "
+                f"observation artifact reference: {key}"
             )
         elif missing_device_ids:
             reporter.fail(
