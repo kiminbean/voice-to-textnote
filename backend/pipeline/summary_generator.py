@@ -11,6 +11,7 @@ import re
 
 from openai import OpenAI
 
+from backend.ml.openai_client import structured_json_completion_options
 from backend.schemas.summary import ActionItem, SummaryResult
 from backend.utils.json_helpers import strip_json_comments
 from backend.utils.logger import get_logger
@@ -216,6 +217,7 @@ class SummaryGenerator:
         api_key: str,
         model: str,
         max_tokens: int,
+        base_url: str | None = None,
         template_structure: dict | None = None,
     ) -> SummaryResult:
         """
@@ -244,14 +246,17 @@ class SummaryGenerator:
             segments_count=len(segments),
         )
 
-        client = OpenAI(api_key=api_key)
+        client_kwargs = {"api_key": api_key}
+        if base_url:
+            client_kwargs["base_url"] = base_url
+        client = OpenAI(**client_kwargs)
         # response_format=json_object: 모델이 항상 valid JSON을 반환하도록 강제.
         # 일반 모드는 간헐적으로 깨진 JSON을 생성해 raw text fallback으로 빠짐.
         response = client.chat.completions.create(
             model=model,
             max_tokens=max_tokens,
             messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"},
+            **structured_json_completion_options(model, base_url),
         )
 
         response_text = response.choices[0].message.content or ""

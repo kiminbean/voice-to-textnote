@@ -8,6 +8,7 @@ import re
 from openai import OpenAI
 from pydantic import ValidationError
 
+from backend.ml.openai_client import structured_json_completion_options
 from backend.schemas.summary import MindMapEdge, MindMapNode
 from backend.utils.json_helpers import strip_json_comments
 from backend.utils.logger import get_logger
@@ -93,6 +94,7 @@ class MindMapGenerator:
         api_key: str,
         model: str,
         max_tokens: int,
+        base_url: str | None = None,
     ) -> tuple[MindMapNode, list[MindMapEdge]]:
         """OpenAI API를 호출해 마인드맵을 생성한다."""
         prompt = self.build_prompt(summary_data)
@@ -104,14 +106,17 @@ class MindMapGenerator:
             summary_task_id=summary_data.get("task_id"),
         )
 
-        client = OpenAI(api_key=api_key)
+        client_kwargs = {"api_key": api_key}
+        if base_url:
+            client_kwargs["base_url"] = base_url
+        client = OpenAI(**client_kwargs)
         # response_format=json_object: gpt-4o-mini가 항상 valid JSON을 반환하도록 강제.
         # 일반 모드는 간헐적으로 깨진 JSON(이스케이프 누락 등)을 생성해 파싱이 실패함.
         response = client.chat.completions.create(
             model=model,
             max_tokens=max_tokens,
             messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"},
+            **structured_json_completion_options(model, base_url),
         )
 
         response_text = response.choices[0].message.content or ""
@@ -123,7 +128,131 @@ class MindMapGenerator:
             output_tokens=usage.completion_tokens if usage else 0,
         )
 
-        return self.parse_response(response_text)
+        try:
+            return self.parse_response(response_text)
+        except ValueError:
+            logger.warning(
+                "마인드맵 AI 응답 파싱 실패, 요약 기반 기본 마인드맵으로 폴백",
+                summary_task_id=summary_data.get("task_id"),
+            )
+            return build_fallback_mind_map(summary_data)
+
+
+def build_fallback_mind_map(summary_data: dict) -> tuple[MindMapNode, list[MindMapEdge]]:
+    """LLM JSON 응답이 깨졌을 때 요약 데이터만으로 표시 가능한 마인드맵을 만든다."""
+    summary_text = str(summary_data.get("summary_text") or "").strip()
+    root = MindMapNode(
+        id="root",
+        title=_short_title(summary_text) or "회의 요약",
+        summary=summary_text,
+        source_refs=["summary_text"],
+        children=[],
+    )
+    edges: list[MindMapEdge] = []
+
+    sections = summary_data.get("sections") or {}
+    if isinstance(sections, dict):
+        for index, (title, content) in enumerate(sections.items()):
+            content_text = str(content or "").strip()
+            if not str(title).strip() and not content_text:
+                continue
+            node_id = f"section_{index}"
+            root.children.append(
+                MindMapNode(
+                    id=node_id,
+                    title=str(title).strip() or f"섹션 {index + 1}",
+                    summary=content_text,
+                    source_refs=[f"sections.{title}"],
+                )
+            )
+            edges.append(MindMapEdge(source="root", target=node_id, relation="contains"))
+
+    grouped_items = [
+        ("key_decisions", "주요 결정", summary_data.get("key_decisions")),
+        ("next_steps", "다음 단계", summary_data.get("next_steps")),
+    ]
+    for group_id, title, items in grouped_items:
+        if not isinstance(items, list) or not items:
+            continue
+        child_nodes = [
+            MindMapNode(
+                id=f"{group_id}_{index}",
+                title=_short_title(str(item)),
+                summary=str(item),
+                source_refs=[group_id],
+            )
+            for index, item in enumerate(items[:5])
+            if str(item).strip()
+        ]
+        if not child_nodes:
+            continue
+        root.children.append(
+            MindMapNode(
+                id=group_id,
+                title=title,
+                summary="\n".join(node.summary for node in child_nodes),
+                source_refs=[group_id],
+                children=child_nodes,
+            )
+        )
+        edges.append(MindMapEdge(source="root", target=group_id, relation="contains"))
+        edges.extend(
+            MindMapEdge(source=group_id, target=node.id, relation="contains")
+            for node in child_nodes
+        )
+
+    action_items = summary_data.get("action_items") or []
+    if isinstance(action_items, list) and action_items:
+        children = []
+        for index, item in enumerate(action_items[:5]):
+            if not isinstance(item, dict):
+                continue
+            task = str(item.get("task") or "").strip()
+            if not task:
+                continue
+            children.append(
+                MindMapNode(
+                    id=f"action_items_{index}",
+                    title=_short_title(task),
+                    summary=task,
+                    source_refs=["action_items"],
+                )
+            )
+        if children:
+            root.children.append(
+                MindMapNode(
+                    id="action_items",
+                    title="액션 아이템",
+                    summary="\n".join(node.summary for node in children),
+                    source_refs=["action_items"],
+                    children=children,
+                )
+            )
+            edges.append(MindMapEdge(source="root", target="action_items", relation="contains"))
+            edges.extend(
+                MindMapEdge(source="action_items", target=node.id, relation="owner_of")
+                for node in children
+            )
+
+    if not root.children and summary_text:
+        root.children.append(
+            MindMapNode(
+                id="summary",
+                title="핵심 요약",
+                summary=summary_text,
+                source_refs=["summary_text"],
+            )
+        )
+        edges.append(MindMapEdge(source="root", target="summary", relation="contains"))
+
+    return root, edges
+
+
+def _short_title(text: str, limit: int = 28) -> str:
+    normalized = " ".join(text.strip().split())
+    if len(normalized) <= limit:
+        return normalized
+    return f"{normalized[:limit].rstrip()}..."
 
 
 def _format_string_list(items: object) -> str:

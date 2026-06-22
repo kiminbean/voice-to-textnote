@@ -196,6 +196,7 @@ class SentimentAnalyzer:
         api_key: str,
         model: str,
         max_tokens: int = 4096,
+        base_url: str | None = None,
     ) -> SentimentResult:
         """OpenAI API를 호출하여 감정 분석 수행"""
         prompt = self.build_prompt(segments, speaker_stats)
@@ -207,7 +208,10 @@ class SentimentAnalyzer:
             segments_count=len(segments),
         )
 
-        client = OpenAI(api_key=api_key)
+        client_kwargs = {"api_key": api_key}
+        if base_url:
+            client_kwargs["base_url"] = base_url
+        client = OpenAI(**client_kwargs)
         response = client.chat.completions.create(
             model=model,
             max_tokens=max_tokens,

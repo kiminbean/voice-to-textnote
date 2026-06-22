@@ -96,6 +96,12 @@ def stub_openai_client(payload: dict | str) -> MagicMock:
 async def test_generate_study_pack_from_minutes(monkeypatch):
     redis = FakeRedis()
     redis.values["task:min:result:min-001"] = json.dumps(make_minutes_payload(), ensure_ascii=False)
+    monkeypatch.setattr("backend.services.study_pack_service.settings.llm_provider", "zai")
+    monkeypatch.setattr(
+        "backend.services.study_pack_service.settings.openai_base_url",
+        "https://api.z.ai/api/coding/paas/v4",
+    )
+    monkeypatch.setattr("backend.services.study_pack_service.settings.summary_model", "glm-5.2")
     svc = StudyPackService()
     client = stub_openai_client(make_ai_payload())
     monkeypatch.setattr(svc, "_get_client", lambda: client)
@@ -112,6 +118,30 @@ async def test_generate_study_pack_from_minutes(monkeypatch):
     assert client.chat.completions.create.call_args.kwargs["response_format"] == {
         "type": "json_object"
     }
+    assert client.chat.completions.create.call_args.kwargs["extra_body"] == {
+        "thinking": {"type": "disabled"},
+        "reasoning_effort": "none",
+    }
+
+
+@pytest.mark.asyncio
+async def test_generate_study_pack_falls_back_on_invalid_ai_json(monkeypatch):
+    redis = FakeRedis()
+    redis.values["task:min:result:min-001"] = json.dumps(make_minutes_payload(), ensure_ascii=False)
+    svc = StudyPackService()
+    client = stub_openai_client("")
+    monkeypatch.setattr(svc, "_get_client", lambda: client)
+
+    result = await svc.generate("min-001", redis, mode=StudyPackMode.LECTURE)
+
+    assert result.task_id == "min-001"
+    assert result.mode == StudyPackMode.LECTURE
+    assert result.key_concepts
+    assert result.flashcards
+    assert result.quiz_questions
+    assert result.study_notes
+    assert result.source_refs[0].segment_index == 0
+    assert redis.set_calls[0][0] == "study_pack:min-001:lecture"
 
 
 @pytest.mark.asyncio
@@ -215,16 +245,23 @@ def test_get_client_constructs_openai_client(monkeypatch):
     constructed = {}
 
     class FakeOpenAI:
-        def __init__(self, api_key: str) -> None:
+        def __init__(self, api_key: str, base_url: str | None = None) -> None:
             constructed["api_key"] = api_key
+            constructed["base_url"] = base_url
 
     monkeypatch.setattr("backend.services.study_pack_service.OpenAI", FakeOpenAI)
-    monkeypatch.setattr("backend.services.study_pack_service.settings.openai_api_key", "test-key")
+    monkeypatch.setattr("backend.services.study_pack_service.settings.llm_provider", "zai")
+    monkeypatch.setattr("backend.services.study_pack_service.settings.zai_api_key", "test-key")
+    monkeypatch.setattr(
+        "backend.services.study_pack_service.settings.openai_base_url",
+        "https://example.test/v1",
+    )
 
     client = StudyPackService()._get_client()
 
     assert isinstance(client, FakeOpenAI)
     assert constructed["api_key"] == "test-key"
+    assert constructed["base_url"] == "https://example.test/v1"
 
 
 @pytest.mark.asyncio
@@ -236,14 +273,20 @@ async def test_generate_rejects_missing_minutes():
 
 
 @pytest.mark.asyncio
-async def test_generate_rejects_malformed_ai_response(monkeypatch):
+async def test_generate_falls_back_on_malformed_ai_response(monkeypatch):
     redis = FakeRedis()
     redis.values["task:min:result:min-001"] = json.dumps(make_minutes_payload(), ensure_ascii=False)
     svc = StudyPackService()
     monkeypatch.setattr(svc, "_get_client", lambda: stub_openai_client("{not json"))
 
-    with pytest.raises(StudyPackValidationError):
-        await svc.generate("min-001", redis)
+    result = await svc.generate("min-001", redis)
+
+    assert result.task_id == "min-001"
+    assert result.key_concepts
+    assert result.flashcards
+    assert result.quiz_questions
+    assert result.study_notes
+    assert redis.set_calls[0][0] == "study_pack:min-001:general"
 
 
 @pytest.mark.asyncio
@@ -366,13 +409,17 @@ def test_parse_response_rejects_non_object_json():
     ],
 )
 @pytest.mark.asyncio
-async def test_generate_rejects_incomplete_ai_payload(monkeypatch, payload, message):
+async def test_generate_falls_back_on_incomplete_ai_payload(monkeypatch, payload, message):
     redis = FakeRedis()
     redis.values["task:min:result:min-001"] = json.dumps(make_minutes_payload(), ensure_ascii=False)
     svc = StudyPackService()
     monkeypatch.setattr(svc, "_get_client", lambda: stub_openai_client(payload))
 
-    with pytest.raises(StudyPackValidationError) as exc_info:
-        await svc.generate("min-001", redis, force_refresh=True)
+    result = await svc.generate("min-001", redis, force_refresh=True)
 
-    assert message in str(exc_info.value)
+    assert result.task_id == "min-001"
+    assert result.key_concepts
+    assert result.flashcards
+    assert result.quiz_questions
+    assert result.study_notes
+    assert message not in result.study_notes

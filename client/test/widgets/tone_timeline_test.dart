@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:voice_to_textnote/models/tone_model.dart';
 import 'package:voice_to_textnote/providers/result_provider.dart';
+import 'package:voice_to_textnote/services/tone_api.dart';
 import 'package:voice_to_textnote/widgets/empty_state_widget.dart';
 import 'package:voice_to_textnote/widgets/error_retry_widget.dart';
 import 'package:voice_to_textnote/theme/app_colors.dart';
@@ -142,6 +143,52 @@ void main() {
       expect(find.byType(ErrorRetryWidget), findsOneWidget);
       expect(find.text('톤 분석을 불러올 수 없습니다'), findsOneWidget);
       expect(find.text('다시 시도'), findsOneWidget);
+    });
+
+    testWidgets('톤 기능 비활성 상태: EmptyStateWidget 표시', (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            toneProvider('meeting-001').overrideWith(
+              (ref) async => throw const ToneDisabledException(),
+            ),
+          ],
+          child: const MaterialApp(
+            home: Scaffold(
+              body: ToneSection(meetingId: 'meeting-001'),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ErrorRetryWidget), findsNothing);
+      expect(find.byType(EmptyStateWidget), findsOneWidget);
+      expect(find.text('톤 분석 데이터가 없습니다'), findsOneWidget);
+    });
+
+    testWidgets('톤 결과 없음 상태: EmptyStateWidget 표시', (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            toneProvider('meeting-001').overrideWith(
+              (ref) async => throw ToneNotFoundException('meeting-001'),
+            ),
+          ],
+          child: const MaterialApp(
+            home: Scaffold(
+              body: ToneSection(meetingId: 'meeting-001'),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ErrorRetryWidget), findsNothing);
+      expect(find.byType(EmptyStateWidget), findsOneWidget);
+      expect(find.text('톤 분석 데이터가 없습니다'), findsOneWidget);
     });
 
     // REQ-TONE-012: 빈 데이터 상태

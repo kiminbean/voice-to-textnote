@@ -15,7 +15,7 @@ public class NetworkSecurityPolicyInstrumentedTest {
         NetworkSecurityPolicy policy = NetworkSecurityPolicy.getInstance();
 
         assertTrue(policy.isCleartextTrafficPermitted("localhost"));
-        assertTrue(policy.isCleartextTrafficPermitted("100.110.255.105"));
+        assertTrue(policy.isCleartextTrafficPermitted("100.69.69.119"));
         assertFalse(policy.isCleartextTrafficPermitted("api.voicetextnote.com"));
         assertFalse(policy.isCleartextTrafficPermitted("example.com"));
     }

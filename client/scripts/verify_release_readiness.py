@@ -18,6 +18,7 @@ import shutil
 import struct
 import subprocess
 import sys
+import tempfile
 import zipfile
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -225,7 +226,7 @@ def check_production_compose(root: Path, reporter: Reporter) -> None:
         "${REDIS_PASSWORD:?REDIS_PASSWORD is required}",
         "${API_KEYS:?API_KEYS is required}",
         "${JWT_SECRET:?JWT_SECRET is required}",
-        "${OPENAI_API_KEY:?OPENAI_API_KEY is required}",
+        "${ZAI_API_KEY:?ZAI_API_KEY is required}",
         "${FIREBASE_CREDENTIALS_PATH:?FIREBASE_CREDENTIALS_PATH is required}",
         "FIREBASE_CREDENTIALS_PATH=/run/secrets/firebase-service-account.json",
         "/run/secrets/firebase-service-account.json:ro",
@@ -739,7 +740,7 @@ def check_android_project(root: Path, reporter: Reporter) -> None:
     else:
         reporter.fail("Android debug base cleartext denial missing")
     debug_cleartext_hosts = set(re.findall(r"<domain\b[^>]*>([^<]+)</domain>", debug_network))
-    expected_debug_hosts = {"localhost", "100.110.255.105"}
+    expected_debug_hosts = {"localhost", "100.69.69.119"}
     if debug_cleartext_hosts == expected_debug_hosts:
         reporter.ok("Android debug cleartext exceptions are limited to local/staging hosts")
     else:
@@ -1365,6 +1366,54 @@ def read_command_output(command: list[str]) -> tuple[int, str]:
     return completed.returncode, completed.stdout
 
 
+def _devicectl_json_devices(devicectl_output: str) -> list[dict[str, object]]:
+    start = devicectl_output.find('{"result"')
+    if start == -1:
+        start = devicectl_output.find("{")
+    if start == -1:
+        return []
+    try:
+        payload = json.loads(devicectl_output[start:])
+    except json.JSONDecodeError:
+        return []
+    result = payload.get("result")
+    if not isinstance(result, dict):
+        return []
+    devices = result.get("devices")
+    return devices if isinstance(devices, list) else []
+
+
+def _ios_device_matching_identifiers(
+    udid: str, devicectl_output: str
+) -> tuple[bool, set[str]]:
+    identifiers = {udid}
+    found = False
+    for device in _devicectl_json_devices(devicectl_output):
+        if not isinstance(device, dict):
+            continue
+        device_id = device.get("identifier")
+        hardware = device.get("hardwareProperties")
+        connection = device.get("connectionProperties")
+        hardware_udid = hardware.get("udid") if isinstance(hardware, dict) else None
+        hostnames = connection.get("potentialHostnames") if isinstance(connection, dict) else None
+        candidate_values = {value for value in (device_id, hardware_udid) if isinstance(value, str)}
+        if isinstance(hostnames, list):
+            candidate_values.update(value for value in hostnames if isinstance(value, str))
+        if any(udid in value for value in candidate_values):
+            found = True
+            identifiers.update(candidate_values)
+    return found, identifiers
+
+
+def _devicectl_line_available(devicectl_output: str, identifiers: set[str]) -> bool:
+    matching_lines = [
+        line
+        for line in devicectl_output.splitlines()
+        if any(identifier and identifier in line for identifier in identifiers)
+    ]
+    return any(re.search(r"\savailable\s", line) for line in matching_lines)
+
+
 def require_android_device(reporter: Reporter) -> None:
     serial = os.environ.get("ANDROID_DEVICE_SERIAL", "")
     require_env_value(reporter, "ANDROID_DEVICE_SERIAL", "Android physical test device serial")
@@ -1394,16 +1443,31 @@ def require_ios_device(reporter: Reporter) -> None:
     if not udid:
         return
 
-    code, output = read_command_output(["xcrun", "devicectl", "list", "devices"])
+    with tempfile.NamedTemporaryFile(suffix=".json") as devicectl_json:
+        code, output = read_command_output(
+            [
+                "xcrun",
+                "devicectl",
+                "list",
+                "devices",
+                "--json-output",
+                devicectl_json.name,
+            ]
+        )
+        try:
+            output = output + "\n" + Path(devicectl_json.name).read_text()
+        except OSError:
+            pass
     if code != 0:
         reporter.fail(
             "iOS physical test device UDID: xcrun devicectl failed or Xcode tools are unavailable"
         )
         return
+    json_found, identifiers = _ios_device_matching_identifiers(udid, output)
     matching_lines = [line for line in output.splitlines() if udid in line]
-    if matching_lines and any(re.search(r"\savailable\s", line) for line in matching_lines):
+    if _devicectl_line_available(output, identifiers):
         reporter.ok("iOS physical test device UDID is connected and available")
-    elif matching_lines:
+    elif matching_lines or json_found:
         reporter.fail(f"iOS physical test device UDID {udid} is known but not available")
     else:
         reporter.fail(f"iOS physical test device UDID {udid} is not visible to xcrun devicectl")

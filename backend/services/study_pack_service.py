@@ -10,6 +10,7 @@ import redis.asyncio as aioredis
 from openai import OpenAI
 
 from backend.app.config import settings
+from backend.ml.openai_client import structured_json_completion_options
 from backend.schemas.study_pack import (
     StudyFlashcard,
     StudyKeyConcept,
@@ -42,7 +43,7 @@ class StudyPackService:
     """Generate study artifacts from completed minutes results."""
 
     def _get_client(self) -> OpenAI:
-        return OpenAI(api_key=settings.openai_api_key)
+        return OpenAI(api_key=settings.llm_api_key, base_url=settings.llm_base_url)
 
     async def get(
         self,
@@ -86,35 +87,44 @@ class StudyPackService:
         response = client.chat.completions.create(
             model=settings.summary_model,
             max_tokens=max_tokens,
-            response_format={"type": "json_object"},
             messages=[{"role": "user", "content": prompt}],
+            **structured_json_completion_options(settings.summary_model, settings.llm_base_url),
         )
         response_text = response.choices[0].message.content or ""
-        payload = self._parse_response(response_text)
-        result = StudyPackResponse(
-            task_id=task_id,
-            mode=mode,
-            language=language,
-            key_concepts=[
-                StudyKeyConcept.model_validate(item)
-                for item in payload.get("key_concepts", [])
-                if isinstance(item, dict)
-            ],
-            flashcards=[
-                StudyFlashcard.model_validate(item)
-                for item in payload.get("flashcards", [])
-                if isinstance(item, dict)
-            ],
-            quiz_questions=[
-                StudyQuizQuestion.model_validate(item)
-                for item in payload.get("quiz_questions", [])
-                if isinstance(item, dict)
-            ],
-            study_notes=str(payload.get("study_notes", "")),
-            source_refs=source_refs,
-            created_at=datetime.now(UTC).isoformat(),
-        )
-        self._validate_result(result)
+        try:
+            payload = self._parse_response(response_text)
+            result = StudyPackResponse(
+                task_id=task_id,
+                mode=mode,
+                language=language,
+                key_concepts=[
+                    StudyKeyConcept.model_validate(item)
+                    for item in payload.get("key_concepts", [])
+                    if isinstance(item, dict)
+                ],
+                flashcards=[
+                    StudyFlashcard.model_validate(item)
+                    for item in payload.get("flashcards", [])
+                    if isinstance(item, dict)
+                ],
+                quiz_questions=[
+                    StudyQuizQuestion.model_validate(item)
+                    for item in payload.get("quiz_questions", [])
+                    if isinstance(item, dict)
+                ],
+                study_notes=str(payload.get("study_notes", "")),
+                source_refs=source_refs,
+                created_at=datetime.now(UTC).isoformat(),
+            )
+            self._validate_result(result)
+        except Exception as exc:
+            logger.warning(
+                "Study Pack AI 응답 파싱 실패, 회의록 기반 기본 학습팩으로 폴백",
+                task_id=task_id,
+                mode=mode.value,
+                error=str(exc),
+            )
+            result = self._build_fallback_result(task_id, minutes_data, source_refs, mode, language)
         await redis_client.set(
             cache_key,
             result.model_dump_json(),
@@ -223,3 +233,57 @@ class StudyPackService:
             raise StudyPackValidationError("AI 응답에 quiz_questions가 없습니다.")
         if not result.study_notes.strip():
             raise StudyPackValidationError("AI 응답에 study_notes가 없습니다.")
+
+    def _build_fallback_result(
+        self,
+        task_id: str,
+        minutes_data: dict[str, Any],
+        source_refs: list[StudySourceRef],
+        mode: StudyPackMode,
+        language: str,
+    ) -> StudyPackResponse:
+        transcript = self._format_transcript(minutes_data)
+        excerpt = _first_meaningful_line(transcript)
+        concept = _short_text(excerpt, 40) or "회의 핵심 내용"
+        explanation = _short_text(excerpt, 180) or "회의록에서 확인된 주요 내용을 복습합니다."
+        return StudyPackResponse(
+            task_id=task_id,
+            mode=mode,
+            language=language,
+            key_concepts=[
+                StudyKeyConcept(term=concept, explanation=explanation, source_refs=[0])
+            ],
+            flashcards=[
+                StudyFlashcard(
+                    front=f"{concept}의 핵심은 무엇인가요?",
+                    back=explanation,
+                    source_refs=[0],
+                )
+            ],
+            quiz_questions=[
+                StudyQuizQuestion(
+                    question="회의록에서 가장 먼저 확인해야 할 핵심 내용은 무엇인가요?",
+                    answer=explanation,
+                    difficulty="easy",
+                    source_refs=[0],
+                )
+            ],
+            study_notes=explanation,
+            source_refs=source_refs,
+            created_at=datetime.now(UTC).isoformat(),
+        )
+
+
+def _first_meaningful_line(text: str) -> str:
+    for line in text.splitlines():
+        normalized = " ".join(line.strip().split())
+        if normalized:
+            return normalized
+    return " ".join(text.strip().split())
+
+
+def _short_text(text: str, limit: int) -> str:
+    normalized = " ".join(text.strip().split())
+    if len(normalized) <= limit:
+        return normalized
+    return f"{normalized[:limit].rstrip()}..."

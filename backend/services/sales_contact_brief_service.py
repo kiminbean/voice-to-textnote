@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.config import settings
 from backend.db.models import TaskResult
 from backend.db.search_models import ensure_search_index_table, index_search_entry
+from backend.ml.openai_client import structured_json_completion_options
 from backend.schemas.sales_contact_brief import (
     SalesContactBriefResponse,
     SalesContactCrmUpdateRequest,
@@ -84,7 +85,7 @@ class SalesContactBriefService:
     """Generate customer/contact follow-up artifacts from completed minutes results."""
 
     def _get_client(self) -> OpenAI:
-        return OpenAI(api_key=settings.openai_api_key)
+        return OpenAI(api_key=settings.llm_api_key, base_url=settings.llm_base_url)
 
     async def get(
         self,
@@ -132,34 +133,48 @@ class SalesContactBriefService:
         response = client.chat.completions.create(
             model=settings.summary_model,
             max_tokens=max_tokens,
-            response_format={"type": "json_object"},
             messages=[{"role": "user", "content": prompt}],
+            **structured_json_completion_options(settings.summary_model, settings.llm_base_url),
         )
         response_text = response.choices[0].message.content or ""
-        payload = self._parse_response(response_text)
-        result = SalesContactBriefResponse(
-            task_id=task_id,
-            contact=SalesContactIdentity.model_validate(payload.get("contact") or {}),
-            deal=SalesContactDeal.model_validate(payload.get("deal") or {}),
-            customer_needs=[
-                str(item).strip() for item in payload.get("customer_needs", []) if str(item).strip()
-            ],
-            pain_points=[
-                str(item).strip() for item in payload.get("pain_points", []) if str(item).strip()
-            ],
-            objections=[
-                str(item).strip() for item in payload.get("objections", []) if str(item).strip()
-            ],
-            next_steps=[
-                SalesNextStep.model_validate(item)
-                for item in payload.get("next_steps", [])
-                if isinstance(item, dict)
-            ],
-            follow_up_message=str(payload.get("follow_up_message", "")).strip(),
-            source_refs=source_refs,
-            created_at=datetime.now(UTC).isoformat(),
-        )
-        self._validate_result(result)
+        try:
+            payload = self._parse_response(response_text)
+            result = SalesContactBriefResponse(
+                task_id=task_id,
+                contact=SalesContactIdentity.model_validate(payload.get("contact") or {}),
+                deal=SalesContactDeal.model_validate(payload.get("deal") or {}),
+                customer_needs=[
+                    str(item).strip()
+                    for item in payload.get("customer_needs", [])
+                    if str(item).strip()
+                ],
+                pain_points=[
+                    str(item).strip()
+                    for item in payload.get("pain_points", [])
+                    if str(item).strip()
+                ],
+                objections=[
+                    str(item).strip()
+                    for item in payload.get("objections", [])
+                    if str(item).strip()
+                ],
+                next_steps=[
+                    SalesNextStep.model_validate(item)
+                    for item in payload.get("next_steps", [])
+                    if isinstance(item, dict)
+                ],
+                follow_up_message=str(payload.get("follow_up_message", "")).strip(),
+                source_refs=source_refs,
+                created_at=datetime.now(UTC).isoformat(),
+            )
+            self._validate_result(result)
+        except Exception as exc:
+            logger.warning(
+                "Sales contact brief AI 응답 파싱 실패, 회의록 기반 기본 브리프로 폴백",
+                task_id=task_id,
+                error=str(exc),
+            )
+            result = self._build_fallback_result(task_id, minutes_data, source_refs)
         await redis_client.set(
             cache_key,
             result.model_dump_json(),
@@ -501,9 +516,52 @@ class SalesContactBriefService:
         return parsed
 
     def _validate_result(self, result: SalesContactBriefResponse) -> None:
-        if not result.customer_needs:
-            raise SalesContactBriefValidationError("AI 응답에 customer_needs가 없습니다.")
         if not result.next_steps:
             raise SalesContactBriefValidationError("AI 응답에 next_steps가 없습니다.")
         if not result.follow_up_message.strip():
             raise SalesContactBriefValidationError("AI 응답에 follow_up_message가 없습니다.")
+
+    def _build_fallback_result(
+        self,
+        task_id: str,
+        minutes_data: dict[str, Any],
+        source_refs: list[StudySourceRef],
+    ) -> SalesContactBriefResponse:
+        transcript = self._format_transcript(minutes_data)
+        excerpt = _first_meaningful_line(transcript)
+        need = _short_text(excerpt, 120) or "회의 내용을 검토하고 후속 조치를 정리해야 합니다."
+        return SalesContactBriefResponse(
+            task_id=task_id,
+            contact=SalesContactIdentity(),
+            deal=SalesContactDeal(stage="unknown", urgency="unknown"),
+            customer_needs=[need],
+            pain_points=[],
+            objections=[],
+            next_steps=[
+                SalesNextStep(
+                    task="회의 내용 기반 후속 조치를 확인하고 담당자를 지정합니다.",
+                    owner=None,
+                    due=None,
+                )
+            ],
+            follow_up_message=(
+                "회의에서 논의된 내용을 바탕으로 후속 조치를 정리해 공유드리겠습니다."
+            ),
+            source_refs=source_refs,
+            created_at=datetime.now(UTC).isoformat(),
+        )
+
+
+def _first_meaningful_line(text: str) -> str:
+    for line in text.splitlines():
+        normalized = " ".join(line.strip().split())
+        if normalized:
+            return normalized
+    return " ".join(text.strip().split())
+
+
+def _short_text(text: str, limit: int) -> str:
+    normalized = " ".join(text.strip().split())
+    if len(normalized) <= limit:
+        return normalized
+    return f"{normalized[:limit].rstrip()}..."

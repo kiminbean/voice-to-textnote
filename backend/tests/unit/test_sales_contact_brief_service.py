@@ -127,18 +127,27 @@ def test_get_client_constructs_openai_client(monkeypatch):
     constructed = {}
 
     class FakeOpenAI:
-        def __init__(self, api_key: str) -> None:
+        def __init__(self, api_key: str, base_url: str | None = None) -> None:
             constructed["api_key"] = api_key
+            constructed["base_url"] = base_url
 
     monkeypatch.setattr("backend.services.sales_contact_brief_service.OpenAI", FakeOpenAI)
     monkeypatch.setattr(
-        "backend.services.sales_contact_brief_service.settings.openai_api_key", "test-key"
+        "backend.services.sales_contact_brief_service.settings.llm_provider", "zai"
+    )
+    monkeypatch.setattr(
+        "backend.services.sales_contact_brief_service.settings.zai_api_key", "test-key"
+    )
+    monkeypatch.setattr(
+        "backend.services.sales_contact_brief_service.settings.openai_base_url",
+        "https://example.test/v1",
     )
 
     client = SalesContactBriefService()._get_client()
 
     assert isinstance(client, FakeOpenAI)
     assert constructed["api_key"] == "test-key"
+    assert constructed["base_url"] == "https://example.test/v1"
 
 
 def test_parse_created_at_returns_none_for_invalid_timestamp():
@@ -151,6 +160,12 @@ async def test_generate_sales_contact_brief_from_minutes(monkeypatch):
     redis.values["task:min:result:min-sales-001"] = json.dumps(
         make_minutes_payload(), ensure_ascii=False
     )
+    monkeypatch.setattr("backend.services.sales_contact_brief_service.settings.llm_provider", "zai")
+    monkeypatch.setattr(
+        "backend.services.sales_contact_brief_service.settings.openai_base_url",
+        "https://api.z.ai/api/coding/paas/v4",
+    )
+    monkeypatch.setattr("backend.services.sales_contact_brief_service.settings.summary_model", "glm-5.2")
     svc = SalesContactBriefService()
     client = stub_openai_client(make_ai_payload())
     monkeypatch.setattr(svc, "_get_client", lambda: client)
@@ -168,6 +183,47 @@ async def test_generate_sales_contact_brief_from_minutes(monkeypatch):
     assert client.chat.completions.create.call_args.kwargs["response_format"] == {
         "type": "json_object"
     }
+    assert client.chat.completions.create.call_args.kwargs["extra_body"] == {
+        "thinking": {"type": "disabled"},
+        "reasoning_effort": "none",
+    }
+
+
+@pytest.mark.asyncio
+async def test_generate_sales_contact_brief_falls_back_on_invalid_ai_json(monkeypatch):
+    redis = FakeRedis()
+    redis.values["task:min:result:min-sales-001"] = json.dumps(
+        make_minutes_payload(), ensure_ascii=False
+    )
+    svc = SalesContactBriefService()
+    client = stub_openai_client("")
+    monkeypatch.setattr(svc, "_get_client", lambda: client)
+
+    result = await svc.generate("min-sales-001", redis)
+
+    assert result.task_id == "min-sales-001"
+    assert result.customer_needs
+    assert result.next_steps
+    assert result.follow_up_message
+    assert result.source_refs[0].segment_index == 0
+    assert redis.set_calls[0][0] == "sales_contact_brief:min-sales-001"
+
+
+@pytest.mark.asyncio
+async def test_generate_accepts_empty_customer_needs_for_non_sales_minutes(monkeypatch):
+    redis = FakeRedis()
+    redis.values["task:min:result:min-sales-001"] = json.dumps(
+        make_minutes_payload(), ensure_ascii=False
+    )
+    payload = {**make_ai_payload(), "customer_needs": []}
+    svc = SalesContactBriefService()
+    monkeypatch.setattr(svc, "_get_client", lambda: stub_openai_client(payload))
+
+    result = await svc.generate("min-sales-001", redis, force_refresh=True)
+
+    assert result.customer_needs == []
+    assert result.next_steps
+    assert result.follow_up_message
 
 
 @pytest.mark.asyncio
@@ -462,7 +518,7 @@ async def test_generate_rejects_missing_minutes():
 
 
 @pytest.mark.asyncio
-async def test_generate_rejects_malformed_ai_response(monkeypatch):
+async def test_generate_falls_back_on_malformed_ai_response(monkeypatch):
     redis = FakeRedis()
     redis.values["task:min:result:min-sales-001"] = json.dumps(
         make_minutes_payload(), ensure_ascii=False
@@ -470,8 +526,13 @@ async def test_generate_rejects_malformed_ai_response(monkeypatch):
     svc = SalesContactBriefService()
     monkeypatch.setattr(svc, "_get_client", lambda: stub_openai_client("{bad json"))
 
-    with pytest.raises(SalesContactBriefValidationError):
-        await svc.generate("min-sales-001", redis)
+    result = await svc.generate("min-sales-001", redis)
+
+    assert result.task_id == "min-sales-001"
+    assert result.customer_needs
+    assert result.next_steps
+    assert result.follow_up_message
+    assert redis.set_calls[0][0] == "sales_contact_brief:min-sales-001"
 
 
 @pytest.mark.asyncio
@@ -537,13 +598,12 @@ def test_parse_response_rejects_non_object_json():
 @pytest.mark.parametrize(
     ("payload", "message"),
     [
-        ({**make_ai_payload(), "customer_needs": []}, "customer_needs"),
         ({**make_ai_payload(), "next_steps": []}, "next_steps"),
         ({**make_ai_payload(), "follow_up_message": ""}, "follow_up_message"),
     ],
 )
 @pytest.mark.asyncio
-async def test_generate_rejects_incomplete_ai_payload(monkeypatch, payload, message):
+async def test_generate_falls_back_on_incomplete_ai_payload(monkeypatch, payload, message):
     redis = FakeRedis()
     redis.values["task:min:result:min-sales-001"] = json.dumps(
         make_minutes_payload(), ensure_ascii=False
@@ -551,7 +611,10 @@ async def test_generate_rejects_incomplete_ai_payload(monkeypatch, payload, mess
     svc = SalesContactBriefService()
     monkeypatch.setattr(svc, "_get_client", lambda: stub_openai_client(payload))
 
-    with pytest.raises(SalesContactBriefValidationError) as exc_info:
-        await svc.generate("min-sales-001", redis, force_refresh=True)
+    result = await svc.generate("min-sales-001", redis, force_refresh=True)
 
-    assert message in str(exc_info.value)
+    assert result.task_id == "min-sales-001"
+    assert result.customer_needs
+    assert result.next_steps
+    assert result.follow_up_message
+    assert message not in result.follow_up_message

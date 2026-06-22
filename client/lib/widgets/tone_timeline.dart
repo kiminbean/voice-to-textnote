@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:voice_to_textnote/models/tone_model.dart';
 import 'package:voice_to_textnote/providers/result_provider.dart';
+import 'package:voice_to_textnote/services/tone_api.dart';
 import 'package:voice_to_textnote/theme/app_colors.dart';
 import 'package:voice_to_textnote/widgets/empty_state_widget.dart';
 import 'package:voice_to_textnote/widgets/error_retry_widget.dart';
@@ -61,7 +62,8 @@ class ToneTimeline extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.graphic_eq, size: 20, color: theme.colorScheme.primary),
+                Icon(Icons.graphic_eq,
+                    size: 20, color: theme.colorScheme.primary),
                 const SizedBox(width: 8),
                 Text('톤 타임라인', style: theme.textTheme.titleMedium),
               ],
@@ -78,8 +80,7 @@ class ToneTimeline extends StatelessWidget {
                 ),
               )
             else
-              ...response.segments
-                  .map((seg) => _buildSegmentRow(theme, seg)),
+              ...response.segments.map((seg) => _buildSegmentRow(theme, seg)),
           ],
         ),
       ),
@@ -214,11 +215,19 @@ class ToneSection extends ConsumerWidget {
         height: 120,
         child: Center(child: CircularProgressIndicator()),
       ),
-      // REQ-TONE-013: 오류를 숨기지 않고 ErrorRetryWidget으로 표시 (silent failure 금지)
-      error: (error, _) => ErrorRetryWidget(
-        message: '톤 분석을 불러올 수 없습니다',
-        onRetry: () => ref.invalidate(toneProvider(meetingId)),
-      ),
+      error: (error, _) {
+        if (error is ToneDisabledException || error is ToneNotFoundException) {
+          return const EmptyStateWidget(
+            icon: Icons.graphic_eq_outlined,
+            title: '톤 분석 데이터가 없습니다',
+            subtitle: '음성 톤 분석이 완료된 후 확인할 수 있습니다',
+          );
+        }
+        return ErrorRetryWidget(
+          message: '톤 분석을 불러올 수 없습니다',
+          onRetry: () => ref.invalidate(toneProvider(meetingId)),
+        );
+      },
       data: (response) {
         // REQ-TONE-012: 빈 데이터 → EmptyStateWidget
         if (response.segments.isEmpty && response.speakers.isEmpty) {

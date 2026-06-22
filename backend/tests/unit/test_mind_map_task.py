@@ -57,6 +57,8 @@ class TestMindMapTaskHappyPath:
             with patch("backend.workers.tasks.mind_map_task.settings") as mock_settings:
                 mock_settings.summary_result_ttl = 86400
                 mock_settings.openai_api_key = "sk-test-key"
+                mock_settings.llm_api_key = "sk-test-key"
+                mock_settings.llm_base_url = "https://api.openai.com/v1"
                 mock_settings.summary_model = "gpt-4o-mini"
                 with patch(
                     "backend.workers.tasks.mind_map_task.MindMapGenerator",
@@ -119,7 +121,8 @@ class TestMindMapTaskFailures:
             with patch("backend.workers.tasks.mind_map_task.settings") as mock_settings:
                 mock_settings.summary_result_ttl = 86400
                 mock_settings.openai_api_key = ""
+                mock_settings.llm_api_key = ""
                 result = mind_map_task(task_id, summary_task_id)
 
         assert result["status"] == "failed"
-        assert result["error_message"] == "OPENAI_API_KEY is not configured"
+        assert result["error_message"] == "LLM API key is not configured"

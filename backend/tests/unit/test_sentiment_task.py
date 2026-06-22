@@ -92,6 +92,8 @@ def _make_sentiment_result() -> SentimentResult:
 def _configure_settings(mock_settings: MagicMock) -> None:
     mock_settings.summary_result_ttl = 86400
     mock_settings.openai_api_key = "sk-test-key"
+    mock_settings.llm_api_key = "sk-test-key"
+    mock_settings.llm_base_url = "https://api.openai.com/v1"
     mock_settings.summary_model = "gpt-4o-mini"
     # SPEC-SENTIMENT-001: 설정 기반 동시성 제한 (REQ-SEN-004)
     mock_settings.max_concurrent_sentiment = 3
@@ -137,6 +139,7 @@ class TestSentimentTaskHappyPath:
             api_key="sk-test-key",
             model="gpt-4o-mini",
             max_tokens=1024,
+            base_url="https://api.openai.com/v1",
         )
 
     def test_task_caches_completed_result(self):
@@ -183,11 +186,12 @@ class TestSentimentTaskErrors:
         ):
             _configure_settings(mock_settings)
             mock_settings.openai_api_key = ""
+            mock_settings.llm_api_key = ""
 
             result = sentiment_task(task_id="task-id", minutes_task_id="minutes-id")
 
         assert result["status"] == "failed"
-        assert "OPENAI_API_KEY" in result["error"]
+        assert "LLM API key" in result["error"]
 
     def test_max_concurrent_limit_returns_rejected(self):
         from backend.workers.tasks.sentiment_task import sentiment_task

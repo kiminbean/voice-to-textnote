@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:voice_to_textnote/config/app_config.dart';
 import 'package:voice_to_textnote/models/pipeline_state.dart';
 import 'package:voice_to_textnote/services/diarization_api.dart';
+import 'package:voice_to_textnote/services/auth_api.dart';
+import 'package:voice_to_textnote/services/auth_service.dart';
 import 'package:voice_to_textnote/services/minutes_api.dart';
 import 'package:voice_to_textnote/services/sse_service.dart';
 import 'package:voice_to_textnote/services/summary_api.dart';
@@ -52,6 +54,8 @@ class PipelineNotifier extends Notifier<PipelineState> {
     final sumApi = ref.read(summaryApiProvider);
 
     try {
+      await _ensureProtectedApiAuth();
+
       // 1단계: 업로드
       state = state.copyWith(
         currentStep: PipelineStep.uploading,
@@ -190,7 +194,8 @@ class PipelineNotifier extends Notifier<PipelineState> {
             return;
           }
           if (eventStatus == 'failed') {
-            final errMsg = event['error_message'] ?? event['error'] ?? '알 수 없는 오류';
+            final errMsg =
+                event['error_message'] ?? event['error'] ?? '알 수 없는 오류';
             throw Exception('태스크 처리 실패: $errMsg');
           }
 
@@ -232,6 +237,43 @@ class PipelineNotifier extends Notifier<PipelineState> {
     } finally {
       sseService.disconnect();
     }
+  }
+
+  Future<void> _ensureProtectedApiAuth() async {
+    if (AppConfig.apiKey.isNotEmpty) return;
+
+    final authService = ref.read(authServiceProvider);
+    final accessToken = await authService.getAccessToken();
+    if (accessToken != null &&
+        accessToken.isNotEmpty &&
+        !await authService.isAccessTokenExpired()) {
+      return;
+    }
+
+    final refreshToken = await authService.getRefreshToken();
+    if (refreshToken != null && refreshToken.isNotEmpty) {
+      try {
+        final refreshed = await ref.read(authApiProvider).refresh(refreshToken);
+        await authService.saveTokens(
+            refreshed.accessToken, refreshed.refreshToken);
+        return;
+      } catch (_) {
+        await authService.clearTokens();
+      }
+    }
+
+    final authApi = ref.read(authApiProvider);
+    final guestSession = await authApi.createGuestSession();
+    final guestToken = guestSession['guest_token'] as String?;
+    final sessionId = guestSession['guest_session_id'] as String?;
+    if (guestToken == null ||
+        guestToken.isEmpty ||
+        sessionId == null ||
+        sessionId.isEmpty) {
+      throw Exception('게스트 인증 세션을 생성할 수 없습니다');
+    }
+    await authService.clearGuestSession();
+    await authService.saveGuestToken(guestToken, sessionId);
   }
 
   // 태스크가 completed 될 때까지 폴링 (SSE 폴백 경로)
@@ -280,7 +322,8 @@ class PipelineNotifier extends Notifier<PipelineState> {
             final adjustedProgress =
                 currentBase + (serverProgress.toDouble() * stepRange);
             if (adjustedProgress > state.progress) {
-              state = state.copyWith(progress: adjustedProgress.clamp(0.0, 0.99));
+              state =
+                  state.copyWith(progress: adjustedProgress.clamp(0.0, 0.99));
             }
           }
         }

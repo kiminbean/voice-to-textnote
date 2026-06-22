@@ -51,7 +51,7 @@ class AppConfig {
       case Environment.dev:
         return 'http://localhost:8000/api/v1';
       case Environment.staging:
-        return 'http://100.110.255.105:8000/api/v1';
+        return 'http://100.69.69.119:8000/api/v1';
       case Environment.production:
         return 'https://api.voicetextnote.com/api/v1';
     }

@@ -281,6 +281,40 @@ class TestWhisperEngineTranscribe:
                 with pytest.raises(RuntimeError, match="MLX 런타임 오류"):
                     engine.transcribe(test_audio_file)
 
+    def test_transcribe_falls_back_to_faster_whisper_on_mlx_metal_error(
+        self, test_audio_file: Path
+    ):
+        """MLX Metal compiler 장애는 CPU 백엔드로 1회 폴백한다."""
+        from backend.ml.stt_engine import WhisperEngine
+
+        mock_mlx = _make_mock_mlx()
+        mock_mlx.transcribe.side_effect = RuntimeError(
+            "[metal::Device] Unable to load kernel vn_copyint16float32 "
+            "Unable to reach MTLCompilerService. The compiler is no longer active."
+        )
+
+        segments = [_make_fw_segment(0, 0.0, 1.0, "테스트")]
+        mock_fw, mock_fw_model = _make_mock_faster_whisper(segments=segments)
+        mock_torch = MagicMock()
+        mock_torch.cuda.is_available.return_value = False
+
+        with patch.dict(
+            sys.modules,
+            {"mlx_whisper": mock_mlx, "faster_whisper": mock_fw, "torch": mock_torch},
+        ):
+            with (
+                patch("platform.system", return_value="Darwin"),
+                patch.object(WhisperEngine, "_detect_device", return_value="mps"),
+            ):
+                engine = WhisperEngine.get_instance()
+                engine.load()
+
+                result = engine.transcribe(test_audio_file)
+
+        assert result["text"] == "테스트"
+        assert engine.backend == "faster_whisper"
+        assert mock_fw_model.transcribe.called
+
     def test_transcribe_auto_loads_if_not_loaded(self, test_audio_file: Path):
         """미로드 상태에서 transcribe() 호출 시 자동 load() 실행 (REQ-STT-007)"""
         from backend.ml.stt_engine import WhisperEngine

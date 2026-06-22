@@ -7,7 +7,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from backend.ml.openai_client import get_cached_openai_client, get_openai_client
+from backend.ml.openai_client import (
+    get_cached_openai_client,
+    get_openai_client,
+    structured_json_completion_options,
+)
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -135,6 +139,28 @@ class TestGetOpenAIClient:
         call_kwargs = mock_async_openai.call_args[1]
         assert call_kwargs["base_url"] == "https://api.openai.com/v1"
         assert result == mock_client
+
+
+class TestStructuredJsonCompletionOptions:
+    """structured_json_completion_options 함수 테스트"""
+
+    @patch.dict("os.environ", {"LLM_PROVIDER": "zai"}, clear=True)
+    def test_disables_thinking_for_zai_glm_json_mode(self):
+        options = structured_json_completion_options("glm-5.2")
+
+        assert options["response_format"] == {"type": "json_object"}
+        assert options["temperature"] == 0
+        assert options["top_p"] == 0.01
+        assert options["extra_body"] == {
+            "thinking": {"type": "disabled"},
+            "reasoning_effort": "none",
+        }
+
+    @patch.dict("os.environ", {"LLM_PROVIDER": "openai"}, clear=True)
+    def test_keeps_plain_json_mode_for_openai_models(self):
+        options = structured_json_completion_options("gpt-4o-mini")
+
+        assert options == {"response_format": {"type": "json_object"}}
 
 
 # ---------------------------------------------------------------------------

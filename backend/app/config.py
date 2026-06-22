@@ -14,6 +14,8 @@ _DEFAULT_CORS_ORIGINS = [
     "http://localhost:8080",
     "http://localhost:5173",
 ]
+_ZAI_CODING_PLAN_BASE_URL = "https://api.z.ai/api/coding/paas/v4"
+_OPENAI_BASE_URL = "https://api.openai.com/v1"
 
 
 class Settings(BaseSettings):
@@ -75,13 +77,18 @@ class Settings(BaseSettings):
     minutes_result_ttl: int = 604800  # 결과 캐시 TTL: 7일 (초)
 
     # AI 요약 생성 설정 (REQ-SUM-008, REQ-SUM-011, REQ-SUM-014)
+    # Z.AI Coding Plan is OpenAI-compatible; keep OPENAI_* compatibility while
+    # preferring ZAI_API_KEY when LLM_PROVIDER=zai.
+    llm_provider: str = "openai"
     anthropic_api_key: str = ""  # ANTHROPIC_API_KEY 환경 변수 (미사용 - 호환성 유지)
     openai_api_key: str = ""  # OPENAI_API_KEY 환경 변수
+    zai_api_key: str = ""  # ZAI_API_KEY 환경 변수
+    openai_base_url: str = ""  # OPENAI_BASE_URL 환경 변수 (OpenAI-compatible endpoint)
     max_concurrent_summaries: int = 2  # 최대 동시 요약 작업 수
     summary_result_ttl: int = 604800  # 요약 결과 캐시 TTL: 7일 (초)
     # 양식 섹션 포함 시 4000+ 토큰 필요 (9개 섹션 + action_items + key_decisions)
     summary_max_tokens: int = 4096  # OpenAI API 최대 응답 토큰
-    summary_model: str = "gpt-4o-mini"  # OpenAI 모델명
+    summary_model: str = "gpt-4o-mini"  # OpenAI-compatible 모델명
 
     # SPEC-SENTIMENT-001: 감정 분석 동시 실행 제한 (REQ-SEN-004)
     # 기존 MAX_CONCURRENT_SENTIMENT=3 하드코딩에서 설정 이관
@@ -279,8 +286,8 @@ class Settings(BaseSettings):
             raise ValueError(
                 "production 환경에서는 FIREBASE_CREDENTIALS_PATH를 반드시 설정해야 합니다"
             )
-        if self.environment == "production" and not self.openai_api_key.strip():
-            raise ValueError("production 환경에서는 OPENAI_API_KEY를 반드시 설정해야 합니다")
+        if self.environment == "production" and not self.llm_api_key:
+            raise ValueError("production 환경에서는 LLM API key를 반드시 설정해야 합니다")
         if self.environment == "production":
             for origin in self.cors_allow_origins:
                 parsed = urlparse(origin)
@@ -310,6 +317,22 @@ class Settings(BaseSettings):
     @property
     def chunk_overlap_ms(self) -> int:
         return self.chunk_overlap_seconds * 1000
+
+    @property
+    def llm_api_key(self) -> str:
+        provider = self.llm_provider.strip().lower()
+        if provider == "zai":
+            return self.zai_api_key.strip() or self.openai_api_key.strip()
+        return self.openai_api_key.strip() or self.zai_api_key.strip()
+
+    @property
+    def llm_base_url(self) -> str:
+        configured = self.openai_base_url.strip()
+        if configured:
+            return configured.rstrip("/")
+        if self.llm_provider.strip().lower() == "zai":
+            return _ZAI_CODING_PLAN_BASE_URL
+        return _OPENAI_BASE_URL
 
 
 settings = Settings()

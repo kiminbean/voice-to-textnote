@@ -16,6 +16,49 @@ class AudioEnhancementPanel extends ConsumerStatefulWidget {
       _AudioEnhancementPanelState();
 }
 
+class AudioEnhancementLauncher extends StatelessWidget {
+  final String audioFilePath;
+
+  const AudioEnhancementLauncher({
+    super.key,
+    required this.audioFilePath,
+  });
+
+  Future<void> _showPanel(BuildContext context) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (sheetContext) {
+        return Padding(
+          padding: EdgeInsets.only(
+            left: AppSpacing.md,
+            right: AppSpacing.md,
+            top: AppSpacing.sm,
+            bottom:
+                MediaQuery.of(sheetContext).viewInsets.bottom + AppSpacing.md,
+          ),
+          child: SingleChildScrollView(
+            child: AudioEnhancementPanel(audioFilePath: audioFilePath),
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: () => _showPanel(context),
+        icon: const Icon(Icons.auto_fix_high_rounded),
+        label: const Text('오디오 향상'),
+      ),
+    );
+  }
+}
+
 class _AudioEnhancementPanelState extends ConsumerState<AudioEnhancementPanel> {
   EnhancementMode _mode = EnhancementMode.enhanced;
   NoiseReductionLevel _noiseLevel = NoiseReductionLevel.moderate;

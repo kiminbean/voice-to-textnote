@@ -411,7 +411,7 @@ class TestValidateProductionSecurity:
                 os.environ.pop("OPENAI_API_KEY", None)
 
     def test_production_without_openai_api_key_raises_error(self):
-        """production 환경에서 OPENAI_API_KEY 없으면 에러"""
+        """production 환경에서 LLM API key 없으면 에러"""
         import os
 
         old_api = os.environ.get("API_KEYS")
@@ -419,11 +419,14 @@ class TestValidateProductionSecurity:
         old_jwt = os.environ.get("JWT_SECRET")
         old_firebase = os.environ.get("FIREBASE_CREDENTIALS_PATH")
         old_openai = os.environ.get("OPENAI_API_KEY")
+        old_zai = os.environ.get("ZAI_API_KEY")
         try:
             os.environ["API_KEYS"] = "test-key"
             os.environ["ENVIRONMENT"] = "production"
             os.environ["JWT_SECRET"] = "x" * 48
             os.environ["FIREBASE_CREDENTIALS_PATH"] = "/tmp/firebase.json"
+            os.environ.pop("OPENAI_API_KEY", None)
+            os.environ.pop("ZAI_API_KEY", None)
             with pytest.raises(ValidationError) as exc_info:
                 Settings(
                     environment="production",
@@ -431,8 +434,10 @@ class TestValidateProductionSecurity:
                     jwt_secret="x" * 48,
                     firebase_credentials_path="/tmp/firebase.json",
                     openai_api_key="",
+                    zai_api_key="",
+                    cors_allow_origins=["https://example.com"],
                 )
-            assert "OPENAI_API_KEY" in str(exc_info.value)
+            assert "LLM API key" in str(exc_info.value)
         finally:
             if old_api:
                 os.environ["API_KEYS"] = old_api
@@ -454,6 +459,10 @@ class TestValidateProductionSecurity:
                 os.environ["OPENAI_API_KEY"] = old_openai
             else:
                 os.environ.pop("OPENAI_API_KEY", None)
+            if old_zai:
+                os.environ["ZAI_API_KEY"] = old_zai
+            else:
+                os.environ.pop("ZAI_API_KEY", None)
 
     def test_production_rejects_localhost_cors_origin(self):
         """production 환경에서는 localhost CORS origin을 허용하지 않는다"""

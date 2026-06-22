@@ -8,12 +8,15 @@ self-hosted runner before triggering the strict release workflow.
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import platform
 import re
 import shutil
 import subprocess
 import sys
+import tempfile
+from pathlib import Path
 
 
 class Reporter:
@@ -103,14 +106,63 @@ def check_android_device(serial: str, adb_output: str, reporter: Reporter) -> No
         reporter.fail(f"Android device {serial} is not visible to adb")
 
 
+def _devicectl_json_devices(devicectl_output: str) -> list[dict[str, object]]:
+    start = devicectl_output.find('{"result"')
+    if start == -1:
+        start = devicectl_output.find("{")
+    if start == -1:
+        return []
+    try:
+        payload = json.loads(devicectl_output[start:])
+    except json.JSONDecodeError:
+        return []
+    result = payload.get("result")
+    if not isinstance(result, dict):
+        return []
+    devices = result.get("devices")
+    return devices if isinstance(devices, list) else []
+
+
+def _ios_device_matching_identifiers(
+    udid: str, devicectl_output: str
+) -> tuple[bool, set[str]]:
+    identifiers = {udid}
+    found = False
+    for device in _devicectl_json_devices(devicectl_output):
+        if not isinstance(device, dict):
+            continue
+        device_id = device.get("identifier")
+        hardware = device.get("hardwareProperties")
+        connection = device.get("connectionProperties")
+        hardware_udid = hardware.get("udid") if isinstance(hardware, dict) else None
+        hostnames = connection.get("potentialHostnames") if isinstance(connection, dict) else None
+        candidate_values = {value for value in (device_id, hardware_udid) if isinstance(value, str)}
+        if isinstance(hostnames, list):
+            candidate_values.update(value for value in hostnames if isinstance(value, str))
+        if any(udid in value for value in candidate_values):
+            found = True
+            identifiers.update(candidate_values)
+    return found, identifiers
+
+
+def _devicectl_line_available(devicectl_output: str, identifiers: set[str]) -> bool:
+    matching_lines = [
+        line
+        for line in devicectl_output.splitlines()
+        if any(identifier and identifier in line for identifier in identifiers)
+    ]
+    return any(re.search(r"\savailable\s", line) for line in matching_lines)
+
+
 def check_ios_device(udid: str, devicectl_output: str, reporter: Reporter) -> None:
     if not udid:
         reporter.fail("IOS_DEVICE_UDID is not set")
         return
+    json_found, identifiers = _ios_device_matching_identifiers(udid, devicectl_output)
     matching_lines = [line for line in devicectl_output.splitlines() if udid in line]
-    if any(re.search(r"\bavailable\b", line) for line in matching_lines):
+    if _devicectl_line_available(devicectl_output, identifiers):
         reporter.ok(f"iOS device is available to devicectl: {udid}")
-    elif matching_lines:
+    elif matching_lines or json_found:
         reporter.fail(f"iOS device {udid} is visible but not available")
     else:
         reporter.fail(f"iOS device {udid} is not visible to devicectl")
@@ -157,7 +209,21 @@ def fetch_and_check(reporter: Reporter) -> None:
     _, adb_output = command_output(["adb", "devices", "-l"])
     check_android_device(os.environ.get("ANDROID_DEVICE_SERIAL", ""), adb_output, reporter)
 
-    _, devicectl_output = command_output(["xcrun", "devicectl", "list", "devices"])
+    with tempfile.NamedTemporaryFile(suffix=".json") as devicectl_json:
+        _, devicectl_output = command_output(
+            [
+                "xcrun",
+                "devicectl",
+                "list",
+                "devices",
+                "--json-output",
+                devicectl_json.name,
+            ]
+        )
+        try:
+            devicectl_output = devicectl_output + "\n" + Path(devicectl_json.name).read_text()
+        except OSError:
+            pass
     check_ios_device(os.environ.get("IOS_DEVICE_UDID", ""), devicectl_output, reporter)
 
 

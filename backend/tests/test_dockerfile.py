@@ -48,7 +48,10 @@ def test_production_compose_forces_backend_production_environment():
     assert "--requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD is required}" in compose
     assert "- API_KEYS=${API_KEYS:?API_KEYS is required}" in compose
     assert "- JWT_SECRET=${JWT_SECRET:?JWT_SECRET is required}" in compose
-    assert "- OPENAI_API_KEY=${OPENAI_API_KEY:?OPENAI_API_KEY is required}" in compose
+    assert "- LLM_PROVIDER=${LLM_PROVIDER:-zai}" in compose
+    assert "- OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.z.ai/api/coding/paas/v4}" in compose
+    assert "- ZAI_API_KEY=${ZAI_API_KEY:?ZAI_API_KEY is required}" in compose
+    assert "- SUMMARY_MODEL=${SUMMARY_MODEL:-glm-5.2}" in compose
     assert "${FIREBASE_CREDENTIALS_PATH:?FIREBASE_CREDENTIALS_PATH is required}" in compose
     assert "FIREBASE_CREDENTIALS_PATH=/run/secrets/firebase-service-account.json" in compose
     assert "/run/secrets/firebase-service-account.json:ro" in compose

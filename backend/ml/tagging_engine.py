@@ -77,9 +77,9 @@ async def generate_auto_tags(content: str, max_tags: int = 10) -> list[dict]:
     Returns:
         list of dicts with keys: tag_type, tag_value, confidence
     """
-    # OpenAI API 키가 없으면 규칙 기반 폴백
-    if not settings.openai_api_key:
-        logger.info("OpenAI API 키 없음 - 규칙 기반 태깅 사용")
+    # LLM API 키가 없으면 규칙 기반 폴백
+    if not settings.llm_api_key:
+        logger.info("LLM API 키 없음 - 규칙 기반 태깅 사용")
         return _rule_based_tags(content, max_tags)
 
     try:
@@ -88,9 +88,9 @@ async def generate_auto_tags(content: str, max_tags: int = 10) -> list[dict]:
 
         client = _get_http_client()
         response = await client.post(
-            "https://api.openai.com/v1/chat/completions",
+            f"{settings.llm_base_url}/chat/completions",
             headers={
-                "Authorization": f"Bearer {settings.openai_api_key}",
+                "Authorization": f"Bearer {settings.llm_api_key}",
                 "Content-Type": "application/json",
             },
             json={

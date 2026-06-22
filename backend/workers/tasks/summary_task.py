@@ -5,7 +5,7 @@ REQ-SUM-007: Redis에서 회의록 결과 조회 (task:min:result:{minutes_task_
 REQ-SUM-008: 최대 2개 동시 작업 제한
 REQ-SUM-009: 최대 2회 재시도, default_retry_delay=30s
 REQ-SUM-010: 회의록 결과 없음 → 즉시 실패 (재시도 없음)
-REQ-SUM-011: OPENAI_API_KEY 빈 값 → 즉시 실패 (재시도 없음)
+REQ-SUM-011: LLM API key 빈 값 → 즉시 실패 (재시도 없음)
 REQ-SUM-014: Redis 결과 캐싱 24h TTL (task:sum:result:{task_id})
 """
 
@@ -132,8 +132,8 @@ def summary_task(
     logger.info("요약 생성 작업 시작", task_id=task_id, minutes_task_id=minutes_task_id)
 
     # --- API 키 확인 (REQ-SUM-011: 빈 값이면 즉시 실패, 재시도 없음) ---
-    if not settings.openai_api_key:
-        error_msg = "OPENAI_API_KEY is not configured"
+    if not settings.llm_api_key:
+        error_msg = "LLM API key is not configured"
         logger.error("API 키 미설정으로 요약 작업 실패", task_id=task_id)
         _update_task_status(task_id, TaskStatus.failed, 0.0, error_message=error_msg)
         failed_result = {
@@ -234,9 +234,10 @@ def summary_task(
         summary_result = generator.generate_summary(
             segments=segments,
             speaker_stats=speaker_stats,
-            api_key=settings.openai_api_key,
+            api_key=settings.llm_api_key,
             model=settings.summary_model,
             max_tokens=max_tokens,
+            base_url=settings.llm_base_url,
             template_structure=template_structure,
         )
 

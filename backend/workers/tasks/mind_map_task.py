@@ -85,8 +85,8 @@ def mind_map_task(task_id: str, summary_task_id: str, max_tokens: int = 2048) ->
     processing_start = datetime.now(UTC)
     logger.info("마인드맵 생성 작업 시작", task_id=task_id, summary_task_id=summary_task_id)
 
-    if not settings.openai_api_key:
-        error_msg = "OPENAI_API_KEY is not configured"
+    if not settings.llm_api_key:
+        error_msg = "LLM API key is not configured"
         _update_mind_map_status(
             task_id,
             summary_task_id,
@@ -135,9 +135,10 @@ def mind_map_task(task_id: str, summary_task_id: str, max_tokens: int = 2048) ->
         generator = MindMapGenerator()
         root, edges = generator.generate_mind_map(
             summary_data=summary_data,
-            api_key=settings.openai_api_key,
+            api_key=settings.llm_api_key,
             model=settings.summary_model,
             max_tokens=max_tokens,
+            base_url=settings.llm_base_url,
         )
 
         processing_end = datetime.now(UTC)

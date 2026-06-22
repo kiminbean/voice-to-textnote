@@ -54,6 +54,13 @@ _MLX_TO_FASTER_MODEL_MAP = {
     "mlx-community/whisper-large-v3-mlx": "large-v3",
 }
 
+_MLX_METAL_COMPILER_ERROR_MARKERS = (
+    "mtlcompilerservice",
+    "unable to load kernel",
+    "compiler is no longer active",
+    "connection init failed",
+)
+
 
 def _resolve_whisper_model(model_name: str) -> str:
     """mlx-community 모델명을 openai-whisper 모델명으로 변환"""
@@ -314,8 +321,55 @@ class WhisperEngine:
             return result
 
         except Exception as e:
+            if self._is_mlx_metal_compiler_error(e) and self._switch_mlx_to_cpu_backend():
+                logger.warning(
+                    "MLX Metal 컴파일러 장애 감지, CPU STT 백엔드로 재시도",
+                    error=str(e),
+                    fallback_backend=self._backend,
+                )
+                return self.transcribe(audio_path, language, initial_prompt)
+
             logger.error("STT 추론 실패", error=str(e), path=str(audio_path))
             raise
+
+    def _is_mlx_metal_compiler_error(self, error: Exception) -> bool:
+        """macOS MLX Metal compiler service 장애인지 판별한다."""
+        if self._backend != "mlx":
+            return False
+        message = str(error).lower()
+        return any(marker in message for marker in _MLX_METAL_COMPILER_ERROR_MARKERS)
+
+    def _switch_mlx_to_cpu_backend(self) -> bool:
+        """MLX 런타임 장애 시 faster-whisper/openai-whisper CPU 백엔드로 전환한다."""
+        forced_backend = os.environ.get("STT_BACKEND", "").strip().lower()
+        if forced_backend == "mlx":
+            logger.error("STT_BACKEND=mlx 강제 설정으로 MLX 장애 폴백을 건너뜀")
+            return False
+
+        previous_backend = self._backend
+        self._backend = "unknown"
+        self._device = "cpu"
+        self._model_loaded = False
+        self._faster_whisper_model = None
+        self._whisper_model = None
+
+        start_time = time.time()
+        if self._try_load_faster_whisper() or self._try_load_whisper():
+            self._model_loaded = True
+            self._load_time_seconds = time.time() - start_time
+            logger.info(
+                "STT 백엔드 폴백 완료",
+                previous_backend=previous_backend,
+                backend=self._backend,
+                device=self._device,
+                load_time_seconds=round(self._load_time_seconds, 2),
+            )
+            return True
+
+        self._backend = previous_backend
+        self._model_loaded = True
+        logger.error("MLX 장애 후 사용 가능한 CPU STT 백엔드를 찾지 못함")
+        return False
 
     def _transcribe_mlx(
         self,

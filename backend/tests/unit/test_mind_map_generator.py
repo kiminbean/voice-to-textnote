@@ -131,3 +131,29 @@ class TestGenerateMindMap:
         mock_client.chat.completions.create.assert_called_once()
         assert root.id == "root"
         assert edges[0].target == "launch_plan"
+
+    def test_generate_mind_map_falls_back_when_ai_json_is_empty(self):
+        from backend.pipeline.mind_map_generator import MindMapGenerator
+
+        with patch("backend.pipeline.mind_map_generator.OpenAI") as mock_cls:
+            mock_client = MagicMock()
+            mock_client.chat.completions.create.return_value = _make_mock_response("")
+            mock_cls.return_value = mock_client
+
+            root, edges = MindMapGenerator().generate_mind_map(
+                summary_data=MOCK_SUMMARY_RESULT,
+                api_key="sk-test-key",
+                model="glm-5.2",
+                max_tokens=2048,
+                base_url="https://api.z.ai/api/coding/paas/v4",
+            )
+
+        call_kwargs = mock_client.chat.completions.create.call_args.kwargs
+        assert call_kwargs["extra_body"] == {
+            "thinking": {"type": "disabled"},
+            "reasoning_effort": "none",
+        }
+        assert root.id == "root"
+        assert root.children
+        assert edges
+        assert any(child.title == "출시 일정" for child in root.children)

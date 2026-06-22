@@ -42,7 +42,7 @@ void main() {
 
       expect(cleartextBlock, isNotNull);
       expect(cleartextBlock, contains('<domain includeSubdomains="false">localhost</domain>'));
-      expect(cleartextBlock, contains('<domain includeSubdomains="false">100.110.255.105</domain>'));
+      expect(cleartextBlock, contains('<domain includeSubdomains="false">100.69.69.119</domain>'));
       expect(cleartextBlock, isNot(contains('api.voicetextnote.com')));
     });
   });

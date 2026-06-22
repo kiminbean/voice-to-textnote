@@ -35,7 +35,7 @@ class QAService:
     """회의 Q&A 서비스"""
 
     def _get_client(self) -> OpenAI:
-        return OpenAI(api_key=settings.openai_api_key)
+        return OpenAI(api_key=settings.llm_api_key, base_url=settings.llm_base_url)
 
     def _build_prompt(self, question: str, transcript: str) -> str:
         return f"""다음은 회의 녹취록입니다. 이 회의 내용을 바탕으로 질문에 답변해 주세요.

@@ -29,7 +29,7 @@ class TranslationService:
     """Translate persisted minutes or summary content."""
 
     def _get_client(self) -> OpenAI:
-        return OpenAI(api_key=settings.openai_api_key)
+        return OpenAI(api_key=settings.llm_api_key, base_url=settings.llm_base_url)
 
     async def get(
         self,

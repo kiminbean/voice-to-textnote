@@ -102,8 +102,8 @@ def sentiment_task(
     logger.info("감정 분석 작업 시작", task_id=task_id, minutes_task_id=minutes_task_id)
 
     # API 키 확인
-    if not settings.openai_api_key:
-        error_msg = "OPENAI_API_KEY is not configured"
+    if not settings.llm_api_key:
+        error_msg = "LLM API key is not configured"
         _update_task_status(task_id, TaskStatus.failed, 0.0, error_message=error_msg)
         failed_result = {
             "task_id": task_id,
@@ -169,9 +169,10 @@ def sentiment_task(
         result = analyzer.analyze(
             segments=segments,
             speaker_stats=speaker_stats,
-            api_key=settings.openai_api_key,
+            api_key=settings.llm_api_key,
             model=settings.summary_model,
             max_tokens=max_tokens,
+            base_url=settings.llm_base_url,
         )
 
         _update_task_status(task_id, TaskStatus.processing, 0.9, "결과 저장 중...")

@@ -9,7 +9,7 @@ void main() {
       // --dart-define 없이 실행하면 staging 기본값 사용
       expect(
         AppConfig.apiBaseUrl,
-        equals('http://100.110.255.105:8000/api/v1'),
+        equals('http://100.69.69.119:8000/api/v1'),
       );
     });
 

@@ -14,8 +14,9 @@ MoAI is the Strategic Orchestrator for Claude Code. All tasks must be delegated 
 - [HARD] Multi-File Decomposition: Split work when modifying 3+ files (See Section 7)
 - [HARD] Post-Implementation Review: List potential issues and suggest tests after coding (See Section 7)
 - [HARD] Reproduction-First Bug Fix: Write reproduction test before fixing bugs (See Section 7)
+- [HARD] Termination-First Autonomy: Define completion/blocker/non-goal boundaries for broad loops, and stop instead of creating adjacent make-work when external blockers remain (See Section 7)
 
-Core principles (1-4) are defined in .claude/rules/moai/core/moai-constitution.md. Development safeguards (5-8) are detailed in Section 7.
+Core principles (1-4) are defined in .claude/rules/moai/core/moai-constitution.md. Development safeguards (5-9) are detailed in Section 7.
 
 ### Recommendations
 
@@ -173,7 +174,7 @@ MoAI-ADK implements LSP-based quality gates:
 
 ## 7. Safe Development Protocol
 
-### Development Safeguards (4 HARD Rules)
+### Development Safeguards (5 HARD Rules)
 
 These rules ensure code quality and prevent regressions in the project codebase.
 
@@ -208,6 +209,16 @@ When fixing bugs:
 - Confirm the test fails before making changes
 - Fix the bug with minimal code changes
 - Verify the reproduction test passes after the fix
+
+**Rule 5: Termination-First Autonomy**
+
+For broad, release-readiness, production-hardening, or persistent autonomous work:
+- Define a finite completion unit, in-scope requirements, non-goals, blocker conditions, and maximum iteration/check budget before entering a loop.
+- If remaining failures require signing keys, credentials, physical devices, app-store portals, third-party accounts, production authority, or evidence outside the repo, stop and report blocked.
+- Do not repeatedly "find one more risk" after the verified in-scope branch is complete or externally blocked.
+- Do not push speculative production policy changes without an explicit requirement, operator decision, or staging evidence.
+- Bound CI/status watching. Prefer one status check or one bounded watch; do not spend repeated cycles polling CI without new evidence or a pending decision.
+- Prefer generated or dynamically read evidence counts over manually synchronized hardcoded counters.
 
 ### Go-Specific Guidelines
 

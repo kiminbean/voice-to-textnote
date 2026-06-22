@@ -11,6 +11,9 @@ REQ-LIFE-005: 종료 완료 로그 출력
 
 from datetime import UTC, datetime
 
+from sqlalchemy import inspect, text
+from sqlalchemy.engine import Connection
+
 from backend.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -23,6 +26,28 @@ _app_started_at: datetime | None = None
 def get_app_started_at() -> datetime | None:
     """앱 시작 시각 반환. validate_startup 호출 전에는 None."""
     return _app_started_at
+
+
+def _repair_sqlite_auth_schema(conn: Connection) -> None:
+    """
+    개발 SQLite DB는 create_all()만으로 기존 테이블에 새 컬럼을 추가하지 못한다.
+    OAuth 컬럼 도입 전 생성된 로컬 DB를 보존하면서 인증 API가 500으로 죽지 않게 보정한다.
+    """
+    if conn.dialect.name != "sqlite":
+        return
+    inspector = inspect(conn)
+    if "users" not in inspector.get_table_names():
+        return
+
+    columns = {column["name"] for column in inspector.get_columns("users")}
+    repairs = {
+        "provider": "ALTER TABLE users ADD COLUMN provider VARCHAR(20) NOT NULL DEFAULT 'email'",
+        "provider_id": "ALTER TABLE users ADD COLUMN provider_id VARCHAR(255)",
+        "avatar_url": "ALTER TABLE users ADD COLUMN avatar_url VARCHAR(500)",
+    }
+    for column, statement in repairs.items():
+        if column not in columns:
+            conn.execute(text(statement))
 
 
 async def validate_startup() -> dict:
@@ -83,6 +108,7 @@ async def validate_startup() -> dict:
 
         async with _db_engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
+            await conn.run_sync(_repair_sqlite_auth_schema)
 
         status["database"] = "ok"
     except Exception as e:
