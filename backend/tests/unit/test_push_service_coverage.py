@@ -67,6 +67,10 @@ def _rows_result(rows):
     return result
 
 
+def _logged_text(logger):
+    return "\n".join(str(call.args[0]) for call in logger.info.call_args_list if call.args)
+
+
 def test_firebase_exception_import_falls_back_when_sdk_missing():
     real_import = builtins.__import__
 
@@ -159,6 +163,22 @@ async def test_send_push_mock_mode_logs_data_and_succeeds():
 
 
 @pytest.mark.asyncio
+async def test_send_push_mock_mode_does_not_log_fcm_token():
+    service = PushService()
+    service._firebase_initialized = True
+    service._is_mock_mode = True
+    token = "sensitive-fcm-token-1234567890"
+
+    with patch("backend.services.push_service.logger") as logger:
+        result = await service.send_push(token, "title", "body")
+
+    assert result is True
+    logged = _logged_text(logger)
+    assert token not in logged
+    assert token[:20] not in logged
+
+
+@pytest.mark.asyncio
 async def test_send_multicast_uses_firebase_response_counts(monkeypatch):
     _, _, messaging = _install_fake_firebase(monkeypatch)
     service = PushService()
@@ -219,6 +239,35 @@ async def test_register_device_rotates_to_existing_token_record():
     assert token_device.device_id == "phone-1"
     assert token_device.is_active is True
     db.add.assert_not_called()
+    db.commit.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_register_device_update_log_does_not_include_fcm_token():
+    token_device = SimpleNamespace(
+        id="existing",
+        user_id="other",
+        platform="ios",
+        device_id="other-device",
+        fcm_token="sensitive-fcm-token-1234567890",
+        is_active=False,
+    )
+    db = AsyncMock()
+    db.execute = AsyncMock(return_value=_scalar_result(token_device))
+    token = "sensitive-fcm-token-1234567890"
+
+    with patch("backend.services.push_service.logger") as logger:
+        await PushService().register_device(
+            device_id="phone-1",
+            fcm_token=token,
+            db=db,
+            user_id="user-1",
+            platform="android",
+        )
+
+    logged = _logged_text(logger)
+    assert token not in logged
+    assert token[:20] not in logged
     db.commit.assert_awaited_once()
 
 
@@ -309,6 +358,27 @@ async def test_unregister_device_by_fcm_token_commits_when_found():
     await PushService().unregister_device(db=db, fcm_token="token-1234567890")
 
     assert device.is_active is False
+    db.commit.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_unregister_device_log_does_not_include_fcm_token():
+    token = "sensitive-fcm-token-1234567890"
+    device = SimpleNamespace(
+        user_id="user-1",
+        device_id="phone-1",
+        fcm_token=token,
+        is_active=True,
+    )
+    db = AsyncMock()
+    db.execute = AsyncMock(return_value=_scalar_result(device))
+
+    with patch("backend.services.push_service.logger") as logger:
+        await PushService().unregister_device(db=db, fcm_token=token)
+
+    logged = _logged_text(logger)
+    assert token not in logged
+    assert token[:20] not in logged
     db.commit.assert_awaited_once()
 
 

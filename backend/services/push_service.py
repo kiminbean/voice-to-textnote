@@ -29,6 +29,11 @@ from backend.utils.logger import get_logger
 logger = get_logger(__name__)
 
 
+def _fcm_token_log_label(token: str | None) -> str:
+    """FCM 토큰 원문이나 접두사를 로그에 남기지 않는 진단용 라벨."""
+    return f"fcm_token_present={token is not None}, fcm_token_length={len(token or '')}"
+
+
 class PushService:
     """
     Firebase Cloud Messaging Push Service
@@ -110,7 +115,9 @@ class PushService:
 
         try:
             if self._is_mock_mode:
-                logger.info(f"[MOCK] FCM 전송: title={title}, body={body}, token={token[:20]}...")
+                logger.info(
+                    f"[MOCK] FCM 전송: title={title}, body={body}, {_fcm_token_log_label(token)}"
+                )
                 if data:
                     logger.info(f"[MOCK] FCM 데이터: {data}")
             else:
@@ -246,7 +253,7 @@ class PushService:
                 existing.is_active = True
                 logger.info(
                     f"디바이스 토큰 업데이트: user_id={user_id}, "
-                    f"device_id={device_id}, fcm_token={fcm_token[:20]}..."
+                    f"device_id={device_id}, {_fcm_token_log_label(fcm_token)}"
                 )
             else:
                 # 신규 생성
@@ -320,7 +327,7 @@ class PushService:
                 await db.commit()
                 logger.info(
                     f"디바이스 비활성화: user_id={device.user_id}, "
-                    f"device_id={device.device_id}, fcm_token={device.fcm_token[:20]}..."
+                    f"device_id={device.device_id}, {_fcm_token_log_label(device.fcm_token)}"
                 )
             # 존재하지 않아도 멱등성으로 성공 (예외 없음)
             return None
