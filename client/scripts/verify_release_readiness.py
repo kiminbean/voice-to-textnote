@@ -1145,9 +1145,12 @@ def check_tracked_release_e2e_scaffold(root: Path, reporter: Reporter) -> None:
     release_gate = data.get("release_gate") if isinstance(data, dict) else None
     if not isinstance(release_gate, dict):
         reporter.fail("Tracked release E2E evidence scaffold missing release gate metadata")
-    elif release_gate == {"android_release_signing": True}:
+    elif release_gate == {
+        "android_release_signing": True,
+        "ios_production_entitlements": True,
+    }:
         reporter.ok(
-            "Tracked release E2E evidence scaffold records signed Android release gate"
+            "Tracked release E2E evidence scaffold records signed mobile release gates"
         )
     else:
         reporter.fail(
@@ -1614,7 +1617,10 @@ def check_release_e2e_evidence(path: Path, reporter: Reporter, root: Path | None
         reporter, data, "release_gate", "release gate metadata"
     )
     if release_gate:
-        expected_release_gate_keys = {"android_release_signing"}
+        expected_release_gate_keys = {
+            "android_release_signing",
+            "ios_production_entitlements",
+        }
         for key in sorted(set(release_gate) - expected_release_gate_keys):
             reporter.fail(f"Release E2E evidence includes unknown release gate: {key}")
         if release_gate.get("android_release_signing") is True:
@@ -1622,6 +1628,12 @@ def check_release_e2e_evidence(path: Path, reporter: Reporter, root: Path | None
         else:
             reporter.fail(
                 "Release E2E evidence must record signed Android release gate"
+            )
+        if release_gate.get("ios_production_entitlements") is True:
+            reporter.ok("Release E2E evidence records production iOS entitlement gate")
+        else:
+            reporter.fail(
+                "Release E2E evidence must record production iOS entitlement gate"
             )
 
     devices = require_non_empty_mapping(reporter, data, "devices", "device metadata")

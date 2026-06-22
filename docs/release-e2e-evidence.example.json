@@ -4,7 +4,8 @@
   "backend_version": "git:c9a6013",
   "client_version": "git:c9a6013",
   "release_gate": {
-    "android_release_signing": true
+    "android_release_signing": true,
+    "ios_production_entitlements": true
   },
   "devices": {
     "android": {

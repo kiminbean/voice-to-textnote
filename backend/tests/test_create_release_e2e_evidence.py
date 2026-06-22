@@ -55,6 +55,7 @@ def test_release_e2e_scaffold_contains_every_required_scenario(monkeypatch, tmp_
     monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
     monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")
     monkeypatch.setenv("REQUIRE_ANDROID_RELEASE_SIGNING", "true")
+    monkeypatch.setenv("IOS_RELEASE_ENTITLEMENTS_PATH", "docs/ios-release-entitlements.plist")
 
     evidence = create.build_evidence(
         tmp_path,
@@ -64,7 +65,10 @@ def test_release_e2e_scaffold_contains_every_required_scenario(monkeypatch, tmp_
 
     assert evidence["devices"]["android"]["serial"] == "android-serial"
     assert evidence["devices"]["ios"]["udid"] == "ios-udid"
-    assert evidence["release_gate"] == {"android_release_signing": True}
+    assert evidence["release_gate"] == {
+        "android_release_signing": True,
+        "ios_production_entitlements": True,
+    }
     assert set(evidence["scenarios"]) == set(readiness.REQUIRED_E2E_SCENARIOS)
     assert all(scenario["pass"] is False for scenario in evidence["scenarios"].values())
     assert {
@@ -74,9 +78,11 @@ def test_release_e2e_scaffold_contains_every_required_scenario(monkeypatch, tmp_
     assert set(evidence["artifact_sha256"]) == {"android_apk", "ios_runner_app"}
 
 
-def test_release_e2e_scaffold_records_unsigned_android_gate_when_env_missing(tmp_path):
+def test_release_e2e_scaffold_records_release_gate_state_from_env(tmp_path, monkeypatch):
     create = load_create_evidence_module()
     android_apk, ios_runner_app = write_release_artifacts(tmp_path)
+    monkeypatch.delenv("REQUIRE_ANDROID_RELEASE_SIGNING", raising=False)
+    monkeypatch.delenv("IOS_RELEASE_ENTITLEMENTS_PATH", raising=False)
 
     evidence = create.build_evidence(
         tmp_path,
@@ -84,7 +90,10 @@ def test_release_e2e_scaffold_records_unsigned_android_gate_when_env_missing(tmp
         ios_runner_app=ios_runner_app.name,
     )
 
-    assert evidence["release_gate"] == {"android_release_signing": False}
+    assert evidence["release_gate"] == {
+        "android_release_signing": False,
+        "ios_production_entitlements": False,
+    }
 
 
 def test_release_e2e_scaffold_round_trips_json(tmp_path):
@@ -284,6 +293,7 @@ def test_release_e2e_evidence_artifacts_are_resolved_from_repo_root(
                 "client_version": "git:abcdef1",
                 "release_gate": {
                     "android_release_signing": True,
+                    "ios_production_entitlements": True,
                 },
                 "devices": {
                     "android": {

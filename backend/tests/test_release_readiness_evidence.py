@@ -40,6 +40,7 @@ def make_evidence(tmp_path: Path, module) -> dict[str, object]:
         "client_version": current_revision,
         "release_gate": {
             "android_release_signing": True,
+            "ios_production_entitlements": True,
         },
         "devices": {
             "android": {
@@ -313,7 +314,10 @@ def test_release_e2e_evidence_rejects_unsigned_android_release_gate(
 ):
     module = load_release_readiness_module()
     evidence = make_evidence(tmp_path, module)
-    evidence["release_gate"] = {"android_release_signing": False}
+    evidence["release_gate"] = {
+        "android_release_signing": False,
+        "ios_production_entitlements": True,
+    }
     evidence_path = write_evidence(tmp_path, evidence)
     monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
     monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")
@@ -323,6 +327,28 @@ def test_release_e2e_evidence_rejects_unsigned_android_release_gate(
 
     assert any(
         "must record signed Android release gate" in error
+        for error in reporter.errors
+    )
+
+
+def test_release_e2e_evidence_rejects_missing_ios_entitlement_gate(
+    tmp_path, monkeypatch
+):
+    module = load_release_readiness_module()
+    evidence = make_evidence(tmp_path, module)
+    evidence["release_gate"] = {
+        "android_release_signing": True,
+        "ios_production_entitlements": False,
+    }
+    evidence_path = write_evidence(tmp_path, evidence)
+    monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
+    monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")
+
+    reporter = module.Reporter()
+    module.check_release_e2e_evidence(evidence_path, reporter, tmp_path)
+
+    assert any(
+        "must record production iOS entitlement gate" in error
         for error in reporter.errors
     )
 
@@ -1251,7 +1277,10 @@ def test_release_e2e_example_matches_strict_top_level_schema():
         "artifact_sha256",
         "scenarios",
     }
-    assert example["release_gate"] == {"android_release_signing": True}
+    assert example["release_gate"] == {
+        "android_release_signing": True,
+        "ios_production_entitlements": True,
+    }
     assert set(example["artifact_sha256"]) == set(example["artifacts"])
 
 
@@ -1312,7 +1341,10 @@ def test_tracked_release_e2e_scaffold_matches_strict_top_level_schema():
         "artifact_sha256",
         "scenarios",
     }
-    assert scaffold["release_gate"] == {"android_release_signing": True}
+    assert scaffold["release_gate"] == {
+        "android_release_signing": True,
+        "ios_production_entitlements": True,
+    }
     assert set(scaffold["artifact_sha256"]) == set(scaffold["artifacts"])
 
 

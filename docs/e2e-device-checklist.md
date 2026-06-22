@@ -96,7 +96,7 @@ IOS_DEVICE_UDID=<ios-device-udid> \
 python3 client/scripts/configure_github_mobile_release_env.py --repo kiminbean/voice-to-textnote
 ```
 
-`--strict`는 환경변수 존재만 확인하지 않는다. `REQUIRE_ANDROID_RELEASE_SIGNING=true`가 설정되어 signed Android release gate와 같은 release 조건임을 먼저 확인하고, `docs/app-store-metadata.md`, `docs/privacy-policy.md`, `docs/e2e-device-checklist.md`에 release placeholder가 없어야 한다. 또한 `ANDROID_DEVICE_SERIAL`은 `adb devices -l`에 `device` 상태로 표시되어야 하고, `IOS_DEVICE_UDID`는 `xcrun devicectl list devices`에서 `available` 상태로 표시되어야 한다. `IOS_RELEASE_ENTITLEMENTS_PATH`는 체크아웃된 repo 내부 plist여야 하며 signed iOS release app에서 추출한 `aps-environment=production`, `get-task-allow=false`, App ID/Team ID 일치를 증명해야 한다. `RELEASE_E2E_EVIDENCE_PATH`는 체크아웃된 repo 내부 JSON 파일이어야 하며 Android/iOS device id가 strict 환경변수와 일치하고, Push/딥링크/백그라운드 녹음/HTTP 정책/PDF 공유 시나리오가 모두 `pass: true`와 증거 문구를 가져야 한다. 따라서 signed Android release 모드, Firebase/APNs/App Store Connect secret이 있어도 문서 placeholder가 남아 있거나 물리 기기가 연결되지 않았거나 trust/pairing이 완료되지 않았거나 실제 시나리오 증거가 없으면 E2E 진입 전 실패한다.
+`--strict`는 환경변수 존재만 확인하지 않는다. `REQUIRE_ANDROID_RELEASE_SIGNING=true`가 설정되어 signed Android release gate와 같은 release 조건임을 먼저 확인하고, `docs/app-store-metadata.md`, `docs/privacy-policy.md`, `docs/e2e-device-checklist.md`에 release placeholder가 없어야 한다. 또한 `ANDROID_DEVICE_SERIAL`은 `adb devices -l`에 `device` 상태로 표시되어야 하고, `IOS_DEVICE_UDID`는 `xcrun devicectl list devices`에서 `available` 상태로 표시되어야 한다. `IOS_RELEASE_ENTITLEMENTS_PATH`는 체크아웃된 repo 내부 plist여야 하며 signed iOS release app에서 추출한 `aps-environment=production`, `get-task-allow=false`, App ID/Team ID 일치를 증명해야 한다. `RELEASE_E2E_EVIDENCE_PATH`는 체크아웃된 repo 내부 JSON 파일이어야 하며 `release_gate.android_release_signing=true`, `release_gate.ios_production_entitlements=true`, Android/iOS device id가 strict 환경변수와 일치하고, Push/딥링크/백그라운드 녹음/HTTP 정책/PDF 공유 시나리오가 모두 `pass: true`와 증거 문구를 가져야 한다. 따라서 signed Android release 모드, Firebase/APNs/App Store Connect secret이 있어도 문서 placeholder가 남아 있거나 물리 기기가 연결되지 않았거나 trust/pairing이 완료되지 않았거나 실제 시나리오 증거가 없으면 E2E 진입 전 실패한다.
 
 ### Release E2E evidence scaffold
 
@@ -177,7 +177,7 @@ python3 client/scripts/create_release_e2e_evidence.py \
 
 ## Release E2E Evidence JSON 매핑
 
-`RELEASE_E2E_EVIDENCE_PATH`는 아래 scenario key를 모두 포함해야 한다. 각 항목은 `pass: true`와 실제 관측 증거 문구를 가져야 하며, Android/iOS device id는 strict 환경변수와 일치해야 한다. `artifact_sha256`은 `artifacts`의 모든 key를 포함해야 하고, 실제 release 산출물 파일/디렉터리 내용의 SHA-256과 일치해야 한다.
+`RELEASE_E2E_EVIDENCE_PATH`는 아래 scenario key를 모두 포함해야 한다. 각 항목은 `pass: true`와 실제 관측 증거 문구를 가져야 하며, Android/iOS device id는 strict 환경변수와 일치해야 한다. `release_gate.android_release_signing=true`와 `release_gate.ios_production_entitlements=true`를 기록해 signed Android APK와 production iOS entitlement 조건에서 수행된 evidence임을 남겨야 한다. `artifact_sha256`은 `artifacts`의 모든 key를 포함해야 하고, 실제 release 산출물 파일/디렉터리 내용의 SHA-256과 일치해야 한다.
 
 | Evidence key | 체크리스트 범위 |
 |--------------|----------------|

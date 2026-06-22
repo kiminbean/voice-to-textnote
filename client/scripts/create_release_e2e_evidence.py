@@ -82,6 +82,9 @@ def build_evidence(root: Path, *, android_apk: str, ios_runner_app: str) -> dict
         "release_gate": {
             "android_release_signing": os.environ.get("REQUIRE_ANDROID_RELEASE_SIGNING")
             == "true",
+            "ios_production_entitlements": bool(
+                os.environ.get("IOS_RELEASE_ENTITLEMENTS_PATH")
+            ),
         },
         "devices": {
             "android": {
