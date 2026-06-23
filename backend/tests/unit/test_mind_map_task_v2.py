@@ -56,15 +56,15 @@ def _default_patches(mock_redis, mock_settings):
 
 
 # ---------------------------------------------------------------------------
-# OpenAI 키 누락 테스트
+# LLM 키 누락 테스트
 # ---------------------------------------------------------------------------
 
 
 class TestMindMapTaskOpenAIKeyMissing:
-    """OpenAI API 키 설정 관련 테스트"""
+    """LLM API 키 설정 관련 테스트"""
 
-    def test_fails_when_openai_api_key_not_configured(self):
-        """OpenAI API 키 없음 → failed 결과 반환"""
+    def test_fails_when_llm_api_key_not_configured(self):
+        """LLM API 키 없음 → failed 결과 반환"""
         from backend.workers.tasks.mind_map_task import mind_map_task
 
         task_id = str(uuid.uuid4())
@@ -72,7 +72,7 @@ class TestMindMapTaskOpenAIKeyMissing:
         mock_redis = _make_mock_redis(summary_task_id, None)
 
         mock_settings = MagicMock()
-        mock_settings.openai_api_key = None  # 키 없음
+        mock_settings.llm_api_key = None  # 키 없음
         mock_settings.summary_result_ttl = 86400
         mock_settings.summary_model = "gpt-4o"
 
@@ -84,7 +84,7 @@ class TestMindMapTaskOpenAIKeyMissing:
             )
 
         assert result["status"] == "failed"
-        assert "OPENAI_API_KEY" in result["error_message"]
+        assert "LLM API key" in result["error_message"]
 
 
 # ---------------------------------------------------------------------------
@@ -162,7 +162,7 @@ class TestMindMapTaskUpstreamErrors:
 
         mock_redis = _make_mock_redis(summary_task_id, None)
         mock_settings = MagicMock()
-        mock_settings.openai_api_key = "sk-test"
+        mock_settings.llm_api_key = "zai-test"
         mock_settings.summary_result_ttl = 86400
         mock_settings.summary_model = "gpt-4o"
 
@@ -191,7 +191,7 @@ class TestMindMapTaskUpstreamErrors:
 
         mock_redis = _make_mock_redis(summary_task_id, failed_summary)
         mock_settings = MagicMock()
-        mock_settings.openai_api_key = "sk-test"
+        mock_settings.llm_api_key = "zai-test"
         mock_settings.summary_result_ttl = 86400
         mock_settings.summary_model = "gpt-4o"
 
@@ -223,7 +223,7 @@ class TestMindMapTaskUpstreamErrors:
 
         mock_redis = _make_mock_redis(summary_task_id, error_summary)
         mock_settings = MagicMock()
-        mock_settings.openai_api_key = "sk-test"
+        mock_settings.llm_api_key = "zai-test"
         mock_settings.summary_result_ttl = 86400
         mock_settings.summary_model = "gpt-4o"
 
@@ -270,7 +270,7 @@ class TestMindMapTaskStatusUpdate:
         mock_redis.setex.side_effect = track_setex
 
         mock_settings = MagicMock()
-        mock_settings.openai_api_key = "sk-test"
+        mock_settings.llm_api_key = "zai-test"
         mock_settings.summary_result_ttl = 86400
         mock_settings.summary_model = "gpt-4o"
 
@@ -323,7 +323,7 @@ class TestMindMapTaskCaching:
         mock_redis.setex.side_effect = track_cache_setex
 
         mock_settings = MagicMock()
-        mock_settings.openai_api_key = "sk-test"
+        mock_settings.llm_api_key = "zai-test"
         mock_settings.summary_result_ttl = 86400
         mock_settings.summary_model = "gpt-4o"
 
@@ -369,7 +369,7 @@ class TestMindMapTaskGenericException:
         mock_gen.return_value.generate_mind_map.side_effect = RuntimeError("AI 생성 오류")
 
         mock_settings = MagicMock()
-        mock_settings.openai_api_key = "sk-test"
+        mock_settings.llm_api_key = "zai-test"
         mock_settings.summary_result_ttl = 86400
         mock_settings.summary_model = "gpt-4o"
 
@@ -482,7 +482,7 @@ class TestMindMapTaskGenerationTime:
         mock_redis = _make_mock_redis(summary_task_id, summary_result)
 
         mock_settings = MagicMock()
-        mock_settings.openai_api_key = "sk-test"
+        mock_settings.llm_api_key = "zai-test"
         mock_settings.summary_result_ttl = 86400
         mock_settings.summary_model = "gpt-4o"
 

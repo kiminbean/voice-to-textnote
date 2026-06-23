@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:voice_to_textnote/models/sales_contact_brief.dart';
 import 'package:voice_to_textnote/services/sales_contact_brief_api.dart';
+
+const _auxiliaryResultCacheTtl = Duration(minutes: 10);
 
 class SalesContactBriefRequest {
   final String taskId;
@@ -31,6 +35,10 @@ class SalesContactBriefNotifier extends AutoDisposeFamilyAsyncNotifier<
 
   @override
   Future<SalesContactBrief> build(SalesContactBriefRequest arg) async {
+    final keepAliveLink = ref.keepAlive();
+    final disposeTimer = Timer(_auxiliaryResultCacheTtl, keepAliveLink.close);
+    ref.onDispose(disposeTimer.cancel);
+
     _request = arg;
     _api = ref.watch(salesContactBriefApiProvider);
     try {

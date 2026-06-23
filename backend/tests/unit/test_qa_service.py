@@ -473,10 +473,11 @@ class TestGetClient:
 
     @patch("backend.services.qa_service.settings")
     def test_returns_openai_client(self, mock_settings):
-        """_get_client가 OpenAI 클라이언트를 반환한다"""
+        """_get_client가 LLM 설정으로 OpenAI 호환 클라이언트를 반환한다"""
         from openai import OpenAI
 
-        mock_settings.openai_api_key = "test-key"
+        mock_settings.llm_api_key = "zai-test-key"
+        mock_settings.llm_base_url = "https://api.z.ai/api/paas/v4/"
         svc = QAService()
         client = svc._get_client()
         assert isinstance(client, OpenAI)

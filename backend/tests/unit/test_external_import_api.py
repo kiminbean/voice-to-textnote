@@ -23,6 +23,15 @@ def app_client():
     )
 
     app = FastAPI()
+
+    @app.middleware("http")
+    async def test_guest_context(request, call_next):
+        guest_session_id = request.headers.get("X-Test-Guest-Session-ID")
+        if guest_session_id:
+            request.state.is_guest = True
+            request.state.guest_session_id = guest_session_id
+        return await call_next(request)
+
     register_exception_handlers(app)
     app.include_router(router, prefix="/api/v1")
 
@@ -120,6 +129,26 @@ def test_import_external_text_passes_authenticated_owner_id(app_client):
     assert svc.import_text.await_args.kwargs["owner_id"] == "user-001"
 
 
+def test_import_external_text_passes_guest_session(app_client):
+    client, svc, _ = app_client
+    svc.import_text = AsyncMock(return_value=_response())
+
+    response = client.post(
+        "/api/v1/imports/external-text",
+        headers={"X-Test-Guest-Session-ID": "guest-session-001"},
+        json={
+            "source_url": "https://youtu.be/example123",
+            "title": "영상 요약",
+            "content": "사용자가 보유한 영상 transcript를 가져옵니다.",
+        },
+    )
+
+    assert response.status_code == 200
+    assert svc.import_text.await_args.kwargs["owner_id"] is None
+    assert svc.import_text.await_args.kwargs["is_guest"] is True
+    assert svc.import_text.await_args.kwargs["guest_session_id"] == "guest-session-001"
+
+
 def test_import_external_text_validation_error_returns_422(app_client):
     client, svc, _ = app_client
     svc.import_text = AsyncMock(side_effect=ExternalImportValidationError("본문 없음"))
@@ -206,6 +235,40 @@ def test_import_document_success(app_client):
     document_svc.import_document.assert_awaited_once()
     assert body["extracted_characters"] == 42
     document_svc.import_document.assert_awaited_once()
+
+
+def test_import_document_passes_guest_session(app_client):
+    client, _, document_svc = app_client
+    document_svc.import_document = AsyncMock(
+        return_value=DocumentImportResponse(
+            task_id="ext-doc-guest-001",
+            status="completed",
+            title="게스트 문서",
+            source_url="https://local.voicetextnote/imports/documents/guest.pdf",
+            source_type=ExternalImportSourceType.DOCUMENT,
+            language="ko",
+            result_url="/api/v1/minutes/ext-doc-guest-001",
+            search_indexed=True,
+            file_name="guest.pdf",
+            file_type="pdf",
+            extracted_characters=42,
+        )
+    )
+
+    response = client.post(
+        "/api/v1/imports/document",
+        headers={"X-Test-Guest-Session-ID": "guest-session-001"},
+        files={"file": ("guest.pdf", b"%PDF searchable text", "application/pdf")},
+        data={"title": "게스트 문서", "language": "ko"},
+    )
+
+    assert response.status_code == 200
+    assert document_svc.import_document.await_args.kwargs["owner_id"] is None
+    assert document_svc.import_document.await_args.kwargs["is_guest"] is True
+    assert (
+        document_svc.import_document.await_args.kwargs["guest_session_id"]
+        == "guest-session-001"
+    )
 
 
 def test_import_image_document_success(app_client):

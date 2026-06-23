@@ -82,6 +82,7 @@ class TestPersistTaskResult:
         from sqlalchemy import create_engine as sa_create_engine
         from sqlalchemy.orm import sessionmaker
 
+        import backend.db.auth_models  # noqa: F401
         import backend.db.sync_engine as sync_engine_module
         from backend.db.models import Base
 
@@ -216,6 +217,193 @@ class TestPersistTaskResult:
         assert len(records) == 4
         saved_types = {r.task_type for r in records}
         assert saved_types == set(task_types)
+
+    def test_persist_task_result_creates_owner_record(self):
+        """로그인 사용자의 작업 결과 저장 시 회의록 소유권이 생성되어야 함"""
+        import uuid
+
+        from sqlalchemy import select
+
+        from backend.db.auth_models import MeetingOwnership, User
+        from backend.db.sync_engine import get_sync_session
+        from backend.services.sync_service import persist_task_result
+
+        owner_id = uuid.uuid4()
+        with get_sync_session() as session:
+            session.add(
+                User(
+                    id=owner_id,
+                    email="owner@example.com",
+                    password_hash="hash",
+                    display_name="Owner",
+                )
+            )
+            session.commit()
+
+        persist_task_result(
+            task_id="owned-summary-001",
+            task_type="summary",
+            status="completed",
+            result_data={"summary_text": "요약"},
+            owner_id=owner_id,
+        )
+
+        with get_sync_session() as session:
+            ownership = session.execute(
+                select(MeetingOwnership).where(MeetingOwnership.task_id == "owned-summary-001")
+            ).scalar_one_or_none()
+
+        assert ownership is not None
+        assert ownership.owner_id == owner_id
+        assert ownership.team_id is None
+
+    def test_persist_task_result_inherits_owner_from_source_task(self):
+        """요약처럼 후속 산출물은 선행 회의록 task의 소유자를 상속해야 함"""
+        import uuid
+
+        from sqlalchemy import select
+
+        from backend.db.auth_models import MeetingOwnership, User
+        from backend.db.sync_engine import get_sync_session
+        from backend.services.sync_service import persist_task_result
+
+        owner_id = uuid.uuid4()
+        with get_sync_session() as session:
+            session.add(
+                User(
+                    id=owner_id,
+                    email="owner@example.com",
+                    password_hash="hash",
+                    display_name="Owner",
+                )
+            )
+            session.commit()
+
+        persist_task_result(
+            task_id="minutes-source-001",
+            task_type="minutes",
+            status="completed",
+            owner_id=owner_id,
+        )
+        persist_task_result(
+            task_id="summary-inherited-001",
+            task_type="summary",
+            status="completed",
+            source_task_id="minutes-source-001",
+        )
+
+        with get_sync_session() as session:
+            ownership = session.execute(
+                select(MeetingOwnership).where(
+                    MeetingOwnership.task_id == "summary-inherited-001",
+                    MeetingOwnership.team_id.is_(None),
+                )
+            ).scalar_one_or_none()
+
+        assert ownership is not None
+        assert ownership.owner_id == owner_id
+
+    def test_persist_task_result_applies_default_team_sharing(self):
+        """team_default 정책 팀에 속한 사용자의 새 회의록은 자동 공유되어야 함"""
+        import uuid
+
+        from sqlalchemy import select
+
+        from backend.db.auth_models import MeetingOwnership, Team, TeamMember, User
+        from backend.db.sync_engine import get_sync_session
+        from backend.services.sync_service import persist_task_result
+
+        owner_id = uuid.uuid4()
+        team_id = uuid.uuid4()
+        with get_sync_session() as session:
+            session.add(
+                User(
+                    id=owner_id,
+                    email="owner@example.com",
+                    password_hash="hash",
+                    display_name="Owner",
+                )
+            )
+            session.add(
+                Team(
+                    id=team_id,
+                    name="Default Share Team",
+                    created_by=owner_id,
+                    sharing_policy={"default_visibility": "team_default"},
+                )
+            )
+            session.add(TeamMember(id=uuid.uuid4(), team_id=team_id, user_id=owner_id, role="member"))
+            session.commit()
+
+        persist_task_result(
+            task_id="team-shared-summary-001",
+            task_type="summary",
+            status="completed",
+            owner_id=owner_id,
+        )
+
+        with get_sync_session() as session:
+            ownerships = session.execute(
+                select(MeetingOwnership).where(
+                    MeetingOwnership.task_id == "team-shared-summary-001"
+                )
+            ).scalars().all()
+
+        assert {ownership.team_id for ownership in ownerships} == {None, team_id}
+
+    def test_persist_task_result_saves_guest_session(self):
+        """게스트 작업 결과는 게스트 세션 ID와 함께 저장되어야 함"""
+        from sqlalchemy import select
+
+        from backend.db.models import TaskResult
+        from backend.db.sync_engine import get_sync_session
+        from backend.services.sync_service import persist_task_result
+
+        persist_task_result(
+            task_id="guest-summary-001",
+            task_type="summary",
+            status="completed",
+            is_guest=True,
+            guest_session_id="guest-session-001",
+        )
+
+        with get_sync_session() as session:
+            record = session.execute(
+                select(TaskResult).where(TaskResult.task_id == "guest-summary-001")
+            ).scalar_one()
+
+        assert record.is_guest is True
+        assert record.guest_session_id == "guest-session-001"
+
+    def test_persist_task_result_inherits_guest_session_from_source_task(self):
+        """후속 산출물은 선행 게스트 task의 세션 ID를 상속해야 함"""
+        from sqlalchemy import select
+
+        from backend.db.models import TaskResult
+        from backend.db.sync_engine import get_sync_session
+        from backend.services.sync_service import persist_task_result
+
+        persist_task_result(
+            task_id="guest-minutes-source-001",
+            task_type="minutes",
+            status="completed",
+            is_guest=True,
+            guest_session_id="guest-session-001",
+        )
+        persist_task_result(
+            task_id="guest-summary-inherited-001",
+            task_type="summary",
+            status="completed",
+            source_task_id="guest-minutes-source-001",
+        )
+
+        with get_sync_session() as session:
+            record = session.execute(
+                select(TaskResult).where(TaskResult.task_id == "guest-summary-inherited-001")
+            ).scalar_one()
+
+        assert record.is_guest is True
+        assert record.guest_session_id == "guest-session-001"
 
 
 class TestPersistTaskResultErrorHandling:

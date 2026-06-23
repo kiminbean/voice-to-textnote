@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:voice_to_textnote/models/translation.dart';
 import 'package:voice_to_textnote/services/translation_api.dart';
+
+const _auxiliaryResultCacheTtl = Duration(minutes: 10);
 
 class TranslationRequest {
   final String taskId;
@@ -42,6 +46,10 @@ class TranslationNotifier extends AutoDisposeFamilyAsyncNotifier<
 
   @override
   Future<TranslationResult> build(TranslationRequest arg) async {
+    final keepAliveLink = ref.keepAlive();
+    final disposeTimer = Timer(_auxiliaryResultCacheTtl, keepAliveLink.close);
+    ref.onDispose(disposeTimer.cancel);
+
     _request = arg;
     _api = ref.watch(translationApiProvider);
     try {

@@ -115,6 +115,8 @@ def summary_task(
     max_tokens: int = 4096,
     template_id: str | None = None,
     user_id: str | None = None,
+    is_guest: bool = False,
+    guest_session_id: str | None = None,
 ) -> dict:
     """
     메인 AI 요약 생성 처리 함수 (Celery 워커에서 호출)
@@ -274,6 +276,10 @@ def summary_task(
                 task_type="summary",
                 status="completed",
                 result_data=final_result,
+                owner_id=user_id,
+                source_task_id=minutes_task_id,
+                is_guest=is_guest,
+                guest_session_id=guest_session_id,
             )
         except Exception:  # pragma: no cover
             logger.warning(
@@ -329,6 +335,10 @@ def summary_task(
                 task_type="summary",
                 status="failed",
                 error_message=error_msg,
+                owner_id=user_id,
+                source_task_id=minutes_task_id,
+                is_guest=is_guest,
+                guest_session_id=guest_session_id,
             )
         except Exception:  # pragma: no cover
             logger.warning(
@@ -374,6 +384,10 @@ def summary_task(
                 task_type="summary",
                 status="failed",
                 error_message=error_msg,
+                owner_id=user_id,
+                source_task_id=minutes_task_id,
+                is_guest=is_guest,
+                guest_session_id=guest_session_id,
             )
         except Exception:  # pragma: no cover
             logger.warning(
@@ -584,6 +598,8 @@ def summary_celery_task(
     max_tokens: int = 4096,
     template_id: str | None = None,
     user_id: str | None = None,
+    is_guest: bool = False,
+    guest_session_id: str | None = None,
 ) -> dict:
     """
     Celery 래퍼: summary_task 호출 + 재시도 처리 (REQ-SUM-009)
@@ -602,6 +618,8 @@ def summary_celery_task(
             max_tokens=max_tokens,
             template_id=template_id,
             user_id=user_id,
+            is_guest=is_guest,
+            guest_session_id=guest_session_id,
         )
     except FileNotFoundError as exc:
         # 회의록 결과 없음 → 재시도 안 함 (REQ-SUM-010)

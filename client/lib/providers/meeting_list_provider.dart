@@ -15,7 +15,15 @@ const _kMeetingsKey = 'meetings_list';
 class MeetingListNotifier extends AsyncNotifier<List<Meeting>> {
   @override
   Future<List<Meeting>> build() async {
-    // 앱 시작 시 로컬 저장소에서 미팅 목록 불러오기
+    final localMeetings = await _loadLocal();
+    try {
+      return await _mergeServerMeetings(localMeetings);
+    } catch (_) {
+      return localMeetings;
+    }
+  }
+
+  Future<List<Meeting>> _loadLocal() async {
     final prefs = await SharedPreferences.getInstance();
     final json = prefs.getString(_kMeetingsKey);
     if (json != null) {
@@ -42,7 +50,10 @@ class MeetingListNotifier extends AsyncNotifier<List<Meeting>> {
   // 미팅 추가
   Future<void> addMeeting(Meeting meeting) async {
     final current = state.value ?? [];
-    final updated = [...current, meeting];
+    final updated = [
+      ...current.where((item) => item.id != meeting.id),
+      meeting,
+    ];
     state = AsyncData(updated);
     await _save(updated);
   }
@@ -64,46 +75,13 @@ class MeetingListNotifier extends AsyncNotifier<List<Meeting>> {
   }
 
   // @MX:NOTE: SPEC-HISTSYNC-001 REQ-HSYNC-002/003 - 서버 이력 동기화
-  // 서버에서 summary 완료 이력을 가져와 로컬 목록과 병합 (중복 제외)
+  // 서버에서 summary/minutes 완료 이력을 가져와 로컬 목록과 병합 (중복 제외)
   // 오류 발생 시 로컬 데이터 보존 (REQ-HSYNC-007)
   Future<void> refreshFromServer() async {
-    final historyApi = ref.read(historyApiProvider);
     try {
-      final response = await historyApi.list(
-        taskType: 'summary',
-        status: 'completed',
-      );
-      final items = response['items'] as List<dynamic>;
       final current = state.value ?? [];
-      final existingIds = current.map((m) => m.id).toSet();
-      final serverMeetings = items
-          .cast<Map<String, dynamic>>()
-          .map(_historyItemToMeeting)
-          .toList();
-
-      // 로컬에 없는 서버 항목만 변환하여 추가
-      final newMeetings =
-          serverMeetings.where((meeting) => !existingIds.contains(meeting.id));
-
-      final serverMeetingsById = {
-        for (final meeting in serverMeetings) meeting.id: meeting,
-      };
-      final refreshedCurrent = current.map((meeting) {
-        final serverMeeting = serverMeetingsById[meeting.id];
-        if (serverMeeting == null) return meeting;
-        return meeting.copyWith(
-          sharedTeamIds: serverMeeting.sharedTeamIds,
-          summaryTaskId: meeting.summaryTaskId ?? serverMeeting.summaryTaskId,
-        );
-      }).toList();
-
-      if (newMeetings.isNotEmpty || serverMeetingsById.isNotEmpty) {
-        final merged = [...refreshedCurrent, ...newMeetings];
-        // 날짜 기준 최신순 정렬
-        merged.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-        state = AsyncData(merged);
-        await _save(merged);
-      }
+      final merged = await _mergeServerMeetings(current);
+      state = AsyncData(merged);
     } catch (_) {
       // 서버 오류 시 로컬 데이터 유지 (REQ-HSYNC-007)
       // 예외를 rethrow해서 홈 화면이 try-catch로 SnackBar 표시
@@ -111,17 +89,89 @@ class MeetingListNotifier extends AsyncNotifier<List<Meeting>> {
     }
   }
 
+  Future<List<Meeting>> _mergeServerMeetings(List<Meeting> current) async {
+    final historyApi = ref.read(historyApiProvider);
+    final summaryResponse = await historyApi.list(
+      taskType: 'summary',
+      status: 'completed',
+    );
+    final minutesResponse = await historyApi.list(
+      taskType: 'minutes',
+      status: 'completed',
+    );
+    final existingIds = current.map((m) => m.id).toSet();
+    final serverMeetings = _dedupeServerMeetings([
+      ..._historyItemsToMeetings(minutesResponse),
+      ..._historyItemsToMeetings(summaryResponse),
+    ]);
+
+    final newMeetings =
+        serverMeetings.where((meeting) => !existingIds.contains(meeting.id));
+
+    final serverMeetingsById = {
+      for (final meeting in serverMeetings) meeting.id: meeting,
+    };
+    final refreshedCurrent = current.map((meeting) {
+      final serverMeeting = serverMeetingsById[meeting.id];
+      if (serverMeeting == null) return meeting;
+      return meeting.copyWith(
+        sharedTeamIds: serverMeeting.sharedTeamIds,
+        summaryTaskId: meeting.summaryTaskId ?? serverMeeting.summaryTaskId,
+      );
+    }).toList();
+
+    final merged = [...refreshedCurrent, ...newMeetings];
+    merged.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    await _save(merged);
+    return merged;
+  }
+
+  List<Meeting> _historyItemsToMeetings(Map<String, dynamic> response) {
+    final items = response['items'] as List<dynamic>;
+    return items
+        .cast<Map<String, dynamic>>()
+        .map(_historyItemToMeeting)
+        .toList();
+  }
+
+  List<Meeting> _dedupeServerMeetings(List<Meeting> meetings) {
+    final byId = <String, Meeting>{};
+    for (final meeting in meetings) {
+      final existing = byId[meeting.id];
+      if (existing == null) {
+        byId[meeting.id] = meeting;
+        continue;
+      }
+      byId[meeting.id] = existing.copyWith(
+        title: meeting.summaryTaskId != null ? meeting.title : existing.title,
+        createdAt: meeting.createdAt.isAfter(existing.createdAt)
+            ? meeting.createdAt
+            : existing.createdAt,
+        minutesTaskId: existing.minutesTaskId ?? meeting.minutesTaskId,
+        summaryTaskId: existing.summaryTaskId ?? meeting.summaryTaskId,
+        sharedTeamIds: meeting.sharedTeamIds.isNotEmpty
+            ? meeting.sharedTeamIds
+            : existing.sharedTeamIds,
+      );
+    }
+    return byId.values.toList();
+  }
+
   // 서버 HistoryItem 맵을 Meeting 객체로 변환
-  // summary task_id를 미팅 id 및 summaryTaskId로 사용
+  // summary는 source_task_id가 있으면 원본 minutes task_id를 미팅 id로 사용
   Meeting _historyItemToMeeting(Map<String, dynamic> item) {
     final taskId = item['task_id'] as String;
+    final taskType = item['task_type'] as String?;
+    final sourceTaskId = item['source_task_id'] as String?;
+    final meetingId = taskType == 'summary' ? (sourceTaskId ?? taskId) : taskId;
     final createdAtStr = item['created_at'] as String;
     return Meeting(
-      id: taskId,
+      id: meetingId,
       title: '미팅 (${_formatDateLabel(DateTime.parse(createdAtStr))})',
       createdAt: DateTime.parse(createdAtStr),
       status: MeetingStatus.completed,
-      summaryTaskId: taskId,
+      minutesTaskId: taskType == 'minutes' ? taskId : sourceTaskId,
+      summaryTaskId: taskType == 'summary' ? taskId : null,
       sharedTeamIds: (item['shared_team_ids'] as List<dynamic>?)
               ?.map((teamId) => teamId as String)
               .toList(growable: false) ??

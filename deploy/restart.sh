@@ -32,7 +32,7 @@ sleep 3
 
 # 4. Celery 워커 시작
 echo "[4/4] Celery 워커 시작..."
-nohup "${VENV_BIN}/celery" -A backend.workers.celery_app:celery_app worker --loglevel=info --concurrency=2 >> "${LOG_DIR}/celery.log" 2>&1 &
+nohup "${VENV_BIN}/celery" -A backend.workers.celery_app:celery_app worker --loglevel=info --concurrency=3 >> "${LOG_DIR}/celery.log" 2>&1 &
 sleep 2
 
 # 헬스체크

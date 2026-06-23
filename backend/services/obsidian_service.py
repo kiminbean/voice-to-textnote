@@ -144,7 +144,7 @@ class ObsidianService:
         custom: dict[str, Any] | None = None,
     ) -> str:
         """REQ-OBS-004: YAML frontmatter 생성 (yaml.safe_dump 기반)."""
-        import yaml
+        import yaml  # type: ignore[import-untyped]
 
         created_at = meeting_data.get("created_at", "")
         dt = self._parse_datetime(created_at)

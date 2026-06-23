@@ -1,7 +1,7 @@
 """Sales contact brief API endpoints."""
 
 import redis.asyncio as aioredis
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.dependencies import get_db_session, get_redis_client
@@ -34,6 +34,7 @@ def get_sales_contact_brief_service() -> SalesContactBriefService:
     },
 )
 async def create_sales_contact_brief(
+    request: Request,
     task_id: str,
     payload: SalesContactBriefCreateRequest,
     redis_client: aioredis.Redis = Depends(get_redis_client),
@@ -49,6 +50,12 @@ async def create_sales_contact_brief(
             max_tokens=payload.max_tokens,
             force_refresh=payload.force_refresh,
             db_session=db,
+            owner_id=getattr(request.state, "user_id", None),
+            guest_session_id=(
+                getattr(request.state, "guest_session_id", None)
+                if getattr(request.state, "is_guest", False)
+                else None
+            ),
         )
     except SalesContactBriefSourceNotFoundError as exc:
         not_found(str(exc))

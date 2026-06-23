@@ -100,6 +100,37 @@ void main() {
     ).called(1);
   });
 
+  test('keeps generated translation warm after tab listener closes', () async {
+    when(() => api.get(
+          any(),
+          targetLanguage: any(named: 'targetLanguage'),
+          sourceType: any(named: 'sourceType'),
+        )).thenAnswer((_) async => result('warm'));
+
+    const request = TranslationRequest(
+      taskId: 'sum-001',
+      targetLanguage: 'en',
+      sourceType: 'summary',
+    );
+    final provider = translationProvider(request);
+    final subscription = container.listen(provider, (_, __) {});
+
+    final first = await container.read(provider.future);
+    subscription.close();
+    await Future<void>.delayed(Duration.zero);
+    final second = await container.read(provider.future);
+
+    expect(first.translatedText, 'warm');
+    expect(second.translatedText, 'warm');
+    verify(
+      () => api.get(
+        'sum-001',
+        targetLanguage: 'en',
+        sourceType: 'summary',
+      ),
+    ).called(1);
+  });
+
   test('regenerate forces refresh', () async {
     when(() => api.get(
           any(),

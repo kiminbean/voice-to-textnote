@@ -14,7 +14,7 @@ import uuid
 from datetime import UTC, datetime
 
 import redis.asyncio as aioredis
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, status
 
 from backend.app.config import settings
 from backend.app.dependencies import get_redis_client
@@ -47,6 +47,7 @@ async def _scard(redis_client: aioredis.Redis, key: str) -> int:
     },
 )
 async def create_minutes(
+    http_request: Request,
     request: MinutesCreateRequest,
     redis_client: aioredis.Redis = Depends(get_redis_client),
 ) -> dict:
@@ -65,6 +66,9 @@ async def create_minutes(
     # --- 작업 ID 생성 및 초기 상태 저장 ---
     task_id = str(uuid.uuid4())
     now = datetime.now(UTC)
+    user_id = getattr(http_request.state, "user_id", None)
+    is_guest = bool(getattr(http_request.state, "is_guest", False))
+    guest_session_id = getattr(http_request.state, "guest_session_id", None)
 
     initial_status = {
         "task_id": task_id,
@@ -86,6 +90,9 @@ async def create_minutes(
         output_format=request.output_format,
         speaker_names=request.speaker_names,
         stt_task_id=request.stt_task_id,
+        user_id=user_id,
+        is_guest=is_guest,
+        guest_session_id=guest_session_id,
     )
 
     logger.info(

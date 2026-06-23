@@ -13,7 +13,7 @@ from pathlib import Path
 from uuid import UUID
 
 import redis.asyncio as aioredis
-from fastapi import APIRouter, Depends, File, Form, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, Request, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.config import settings
@@ -53,6 +53,7 @@ def get_vocabulary_service() -> VocabularyService:
     },
 )
 async def upload_transcription(
+    request: Request,
     file: UploadFile = File(..., description="오디오/영상 파일 (WAV, MP3, M4A, MP4, OGG)"),
     language: str = Form(default="ko", description="전사 언어 코드"),
     model: str = Form(default="mlx-community/whisper-small-mlx"),
@@ -67,6 +68,10 @@ async def upload_transcription(
     오디오 파일 업로드 및 전사 작업 생성
     POST /api/v1/transcriptions
     """
+    user_id = getattr(request.state, "user_id", None)
+    is_guest = bool(getattr(request.state, "is_guest", False))
+    guest_session_id = getattr(request.state, "guest_session_id", None)
+
     # REQ-VOCAB-001: 어휘 ID가 제공되면 initial_prompt 문자열로 변환
     initial_prompt: str | None = None
     if vocabulary_id:
@@ -228,6 +233,9 @@ async def upload_transcription(
         original_filename=filename,
         file_size_bytes=file_size,
         initial_prompt=initial_prompt,
+        user_id=user_id,
+        is_guest=is_guest,
+        guest_session_id=guest_session_id,
     )
 
     # 화자 분리 태스크 사전 등록 - 클라이언트가 별도 POST를 하지 않아도 자동 시작
@@ -249,7 +257,7 @@ async def upload_transcription(
 
     # DIA는 STT가 만드는 DIA 전용 WAV 사본(settings.temp_dir/{task_id_str}_dia.wav)을 입력으로 받는다.
     # transcription_task가 convert_and_normalize 직후 그 경로에 WAV를 복사한다.
-    # 원본({task_id}.wav)과 경로를 분리해, 순차 실행(concurrency=1) 시 STT가 원본을
+    # 원본({task_id}.wav)과 경로를 분리해, 저동시성/순차 실행 시 STT가 원본을
     # 삭제해도 DIA 입력이 사라지지 않게 한다. 사본은 DIA가 완료 후 직접 정리한다.
     # WAV가 아직 없을 수 있으므로 짧은 지연(countdown) 후 시작한다.
     #
@@ -263,6 +271,9 @@ async def upload_transcription(
             "stt_task_id": task_id_str,  # 매칭에는 사용 안 하지만 추적용
             "audio_path": dia_audio_path,
             "max_speakers": 4,
+            "user_id": user_id,
+            "is_guest": is_guest,
+            "guest_session_id": guest_session_id,
         },
         countdown=2,  # WAV 변환 완료 여유 (보통 1초 이내)
     )

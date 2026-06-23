@@ -15,6 +15,7 @@ from __future__ import annotations
 import re
 from datetime import UTC, datetime
 from typing import Any
+from uuid import UUID
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -131,6 +132,8 @@ class SearchService:
         # REQ-SEARCH-012: 상세 필터
         has_action_items: bool | None = None,
         has_key_decisions: bool | None = None,
+        owner_id: UUID | str | None = None,
+        guest_session_id: str | None = None,
     ) -> SearchResponse:
         """
         FTS5 전문 검색 실행 (동적 SQL 빌더)
@@ -157,6 +160,9 @@ class SearchService:
         # 동적 WHERE 조건 빌드
         where_conditions = ["search_index MATCH :query"]
         params: dict[str, Any] = {"query": match_query}
+        visibility_clause = self._build_visibility_clause(owner_id, guest_session_id, params)
+        if visibility_clause:
+            where_conditions.append(visibility_clause)
 
         # task_type 필터
         if task_type != "all":
@@ -219,7 +225,12 @@ class SearchService:
         LIMIT :limit OFFSET :offset
         """
 
-        count_sql = f"SELECT COUNT(*) FROM search_index si WHERE {where_clause}"
+        count_sql = f"""
+        SELECT COUNT(*)
+        FROM search_index si
+        LEFT JOIN task_results tr ON si.task_id = tr.task_id
+        WHERE {where_clause}
+        """
 
         try:
             # 전체 카운트 조회
@@ -283,12 +294,20 @@ class SearchService:
         session: AsyncSession,
         question: str,
         limit: int = 5,
+        owner_id: UUID | str | None = None,
+        guest_session_id: str | None = None,
     ) -> SearchResponse:
         """Cross-meeting Q&A를 위한 관련 회의/요약 근거를 찾습니다."""
         context_query = self._build_context_query(question)
         match_query = self._build_any_match_query(context_query)
+        params: dict[str, Any] = {"query": match_query}
+        where_conditions = ["search_index MATCH :query"]
+        visibility_clause = self._build_visibility_clause(owner_id, guest_session_id, params)
+        if visibility_clause:
+            where_conditions.append(visibility_clause)
+        where_clause = " AND ".join(where_conditions)
 
-        context_sql = """
+        context_sql = f"""
         SELECT
             si.task_id,
             si.task_type,
@@ -302,14 +321,18 @@ class SearchService:
             rank
         FROM search_index si
         LEFT JOIN task_results tr ON si.task_id = tr.task_id
-        WHERE search_index MATCH :query
+        WHERE {where_clause}
         ORDER BY rank ASC, si.created_at DESC
         LIMIT :limit
         """
-        count_sql = "SELECT COUNT(*) FROM search_index si WHERE search_index MATCH :query"
+        count_sql = f"""
+        SELECT COUNT(*)
+        FROM search_index si
+        LEFT JOIN task_results tr ON si.task_id = tr.task_id
+        WHERE {where_clause}
+        """
 
         try:
-            params = {"query": match_query}
             count_result = await session.execute(text(count_sql), params)
             total = count_result.scalar() or 0
             rows_result = await session.execute(text(context_sql), {**params, "limit": limit})
@@ -347,6 +370,34 @@ class SearchService:
             query=context_query,
             sort=SortOption.RELEVANCE,
         )
+
+    @staticmethod
+    def _build_visibility_clause(
+        owner_id: UUID | str | None,
+        guest_session_id: str | None,
+        params: dict[str, Any],
+    ) -> str | None:
+        """로그인/게스트 컨텍스트가 있으면 접근 가능한 회의만 검색한다."""
+        if owner_id is not None:
+            params["owner_id"] = str(owner_id)
+            return """
+            EXISTS (
+                SELECT 1
+                FROM meeting_ownership mo
+                LEFT JOIN team_members tm
+                    ON tm.team_id = mo.team_id
+                    AND tm.user_id = :owner_id
+                WHERE mo.task_id = si.task_id
+                  AND (
+                    (mo.owner_id = :owner_id AND mo.team_id IS NULL)
+                    OR tm.user_id IS NOT NULL
+                  )
+            )
+            """
+        if guest_session_id:
+            params["guest_session_id"] = guest_session_id
+            return "tr.is_guest = 1 AND tr.guest_session_id = :guest_session_id"
+        return None
 
     async def get_suggestions(
         self,

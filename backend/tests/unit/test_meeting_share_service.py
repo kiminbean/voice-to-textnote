@@ -108,7 +108,13 @@ async def test_share_meeting_success(
     # 중복 공유 없음 (None 반환)
     mock_existing_result = MagicMock()
     mock_existing_result.scalar_one_or_none.return_value = None
-    mock_session.execute.side_effect = [mock_task_result, mock_existing_result]
+    mock_owner_result = MagicMock()
+    mock_owner_result.scalar_one_or_none.return_value = sample_ownership
+    mock_session.execute.side_effect = [
+        mock_task_result,
+        mock_owner_result,
+        mock_existing_result,
+    ]
 
     ownership = await meeting_service.share_meeting(
         session=mock_session,
@@ -147,7 +153,9 @@ async def test_share_meeting_duplicate_conflict(
     # 이미 공유된 레코드 존재
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = sample_ownership
-    mock_session.execute.side_effect = [mock_task_result, mock_result]
+    mock_owner_result = MagicMock()
+    mock_owner_result.scalar_one_or_none.return_value = sample_ownership
+    mock_session.execute.side_effect = [mock_task_result, mock_owner_result, mock_result]
 
     with pytest.raises(HTTPException) as exc_info:
         await meeting_service.share_meeting(
@@ -179,6 +187,35 @@ async def test_share_meeting_missing_task_returns_404(
 
     assert exc_info.value.status_code == 404
     assert exc_info.value.detail == "회의록을 찾을 수 없습니다"
+    mock_session.add.assert_not_called()
+    mock_session.commit.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_share_meeting_requires_private_owner_record(
+    meeting_service,
+    mock_session,
+    sample_task_id,
+    sample_owner_id,
+    sample_team_id,
+    sample_task_result,
+):
+    """task가 있어도 명시적 private 소유권이 없으면 공유할 수 없다."""
+    mock_task_result = MagicMock()
+    mock_task_result.scalar_one_or_none.return_value = sample_task_result
+    mock_owner_result = MagicMock()
+    mock_owner_result.scalar_one_or_none.return_value = None
+    mock_session.execute.side_effect = [mock_task_result, mock_owner_result]
+
+    with pytest.raises(HTTPException) as exc_info:
+        await meeting_service.share_meeting(
+            session=mock_session,
+            task_id=sample_task_id,
+            owner_id=sample_owner_id,
+            team_id=sample_team_id,
+        )
+
+    assert exc_info.value.status_code == 403
     mock_session.add.assert_not_called()
     mock_session.commit.assert_not_called()
 
@@ -524,24 +561,11 @@ async def test_is_meeting_owner_true(
 async def test_is_meeting_owner_no_ownership_records(
     meeting_service, mock_session, sample_task_id, sample_owner_id, sample_task_result
 ):
-    """소유권 레코드가 없어도 실제 회의록이 있으면 기존 최초 요청 정책을 유지한다."""
-    # 첫 번째 execute: 소유권 레코드 없음
+    """task가 있어도 private 소유권 레코드가 없으면 소유자로 인정하지 않는다."""
     mock_none_result = MagicMock()
     mock_none_result.scalar_one_or_none.return_value = None
 
-    # 두 번째 execute: 전체 개수 0
-    mock_count_result = MagicMock()
-    mock_count_result.scalar_one.return_value = 0
-
-    # 세 번째 execute: task_id가 실제 TaskResult에 존재
-    mock_task_result = MagicMock()
-    mock_task_result.scalar_one_or_none.return_value = sample_task_result
-
-    mock_session.execute.side_effect = [
-        mock_none_result,
-        mock_count_result,
-        mock_task_result,
-    ]
+    mock_session.execute.return_value = mock_none_result
 
     result = await meeting_service.is_meeting_owner(
         session=mock_session,
@@ -549,7 +573,7 @@ async def test_is_meeting_owner_no_ownership_records(
         user_id=sample_owner_id,
     )
 
-    assert result is True
+    assert result is False
 
 
 @pytest.mark.asyncio
@@ -560,17 +584,7 @@ async def test_is_meeting_owner_no_ownership_records_missing_task_returns_false(
     mock_none_result = MagicMock()
     mock_none_result.scalar_one_or_none.return_value = None
 
-    mock_count_result = MagicMock()
-    mock_count_result.scalar_one.return_value = 0
-
-    mock_missing_task_result = MagicMock()
-    mock_missing_task_result.scalar_one_or_none.return_value = None
-
-    mock_session.execute.side_effect = [
-        mock_none_result,
-        mock_count_result,
-        mock_missing_task_result,
-    ]
+    mock_session.execute.return_value = mock_none_result
 
     result = await meeting_service.is_meeting_owner(
         session=mock_session,

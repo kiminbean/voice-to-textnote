@@ -7,6 +7,7 @@ SPEC-QA-001: 회의 Q&A 서비스 — OpenAI 기반
 import json
 import uuid
 from typing import cast
+from uuid import UUID
 
 import redis.asyncio as aioredis
 from openai import OpenAI
@@ -129,6 +130,8 @@ class QAService:
         question: str,
         limit: int = 5,
         search_service: SearchService | None = None,
+        owner_id: UUID | str | None = None,
+        guest_session_id: str | None = None,
     ) -> CrossMeetingAskResponse:
         """여러 회의/요약에서 질문과 관련된 근거를 찾고 요약 답변을 반환합니다."""
         search_service = search_service or SearchService()
@@ -136,6 +139,8 @@ class QAService:
             session=session,
             question=question,
             limit=limit,
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
         )
         if not contexts.items:
             raise ValueError("질문과 관련된 회의 근거를 찾을 수 없습니다")

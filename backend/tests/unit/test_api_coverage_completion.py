@@ -119,26 +119,39 @@ async def test_history_api_direct_success_and_not_found_paths():
     shared_result = MagicMock()
     shared_result.all.return_value = []
     db.execute.return_value = shared_result
+    request = SimpleNamespace(state=SimpleNamespace())
 
     listing = await list_history(
-        task_type="minutes", status="completed", page=2, page_size=5, db=db, svc=svc
+        request=request,
+        task_type="minutes",
+        status="completed",
+        page=2,
+        page_size=5,
+        db=db,
+        svc=svc,
     )
     assert listing.total == 1
     assert listing.page == 2
     svc.list_results.assert_awaited_with(
-        session=db, task_type="minutes", status="completed", limit=5, offset=5
+        session=db,
+        task_type="minutes",
+        status="completed",
+        limit=5,
+        offset=5,
+        owner_id=None,
+        guest_session_id=None,
     )
 
-    detail = await get_history("task-1", db=db, svc=svc)
+    detail = await get_history("task-1", request=request, db=db, svc=svc)
     assert detail.result_data == {"text": "회의록"}
 
-    await delete_history("task-1", db=db, svc=svc)
+    await delete_history("task-1", request=request, db=db, svc=svc)
     with pytest.raises(NotFoundError):
-        await delete_history("missing", db=db, svc=svc)
+        await delete_history("missing", request=request, db=db, svc=svc)
 
     svc.get_result.return_value = None
     with pytest.raises(NotFoundError):
-        await get_history("missing", db=db, svc=svc)
+        await get_history("missing", request=request, db=db, svc=svc)
 
 
 def test_template_validate_file_rejects_signature_mismatch():

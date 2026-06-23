@@ -46,6 +46,8 @@ class DocumentImportService:
         db: AsyncSession,
         redis_client: aioredis.Redis,
         owner_id: uuid.UUID | None = None,
+        is_guest: bool = False,
+        guest_session_id: str | None = None,
     ) -> DocumentImportResponse:
         """Import a PDF/DOCX/image document as a completed searchable minutes artifact."""
         file_type = self._file_type(filename)
@@ -75,6 +77,8 @@ class DocumentImportService:
             db,
             redis_client,
             owner_id=owner_id,
+            is_guest=is_guest,
+            guest_session_id=guest_session_id,
         )
 
         return DocumentImportResponse(

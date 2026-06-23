@@ -73,8 +73,6 @@ class MeetingShareService:
         """
         사용자가 해당 회의록의 소유자인지 확인합니다.
 
-        소유권 레코드가 없어도, task_id가 존재하면 최초 소유자로 간주합니다.
-
         Args:
             session: DB 세션
             task_id: 작업 ID
@@ -83,26 +81,14 @@ class MeetingShareService:
         Returns:
             소유자이면 True
         """
-        # MeetingOwnership에 owner_id 레코드가 있는 경우
         result = await session.execute(
             select(MeetingOwnership).where(
                 MeetingOwnership.task_id == task_id,
                 MeetingOwnership.owner_id == user_id,
+                MeetingOwnership.team_id.is_(None),
             )
         )
-        if result.scalar_one_or_none() is not None:
-            return True
-
-        # MeetingOwnership 레코드가 전혀 없는 경우, task_id가 존재하면 소유자로 인정
-        count_result = await session.execute(
-            select(func.count(MeetingOwnership.id)).where(MeetingOwnership.task_id == task_id)
-        )
-        count = count_result.scalar_one()
-        if count != 0:
-            return False
-
-        task_result = await self._get_task_result(session, task_id)
-        return task_result is not None
+        return result.scalar_one_or_none() is not None
 
     async def share_meeting(
         self,
@@ -130,6 +116,11 @@ class MeetingShareService:
             HTTPException(409): 이미 같은 팀에 공유된 경우
         """
         await self._require_task_result(session, task_id)
+        if not await self.is_meeting_owner(session, task_id, owner_id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="회의록 소유자만 공유할 수 있습니다",
+            )
 
         # 중복 공유 확인
         existing_result = await session.execute(
@@ -366,9 +357,10 @@ class MeetingShareService:
         """
         offset = (page - 1) * page_size
 
-        # MeetingOwnership의 owner_id 기준 조회
+        # 명시적 private 소유권만 "내 회의록"으로 집계한다.
         count_stmt = select(func.count(MeetingOwnership.id)).where(
-            MeetingOwnership.owner_id == user_id
+            MeetingOwnership.owner_id == user_id,
+            MeetingOwnership.team_id.is_(None),
         )
         count_result = await session.execute(count_stmt)
         total = count_result.scalar_one()
@@ -376,7 +368,10 @@ class MeetingShareService:
         stmt = (
             select(MeetingOwnership, TaskResult)
             .outerjoin(TaskResult, TaskResult.task_id == MeetingOwnership.task_id)
-            .where(MeetingOwnership.owner_id == user_id)
+            .where(
+                MeetingOwnership.owner_id == user_id,
+                MeetingOwnership.team_id.is_(None),
+            )
             .order_by(MeetingOwnership.created_at.desc())
             .offset(offset)
             .limit(page_size)

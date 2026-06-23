@@ -1,10 +1,13 @@
 import json
+import uuid
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
+import backend.db.auth_models  # noqa: F401 - register auth metadata
+from backend.db.auth_models import MeetingOwnership
 from backend.db.models import Base, TaskResult
 from backend.schemas.sales_contact_brief import (
     SalesContactBriefResponse,
@@ -316,6 +319,132 @@ async def test_generate_persists_sales_contact_brief_artifact(monkeypatch):
         assert record.status == "completed"
         assert record.input_metadata["source_task_id"] == "min-sales-001"
         assert record.result_data["contact"]["company"] == "Acme"
+    finally:
+        await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_persist_brief_inherits_source_owner_and_guest_session():
+    engine = create_async_engine("sqlite+aiosqlite://", echo=False)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    svc = SalesContactBriefService()
+    owner_id = uuid.uuid4()
+    team_id = uuid.uuid4()
+    guest_session_id = "guest-session-001"
+    payload = {
+        **make_ai_payload(),
+        "task_id": "min-sales-001",
+        "source_refs": [],
+        "created_at": "2026-06-21T00:00:00+00:00",
+    }
+
+    try:
+        async with factory() as session:
+            session.add(
+                TaskResult(
+                    task_id="min-sales-001",
+                    task_type="minutes",
+                    status="completed",
+                    is_guest=True,
+                    guest_session_id=guest_session_id,
+                )
+            )
+            session.add(
+                MeetingOwnership(
+                    task_id="min-sales-001",
+                    owner_id=owner_id,
+                    team_id=None,
+                )
+            )
+            session.add(
+                MeetingOwnership(
+                    task_id="min-sales-001",
+                    owner_id=owner_id,
+                    team_id=team_id,
+                )
+            )
+            await session.commit()
+
+            await svc._persist_brief(
+                "min-sales-001",
+                SalesContactBriefResponse.model_validate(payload),
+                session,
+            )
+            record_result = await session.execute(
+                select(TaskResult).where(
+                    TaskResult.task_id == _sales_contact_brief_result_task_id("min-sales-001")
+                )
+            )
+            record = record_result.scalar_one()
+            ownership_result = await session.execute(
+                select(MeetingOwnership).where(
+                    MeetingOwnership.task_id
+                    == _sales_contact_brief_result_task_id("min-sales-001")
+                )
+            )
+            ownerships = ownership_result.scalars().all()
+
+        assert record.is_guest is True
+        assert record.guest_session_id == guest_session_id
+        assert {(item.owner_id, item.team_id) for item in ownerships} == {
+            (owner_id, None),
+            (owner_id, team_id),
+        }
+    finally:
+        await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_list_contacts_filters_by_owner_and_guest_session():
+    engine = create_async_engine("sqlite+aiosqlite://", echo=False)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    svc = SalesContactBriefService()
+    owner_id = uuid.uuid4()
+    other_owner_id = uuid.uuid4()
+    acme_payload = {
+        **make_ai_payload(),
+        "task_id": "min-sales-001",
+        "source_refs": [],
+        "created_at": "2026-06-21T00:00:00+00:00",
+    }
+    other_payload = {
+        **make_ai_payload(),
+        "task_id": "min-sales-002",
+        "contact": {"name": "이서연", "company": "Beta", "role": "COO"},
+        "source_refs": [],
+        "created_at": "2026-06-22T00:00:00+00:00",
+    }
+
+    try:
+        async with factory() as session:
+            await svc._persist_brief(
+                "min-sales-001",
+                SalesContactBriefResponse.model_validate(acme_payload),
+                session,
+                owner_id=owner_id,
+            )
+            await svc._persist_brief(
+                "min-sales-002",
+                SalesContactBriefResponse.model_validate(other_payload),
+                session,
+                owner_id=other_owner_id,
+                guest_session_id="guest-session-001",
+            )
+
+            owner_page = await svc.list_contacts(session, owner_id=owner_id)
+            guest_page = await svc.list_contacts(
+                session,
+                guest_session_id="guest-session-001",
+            )
+
+        assert owner_page.total == 1
+        assert owner_page.items[0].contact.company == "Acme"
+        assert guest_page.total == 1
+        assert guest_page.items[0].contact.company == "Beta"
     finally:
         await engine.dispose()
 

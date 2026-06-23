@@ -7,7 +7,9 @@ SPEC-HISTORY-001: 작업 이력 조회/삭제 API
 - DELETE /history/{task_id} - 삭제 (REQ-HIST-007)
 """
 
-from fastapi import APIRouter, Depends, Query
+import uuid
+
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -51,7 +53,10 @@ def _history_item(
     shared_by_task: dict[str, list[str]],
 ) -> HistoryItem:
     return HistoryItem.model_validate(record).model_copy(
-        update={"shared_team_ids": shared_by_task.get(record.task_id, [])}
+        update={
+            "shared_team_ids": shared_by_task.get(record.task_id, []),
+            "source_task_id": _source_task_id(record),
+        }
     )
 
 
@@ -60,12 +65,32 @@ def _history_detail_item(
     shared_by_task: dict[str, list[str]],
 ) -> HistoryDetailItem:
     return HistoryDetailItem.model_validate(record).model_copy(
-        update={"shared_team_ids": shared_by_task.get(record.task_id, [])}
+        update={
+            "shared_team_ids": shared_by_task.get(record.task_id, []),
+            "source_task_id": _source_task_id(record),
+        }
     )
+
+
+def _source_task_id(record: TaskResult) -> str | None:
+    metadata = record.input_metadata if isinstance(record.input_metadata, dict) else {}
+    result_data = record.result_data if isinstance(record.result_data, dict) else {}
+    for key in (
+        "source_task_id",
+        "minutes_task_id",
+        "diarization_task_id",
+        "stt_task_id",
+        "transcription_task_id",
+    ):
+        value = metadata.get(key) or result_data.get(key)
+        if value:
+            return str(value)
+    return None
 
 
 @router.get("/history", response_model=HistoryListResponse)
 async def list_history(
+    request: Request,
     task_type: str | None = Query(
         default=None,
         description="작업 유형 필터 (stt, diarization, minutes, summary)",
@@ -87,12 +112,16 @@ async def list_history(
     """
     # offset 계산 (1-based page → 0-based offset)
     offset = (page - 1) * page_size
+    owner_id = _request_owner_id(request)
+    guest_session_id = _request_guest_session_id(request)
 
     # 전체 건수 및 목록 병렬 조회
     total = await svc.count_results(
         session=db,
         task_type=task_type,
         status=status,
+        owner_id=owner_id,
+        guest_session_id=guest_session_id,
     )
 
     records = await svc.list_results(
@@ -101,6 +130,8 @@ async def list_history(
         status=status,
         limit=page_size,
         offset=offset,
+        owner_id=owner_id,
+        guest_session_id=guest_session_id,
     )
 
     shared_by_task = await _shared_team_ids_by_task(db, [r.task_id for r in records])
@@ -117,6 +148,7 @@ async def list_history(
 @router.get("/history/{task_id}", response_model=HistoryDetailItem)
 async def get_history(
     task_id: str,
+    request: Request,
     db: AsyncSession = Depends(get_db_session),
     svc: ResultService = Depends(get_result_service),
 ) -> HistoryDetailItem:
@@ -131,6 +163,13 @@ async def get_history(
     if record is None:
         not_found(f"작업 이력을 찾을 수 없습니다: task_id={task_id}")
 
+    owner_id = _request_owner_id(request)
+    if owner_id is not None and not await _is_owned_by(db, task_id, owner_id):
+        not_found(f"작업 이력을 찾을 수 없습니다: task_id={task_id}")
+    guest_session_id = _request_guest_session_id(request)
+    if guest_session_id is not None and not _is_guest_owned(record, guest_session_id):
+        not_found(f"작업 이력을 찾을 수 없습니다: task_id={task_id}")
+
     shared_by_task = await _shared_team_ids_by_task(db, [record.task_id])
     return _history_detail_item(record, shared_by_task)
 
@@ -138,6 +177,7 @@ async def get_history(
 @router.delete("/history/{task_id}", status_code=204)
 async def delete_history(
     task_id: str,
+    request: Request,
     db: AsyncSession = Depends(get_db_session),
     svc: ResultService = Depends(get_result_service),
 ) -> None:
@@ -147,7 +187,48 @@ async def delete_history(
     삭제 성공 시 204 No Content를 반환합니다.
     존재하지 않는 task_id 요청 시 404를 반환합니다.
     """
+    owner_id = _request_owner_id(request)
+    if owner_id is not None and not await _is_owned_by(db, task_id, owner_id):
+        not_found(f"작업 이력을 찾을 수 없습니다: task_id={task_id}")
+    guest_session_id = _request_guest_session_id(request)
+    if guest_session_id is not None:
+        record = await svc.get_result(session=db, task_id=task_id)
+        if record is None or not _is_guest_owned(record, guest_session_id):
+            not_found(f"작업 이력을 찾을 수 없습니다: task_id={task_id}")
+
     deleted = await svc.delete_result(session=db, task_id=task_id)
 
     if not deleted:
         not_found(f"작업 이력을 찾을 수 없습니다: task_id={task_id}")
+
+
+def _request_owner_id(request: Request) -> uuid.UUID | None:
+    raw_user_id = getattr(request.state, "user_id", None)
+    if not raw_user_id:
+        return None
+    try:
+        return uuid.UUID(str(raw_user_id))
+    except ValueError:
+        return None
+
+
+def _request_guest_session_id(request: Request) -> str | None:
+    if getattr(request.state, "is_guest", False) is not True:
+        return None
+    guest_session_id = getattr(request.state, "guest_session_id", None)
+    return str(guest_session_id) if guest_session_id else None
+
+
+def _is_guest_owned(record: TaskResult, guest_session_id: str) -> bool:
+    return bool(record.is_guest and record.guest_session_id == guest_session_id)
+
+
+async def _is_owned_by(db: AsyncSession, task_id: str, owner_id: uuid.UUID) -> bool:
+    result = await db.execute(
+        select(MeetingOwnership.id).where(
+            MeetingOwnership.task_id == task_id,
+            MeetingOwnership.owner_id == owner_id,
+            MeetingOwnership.team_id.is_(None),
+        )
+    )
+    return result.scalar_one_or_none() is not None

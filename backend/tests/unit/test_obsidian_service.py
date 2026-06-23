@@ -180,7 +180,7 @@ class TestBuildFrontmatter:
     def test_valid_yaml(
         self, service, meeting_data, minutes_data, summary_data, sentiment_data, tone_data
     ):
-        import yaml
+        import yaml  # type: ignore[import-untyped]
 
         fm_str = service.build_frontmatter(
             meeting_data, minutes_data, summary_data, sentiment_data, tone_data

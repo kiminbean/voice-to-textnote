@@ -117,6 +117,35 @@ async def test_import_text_applies_default_team_policy_for_authenticated_owner()
     assert response.shared_team_ids == [str(shared_team_id)]
 
 
+@pytest.mark.asyncio
+async def test_import_text_persists_guest_session():
+    service = ExternalImportService()
+    db = AsyncMock()
+    redis = AsyncMock()
+    db.run_sync = AsyncMock()
+    db.commit = AsyncMock()
+    payload = ExternalTextImportRequest(
+        source_url="https://example.com/transcript",
+        title="게스트 외부 가져오기",
+        content="게스트 세션 소유로 저장할 만큼 충분한 외부 transcript 본문입니다.",
+    )
+
+    with patch(
+        "backend.services.external_import_service.ResultService.save_result",
+        new_callable=AsyncMock,
+    ) as save_result:
+        await service.import_text(
+            payload,
+            db,
+            redis,
+            is_guest=True,
+            guest_session_id="guest-session-001",
+        )
+
+    assert save_result.await_args.kwargs["is_guest"] is True
+    assert save_result.await_args.kwargs["guest_session_id"] == "guest-session-001"
+
+
 def test_normalize_content_rejects_empty_import_text():
     service = ExternalImportService()
 
@@ -190,6 +219,42 @@ async def test_import_document_extracts_text_and_reuses_external_import_pipeline
     assert payload.source_type == ExternalImportSourceType.DOCUMENT
     assert external_service.import_text.await_args.kwargs["owner_id"] == uuid.UUID(
         "00000000-0000-0000-0000-000000000001"
+    )
+
+
+@pytest.mark.asyncio
+async def test_import_document_passes_guest_context_to_external_import_pipeline():
+    external_service = AsyncMock()
+    external_service.import_text = AsyncMock(
+        return_value=ExternalTextImportResponse(
+            task_id="ext-doc-guest-001",
+            status="completed",
+            title="게스트 문서",
+            source_url="https://local.voicetextnote/imports/documents/guest.pdf",
+            source_type=ExternalImportSourceType.DOCUMENT,
+            language="ko",
+            result_url="/api/v1/minutes/ext-doc-guest-001",
+            search_indexed=True,
+        )
+    )
+    service = DocumentImportService(external_service)
+    service._extract_text = lambda file_type, content: "게스트 문서에서 추출한 충분한 본문입니다"
+
+    await service.import_document(
+        filename="guest.pdf",
+        content=b"%PDF fake",
+        title="게스트 문서",
+        language="ko",
+        db=AsyncMock(),
+        redis_client=AsyncMock(),
+        is_guest=True,
+        guest_session_id="guest-session-001",
+    )
+
+    assert external_service.import_text.await_args.kwargs["is_guest"] is True
+    assert (
+        external_service.import_text.await_args.kwargs["guest_session_id"]
+        == "guest-session-001"
     )
 
 

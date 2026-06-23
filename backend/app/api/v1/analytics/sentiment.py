@@ -110,6 +110,60 @@ def _sentiment_mapping(value: object) -> dict[str, Any]:
     }
 
 
+def _decode_redis_value(value: object) -> str:
+    if isinstance(value, bytes):
+        return value.decode("utf-8")
+    return str(value)
+
+
+async def _get_existing_sentiment_task(
+    redis_client: aioredis.Redis, minutes_task_id: str
+) -> dict | None:
+    task_id_raw = await redis_client.get(f"task:sentiment:by_minutes:{minutes_task_id}")
+    if task_id_raw is None:
+        return None
+
+    task_id = _decode_redis_value(task_id_raw)
+    if task_id.lstrip().startswith("{"):
+        await redis_client.delete(f"task:sentiment:by_minutes:{minutes_task_id}")
+        return None
+
+    result_raw = await redis_client.get(f"task:sentiment:result:{task_id}")
+    if result_raw is not None:
+        result_data = json.loads(_decode_redis_value(result_raw))
+        if result_data.get("status") == TaskStatus.completed.value:
+            return {
+                "task_id": task_id,
+                "minutes_task_id": minutes_task_id,
+                "status": TaskStatus.completed.value,
+                "status_url": f"/api/v1/sentiment/{task_id}/status",
+                "result_url": f"/api/v1/sentiment/{task_id}",
+                "created_at": result_data.get("created_at"),
+                "reused": True,
+            }
+
+    status_raw = await redis_client.get(f"task:sentiment:status:{task_id}")
+    if status_raw is None:
+        await redis_client.delete(f"task:sentiment:by_minutes:{minutes_task_id}")
+        return None
+
+    status_data = json.loads(_decode_redis_value(status_raw))
+    existing_status = status_data.get("status")
+    if existing_status == TaskStatus.failed.value:
+        await redis_client.delete(f"task:sentiment:by_minutes:{minutes_task_id}")
+        return None
+
+    return {
+        "task_id": task_id,
+        "minutes_task_id": minutes_task_id,
+        "status": existing_status or TaskStatus.pending.value,
+        "status_url": f"/api/v1/sentiment/{task_id}/status",
+        "result_url": f"/api/v1/sentiment/{task_id}",
+        "created_at": status_data.get("created_at"),
+        "reused": True,
+    }
+
+
 @router.get(
     "/meeting/{meeting_id}",
     response_model=SentimentAnalysis,
@@ -322,6 +376,16 @@ async def create_sentiment(
     request: SentimentCreateRequest,
     redis_client: aioredis.Redis = Depends(get_redis_client),
 ) -> dict:
+    existing_task = await _get_existing_sentiment_task(redis_client, request.minutes_task_id)
+    if existing_task is not None:
+        logger.info(
+            "기존 감정 분석 작업 재사용",
+            task_id=existing_task["task_id"],
+            minutes_task_id=request.minutes_task_id,
+            status=existing_task["status"],
+        )
+        return existing_task
+
     task_id = str(uuid.uuid4())
     now = datetime.now(UTC)
 
@@ -335,6 +399,7 @@ async def create_sentiment(
     }
     status_key = f"task:sentiment:status:{task_id}"
     await redis_client.setex(status_key, 86400, json.dumps(initial_status))
+    await redis_client.setex(f"task:sentiment:by_minutes:{request.minutes_task_id}", 86400, task_id)
 
     from backend.workers.tasks.sentiment_task import sentiment_celery_task
 

@@ -5,7 +5,7 @@ REQ-SUM-007: Redis에서 회의록 결과 조회 (task:min:result:{minutes_task_
 REQ-SUM-008: 최대 2개 동시 작업 제한
 REQ-SUM-009: 최대 2회 재시도, default_retry_delay=30s
 REQ-SUM-010: 회의록 결과 없음 → 즉시 실패 (재시도 없음)
-REQ-SUM-011: ANTHROPIC_API_KEY 빈 값 → 즉시 실패 (재시도 없음)
+REQ-SUM-011: LLM API key 빈 값 → 즉시 실패 (재시도 없음)
 """
 
 import json
@@ -126,7 +126,7 @@ class TestSummaryTaskHappyPath:
             with patch("backend.workers.tasks.summary_task.settings") as mock_settings:
                 mock_settings.summary_result_ttl = 86400
                 mock_settings.max_concurrent_summaries = 2
-                mock_settings.openai_api_key = "sk-test-key"
+                mock_settings.llm_api_key = "zai-test-key"
                 mock_settings.summary_model = "claude-sonnet-4-20250514"
                 mock_settings.summary_max_tokens = 2000
                 with patch("backend.workers.tasks.summary_task.SummaryGenerator", mock_gen_cls):
@@ -157,7 +157,7 @@ class TestSummaryTaskHappyPath:
             with patch("backend.workers.tasks.summary_task.settings") as mock_settings:
                 mock_settings.summary_result_ttl = 86400
                 mock_settings.max_concurrent_summaries = 2
-                mock_settings.openai_api_key = "sk-test-key"
+                mock_settings.llm_api_key = "zai-test-key"
                 mock_settings.summary_model = "claude-sonnet-4-20250514"
                 mock_settings.summary_max_tokens = 2000
                 with patch("backend.workers.tasks.summary_task.SummaryGenerator", mock_gen_cls):
@@ -187,7 +187,7 @@ class TestSummaryTaskHappyPath:
             with patch("backend.workers.tasks.summary_task.settings") as mock_settings:
                 mock_settings.summary_result_ttl = 86400
                 mock_settings.max_concurrent_summaries = 2
-                mock_settings.openai_api_key = "sk-test-key"
+                mock_settings.llm_api_key = "zai-test-key"
                 mock_settings.summary_model = "claude-sonnet-4-20250514"
                 mock_settings.summary_max_tokens = 2000
                 with patch("backend.workers.tasks.summary_task.SummaryGenerator", mock_gen_cls):
@@ -214,7 +214,7 @@ class TestSummaryTaskHappyPath:
             with patch("backend.workers.tasks.summary_task.settings") as mock_settings:
                 mock_settings.summary_result_ttl = 86400
                 mock_settings.max_concurrent_summaries = 2
-                mock_settings.openai_api_key = "sk-test-key"
+                mock_settings.llm_api_key = "zai-test-key"
                 mock_settings.summary_model = "claude-sonnet-4-20250514"
                 mock_settings.summary_max_tokens = 2000
                 with patch("backend.workers.tasks.summary_task.SummaryGenerator", mock_gen_cls):
@@ -255,7 +255,7 @@ class TestSummaryTaskHappyPath:
         ):
             mock_settings.summary_result_ttl = 86400
             mock_settings.max_concurrent_summaries = 2
-            mock_settings.openai_api_key = "sk-test-key"
+            mock_settings.llm_api_key = "zai-test-key"
             mock_settings.summary_model = "claude-sonnet-4-20250514"
             mock_settings.summary_max_tokens = 2000
 
@@ -297,7 +297,7 @@ class TestSummaryTaskErrors:
             with patch("backend.workers.tasks.summary_task.settings") as mock_settings:
                 mock_settings.summary_result_ttl = 86400
                 mock_settings.max_concurrent_summaries = 2
-                mock_settings.openai_api_key = "sk-test-key"
+                mock_settings.llm_api_key = "zai-test-key"
                 mock_settings.summary_model = "claude-sonnet-4-20250514"
                 mock_settings.summary_max_tokens = 2000
 
@@ -323,7 +323,7 @@ class TestSummaryTaskErrors:
             with patch("backend.workers.tasks.summary_task.settings") as mock_settings:
                 mock_settings.summary_result_ttl = 86400
                 mock_settings.max_concurrent_summaries = 2
-                mock_settings.openai_api_key = "sk-test-key"
+                mock_settings.llm_api_key = "zai-test-key"
                 mock_settings.summary_model = "claude-sonnet-4-20250514"
                 mock_settings.summary_max_tokens = 2000
 
@@ -348,14 +348,14 @@ class TestSummaryTaskErrors:
         ):
             mock_settings.summary_result_ttl = 86400
             mock_settings.max_concurrent_summaries = 2
-            mock_settings.openai_api_key = "sk-test-key"
+            mock_settings.llm_api_key = "zai-test-key"
             result = summary_task(task_id=task_id, minutes_task_id=min_task_id)
 
         assert result["status"] == "failed"
         assert "회의록 결과 파싱 실패" in result["error_message"]
 
     def test_empty_api_key_returns_failed_immediately(self):
-        """ANTHROPIC_API_KEY 빈 값 → 즉시 실패, 재시도 없음 (REQ-SUM-011)"""
+        """LLM API key 빈 값 → 즉시 실패, 재시도 없음 (REQ-SUM-011)"""
         from backend.workers.tasks.summary_task import summary_task
 
         task_id = str(uuid.uuid4())
@@ -370,14 +370,14 @@ class TestSummaryTaskErrors:
             with patch("backend.workers.tasks.summary_task.settings") as mock_settings:
                 mock_settings.summary_result_ttl = 86400
                 mock_settings.max_concurrent_summaries = 2
-                mock_settings.openai_api_key = ""  # 빈 API 키
+                mock_settings.llm_api_key = ""  # 빈 API 키
                 mock_settings.summary_model = "claude-sonnet-4-20250514"
                 mock_settings.summary_max_tokens = 2000
 
                 result = summary_task(task_id=task_id, minutes_task_id=min_task_id)
 
         assert result["status"] == "failed"
-        assert "OPENAI_API_KEY" in result["error"]
+        assert "LLM API key" in result["error"]
 
     def test_max_concurrent_limit_exceeded_returns_rejected(self):
         """동시 실행 2개 한도 초과 → rejected 반환 (REQ-SUM-008)"""
@@ -396,7 +396,7 @@ class TestSummaryTaskErrors:
             with patch("backend.workers.tasks.summary_task.settings") as mock_settings:
                 mock_settings.summary_result_ttl = 86400
                 mock_settings.max_concurrent_summaries = 2
-                mock_settings.openai_api_key = "sk-test-key"
+                mock_settings.llm_api_key = "zai-test-key"
                 mock_settings.summary_model = "claude-sonnet-4-20250514"
                 mock_settings.summary_max_tokens = 2000
 
@@ -423,7 +423,7 @@ class TestSummaryTaskErrors:
             with patch("backend.workers.tasks.summary_task.settings") as mock_settings:
                 mock_settings.summary_result_ttl = 86400
                 mock_settings.max_concurrent_summaries = 2
-                mock_settings.openai_api_key = "sk-test-key"
+                mock_settings.llm_api_key = "zai-test-key"
                 mock_settings.summary_model = "claude-sonnet-4-20250514"
                 mock_settings.summary_max_tokens = 2000
                 with patch("backend.workers.tasks.summary_task.SummaryGenerator", mock_gen_cls):
@@ -452,7 +452,7 @@ class TestSummaryTaskErrors:
             with patch("backend.workers.tasks.summary_task.settings") as mock_settings:
                 mock_settings.summary_result_ttl = 86400
                 mock_settings.max_concurrent_summaries = 2
-                mock_settings.openai_api_key = "sk-test-key"
+                mock_settings.llm_api_key = "zai-test-key"
                 mock_settings.summary_model = "gpt-4o-mini"
 
                 result = summary_task(task_id=task_id, minutes_task_id=min_task_id)
@@ -485,7 +485,7 @@ class TestSummaryTaskErrors:
             with patch("backend.workers.tasks.summary_task.settings") as mock_settings:
                 mock_settings.summary_result_ttl = 86400
                 mock_settings.max_concurrent_summaries = 2
-                mock_settings.openai_api_key = "sk-test-key"
+                mock_settings.llm_api_key = "zai-test-key"
                 mock_settings.summary_model = "gpt-4o-mini"
                 with patch("backend.workers.tasks.summary_task.SummaryGenerator", mock_gen_cls):
                     result = summary_task(
@@ -520,7 +520,7 @@ class TestSummaryTaskErrors:
             with patch("backend.workers.tasks.summary_task.settings") as mock_settings:
                 mock_settings.summary_result_ttl = 86400
                 mock_settings.max_concurrent_summaries = 2
-                mock_settings.openai_api_key = "sk-test-key"
+                mock_settings.llm_api_key = "zai-test-key"
                 mock_settings.summary_model = "gpt-4o-mini"
                 with patch("backend.workers.tasks.summary_task.SummaryGenerator", mock_gen_cls):
                     result = summary_task(
@@ -582,7 +582,7 @@ class TestSummaryTaskStatusTransitions:
             with patch("backend.workers.tasks.summary_task.settings") as mock_settings:
                 mock_settings.summary_result_ttl = 86400
                 mock_settings.max_concurrent_summaries = 2
-                mock_settings.openai_api_key = "sk-test-key"
+                mock_settings.llm_api_key = "zai-test-key"
                 mock_settings.summary_model = "claude-sonnet-4-20250514"
                 mock_settings.summary_max_tokens = 2000
                 with patch("backend.workers.tasks.summary_task.SummaryGenerator", mock_gen_cls):
@@ -620,7 +620,7 @@ class TestSummaryTaskStatusTransitions:
             with patch("backend.workers.tasks.summary_task.settings") as mock_settings:
                 mock_settings.summary_result_ttl = 86400
                 mock_settings.max_concurrent_summaries = 2
-                mock_settings.openai_api_key = "sk-test-key"
+                mock_settings.llm_api_key = "zai-test-key"
                 mock_settings.summary_model = "claude-sonnet-4-20250514"
                 mock_settings.summary_max_tokens = 2000
                 with patch("backend.workers.tasks.summary_task.SummaryGenerator", mock_gen_cls):

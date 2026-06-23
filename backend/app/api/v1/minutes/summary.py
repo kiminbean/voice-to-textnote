@@ -14,7 +14,7 @@ import uuid
 from datetime import UTC, datetime
 
 import redis.asyncio as aioredis
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, status
 
 from backend.app.config import settings
 from backend.app.dependencies import get_redis_client
@@ -42,6 +42,60 @@ async def _scard(redis_client: aioredis.Redis, key: str) -> int:
     return int(await value if inspect.isawaitable(value) else value)
 
 
+def _decode_redis_value(value: object) -> str:
+    if isinstance(value, bytes):
+        return value.decode("utf-8")
+    return str(value)
+
+
+async def _get_existing_mind_map_task(
+    redis_client: aioredis.Redis, summary_task_id: str
+) -> dict | None:
+    task_id_raw = await redis_client.get(f"task:mind:by_summary:{summary_task_id}")
+    if task_id_raw is None:
+        return None
+
+    task_id = _decode_redis_value(task_id_raw)
+    if task_id.lstrip().startswith("{"):
+        await redis_client.delete(f"task:mind:by_summary:{summary_task_id}")
+        return None
+
+    result_raw = await redis_client.get(f"task:mind:result:{task_id}")
+    if result_raw is not None:
+        result_data = json.loads(_decode_redis_value(result_raw))
+        if result_data.get("status") == TaskStatus.completed.value:
+            return {
+                "task_id": task_id,
+                "summary_task_id": summary_task_id,
+                "status": TaskStatus.completed.value,
+                "status_url": f"/api/v1/summaries/mind-map/{task_id}/status",
+                "result_url": f"/api/v1/summaries/mind-map/{task_id}",
+                "created_at": result_data.get("created_at"),
+                "reused": True,
+            }
+
+    status_raw = await redis_client.get(f"task:mind:status:{task_id}")
+    if status_raw is None:
+        await redis_client.delete(f"task:mind:by_summary:{summary_task_id}")
+        return None
+
+    status_data = json.loads(_decode_redis_value(status_raw))
+    existing_status = status_data.get("status")
+    if existing_status == TaskStatus.failed.value:
+        await redis_client.delete(f"task:mind:by_summary:{summary_task_id}")
+        return None
+
+    return {
+        "task_id": task_id,
+        "summary_task_id": summary_task_id,
+        "status": existing_status or TaskStatus.pending.value,
+        "status_url": f"/api/v1/summaries/mind-map/{task_id}/status",
+        "result_url": f"/api/v1/summaries/mind-map/{task_id}",
+        "created_at": status_data.get("created_at"),
+        "reused": True,
+    }
+
+
 @router.post(
     "",
     status_code=status.HTTP_202_ACCEPTED,
@@ -50,6 +104,7 @@ async def _scard(redis_client: aioredis.Redis, key: str) -> int:
     },
 )
 async def create_summary(
+    http_request: Request,
     request: SummaryCreateRequest,
     redis_client: aioredis.Redis = Depends(get_redis_client),
 ) -> dict:
@@ -68,6 +123,9 @@ async def create_summary(
     # --- 작업 ID 생성 및 초기 상태 저장 ---
     task_id = str(uuid.uuid4())
     now = datetime.now(UTC)
+    user_id = getattr(http_request.state, "user_id", None)
+    is_guest = bool(getattr(http_request.state, "is_guest", False))
+    guest_session_id = getattr(http_request.state, "guest_session_id", None)
 
     initial_status = {
         "task_id": task_id,
@@ -88,6 +146,9 @@ async def create_summary(
         minutes_task_id=request.minutes_task_id,
         max_tokens=request.max_tokens,
         template_id=request.template_id,
+        user_id=user_id,
+        is_guest=is_guest,
+        guest_session_id=guest_session_id,
     )
 
     logger.info(
@@ -128,6 +189,16 @@ async def create_mind_map(
     if summary_data.get("status") != TaskStatus.completed.value:
         conflict("완료된 요약 결과에서만 마인드맵을 생성할 수 있습니다.")
 
+    existing_task = await _get_existing_mind_map_task(redis_client, summary_task_id)
+    if existing_task is not None:
+        logger.info(
+            "기존 마인드맵 작업 재사용",
+            task_id=existing_task["task_id"],
+            summary_task_id=summary_task_id,
+            status=existing_task["status"],
+        )
+        return existing_task
+
     task_id = str(uuid.uuid4())
     now = datetime.now(UTC)
     initial_status = {
@@ -143,6 +214,11 @@ async def create_mind_map(
         f"task:mind:status:{task_id}",
         settings.summary_result_ttl,
         json.dumps(initial_status),
+    )
+    await redis_client.setex(
+        f"task:mind:by_summary:{summary_task_id}",
+        settings.summary_result_ttl,
+        task_id,
     )
 
     from backend.workers.tasks.mind_map_task import mind_map_celery_task

@@ -121,7 +121,7 @@ Type=simple
 User=$USER
 WorkingDirectory=$PROJECT_DIR
 Environment=PATH=$PROJECT_DIR/venv/bin:/usr/local/bin:/usr/bin
-ExecStart=$PROJECT_DIR/venv/bin/celery -A backend.workers.celery_app:celery_app worker --loglevel=info --concurrency=2
+ExecStart=$PROJECT_DIR/venv/bin/celery -A backend.workers.celery_app:celery_app worker --loglevel=info --concurrency=3
 Restart=always
 RestartSec=5
 

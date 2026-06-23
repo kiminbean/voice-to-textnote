@@ -48,7 +48,7 @@ def _settings():
     settings = MagicMock()
     settings.summary_result_ttl = 86400
     settings.max_concurrent_summaries = 2
-    settings.openai_api_key = "sk-test"
+    settings.llm_api_key = "sk-test"
     settings.llm_api_key = "sk-test"
     settings.llm_base_url = "https://api.openai.com/v1"
     settings.summary_model = "gpt-4o-mini"

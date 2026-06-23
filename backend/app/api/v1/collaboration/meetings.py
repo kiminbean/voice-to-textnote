@@ -95,6 +95,14 @@ async def share_meeting(
     if role is None or role == "viewer":
         forbidden("팀 멤버(admin 또는 member)만 회의록을 공유할 수 있습니다")
 
+    is_owner = await meeting_svc.is_meeting_owner(
+        session=db,
+        task_id=task_id,
+        user_id=current_user.id,
+    )
+    if not is_owner:
+        forbidden("회의록 소유자만 공유할 수 있습니다")
+
     # 공유 수행
     ownership = await meeting_svc.share_meeting(
         session=db,

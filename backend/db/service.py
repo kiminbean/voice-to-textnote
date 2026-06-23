@@ -6,12 +6,14 @@ REQ-DB-010: Redis 캐시 미스 시 DB 폴백 조회
 REQ-DB-011: save_result(), get_result(), list_results() 메서드
 """
 
+import uuid
 from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.db.auth_models import MeetingOwnership
 from backend.db.models import TaskResult
 
 
@@ -32,6 +34,8 @@ class ResultService:
         result_data: dict[str, Any] | None = None,
         input_metadata: dict[str, Any] | None = None,
         error_message: str | None = None,
+        is_guest: bool = False,
+        guest_session_id: str | None = None,
     ) -> TaskResult:
         """
         작업 결과를 DB에 저장 (upsert)
@@ -64,6 +68,8 @@ class ResultService:
                 result_data=result_data,
                 input_metadata=input_metadata,
                 error_message=error_message,
+                is_guest=is_guest,
+                guest_session_id=guest_session_id,
             )
             session.add(record)
         else:
@@ -73,6 +79,8 @@ class ResultService:
             record.result_data = result_data
             record.input_metadata = input_metadata
             record.error_message = error_message
+            record.is_guest = is_guest
+            record.guest_session_id = guest_session_id
 
             # 완료 상태이면 completed_at 설정
             if status == "completed" and record.completed_at is None:
@@ -108,6 +116,8 @@ class ResultService:
         status: str | None = None,
         limit: int = 50,
         offset: int = 0,
+        owner_id: uuid.UUID | None = None,
+        guest_session_id: str | None = None,
     ) -> list[TaskResult]:
         """
         결과 목록 조회 (페이징 지원)
@@ -124,6 +134,18 @@ class ResultService:
         """
         stmt = select(TaskResult).order_by(TaskResult.created_at.desc())
 
+        if owner_id is not None:
+            stmt = stmt.join(MeetingOwnership, MeetingOwnership.task_id == TaskResult.task_id)
+            stmt = stmt.where(
+                MeetingOwnership.owner_id == owner_id,
+                MeetingOwnership.team_id.is_(None),
+            )
+        elif guest_session_id is not None:
+            stmt = stmt.where(
+                TaskResult.is_guest.is_(True),
+                TaskResult.guest_session_id == guest_session_id,
+            )
+
         if task_type is not None:
             stmt = stmt.where(TaskResult.task_type == task_type)
 
@@ -139,6 +161,8 @@ class ResultService:
         session: AsyncSession,
         task_type: str | None = None,
         status: str | None = None,
+        owner_id: uuid.UUID | None = None,
+        guest_session_id: str | None = None,
     ) -> int:
         """
         SPEC-HISTORY-001: 조건에 맞는 레코드 총 수 조회
@@ -154,6 +178,18 @@ class ResultService:
             조건에 맞는 레코드 수
         """
         stmt = select(func.count(TaskResult.id))
+
+        if owner_id is not None:
+            stmt = stmt.join(MeetingOwnership, MeetingOwnership.task_id == TaskResult.task_id)
+            stmt = stmt.where(
+                MeetingOwnership.owner_id == owner_id,
+                MeetingOwnership.team_id.is_(None),
+            )
+        elif guest_session_id is not None:
+            stmt = stmt.where(
+                TaskResult.is_guest.is_(True),
+                TaskResult.guest_session_id == guest_session_id,
+            )
 
         if task_type is not None:
             stmt = stmt.where(TaskResult.task_type == task_type)

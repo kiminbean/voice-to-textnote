@@ -18,11 +18,30 @@ void main() {
 
   group('MeetingListProvider', () {
     late ProviderContainer container;
+    late MockHistoryApi mockHistoryApi;
 
     setUp(() {
       // 테스트 환경에서 SharedPreferences 목 초기화
       SharedPreferences.setMockInitialValues({});
-      container = ProviderContainer();
+      mockHistoryApi = MockHistoryApi();
+      when(() => mockHistoryApi.list(
+            taskType: any(named: 'taskType'),
+            status: any(named: 'status'),
+            page: any(named: 'page'),
+            pageSize: any(named: 'pageSize'),
+          )).thenAnswer(
+        (_) async => {
+          'items': [],
+          'total': 0,
+          'page': 1,
+          'page_size': 20,
+        },
+      );
+      container = ProviderContainer(
+        overrides: [
+          historyApiProvider.overrideWithValue(mockHistoryApi),
+        ],
+      );
     });
 
     tearDown(() {
@@ -165,6 +184,169 @@ void main() {
       // Assert: 서버 이력이 목록에 추가됨
       final meetings = container.read(meetingListProvider).value ?? [];
       expect(meetings.any((m) => m.id == 'srv-001'), isTrue);
+    });
+
+    test('초기 로드 시 서버 이력을 자동으로 병합해야 함', () async {
+      when(() => mockHistoryApi.list(
+            taskType: any(named: 'taskType'),
+            status: any(named: 'status'),
+            page: any(named: 'page'),
+            pageSize: any(named: 'pageSize'),
+          )).thenAnswer(
+        (_) async => {
+          'items': [
+            {
+              'task_id': 'srv-auto-001',
+              'task_type': 'summary',
+              'status': 'completed',
+              'created_at': '2024-01-15T10:00:00Z',
+              'completed_at': '2024-01-15T10:05:00Z',
+            }
+          ],
+          'total': 1,
+          'page': 1,
+          'page_size': 20,
+        },
+      );
+
+      final container = ProviderContainer(
+        overrides: [
+          historyApiProvider.overrideWithValue(mockHistoryApi),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      final meetings = await container.read(meetingListProvider.future);
+
+      expect(meetings.any((m) => m.id == 'srv-auto-001'), isTrue);
+      verify(() => mockHistoryApi.list(
+            taskType: 'summary',
+            status: 'completed',
+            page: 1,
+            pageSize: 20,
+          )).called(1);
+      verify(() => mockHistoryApi.list(
+            taskType: 'minutes',
+            status: 'completed',
+            page: 1,
+            pageSize: 20,
+          )).called(1);
+    });
+
+    test('refreshFromServer가 summary가 없는 minutes 완료 이력도 복원해야 함', () async {
+      when(() => mockHistoryApi.list(
+            taskType: 'summary',
+            status: any(named: 'status'),
+            page: any(named: 'page'),
+            pageSize: any(named: 'pageSize'),
+          )).thenAnswer(
+        (_) async => {
+          'items': [],
+          'total': 0,
+          'page': 1,
+          'page_size': 20,
+        },
+      );
+      when(() => mockHistoryApi.list(
+            taskType: 'minutes',
+            status: any(named: 'status'),
+            page: any(named: 'page'),
+            pageSize: any(named: 'pageSize'),
+          )).thenAnswer(
+        (_) async => {
+          'items': [
+            {
+              'task_id': 'min-restore-001',
+              'task_type': 'minutes',
+              'status': 'completed',
+              'created_at': '2026-06-22T15:27:59Z',
+              'completed_at': '2026-06-22T15:28:00Z',
+            }
+          ],
+          'total': 1,
+          'page': 1,
+          'page_size': 20,
+        },
+      );
+
+      final container = ProviderContainer(
+        overrides: [
+          historyApiProvider.overrideWithValue(mockHistoryApi),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await container.read(meetingListProvider.future);
+      await container.read(meetingListProvider.notifier).refreshFromServer();
+
+      final meetings = container.read(meetingListProvider).value ?? [];
+      final meeting = meetings.firstWhere((m) => m.id == 'min-restore-001');
+      expect(meeting.minutesTaskId, 'min-restore-001');
+      expect(meeting.summaryTaskId, isNull);
+    });
+
+    test('refreshFromServer가 같은 회의의 minutes와 summary를 하나로 병합해야 함', () async {
+      when(() => mockHistoryApi.list(
+            taskType: 'minutes',
+            status: any(named: 'status'),
+            page: any(named: 'page'),
+            pageSize: any(named: 'pageSize'),
+          )).thenAnswer(
+        (_) async => {
+          'items': [
+            {
+              'task_id': 'min-merge-001',
+              'task_type': 'minutes',
+              'status': 'completed',
+              'created_at': '2026-06-22T15:27:59Z',
+              'completed_at': '2026-06-22T15:28:00Z',
+            }
+          ],
+          'total': 1,
+          'page': 1,
+          'page_size': 20,
+        },
+      );
+      when(() => mockHistoryApi.list(
+            taskType: 'summary',
+            status: any(named: 'status'),
+            page: any(named: 'page'),
+            pageSize: any(named: 'pageSize'),
+          )).thenAnswer(
+        (_) async => {
+          'items': [
+            {
+              'task_id': 'sum-merge-001',
+              'task_type': 'summary',
+              'status': 'completed',
+              'source_task_id': 'min-merge-001',
+              'created_at': '2026-06-22T15:30:00Z',
+              'completed_at': '2026-06-22T15:30:10Z',
+              'shared_team_ids': ['team-001'],
+            }
+          ],
+          'total': 1,
+          'page': 1,
+          'page_size': 20,
+        },
+      );
+
+      final container = ProviderContainer(
+        overrides: [
+          historyApiProvider.overrideWithValue(mockHistoryApi),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await container.read(meetingListProvider.future);
+      await container.read(meetingListProvider.notifier).refreshFromServer();
+
+      final meetings = container.read(meetingListProvider).value ?? [];
+      final merged = meetings.where((m) => m.id == 'min-merge-001').toList();
+      expect(merged.length, 1);
+      expect(merged.single.minutesTaskId, 'min-merge-001');
+      expect(merged.single.summaryTaskId, 'sum-merge-001');
+      expect(merged.single.sharedTeamIds, ['team-001']);
     });
 
     // REQ-HSYNC-002: 로컬에 이미 있는 이력은 중복 추가 안 함

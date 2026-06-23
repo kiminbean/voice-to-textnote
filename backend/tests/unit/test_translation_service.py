@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
@@ -28,8 +29,9 @@ def stub_openai_client(text: str) -> MagicMock:
 
 
 class FakeOpenAI:
-    def __init__(self, api_key: str) -> None:
+    def __init__(self, api_key: str, base_url: str | None = None) -> None:
         self.api_key = api_key
+        self.base_url = base_url
 
 
 @pytest_asyncio.fixture
@@ -300,11 +302,18 @@ def test_language_key_normalizes_case_and_space():
     assert TranslationService()._language_key(" EN ") == "en"
 
 
-def test_get_client_uses_openai_api_key(monkeypatch):
+def test_get_client_uses_llm_api_key(monkeypatch):
     monkeypatch.setattr("backend.services.translation_service.OpenAI", FakeOpenAI)
-    monkeypatch.setattr("backend.services.translation_service.settings.openai_api_key", "test-key")
+    monkeypatch.setattr(
+        "backend.services.translation_service.settings",
+        SimpleNamespace(
+            llm_api_key="zai-test-key",
+            llm_base_url="https://api.z.ai/api/coding/paas/v4",
+        ),
+    )
 
     client = TranslationService()._get_client()
 
     assert isinstance(client, FakeOpenAI)
-    assert client.api_key == "test-key"
+    assert client.api_key == "zai-test-key"
+    assert client.base_url == "https://api.z.ai/api/coding/paas/v4"

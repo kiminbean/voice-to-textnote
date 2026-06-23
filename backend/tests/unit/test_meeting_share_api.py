@@ -102,6 +102,7 @@ async def test_share_meeting_endpoint(meeting_client, current_user):
     mock_ownership.shared_at = shared_at
 
     meeting_svc_mock.get_team_member_role = AsyncMock(return_value="member")
+    meeting_svc_mock.is_meeting_owner = AsyncMock(return_value=True)
     meeting_svc_mock.share_meeting = AsyncMock(return_value=mock_ownership)
 
     response = client.post(
@@ -114,6 +115,25 @@ async def test_share_meeting_endpoint(meeting_client, current_user):
     data = response.json()
     assert data["task_id"] == task_id
     assert data["team_id"] == team_id
+
+
+@pytest.mark.asyncio
+async def test_share_meeting_requires_owner(meeting_client, current_user):
+    client, meeting_svc_mock, _, _ = meeting_client
+    task_id = "task-share-not-owner"
+    team_id = str(uuid.uuid4())
+
+    meeting_svc_mock.get_team_member_role = AsyncMock(return_value="member")
+    meeting_svc_mock.is_meeting_owner = AsyncMock(return_value=False)
+
+    response = client.post(
+        f"/api/v1/meetings/{task_id}/share",
+        json={"team_id": team_id},
+        headers={"Authorization": "Bearer test-token"},
+    )
+
+    assert response.status_code == 403
+    meeting_svc_mock.share_meeting.assert_not_called()
 
 
 @pytest.mark.asyncio

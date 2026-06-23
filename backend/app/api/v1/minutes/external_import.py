@@ -1,7 +1,7 @@
 """External URL/text import API endpoints."""
 
 import redis.asyncio as aioredis
-from fastapi import APIRouter, Depends, File, Form, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.dependencies import get_db_session, get_optional_current_user, get_redis_client
@@ -36,6 +36,7 @@ def get_document_import_service() -> DocumentImportService:
     responses={422: {"description": "가져오기 입력 검증 실패"}},
 )
 async def import_external_text(
+    request: Request,
     payload: ExternalTextImportRequest,
     db: AsyncSession = Depends(get_db_session),
     redis_client: aioredis.Redis = Depends(get_redis_client),
@@ -49,6 +50,8 @@ async def import_external_text(
             db,
             redis_client,
             owner_id=getattr(current_user, "id", None),
+            is_guest=bool(getattr(request.state, "is_guest", False)),
+            guest_session_id=getattr(request.state, "guest_session_id", None),
         )
     except ExternalImportValidationError as exc:
         unprocessable(str(exc))
@@ -62,6 +65,7 @@ async def import_external_text(
     responses={422: {"description": "문서 가져오기 입력 또는 추출 실패"}},
 )
 async def import_document(
+    request: Request,
     file: UploadFile = File(..., description="PDF 또는 DOCX 문서"),
     title: str | None = Form(default=None, description="가져올 노트 제목"),
     language: str = Form(default="ko", min_length=2, max_length=16, description="콘텐츠 언어"),
@@ -80,6 +84,8 @@ async def import_document(
             db=db,
             redis_client=redis_client,
             owner_id=getattr(current_user, "id", None),
+            is_guest=bool(getattr(request.state, "is_guest", False)),
+            guest_session_id=getattr(request.state, "guest_session_id", None),
         )
     except ExternalImportValidationError as exc:
         unprocessable(str(exc))

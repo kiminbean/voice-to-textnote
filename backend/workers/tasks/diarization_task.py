@@ -144,6 +144,9 @@ def diarization_task(
     min_speakers: int = 1,
     max_speakers: int = 10,
     audio_path: str | None = None,
+    user_id: str | None = None,
+    is_guest: bool = False,
+    guest_session_id: str | None = None,
 ) -> dict:
     """
     메인 화자 분리 처리 함수 (Celery 워커에서 호출)
@@ -382,6 +385,10 @@ def diarization_task(
                 task_type="diarization",
                 status="completed",
                 result_data=final_result,
+                owner_id=user_id,
+                source_task_id=stt_task_id,
+                is_guest=is_guest,
+                guest_session_id=guest_session_id,
             )
         except Exception:
             logger.warning("DB 결과 저장 실패 - Redis 캐시로 폴백", task_id=task_id, exc_info=True, category="db_fallback")
@@ -449,6 +456,10 @@ def diarization_task(
                 task_type="diarization",
                 status="failed",
                 error_message=error_msg,
+                owner_id=user_id,
+                source_task_id=stt_task_id,
+                is_guest=is_guest,
+                guest_session_id=guest_session_id,
             )
         except Exception:
             logger.warning("DB 결과 저장 실패 - Redis 캐시로 폴백", task_id=task_id, exc_info=True, category="db_fallback")
@@ -478,6 +489,10 @@ def diarization_task(
                 task_type="diarization",
                 status="failed",
                 error_message=error_msg,
+                owner_id=user_id,
+                source_task_id=stt_task_id,
+                is_guest=is_guest,
+                guest_session_id=guest_session_id,
             )
         except Exception:
             logger.warning("DB 결과 저장 실패 - Redis 캐시로 폴백", task_id=task_id, exc_info=True, category="db_fallback")
@@ -514,6 +529,9 @@ def diarization_celery_task(
     min_speakers: int = 1,
     max_speakers: int = 10,
     audio_path: str | None = None,
+    user_id: str | None = None,
+    is_guest: bool = False,
+    guest_session_id: str | None = None,
 ) -> dict:
     """
     Celery 래퍼: diarization_task 호출 + 재시도 처리
@@ -534,6 +552,9 @@ def diarization_celery_task(
             min_speakers=min_speakers,
             max_speakers=max_speakers,
             audio_path=audio_path,
+            user_id=user_id,
+            is_guest=is_guest,
+            guest_session_id=guest_session_id,
         )
     except SoftTimeLimitExceeded:
         # 시간 초과 → 재시도 안 함 (diarization_task 내부에서 이미 처리)

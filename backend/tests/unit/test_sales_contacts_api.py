@@ -22,6 +22,18 @@ def app_client():
     from backend.app.api.v1.minutes.sales_contacts import get_sales_contact_service, router
 
     app = FastAPI()
+
+    @app.middleware("http")
+    async def test_request_context(request, call_next):
+        user_id = request.headers.get("X-Test-User-ID")
+        guest_session_id = request.headers.get("X-Test-Guest-Session-ID")
+        if user_id:
+            request.state.user_id = user_id
+        if guest_session_id:
+            request.state.is_guest = True
+            request.state.guest_session_id = guest_session_id
+        return await call_next(request)
+
     register_exception_handlers(app)
     app.include_router(router, prefix="/api/v1")
 
@@ -86,7 +98,24 @@ def test_list_sales_contacts_success(app_client):
         page=1,
         page_size=20,
         query="Acme",
+        owner_id=None,
+        guest_session_id=None,
     )
+
+
+def test_list_sales_contacts_passes_owner_filter(app_client):
+    client, svc, db_session = app_client
+    svc.list_contacts = AsyncMock(return_value=make_list_response())
+
+    response = client.get(
+        "/api/v1/sales-contacts",
+        headers={"X-Test-User-ID": "8a27b69f-d5e6-4874-98d8-cbd3fc716f9a"},
+    )
+
+    assert response.status_code == 200
+    assert svc.list_contacts.await_args.kwargs["owner_id"].hex == "8a27b69fd5e6487498d8cbd3fc716f9a"
+    assert svc.list_contacts.await_args.kwargs["guest_session_id"] is None
+    assert svc.list_contacts.await_args.args[0] is db_session
 
 
 def test_list_sales_contacts_validates_page_size(app_client):
@@ -116,7 +145,30 @@ def test_export_sales_contacts_csv_success(app_client):
     assert response.headers["content-type"].startswith("text/csv")
     assert response.headers["content-disposition"] == 'attachment; filename="sales-contacts.csv"'
     assert "김민수,Acme" in response.text
-    svc.export_contacts_csv.assert_awaited_once_with(db_session, query="Acme")
+    svc.export_contacts_csv.assert_awaited_once_with(
+        db_session,
+        query="Acme",
+        owner_id=None,
+        guest_session_id=None,
+    )
+
+
+def test_export_sales_contacts_csv_passes_guest_filter(app_client):
+    client, svc, db_session = app_client
+    svc.export_contacts_csv = AsyncMock(return_value="name,company\n김민수,Acme\n")
+
+    response = client.get(
+        "/api/v1/sales-contacts/export.csv",
+        headers={"X-Test-Guest-Session-ID": "guest-session-001"},
+    )
+
+    assert response.status_code == 200
+    svc.export_contacts_csv.assert_awaited_once_with(
+        db_session,
+        query=None,
+        owner_id=None,
+        guest_session_id="guest-session-001",
+    )
 
 
 def test_export_sales_contacts_csv_unexpected_error_returns_500(app_client):
@@ -147,6 +199,25 @@ def test_update_sales_contact_crm_success(app_client):
     assert isinstance(args[2], SalesContactCrmUpdateRequest)
     assert args[2].status == "follow_up"
     assert args[2].note == "금요일 오전 재연락"
+    assert svc.update_crm.await_args.kwargs["owner_id"] is None
+    assert svc.update_crm.await_args.kwargs["guest_session_id"] is None
+
+
+def test_update_sales_contact_crm_passes_guest_filter(app_client):
+    client, svc, db_session = app_client
+    updated = make_list_response().items[0]
+    svc.update_crm = AsyncMock(return_value=updated)
+
+    response = client.patch(
+        "/api/v1/sales-contacts/sales-contact-brief:min-sales-001/crm",
+        headers={"X-Test-Guest-Session-ID": "guest-session-001"},
+        json={"status": "follow_up", "note": "금요일 오전 재연락"},
+    )
+
+    assert response.status_code == 200
+    assert svc.update_crm.await_args.args[0] is db_session
+    assert svc.update_crm.await_args.kwargs["owner_id"] is None
+    assert svc.update_crm.await_args.kwargs["guest_session_id"] == "guest-session-001"
 
 
 def test_update_sales_contact_crm_validates_note_length(app_client):

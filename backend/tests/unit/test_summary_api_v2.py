@@ -190,6 +190,46 @@ class TestCreateMindMapAPI:
         assert data["summary_task_id"] == "sum-123"
         assert data["status"] == "pending"
 
+    def test_create_mind_map_reuses_existing_task(self, summary_client):
+        """동일 요약에 대한 마인드맵 생성 요청은 기존 작업을 재사용"""
+        client, mock_redis = summary_client
+
+        summary_result = {
+            "task_id": "sum-123",
+            "status": "completed",
+            "summary_text": "요약 내용",
+        }
+        existing_status = {
+            "task_id": "mind-existing-001",
+            "summary_task_id": "sum-123",
+            "status": "processing",
+            "created_at": "2026-06-23T00:00:00+00:00",
+        }
+        mock_redis.get = AsyncMock(
+            side_effect=[
+                json.dumps(summary_result),
+                "mind-existing-001",
+                None,
+                json.dumps(existing_status),
+            ]
+        )
+
+        with patch("backend.workers.tasks.mind_map_task.mind_map_celery_task") as mock_task:
+            mock_task.delay = MagicMock()
+
+            response = client.post(
+                "/api/v1/summaries/sum-123/mind-map",
+                json={"max_tokens": 1024},
+            )
+
+        assert response.status_code == 202
+        data = response.json()
+        assert data["task_id"] == "mind-existing-001"
+        assert data["summary_task_id"] == "sum-123"
+        assert data["status"] == "processing"
+        assert data["reused"] is True
+        mock_task.delay.assert_not_called()
+
     def test_create_mind_map_not_found(self, summary_client):
         """요약 결과를 찾을 수 없음 (404)"""
         client, mock_redis = summary_client

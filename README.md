@@ -224,7 +224,7 @@ redis-server
 #### 터미널 2: Celery 워커
 ```bash
 source venv/bin/activate
-celery -A backend.workers.celery_app worker --loglevel=info --concurrency=1
+celery -A backend.workers.celery_app worker --loglevel=info --concurrency=3
 ```
 
 #### 터미널 3: FastAPI 개발 서버
@@ -573,7 +573,7 @@ backend/
 tail -f logs/app.log
 
 # Celery 워커 로그
-celery -A backend.workers.celery_app worker --loglevel=info
+celery -A backend.workers.celery_app worker --loglevel=info --concurrency=3
 ```
 
 ### JSON 로그 포맷
@@ -720,7 +720,7 @@ brew services start redis
 uvicorn backend.app.main:app --host 0.0.0.0 --port 8000
 
 # Celery 워커 시작 (별도 터미널)
-celery -A backend.workers.celery_app:celery_app worker --loglevel=info
+celery -A backend.workers.celery_app:celery_app worker --loglevel=info --concurrency=3
 ```
 
 ### 프로덕션 배포 (Ubuntu + systemd)

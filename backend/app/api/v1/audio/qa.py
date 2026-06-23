@@ -7,10 +7,10 @@ SPEC-QA-001: 회의 Q&A API 엔드포인트
 """
 
 import redis.asyncio as aioredis
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.dependencies import get_db_session, get_redis_client
+from backend.app.dependencies import get_db_session, get_optional_current_user, get_redis_client
 from backend.app.errors import internal_error, not_found
 from backend.app.exceptions import VoiceNoteError
 from backend.schemas.qa import (
@@ -63,7 +63,9 @@ async def ask_question(
 )
 async def ask_across_meetings(
     payload: CrossMeetingAskRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db_session),
+    current_user=Depends(get_optional_current_user),
     svc: QAService = Depends(get_qa_service),
 ) -> CrossMeetingAskResponse:
     """여러 회의/요약에서 질문과 관련된 근거를 검색합니다."""
@@ -72,6 +74,12 @@ async def ask_across_meetings(
             session=db,
             question=payload.question,
             limit=payload.limit,
+            owner_id=getattr(current_user, "id", None),
+            guest_session_id=(
+                str(getattr(request.state, "guest_session_id", ""))
+                if getattr(request.state, "is_guest", False)
+                else None
+            ),
         )
     except ValueError as e:
         not_found(str(e))

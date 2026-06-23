@@ -27,6 +27,18 @@ def app_client():
     )
 
     app = FastAPI()
+
+    @app.middleware("http")
+    async def test_request_context(request, call_next):
+        user_id = request.headers.get("X-Test-User-ID")
+        guest_session_id = request.headers.get("X-Test-Guest-Session-ID")
+        if user_id:
+            request.state.user_id = user_id
+        if guest_session_id:
+            request.state.is_guest = True
+            request.state.guest_session_id = guest_session_id
+        return await call_next(request)
+
     register_exception_handlers(app)
     app.include_router(router, prefix="/api/v1")
 
@@ -88,6 +100,34 @@ def test_create_sales_contact_brief_success(app_client):
         max_tokens=1200,
         force_refresh=False,
         db_session=db_session,
+        owner_id=None,
+        guest_session_id=None,
+    )
+
+
+def test_create_sales_contact_brief_passes_request_owner_and_guest_context(app_client):
+    client, _, svc, db_session = app_client
+    svc.generate = AsyncMock(return_value=make_response())
+
+    response = client.post(
+        "/api/v1/minutes/min-sales-001/sales-contact-brief",
+        headers={
+            "X-Test-User-ID": "8a27b69f-d5e6-4874-98d8-cbd3fc716f9a",
+            "X-Test-Guest-Session-ID": "guest-session-001",
+        },
+        json={},
+    )
+
+    assert response.status_code == 200
+    svc.generate.assert_awaited_once_with(
+        "min-sales-001",
+        app_client[1],
+        language="ko",
+        max_tokens=1200,
+        force_refresh=False,
+        db_session=db_session,
+        owner_id="8a27b69f-d5e6-4874-98d8-cbd3fc716f9a",
+        guest_session_id="guest-session-001",
     )
 
 

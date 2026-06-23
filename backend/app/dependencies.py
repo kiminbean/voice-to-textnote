@@ -128,4 +128,6 @@ async def get_optional_current_user(
     auth_header = request.headers.get("Authorization")
     if not auth_header:
         return None
+    if auth_header.startswith("Bearer guest:"):
+        return None
     return await get_current_user(request=request, db=db)

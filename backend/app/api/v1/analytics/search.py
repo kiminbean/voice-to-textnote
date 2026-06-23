@@ -7,10 +7,10 @@ SPEC-SEARCH-001/002: 회의록 전문 검색 API
 
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.dependencies import get_db_session
+from backend.app.dependencies import get_db_session, get_optional_current_user
 from backend.app.errors import unprocessable
 from backend.schemas.search import SearchResponse, SortOption
 from backend.services.search_service import SearchService
@@ -29,6 +29,7 @@ _VALID_TASK_TYPES = {"all", "summary", "minutes", "sales_contact_brief"}
 
 @router.get("/search", response_model=SearchResponse)
 async def search(
+    request: Request,
     q: str = Query(
         ...,
         min_length=2,
@@ -51,6 +52,7 @@ async def search(
     has_action_items: bool | None = Query(None, description="액션 아이템 존재 여부"),
     has_key_decisions: bool | None = Query(None, description="핵심 결정 존재 여부"),
     db: AsyncSession = Depends(get_db_session),
+    current_user=Depends(get_optional_current_user),
     svc: SearchService = Depends(get_search_service),
 ) -> SearchResponse:
     """
@@ -93,4 +95,10 @@ async def search(
         speaker=speaker,
         has_action_items=has_action_items,
         has_key_decisions=has_key_decisions,
+        owner_id=getattr(current_user, "id", None),
+        guest_session_id=(
+            str(getattr(request.state, "guest_session_id", ""))
+            if getattr(request.state, "is_guest", False)
+            else None
+        ),
     )

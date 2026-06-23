@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import uuid
 from csv import DictWriter
 from datetime import UTC, datetime
 from io import StringIO
@@ -14,6 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.config import settings
+from backend.db.auth_models import MeetingOwnership
 from backend.db.models import TaskResult
 from backend.db.search_models import ensure_search_index_table, index_search_entry
 from backend.ml.openai_client import structured_json_completion_options
@@ -107,6 +109,8 @@ class SalesContactBriefService:
         max_tokens: int = 1200,
         force_refresh: bool = False,
         db_session: AsyncSession | None = None,
+        owner_id: str | uuid.UUID | None = None,
+        guest_session_id: str | None = None,
     ) -> SalesContactBriefResponse:
         """Generate or return a cached sales contact brief for a minutes task."""
         cache_key = _sales_contact_brief_cache_key(task_id)
@@ -117,7 +121,13 @@ class SalesContactBriefService:
                     cast(str | bytes | bytearray, cached)
                 )
                 if db_session is not None:
-                    await self._persist_brief(task_id, result, db_session)
+                    await self._persist_brief(
+                        task_id,
+                        result,
+                        db_session,
+                        owner_id=owner_id,
+                        guest_session_id=guest_session_id,
+                    )
                     await self._index_brief(task_id, result, db_session)
                 return result
 
@@ -181,7 +191,13 @@ class SalesContactBriefService:
             ex=settings.summary_result_ttl,
         )
         if db_session is not None:
-            await self._persist_brief(task_id, result, db_session)
+            await self._persist_brief(
+                task_id,
+                result,
+                db_session,
+                owner_id=owner_id,
+                guest_session_id=guest_session_id,
+            )
             await self._index_brief(task_id, result, db_session)
         return result
 
@@ -192,6 +208,8 @@ class SalesContactBriefService:
         page: int = 1,
         page_size: int = 20,
         query: str | None = None,
+        owner_id: uuid.UUID | None = None,
+        guest_session_id: str | None = None,
     ) -> SalesContactListResponse:
         """Return persisted sales/contact brief artifacts as a CRM-style list."""
         stmt = (
@@ -202,6 +220,17 @@ class SalesContactBriefService:
             )
             .order_by(TaskResult.completed_at.desc(), TaskResult.created_at.desc())
         )
+        if owner_id is not None:
+            stmt = stmt.join(MeetingOwnership, MeetingOwnership.task_id == TaskResult.task_id)
+            stmt = stmt.where(
+                MeetingOwnership.owner_id == owner_id,
+                MeetingOwnership.team_id.is_(None),
+            )
+        elif guest_session_id is not None:
+            stmt = stmt.where(
+                TaskResult.is_guest.is_(True),
+                TaskResult.guest_session_id == guest_session_id,
+            )
         result = await db_session.execute(stmt)
         records = list(result.scalars().all())
         items = [self._record_to_list_item(record) for record in records]
@@ -225,6 +254,8 @@ class SalesContactBriefService:
         db_session: AsyncSession,
         *,
         query: str | None = None,
+        owner_id: uuid.UUID | None = None,
+        guest_session_id: str | None = None,
     ) -> str:
         """Export all matching sales contacts as CRM-importable CSV."""
         response = await self.list_contacts(
@@ -232,6 +263,8 @@ class SalesContactBriefService:
             page=1,
             page_size=10_000,
             query=query,
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
         )
         fieldnames = [
             "name",
@@ -288,6 +321,9 @@ class SalesContactBriefService:
         db_session: AsyncSession,
         artifact_task_id: str,
         request: SalesContactCrmUpdateRequest,
+        *,
+        owner_id: uuid.UUID | None = None,
+        guest_session_id: str | None = None,
     ) -> SalesContactListItem:
         """Persist editable CRM status/note metadata on a sales contact artifact."""
         stmt = select(TaskResult).where(
@@ -295,6 +331,17 @@ class SalesContactBriefService:
             TaskResult.task_type == "sales_contact_brief",
             TaskResult.status == "completed",
         )
+        if owner_id is not None:
+            stmt = stmt.join(MeetingOwnership, MeetingOwnership.task_id == TaskResult.task_id)
+            stmt = stmt.where(
+                MeetingOwnership.owner_id == owner_id,
+                MeetingOwnership.team_id.is_(None),
+            )
+        elif guest_session_id is not None:
+            stmt = stmt.where(
+                TaskResult.is_guest.is_(True),
+                TaskResult.guest_session_id == guest_session_id,
+            )
         query_result = await db_session.execute(stmt)
         record = query_result.scalar_one_or_none()
         if record is None:
@@ -316,6 +363,8 @@ class SalesContactBriefService:
         task_id: str,
         result: SalesContactBriefResponse,
         db_session: AsyncSession,
+        owner_id: str | uuid.UUID | None = None,
+        guest_session_id: str | None = None,
     ) -> None:
         """Best-effort persistence for the customer/contact list surface."""
         artifact_task_id = _sales_contact_brief_result_task_id(task_id)
@@ -339,6 +388,14 @@ class SalesContactBriefService:
             }
             record.error_message = None
             record.completed_at = completed_at.replace(tzinfo=None)
+            await self._inherit_access(
+                db_session,
+                source_task_id=task_id,
+                artifact_task_id=artifact_task_id,
+                record=record,
+                owner_id=owner_id,
+                guest_session_id=guest_session_id,
+            )
             await db_session.commit()
         except Exception as exc:
             await db_session.rollback()
@@ -347,6 +404,86 @@ class SalesContactBriefService:
                 task_id=task_id,
                 error=str(exc),
             )
+
+    async def _inherit_access(
+        self,
+        db_session: AsyncSession,
+        *,
+        source_task_id: str,
+        artifact_task_id: str,
+        record: TaskResult,
+        owner_id: str | uuid.UUID | None,
+        guest_session_id: str | None,
+    ) -> None:
+        explicit_owner_id = self._coerce_owner_id(owner_id)
+        if explicit_owner_id is not None:
+            await self._ensure_ownership(
+                db_session,
+                artifact_task_id=artifact_task_id,
+                owner_id=explicit_owner_id,
+                team_id=None,
+            )
+
+        source_record_result = await db_session.execute(
+            select(TaskResult).where(TaskResult.task_id == source_task_id)
+        )
+        source_record = source_record_result.scalar_one_or_none()
+        inherited_guest_session_id = guest_session_id
+        if source_record is not None and source_record.is_guest:
+            inherited_guest_session_id = inherited_guest_session_id or source_record.guest_session_id
+        if inherited_guest_session_id:
+            record.is_guest = True
+            record.guest_session_id = inherited_guest_session_id
+
+        source_ownership_result = await db_session.execute(
+            select(MeetingOwnership).where(MeetingOwnership.task_id == source_task_id)
+        )
+        for source_ownership in source_ownership_result.scalars().all():
+            await self._ensure_ownership(
+                db_session,
+                artifact_task_id=artifact_task_id,
+                owner_id=source_ownership.owner_id,
+                team_id=source_ownership.team_id,
+            )
+
+    async def _ensure_ownership(
+        self,
+        db_session: AsyncSession,
+        *,
+        artifact_task_id: str,
+        owner_id: uuid.UUID,
+        team_id: uuid.UUID | None,
+    ) -> None:
+        existing_result = await db_session.execute(
+            select(MeetingOwnership).where(
+                MeetingOwnership.task_id == artifact_task_id,
+                MeetingOwnership.owner_id == owner_id,
+                MeetingOwnership.team_id == team_id
+                if team_id is not None
+                else MeetingOwnership.team_id.is_(None),
+            )
+        )
+        if existing_result.scalar_one_or_none() is not None:
+            return
+
+        db_session.add(
+            MeetingOwnership(
+                task_id=artifact_task_id,
+                owner_id=owner_id,
+                team_id=team_id,
+                shared_at=datetime.now(UTC).replace(tzinfo=None) if team_id else None,
+            )
+        )
+
+    def _coerce_owner_id(self, owner_id: str | uuid.UUID | None) -> uuid.UUID | None:
+        if owner_id is None:
+            return None
+        if isinstance(owner_id, uuid.UUID):
+            return owner_id
+        try:
+            return uuid.UUID(str(owner_id))
+        except ValueError:
+            return None
 
     def _record_to_list_item(self, record: TaskResult) -> SalesContactListItem:
         data = SalesContactBriefResponse.model_validate(record.result_data or {})

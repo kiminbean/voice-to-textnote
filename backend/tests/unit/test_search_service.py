@@ -9,6 +9,7 @@
 - REQ-SEARCH-012: 액션 아이템/핵심 결정 필터 (has_action_items, has_key_decisions)
 """
 
+import uuid
 from datetime import datetime
 
 import pytest
@@ -164,6 +165,44 @@ class TestSearchService:
         assert result.total > 0
         assert len(result.items) > 0
         assert result.query == "회의"
+
+    @pytest.mark.asyncio
+    async def test_search_filters_results_to_owner_visibility(self, populated_search_db):
+        """owner_id가 있으면 해당 사용자의 private/팀 공유 회의만 검색한다."""
+        from backend.services.search_service import SearchService
+
+        owner_id = uuid.uuid4()
+        await populated_search_db.execute(
+            text(
+                "CREATE TABLE IF NOT EXISTS meeting_ownership "
+                "(id TEXT PRIMARY KEY, task_id TEXT, owner_id TEXT, team_id TEXT, "
+                "shared_at DATETIME, created_at DATETIME)"
+            )
+        )
+        await populated_search_db.execute(
+            text(
+                "CREATE TABLE IF NOT EXISTS team_members "
+                "(id TEXT PRIMARY KEY, team_id TEXT, user_id TEXT, role TEXT, joined_at DATETIME)"
+            )
+        )
+        await populated_search_db.execute(
+            text(
+                "INSERT INTO meeting_ownership (id, task_id, owner_id, team_id, created_at) "
+                "VALUES (:id, 'min-search-001', :owner_id, NULL, '2024-01-01T09:00:00')"
+            ),
+            {"id": str(uuid.uuid4()), "owner_id": str(owner_id)},
+        )
+        await populated_search_db.commit()
+
+        service = SearchService()
+        result = await service.search(
+            session=populated_search_db,
+            query="프로젝트",
+            owner_id=owner_id,
+        )
+
+        assert result.total == 1
+        assert [item.task_id for item in result.items] == ["min-search-001"]
 
     @pytest.mark.asyncio
     async def test_search_with_task_type_filter_summary(self, populated_search_db):

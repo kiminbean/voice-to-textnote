@@ -19,6 +19,8 @@ from backend.app.error_handlers import register_exception_handlers
 from backend.db.auth_models import MeetingOwnership, Team, User
 from backend.db.models import Base, TaskResult
 
+OWNER_ID = uuid.UUID("11111111-1111-4111-8111-111111111111")
+
 # ---------------------------------------------------------------------------
 # 테스트용 DB 픽스처 (인메모리 SQLite)
 # ---------------------------------------------------------------------------
@@ -90,8 +92,17 @@ async def populated_db(db_session: AsyncSession):
             task_id="summary-001",
             task_type="summary",
             status="completed",
-            result_data={"text": "요약 내용"},
+            result_data={"text": "요약 내용", "minutes_task_id": "minutes-001"},
             completed_at=datetime(2024, 1, 1, 9, 15, 0),
+        ),
+        TaskResult(
+            task_id="guest-summary-001",
+            task_type="summary",
+            status="completed",
+            result_data={"text": "게스트 요약"},
+            is_guest=True,
+            guest_session_id="guest-session-001",
+            completed_at=datetime(2024, 1, 1, 9, 16, 0),
         ),
         TaskResult(
             task_id="stt-003",
@@ -124,7 +135,7 @@ async def populated_db(db_session: AsyncSession):
 
     for record in records:
         db_session.add(record)
-    owner_id = uuid.uuid4()
+    owner_id = OWNER_ID
     team_id = uuid.uuid4()
     db_session.add(
         User(
@@ -140,6 +151,13 @@ async def populated_db(db_session: AsyncSession):
             name="Research Team",
             description=None,
             created_by=owner_id,
+        )
+    )
+    db_session.add(
+        MeetingOwnership(
+            task_id="summary-001",
+            owner_id=owner_id,
+            team_id=None,
         )
     )
     db_session.add(
@@ -168,6 +186,17 @@ def test_app(db_engine):
     app = FastAPI()
     register_exception_handlers(app)
     app.include_router(router, prefix="/api/v1")
+
+    @app.middleware("http")
+    async def inject_test_user_id(request, call_next):
+        user_id = request.headers.get("X-Test-User-ID")
+        if user_id:
+            request.state.user_id = user_id
+        guest_session_id = request.headers.get("X-Test-Guest-Session-ID")
+        if guest_session_id:
+            request.state.is_guest = True
+            request.state.guest_session_id = guest_session_id
+        return await call_next(request)
 
     # DB 세션 의존성 오버라이드
     session_factory = async_sessionmaker(db_engine, expire_on_commit=False)
@@ -228,14 +257,14 @@ class TestHistoryList:
         """총 레코드 수 반환"""
         resp = client.get("/api/v1/history")
         data = resp.json()
-        # populated_db에 10건 삽입
-        assert data["total"] == 10
+        # populated_db에 11건 삽입
+        assert data["total"] == 11
 
     def test_list_items_count(self, client):
         """items 배열 항목 수 확인 (10건, page_size 기본 20)"""
         resp = client.get("/api/v1/history")
         data = resp.json()
-        assert len(data["items"]) == 10
+        assert len(data["items"]) == 11
 
     def test_list_item_fields(self, client):
         """HistoryItem 필드 구조 검증"""
@@ -256,6 +285,13 @@ class TestHistoryList:
         data = resp.json()
         item = next(item for item in data["items"] if item["task_id"] == "summary-001")
         assert len(item["shared_team_ids"]) == 1
+
+    def test_list_item_includes_source_task_id(self, client):
+        """파생 작업은 원본 task_id를 history 목록에 포함해야 함"""
+        resp = client.get("/api/v1/history")
+        data = resp.json()
+        item = next(item for item in data["items"] if item["task_id"] == "summary-001")
+        assert item["source_task_id"] == "minutes-001"
 
     def test_list_page_size_param(self, client):
         """page_size 파라미터 적용"""
@@ -279,6 +315,39 @@ class TestHistoryList:
         data = resp.json()
         assert data["items"] == []
         assert data["total"] == 0
+
+    def test_list_filters_to_authenticated_owner(self, client):
+        """JWT 사용자는 자기 소유 작업 이력만 조회해야 함"""
+        resp = client.get("/api/v1/history", headers={"X-Test-User-ID": str(OWNER_ID)})
+        data = resp.json()
+        assert data["total"] == 1
+        assert [item["task_id"] for item in data["items"]] == ["summary-001"]
+
+    def test_detail_hides_unowned_task_for_authenticated_owner(self, client):
+        """JWT 사용자는 소유하지 않은 task_id 상세를 볼 수 없어야 함"""
+        resp = client.get(
+            "/api/v1/history/minutes-001",
+            headers={"X-Test-User-ID": str(OWNER_ID)},
+        )
+        assert resp.status_code == 404
+
+    def test_list_filters_to_guest_session(self, client):
+        """게스트 사용자는 자기 guest_session_id의 작업 이력만 조회해야 함"""
+        resp = client.get(
+            "/api/v1/history",
+            headers={"X-Test-Guest-Session-ID": "guest-session-001"},
+        )
+        data = resp.json()
+        assert data["total"] == 1
+        assert [item["task_id"] for item in data["items"]] == ["guest-summary-001"]
+
+    def test_detail_hides_other_records_for_guest_session(self, client):
+        """게스트 사용자는 다른 세션/로그인 사용자 task 상세를 볼 수 없어야 함"""
+        resp = client.get(
+            "/api/v1/history/summary-001",
+            headers={"X-Test-Guest-Session-ID": "guest-session-001"},
+        )
+        assert resp.status_code == 404
 
 
 # ---------------------------------------------------------------------------

@@ -226,6 +226,21 @@ class TestGetCurrentUser:
         assert user is mock_user
 
     @pytest.mark.asyncio
+    async def test_optional_current_user_with_guest_bearer_returns_none(
+        self, mock_request, mock_db_session
+    ):
+        """선택 인증은 게스트 Bearer 토큰을 사용자 JWT로 검증하지 않는다."""
+        from backend.app.dependencies import get_optional_current_user
+
+        mock_request.headers.get = MagicMock(return_value="Bearer guest:guest-token")
+
+        with patch("backend.app.dependencies.get_current_user") as get_current_user:
+            user = await get_optional_current_user(mock_request, mock_db_session)
+
+        assert user is None
+        get_current_user.assert_not_called()
+
+    @pytest.mark.asyncio
     async def test_invalid_bearer_format(self, mock_request, mock_db_session):
         """Bearer 형식이 아니면 401 에러"""
         from backend.app.dependencies import get_current_user

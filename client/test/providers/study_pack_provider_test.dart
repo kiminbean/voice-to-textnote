@@ -79,6 +79,27 @@ void main() {
         .called(1);
   });
 
+  test('keeps generated study pack warm after tab listener closes', () async {
+    when(() => api.get(
+          any(),
+          mode: any(named: 'mode'),
+          language: any(named: 'language'),
+        )).thenAnswer((_) async => pack('warm'));
+
+    const request = StudyPackRequest(taskId: 'min-001');
+    final provider = studyPackProvider(request);
+    final subscription = container.listen(provider, (_, __) {});
+
+    final first = await container.read(provider.future);
+    subscription.close();
+    await Future<void>.delayed(Duration.zero);
+    final second = await container.read(provider.future);
+
+    expect(first.studyNotes, 'warm');
+    expect(second.studyNotes, 'warm');
+    verify(() => api.get('min-001', mode: 'lecture', language: 'ko')).called(1);
+  });
+
   test('regenerate forces refresh', () async {
     when(() => api.get(
           any(),

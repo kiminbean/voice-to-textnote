@@ -1,6 +1,7 @@
 // 결과 화면 - 실제 API 데이터 바인딩 + 에러/빈 상태
 // SPEC-APP-003: 액션 아이템 표시, SPEC-APP-004: 주요 결정 사항/다음 단계 표시
 // SPEC-EXPORT-001: PDF 내보내기 기능 추가
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -55,6 +56,8 @@ class ResultScreen extends ConsumerStatefulWidget {
 
 class _ResultScreenState extends ConsumerState<ResultScreen> {
   bool _isExporting = false;
+  String? _prefetchedMinutesTaskId;
+  String? _prefetchedSummaryTaskId;
 
   Future<void> _export(
     BuildContext context,
@@ -232,6 +235,10 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     final meeting = meetings.where((m) => m.id == widget.meetingId).firstOrNull;
     final minutesTaskId = meeting?.minutesTaskId;
     final summaryTaskId = meeting?.summaryTaskId;
+    _scheduleAuxiliaryPrefetch(
+      minutesTaskId: minutesTaskId,
+      summaryTaskId: summaryTaskId,
+    );
     final sharedTeamsAsync = meeting?.sharedTeamIds.isNotEmpty == true
         ? ref.watch(teamListProvider)
         : const AsyncData(<Team>[]);
@@ -399,6 +406,70 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         ),
       ),
     );
+  }
+
+  void _scheduleAuxiliaryPrefetch({
+    required String? minutesTaskId,
+    required String? summaryTaskId,
+  }) {
+    if (_prefetchedMinutesTaskId == minutesTaskId &&
+        _prefetchedSummaryTaskId == summaryTaskId) {
+      return;
+    }
+    _prefetchedMinutesTaskId = minutesTaskId;
+    _prefetchedSummaryTaskId = summaryTaskId;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _prefetchAuxiliaryResults(
+        minutesTaskId: minutesTaskId,
+        summaryTaskId: summaryTaskId,
+      );
+    });
+  }
+
+  void _prefetchAuxiliaryResults({
+    required String? minutesTaskId,
+    required String? summaryTaskId,
+  }) {
+    if (summaryTaskId != null && summaryTaskId.isNotEmpty) {
+      _ignorePrefetch(ref.read(summaryResultProvider(summaryTaskId).future));
+      _ignorePrefetch(ref.read(mindMapResultProvider(summaryTaskId).future));
+      _ignorePrefetch(
+        ref.read(
+          translationProvider(
+            TranslationRequest(
+              taskId: summaryTaskId,
+              targetLanguage: 'en',
+              sourceType: 'summary',
+            ),
+          ).future,
+        ),
+      );
+    }
+
+    if (minutesTaskId != null && minutesTaskId.isNotEmpty) {
+      _ignorePrefetch(
+        ref.read(
+          salesContactBriefProvider(
+            SalesContactBriefRequest(taskId: minutesTaskId),
+          ).future,
+        ),
+      );
+      _ignorePrefetch(
+        ref.read(
+          studyPackProvider(
+            StudyPackRequest(taskId: minutesTaskId),
+          ).future,
+        ),
+      );
+      _ignorePrefetch(ref.read(sentimentFullProvider(minutesTaskId).future));
+      _ignorePrefetch(ref.read(toneProvider(minutesTaskId).future));
+    }
+  }
+
+  void _ignorePrefetch<T>(Future<T> future) {
+    unawaited(future.then<void>((_) {}, onError: (_, __) {}));
   }
 
   Future<void> _showExportSheet(

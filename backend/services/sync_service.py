@@ -9,7 +9,14 @@ DB 저장 실패는 WARNING 로그만 남기고 무시합니다.
 Redis에 이미 저장되어 있으므로 DB 실패는 치명적이지 않습니다.
 """
 
+import uuid
+from datetime import UTC, datetime
+
+from sqlalchemy import select
+
+from backend.db.auth_models import MeetingOwnership, Team, TeamMember
 from backend.db.sync_engine import get_sync_session
+from backend.services.team_service import normalize_sharing_policy
 from backend.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -24,6 +31,10 @@ def persist_task_result(
     status: str,
     result_data: dict | None = None,
     error_message: str | None = None,
+    owner_id: str | uuid.UUID | None = None,
+    source_task_id: str | None = None,
+    is_guest: bool = False,
+    guest_session_id: str | None = None,
 ) -> None:
     """
     Celery 작업 결과를 DB에 best-effort 방식으로 저장
@@ -39,11 +50,17 @@ def persist_task_result(
         error_message: 오류 메시지 (실패 시)
     """
     try:
-        from sqlalchemy import select
-
         from backend.db.models import TaskResult
 
         with get_sync_session() as session:
+            resolved_guest_session_id = _resolve_guest_session_id(
+                session=session,
+                is_guest=is_guest,
+                guest_session_id=guest_session_id,
+                source_task_id=source_task_id,
+            )
+            resolved_is_guest = resolved_guest_session_id is not None
+
             # 기존 레코드 조회 (upsert 지원)
             stmt = select(TaskResult).where(TaskResult.task_id == task_id)
             record = session.execute(stmt).scalar_one_or_none()
@@ -56,6 +73,8 @@ def persist_task_result(
                     status=status,
                     result_data=result_data,
                     error_message=error_message,
+                    is_guest=resolved_is_guest,
+                    guest_session_id=resolved_guest_session_id,
                 )
                 session.add(record)
             else:
@@ -64,6 +83,20 @@ def persist_task_result(
                 record.status = status
                 record.result_data = result_data
                 record.error_message = error_message
+                record.is_guest = resolved_is_guest
+                record.guest_session_id = resolved_guest_session_id
+
+            resolved_owner_id = _resolve_owner_id(
+                session=session,
+                owner_id=owner_id,
+                source_task_id=source_task_id,
+            )
+            if resolved_owner_id is not None:
+                _ensure_owner_and_default_team_shares(
+                    session=session,
+                    task_id=task_id,
+                    owner_id=resolved_owner_id,
+                )
 
             session.commit()
 
@@ -77,6 +110,105 @@ def persist_task_result(
             task_id=task_id,
             task_type=task_type,
             error=str(e),
+        )
+
+
+def _resolve_owner_id(session, owner_id: str | uuid.UUID | None, source_task_id: str | None):
+    if owner_id:
+        try:
+            return owner_id if isinstance(owner_id, uuid.UUID) else uuid.UUID(str(owner_id))
+        except ValueError:
+            logger.warning("잘못된 owner_id 형식 - 소유권 저장 생략", owner_id=str(owner_id))
+            return None
+
+    if not source_task_id:
+        return None
+
+    ownership = (
+        session.execute(
+            select(MeetingOwnership)
+            .where(
+                MeetingOwnership.task_id == source_task_id,
+                MeetingOwnership.team_id.is_(None),
+            )
+            .order_by(MeetingOwnership.created_at.asc())
+        )
+        .scalars()
+        .first()
+    )
+    return ownership.owner_id if ownership is not None else None
+
+
+def _resolve_guest_session_id(
+    session,
+    is_guest: bool,
+    guest_session_id: str | None,
+    source_task_id: str | None,
+) -> str | None:
+    if is_guest and guest_session_id:
+        return guest_session_id
+
+    if not source_task_id:
+        return None
+
+    from backend.db.models import TaskResult
+
+    source = session.execute(
+        select(TaskResult).where(TaskResult.task_id == source_task_id)
+    ).scalar_one_or_none()
+    if source is not None and source.is_guest and source.guest_session_id:
+        return source.guest_session_id
+    return None
+
+
+def _ensure_owner_and_default_team_shares(session, task_id: str, owner_id: uuid.UUID) -> None:
+    existing_owner = session.execute(
+        select(MeetingOwnership).where(
+            MeetingOwnership.task_id == task_id,
+            MeetingOwnership.owner_id == owner_id,
+            MeetingOwnership.team_id.is_(None),
+        )
+    ).scalar_one_or_none()
+    if existing_owner is None:
+        session.add(
+            MeetingOwnership(
+                id=uuid.uuid4(),
+                task_id=task_id,
+                owner_id=owner_id,
+                team_id=None,
+                shared_at=None,
+            )
+        )
+
+    teams = (
+        session.execute(
+            select(Team)
+            .join(TeamMember, TeamMember.team_id == Team.id)
+            .where(TeamMember.user_id == owner_id)
+        )
+        .scalars()
+        .all()
+    )
+    now = datetime.now(UTC).replace(tzinfo=None)
+    for team in teams:
+        if normalize_sharing_policy(team.sharing_policy)["default_visibility"] != "team_default":
+            continue
+        existing_share = session.execute(
+            select(MeetingOwnership).where(
+                MeetingOwnership.task_id == task_id,
+                MeetingOwnership.team_id == team.id,
+            )
+        ).scalar_one_or_none()
+        if existing_share is not None:
+            continue
+        session.add(
+            MeetingOwnership(
+                id=uuid.uuid4(),
+                task_id=task_id,
+                owner_id=owner_id,
+                team_id=team.id,
+                shared_at=now,
+            )
         )
 
 

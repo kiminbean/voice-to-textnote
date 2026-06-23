@@ -91,6 +91,23 @@ void main() {
     verify(() => api.create('min-sales-001', language: 'ko')).called(1);
   });
 
+  test('keeps generated sales brief warm after tab listener closes', () async {
+    when(() => api.get(any())).thenAnswer((_) async => brief('warm'));
+
+    const request = SalesContactBriefRequest(taskId: 'min-sales-001');
+    final provider = salesContactBriefProvider(request);
+    final subscription = container.listen(provider, (_, __) {});
+
+    final first = await container.read(provider.future);
+    subscription.close();
+    await Future<void>.delayed(Duration.zero);
+    final second = await container.read(provider.future);
+
+    expect(first.followUpMessage, 'warm');
+    expect(second.followUpMessage, 'warm');
+    verify(() => api.get('min-sales-001')).called(1);
+  });
+
   test('regenerate forces refresh', () async {
     when(() => api.get(any())).thenAnswer((_) async => brief('cached'));
     when(() => api.create(

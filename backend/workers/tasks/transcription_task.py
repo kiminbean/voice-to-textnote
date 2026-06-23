@@ -133,6 +133,9 @@ def transcription_task(
     original_filename: str = "",
     file_size_bytes: int = 0,
     initial_prompt: str | None = None,
+    user_id: str | None = None,
+    is_guest: bool = False,
+    guest_session_id: str | None = None,
 ) -> dict:
     """
     메인 STT 처리 Celery 작업
@@ -251,6 +254,9 @@ def transcription_task(
                 task_type="transcription",
                 status="completed",
                 result_data=final_result,
+                owner_id=user_id,
+                is_guest=is_guest,
+                guest_session_id=guest_session_id,
             )
         except Exception:
             logger.warning("DB 결과 저장 실패 - Redis 캐시로 폴백", task_id=task_id, exc_info=True, category="db_fallback")
@@ -313,6 +319,9 @@ def transcription_task(
                 task_type="transcription",
                 status="failed",
                 error_message=error_msg,
+                owner_id=user_id,
+                is_guest=is_guest,
+                guest_session_id=guest_session_id,
             )
         except Exception:  # pragma: no cover
             logger.warning("DB 결과 저장 실패 - Redis 캐시로 폴백", task_id=task_id, exc_info=True, category="db_fallback")

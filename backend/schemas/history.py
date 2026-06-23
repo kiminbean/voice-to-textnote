@@ -25,6 +25,7 @@ class HistoryItem(BaseModel):
     completed_at: datetime | None = None
     error_message: str | None = None
     shared_team_ids: list[str] = Field(default_factory=list)
+    source_task_id: str | None = None
 
     model_config = {"from_attributes": True}
 

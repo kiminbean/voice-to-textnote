@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:voice_to_textnote/models/study_pack.dart';
 import 'package:voice_to_textnote/services/study_pack_api.dart';
+
+const _auxiliaryResultCacheTtl = Duration(minutes: 10);
 
 class StudyPackRequest {
   final String taskId;
@@ -34,6 +38,10 @@ class StudyPackNotifier
 
   @override
   Future<StudyPack> build(StudyPackRequest arg) async {
+    final keepAliveLink = ref.keepAlive();
+    final disposeTimer = Timer(_auxiliaryResultCacheTtl, keepAliveLink.close);
+    ref.onDispose(disposeTimer.cancel);
+
     _request = arg;
     _api = ref.watch(studyPackApiProvider);
     try {

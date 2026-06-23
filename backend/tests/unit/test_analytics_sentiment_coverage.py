@@ -12,13 +12,14 @@ SPEC-SENTIMENT-ANALYTICS: 분석 감성 분석 API 테스트
      먼저 예외를 가로챔. 따라서 raise_server_exceptions=False 사용.
 """
 
+import json
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from backend.app.dependencies import get_db_session
+from backend.app.dependencies import get_db_session, get_redis_client
 from backend.app.error_handlers import register_exception_handlers
 
 
@@ -52,6 +53,31 @@ def app_client():
     # ValueError가 500으로 처리되도록 raise_server_exceptions=False
     with TestClient(app, raise_server_exceptions=False) as client:
         yield client, mock_session, mock_svc
+
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def sentiment_task_client():
+    """감정 분석 작업 라이프사이클 라우터 테스트 앱."""
+    from backend.app.api.v1.analytics.sentiment import router
+
+    app = FastAPI()
+    register_exception_handlers(app)
+    app.include_router(router, prefix="/api/v1")
+
+    mock_redis = AsyncMock()
+    mock_redis.get = AsyncMock(return_value=None)
+    mock_redis.setex = AsyncMock()
+    mock_redis.delete = AsyncMock()
+
+    async def override_redis():
+        return mock_redis
+
+    app.dependency_overrides[get_redis_client] = override_redis
+
+    with TestClient(app, raise_server_exceptions=False) as client:
+        yield client, mock_redis
 
     app.dependency_overrides.clear()
 
@@ -328,3 +354,43 @@ class TestDashboardSummary:
 
         # 반환 타입 불일치 또는 MagicMock await 문제로 500
         assert resp.status_code == 500
+
+
+class TestSentimentTaskLifecycle:
+    """감정 분석 작업 생성 중복 방지."""
+
+    def test_create_sentiment_reuses_existing_task(self, sentiment_task_client):
+        """동일 회의록 감정 분석 요청은 기존 작업을 재사용."""
+        client, mock_redis = sentiment_task_client
+
+        existing_status = {
+            "task_id": "sent-existing-001",
+            "minutes_task_id": "min-123",
+            "status": "processing",
+            "created_at": "2026-06-23T00:00:00+00:00",
+        }
+        mock_redis.get = AsyncMock(
+            side_effect=[
+                "sent-existing-001",
+                None,
+                json.dumps(existing_status),
+            ]
+        )
+
+        from unittest.mock import patch
+
+        with patch("backend.workers.tasks.sentiment_task.sentiment_celery_task") as mock_task:
+            mock_task.delay = MagicMock()
+
+            resp = client.post(
+                "/api/v1/sentiment",
+                json={"minutes_task_id": "min-123", "max_tokens": 1024},
+            )
+
+        assert resp.status_code == 202
+        data = resp.json()
+        assert data["task_id"] == "sent-existing-001"
+        assert data["minutes_task_id"] == "min-123"
+        assert data["status"] == "processing"
+        assert data["reused"] is True
+        mock_task.delay.assert_not_called()

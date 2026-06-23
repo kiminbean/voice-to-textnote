@@ -117,6 +117,8 @@ def minutes_task(
     speaker_names: dict[str, str] | None = None,
     stt_task_id: str | None = None,
     user_id: str | None = None,
+    is_guest: bool = False,
+    guest_session_id: str | None = None,
 ) -> dict:
     """
     메인 회의록 생성 처리 함수 (Celery 워커에서 호출)
@@ -282,6 +284,10 @@ def minutes_task(
                 task_type="minutes",
                 status="completed",
                 result_data=final_result,
+                owner_id=user_id,
+                source_task_id=stt_task_id or diarization_task_id,
+                is_guest=is_guest,
+                guest_session_id=guest_session_id,
             )
         except Exception:
             logger.warning("DB 결과 저장 실패 - Redis 캐시로 폴백", task_id=task_id, exc_info=True, category="db_fallback")
@@ -331,6 +337,10 @@ def minutes_task(
                 task_type="minutes",
                 status="failed",
                 error_message=error_msg,
+                owner_id=user_id,
+                source_task_id=stt_task_id or diarization_task_id,
+                is_guest=is_guest,
+                guest_session_id=guest_session_id,
             )
         except Exception:  # pragma: no cover
             logger.warning("DB 결과 저장 실패 - Redis 캐시로 폴백", task_id=task_id, exc_info=True, category="db_fallback")
@@ -371,6 +381,10 @@ def minutes_task(
                 task_type="minutes",
                 status="failed",
                 error_message=error_msg,
+                owner_id=user_id,
+                source_task_id=stt_task_id or diarization_task_id,
+                is_guest=is_guest,
+                guest_session_id=guest_session_id,
             )
         except Exception:  # pragma: no cover
             logger.warning("DB 결과 저장 실패 - Redis 캐시로 폴백", task_id=task_id, exc_info=True, category="db_fallback")
@@ -406,6 +420,8 @@ def minutes_celery_task(
     speaker_names: dict[str, str] | None = None,
     stt_task_id: str | None = None,
     user_id: str | None = None,
+    is_guest: bool = False,
+    guest_session_id: str | None = None,
 ) -> dict:
     """
     Celery 래퍼: minutes_task 호출 + 재시도 처리 (REQ-MIN-009)
@@ -426,6 +442,8 @@ def minutes_celery_task(
             speaker_names=speaker_names,
             stt_task_id=stt_task_id,
             user_id=user_id,
+            is_guest=is_guest,
+            guest_session_id=guest_session_id,
         )
     except FileNotFoundError as exc:
         # 화자 분리 결과 없음 → 재시도 안 함 (REQ-MIN-010)

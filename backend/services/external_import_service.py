@@ -34,6 +34,8 @@ class ExternalImportService:
         db: AsyncSession,
         redis_client: aioredis.Redis,
         owner_id: uuid.UUID | None = None,
+        is_guest: bool = False,
+        guest_session_id: str | None = None,
     ) -> ExternalTextImportResponse:
         """Persist external text as a completed minutes result and index it."""
         content = self._normalize_content(payload.content)
@@ -72,6 +74,8 @@ class ExternalImportService:
                 "source_type": source_type.value,
                 "language": payload.language,
             },
+            is_guest=is_guest,
+            guest_session_id=guest_session_id,
         )
         await self._cache_result(redis_client, task_id, result_data, now)
         search_indexed = await self._index_result(db, task_id, result_data, now)
