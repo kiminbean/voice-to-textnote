@@ -106,10 +106,7 @@ class MindMapGenerator:
             summary_task_id=summary_data.get("task_id"),
         )
 
-        client_kwargs = {"api_key": api_key}
-        if base_url:
-            client_kwargs["base_url"] = base_url
-        client = OpenAI(**client_kwargs)
+        client = OpenAI(api_key=api_key, base_url=base_url) if base_url else OpenAI(api_key=api_key)
         # response_format=json_object: gpt-4o-mini가 항상 valid JSON을 반환하도록 강제.
         # 일반 모드는 간헐적으로 깨진 JSON(이스케이프 누락 등)을 생성해 파싱이 실패함.
         response = client.chat.completions.create(

@@ -15,9 +15,15 @@ from datetime import UTC, datetime
 
 import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends, Request, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.config import settings
-from backend.app.dependencies import get_redis_client
+from backend.app.dependencies import (
+    get_db_session,
+    get_redis_client,
+    get_request_context,
+    require_task_access,
+)
 from backend.app.errors import conflict, not_found, too_many_requests
 from backend.schemas.summary import (
     ActionItem,
@@ -134,6 +140,9 @@ async def create_summary(
         "progress": 0.0,
         "created_at": now.isoformat(),
         "updated_at": now.isoformat(),
+        "user_id": str(user_id) if user_id else None,
+        "is_guest": is_guest,
+        "guest_session_id": guest_session_id,
     }
     status_key = f"task:sum:status:{task_id}"
     await redis_client.setex(status_key, settings.summary_result_ttl, json.dumps(initial_status))
@@ -175,7 +184,9 @@ async def create_summary(
 async def create_mind_map(
     summary_task_id: str,
     request: MindMapCreateRequest | None = None,
+    http_request: Request = Depends(get_request_context),
     redis_client: aioredis.Redis = Depends(get_redis_client),
+    db: AsyncSession = Depends(get_db_session),
 ) -> dict:
     """
     완료된 요약 결과를 기반으로 AI 마인드맵 생성 작업 요청.
@@ -186,6 +197,7 @@ async def create_mind_map(
         not_found("요약 결과를 찾을 수 없습니다.")
 
     summary_data = json.loads(summary_raw)
+    await require_task_access(http_request, db, summary_task_id, summary_data)
     if summary_data.get("status") != TaskStatus.completed.value:
         conflict("완료된 요약 결과에서만 마인드맵을 생성할 수 있습니다.")
 
@@ -209,6 +221,9 @@ async def create_mind_map(
         "progress": 0.0,
         "created_at": now.isoformat(),
         "updated_at": now.isoformat(),
+        "user_id": summary_data.get("user_id"),
+        "is_guest": bool(summary_data.get("is_guest", False)),
+        "guest_session_id": summary_data.get("guest_session_id"),
     }
     await redis_client.setex(
         f"task:mind:status:{task_id}",
@@ -249,7 +264,9 @@ async def create_mind_map(
 )
 async def get_mind_map_status(
     task_id: str,
+    http_request: Request = Depends(get_request_context),
     redis_client: aioredis.Redis = Depends(get_redis_client),
+    db: AsyncSession = Depends(get_db_session),
 ) -> SummaryStatusResponse:
     """
     마인드맵 작업 상태 조회.
@@ -260,6 +277,7 @@ async def get_mind_map_status(
         not_found("마인드맵 작업을 찾을 수 없습니다.")
 
     data = json.loads(raw)
+    await require_task_access(http_request, db, task_id, data)
     return SummaryStatusResponse(
         task_id=task_id,
         status=TaskStatus(data["status"]),
@@ -276,7 +294,9 @@ async def get_mind_map_status(
 )
 async def get_mind_map_result(
     task_id: str,
+    http_request: Request = Depends(get_request_context),
     redis_client: aioredis.Redis = Depends(get_redis_client),
+    db: AsyncSession = Depends(get_db_session),
 ) -> MindMapResponse:
     """
     마인드맵 결과 조회.
@@ -290,6 +310,7 @@ async def get_mind_map_result(
             not_found("마인드맵 작업을 찾을 수 없습니다.")
 
         status_data = json.loads(status_raw)
+        await require_task_access(http_request, db, task_id, status_data)
         return MindMapResponse(
             task_id=task_id,
             summary_task_id=status_data.get("summary_task_id", ""),
@@ -300,6 +321,7 @@ async def get_mind_map_result(
         )
 
     data = json.loads(raw)
+    await require_task_access(http_request, db, task_id, data)
     root = MindMapNode.model_validate(data["root"]) if data.get("root") else None
     edges = [
         MindMapEdge.model_validate(edge) for edge in data.get("edges", []) if isinstance(edge, dict)
@@ -323,7 +345,9 @@ async def get_mind_map_result(
 )
 async def get_summary_status(
     task_id: str,
+    http_request: Request = Depends(get_request_context),
     redis_client: aioredis.Redis = Depends(get_redis_client),
+    db: AsyncSession = Depends(get_db_session),
 ) -> SummaryStatusResponse:
     """
     요약 작업 상태 조회
@@ -336,6 +360,7 @@ async def get_summary_status(
         not_found("요약 작업을 찾을 수 없습니다.")
 
     data = json.loads(raw)
+    await require_task_access(http_request, db, task_id, data)
 
     return SummaryStatusResponse(
         task_id=task_id,
@@ -353,7 +378,9 @@ async def get_summary_status(
 )
 async def get_summary_result(
     task_id: str,
+    http_request: Request = Depends(get_request_context),
     redis_client: aioredis.Redis = Depends(get_redis_client),
+    db: AsyncSession = Depends(get_db_session),
 ) -> SummaryResponse:
     """
     요약 결과 전체 조회
@@ -371,6 +398,7 @@ async def get_summary_result(
             not_found("요약 작업을 찾을 수 없습니다.")
 
         status_data = json.loads(status_raw)
+        await require_task_access(http_request, db, task_id, status_data)
         task_status = TaskStatus(status_data["status"])
 
         # 아직 처리 중 → 빈 결과 반환
@@ -386,6 +414,7 @@ async def get_summary_result(
         )
 
     data = json.loads(raw)
+    await require_task_access(http_request, db, task_id, data)
 
     # ActionItem 객체 변환
     raw_action_items = data.get("action_items", [])
@@ -423,12 +452,19 @@ async def get_summary_result(
 )
 async def delete_summary(
     task_id: str,
+    http_request: Request = Depends(get_request_context),
     redis_client: aioredis.Redis = Depends(get_redis_client),
+    db: AsyncSession = Depends(get_db_session),
 ) -> None:
     """
     요약 작업 및 결과 삭제
     DELETE /api/v1/summaries/{task_id}
     """
+    status_raw = await redis_client.get(f"task:sum:status:{task_id}")
+    result_raw = await redis_client.get(f"task:sum:result:{task_id}")
+    payload = json.loads(result_raw or status_raw) if (result_raw or status_raw) else None
+    await require_task_access(http_request, db, task_id, payload)
+
     # Redis 캐시 삭제 (상태 + 결과)
     await redis_client.delete(
         f"task:sum:status:{task_id}",

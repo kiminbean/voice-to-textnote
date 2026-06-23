@@ -1,9 +1,9 @@
 """Minutes and summary translation API endpoints."""
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.dependencies import get_db_session
+from backend.app.dependencies import get_db_session, get_request_context, require_task_access
 from backend.app.errors import internal_error, not_found, unprocessable
 from backend.app.exceptions import VoiceNoteError
 from backend.schemas.translation import (
@@ -36,11 +36,13 @@ def get_translation_service() -> TranslationService:
 async def create_translation(
     task_id: str,
     payload: TranslationCreateRequest,
+    request: Request = Depends(get_request_context),
     db: AsyncSession = Depends(get_db_session),
     svc: TranslationService = Depends(get_translation_service),
 ) -> TranslationResponse:
     """Generate a translation for a persisted minutes or summary result."""
     try:
+        await require_task_access(request, db, task_id)
         return await svc.translate(
             task_id,
             db,
@@ -67,6 +69,7 @@ async def create_translation(
 )
 async def get_translation(
     task_id: str,
+    request: Request = Depends(get_request_context),
     target_language: str = Query(..., min_length=2, max_length=32),
     source_type: TranslationSourceType = Query(default=TranslationSourceType.AUTO),
     db: AsyncSession = Depends(get_db_session),
@@ -74,6 +77,7 @@ async def get_translation(
 ) -> TranslationResponse:
     """Load a cached translation."""
     try:
+        await require_task_access(request, db, task_id)
         return await svc.get(
             task_id,
             db,

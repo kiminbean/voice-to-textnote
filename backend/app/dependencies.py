@@ -3,6 +3,7 @@ FastAPI 의존성 주입 - Redis 클라이언트, STT 엔진, 화자 분리 엔�
 """
 
 import inspect
+import uuid
 from collections.abc import AsyncGenerator
 from functools import lru_cache
 
@@ -12,7 +13,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.config import settings
+from backend.db.auth_models import MeetingOwnership, TeamMember
 from backend.db.engine import create_engine, get_session_factory
+from backend.db.models import TaskResult
 from backend.ml.diarization_engine import DiarizationEngine
 from backend.ml.stt_engine import WhisperEngine
 from backend.utils.logger import get_logger
@@ -76,6 +79,11 @@ async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
         yield session
 
 
+def get_request_context(request: Request) -> Request:
+    """Expose Request as an optional dependency-friendly value for direct tests."""
+    return request
+
+
 async def get_current_user(
     request: Request,
     db: AsyncSession = Depends(get_db_session),
@@ -131,3 +139,111 @@ async def get_optional_current_user(
     if auth_header.startswith("Bearer guest:"):
         return None
     return await get_current_user(request=request, db=db)
+
+
+def _request_owner_id(request: Request) -> uuid.UUID | None:
+    raw_user_id = getattr(request.state, "user_id", None)
+    if raw_user_id is None:
+        return None
+    try:
+        return uuid.UUID(str(raw_user_id))
+    except ValueError:
+        return None
+
+
+def _request_guest_session_id(request: Request) -> str | None:
+    if getattr(request.state, "is_guest", False) is not True:
+        return None
+    guest_session_id = getattr(request.state, "guest_session_id", None)
+    return str(guest_session_id) if guest_session_id else None
+
+
+def _payload_matches_request(
+    request: Request,
+    payload: dict | None,
+) -> bool:
+    if not payload:
+        return False
+
+    owner_id = _request_owner_id(request)
+    if owner_id is not None and str(payload.get("user_id") or payload.get("owner_id")) == str(
+        owner_id
+    ):
+        return True
+
+    guest_session_id = _request_guest_session_id(request)
+    if guest_session_id:
+        return bool(
+            payload.get("is_guest")
+            and str(payload.get("guest_session_id") or "") == guest_session_id
+        )
+
+    return False
+
+
+async def has_task_access(
+    request: Request | None,
+    db: AsyncSession,
+    task_id: str,
+    payload: dict | None = None,
+) -> bool:
+    """Return whether the authenticated request may access task_id.
+
+    Development/API-key requests without a user or guest identity keep the
+    legacy behavior. User/guest requests must match explicit ownership,
+    team sharing, guest session ownership, or an in-flight Redis payload.
+    """
+    if request is None or not hasattr(request, "state"):
+        return True
+
+    owner_id = _request_owner_id(request)
+    guest_session_id = _request_guest_session_id(request)
+    if owner_id is None and guest_session_id is None:
+        return True
+
+    if _payload_matches_request(request, payload):
+        return True
+
+    if owner_id is not None:
+        result = await db.execute(
+            select(MeetingOwnership)
+            .outerjoin(
+                TeamMember,
+                (TeamMember.team_id == MeetingOwnership.team_id)
+                & (TeamMember.user_id == owner_id),
+            )
+            .where(
+                MeetingOwnership.task_id == task_id,
+                (
+                    (
+                        (MeetingOwnership.owner_id == owner_id)
+                        & MeetingOwnership.team_id.is_(None)
+                    )
+                    | (TeamMember.user_id.is_not(None))
+                ),
+            )
+        )
+        return result.scalar_one_or_none() is not None
+
+    if guest_session_id:
+        result = await db.execute(
+            select(TaskResult).where(
+                TaskResult.task_id == task_id,
+                TaskResult.is_guest.is_(True),
+                TaskResult.guest_session_id == guest_session_id,
+            )
+        )
+        return result.scalar_one_or_none() is not None
+
+    return False
+
+
+async def require_task_access(
+    request: Request | None,
+    db: AsyncSession,
+    task_id: str,
+    payload: dict | None = None,
+) -> None:
+    """Hide tasks outside the request's ownership boundary behind 404."""
+    if not await has_task_access(request=request, db=db, task_id=task_id, payload=payload):
+        raise HTTPException(status_code=404, detail="작업을 찾을 수 없습니다.")

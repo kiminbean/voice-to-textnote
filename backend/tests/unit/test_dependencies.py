@@ -9,6 +9,7 @@
 """
 
 import uuid
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -186,6 +187,86 @@ class TestGetCurrentUser:
 
         assert exc.value.status_code == 401
         assert "인증이 필요합니다" in exc.value.detail
+
+
+class TestTaskAccess:
+    @pytest.fixture
+    def mock_request(self):
+        request = MagicMock(spec=Request)
+        request.state = SimpleNamespace()
+        return request
+
+    @pytest.fixture
+    def mock_db_session(self):
+        session = AsyncMock(spec=AsyncSession)
+        session.execute = AsyncMock()
+        return session
+
+    @pytest.mark.asyncio
+    async def test_dev_request_without_identity_keeps_legacy_access(
+        self, mock_request, mock_db_session
+    ):
+        from backend.app.dependencies import has_task_access
+
+        assert await has_task_access(mock_request, mock_db_session, "task-1") is True
+        mock_db_session.execute.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_user_payload_match_allows_in_flight_task(self, mock_request, mock_db_session):
+        from backend.app.dependencies import has_task_access
+
+        owner_id = uuid.uuid4()
+        mock_request.state.user_id = str(owner_id)
+        mock_request.state.is_guest = False
+
+        allowed = await has_task_access(
+            mock_request,
+            mock_db_session,
+            "task-1",
+            {"task_id": "task-1", "user_id": str(owner_id)},
+        )
+
+        assert allowed is True
+        mock_db_session.execute.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_guest_payload_mismatch_denies_without_db_owner(
+        self, mock_request, mock_db_session
+    ):
+        from backend.app.dependencies import has_task_access
+
+        mock_request.state.user_id = None
+        mock_request.state.is_guest = True
+        mock_request.state.guest_session_id = "guest-a"
+        result = MagicMock()
+        result.scalar_one_or_none.return_value = None
+        mock_db_session.execute.return_value = result
+
+        allowed = await has_task_access(
+            mock_request,
+            mock_db_session,
+            "task-1",
+            {"task_id": "task-1", "is_guest": True, "guest_session_id": "guest-b"},
+        )
+
+        assert allowed is False
+
+    @pytest.mark.asyncio
+    async def test_require_task_access_hides_unauthorized_task(
+        self, mock_request, mock_db_session
+    ):
+        from backend.app.dependencies import require_task_access
+
+        mock_request.state.user_id = str(uuid.uuid4())
+        mock_request.state.is_guest = False
+        result = MagicMock()
+        result.scalar_one_or_none.return_value = None
+        mock_db_session.execute.return_value = result
+
+        with pytest.raises(HTTPException) as exc:
+            await require_task_access(mock_request, mock_db_session, "task-1")
+
+        assert exc.value.status_code == 404
 
     @pytest.mark.asyncio
     async def test_optional_current_user_without_authorization_returns_none(

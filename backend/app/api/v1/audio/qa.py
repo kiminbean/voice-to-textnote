@@ -10,7 +10,13 @@ import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.dependencies import get_db_session, get_optional_current_user, get_redis_client
+from backend.app.dependencies import (
+    get_db_session,
+    get_optional_current_user,
+    get_redis_client,
+    get_request_context,
+    require_task_access,
+)
 from backend.app.errors import internal_error, not_found
 from backend.app.exceptions import VoiceNoteError
 from backend.schemas.qa import (
@@ -37,11 +43,14 @@ def get_qa_service() -> QAService:
 )
 async def ask_question(
     payload: MeetingAskRequest,
+    request: Request = Depends(get_request_context),
+    db: AsyncSession = Depends(get_db_session),
     redis_client: aioredis.Redis = Depends(get_redis_client),
     svc: QAService = Depends(get_qa_service),
 ) -> MeetingAskResponse:
     """회의 내용에 대해 자연어 질문하기."""
     try:
+        await require_task_access(request, db, payload.task_id)
         return await svc.ask(
             task_id=payload.task_id,
             question=payload.question,
@@ -63,7 +72,7 @@ async def ask_question(
 )
 async def ask_across_meetings(
     payload: CrossMeetingAskRequest,
-    request: Request,
+    request: Request = Depends(get_request_context),
     db: AsyncSession = Depends(get_db_session),
     current_user=Depends(get_optional_current_user),
     svc: QAService = Depends(get_qa_service),
@@ -77,7 +86,7 @@ async def ask_across_meetings(
             owner_id=getattr(current_user, "id", None),
             guest_session_id=(
                 str(getattr(request.state, "guest_session_id", ""))
-                if getattr(request.state, "is_guest", False)
+                if isinstance(request, Request) and getattr(request.state, "is_guest", False)
                 else None
             ),
         )
@@ -95,8 +104,11 @@ async def ask_across_meetings(
 )
 async def get_qa_history(
     task_id: str,
+    request: Request = Depends(get_request_context),
+    db: AsyncSession = Depends(get_db_session),
     redis_client: aioredis.Redis = Depends(get_redis_client),
     svc: QAService = Depends(get_qa_service),
 ) -> QAHistoryResponse:
     """회의 Q&A 이력 조회."""
+    await require_task_access(request, db, task_id)
     return await svc.get_history(task_id, redis_client)

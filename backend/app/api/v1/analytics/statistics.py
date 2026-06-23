@@ -8,10 +8,15 @@ SPEC-STATS-001: 회의 통계 대시보드 API
 """
 
 import redis.asyncio as aioredis
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.dependencies import get_db_session, get_redis_client
+from backend.app.dependencies import (
+    get_db_session,
+    get_redis_client,
+    get_request_context,
+    require_task_access,
+)
 from backend.schemas.statistics import StatisticsResponse
 from backend.services.statistics import StatisticsService
 
@@ -26,6 +31,7 @@ def get_statistics_service() -> StatisticsService:
 @router.get("/{task_id}", response_model=StatisticsResponse)
 async def get_statistics(
     task_id: str,
+    request: Request = Depends(get_request_context),
     top_n: int | None = Query(
         default=None,
         ge=1,
@@ -43,6 +49,7 @@ async def get_statistics(
     svc: StatisticsService = Depends(get_statistics_service),
 ) -> StatisticsResponse:
     """회의 통계 조회. minutes 결과가 있어야 동작한다."""
+    await require_task_access(request, db, task_id)
     return await svc.compute(
         redis_client=redis_client,
         db=db,

@@ -9,11 +9,16 @@ import uuid
 from datetime import UTC, datetime
 
 import redis.asyncio as aioredis
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.config import settings
-from backend.app.dependencies import get_db_session, get_redis_client
+from backend.app.dependencies import (
+    get_db_session,
+    get_redis_client,
+    get_request_context,
+    require_task_access,
+)
 from backend.app.errors import not_found, too_many_requests
 from backend.app.result_fallback import get_result_with_fallback
 from backend.schemas.diarization import (
@@ -44,6 +49,7 @@ async def _scard(redis_client: aioredis.Redis, key: str) -> int:
 )
 async def create_diarization(
     request: DiarizationCreateRequest,
+    http_request: Request = Depends(get_request_context),
     redis_client: aioredis.Redis = Depends(get_redis_client),
 ) -> dict:
     """
@@ -62,6 +68,10 @@ async def create_diarization(
     task_id = str(uuid.uuid4())
     stt_task_id_str = str(request.stt_task_id)
     now = datetime.now(UTC)
+    has_request = isinstance(http_request, Request)
+    user_id = getattr(http_request.state, "user_id", None) if has_request else None
+    is_guest = bool(getattr(http_request.state, "is_guest", False)) if has_request else False
+    guest_session_id = getattr(http_request.state, "guest_session_id", None) if has_request else None
 
     initial_status = {
         "task_id": task_id,
@@ -70,6 +80,9 @@ async def create_diarization(
         "progress": 0.0,
         "created_at": now.isoformat(),
         "updated_at": now.isoformat(),
+        "user_id": str(user_id) if user_id else None,
+        "is_guest": is_guest,
+        "guest_session_id": guest_session_id,
     }
     status_key = f"task:dia:status:{task_id}"
     await redis_client.setex(
@@ -85,6 +98,9 @@ async def create_diarization(
         num_speakers=request.num_speakers,
         min_speakers=request.min_speakers,
         max_speakers=request.max_speakers,
+        user_id=user_id,
+        is_guest=is_guest,
+        guest_session_id=guest_session_id,
     )
 
     logger.info(
@@ -110,7 +126,9 @@ async def create_diarization(
 )
 async def get_diarization_status(
     task_id: str,
+    http_request: Request = Depends(get_request_context),
     redis_client: aioredis.Redis = Depends(get_redis_client),
+    db_session: AsyncSession = Depends(get_db_session),
 ) -> DiarizationStatusResponse:
     """
     화자 분리 작업 상태 폴링
@@ -123,6 +141,7 @@ async def get_diarization_status(
         not_found("화자 분리 작업을 찾을 수 없습니다.")
 
     data = json.loads(raw)
+    await require_task_access(http_request, db_session, task_id, data)
 
     now = datetime.now(UTC)
     created_at_str = data.get("created_at")
@@ -147,6 +166,7 @@ async def get_diarization_status(
 )
 async def get_diarization_result(
     task_id: str,
+    http_request: Request = Depends(get_request_context),
     redis_client: aioredis.Redis = Depends(get_redis_client),
     db_session: AsyncSession = Depends(get_db_session),
 ) -> DiarizationResponse:
@@ -172,6 +192,7 @@ async def get_diarization_result(
             not_found("화자 분리 작업을 찾을 수 없습니다.")
 
         status_data = json.loads(status_raw)
+        await require_task_access(http_request, db_session, task_id, status_data)
         task_status = TaskStatus(status_data["status"])
         ca_str = status_data.get("created_at")
         created_at = datetime.fromisoformat(ca_str) if ca_str else datetime.now(UTC)
@@ -189,6 +210,7 @@ async def get_diarization_result(
 
     from backend.schemas.diarization import DiarizedSegmentResult, SpeakerInfo
 
+    await require_task_access(http_request, db_session, task_id, raw_data)
     segments = [DiarizedSegmentResult(**seg) for seg in raw_data.get("segments", [])]
     speakers = [SpeakerInfo(**sp) for sp in raw_data.get("speakers", [])]
 
@@ -217,12 +239,19 @@ async def get_diarization_result(
 )
 async def delete_diarization(
     task_id: str,
+    http_request: Request = Depends(get_request_context),
     redis_client: aioredis.Redis = Depends(get_redis_client),
+    db_session: AsyncSession = Depends(get_db_session),
 ) -> None:
     """
     화자 분리 작업 및 결과 삭제
     DELETE /api/v1/diarizations/{task_id}
     """
+    status_raw = await redis_client.get(f"task:dia:status:{task_id}")
+    result_raw = await redis_client.get(f"task:dia:result:{task_id}")
+    payload = json.loads(result_raw or status_raw) if (result_raw or status_raw) else None
+    await require_task_access(http_request, db_session, task_id, payload)
+
     # Redis 캐시 삭제
     await redis_client.delete(
         f"task:dia:status:{task_id}",

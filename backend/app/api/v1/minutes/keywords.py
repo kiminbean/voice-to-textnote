@@ -8,10 +8,15 @@ SPEC-KEYWORD-001: 자동 키워드 추출/추천 API
 """
 
 import redis.asyncio as aioredis
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.dependencies import get_db_session, get_redis_client
+from backend.app.dependencies import (
+    get_db_session,
+    get_redis_client,
+    get_request_context,
+    require_task_access,
+)
 from backend.schemas.keyword import (
     KeywordExtractRequest,
     KeywordRecommendRequest,
@@ -53,6 +58,7 @@ async def extract_keywords(
 )
 async def get_meeting_keywords(
     task_id: str,
+    request: Request = Depends(get_request_context),
     max_keywords: int | None = Query(
         default=None,
         ge=1,
@@ -70,6 +76,7 @@ async def get_meeting_keywords(
     svc: KeywordService = Depends(get_keyword_service),
 ) -> KeywordResponse:
     """기존 회의 task_id의 저장된 회의록/전사 결과에서 키워드를 추출한다."""
+    await require_task_access(request, db, task_id)
     return await svc.extract_for_task(
         redis_client=redis_client,
         db=db,
@@ -87,12 +94,14 @@ async def get_meeting_keywords(
 )
 async def recommend_meeting_keywords(
     task_id: str,
+    request: Request = Depends(get_request_context),
     payload: KeywordRecommendRequest | None = None,
     redis_client: aioredis.Redis = Depends(get_redis_client),
     db: AsyncSession = Depends(get_db_session),
     svc: KeywordService = Depends(get_keyword_service),
 ) -> KeywordResponse:
     """현재 회의와 최근 회의 히스토리를 함께 반영해 추천 키워드를 반환한다."""
+    await require_task_access(request, db, task_id)
     options = payload or KeywordRecommendRequest()
     return await svc.recommend_for_task(
         redis_client=redis_client,

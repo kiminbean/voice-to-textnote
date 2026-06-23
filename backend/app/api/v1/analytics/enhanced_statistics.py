@@ -9,10 +9,15 @@ SPEC-ENHANCED-STATS-001: 고급 통계 대시보드 API
 """
 
 import redis.asyncio as aioredis
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.dependencies import get_db_session, get_redis_client
+from backend.app.dependencies import (
+    get_db_session,
+    get_redis_client,
+    get_request_context,
+    require_task_access,
+)
 from backend.schemas.enhanced_statistics import (
     EnhancedStatisticsResponse,
     OverviewResponse,
@@ -30,6 +35,7 @@ def get_enhanced_statistics_service() -> EnhancedStatisticsService:
 @router.get("/{task_id}", response_model=EnhancedStatisticsResponse)
 async def get_enhanced_statistics(
     task_id: str,
+    request: Request = Depends(get_request_context),
     time_range: str = Query(
         default="7d", pattern="^(1d|7d|30d|90d)$", description="시간 범위 (1d, 7d, 30d, 90d)"
     ),
@@ -52,6 +58,7 @@ async def get_enhanced_statistics(
         db: 데이터베이스 세션
         redis_client: Redis 클라이언트
     """
+    await require_task_access(request, db, task_id)
     return await svc.get_enhanced_statistics(
         task_id=task_id,
         time_range=time_range,

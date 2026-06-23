@@ -12,11 +12,13 @@ SPEC-QUALITY-MONITOR-001: 실시간 품질 점수/피드백/추세 분석 확장
 - GET  /api/v1/quality/{task_id}/quality-trends   - 품질 추세 분석
 """
 
-from fastapi import APIRouter, Depends, Query, status
+from typing import cast
+
+from fastapi import APIRouter, Depends, Query, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.dependencies import get_db_session
+from backend.app.dependencies import get_db_session, get_request_context, require_task_access
 from backend.app.errors import internal_server_error, not_found
 from backend.app.exceptions import VoiceNoteError
 from backend.db.models import TaskResult
@@ -106,6 +108,7 @@ def _extract_minutes_content(task: TaskResult) -> tuple[str, str]:
 )
 async def get_quality_assessment(
     task_id: str,
+    request: Request = Depends(get_request_context),
     include_details: bool = Query(default=True, description="세부 평가 항목 포함 여부"),
     db: AsyncSession = Depends(get_db_session),
     svc: QualityService = Depends(get_quality_service),
@@ -122,6 +125,7 @@ async def get_quality_assessment(
 
         if not task:
             not_found(f"Task not found: {task_id}")
+        await require_task_access(request, db, task_id, task.result_data)
 
         content = _extract_minutes_text(task.result_data)
         if not content:
@@ -153,6 +157,7 @@ async def get_quality_assessment(
 async def request_quality_assessment(
     task_id: str,
     payload: QualityAssessmentRequest,
+    request: Request = Depends(get_request_context),
     db: AsyncSession = Depends(get_db_session),
     svc: QualityService = Depends(get_quality_service),
 ) -> QualityAssessmentResponse:
@@ -168,6 +173,7 @@ async def request_quality_assessment(
 
         if not task:
             not_found(f"Task not found: {task_id}")
+        await require_task_access(request, db, task_id, task.result_data)
 
         content = _extract_minutes_text(task.result_data)
         if not content:
@@ -198,6 +204,7 @@ async def request_quality_assessment(
 )
 async def get_improvement_suggestions(
     task_id: str,
+    request: Request = Depends(get_request_context),
     improvement_type: str | None = Query(
         default="all", description="개선 제안 유형 (structure, content, clarity, completeness, all)"
     ),
@@ -216,6 +223,7 @@ async def get_improvement_suggestions(
 
         if not task:
             not_found(f"Task not found: {task_id}")
+        await require_task_access(request, db, task_id, task.result_data)
 
         # 개선 제안 가져오기
         improvements = await svc.get_improvement_suggestions(
@@ -250,12 +258,25 @@ async def health_check() -> dict[str, str]:
 # ---------------------------------------------------------------------------
 
 
-async def _load_minutes_text_or_404(db: AsyncSession, task_id: str) -> str:
+async def _load_minutes_text_or_404(
+    request_or_db: Request | AsyncSession | None,
+    db_or_task_id: AsyncSession | str,
+    task_id: str | None = None,
+) -> str:
     """TaskResult.result_data에서 회의록 본문을 추출하거나 404."""
+    if task_id is None:
+        request = None
+        db = cast(AsyncSession, request_or_db)
+        task_id = str(db_or_task_id)
+    else:
+        request = request_or_db if isinstance(request_or_db, Request) else None
+        db = cast(AsyncSession, db_or_task_id)
+
     task_stmt = select(TaskResult).where(TaskResult.task_id == task_id)
     task = (await db.execute(task_stmt)).scalar_one_or_none()
     if task is None:
         not_found(f"Task not found: {task_id}")
+    await require_task_access(request, db, task_id, task.result_data)
     content = _extract_minutes_text(task.result_data)
     if not content:
         not_found(f"Meeting minutes not found for task: {task_id}")
@@ -269,6 +290,7 @@ async def _load_minutes_text_or_404(db: AsyncSession, task_id: str) -> str:
 )
 async def get_live_quality_score(
     task_id: str,
+    request: Request = Depends(get_request_context),
     persist: bool = Query(
         default=True,
         description="True면 점수 스냅샷을 저장해 추세 분석에 활용",
@@ -281,7 +303,7 @@ async def get_live_quality_score(
     저장된 회의록 본문에 대해 기본 분석만으로 빠르게 점수를 계산합니다.
     `persist=true`일 때 스냅샷이 저장되어 `/quality-trends`에서 활용됩니다.
     """
-    content = await _load_minutes_text_or_404(db, task_id)
+    content = await _load_minutes_text_or_404(request, db, task_id)
 
     try:
         return await svc.compute_live_score(
@@ -306,6 +328,7 @@ async def get_live_quality_score(
 async def submit_quality_feedback(
     task_id: str,
     payload: QualityFeedbackCreate,
+    request: Request = Depends(get_request_context),
     db: AsyncSession = Depends(get_db_session),
     svc: QualityService = Depends(get_quality_service),
 ) -> QualityFeedbackResponse:
@@ -315,6 +338,7 @@ async def submit_quality_feedback(
     ).scalar_one_or_none()
     if task is None:
         not_found(f"Task not found: {task_id}")
+    await require_task_access(request, db, task_id, task.result_data)
 
     try:
         return await svc.submit_feedback(
@@ -336,12 +360,14 @@ async def submit_quality_feedback(
 )
 async def list_quality_feedback(
     task_id: str,
+    request: Request = Depends(get_request_context),
     recent_limit: int = Query(default=10, ge=1, le=50),
     db: AsyncSession = Depends(get_db_session),
     svc: QualityService = Depends(get_quality_service),
 ) -> QualityFeedbackSummary:
     """REQ-QM-001: 누적된 피드백 요약 (평균 별점, 카테고리 분포, 최근 N건)."""
     try:
+        await require_task_access(request, db, task_id)
         return await svc.get_feedback_summary(
             db=db,
             task_id=task_id,
@@ -360,6 +386,7 @@ async def list_quality_feedback(
 )
 async def get_quality_trends(
     task_id: str,
+    request: Request = Depends(get_request_context),
     limit: int = Query(default=50, ge=1, le=500),
     warning_drop_threshold: float | None = Query(
         default=None,
@@ -376,6 +403,7 @@ async def get_quality_trends(
     평균/최저/최고/방향(up|down|stable) 및 하락 경고를 제공합니다.
     """
     try:
+        await require_task_access(request, db, task_id)
         return await svc.get_quality_trends(
             db=db,
             task_id=task_id,

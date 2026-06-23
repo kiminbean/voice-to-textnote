@@ -246,10 +246,7 @@ class SummaryGenerator:
             segments_count=len(segments),
         )
 
-        client_kwargs = {"api_key": api_key}
-        if base_url:
-            client_kwargs["base_url"] = base_url
-        client = OpenAI(**client_kwargs)
+        client = OpenAI(api_key=api_key, base_url=base_url) if base_url else OpenAI(api_key=api_key)
         # response_format=json_object: 모델이 항상 valid JSON을 반환하도록 강제.
         # 일반 모드는 간헐적으로 깨진 JSON을 생성해 raw text fallback으로 빠짐.
         response = client.chat.completions.create(

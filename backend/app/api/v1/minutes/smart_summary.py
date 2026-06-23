@@ -7,11 +7,16 @@ from datetime import datetime
 from typing import Any
 
 import redis.asyncio as aioredis
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.dependencies import get_db_session, get_redis_client
+from backend.app.dependencies import (
+    get_db_session,
+    get_redis_client,
+    get_request_context,
+    require_task_access,
+)
 from backend.app.exceptions import VoiceNoteError
 from backend.db.models import TaskResult
 from backend.schemas.smart_summary import (
@@ -189,6 +194,7 @@ async def _persist_mode_summary_history(
 async def create_smart_summary(
     minutes_task_id: str,
     request: SummaryRequest,
+    http_request: Request = Depends(get_request_context),
     db: AsyncSession = Depends(get_db_session),
     redis_client: aioredis.Redis = Depends(get_redis_client),
     svc: SmartSummaryService = Depends(get_smart_summary_service),
@@ -217,6 +223,11 @@ async def create_smart_summary(
     - **discussion**: 논의 내용만
     - **takeaways**: 핵심 요약만
     """
+    if not isinstance(http_request, Request) and hasattr(http_request, "execute"):
+        svc = redis_client
+        redis_client = db
+        db = http_request
+        http_request = Depends(get_request_context)
 
     # 1. 원본 회의록 데이터 조회
     stmt = select(TaskResult).where(
@@ -235,6 +246,7 @@ async def create_smart_summary(
 
     if not task_record.result_data:
         raise _smart_summary_error(f"회의록 데이터가 없습니다: {minutes_task_id}", status_code=422)
+    await require_task_access(http_request, db, minutes_task_id, task_record.result_data)
 
     # 2. 회의록 내용 추출
     result_data = task_record.result_data
@@ -257,6 +269,7 @@ async def create_smart_summary(
 
     # 4. Redis에 작업 상태 저장
     created_at = datetime.now()
+    has_request = isinstance(http_request, Request)
     task_status: dict[str, Any] = {
         "task_id": summary_task_id,
         "status": "processing",
@@ -268,6 +281,11 @@ async def create_smart_summary(
         "current_step": "analysis",
         "detected_meeting_type": None,
         "processing_time": 0.0,
+        "user_id": str(getattr(http_request.state, "user_id", "") or "") if has_request else "",
+        "is_guest": bool(getattr(http_request.state, "is_guest", False)) if has_request else False,
+        "guest_session_id": getattr(http_request.state, "guest_session_id", None)
+        if has_request
+        else None,
     }
 
     redis_key = f"task:summary:smart:{summary_task_id}"
@@ -324,9 +342,14 @@ async def create_smart_summary(
 @router.get("/history/{minutes_task_id}")
 async def get_smart_summary_history(
     minutes_task_id: str,
+    request: Request = Depends(get_request_context),
     db: AsyncSession = Depends(get_db_session),
 ) -> dict[str, Any]:
     """회의록에 저장된 목적별 스마트 요약 히스토리 조회."""
+    if not isinstance(request, Request) and hasattr(request, "execute"):
+        db = request
+        request = Depends(get_request_context)
+
     stmt = select(TaskResult).where(
         TaskResult.task_id == minutes_task_id,
         TaskResult.task_type == "minutes",
@@ -340,6 +363,7 @@ async def get_smart_summary_history(
             f"완료된 회의록을 찾을 수 없습니다: {minutes_task_id}",
             status_code=404,
         )
+    await require_task_access(request, db, minutes_task_id, task_record.result_data)
 
     result_data = task_record.result_data or {}
     histories = result_data.get("smart_summary_history")
@@ -355,7 +379,9 @@ async def get_smart_summary_history(
 @router.get("/status/{task_id}", response_model=SmartSummaryStatus)
 async def get_smart_summary_status(
     task_id: str,
+    request: Request = Depends(get_request_context),
     redis_client: aioredis.Redis = Depends(get_redis_client),
+    db: AsyncSession = Depends(get_db_session),
 ) -> SmartSummaryStatus:
     """
     스마트 요약 작업 상태 조회
@@ -365,6 +391,9 @@ async def get_smart_summary_status(
     - 감지된 회의 유형 확인
     - 오류 메시지 확인
     """
+    if not isinstance(request, Request) and hasattr(request, "get"):
+        redis_client = request
+        request = Depends(get_request_context)
 
     redis_key = f"task:summary:smart:{task_id}"
     raw_status = await redis_client.get(redis_key)
@@ -376,6 +405,7 @@ async def get_smart_summary_status(
         status_data = _parse_status(raw_status)
     except Exception:
         raise _smart_summary_error("작업 상태 데이터 파싱 실패", status_code=422)
+    await require_task_access(request, db, task_id, status_data)
 
     return SmartSummaryStatus(
         task_id=status_data["task_id"],
@@ -390,7 +420,9 @@ async def get_smart_summary_status(
 @router.get("/results/{task_id}", response_model=SmartSummaryResponse)
 async def get_smart_summary_result(
     task_id: str,
+    request: Request = Depends(get_request_context),
     redis_client: aioredis.Redis = Depends(get_redis_client),
+    db: AsyncSession = Depends(get_db_session),
 ) -> SmartSummaryResponse:
     """
     스마트 요약 결과 조회
@@ -401,6 +433,9 @@ async def get_smart_summary_result(
     - 대체 버전 목록
     - 신뢰도 점수
     """
+    if not isinstance(request, Request) and hasattr(request, "get"):
+        redis_client = request
+        request = Depends(get_request_context)
 
     redis_key = f"task:summary:smart:{task_id}"
     raw_status = await redis_client.get(redis_key)
@@ -412,6 +447,7 @@ async def get_smart_summary_result(
         status_data = _parse_status(raw_status)
     except Exception:
         raise _smart_summary_error("작업 상태 데이터 파싱 실패", status_code=422)
+    await require_task_access(request, db, task_id, status_data)
 
     if status_data["status"] != "completed":
         raise _smart_summary_error(

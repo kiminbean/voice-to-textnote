@@ -1,9 +1,15 @@
 """Study Pack API endpoints."""
 
 import redis.asyncio as aioredis
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.dependencies import get_redis_client
+from backend.app.dependencies import (
+    get_db_session,
+    get_redis_client,
+    get_request_context,
+    require_task_access,
+)
 from backend.app.errors import internal_error, not_found, unprocessable
 from backend.app.exceptions import VoiceNoteError
 from backend.schemas.study_pack import StudyPackCreateRequest, StudyPackMode, StudyPackResponse
@@ -32,11 +38,14 @@ def get_study_pack_service() -> StudyPackService:
 async def create_study_pack(
     task_id: str,
     payload: StudyPackCreateRequest,
+    request: Request = Depends(get_request_context),
     redis_client: aioredis.Redis = Depends(get_redis_client),
+    db: AsyncSession = Depends(get_db_session),
     svc: StudyPackService = Depends(get_study_pack_service),
 ) -> StudyPackResponse:
     """Generate a transcript-grounded study pack."""
     try:
+        await require_task_access(request, db, task_id)
         return await svc.generate(
             task_id,
             redis_client,
@@ -62,12 +71,15 @@ async def create_study_pack(
 )
 async def get_study_pack(
     task_id: str,
+    request: Request = Depends(get_request_context),
     mode: StudyPackMode = Query(default=StudyPackMode.GENERAL),
     redis_client: aioredis.Redis = Depends(get_redis_client),
+    db: AsyncSession = Depends(get_db_session),
     svc: StudyPackService = Depends(get_study_pack_service),
 ) -> StudyPackResponse:
     """Load a cached study pack."""
     try:
+        await require_task_access(request, db, task_id)
         return await svc.get(task_id, redis_client, mode=mode)
     except StudyPackSourceNotFoundError as exc:
         not_found(str(exc))

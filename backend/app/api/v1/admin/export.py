@@ -13,12 +13,17 @@ import json
 import re
 
 import redis.asyncio as aioredis
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.dependencies import get_db_session, get_redis_client
+from backend.app.dependencies import (
+    get_db_session,
+    get_redis_client,
+    get_request_context,
+    require_task_access,
+)
 from backend.app.errors import internal_server_error, not_found, unprocessable
 from backend.app.exceptions import VoiceNoteError
 from backend.db.models import TaskResult
@@ -118,6 +123,7 @@ async def _get_task_result(
 )
 async def export_pdf(
     minutes_task_id: str,
+    request: Request = Depends(get_request_context),
     summary_task_id: str | None = Query(
         default=None,
         description="요약 태스크 ID (지정하면 요약 섹션 포함)",
@@ -137,6 +143,7 @@ async def export_pdf(
     if minutes_data is None:
         logger.warning("회의록 데이터 없음", task_id=minutes_task_id)
         not_found(f"회의록 데이터를 찾을 수 없습니다. (task_id: {minutes_task_id})")
+    await require_task_access(request, db, minutes_task_id, minutes_data)
 
     # 2. 데이터 유효성 검증 (segments 필수)
     if not minutes_data.get("segments"):
@@ -147,6 +154,8 @@ async def export_pdf(
     summary_data: dict | None = None
     if summary_task_id:
         summary_data = await _get_task_result(redis_client, db, "sum", summary_task_id)
+        if summary_data is not None:
+            await require_task_access(request, db, summary_task_id, summary_data)
         if summary_data is None:
             logger.warning(
                 "요약 데이터 없음 - 요약 없이 PDF 생성",
@@ -208,6 +217,7 @@ async def export_pdf(
 )
 async def export_docx(
     minutes_task_id: str,
+    request: Request = Depends(get_request_context),
     summary_task_id: str | None = Query(
         default=None,
         description="요약 태스크 ID (지정하면 요약 섹션 포함)",
@@ -224,6 +234,7 @@ async def export_docx(
     minutes_data = await _get_task_result(redis_client, db, "min", minutes_task_id)
     if minutes_data is None:
         not_found(f"회의록 데이터를 찾을 수 없습니다. (task_id: {minutes_task_id})")
+    await require_task_access(request, db, minutes_task_id, minutes_data)
 
     if not minutes_data.get("segments"):
         unprocessable("회의록 데이터가 불완전합니다. segments가 없습니다.")
@@ -232,6 +243,8 @@ async def export_docx(
     summary_data: dict | None = None
     if summary_task_id:
         summary_data = await _get_task_result(redis_client, db, "sum", summary_task_id)
+        if summary_data is not None:
+            await require_task_access(request, db, summary_task_id, summary_data)
 
     # 3. DOCX 생성
     try:
@@ -278,6 +291,7 @@ async def export_docx(
 )
 async def export_markdown(
     minutes_task_id: str,
+    request: Request = Depends(get_request_context),
     summary_task_id: str | None = Query(
         default=None,
         description="요약 태스크 ID (지정하면 요약 섹션 포함)",
@@ -289,6 +303,7 @@ async def export_markdown(
     minutes_data = await _get_task_result(redis_client, db, "min", minutes_task_id)
     if minutes_data is None:
         not_found(f"회의록 데이터를 찾을 수 없습니다. (task_id: {minutes_task_id})")
+    await require_task_access(request, db, minutes_task_id, minutes_data)
 
     if not minutes_data.get("segments"):
         unprocessable("회의록 데이터가 불완전합니다. segments가 없습니다.")
@@ -296,6 +311,8 @@ async def export_markdown(
     summary_data: dict | None = None
     if summary_task_id:
         summary_data = await _get_task_result(redis_client, db, "sum", summary_task_id)
+        if summary_data is not None:
+            await require_task_access(request, db, summary_task_id, summary_data)
 
     lines = ["# 회의록\n"]
 

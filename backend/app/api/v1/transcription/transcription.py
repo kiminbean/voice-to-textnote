@@ -17,7 +17,12 @@ from fastapi import APIRouter, Depends, File, Form, Request, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.config import settings
-from backend.app.dependencies import get_db_session, get_redis_client
+from backend.app.dependencies import (
+    get_db_session,
+    get_redis_client,
+    get_request_context,
+    require_task_access,
+)
 from backend.app.errors import not_found, unprocessable
 from backend.app.exceptions import VoiceNoteError
 from backend.pipeline.audio_processor import get_audio_duration_seconds
@@ -214,6 +219,9 @@ async def upload_transcription(
         "file_size": file_size,
         "language": language,
         "model": model,
+        "user_id": str(user_id) if user_id else None,
+        "is_guest": is_guest,
+        "guest_session_id": guest_session_id,
     }
     status_key = f"task:status:{task_id_str}"
     await redis_client.setex(status_key, settings.cache_ttl_seconds, json.dumps(initial_status))
@@ -247,6 +255,9 @@ async def upload_transcription(
         "progress": 0.0,
         "created_at": now.isoformat(),
         "updated_at": now.isoformat(),
+        "user_id": str(user_id) if user_id else None,
+        "is_guest": is_guest,
+        "guest_session_id": guest_session_id,
     }
     dia_status_key = f"task:dia:status:{dia_task_id}"
     await redis_client.setex(
@@ -307,7 +318,9 @@ async def upload_transcription(
 )
 async def get_task_status(
     task_id: str,
+    http_request: Request = Depends(get_request_context),
     redis_client: aioredis.Redis = Depends(get_redis_client),
+    db: AsyncSession = Depends(get_db_session),
 ) -> TaskStatusResponse:
     """
     작업 상태 폴링
@@ -320,6 +333,7 @@ async def get_task_status(
         not_found("작업을 찾을 수 없습니다.")
 
     data = json.loads(raw)
+    await require_task_access(http_request, db, task_id, data)
 
     now = datetime.now(UTC)
     created_at_str = data.get("created_at")
@@ -343,7 +357,9 @@ async def get_task_status(
 )
 async def get_transcription_result(
     task_id: str,
+    http_request: Request = Depends(get_request_context),
     redis_client: aioredis.Redis = Depends(get_redis_client),
+    db: AsyncSession = Depends(get_db_session),
 ) -> TranscriptionResponse:
     """
     전사 결과 조회 (REQ-STT-011, REQ-STT-012)
@@ -364,6 +380,7 @@ async def get_transcription_result(
                 not_found("작업을 찾을 수 없습니다.")
 
             status_data = json.loads(status_raw)
+            await require_task_access(http_request, db, task_id, status_data)
             task_status = TaskStatus(status_data["status"])
             created_at = datetime.fromisoformat(status_data["created_at"])
 
@@ -377,12 +394,14 @@ async def get_transcription_result(
 
         # 파일에서 읽을 때 메모리 최적화: 스트리밍으로 읽기
         data = json.loads(result_file.read_text(encoding="utf-8"))
+        await require_task_access(http_request, db, task_id, data)
         # 파일에서 복원 후 Redis 재캐싱
         await redis_client.setex(
             f"task:result:{task_id}", settings.cache_ttl_seconds, json.dumps(data)
         )
     else:
         data = json.loads(result_raw)
+        await require_task_access(http_request, db, task_id, data)
 
     from backend.schemas.transcription import SegmentResult, TranscriptionMetadata
 
@@ -416,12 +435,19 @@ async def get_transcription_result(
 )
 async def delete_transcription(
     task_id: str,
+    http_request: Request = Depends(get_request_context),
     redis_client: aioredis.Redis = Depends(get_redis_client),
+    db: AsyncSession = Depends(get_db_session),
 ) -> None:
     """
     작업 및 관련 파일 삭제 (REQ-STT-014)
     DELETE /api/v1/transcriptions/{task_id}
     """
+    status_raw = await redis_client.get(f"task:status:{task_id}")
+    result_raw = await redis_client.get(f"task:result:{task_id}")
+    payload = json.loads(result_raw or status_raw) if (result_raw or status_raw) else None
+    await require_task_access(http_request, db, task_id, payload)
+
     # Redis 캐시 삭제
     await redis_client.delete(f"task:status:{task_id}", f"task:result:{task_id}")
 
