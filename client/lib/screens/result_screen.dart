@@ -479,6 +479,18 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     }
 
     if (minutesTaskId != null && minutesTaskId.isNotEmpty) {
+      _ignorePrefetch(ref.read(statisticsProvider(minutesTaskId).future));
+      _ignorePrefetch(
+        ref.read(
+          translationProvider(
+            TranslationRequest(
+              taskId: minutesTaskId,
+              targetLanguage: 'en',
+              sourceType: 'minutes',
+            ),
+          ).future,
+        ),
+      );
       _ignorePrefetch(
         ref.read(
           salesContactBriefProvider(

@@ -10,7 +10,9 @@ import 'package:voice_to_textnote/models/summary_result.dart';
 import 'package:voice_to_textnote/providers/result_provider.dart';
 import 'package:voice_to_textnote/services/minutes_api.dart';
 import 'package:voice_to_textnote/services/speaker_api.dart';
+import 'package:voice_to_textnote/services/sentiment_api.dart';
 import 'package:voice_to_textnote/services/summary_api.dart';
+import 'package:voice_to_textnote/services/tone_api.dart';
 
 class MockMinutesApi extends Mock implements MinutesApi {}
 
@@ -18,16 +20,24 @@ class MockSpeakerApi extends Mock implements SpeakerApi {}
 
 class MockSummaryApi extends Mock implements SummaryApi {}
 
+class MockSentimentApi extends Mock implements SentimentApi {}
+
+class MockToneApi extends Mock implements ToneApi {}
+
 void main() {
   late MockMinutesApi mockMinApi;
   late MockSpeakerApi mockSpeakerApi;
   late MockSummaryApi mockSumApi;
+  late MockSentimentApi mockSentimentApi;
+  late MockToneApi mockToneApi;
   late ProviderContainer container;
 
   setUp(() {
     mockMinApi = MockMinutesApi();
     mockSpeakerApi = MockSpeakerApi();
     mockSumApi = MockSummaryApi();
+    mockSentimentApi = MockSentimentApi();
+    mockToneApi = MockToneApi();
     when(() => mockSpeakerApi.list(taskId: any(named: 'taskId')))
         .thenAnswer((_) async => <SpeakerProfile>[]);
 
@@ -36,6 +46,8 @@ void main() {
         minutesApiProvider.overrideWithValue(mockMinApi),
         speakerApiProvider.overrideWithValue(mockSpeakerApi),
         summaryApiProvider.overrideWithValue(mockSumApi),
+        sentimentApiProvider.overrideWithValue(mockSentimentApi),
+        toneApiProvider.overrideWithValue(mockToneApi),
       ],
     );
   });
@@ -374,7 +386,7 @@ void main() {
       );
       when(() => mockSumApi.getMindMapStatus(any())).thenAnswer((_) async {
         statusCalls += 1;
-        if (statusCalls == 1) {
+        if (statusCalls <= 6) {
           throw DioException(
             requestOptions: RequestOptions(path: ''),
             response: Response(
@@ -406,7 +418,61 @@ void main() {
 
       // Assert
       expect(result.root?.title, '재시도 후 마인드맵');
-      expect(statusCalls, 2);
+      expect(statusCalls, 7);
+    });
+
+    test('sentimentFullProvider가 생성 직후 status/result 404를 재시도해야 함', () async {
+      var statusCalls = 0;
+      var resultCalls = 0;
+      when(() => mockSentimentApi.create('min-001')).thenAnswer(
+        (_) async => {'task_id': 'sentiment-task-001', 'status': 'pending'},
+      );
+      when(() => mockSentimentApi.getStatus('sentiment-task-001'))
+          .thenAnswer((_) async {
+        statusCalls += 1;
+        if (statusCalls <= 2) {
+          throw DioException(
+            requestOptions: RequestOptions(path: ''),
+            response: Response(
+              statusCode: 404,
+              requestOptions: RequestOptions(path: ''),
+            ),
+            type: DioExceptionType.badResponse,
+          );
+        }
+        return {'status': 'completed'};
+      });
+      when(() => mockSentimentApi.getFullResult('sentiment-task-001'))
+          .thenAnswer((_) async {
+        resultCalls += 1;
+        if (resultCalls == 1) {
+          throw DioException(
+            requestOptions: RequestOptions(path: ''),
+            response: Response(
+              statusCode: 404,
+              requestOptions: RequestOptions(path: ''),
+            ),
+            type: DioExceptionType.badResponse,
+          );
+        }
+        return SentimentFullResponse.fromJson({
+          'task_id': 'sentiment-task-001',
+          'minutes_task_id': 'min-001',
+          'status': 'completed',
+          'overall_sentiment': 'positive',
+          'overall_emotion': 'confident',
+          'segments': <dynamic>[],
+          'speakers': <dynamic>[],
+          'emotional_timeline': <dynamic>[],
+        });
+      });
+
+      final result =
+          await container.read(sentimentFullProvider('min-001').future);
+
+      expect(result.overallSentiment, 'positive');
+      expect(statusCalls, 3);
+      expect(resultCalls, 2);
     });
 
     // MeetingResult에 keyDecisions와 nextSteps가 포함되는지 테스트

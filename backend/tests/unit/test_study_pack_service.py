@@ -3,6 +3,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from backend.db.models import TaskResult
 from backend.schemas.study_pack import StudyPackMode
 from backend.services.study_pack_service import (
     StudyPackService,
@@ -22,6 +23,22 @@ class FakeRedis:
     async def set(self, key: str, value: str, ex: int | None = None) -> None:
         self.values[key] = value
         self.set_calls.append((key, value, ex))
+
+
+class FakeScalarResult:
+    def __init__(self, record):
+        self.record = record
+
+    def scalar_one_or_none(self):
+        return self.record
+
+
+class FakeDbSession:
+    def __init__(self, record):
+        self.record = record
+
+    async def execute(self, stmt):
+        return FakeScalarResult(self.record)
 
 
 def make_minutes_payload() -> dict:
@@ -325,6 +342,27 @@ async def test_load_minutes_rejects_non_object_json():
 
     with pytest.raises(StudyPackValidationError):
         await svc.generate("min-001", redis)
+
+
+@pytest.mark.asyncio
+async def test_load_minutes_falls_back_to_db_and_rehydrates_redis():
+    redis = FakeRedis()
+    payload = make_minutes_payload()
+    record = TaskResult(
+        task_id="min-001",
+        task_type="minutes",
+        status="completed",
+        result_data=payload,
+    )
+
+    result = await StudyPackService()._load_minutes(
+        "min-001",
+        redis,
+        db_session=FakeDbSession(record),
+    )
+
+    assert result["raw_text"] == payload["raw_text"]
+    assert redis.set_calls[0][0] == "task:min:result:min-001"
 
 
 def test_format_transcript_uses_raw_text_without_segments():

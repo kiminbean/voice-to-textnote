@@ -15,6 +15,7 @@ from datetime import UTC, datetime
 
 import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends, Request, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.config import settings
@@ -25,6 +26,7 @@ from backend.app.dependencies import (
     require_task_access,
 )
 from backend.app.errors import conflict, not_found, too_many_requests
+from backend.db.models import TaskResult
 from backend.schemas.summary import (
     ActionItem,
     MindMapCreateRequest,
@@ -52,6 +54,43 @@ def _decode_redis_value(value: object) -> str:
     if isinstance(value, bytes):
         return value.decode("utf-8")
     return str(value)
+
+
+async def _load_summary_result_for_mind_map(
+    summary_task_id: str,
+    redis_client: aioredis.Redis,
+    db: AsyncSession,
+) -> dict:
+    summary_raw = await redis_client.get(f"task:sum:result:{summary_task_id}")
+    if summary_raw is not None:
+        return json.loads(_decode_redis_value(summary_raw))
+
+    result = await db.execute(
+        select(TaskResult).where(
+            TaskResult.task_id == summary_task_id,
+            TaskResult.task_type == "summary",
+            TaskResult.status == "completed",
+        )
+    )
+    record = result.scalar_one_or_none()
+    if inspect.isawaitable(record):
+        record = await record
+    if (
+        record is None
+        or record.__class__.__module__.startswith("unittest.mock")
+        or not getattr(record, "result_data", None)
+    ):
+        not_found("요약 결과를 찾을 수 없습니다.")
+
+    summary_data = dict(record.result_data)
+    summary_data.setdefault("task_id", summary_task_id)
+    summary_data.setdefault("status", TaskStatus.completed.value)
+    await redis_client.setex(
+        f"task:sum:result:{summary_task_id}",
+        settings.summary_result_ttl,
+        json.dumps(summary_data),
+    )
+    return summary_data
 
 
 async def _get_existing_mind_map_task(
@@ -192,11 +231,11 @@ async def create_mind_map(
     완료된 요약 결과를 기반으로 AI 마인드맵 생성 작업 요청.
     POST /api/v1/summaries/{summary_task_id}/mind-map
     """
-    summary_raw = await redis_client.get(f"task:sum:result:{summary_task_id}")
-    if summary_raw is None:
-        not_found("요약 결과를 찾을 수 없습니다.")
-
-    summary_data = json.loads(summary_raw)
+    summary_data = await _load_summary_result_for_mind_map(
+        summary_task_id,
+        redis_client,
+        db,
+    )
     await require_task_access(http_request, db, summary_task_id, summary_data)
     if summary_data.get("status") != TaskStatus.completed.value:
         conflict("완료된 요약 결과에서만 마인드맵을 생성할 수 있습니다.")

@@ -13,6 +13,16 @@ import 'package:voice_to_textnote/services/summary_api.dart';
 import 'package:voice_to_textnote/services/tone_api.dart';
 import 'package:voice_to_textnote/models/tone_model.dart';
 
+const _auxiliaryPollInterval = Duration(seconds: 1);
+const _auxiliaryShortRaceRetries = 30;
+const _auxiliaryLongPollRetries = 150;
+
+bool _isDioNotFound(Object error) =>
+    error is DioException && error.response?.statusCode == 404;
+
+Future<void> _waitForAuxiliaryRetry() =>
+    Future<void>.delayed(_auxiliaryPollInterval);
+
 class TranscriptSegment {
   final String? speakerId;
   final String speakerName;
@@ -171,13 +181,14 @@ final mindMapResultProvider =
     throw StateError('마인드맵 작업 ID를 받지 못했습니다.');
   }
 
-  for (var attempt = 0; attempt < 30; attempt++) {
+  for (var attempt = 0; attempt < _auxiliaryLongPollRetries; attempt++) {
     Map<String, dynamic> statusData;
     try {
       statusData = await sumApi.getMindMapStatus(mindMapTaskId);
     } on DioException catch (error) {
-      if (error.response?.statusCode == 404 && attempt < 5) {
-        await Future<void>.delayed(const Duration(seconds: 1));
+      if (error.response?.statusCode == 404 &&
+          attempt < _auxiliaryShortRaceRetries) {
+        await _waitForAuxiliaryRetry();
         continue;
       }
       rethrow;
@@ -185,8 +196,21 @@ final mindMapResultProvider =
     final status = statusData['status'] as String? ?? 'pending';
 
     if (status == 'completed') {
-      final resultData = await sumApi.getMindMapResult(mindMapTaskId);
-      return MindMapResult.fromJson(resultData);
+      for (var resultAttempt = 0;
+          resultAttempt < _auxiliaryShortRaceRetries;
+          resultAttempt++) {
+        try {
+          final resultData = await sumApi.getMindMapResult(mindMapTaskId);
+          return MindMapResult.fromJson(resultData);
+        } on DioException catch (error) {
+          if (error.response?.statusCode == 404) {
+            await _waitForAuxiliaryRetry();
+            continue;
+          }
+          rethrow;
+        }
+      }
+      throw StateError('마인드맵 결과를 아직 불러오지 못했습니다.');
     }
 
     if (status == 'failed') {
@@ -195,7 +219,7 @@ final mindMapResultProvider =
       throw StateError(message);
     }
 
-    await Future<void>.delayed(const Duration(seconds: 1));
+    await _waitForAuxiliaryRetry();
   }
 
   throw StateError('마인드맵 생성 시간이 초과되었습니다.');
@@ -243,13 +267,36 @@ final sentimentFullProvider =
 
   // 2. 완료 대기 - 폴링 (최대 5분 = 150회 × 2초)
   // OpenAI gpt-4o-mini 감정 분석은 회의록 길이에 따라 3~30초 소요
-  for (var attempt = 0; attempt < 150; attempt++) {
-    final statusData = await api.getStatus(sentimentTaskId);
+  for (var attempt = 0; attempt < _auxiliaryLongPollRetries; attempt++) {
+    Map<String, dynamic> statusData;
+    try {
+      statusData = await api.getStatus(sentimentTaskId);
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404 &&
+          attempt < _auxiliaryShortRaceRetries) {
+        await _waitForAuxiliaryRetry();
+        continue;
+      }
+      rethrow;
+    }
     final status = statusData['status'] as String? ?? 'pending';
 
     if (status == 'completed') {
       // 3. 결과 조회 (GET /sentiment/{task_id} → SentimentFullResponse)
-      return api.getFullResult(sentimentTaskId);
+      for (var resultAttempt = 0;
+          resultAttempt < _auxiliaryShortRaceRetries;
+          resultAttempt++) {
+        try {
+          return await api.getFullResult(sentimentTaskId);
+        } on DioException catch (error) {
+          if (error.response?.statusCode == 404) {
+            await _waitForAuxiliaryRetry();
+            continue;
+          }
+          rethrow;
+        }
+      }
+      throw StateError('감정 분석 결과를 아직 불러오지 못했습니다.');
     }
 
     if (status == 'failed') {
@@ -258,7 +305,7 @@ final sentimentFullProvider =
       throw StateError(message);
     }
 
-    await Future<void>.delayed(const Duration(seconds: 2));
+    await _waitForAuxiliaryRetry();
   }
 
   throw StateError('감정 분석 생성 시간이 초과되었습니다.');
@@ -271,7 +318,42 @@ final sentimentFullProvider =
 final toneProvider =
     FutureProvider.family<ToneResponse, String>((ref, meetingId) async {
   final api = ref.watch(toneApiProvider);
-  return api.getToneByMeeting(meetingId);
+  Object? lastNotFound;
+  for (var attempt = 0; attempt < _auxiliaryLongPollRetries; attempt++) {
+    try {
+      final response = await api.getToneByMeeting(meetingId);
+      final status = response.status.toLowerCase();
+      if (status == 'failed') {
+        throw StateError(response.errorMessage ?? '톤 분석에 실패했습니다.');
+      }
+      if (status == 'pending' || status == 'processing') {
+        await _waitForAuxiliaryRetry();
+        continue;
+      }
+      if (status == 'completed' ||
+          response.segments.isNotEmpty ||
+          response.speakers.isNotEmpty) {
+        return response;
+      }
+      return response;
+    } on ToneDisabledException {
+      rethrow;
+    } on ToneNotFoundException catch (error) {
+      lastNotFound = error;
+      await _waitForAuxiliaryRetry();
+    } on DioException catch (error) {
+      if (_isDioNotFound(error)) {
+        lastNotFound = error;
+        await _waitForAuxiliaryRetry();
+        continue;
+      }
+      rethrow;
+    }
+  }
+  if (lastNotFound is ToneNotFoundException) {
+    throw lastNotFound;
+  }
+  throw ToneNotFoundException(meetingId);
 });
 
 // 기존 통합 프로바이더 (하위 호환성 유지 - 두 ID가 동일한 경우)

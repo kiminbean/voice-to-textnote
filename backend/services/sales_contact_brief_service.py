@@ -131,7 +131,11 @@ class SalesContactBriefService:
                     await self._index_brief(task_id, result, db_session)
                 return result
 
-        minutes_data = await self._load_minutes(task_id, redis_client)
+        minutes_data = await self._load_minutes(
+            task_id,
+            redis_client,
+            db_session=db_session,
+        )
         transcript = self._format_transcript(minutes_data)
         if not transcript.strip():
             raise SalesContactBriefSourceNotFoundError("회의록 내용이 비어 있습니다.")
@@ -555,12 +559,22 @@ class SalesContactBriefService:
         self,
         task_id: str,
         redis_client: aioredis.Redis,
+        *,
+        db_session: AsyncSession | None = None,
     ) -> dict[str, Any]:
         raw = await redis_client.get(f"{_MINUTES_KEY_PREFIX}{task_id}")
         if raw is None:
-            raise SalesContactBriefSourceNotFoundError(
-                "회의록을 찾을 수 없습니다. 처리가 완료되었는지 확인하세요."
+            data = await self._load_minutes_from_db(task_id, db_session)
+            if data is None:
+                raise SalesContactBriefSourceNotFoundError(
+                    "회의록을 찾을 수 없습니다. 처리가 완료되었는지 확인하세요."
+                )
+            await redis_client.set(
+                f"{_MINUTES_KEY_PREFIX}{task_id}",
+                json.dumps(data, ensure_ascii=False),
+                ex=settings.minutes_result_ttl,
             )
+            return data
         try:
             data = json.loads(cast(str | bytes | bytearray, raw))
         except json.JSONDecodeError as exc:
@@ -568,6 +582,24 @@ class SalesContactBriefService:
         if not isinstance(data, dict):
             raise SalesContactBriefValidationError("회의록 결과 형식이 올바르지 않습니다.")
         return data
+
+    async def _load_minutes_from_db(
+        self,
+        task_id: str,
+        db_session: AsyncSession | None,
+    ) -> dict[str, Any] | None:
+        if db_session is None:
+            return None
+        result = await db_session.execute(
+            select(TaskResult).where(
+                TaskResult.task_id == task_id,
+                TaskResult.task_type == "minutes",
+                TaskResult.status == "completed",
+            )
+        )
+        record = result.scalar_one_or_none()
+        data = getattr(record, "result_data", None) if record is not None else None
+        return dict(data) if isinstance(data, dict) else None
 
     def _format_transcript(self, minutes_data: dict[str, Any]) -> str:
         segments = minutes_data.get("segments", [])

@@ -17,6 +17,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
+from backend.db.models import TaskResult
+
 # ---------------------------------------------------------------------------
 # TestClient 픽스처
 # ---------------------------------------------------------------------------
@@ -290,6 +292,52 @@ class TestCreateMindMapAPI:
             )
 
         assert response.status_code == 202
+
+
+class _ScalarResult:
+    def __init__(self, record):
+        self._record = record
+
+    def scalar_one_or_none(self):
+        return self._record
+
+
+class _AsyncSession:
+    def __init__(self, record):
+        self._record = record
+
+    async def execute(self, stmt):
+        return _ScalarResult(self._record)
+
+
+@pytest.mark.asyncio
+async def test_mind_map_summary_loader_rehydrates_redis_from_db():
+    from backend.app.api.v1.minutes import summary as summary_api
+
+    redis = AsyncMock()
+    redis.get = AsyncMock(return_value=None)
+    redis.setex = AsyncMock()
+    record = TaskResult(
+        task_id="sum-db-001",
+        task_type="summary",
+        status="completed",
+        result_data={
+            "minutes_task_id": "min-db-001",
+            "summary_text": "DB에 남아 있는 요약",
+            "action_items": [],
+        },
+    )
+
+    data = await summary_api._load_summary_result_for_mind_map(
+        "sum-db-001",
+        redis,
+        _AsyncSession(record),
+    )
+
+    assert data["task_id"] == "sum-db-001"
+    assert data["status"] == "completed"
+    redis.setex.assert_awaited_once()
+    assert redis.setex.await_args.args[0] == "task:sum:result:sum-db-001"
 
 
 # ---------------------------------------------------------------------------

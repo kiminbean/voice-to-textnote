@@ -53,6 +53,7 @@ async def create_study_pack(
             language=payload.language,
             max_tokens=payload.max_tokens,
             force_refresh=payload.force_refresh,
+            db_session=db,
         )
     except StudyPackSourceNotFoundError as exc:
         not_found(str(exc))
