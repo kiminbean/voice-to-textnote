@@ -5,27 +5,36 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:voice_to_textnote/models/action_item.dart';
 import 'package:voice_to_textnote/models/mind_map_result.dart';
+import 'package:voice_to_textnote/models/speaker_profile.dart';
 import 'package:voice_to_textnote/models/summary_result.dart';
 import 'package:voice_to_textnote/providers/result_provider.dart';
 import 'package:voice_to_textnote/services/minutes_api.dart';
+import 'package:voice_to_textnote/services/speaker_api.dart';
 import 'package:voice_to_textnote/services/summary_api.dart';
 
 class MockMinutesApi extends Mock implements MinutesApi {}
+
+class MockSpeakerApi extends Mock implements SpeakerApi {}
 
 class MockSummaryApi extends Mock implements SummaryApi {}
 
 void main() {
   late MockMinutesApi mockMinApi;
+  late MockSpeakerApi mockSpeakerApi;
   late MockSummaryApi mockSumApi;
   late ProviderContainer container;
 
   setUp(() {
     mockMinApi = MockMinutesApi();
+    mockSpeakerApi = MockSpeakerApi();
     mockSumApi = MockSummaryApi();
+    when(() => mockSpeakerApi.list(taskId: any(named: 'taskId')))
+        .thenAnswer((_) async => <SpeakerProfile>[]);
 
     container = ProviderContainer(
       overrides: [
         minutesApiProvider.overrideWithValue(mockMinApi),
+        speakerApiProvider.overrideWithValue(mockSpeakerApi),
         summaryApiProvider.overrideWithValue(mockSumApi),
       ],
     );
@@ -36,6 +45,39 @@ void main() {
   });
 
   group('ResultProvider', () {
+    test('저장된 화자 프로필 이름을 transcript segment에 적용해야 함', () async {
+      when(() => mockMinApi.getResult('min-001')).thenAnswer((_) async => {
+            'segments': [
+              {
+                'speaker_id': 'SPEAKER_00',
+                'speaker_name': 'Speaker 1',
+                'text': '안녕하세요.',
+                'start': 0.0,
+                'end': 2.0,
+              },
+            ],
+          });
+      when(() => mockSpeakerApi.list(taskId: 'min-001')).thenAnswer(
+        (_) async => [
+          SpeakerProfile(
+            id: 'profile-001',
+            userId: 'user-001',
+            speakerLabel: 'SPEAKER_00',
+            displayName: '영자',
+            taskId: null,
+            createdAt: DateTime(2026, 6, 24),
+            updatedAt: DateTime(2026, 6, 24),
+          ),
+        ],
+      );
+
+      final segments =
+          await container.read(transcriptSegmentsProvider('min-001').future);
+
+      expect(segments.single.speakerId, 'SPEAKER_00');
+      expect(segments.single.speakerName, '영자');
+    });
+
     // 로딩 초기 상태 테스트
     test('초기 상태는 loading이어야 함', () async {
       // Arrange: 느린 응답 시뮬레이션

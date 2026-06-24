@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:voice_to_textnote/models/meeting.dart';
 import 'package:voice_to_textnote/models/sales_contact_brief.dart';
+import 'package:voice_to_textnote/models/speaker_profile.dart';
 import 'package:voice_to_textnote/models/study_pack.dart';
 import 'package:voice_to_textnote/models/team.dart';
 import 'package:voice_to_textnote/models/translation.dart';
@@ -15,11 +16,14 @@ import 'package:voice_to_textnote/services/sales_contact_brief_api.dart';
 import 'package:voice_to_textnote/providers/team_provider.dart';
 import 'package:voice_to_textnote/screens/result_screen.dart';
 import 'package:voice_to_textnote/services/minutes_api.dart';
+import 'package:voice_to_textnote/services/speaker_api.dart';
 import 'package:voice_to_textnote/services/study_pack_api.dart';
 import 'package:voice_to_textnote/services/summary_api.dart';
 import 'package:voice_to_textnote/services/translation_api.dart';
 
 class MockMinutesApi extends Mock implements MinutesApi {}
+
+class MockSpeakerApi extends Mock implements SpeakerApi {}
 
 class MockSummaryApi extends Mock implements SummaryApi {}
 
@@ -84,6 +88,7 @@ Finder _tabText(String label) {
 
 void main() {
   late MockMinutesApi mockMinApi;
+  late MockSpeakerApi mockSpeakerApi;
   late MockSummaryApi mockSumApi;
   late MockStudyPackApi mockStudyPackApi;
   late MockSalesContactBriefApi mockSalesContactBriefApi;
@@ -99,8 +104,17 @@ void main() {
     summaryTaskId: 'sum-task-001',
   );
 
+  setUpAll(() {
+    registerFallbackValue(const SpeakerProfileCreate(
+      speakerLabel: 'SPEAKER_00',
+      displayName: 'fallback',
+    ));
+    registerFallbackValue(const SpeakerProfileUpdate(displayName: 'fallback'));
+  });
+
   setUp(() {
     mockMinApi = MockMinutesApi();
+    mockSpeakerApi = MockSpeakerApi();
     mockSumApi = MockSummaryApi();
     mockStudyPackApi = MockStudyPackApi();
     mockSalesContactBriefApi = MockSalesContactBriefApi();
@@ -109,6 +123,21 @@ void main() {
     // 회의록 기본 응답
     when(() => mockMinApi.getResult(any())).thenAnswer(
       (_) async => {'markdown': '# 회의록\n내용'},
+    );
+    when(() => mockSpeakerApi.list(taskId: any(named: 'taskId')))
+        .thenAnswer((_) async => <SpeakerProfile>[]);
+    when(() => mockSpeakerApi.list())
+        .thenAnswer((_) async => <SpeakerProfile>[]);
+    when(() => mockSpeakerApi.create(any())).thenAnswer(
+      (_) async => SpeakerProfile(
+        id: 'profile-001',
+        userId: 'user-001',
+        speakerLabel: 'SPEAKER_00',
+        displayName: '영자',
+        taskId: null,
+        createdAt: DateTime(2026, 6, 24),
+        updatedAt: DateTime(2026, 6, 24),
+      ),
     );
     when(() => mockSumApi.createMindMap(any())).thenAnswer(
       (_) async => {'task_id': 'mind-task-001', 'status': 'pending'},
@@ -264,6 +293,7 @@ void main() {
     return ProviderScope(
       overrides: [
         minutesApiProvider.overrideWithValue(mockMinApi),
+        speakerApiProvider.overrideWithValue(mockSpeakerApi),
         summaryApiProvider.overrideWithValue(mockSumApi),
         studyPackApiProvider.overrideWithValue(mockStudyPackApi),
         salesContactBriefApiProvider
@@ -321,6 +351,46 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('리서치, 제품 팀에 공유 중'), findsOneWidget);
+    });
+  });
+
+  group('화자 이름 저장', () {
+    testWidgets('기본 Speaker 이름을 실제 이름으로 저장하도록 유도해야 함',
+        (WidgetTester tester) async {
+      when(() => mockMinApi.getResult('min-task-001')).thenAnswer((_) async => {
+            'segments': [
+              {
+                'speaker_id': 'SPEAKER_00',
+                'speaker_name': 'Speaker 1',
+                'text': '안녕하세요.',
+                'start': 0.0,
+                'end': 2.0,
+              },
+            ],
+          });
+
+      await tester.pumpWidget(buildTestWidget([]));
+      await tester.pumpAndSettle();
+
+      await tester.tap(_tabText('회의 내용'));
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.text('Speaker 1'));
+      await tester.tap(find.text('Speaker 1'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('이 화자의 이름을 알려주세요'), findsOneWidget);
+      expect(find.text('다음 녹음에서 같은 화자 라벨에 이 이름을 자동으로 적용합니다.'), findsOneWidget);
+
+      await tester.enterText(find.byType(TextField), '영자');
+      await tester.tap(find.text('저장'));
+      await tester.pumpAndSettle();
+
+      final captured =
+          verify(() => mockSpeakerApi.create(captureAny())).captured;
+      final payload = captured.single as SpeakerProfileCreate;
+      expect(payload.speakerLabel, 'SPEAKER_00');
+      expect(payload.displayName, '영자');
     });
   });
 

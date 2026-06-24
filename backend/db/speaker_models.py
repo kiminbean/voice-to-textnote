@@ -89,3 +89,7 @@ class SpeakerProfile(Base):
             f"<SpeakerProfile(id={self.id}, user_id={self.user_id}, "
             f"label={self.speaker_label!r}, name={self.display_name!r})>"
         )
+
+
+# Register relationship targets referenced by string names above.
+import backend.db.speaker_group_models  # noqa: E402, F401

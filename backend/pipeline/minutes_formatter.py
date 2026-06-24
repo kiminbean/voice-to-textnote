@@ -209,6 +209,8 @@ class MinutesFormatter:
 
         # 사용자 정의 이름 우선 적용 (REQ-MIN-017)
         if speaker_id in self._speaker_names:
+            if speaker_id not in self._speaker_order:
+                self._speaker_order.append(speaker_id)
             return self._speaker_names[speaker_id]
 
         # 자동 생성 이름 캐시 확인 (REQ-MIN-016)

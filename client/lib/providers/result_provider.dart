@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:voice_to_textnote/models/action_item.dart';
 import 'package:voice_to_textnote/models/mind_map_result.dart';
 import 'package:voice_to_textnote/models/summary_result.dart';
+import 'package:voice_to_textnote/providers/speaker_provider.dart';
 import 'package:voice_to_textnote/services/minutes_api.dart';
 import 'package:voice_to_textnote/services/statistics_api.dart';
 import 'package:voice_to_textnote/services/bookmark_api.dart';
@@ -13,6 +14,7 @@ import 'package:voice_to_textnote/services/tone_api.dart';
 import 'package:voice_to_textnote/models/tone_model.dart';
 
 class TranscriptSegment {
+  final String? speakerId;
   final String speakerName;
   final String text;
   final double start;
@@ -20,6 +22,7 @@ class TranscriptSegment {
   final int speakerIndex;
 
   const TranscriptSegment({
+    this.speakerId,
     required this.speakerName,
     required this.text,
     required this.start,
@@ -29,6 +32,7 @@ class TranscriptSegment {
 
   factory TranscriptSegment.fromJson(Map<String, dynamic> json, int index) =>
       TranscriptSegment(
+        speakerId: json['speaker_id'] as String?,
         speakerName: json['speaker_name'] as String? ?? '알 수 없음',
         text: json['text'] as String? ?? '',
         start: (json['start'] as num?)?.toDouble() ?? 0.0,
@@ -70,19 +74,27 @@ final minutesResultProvider =
     FutureProvider.family<String, String>((ref, minutesTaskId) async {
   final minApi = ref.watch(minutesApiProvider);
   final data = await minApi.getResult(minutesTaskId);
+  final speakerNames =
+      await ref.watch(speakerNameMapProvider(minutesTaskId).future);
 
   // markdown이 있으면 우선 사용
   final markdown = data['markdown'] as String?;
-  if (markdown != null && markdown.isNotEmpty) return markdown;
 
   // segments에서 회의록 텍스트 조합
   final segments = data['segments'] as List<dynamic>? ?? [];
+  if (markdown != null && markdown.isNotEmpty && speakerNames.isEmpty) {
+    return markdown;
+  }
   if (segments.isEmpty) return '';
 
   final buffer = StringBuffer();
   for (final seg in segments) {
-    final speaker = seg['speaker_name'] ?? '알 수 없음';
-    final text = seg['text'] ?? '';
+    final segment = seg as Map<String, dynamic>;
+    final speakerId = segment['speaker_id'] as String?;
+    final speaker = speakerId != null
+        ? speakerNames[speakerId] ?? segment['speaker_name'] ?? '알 수 없음'
+        : segment['speaker_name'] ?? '알 수 없음';
+    final text = segment['text'] ?? '';
     buffer.writeln('[$speaker] $text');
   }
   return buffer.toString().trim();
@@ -93,6 +105,8 @@ final transcriptSegmentsProvider =
         (ref, minutesTaskId) async {
   final minApi = ref.watch(minutesApiProvider);
   final data = await minApi.getResult(minutesTaskId);
+  final speakerNames =
+      await ref.watch(speakerNameMapProvider(minutesTaskId).future);
   final raw = data['segments'] as List<dynamic>? ?? [];
   final seen = <String, int>{};
   return raw.asMap().entries.map((e) {
@@ -100,10 +114,14 @@ final transcriptSegmentsProvider =
       e.value as Map<String, dynamic>,
       e.key,
     );
-    final key = seg.speakerName;
+    final displayName = seg.speakerId != null
+        ? speakerNames[seg.speakerId!] ?? seg.speakerName
+        : seg.speakerName;
+    final key = seg.speakerId ?? displayName;
     seen.putIfAbsent(key, () => seen.length);
     return TranscriptSegment(
-      speakerName: seg.speakerName,
+      speakerId: seg.speakerId,
+      speakerName: displayName,
       text: seg.text,
       start: seg.start,
       end: seg.end,

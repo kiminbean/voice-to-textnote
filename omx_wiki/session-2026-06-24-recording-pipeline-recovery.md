@@ -25,6 +25,14 @@ Fixed a chain of production-like local issues around authenticated meeting histo
 - Speaker segment time now renders as a time range when `end` is available.
 - Mind-map provider retries short-lived status 404 after task creation.
 - Study Pack and Sales Contact Brief creation requests use a 2-minute receive timeout.
+- Transcript segments retain `speaker_id`, overlay saved `/speakers` profile names, and prompt default `Speaker N` labels for real names.
+
+## Speaker Name Reuse
+
+- Minutes generation loads authenticated users' global `SpeakerProfile` names before falling back to automatic `Speaker N` labels.
+- Renaming a default speaker in the meeting transcript saves a global profile so later transcript loads can show the saved name.
+- Saved speakers count toward automatic numbering; a saved `SPEAKER_00=영자` does not cause the next unnamed speaker to restart at `Speaker 1`.
+- This is label/profile reuse, not full voiceprint matching. Speaker embedding enrollment remains the next step for identifying the same person across arbitrary diarization labels.
 
 ## Representative Recovered Tasks
 

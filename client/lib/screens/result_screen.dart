@@ -14,16 +14,19 @@ import 'package:voice_to_textnote/models/meeting.dart';
 import 'package:voice_to_textnote/models/mind_map_result.dart';
 import 'package:voice_to_textnote/models/sales_contact_brief.dart';
 import 'package:voice_to_textnote/models/summary_result.dart';
+import 'package:voice_to_textnote/models/speaker_profile.dart';
 import 'package:voice_to_textnote/models/study_pack.dart';
 import 'package:voice_to_textnote/models/translation.dart';
 import 'package:voice_to_textnote/providers/meeting_list_provider.dart';
 import 'package:voice_to_textnote/providers/sales_contact_brief_provider.dart';
+import 'package:voice_to_textnote/providers/speaker_provider.dart';
 import 'package:voice_to_textnote/providers/team_provider.dart';
 import 'package:voice_to_textnote/providers/result_provider.dart';
 import 'package:voice_to_textnote/providers/study_pack_provider.dart';
 import 'package:voice_to_textnote/providers/translation_provider.dart';
 import 'package:voice_to_textnote/services/export_api.dart';
 import 'package:voice_to_textnote/services/summary_api.dart';
+import 'package:voice_to_textnote/services/speaker_api.dart';
 import 'package:voice_to_textnote/services/statistics_api.dart';
 import 'package:voice_to_textnote/services/sentiment_api.dart';
 import 'package:voice_to_textnote/services/bookmark_api.dart';
@@ -1025,14 +1028,33 @@ class _TranscriptTabState extends ConsumerState<_TranscriptTab> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('화자 이름 변경'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(
-            labelText: '이름',
-            hintText: '화자 이름을 입력하세요',
-          ),
+        title: Text(_isDefaultSpeakerName(tapped.speakerName)
+            ? '이 화자의 이름을 알려주세요'
+            : '화자 이름 변경'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (_isDefaultSpeakerName(tapped.speakerName)) ...[
+              const Text('다음 녹음에서 같은 화자 라벨에 이 이름을 자동으로 적용합니다.'),
+              const SizedBox(height: 12),
+            ],
+            TextField(
+              controller: controller,
+              autofocus: true,
+              textInputAction: TextInputAction.done,
+              decoration: const InputDecoration(
+                labelText: '화자 이름',
+                hintText: '예: 영자, 철수',
+              ),
+              onSubmitted: (_) => _saveSpeakerName(
+                ctx,
+                segments,
+                tapped,
+                controller.text.trim(),
+              ),
+            ),
+          ],
         ),
         actions: [
           TextButton(
@@ -1040,30 +1062,100 @@ class _TranscriptTabState extends ConsumerState<_TranscriptTab> {
             child: const Text('취소'),
           ),
           TextButton(
-            onPressed: () {
-              final newName = controller.text.trim();
-              if (newName.isNotEmpty && newName != tapped.speakerName) {
-                setState(() {
-                  for (int i = 0; i < segments.length; i++) {
-                    if (segments[i].speakerName == tapped.speakerName) {
-                      segments[i] = TranscriptSegment(
-                        speakerName: newName,
-                        text: segments[i].text,
-                        start: segments[i].start,
-                        end: segments[i].end,
-                        speakerIndex: segments[i].speakerIndex,
-                      );
-                    }
-                  }
-                });
-              }
-              Navigator.pop(ctx);
-            },
-            child: const Text('변경'),
+            onPressed: () => _saveSpeakerName(
+              ctx,
+              segments,
+              tapped,
+              controller.text.trim(),
+            ),
+            child: const Text('저장'),
           ),
         ],
       ),
     );
+  }
+
+  bool _isDefaultSpeakerName(String name) =>
+      RegExp(r'^Speaker \d+$').hasMatch(name);
+
+  Future<void> _saveSpeakerName(
+    BuildContext dialogContext,
+    List<TranscriptSegment> segments,
+    TranscriptSegment tapped,
+    String newName,
+  ) async {
+    if (newName.isEmpty) {
+      Navigator.pop(dialogContext);
+      return;
+    }
+
+    if (newName != tapped.speakerName) {
+      setState(() {
+        for (int i = 0; i < segments.length; i++) {
+          final sameSpeaker = tapped.speakerId != null
+              ? segments[i].speakerId == tapped.speakerId
+              : segments[i].speakerName == tapped.speakerName;
+          if (sameSpeaker) {
+            segments[i] = TranscriptSegment(
+              speakerId: segments[i].speakerId,
+              speakerName: newName,
+              text: segments[i].text,
+              start: segments[i].start,
+              end: segments[i].end,
+              speakerIndex: segments[i].speakerIndex,
+            );
+          }
+        }
+      });
+    }
+
+    Navigator.pop(dialogContext);
+
+    final speakerId = tapped.speakerId;
+    if (speakerId == null || widget.taskId == null) return;
+
+    try {
+      await _upsertGlobalSpeakerName(speakerId, newName);
+      ref.invalidate(speakerListProvider(widget.taskId));
+      ref.invalidate(speakerNameMapProvider(widget.taskId));
+      ref.invalidate(transcriptSegmentsProvider(widget.taskId!));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('화자 이름을 저장했습니다')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('화자 이름 저장 실패: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _upsertGlobalSpeakerName(
+      String speakerId, String displayName) async {
+    final api = ref.read(speakerApiProvider);
+    final profiles = await api.list();
+    SpeakerProfile? existing;
+    for (final profile in profiles) {
+      if (profile.taskId == null && profile.speakerLabel == speakerId) {
+        existing = profile;
+        break;
+      }
+    }
+
+    if (existing == null) {
+      await api.create(SpeakerProfileCreate(
+        speakerLabel: speakerId,
+        displayName: displayName,
+      ));
+    } else {
+      await api.update(
+        existing.id,
+        SpeakerProfileUpdate(displayName: displayName),
+      );
+    }
   }
 
   Widget _buildShimmerLoading() {

@@ -82,6 +82,57 @@ def _extract_cached_error_message(result: dict) -> str | None:
     return result.get("error_message") or result.get("error")
 
 
+def _load_saved_speaker_names(user_id: str | None) -> dict[str, str]:
+    """사용자의 전역 화자 프로필 이름을 회의록 생성 기본값으로 로드."""
+    if not user_id:
+        return {}
+
+    try:
+        import uuid
+
+        from sqlalchemy import select
+
+        from backend.db.speaker_models import SpeakerProfile
+        from backend.db.sync_engine import get_sync_session
+
+        owner_id = uuid.UUID(str(user_id))
+        with get_sync_session() as session:
+            profiles = (
+                session.execute(
+                    select(SpeakerProfile).where(
+                        SpeakerProfile.user_id == owner_id,
+                        SpeakerProfile.task_id.is_(None),
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            return {
+                profile.speaker_label: profile.display_name
+                for profile in profiles
+                if profile.speaker_label and profile.display_name
+            }
+    except Exception:
+        logger.warning(
+            "저장된 화자 프로필 이름 로드 실패 - 자동 Speaker 이름으로 폴백",
+            user_id=user_id,
+            exc_info=True,
+            category="speaker_profile",
+        )
+        return {}
+
+
+def _merge_speaker_names(
+    user_id: str | None,
+    speaker_names: dict[str, str] | None,
+) -> dict[str, str] | None:
+    """저장된 전역 프로필 이름에 요청별 이름 매핑을 덮어쓴다."""
+    saved_names = _load_saved_speaker_names(user_id)
+    if not saved_names and not speaker_names:
+        return None
+    return {**saved_names, **(speaker_names or {})}
+
+
 def _get_active_min_count() -> int:
     """현재 활성 회의록 작업 수 조회 (고아 항목 자동 정리)"""
     r = _get_redis()
@@ -237,7 +288,9 @@ def minutes_task(
         total_duration = max((seg.end for seg in diarized_segments), default=0.0)
 
         # --- 3단계: MinutesFormatter로 회의록 생성 ---
-        formatter = MinutesFormatter(speaker_names=speaker_names)
+        formatter = MinutesFormatter(
+            speaker_names=_merge_speaker_names(user_id, speaker_names)
+        )
         minutes_segments = formatter.format_minutes(diarized_segments)
 
         _update_task_status(task_id, TaskStatus.processing, 0.6, "화자 통계 계산 중...")

@@ -22,6 +22,12 @@
 - **Runtime:** API and Celery worker run in tmux session `voice-to-textnote-server`.
 - **Verification:** `/api/v1/health` reports API, Redis, Celery worker, and ffmpeg healthy.
 
+### SPEAKER-001 ✅ Saved speaker names are reused in later minutes generation
+- **Files:** `backend/workers/tasks/minutes_task.py`, `backend/pipeline/minutes_formatter.py`, `backend/db/speaker_models.py`
+- **Fix:** Minutes generation now loads the authenticated user's global `SpeakerProfile` names and merges them with request-level `speaker_names`. Saved speakers still count toward automatic numbering, so if `SPEAKER_00` is named `영자`, the next unnamed speaker becomes `Speaker 2`, not another `Speaker 1`.
+- **Verification:** `backend/tests/unit/test_minutes_task.py backend/tests/unit/test_minutes_formatter.py backend/tests/unit/test_speakers_api.py` → `51 passed`; ruff clean.
+- **Known limit:** This reuses saved speaker labels/names. True voiceprint matching across arbitrary diarization labels still requires a speaker embedding model and enrollment samples.
+
 ### BUG-001 ✅ transcription_task _update_task_status pipeline race
 - **File:** `backend/workers/tasks/transcription_task.py`
 - **Fix:** Replaced the buggy GET+SETEX pipeline (which wrote without created_at first, then conditionally overwrote) with a simple GET → build dict → single SETEX. Now always preserves or omits created_at correctly in one write.

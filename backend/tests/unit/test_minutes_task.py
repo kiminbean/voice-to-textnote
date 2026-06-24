@@ -231,6 +231,40 @@ class TestMinutesTaskHappyPath:
         speaker_names_in_result = [seg["speaker_name"] for seg in result["segments"]]
         assert "김팀장" in speaker_names_in_result
 
+    def test_task_uses_saved_global_speaker_names(self):
+        """사용자 전역 화자 프로필 이름을 다음 회의록에 자동 적용."""
+        from backend.workers.tasks.minutes_task import minutes_task
+
+        task_id = str(uuid.uuid4())
+        dia_task_id = str(uuid.uuid4())
+        user_id = str(uuid.uuid4())
+
+        mock_redis = _make_mock_redis()
+        mock_redis.get.side_effect = lambda key: (
+            json.dumps(MOCK_DIA_RESULT) if f"dia:result:{dia_task_id}" in key else None
+        )
+
+        with (
+            patch("backend.workers.tasks.minutes_task._get_redis", return_value=mock_redis),
+            patch("backend.workers.tasks.minutes_task.settings") as mock_settings,
+            patch(
+                "backend.workers.tasks.minutes_task._load_saved_speaker_names",
+                return_value={"SPEAKER_00": "영자"},
+            ),
+        ):
+            mock_settings.minutes_result_ttl = 86400
+            mock_settings.max_concurrent_minutes = 3
+
+            result = minutes_task(
+                task_id=task_id,
+                diarization_task_id=dia_task_id,
+                user_id=user_id,
+            )
+
+        speaker_names_in_result = [seg["speaker_name"] for seg in result["segments"]]
+        assert "영자" in speaker_names_in_result
+        assert "Speaker 1" not in speaker_names_in_result
+
 
 # ---------------------------------------------------------------------------
 # 오류 조건 처리 테스트

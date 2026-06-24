@@ -138,7 +138,45 @@ DB 영속 저장이 끝나기 전 짧은 구간에 앱이 status를 조회하면
 
 ---
 
-## 5. 로컬 서버 배포
+## 5. 화자 이름 저장 및 다음 회의 자동 표시
+
+### 요구
+
+회의 내용에서 `Speaker 1`, `Speaker 2`처럼 표시되는 기본 이름을 `영자`, `철수`처럼 실제 이름으로 수정하면, 다음 회의에서도 저장된 이름을 자동 표시해야 합니다. 또한 기본 `Speaker N` 이름을 그대로 두지 않고 이름 입력을 유도해야 합니다.
+
+### 해결
+
+- 회의록 생성 워커가 로그인 사용자의 전역 `SpeakerProfile` 이름을 읽어 `MinutesFormatter`에 자동 적용합니다.
+- 저장된 이름이 적용된 화자도 등장 순서에 포함해, `SPEAKER_00=영자` 이후 미등록 `SPEAKER_01`은 `Speaker 2`로 표시됩니다.
+- 앱의 transcript provider가 `speaker_id`를 유지하고, 서버의 `/speakers` 프로필 이름을 `speaker_id` 기준으로 오버레이합니다.
+- 회의 내용 탭에서 기본 `Speaker N`을 탭하면 “이 화자의 이름을 알려주세요” 다이얼로그로 실제 이름 입력을 유도합니다.
+- 입력한 이름은 전역 화자 프로필로 저장되어 이후 같은 사용자 계정의 회의록 표시명에 재사용됩니다.
+
+### 한계
+
+현재 구현은 저장된 `speaker_id`/프로필 이름을 재사용하는 방식입니다. 완전한 “목소리 자체를 기억해 다른 diarization label이어도 동일인으로 판별”하려면 speaker embedding 모델, 등록 샘플 추출, 유사도 임계값, 오인식 보정 UI가 별도로 필요합니다.
+
+### 변경 파일
+
+- `backend/workers/tasks/minutes_task.py`
+- `backend/pipeline/minutes_formatter.py`
+- `backend/db/speaker_models.py`
+- `backend/tests/unit/test_minutes_task.py`
+- `client/lib/providers/result_provider.dart`
+- `client/lib/screens/result_screen.dart`
+- `client/test/providers/result_provider_test.dart`
+- `client/test/screens/result_screen_test.dart`
+
+### 검증
+
+- `.venv/bin/python -m pytest backend/tests/unit/test_minutes_task.py backend/tests/unit/test_minutes_formatter.py backend/tests/unit/test_speakers_api.py -q --no-cov` → `51 passed`
+- `ruff check backend/workers/tasks/minutes_task.py backend/pipeline/minutes_formatter.py backend/db/speaker_models.py backend/tests/unit/test_minutes_task.py` → `All checks passed!`
+- `flutter test test/providers/result_provider_test.dart test/screens/result_screen_test.dart` → `42 passed`
+- `flutter analyze` → `No issues found`
+
+---
+
+## 6. 로컬 서버 배포
 
 ### 서버
 
@@ -167,7 +205,7 @@ tmux new-window -t voice-to-textnote-server -n worker \
 
 ---
 
-## 6. iPhone 릴리스 빌드
+## 7. iPhone 릴리스 빌드
 
 ### 대상
 
@@ -187,38 +225,32 @@ flutter run --release -d 00008150-000239020C08401C
 - 자동 서명 팀: `4NJ9JSQFW9`
 - Release build 성공
 - iPhone 설치 및 실행 성공
+- 화자 이름 저장/재사용 변경 후에도 release build를 다시 설치했습니다.
 - 이후 `flutter run` 로컬 연결 프로세스는 정리했고, 설치된 release 앱은 iPhone에 남아 있습니다.
 
 ---
 
-## 현재 미커밋 변경 묶음
+## 이번 화자 이름 작업 변경 묶음
 
 ### Backend
 
-- `backend/app/dependencies.py`
-- `backend/workers/tasks/status_context.py`
-- `backend/workers/tasks/transcription_task.py`
-- `backend/workers/tasks/diarization_task.py`
+- `backend/db/speaker_models.py`
+- `backend/pipeline/minutes_formatter.py`
 - `backend/workers/tasks/minutes_task.py`
-- `backend/workers/tasks/summary_task.py`
-- `backend/workers/tasks/sentiment_task.py`
-- `backend/workers/tasks/tone_task.py`
-- `backend/workers/tasks/mind_map_task.py`
-- `backend/tests/unit/test_dependencies.py`
-- `backend/tests/unit/test_worker_status_context.py`
-- `backend/tests/unit/test_tone_task.py`
+- `backend/tests/unit/test_minutes_task.py`
 
 ### Client
 
-- `client/lib/widgets/speaker_segment.dart`
 - `client/lib/screens/result_screen.dart`
 - `client/lib/providers/result_provider.dart`
-- `client/lib/services/study_pack_api.dart`
-- `client/lib/services/sales_contact_brief_api.dart`
-- `client/test/widgets/speaker_segment_test.dart`
 - `client/test/providers/result_provider_test.dart`
-- `client/test/services/study_pack_api_test.dart`
-- `client/test/services/sales_contact_brief_api_test.dart`
+- `client/test/screens/result_screen_test.dart`
+
+### Docs
+
+- `docs/session-summary-2026-06-24.md`
+- `progress.txt`
+- `client/progress.txt`
 
 ### Runtime state
 

@@ -10,6 +10,7 @@
 | RESULT-002 | Mind map tab shows retry after creation | ✅ Fixed | Provider retries short-lived 404 race immediately after `POST /summaries/{summaryTaskId}/mind-map`. Backend parent task access fallback also added. |
 | RESULT-003 | Study tab shows retry while generating | ✅ Fixed | Study Pack generation can take >30s; create request now uses 2-minute receive timeout. |
 | RESULT-004 | Sales tab shows retry while generating | ✅ Fixed | Sales Contact Brief generation can take >30s; create request now uses 2-minute receive timeout. |
+| RESULT-005 | Default `Speaker N` names are not guided or saved | ✅ Fixed | Tapping a default speaker name now prompts for the real name, saves it as a global speaker profile, and overlays saved profile names on later transcript loads. |
 
 ### Changes Made
 
@@ -29,10 +30,19 @@
 5. **lib/services/sales_contact_brief_api.dart**
    - Adds `receiveTimeout: Duration(minutes: 2)` for Sales Contact Brief generation.
 
+6. **lib/providers/result_provider.dart**
+   - Keeps `speaker_id` in transcript segments.
+   - Applies saved `SpeakerProfile` names by `speaker_id` before rendering meeting text and transcript segments.
+
+7. **lib/screens/result_screen.dart**
+   - Prompts default `Speaker N` labels with “이 화자의 이름을 알려주세요”.
+   - Saves renamed speakers through `/speakers` as global profiles for reuse in later meetings.
+
 ### Verification
 
 - `flutter test test/widgets/speaker_segment_test.dart` → `All tests passed`
 - `flutter test test/providers/result_provider_test.dart test/providers/study_pack_provider_test.dart test/providers/sales_contact_brief_provider_test.dart test/services/study_pack_api_test.dart test/services/sales_contact_brief_api_test.dart` → `All tests passed`
+- `flutter test test/providers/result_provider_test.dart test/screens/result_screen_test.dart` → `42 passed`
 - `flutter analyze ...` → `No issues found`
 - USB/wireless detected iPhone release install: `flutter run --release -d 00008150-000239020C08401C`
 
