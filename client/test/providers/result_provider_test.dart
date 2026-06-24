@@ -78,6 +78,41 @@ void main() {
       expect(segments.single.speakerName, '영자');
     });
 
+    test('voiceprint 식별 이름은 저장된 label 이름보다 우선해야 함', () async {
+      when(() => mockMinApi.getResult('min-voice-001')).thenAnswer((_) async => {
+            'segments': [
+              {
+                'speaker_id': 'SPEAKER_03',
+                'speaker_name': 'Speaker 3',
+                'identified_speaker_name': '영자',
+                'voiceprint_similarity': 0.91,
+                'text': '다시 만났습니다.',
+                'start': 0.0,
+                'end': 2.0,
+              },
+            ],
+          });
+      when(() => mockSpeakerApi.list(taskId: 'min-voice-001')).thenAnswer(
+        (_) async => [
+          SpeakerProfile(
+            id: 'profile-stale',
+            userId: 'user-001',
+            speakerLabel: 'SPEAKER_03',
+            displayName: '철수',
+            taskId: null,
+            createdAt: DateTime(2026, 6, 24),
+            updatedAt: DateTime(2026, 6, 24),
+          ),
+        ],
+      );
+
+      final segments = await container
+          .read(transcriptSegmentsProvider('min-voice-001').future);
+
+      expect(segments.single.speakerName, '영자');
+      expect(segments.single.isEstimatedSpeaker, isTrue);
+    });
+
     // 로딩 초기 상태 테스트
     test('초기 상태는 loading이어야 함', () async {
       // Arrange: 느린 응답 시뮬레이션

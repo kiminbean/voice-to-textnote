@@ -100,9 +100,11 @@ final minutesResultProvider =
   for (final seg in segments) {
     final segment = seg as Map<String, dynamic>;
     final speakerId = segment['speaker_id'] as String?;
-    final speaker = speakerId != null
-        ? speakerNames[speakerId] ?? segment['speaker_name'] ?? '알 수 없음'
-        : segment['speaker_name'] ?? '알 수 없음';
+    final identifiedName = segment['identified_speaker_name'] as String?;
+    final speaker = identifiedName ??
+        (speakerId != null
+            ? speakerNames[speakerId] ?? segment['speaker_name'] ?? '알 수 없음'
+            : segment['speaker_name'] ?? '알 수 없음');
     final text = segment['text'] ?? '';
     buffer.writeln('[$speaker] $text');
   }
@@ -123,9 +125,11 @@ final transcriptSegmentsProvider =
       e.value as Map<String, dynamic>,
       e.key,
     );
-    final displayName = seg.speakerId != null
-        ? speakerNames[seg.speakerId!] ?? seg.speakerName
-        : seg.speakerName;
+    final displayName = seg.isEstimatedSpeaker
+        ? seg.speakerName
+        : seg.speakerId != null
+            ? speakerNames[seg.speakerId!] ?? seg.speakerName
+            : seg.speakerName;
     final key = seg.speakerId ?? displayName;
     seen.putIfAbsent(key, () => seen.length);
     return TranscriptSegment(
