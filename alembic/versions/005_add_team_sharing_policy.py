@@ -26,6 +26,9 @@ def upgrade() -> None:
     inspector = inspect(op.get_bind())
     if "teams" not in inspector.get_table_names():
         return
+    columns = {column["name"] for column in inspector.get_columns("teams")}
+    if "sharing_policy" in columns:
+        return
     op.add_column("teams", sa.Column("sharing_policy", sa.JSON(), nullable=True))
 
 

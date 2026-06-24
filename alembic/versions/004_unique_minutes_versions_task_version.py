@@ -18,7 +18,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "004_unique_minutes_versions_task_version"
-down_revision: str | None = "003_add_device_id_to_device_tokens"
+down_revision: str | None = "003_add_search_guest"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
