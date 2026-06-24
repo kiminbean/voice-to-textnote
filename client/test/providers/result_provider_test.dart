@@ -79,19 +79,20 @@ void main() {
     });
 
     test('voiceprint 식별 이름은 저장된 label 이름보다 우선해야 함', () async {
-      when(() => mockMinApi.getResult('min-voice-001')).thenAnswer((_) async => {
-            'segments': [
-              {
-                'speaker_id': 'SPEAKER_03',
-                'speaker_name': 'Speaker 3',
-                'identified_speaker_name': '영자',
-                'voiceprint_similarity': 0.91,
-                'text': '다시 만났습니다.',
-                'start': 0.0,
-                'end': 2.0,
-              },
-            ],
-          });
+      when(() => mockMinApi.getResult('min-voice-001'))
+          .thenAnswer((_) async => {
+                'segments': [
+                  {
+                    'speaker_id': 'SPEAKER_03',
+                    'speaker_name': 'Speaker 3',
+                    'identified_speaker_name': '영자',
+                    'voiceprint_similarity': 0.91,
+                    'text': '다시 만났습니다.',
+                    'start': 0.0,
+                    'end': 2.0,
+                  },
+                ],
+              });
       when(() => mockSpeakerApi.list(taskId: 'min-voice-001')).thenAnswer(
         (_) async => [
           SpeakerProfile(
@@ -111,6 +112,32 @@ void main() {
 
       expect(segments.single.speakerName, '영자');
       expect(segments.single.isEstimatedSpeaker, isTrue);
+    });
+
+    test('회의록 텍스트와 transcript segment는 같은 minutes 결과 호출을 공유해야 함', () async {
+      when(() => mockMinApi.getResult('min-shared-001')).thenAnswer(
+        (_) async => {
+          'markdown': '공유된 회의록',
+          'segments': [
+            {
+              'speaker_id': 'SPEAKER_00',
+              'speaker_name': 'Speaker 1',
+              'text': '공유 호출 확인',
+              'start': 0.0,
+              'end': 1.5,
+            },
+          ],
+        },
+      );
+
+      final results = await Future.wait<Object>([
+        container.read(minutesResultProvider('min-shared-001').future),
+        container.read(transcriptSegmentsProvider('min-shared-001').future),
+      ]);
+
+      expect(results.first, '공유된 회의록');
+      expect(results.last, isA<List<TranscriptSegment>>());
+      verify(() => mockMinApi.getResult('min-shared-001')).called(1);
     });
 
     // 로딩 초기 상태 테스트

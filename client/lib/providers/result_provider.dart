@@ -81,8 +81,7 @@ class MeetingResult {
 // @MX:REASON: 파이프라인의 minTaskId를 통해 회의록 결과 조회
 final minutesResultProvider =
     FutureProvider.family<String, String>((ref, minutesTaskId) async {
-  final minApi = ref.watch(minutesApiProvider);
-  final data = await minApi.getResult(minutesTaskId);
+  final data = await ref.watch(minutesRawResultProvider(minutesTaskId).future);
   final speakerNames =
       await ref.watch(speakerNameMapProvider(minutesTaskId).future);
 
@@ -114,8 +113,7 @@ final minutesResultProvider =
 final transcriptSegmentsProvider =
     FutureProvider.family<List<TranscriptSegment>, String>(
         (ref, minutesTaskId) async {
-  final minApi = ref.watch(minutesApiProvider);
-  final data = await minApi.getResult(minutesTaskId);
+  final data = await ref.watch(minutesRawResultProvider(minutesTaskId).future);
   final speakerNames =
       await ref.watch(speakerNameMapProvider(minutesTaskId).future);
   final raw = data['segments'] as List<dynamic>? ?? [];
@@ -143,6 +141,12 @@ final transcriptSegmentsProvider =
       voiceprintSimilarity: seg.voiceprintSimilarity,
     );
   }).toList();
+});
+
+final minutesRawResultProvider =
+    FutureProvider.family<Map<String, dynamic>, String>((ref, minutesTaskId) {
+  final minApi = ref.watch(minutesApiProvider);
+  return minApi.getResult(minutesTaskId);
 });
 
 // 요약 결과 로딩 프로바이더 (summaryTaskId 기반) - SPEC-APP-004 REQ-APP-041
@@ -274,12 +278,11 @@ final toneProvider =
 // task_id 기반 결과 로딩 프로바이더 (family로 파라미터화)
 final resultProvider =
     FutureProvider.family<MeetingResult, String>((ref, taskId) async {
-  final minApi = ref.watch(minutesApiProvider);
   final sumApi = ref.watch(summaryApiProvider);
 
   // 병렬로 두 API 동시 요청
   final results = await Future.wait([
-    minApi.getResult(taskId),
+    ref.watch(minutesRawResultProvider(taskId).future),
     sumApi.getResult(taskId),
   ]);
 
