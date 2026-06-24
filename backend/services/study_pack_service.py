@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from datetime import UTC, datetime
 from typing import Any, cast
@@ -88,7 +89,8 @@ class StudyPackService:
         prompt = self._build_prompt(transcript, mode=mode, language=language)
         client = self._get_client()
         logger.info("Study Pack API 호출", task_id=task_id, mode=mode.value)
-        response = client.chat.completions.create(
+        response = await asyncio.to_thread(
+            client.chat.completions.create,
             model=settings.summary_model,
             max_tokens=max_tokens,
             messages=[{"role": "user", "content": prompt}],
@@ -282,9 +284,7 @@ class StudyPackService:
             task_id=task_id,
             mode=mode,
             language=language,
-            key_concepts=[
-                StudyKeyConcept(term=concept, explanation=explanation, source_refs=[0])
-            ],
+            key_concepts=[StudyKeyConcept(term=concept, explanation=explanation, source_refs=[0])],
             flashcards=[
                 StudyFlashcard(
                     front=f"{concept}의 핵심은 무엇인가요?",

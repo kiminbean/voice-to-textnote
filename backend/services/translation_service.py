@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from datetime import UTC, datetime
 from typing import Any
 
@@ -79,7 +80,8 @@ class TranslationService:
             source_type=resolved_type.value,
             target_language=target_language,
         )
-        response = client.chat.completions.create(
+        response = await asyncio.to_thread(
+            client.chat.completions.create,
             model=settings.summary_model,
             max_tokens=max_tokens,
             messages=[{"role": "user", "content": prompt}],

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import uuid
 from csv import DictWriter
@@ -144,7 +145,8 @@ class SalesContactBriefService:
         prompt = self._build_prompt(transcript, language=language)
         client = self._get_client()
         logger.info("Sales contact brief API 호출", task_id=task_id)
-        response = client.chat.completions.create(
+        response = await asyncio.to_thread(
+            client.chat.completions.create,
             model=settings.summary_model,
             max_tokens=max_tokens,
             messages=[{"role": "user", "content": prompt}],
@@ -168,9 +170,7 @@ class SalesContactBriefService:
                     if str(item).strip()
                 ],
                 objections=[
-                    str(item).strip()
-                    for item in payload.get("objections", [])
-                    if str(item).strip()
+                    str(item).strip() for item in payload.get("objections", []) if str(item).strip()
                 ],
                 next_steps=[
                     SalesNextStep.model_validate(item)
@@ -434,7 +434,9 @@ class SalesContactBriefService:
         source_record = source_record_result.scalar_one_or_none()
         inherited_guest_session_id = guest_session_id
         if source_record is not None and source_record.is_guest:
-            inherited_guest_session_id = inherited_guest_session_id or source_record.guest_session_id
+            inherited_guest_session_id = (
+                inherited_guest_session_id or source_record.guest_session_id
+            )
         if inherited_guest_session_id:
             record.is_guest = True
             record.guest_session_id = inherited_guest_session_id
