@@ -184,6 +184,34 @@ void main() {
       expect(segments.single.text, '회의록 본문은 표시되어야 합니다.');
     });
 
+    test('화자 프로필 조회가 timeout이어도 transcript segment를 표시해야 함', () async {
+      when(() => mockMinApi.getResult('min-speaker-timeout')).thenAnswer(
+        (_) async => {
+          'segments': [
+            {
+              'speaker_id': 'SPEAKER_00',
+              'speaker_name': 'Speaker 1',
+              'text': '화자 조회가 늦어도 회의 내용은 보여야 합니다.',
+              'start': 0.0,
+              'end': 2.0,
+            },
+          ],
+        },
+      );
+      when(() => mockSpeakerApi.list(taskId: 'min-speaker-timeout')).thenThrow(
+        DioException(
+          requestOptions: RequestOptions(path: '/speakers'),
+          type: DioExceptionType.receiveTimeout,
+        ),
+      );
+
+      final segments = await container
+          .read(transcriptSegmentsProvider('min-speaker-timeout').future);
+
+      expect(segments.single.speakerName, 'Speaker 1');
+      expect(segments.single.text, '화자 조회가 늦어도 회의 내용은 보여야 합니다.');
+    });
+
     // 로딩 초기 상태 테스트
     test('초기 상태는 loading이어야 함', () async {
       // Arrange: 느린 응답 시뮬레이션

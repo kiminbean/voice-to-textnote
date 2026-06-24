@@ -6,6 +6,12 @@ import 'package:voice_to_textnote/services/speaker_api.dart';
 
 bool _isOptionalSpeakerLookupFailure(Object error) {
   if (error is! DioException) return false;
+  if (error.type == DioExceptionType.connectionTimeout ||
+      error.type == DioExceptionType.receiveTimeout ||
+      error.type == DioExceptionType.sendTimeout ||
+      error.type == DioExceptionType.connectionError) {
+    return true;
+  }
   final statusCode = error.response?.statusCode;
   return statusCode == 401 || statusCode == 403 || statusCode == 404;
 }

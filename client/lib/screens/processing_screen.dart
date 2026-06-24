@@ -39,6 +39,7 @@ class _ProcessingScreenState extends ConsumerState<ProcessingScreen>
   // 펄스 애니메이션 컨트롤러
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
+  bool _didNavigateToResult = false;
 
   @override
   void initState() {
@@ -137,12 +138,13 @@ class _ProcessingScreenState extends ConsumerState<ProcessingScreen>
   }
 
   // 파이프라인 완료 시 Meeting 업데이트 및 결과 화면 이동
-  void _onPipelineCompleted(PipelineState pipelineState) {
+  Future<void> _onPipelineCompleted(PipelineState pipelineState) async {
+    if (_didNavigateToResult) return;
     HapticFeedback.heavyImpact();
     // Meeting에 task ID들 저장 후 completed 상태로 변경
     // AsyncNotifier이므로 .value?.firstWhere 사용
     final currentMeetings = ref.read(meetingListProvider).value ?? [];
-    ref.read(meetingListProvider.notifier).updateMeeting(
+    await ref.read(meetingListProvider.notifier).updateMeeting(
           widget.meetingId,
           currentMeetings.firstWhere((m) => m.id == widget.meetingId).copyWith(
                 status: MeetingStatus.completed,
@@ -152,6 +154,7 @@ class _ProcessingScreenState extends ConsumerState<ProcessingScreen>
         );
 
     if (mounted) {
+      _didNavigateToResult = true;
       context.go('/result/${widget.meetingId}');
     }
   }
@@ -174,10 +177,10 @@ class _ProcessingScreenState extends ConsumerState<ProcessingScreen>
     final status = event['status'] as String?;
 
     if (status == 'completed') {
-      // 완료 이벤트 - 결과 화면으로 이동
-      if (mounted) {
-        context.go('/result/${widget.meetingId}');
-      }
+      // 중간 task(STT/DIA/MIN/SUM)의 SSE 완료 이벤트일 수 있다.
+      // 결과 화면 이동은 pipelineProvider가 전체 파이프라인 completed 상태가 된 뒤,
+      // Meeting에 minutesTaskId/summaryTaskId를 저장한 다음에만 수행한다.
+      return;
     } else if (status == 'failed') {
       // 실패 이벤트 - 에러 다이얼로그 표시
       if (mounted) {
@@ -337,9 +340,10 @@ class _ProcessingScreenState extends ConsumerState<ProcessingScreen>
                       Expanded(
                         child: Text(
                           pipelineState.errorMessage!,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: AppColors.error,
-                              ),
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: AppColors.error,
+                                  ),
                         ),
                       ),
                     ],
@@ -395,7 +399,8 @@ class _TemplateSelectorSheet extends ConsumerWidget {
                 const SizedBox(width: AppSpacing.sm),
                 const Expanded(
                   child: Text('요약 양식 선택',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 ),
                 IconButton(
                   icon: const Icon(Icons.close),
@@ -411,7 +416,8 @@ class _TemplateSelectorSheet extends ConsumerWidget {
               title: const Text('기본 양식'),
               subtitle: const Text('AI가 자동으로 구성한 양식'),
               trailing: initialTemplateId == null
-                  ? Icon(Icons.check_circle, color: Theme.of(context).colorScheme.primary)
+                  ? Icon(Icons.check_circle,
+                      color: Theme.of(context).colorScheme.primary)
                   : null,
               onTap: () => Navigator.of(context).pop(''),
             ),
@@ -448,8 +454,10 @@ class _TemplateSelectorSheet extends ConsumerWidget {
                           .map(
                             (template) => _TemplateOption(
                               template: template,
-                              isSelected: initialTemplateId == template.templateId,
-                              onTap: () => Navigator.of(context).pop(template.templateId),
+                              isSelected:
+                                  initialTemplateId == template.templateId,
+                              onTap: () => Navigator.of(context)
+                                  .pop(template.templateId),
                             ),
                           )
                           .toList(),
@@ -479,7 +487,8 @@ class _TemplateOption extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isPdf = template.format.toLowerCase() == 'pdf';
-    final formatIcon = isPdf ? Icons.picture_as_pdf_outlined : Icons.description_outlined;
+    final formatIcon =
+        isPdf ? Icons.picture_as_pdf_outlined : Icons.description_outlined;
     final scheme = Theme.of(context).colorScheme;
 
     return ListTile(
@@ -489,9 +498,8 @@ class _TemplateOption extends StatelessWidget {
         template.format.toUpperCase(),
         style: const TextStyle(fontSize: 12),
       ),
-      trailing: isSelected
-          ? Icon(Icons.check_circle, color: scheme.primary)
-          : null,
+      trailing:
+          isSelected ? Icon(Icons.check_circle, color: scheme.primary) : null,
       onTap: onTap,
     );
   }
