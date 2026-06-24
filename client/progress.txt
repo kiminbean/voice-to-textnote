@@ -1,5 +1,41 @@
 # UI/UX Remaining Fixes Progress
 
+## Date: 2026-06-24
+
+### Result Screen Reliability Fixes
+
+| Issue | Title | Status | Notes |
+|-------|-------|--------|-------|
+| RESULT-001 | Speaker time always appears as `0:00` | ✅ Fixed | The label was segment start time, not recording duration. It now displays a time range such as `0:00 - 1:01`. |
+| RESULT-002 | Mind map tab shows retry after creation | ✅ Fixed | Provider retries short-lived 404 race immediately after `POST /summaries/{summaryTaskId}/mind-map`. Backend parent task access fallback also added. |
+| RESULT-003 | Study tab shows retry while generating | ✅ Fixed | Study Pack generation can take >30s; create request now uses 2-minute receive timeout. |
+| RESULT-004 | Sales tab shows retry while generating | ✅ Fixed | Sales Contact Brief generation can take >30s; create request now uses 2-minute receive timeout. |
+
+### Changes Made
+
+1. **lib/widgets/speaker_segment.dart**
+   - Added optional `endTime`.
+   - Displays `start - end` range when both are available.
+
+2. **lib/screens/result_screen.dart**
+   - Passes `seg.end` to `SpeakerSegment`.
+
+3. **lib/providers/result_provider.dart**
+   - Handles short-lived mind-map status 404 by retrying before surfacing an error.
+
+4. **lib/services/study_pack_api.dart**
+   - Adds `receiveTimeout: Duration(minutes: 2)` for Study Pack generation.
+
+5. **lib/services/sales_contact_brief_api.dart**
+   - Adds `receiveTimeout: Duration(minutes: 2)` for Sales Contact Brief generation.
+
+### Verification
+
+- `flutter test test/widgets/speaker_segment_test.dart` → `All tests passed`
+- `flutter test test/providers/result_provider_test.dart test/providers/study_pack_provider_test.dart test/providers/sales_contact_brief_provider_test.dart test/services/study_pack_api_test.dart test/services/sales_contact_brief_api_test.dart` → `All tests passed`
+- `flutter analyze ...` → `No issues found`
+- USB/wireless detected iPhone release install: `flutter run --release -d 00008150-000239020C08401C`
+
 ## Date: 2026-05-07
 
 ### Status Summary

@@ -23,6 +23,7 @@ from backend.schemas.transcription import TaskStatus
 from backend.utils.logger import get_logger
 from backend.workers.celery_app import celery_app
 from backend.workers.redis_client import get_worker_redis
+from backend.workers.tasks.status_context import merge_existing_status_context
 
 logger = get_logger(__name__)
 
@@ -43,12 +44,7 @@ def _update_task_status(
     r = _get_redis()
     status_key = f"task:sum:status:{task_id}"
 
-    # 기존 created_at 보존
-    existing_created_at = None
     existing_raw = r.get(status_key)
-    if existing_raw:
-        existing_data = _safe_json_load_sync(existing_raw) or {}
-        existing_created_at = existing_data.get("created_at")
 
     data: dict = {
         "task_id": task_id,
@@ -56,8 +52,7 @@ def _update_task_status(
         "progress": progress,
         "updated_at": datetime.now(UTC).isoformat(),
     }
-    if existing_created_at:
-        data["created_at"] = existing_created_at
+    data = merge_existing_status_context(existing_raw, data)
     if message:
         data["message"] = message
     if error_message:

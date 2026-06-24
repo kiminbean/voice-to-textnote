@@ -252,6 +252,32 @@ class TestTaskAccess:
         assert allowed is False
 
     @pytest.mark.asyncio
+    async def test_payload_parent_task_access_allows_derived_task(
+        self, mock_request, mock_db_session
+    ):
+        from backend.app.dependencies import has_task_access
+
+        owner_id = uuid.uuid4()
+        mock_request.state.user_id = str(owner_id)
+        mock_request.state.is_guest = False
+
+        first_result = MagicMock()
+        first_result.scalar_one_or_none.return_value = None
+        parent_result = MagicMock()
+        parent_result.scalar_one_or_none.return_value = object()
+        mock_db_session.execute.side_effect = [first_result, parent_result]
+
+        allowed = await has_task_access(
+            mock_request,
+            mock_db_session,
+            "mind-task-1",
+            {"task_id": "mind-task-1", "summary_task_id": "summary-task-1"},
+        )
+
+        assert allowed is True
+        assert mock_db_session.execute.call_count == 2
+
+    @pytest.mark.asyncio
     async def test_require_task_access_hides_unauthorized_task(
         self, mock_request, mock_db_session
     ):

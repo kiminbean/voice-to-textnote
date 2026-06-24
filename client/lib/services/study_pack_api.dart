@@ -22,6 +22,7 @@ class StudyPackApi {
   }) async {
     final response = await _dio.post(
       '/minutes/$minutesTaskId/study-pack',
+      options: Options(receiveTimeout: const Duration(minutes: 2)),
       data: {
         'mode': mode,
         'language': language,

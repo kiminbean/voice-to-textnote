@@ -1,5 +1,6 @@
 // 결과 데이터 로딩 상태 프로바이더
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:dio/dio.dart';
 import 'package:voice_to_textnote/models/action_item.dart';
 import 'package:voice_to_textnote/models/mind_map_result.dart';
 import 'package:voice_to_textnote/models/summary_result.dart';
@@ -134,7 +135,16 @@ final mindMapResultProvider =
   }
 
   for (var attempt = 0; attempt < 30; attempt++) {
-    final statusData = await sumApi.getMindMapStatus(mindMapTaskId);
+    Map<String, dynamic> statusData;
+    try {
+      statusData = await sumApi.getMindMapStatus(mindMapTaskId);
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404 && attempt < 5) {
+        await Future<void>.delayed(const Duration(seconds: 1));
+        continue;
+      }
+      rethrow;
+    }
     final status = statusData['status'] as String? ?? 'pending';
 
     if (status == 'completed') {
@@ -182,7 +192,8 @@ final sentimentProvider =
 // mindMapResultProvider와 동일한 패턴 - POST /sentiment 생성 후 폴링, GET /sentiment/{taskId}로 결과 조회
 // 오류를 삼키지 않고 AsyncValue.error로 전파하여 ErrorRetryWidget이 표시되도록 함
 final sentimentFullProvider =
-    FutureProvider.family<SentimentFullResponse, String>((ref, minutesTaskId) async {
+    FutureProvider.family<SentimentFullResponse, String>(
+        (ref, minutesTaskId) async {
   final api = ref.watch(sentimentApiProvider);
 
   // 1. 감정 분석 태스크 생성 (POST /sentiment → Celery + OpenAI gpt-4o-mini)

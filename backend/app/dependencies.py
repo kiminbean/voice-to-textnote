@@ -181,6 +181,25 @@ def _payload_matches_request(
     return False
 
 
+def _payload_parent_task_ids(payload: dict | None, task_id: str) -> tuple[str, ...]:
+    if not payload:
+        return ()
+
+    parent_ids: list[str] = []
+    for field in (
+        "source_task_id",
+        "stt_task_id",
+        "diarization_task_id",
+        "minutes_task_id",
+        "summary_task_id",
+    ):
+        parent_id = payload.get(field)
+        if parent_id and str(parent_id) != task_id:
+            parent_ids.append(str(parent_id))
+
+    return tuple(dict.fromkeys(parent_ids))
+
+
 async def has_task_access(
     request: Request | None,
     db: AsyncSession,
@@ -203,6 +222,10 @@ async def has_task_access(
 
     if _payload_matches_request(request, payload):
         return True
+
+    for parent_task_id in _payload_parent_task_ids(payload, task_id):
+        if await has_task_access(request=request, db=db, task_id=parent_task_id):
+            return True
 
     if owner_id is not None:
         result = await db.execute(

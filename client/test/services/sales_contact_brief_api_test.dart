@@ -31,7 +31,11 @@ void main() {
 
   test('create posts language and force_refresh then parses response',
       () async {
-    when(() => mockDio.post(any(), data: any(named: 'data'))).thenAnswer(
+    when(() => mockDio.post(
+          any(),
+          data: any(named: 'data'),
+          options: any(named: 'options'),
+        )).thenAnswer(
       (_) async => Response(
         data: payload(),
         statusCode: 200,
@@ -46,15 +50,17 @@ void main() {
     );
 
     expect(result.contact.company, 'Acme');
-    verify(
+    final options = verify(
       () => mockDio.post(
         '/minutes/min-sales-001/sales-contact-brief',
+        options: captureAny(named: 'options'),
         data: {
           'language': 'ko',
           'force_refresh': true,
         },
       ),
-    ).called(1);
+    ).captured.single as Options;
+    expect(options.receiveTimeout, const Duration(minutes: 2));
   });
 
   test('get loads cached sales contact brief', () async {

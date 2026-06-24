@@ -33,7 +33,11 @@ void main() {
       };
 
   test('create posts mode and force_refresh then parses response', () async {
-    when(() => mockDio.post(any(), data: any(named: 'data'))).thenAnswer(
+    when(() => mockDio.post(
+          any(),
+          data: any(named: 'data'),
+          options: any(named: 'options'),
+        )).thenAnswer(
       (_) async => Response(
         data: payload(),
         statusCode: 200,
@@ -48,16 +52,18 @@ void main() {
     );
 
     expect(result.taskId, 'min-001');
-    verify(
+    final options = verify(
       () => mockDio.post(
         '/minutes/min-001/study-pack',
+        options: captureAny(named: 'options'),
         data: {
           'mode': 'lecture',
           'language': 'ko',
           'force_refresh': true,
         },
       ),
-    ).called(1);
+    ).captured.single as Options;
+    expect(options.receiveTimeout, const Duration(minutes: 2));
   });
 
   test('get loads cached study pack', () async {

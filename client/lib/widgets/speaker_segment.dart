@@ -21,6 +21,7 @@ class SpeakerSegment extends StatelessWidget {
   final String speakerName;
   final String text;
   final Duration? startTime;
+  final Duration? endTime;
   final int speakerIndex;
   final String? searchQuery;
   final bool isHighlighted;
@@ -31,6 +32,7 @@ class SpeakerSegment extends StatelessWidget {
     required this.speakerName,
     required this.text,
     this.startTime,
+    this.endTime,
     this.speakerIndex = 0,
     this.searchQuery,
     this.isHighlighted = false,
@@ -56,7 +58,8 @@ class SpeakerSegment extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
                       color: color.withAlpha(scheme.isDark ? 40 : 20),
                       borderRadius: AppRadius.brSm,
@@ -75,7 +78,7 @@ class SpeakerSegment extends StatelessWidget {
                   if (startTime != null) ...[
                     const SizedBox(height: 4),
                     Text(
-                      _formatTime(startTime!),
+                      _formatTimeRange(startTime!, endTime),
                       style: TextStyle(
                         color: scheme.textTertiary,
                         fontSize: 11,
@@ -131,9 +134,8 @@ class SpeakerSegment extends StatelessWidget {
     final spans = <TextSpan>[];
     int lastMatchEnd = 0;
     // 검색 하이라이트 — 다크모드에서는 앰버 배경 + 흰 글자, 라이트에서는 노란 배경 + 검은 글자
-    final highlightBg = scheme.isDark
-        ? const Color(0xCCF59E0B)
-        : const Color(0xCCFDE047);
+    final highlightBg =
+        scheme.isDark ? const Color(0xCCF59E0B) : const Color(0xCCFDE047);
 
     for (final match in matches) {
       if (match.start > lastMatchEnd) {
@@ -141,7 +143,8 @@ class SpeakerSegment extends StatelessWidget {
       }
       spans.add(TextSpan(
         text: text.substring(match.start, match.end),
-        style: TextStyle(backgroundColor: highlightBg, color: scheme.textPrimary),
+        style:
+            TextStyle(backgroundColor: highlightBg, color: scheme.textPrimary),
       ));
       lastMatchEnd = match.end;
     }
@@ -166,5 +169,12 @@ class SpeakerSegment extends StatelessWidget {
     final minutes = duration.inMinutes;
     final seconds = duration.inSeconds % 60;
     return '$minutes:${seconds.toString().padLeft(2, '0')}';
+  }
+
+  String _formatTimeRange(Duration start, Duration? end) {
+    if (end == null || end <= start) {
+      return _formatTime(start);
+    }
+    return '${_formatTime(start)} - ${_formatTime(end)}';
   }
 }

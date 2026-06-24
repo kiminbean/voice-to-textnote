@@ -472,6 +472,24 @@ class TestToneTaskHelpers:
         assert stored["message"] == "처리 중"
         assert stored["error_message"] == "some error"
 
+    def test_update_task_status_does_not_publish_dia_stream_event_by_default(self):
+        """REQ-TONE-006: tone 실패 이벤트가 같은 task_id의 DIA 스트림을 덮지 않는다."""
+        from backend.schemas.transcription import TaskStatus
+        from backend.workers.tasks import tone_task as tone_mod
+
+        mock_redis = _make_mock_redis()
+        mock_redis.get.return_value = None
+
+        with (
+            patch("backend.workers.tasks.tone_task._get_redis", return_value=mock_redis),
+            patch("backend.workers.tasks.tone_task.publish_task_event_sync") as publish,
+            patch("backend.workers.tasks.tone_task.settings") as mock_settings,
+        ):
+            _configure_settings(mock_settings)
+            tone_mod._update_task_status("dia-task-id", TaskStatus.failed, 0.0, "tone failed")
+
+        publish.assert_not_called()
+
     def test_compute_overall_tone_empty_returns_unknown(self):
         """빈 세그먼트 또는 모두 skipped인 경우 unknown 반환 (line 146)"""
         from backend.workers.tasks.tone_task import _compute_overall_tone

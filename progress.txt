@@ -2,6 +2,26 @@
 
 ## Completed Changes
 
+### BUG-017 ✅ In-flight worker status drops ownership metadata
+- **Files:** `backend/workers/tasks/status_context.py`, all worker task status updaters
+- **Fix:** Added `merge_existing_status_context()` and wired STT/DIA/minutes/summary/sentiment/tone/mind-map status updates to preserve `user_id`, guest session metadata, parent task ids, and `created_at`. This prevents authenticated in-flight status polling from returning false 404s before DB persistence finishes.
+- **Verification:** `backend/tests/unit/test_worker_status_context.py`, `backend/tests/unit/test_tone_task.py`, `backend/tests/unit/test_diarization_task_v2.py` → `43 passed`; broader worker set → `138 passed`; ruff clean.
+
+### BUG-018 ✅ Derived task access did not fall back to parent task ownership
+- **Files:** `backend/app/dependencies.py`, `backend/tests/unit/test_dependencies.py`
+- **Fix:** `has_task_access()` now checks parent ids in payload (`source_task_id`, `stt_task_id`, `diarization_task_id`, `minutes_task_id`, `summary_task_id`) before denying access. This fixes derived mind-map/status lookups where the derived task has no separate ownership row yet.
+- **Verification:** `backend/tests/unit/test_dependencies.py backend/tests/unit/test_worker_status_context.py` → `34 passed`; ruff clean.
+
+### BUG-019 ✅ Tone analysis failure polluted DIA task stream
+- **File:** `backend/workers/tasks/tone_task.py`
+- **Fix:** Tone status updates no longer publish generic task SSE events by default. Optional tone failures remain isolated from the DIA/minutes pipeline.
+- **Verification:** `backend/tests/unit/test_tone_task.py` included in worker regression runs.
+
+### OPS-001 ✅ Local Tailscale server deployment clarified
+- **Server:** `100.69.69.119:8000` is the current Mac's Tailscale address, not a separate remote host.
+- **Runtime:** API and Celery worker run in tmux session `voice-to-textnote-server`.
+- **Verification:** `/api/v1/health` reports API, Redis, Celery worker, and ffmpeg healthy.
+
 ### BUG-001 ✅ transcription_task _update_task_status pipeline race
 - **File:** `backend/workers/tasks/transcription_task.py`
 - **Fix:** Replaced the buggy GET+SETEX pipeline (which wrote without created_at first, then conditionally overwrote) with a simple GET → build dict → single SETEX. Now always preserves or omits created_at correctly in one write.

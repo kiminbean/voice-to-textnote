@@ -21,6 +21,7 @@ class SalesContactBriefApi {
   }) async {
     final response = await _dio.post(
       '/minutes/$minutesTaskId/sales-contact-brief',
+      options: Options(receiveTimeout: const Duration(minutes: 2)),
       data: {
         'language': language,
         'force_refresh': forceRefresh,

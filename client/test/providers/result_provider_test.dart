@@ -262,6 +262,49 @@ void main() {
       expect(result.edges.first.relation, 'contains');
     });
 
+    test('mindMapResultProvider가 생성 직후 status 404를 재시도해야 함', () async {
+      // Arrange
+      var statusCalls = 0;
+      when(() => mockSumApi.createMindMap(any())).thenAnswer(
+        (_) async => {'task_id': 'mind-task-001', 'status': 'pending'},
+      );
+      when(() => mockSumApi.getMindMapStatus(any())).thenAnswer((_) async {
+        statusCalls += 1;
+        if (statusCalls == 1) {
+          throw DioException(
+            requestOptions: RequestOptions(path: ''),
+            response: Response(
+              statusCode: 404,
+              requestOptions: RequestOptions(path: ''),
+            ),
+            type: DioExceptionType.badResponse,
+          );
+        }
+        return {'status': 'completed'};
+      });
+      when(() => mockSumApi.getMindMapResult(any())).thenAnswer((_) async => {
+            'task_id': 'mind-task-001',
+            'summary_task_id': 'sum-001',
+            'status': 'completed',
+            'root': {
+              'id': 'root',
+              'title': '재시도 후 마인드맵',
+              'summary': 'status 404 race 복구',
+              'children': <dynamic>[],
+              'source_refs': ['summary_text'],
+            },
+            'edges': <dynamic>[],
+          });
+
+      // Act
+      final result =
+          await container.read(mindMapResultProvider('sum-001').future);
+
+      // Assert
+      expect(result.root?.title, '재시도 후 마인드맵');
+      expect(statusCalls, 2);
+    });
+
     // MeetingResult에 keyDecisions와 nextSteps가 포함되는지 테스트
     test('resultProvider MeetingResult에 keyDecisions와 nextSteps가 포함되어야 함',
         () async {

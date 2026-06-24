@@ -927,6 +927,7 @@ class _TranscriptTabState extends ConsumerState<_TranscriptTab> {
                   speakerName: seg.speakerName,
                   text: seg.text,
                   startTime: Duration(milliseconds: (seg.start * 1000).round()),
+                  endTime: Duration(milliseconds: (seg.end * 1000).round()),
                   speakerIndex: seg.speakerIndex,
                   searchQuery: _searchQuery,
                   isHighlighted: isActive,
