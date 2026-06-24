@@ -1,5 +1,7 @@
 // MeetingListProvider 상태 관리 테스트 (AsyncNotifier 기반)
 // SPEC-HISTSYNC-001: 서버 동기화 로직 포함
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -7,10 +9,32 @@ import 'package:mocktail/mocktail.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:voice_to_textnote/models/meeting.dart';
 import 'package:voice_to_textnote/providers/meeting_list_provider.dart';
+import 'package:voice_to_textnote/services/auth_service.dart';
 import 'package:voice_to_textnote/services/history_api.dart';
 
 // HistoryApi Mock 클래스
 class MockHistoryApi extends Mock implements HistoryApi {}
+
+class FakeAuthService extends AuthService {
+  FakeAuthService({
+    this.accessToken,
+    this.guestToken,
+    this.guestSessionId,
+  });
+
+  final String? accessToken;
+  final String? guestToken;
+  final String? guestSessionId;
+
+  @override
+  Future<String?> getAccessToken() async => accessToken;
+
+  @override
+  Future<String?> getGuestToken() async => guestToken;
+
+  @override
+  Future<String?> getGuestSessionId() async => guestSessionId;
+}
 
 void main() {
   // SharedPreferences 바인딩 초기화
@@ -40,6 +64,7 @@ void main() {
       container = ProviderContainer(
         overrides: [
           historyApiProvider.overrideWithValue(mockHistoryApi),
+          authServiceProvider.overrideWithValue(FakeAuthService()),
         ],
       );
     });
@@ -172,6 +197,7 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           historyApiProvider.overrideWithValue(mockHistoryApi),
+          authServiceProvider.overrideWithValue(FakeAuthService()),
         ],
       );
       addTearDown(container.dispose);
@@ -212,6 +238,7 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           historyApiProvider.overrideWithValue(mockHistoryApi),
+          authServiceProvider.overrideWithValue(FakeAuthService()),
         ],
       );
       addTearDown(container.dispose);
@@ -272,6 +299,7 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           historyApiProvider.overrideWithValue(mockHistoryApi),
+          authServiceProvider.overrideWithValue(FakeAuthService()),
         ],
       );
       addTearDown(container.dispose);
@@ -334,6 +362,7 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           historyApiProvider.overrideWithValue(mockHistoryApi),
+          authServiceProvider.overrideWithValue(FakeAuthService()),
         ],
       );
       addTearDown(container.dispose);
@@ -377,6 +406,7 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           historyApiProvider.overrideWithValue(mockHistoryApi),
+          authServiceProvider.overrideWithValue(FakeAuthService()),
         ],
       );
       addTearDown(container.dispose);
@@ -418,6 +448,7 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           historyApiProvider.overrideWithValue(mockHistoryApi),
+          authServiceProvider.overrideWithValue(FakeAuthService()),
         ],
       );
       addTearDown(container.dispose);
@@ -474,6 +505,7 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           historyApiProvider.overrideWithValue(mockHistoryApi),
+          authServiceProvider.overrideWithValue(FakeAuthService()),
         ],
       );
       addTearDown(container.dispose);
@@ -520,6 +552,7 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           historyApiProvider.overrideWithValue(mockHistoryApi),
+          authServiceProvider.overrideWithValue(FakeAuthService()),
         ],
       );
       addTearDown(container.dispose);
@@ -540,6 +573,94 @@ void main() {
       final meeting = meetings.firstWhere((m) => m.id == 'local-001');
       expect(meeting.sharedTeamIds, ['team-shared']);
       expect(meeting.title, '기존 미팅');
+    });
+
+    test('게스트 세션은 이전 전역 캐시의 로그인 회의를 로드하지 않아야 함', () async {
+      final staleMeeting = Meeting(
+        id: 'previous-user-meeting',
+        title: '이전 로그인 회의',
+        createdAt: DateTime(2026, 6, 24, 10),
+        status: MeetingStatus.completed,
+        minutesTaskId: 'previous-minutes',
+        summaryTaskId: 'previous-summary',
+      );
+      SharedPreferences.setMockInitialValues({
+        'meetings_list': jsonEncode([staleMeeting.toJson()]),
+      });
+      when(() => mockHistoryApi.list(
+            taskType: any(named: 'taskType'),
+            status: any(named: 'status'),
+            page: any(named: 'page'),
+            pageSize: any(named: 'pageSize'),
+          )).thenAnswer(
+        (_) async => {
+          'items': [],
+          'total': 0,
+          'page': 1,
+          'page_size': 20,
+        },
+      );
+
+      final container = ProviderContainer(
+        overrides: [
+          historyApiProvider.overrideWithValue(mockHistoryApi),
+          authServiceProvider.overrideWithValue(
+            FakeAuthService(
+              guestToken: 'guest-token',
+              guestSessionId: 'guest-session-current',
+            ),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      final meetings = await container.read(meetingListProvider.future);
+
+      expect(meetings, isEmpty);
+    });
+
+    test('회의 목록 캐시는 게스트 세션별로 분리되어야 함', () async {
+      final otherGuestMeeting = Meeting(
+        id: 'other-guest-meeting',
+        title: '다른 게스트 회의',
+        createdAt: DateTime(2026, 6, 24, 11),
+        status: MeetingStatus.completed,
+        minutesTaskId: 'other-minutes',
+      );
+      SharedPreferences.setMockInitialValues({
+        'meetings_list_v2:guest:other-session':
+            jsonEncode([otherGuestMeeting.toJson()]),
+      });
+      when(() => mockHistoryApi.list(
+            taskType: any(named: 'taskType'),
+            status: any(named: 'status'),
+            page: any(named: 'page'),
+            pageSize: any(named: 'pageSize'),
+          )).thenAnswer(
+        (_) async => {
+          'items': [],
+          'total': 0,
+          'page': 1,
+          'page_size': 20,
+        },
+      );
+
+      final container = ProviderContainer(
+        overrides: [
+          historyApiProvider.overrideWithValue(mockHistoryApi),
+          authServiceProvider.overrideWithValue(
+            FakeAuthService(
+              guestToken: 'guest-token',
+              guestSessionId: 'current-session',
+            ),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      final meetings = await container.read(meetingListProvider.future);
+
+      expect(meetings, isEmpty);
     });
   });
 }

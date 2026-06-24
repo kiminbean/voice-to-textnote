@@ -593,3 +593,65 @@ async def test_is_meeting_owner_no_ownership_records_missing_task_returns_false(
     )
 
     assert result is False
+
+
+# ---------------------------------------------------------------------------
+# claim_guest_session 테스트 (게스트 → 로그인 소유권 인계)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_claim_guest_session_creates_missing_ownership(
+    meeting_service, mock_session, sample_owner_id
+):
+    """게스트 세션 회의 중 소유권이 없는 task만 새로 인계한다(멱등)."""
+    guest_tasks = MagicMock()
+    guest_tasks.all.return_value = [("task-a",), ("task-b",)]
+    existing = MagicMock()
+    existing.all.return_value = [("task-a",)]  # task-a는 이미 소유
+    mock_session.execute.side_effect = [guest_tasks, existing]
+
+    claimed = await meeting_service.claim_guest_session(
+        session=mock_session,
+        user_id=sample_owner_id,
+        guest_session_id="guest-x",
+    )
+
+    assert claimed == 1
+    mock_session.add.assert_called_once()
+    mock_session.commit.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_claim_guest_session_no_tasks_returns_zero(
+    meeting_service, mock_session, sample_owner_id
+):
+    """게스트 세션에 회의가 없으면 0을 반환하고 아무것도 쓰지 않는다."""
+    empty = MagicMock()
+    empty.all.return_value = []
+    mock_session.execute.side_effect = [empty]
+
+    claimed = await meeting_service.claim_guest_session(
+        session=mock_session,
+        user_id=sample_owner_id,
+        guest_session_id="guest-x",
+    )
+
+    assert claimed == 0
+    mock_session.add.assert_not_called()
+    mock_session.commit.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_claim_guest_session_empty_session_id_returns_zero(
+    meeting_service, mock_session, sample_owner_id
+):
+    """게스트 세션 ID가 비어 있으면 DB 조회 없이 0을 반환한다."""
+    claimed = await meeting_service.claim_guest_session(
+        session=mock_session,
+        user_id=sample_owner_id,
+        guest_session_id="",
+    )
+
+    assert claimed == 0
+    mock_session.execute.assert_not_called()

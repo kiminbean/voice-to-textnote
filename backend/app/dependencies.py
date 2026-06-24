@@ -200,17 +200,49 @@ def _payload_parent_task_ids(payload: dict | None, task_id: str) -> tuple[str, .
     return tuple(dict.fromkeys(parent_ids))
 
 
+# 파생 task 부모 체인 추적 시 무한 루프를 막는 최대 깊이
+# (minutes -> summary -> mind_map 등 보통 1~2단계, 여유를 둬 5단계로 제한)
+_MAX_TASK_ACCESS_DEPTH = 5
+
+
+async def _load_persisted_payload(db: AsyncSession, task_id: str) -> dict | None:
+    """DB에 저장된 TaskResult.result_data를 접근 검증용 payload로 로드한다.
+
+    엔드포인트가 payload 없이 require_task_access를 호출하더라도(translation,
+    study_pack, keywords 등) 저장된 결과로 payload 매칭과 부모 체인 검증이
+    동작하도록 한다. 게스트 귀속 정보(is_guest/guest_session_id)는 일부 파생
+    워커가 result_data에 남기지 않으므로 TaskResult 컬럼 값으로 보강한다.
+    """
+    result = await db.execute(select(TaskResult).where(TaskResult.task_id == task_id))
+    record = result.scalar_one_or_none()
+    if record is None:
+        return None
+
+    payload: dict = dict(record.result_data) if isinstance(record.result_data, dict) else {}
+    # 게스트 귀속이 result_data에 누락된 파생 task(sentiment 등)를 위해 컬럼 값 보강
+    if record.is_guest and record.guest_session_id:
+        payload.setdefault("is_guest", True)
+        payload.setdefault("guest_session_id", record.guest_session_id)
+    return payload
+
+
 async def has_task_access(
     request: Request | None,
     db: AsyncSession,
     task_id: str,
     payload: dict | None = None,
+    _depth: int = 0,
 ) -> bool:
     """Return whether the authenticated request may access task_id.
 
     Development/API-key requests without a user or guest identity keep the
     legacy behavior. User/guest requests must match explicit ownership,
     team sharing, guest session ownership, or an in-flight Redis payload.
+
+    호출자가 payload를 주지 않으면 DB에 저장된 result_data를 로드해 payload
+    매칭과 부모 task(minutes_task_id 등) 체인 검증을 수행한다. 이때도 본인이
+    해당 task 또는 그 부모를 소유/게스트소유해야만 통과하므로 다른 사용자의
+    결과는 여전히 노출되지 않는다(다중 사용자 격리 유지).
     """
     if request is None or not hasattr(request, "state"):
         return True
@@ -220,12 +252,22 @@ async def has_task_access(
     if owner_id is None and guest_session_id is None:
         return True
 
+    # payload 미전달 시 DB 저장 결과로 보강 (부모 체인/게스트 매칭 활성화)
+    if payload is None and _depth < _MAX_TASK_ACCESS_DEPTH:
+        payload = await _load_persisted_payload(db, task_id)
+
     if _payload_matches_request(request, payload):
         return True
 
-    for parent_task_id in _payload_parent_task_ids(payload, task_id):
-        if await has_task_access(request=request, db=db, task_id=parent_task_id):
-            return True
+    if _depth < _MAX_TASK_ACCESS_DEPTH:
+        for parent_task_id in _payload_parent_task_ids(payload, task_id):
+            if await has_task_access(
+                request=request,
+                db=db,
+                task_id=parent_task_id,
+                _depth=_depth + 1,
+            ):
+                return True
 
     if owner_id is not None:
         result = await db.execute(

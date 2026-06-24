@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:voice_to_textnote/models/auth_user.dart';
+import 'package:voice_to_textnote/providers/meeting_list_provider.dart';
 import 'package:voice_to_textnote/services/auth_api.dart';
 import 'package:voice_to_textnote/services/auth_service.dart';
 
@@ -20,14 +21,27 @@ class AuthState {
     this.errorMessage,
   });
 
-  const AuthState.initial() : status = AuthStatus.initial, user = null, errorMessage = null;
-  const AuthState.loading() : status = AuthStatus.loading, user = null, errorMessage = null;
+  const AuthState.initial()
+      : status = AuthStatus.initial,
+        user = null,
+        errorMessage = null;
+  const AuthState.loading()
+      : status = AuthStatus.loading,
+        user = null,
+        errorMessage = null;
   const AuthState.authenticated(AuthUser u)
-      : status = AuthStatus.authenticated, user = u, errorMessage = null;
+      : status = AuthStatus.authenticated,
+        user = u,
+        errorMessage = null;
   const AuthState.unauthenticated([String? msg])
-      : status = AuthStatus.unauthenticated, user = null, errorMessage = msg;
+      : status = AuthStatus.unauthenticated,
+        user = null,
+        errorMessage = msg;
   // SPEC-GUEST-001: 게스트 상태 - authenticated와 동일하게 홈 접근 허용
-  const AuthState.guest() : status = AuthStatus.guest, user = null, errorMessage = null;
+  const AuthState.guest()
+      : status = AuthStatus.guest,
+        user = null,
+        errorMessage = null;
 
   bool get isAuthenticated => status == AuthStatus.authenticated;
   bool get isLoading => status == AuthStatus.loading;
@@ -40,8 +54,23 @@ class AuthState {
 class AuthNotifier extends StateNotifier<AuthState> {
   final AuthApi _authApi;
   final AuthService _authService;
+  // Ref는 선택적: 신원 전환 시 회의 캐시 정리에만 사용한다.
+  // 미주입(일부 단위 테스트) 시 캐시 정리를 건너뛴다.
+  final Ref? _ref;
 
-  AuthNotifier(this._authApi, this._authService) : super(const AuthState.initial());
+  AuthNotifier(this._authApi, this._authService, [this._ref])
+      : super(const AuthState.initial());
+
+  // 신원 전환 시 이전 사용자/게스트의 로컬 회의 목록 캐시를 비운다.
+  // 실패해도 인증 흐름을 막지 않는다 (best-effort).
+  Future<void> _clearMeetingCache() async {
+    final ref = _ref;
+    if (ref == null) return;
+    try {
+      await ref.read(meetingListProvider.notifier).clearLocalCache();
+      ref.invalidate(meetingListProvider);
+    } catch (_) {}
+  }
 
   // 앱 시작 시 저장된 토큰으로 인증 상태 복원
   // SPEC-GUEST-001: 게스트 토큰이 있으면 게스트 상태로 복원
@@ -88,12 +117,31 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  // 토큰을 저장하고, 직전 게스트 세션으로 녹음한 회의를 계정으로 인계한다.
+  // saveTokens가 게스트 세션을 삭제하므로 반드시 그 전에 게스트 토큰을 읽어둔다.
+  Future<void> _persistTokensAndClaimGuest(
+    String accessToken,
+    String refreshToken,
+  ) async {
+    final guestToken = await _authService.getGuestToken();
+    await _authService.saveTokens(accessToken, refreshToken);
+    if (guestToken != null && guestToken.isNotEmpty) {
+      try {
+        // 인계 실패는 로그인 자체를 막지 않는다 (best-effort)
+        await _authApi.claimGuestMeetings(guestToken);
+      } catch (_) {}
+    }
+    // 로그인으로 신원이 바뀌었으므로 이전 캐시를 비우고 서버 기준으로 다시 동기화한다.
+    await _clearMeetingCache();
+  }
+
   // 로그인
   Future<void> login(String email, String password) async {
     state = const AuthState.loading();
     try {
       final response = await _authApi.login(email: email, password: password);
-      await _authService.saveTokens(response.accessToken, response.refreshToken);
+      await _persistTokensAndClaimGuest(
+          response.accessToken, response.refreshToken);
       // 토큰으로 사용자 정보 조회
       final user = await _authApi.getMe(response.accessToken);
       state = AuthState.authenticated(user);
@@ -103,7 +151,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   // 회원가입 (성공 시 자동 로그인)
-  Future<void> register(String email, String password, String displayName) async {
+  Future<void> register(
+      String email, String password, String displayName) async {
     state = const AuthState.loading();
     try {
       final response = await _authApi.register(
@@ -111,7 +160,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
         password: password,
         displayName: displayName,
       );
-      await _authService.saveTokens(response.accessToken, response.refreshToken);
+      await _persistTokensAndClaimGuest(
+          response.accessToken, response.refreshToken);
       // 토큰으로 사용자 정보 조회
       final user = await _authApi.getMe(response.accessToken);
       state = AuthState.authenticated(user);
@@ -140,6 +190,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
         _authService.clearTokens(),
         _authService.clearGuestSession(),
       ]);
+      // 신원 종료: 이전 사용자의 회의가 다음 신원 목록에 남지 않도록 캐시 정리
+      await _clearMeetingCache();
       state = const AuthState.unauthenticated();
     }
   }
@@ -153,6 +205,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
       final guestToken = data['guest_token'] as String;
       final sessionId = data['guest_session_id'] as String;
       await _authService.saveGuestToken(guestToken, sessionId);
+      // 게스트로 신원이 바뀌었으므로 이전(로그인 사용자 등)의 회의 캐시를 비운다.
+      await _clearMeetingCache();
       state = const AuthState.guest();
     } on Exception catch (e) {
       state = AuthState.unauthenticated(_parseError(e));
@@ -190,7 +244,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
       }
 
       final response = await _authApi.loginWithGoogle(idToken: idToken);
-      await _authService.saveTokens(response.accessToken, response.refreshToken);
+      await _persistTokensAndClaimGuest(
+          response.accessToken, response.refreshToken);
       final user = await _authApi.getMe(response.accessToken);
       state = AuthState.authenticated(user);
     } on Exception catch (e) {
@@ -224,7 +279,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
         idToken: idToken,
         displayName: displayName.isEmpty ? null : displayName,
       );
-      await _authService.saveTokens(response.accessToken, response.refreshToken);
+      await _persistTokensAndClaimGuest(
+          response.accessToken, response.refreshToken);
       final user = await _authApi.getMe(response.accessToken);
       state = AuthState.authenticated(user);
     } on Exception catch (e) {
@@ -238,7 +294,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
       final refreshToken = await _authService.getRefreshToken();
       if (refreshToken == null) return false;
       final response = await _authApi.refresh(refreshToken);
-      await _authService.saveTokens(response.accessToken, response.refreshToken);
+      await _authService.saveTokens(
+          response.accessToken, response.refreshToken);
       return true;
     } catch (_) {
       await _authService.clearTokens();
@@ -267,6 +324,7 @@ final authStateProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   return AuthNotifier(
     ref.watch(authApiProvider),
     ref.watch(authServiceProvider),
+    ref,
   );
 });
 

@@ -15,15 +15,21 @@ import 'package:voice_to_textnote/screens/home_screen.dart';
 import 'package:voice_to_textnote/services/auth_api.dart';
 import 'package:voice_to_textnote/services/auth_service.dart';
 import 'package:voice_to_textnote/services/connectivity_service.dart';
+import 'package:voice_to_textnote/services/history_api.dart';
 
 // Mock 클래스
 class MockAuthApi extends Mock implements AuthApi {}
+
 class MockAuthService extends Mock implements AuthService {}
+
 class MockConnectivityService extends Mock implements ConnectivityService {}
+
+class MockHistoryApi extends Mock implements HistoryApi {}
 
 // 온라인 상태 Override 헬퍼
 List<Override> _connectivityOverrides(MockConnectivityService mockService) {
   final streamController = StreamController<bool>.broadcast();
+  final historyApi = MockHistoryApi();
   when(() => mockService.isOnline).thenReturn(true);
   when(() => mockService.onStatusChange)
       .thenAnswer((_) => streamController.stream);
@@ -31,9 +37,23 @@ List<Override> _connectivityOverrides(MockConnectivityService mockService) {
         interval: any(named: 'interval'),
       )).thenReturn(null);
   when(() => mockService.dispose()).thenReturn(null);
+  when(() => historyApi.list(
+        taskType: any(named: 'taskType'),
+        status: any(named: 'status'),
+        page: any(named: 'page'),
+        pageSize: any(named: 'pageSize'),
+      )).thenAnswer(
+    (_) async => {
+      'items': [],
+      'total': 0,
+      'page': 1,
+      'page_size': 20,
+    },
+  );
 
   return [
     connectivityServiceProvider.overrideWithValue(mockService),
+    historyApiProvider.overrideWithValue(historyApi),
   ];
 }
 
@@ -93,6 +113,11 @@ void main() {
       mockAuthApi = MockAuthApi();
       mockAuthService = MockAuthService();
       mockConnectivity = MockConnectivityService();
+      when(() => mockAuthService.getAccessToken())
+          .thenAnswer((_) async => null);
+      when(() => mockAuthService.getGuestToken()).thenAnswer((_) async => null);
+      when(() => mockAuthService.getGuestSessionId())
+          .thenAnswer((_) async => null);
     });
 
     // 게스트 모드일 때 배너 표시 확인
@@ -103,6 +128,7 @@ void main() {
         _buildTestApp(
           overrides: [
             ...connectivityOverrides,
+            authServiceProvider.overrideWithValue(mockAuthService),
             authStateProvider.overrideWith(
               (ref) {
                 final notifier = AuthNotifier(mockAuthApi, mockAuthService);
@@ -134,6 +160,7 @@ void main() {
         _buildTestApp(
           overrides: [
             ...connectivityOverrides,
+            authServiceProvider.overrideWithValue(mockAuthService),
             authStateProvider.overrideWith(
               (ref) {
                 final notifier = AuthNotifier(mockAuthApi, mockAuthService);
@@ -158,6 +185,7 @@ void main() {
         _buildTestApp(
           overrides: [
             ...connectivityOverrides,
+            authServiceProvider.overrideWithValue(mockAuthService),
             authStateProvider.overrideWith(
               (ref) {
                 final notifier = AuthNotifier(mockAuthApi, mockAuthService);

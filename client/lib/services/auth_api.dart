@@ -58,6 +58,17 @@ class AuthApi {
     return AuthResponse.fromJson(response.data as Map<String, dynamic>);
   }
 
+  // 게스트 회의 인계: 로그인 직후 게스트로 녹음한 회의를 현재 계정으로 이전한다.
+  // Authorization 헤더는 인터셉터가 저장된 액세스 토큰으로 자동 주입한다.
+  Future<int> claimGuestMeetings(String guestToken) async {
+    final response = await _dio.post(
+      '/auth/guest/claim',
+      data: {'guest_token': guestToken},
+    );
+    final data = response.data as Map<String, dynamic>;
+    return (data['claimed'] as num?)?.toInt() ?? 0;
+  }
+
   // 토큰 갱신
   Future<TokenResponse> refresh(String refreshToken) async {
     final response = await _dio.post(

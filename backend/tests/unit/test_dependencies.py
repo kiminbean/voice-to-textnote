@@ -278,6 +278,92 @@ class TestTaskAccess:
         assert mock_db_session.execute.call_count == 2
 
     @pytest.mark.asyncio
+    async def test_no_payload_loads_db_result_data_for_parent_chain(
+        self, mock_request, mock_db_session
+    ):
+        """payload 없이 호출해도 DB result_data를 로드해 부모(minutes) 소유권으로 통과한다.
+
+        translation/study_pack/sentiment 등 payload 없이 require_task_access를
+        호출하는 파생 엔드포인트가 본인 소유 회의의 파생 결과에 접근 가능해야 한다.
+        """
+        from backend.app.dependencies import has_task_access
+
+        owner_id = uuid.uuid4()
+        mock_request.state.user_id = str(owner_id)
+        mock_request.state.is_guest = False
+
+        derived_record = SimpleNamespace(
+            result_data={"task_id": "sentiment-1", "minutes_task_id": "min-1"},
+            is_guest=False,
+            guest_session_id=None,
+        )
+        load_derived = MagicMock()
+        load_derived.scalar_one_or_none.return_value = derived_record
+
+        minutes_record = SimpleNamespace(result_data={"task_id": "min-1"}, is_guest=False, guest_session_id=None)
+        load_minutes = MagicMock()
+        load_minutes.scalar_one_or_none.return_value = minutes_record
+
+        ownership = MagicMock()
+        ownership.scalar_one_or_none.return_value = object()  # MeetingOwnership 존재
+        mock_db_session.execute.side_effect = [load_derived, load_minutes, ownership]
+
+        allowed = await has_task_access(mock_request, mock_db_session, "sentiment-1")
+
+        assert allowed is True
+
+    @pytest.mark.asyncio
+    async def test_no_payload_orphan_task_denied_for_user(self, mock_request, mock_db_session):
+        """소유권 행이 없는 고아 task는 인증된 사용자에게도 노출되지 않는다(격리 유지)."""
+        from backend.app.dependencies import has_task_access
+
+        mock_request.state.user_id = str(uuid.uuid4())
+        mock_request.state.is_guest = False
+
+        orphan_record = SimpleNamespace(result_data={"task_id": "orphan-1"}, is_guest=False, guest_session_id=None)
+        load_orphan = MagicMock()
+        load_orphan.scalar_one_or_none.return_value = orphan_record
+        ownership = MagicMock()
+        ownership.scalar_one_or_none.return_value = None  # 소유권 없음
+        mock_db_session.execute.side_effect = [load_orphan, ownership]
+
+        allowed = await has_task_access(mock_request, mock_db_session, "orphan-1")
+
+        assert allowed is False
+
+    @pytest.mark.asyncio
+    async def test_no_payload_guest_derived_via_parent_minutes(
+        self, mock_request, mock_db_session
+    ):
+        """게스트 식별자가 누락된 파생 task도 부모 minutes가 같은 게스트 소유면 통과한다."""
+        from backend.app.dependencies import has_task_access
+
+        mock_request.state.user_id = None
+        mock_request.state.is_guest = True
+        mock_request.state.guest_session_id = "guest-a"
+
+        # 파생 task(sentiment)는 게스트 귀속이 누락된 채 저장됨
+        derived_record = SimpleNamespace(
+            result_data={"task_id": "sent-1", "minutes_task_id": "min-1"},
+            is_guest=False,
+            guest_session_id=None,
+        )
+        load_derived = MagicMock()
+        load_derived.scalar_one_or_none.return_value = derived_record
+
+        # 부모 minutes는 동일 게스트 세션 소유
+        minutes_record = SimpleNamespace(
+            result_data={"task_id": "min-1"}, is_guest=True, guest_session_id="guest-a"
+        )
+        load_minutes = MagicMock()
+        load_minutes.scalar_one_or_none.return_value = minutes_record
+        mock_db_session.execute.side_effect = [load_derived, load_minutes]
+
+        allowed = await has_task_access(mock_request, mock_db_session, "sent-1")
+
+        assert allowed is True
+
+    @pytest.mark.asyncio
     async def test_require_task_access_hides_unauthorized_task(
         self, mock_request, mock_db_session
     ):

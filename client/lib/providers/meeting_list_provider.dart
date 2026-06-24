@@ -4,12 +4,15 @@
 import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:jwt_decoder/jwt_decoder.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:voice_to_textnote/models/meeting.dart';
+import 'package:voice_to_textnote/services/auth_service.dart';
 import 'package:voice_to_textnote/services/history_api.dart';
 
 // SharedPreferences 저장 키
 const _kMeetingsKey = 'meetings_list';
+const _kMeetingsScopedPrefix = 'meetings_list_v2';
 
 // 미팅 목록 AsyncNotifier - 앱 재시작 시 SharedPreferences에서 복원
 class MeetingListNotifier extends AsyncNotifier<List<Meeting>> {
@@ -25,7 +28,7 @@ class MeetingListNotifier extends AsyncNotifier<List<Meeting>> {
 
   Future<List<Meeting>> _loadLocal() async {
     final prefs = await SharedPreferences.getInstance();
-    final json = prefs.getString(_kMeetingsKey);
+    final json = prefs.getString(await _storageKey());
     if (json != null) {
       try {
         final list = jsonDecode(json) as List;
@@ -44,7 +47,39 @@ class MeetingListNotifier extends AsyncNotifier<List<Meeting>> {
   Future<void> _save(List<Meeting> meetings) async {
     final prefs = await SharedPreferences.getInstance();
     final json = jsonEncode(meetings.map((m) => m.toJson()).toList());
-    await prefs.setString(_kMeetingsKey, json);
+    await prefs.setString(await _storageKey(), json);
+  }
+
+  Future<String> _storageKey() async {
+    final authService = ref.read(authServiceProvider);
+    final accessToken = await authService.getAccessToken();
+    if (accessToken != null && accessToken.isNotEmpty) {
+      final userId = _jwtSubject(accessToken);
+      return '$_kMeetingsScopedPrefix:user:${userId ?? accessToken}';
+    }
+
+    final guestSessionId = await authService.getGuestSessionId();
+    if (guestSessionId != null && guestSessionId.isNotEmpty) {
+      return '$_kMeetingsScopedPrefix:guest:$guestSessionId';
+    }
+
+    final guestToken = await authService.getGuestToken();
+    if (guestToken != null && guestToken.isNotEmpty) {
+      final guestId = _jwtSubject(guestToken);
+      return '$_kMeetingsScopedPrefix:guest:${guestId ?? guestToken}';
+    }
+
+    return '$_kMeetingsScopedPrefix:anonymous';
+  }
+
+  String? _jwtSubject(String token) {
+    try {
+      final payload = JwtDecoder.decode(token);
+      final subject = payload['sub'];
+      return subject is String && subject.isNotEmpty ? subject : null;
+    } catch (_) {
+      return null;
+    }
   }
 
   // 미팅 추가
@@ -64,6 +99,19 @@ class MeetingListNotifier extends AsyncNotifier<List<Meeting>> {
     final newList = current.map((m) => m.id == id ? updated : m).toList();
     state = AsyncData(newList);
     await _save(newList);
+  }
+
+  // 신원 전환(로그인/로그아웃/게스트 시작) 시 호출: 이전 신원의 로컬 회의 캐시를 비운다.
+  // 회의 목록은 SharedPreferences에 신원 구분 없이 전역 저장되므로, 신원이 바뀌면
+  // 이전 사용자의 회의가 남아 목록에 노출되고(서버는 404) "불러올 수 없습니다"를 유발한다.
+  // 캐시를 비운 뒤 현재 신원 기준으로 서버에서 다시 동기화한다.
+  Future<void> clearLocalCache() async {
+    final prefs = await SharedPreferences.getInstance();
+    await Future.wait([
+      prefs.remove(_kMeetingsKey),
+      prefs.remove(await _storageKey()),
+    ]);
+    state = const AsyncData<List<Meeting>>([]);
   }
 
   // 미팅 삭제 (로컬에서만 제거)

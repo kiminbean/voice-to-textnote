@@ -20,9 +20,10 @@ final authServiceProvider = Provider<AuthService>((ref) {
 class AuthService {
   final FlutterSecureStorage _storage;
 
-  AuthService() : _storage = const FlutterSecureStorage(
-    aOptions: AndroidOptions(encryptedSharedPreferences: true),
-  );
+  AuthService()
+      : _storage = const FlutterSecureStorage(
+          aOptions: AndroidOptions(encryptedSharedPreferences: true),
+        );
 
   // 토큰 쌍 저장
   Future<void> saveTokens(String accessToken, String refreshToken) async {
@@ -95,5 +96,10 @@ class AuthService {
   // 게스트 토큰 조회 (api_client.dart 인터셉터에서 사용)
   Future<String?> getGuestToken() async {
     return _storage.read(key: _kGuestToken);
+  }
+
+  // 게스트 세션 ID 조회 (로컬 캐시 신원 분리에 사용)
+  Future<String?> getGuestSessionId() async {
+    return _storage.read(key: _kGuestSessionId);
   }
 }

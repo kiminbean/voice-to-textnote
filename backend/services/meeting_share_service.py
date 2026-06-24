@@ -64,6 +64,64 @@ class MeetingShareService:
 
         return ownership
 
+    async def claim_guest_session(
+        self,
+        session: AsyncSession,
+        user_id: uuid.UUID,
+        guest_session_id: str,
+    ) -> int:
+        """게스트 세션이 소유한 모든 회의 task를 사용자 계정으로 인계한다.
+
+        게스트로 녹음한 회의를 로그인 후에도 계속 볼 수 있도록 누락된
+        MeetingOwnership을 생성한다. 이미 소유권이 있으면 건너뛴다(멱등).
+
+        Args:
+            session: DB 세션
+            user_id: 인계받을 사용자 UUID
+            guest_session_id: 인계 대상 게스트 세션 ID
+
+        Returns:
+            새로 인계된(소유권을 생성한) task 수
+        """
+        if not guest_session_id:
+            return 0
+
+        result = await session.execute(
+            select(TaskResult.task_id).where(
+                TaskResult.is_guest.is_(True),
+                TaskResult.guest_session_id == guest_session_id,
+            )
+        )
+        task_ids = [row[0] for row in result.all()]
+        if not task_ids:
+            return 0
+
+        existing = await session.execute(
+            select(MeetingOwnership.task_id).where(
+                MeetingOwnership.task_id.in_(task_ids),
+                MeetingOwnership.owner_id == user_id,
+                MeetingOwnership.team_id.is_(None),
+            )
+        )
+        already_owned = {row[0] for row in existing.all()}
+
+        claimed = 0
+        for task_id in task_ids:
+            if task_id in already_owned:
+                continue
+            ownership = MeetingOwnership()
+            ownership.id = uuid.uuid4()
+            ownership.task_id = task_id
+            ownership.owner_id = user_id
+            ownership.team_id = None
+            ownership.shared_at = None
+            session.add(ownership)
+            claimed += 1
+
+        if claimed:
+            await session.commit()
+        return claimed
+
     async def is_meeting_owner(
         self,
         session: AsyncSession,

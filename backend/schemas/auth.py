@@ -104,3 +104,19 @@ class GuestSessionResponse(BaseModel):
     guest_session_id: str
     guest_token: str
     expires_at: datetime
+
+
+class ClaimGuestRequest(BaseModel):
+    """게스트 회의 인계 요청 스키마.
+
+    로그인 직후, 게스트 토큰 소지를 증명해 게스트로 녹음한 회의를 계정으로
+    인계한다. guest_token은 게스트 세션 생성 시 발급된 JWT 그대로 전달한다.
+    """
+
+    guest_token: str
+
+
+class ClaimGuestResponse(BaseModel):
+    """게스트 회의 인계 결과 스키마."""
+
+    claimed: int

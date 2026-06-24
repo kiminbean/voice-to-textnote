@@ -16,7 +16,9 @@ import 'package:voice_to_textnote/models/meeting.dart';
 import 'package:voice_to_textnote/providers/connectivity_provider.dart';
 import 'package:voice_to_textnote/providers/meeting_list_provider.dart';
 import 'package:voice_to_textnote/screens/home_screen.dart';
+import 'package:voice_to_textnote/services/auth_service.dart';
 import 'package:voice_to_textnote/services/connectivity_service.dart';
+import 'package:voice_to_textnote/services/history_api.dart';
 import 'package:voice_to_textnote/services/minutes_api.dart';
 import 'package:voice_to_textnote/services/shared_import_service.dart';
 
@@ -24,9 +26,23 @@ class MockConnectivityService extends Mock implements ConnectivityService {}
 
 class MockMinutesApi extends Mock implements MinutesApi {}
 
+class MockHistoryApi extends Mock implements HistoryApi {}
+
+class FakeAuthService extends AuthService {
+  @override
+  Future<String?> getAccessToken() async => null;
+
+  @override
+  Future<String?> getGuestToken() async => null;
+
+  @override
+  Future<String?> getGuestSessionId() async => null;
+}
+
 // 테스트용 온라인 상태 오버라이드
 List<Override> _onlineOverrides(MockConnectivityService mockService) {
   final streamController = StreamController<bool>.broadcast();
+  final historyApi = MockHistoryApi();
   when(() => mockService.isOnline).thenReturn(true);
   when(() => mockService.onStatusChange)
       .thenAnswer((_) => streamController.stream);
@@ -34,9 +50,24 @@ List<Override> _onlineOverrides(MockConnectivityService mockService) {
         interval: any(named: 'interval'),
       )).thenReturn(null);
   when(() => mockService.dispose()).thenReturn(null);
+  when(() => historyApi.list(
+        taskType: any(named: 'taskType'),
+        status: any(named: 'status'),
+        page: any(named: 'page'),
+        pageSize: any(named: 'pageSize'),
+      )).thenAnswer(
+    (_) async => {
+      'items': [],
+      'total': 0,
+      'page': 1,
+      'page_size': 20,
+    },
+  );
 
   return [
     connectivityServiceProvider.overrideWithValue(mockService),
+    authServiceProvider.overrideWithValue(FakeAuthService()),
+    historyApiProvider.overrideWithValue(historyApi),
   ];
 }
 

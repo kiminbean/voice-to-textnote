@@ -147,6 +147,7 @@ async def list_speakers(
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(get_current_user),
     svc: SpeakerService = Depends(get_speaker_service),
+    voice_svc: SpeakerVoiceService = Depends(get_speaker_voice_service),
 ) -> SpeakerProfileListResponse:
     """REQ-SPEAKER-002: 화자 프로필 목록. task_id 지정 시 해당 회의록 + 전역 프로필 반환."""
     offset = (page - 1) * page_size
@@ -159,7 +160,7 @@ async def list_speakers(
         offset=offset,
     )
     responses = [
-        await _speaker_response(item, SpeakerVoiceService(), db)
+        await _speaker_response(item, voice_svc, db)
         for item in items
     ]
     return SpeakerProfileListResponse(items=responses, total=total)

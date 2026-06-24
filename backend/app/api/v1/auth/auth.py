@@ -24,7 +24,7 @@ from datetime import UTC, datetime, timedelta
 
 import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends, status
-from jose import jwt
+from jose import JWTError, jwt
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.config import settings
@@ -32,6 +32,8 @@ from backend.app.dependencies import get_current_user, get_db_session, get_redis
 from backend.app.errors import bad_request, unauthorized
 from backend.schemas.auth import (
     AppleLoginRequest,
+    ClaimGuestRequest,
+    ClaimGuestResponse,
     GoogleLoginRequest,
     GuestSessionResponse,
     LinkProviderRequest,
@@ -42,6 +44,7 @@ from backend.schemas.auth import (
     UserResponse,
 )
 from backend.services.auth_service import AuthService
+from backend.services.meeting_share_service import MeetingShareService
 from backend.services.oauth_service import (
     verify_apple_token,
     verify_google_token,
@@ -185,6 +188,40 @@ async def create_guest_session(
         guest_token=guest_token,
         expires_at=expires_at,
     )
+
+
+@router.post(
+    "/guest/claim",
+    response_model=ClaimGuestResponse,
+    summary="게스트 회의 인계",
+)
+async def claim_guest_meetings(
+    req: ClaimGuestRequest,
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+) -> ClaimGuestResponse:
+    """로그인 직후 게스트로 녹음한 회의를 현재 계정으로 인계합니다.
+
+    보안: 사용자 인증(Bearer access token)과 게스트 토큰 소지를 함께 요구해
+    타인의 게스트 세션을 가로채지 못하게 합니다. 게스트 세션 만료(Redis TTL)
+    여부와 무관하게, 서버가 서명한 게스트 토큰을 제시하면 인계를 허용합니다.
+    """
+    # 게스트 토큰 소지 증명: 서명/타입 검증 (만료된 토큰은 거부)
+    try:
+        payload = jwt.decode(req.guest_token, settings.jwt_secret, algorithms=["HS256"])
+    except JWTError:
+        unauthorized("유효하지 않거나 만료된 게스트 토큰입니다.")
+
+    if payload.get("type") != "guest":
+        unauthorized("유효하지 않은 게스트 토큰입니다.")
+
+    guest_session_id = payload.get("sub")
+    if not guest_session_id:
+        unauthorized("유효하지 않은 게스트 토큰입니다.")
+
+    service = MeetingShareService()
+    claimed = await service.claim_guest_session(db, current_user.id, str(guest_session_id))
+    return ClaimGuestResponse(claimed=claimed)
 
 
 @router.get(

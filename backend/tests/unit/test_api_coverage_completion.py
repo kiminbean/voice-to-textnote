@@ -490,6 +490,7 @@ async def test_speaker_api_direct_crud_and_voice_paths():
         create_or_replace_from_samples=AsyncMock(return_value=characteristics),
         get_characteristics=AsyncMock(return_value=characteristics),
         to_characteristics_response=MagicMock(return_value=characteristics),
+        voiceprint_sample_count=AsyncMock(return_value=0),
     )
     db = AsyncMock()
 
@@ -499,13 +500,30 @@ async def test_speaker_api_direct_crud_and_voice_paths():
             db=db,
             user=user,
             svc=svc,
+            voice_svc=voice_svc,
         )
     ).id == speaker.id
-    assert (await list_speakers(page=2, page_size=10, db=db, user=user, svc=svc)).total == 1
-    assert (await get_speaker(speaker.id, db=db, user=user, svc=svc)).id == speaker.id
+    assert (
+        await list_speakers(
+            page=2,
+            page_size=10,
+            db=db,
+            user=user,
+            svc=svc,
+            voice_svc=voice_svc,
+        )
+    ).total == 1
+    assert (
+        await get_speaker(speaker.id, db=db, user=user, svc=svc, voice_svc=voice_svc)
+    ).id == speaker.id
     assert (
         await update_speaker(
-            speaker.id, SpeakerProfileUpdate(display_name="A"), db=db, user=user, svc=svc
+            speaker.id,
+            SpeakerProfileUpdate(display_name="A"),
+            db=db,
+            user=user,
+            svc=svc,
+            voice_svc=voice_svc,
         )
     ).id == speaker.id
     await delete_speaker(speaker.id, db=db, user=user, svc=svc)
