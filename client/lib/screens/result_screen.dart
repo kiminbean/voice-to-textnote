@@ -17,6 +17,7 @@ import 'package:voice_to_textnote/models/summary_result.dart';
 import 'package:voice_to_textnote/models/speaker_profile.dart';
 import 'package:voice_to_textnote/models/study_pack.dart';
 import 'package:voice_to_textnote/models/translation.dart';
+import 'package:voice_to_textnote/providers/auth_provider.dart';
 import 'package:voice_to_textnote/providers/meeting_list_provider.dart';
 import 'package:voice_to_textnote/providers/obsidian_provider.dart';
 import 'package:voice_to_textnote/providers/sales_contact_brief_provider.dart';
@@ -1180,35 +1181,39 @@ class _TranscriptTabState extends ConsumerState<_TranscriptTab> {
       return;
     }
 
-    if (newName != tapped.speakerName) {
-      setState(() {
-        for (int i = 0; i < segments.length; i++) {
-          final sameSpeaker = tapped.speakerId != null
-              ? segments[i].speakerId == tapped.speakerId
-              : segments[i].speakerName == tapped.speakerName;
-          if (sameSpeaker) {
-            segments[i] = TranscriptSegment(
-              speakerId: segments[i].speakerId,
-              speakerName: newName,
-              text: segments[i].text,
-              start: segments[i].start,
-              end: segments[i].end,
-              speakerIndex: segments[i].speakerIndex,
-              isEstimatedSpeaker: false,
-              voiceprintSimilarity: segments[i].voiceprintSimilarity,
-            );
-          }
-        }
-      });
-    }
-
     Navigator.pop(dialogContext);
 
     final speakerId = tapped.speakerId;
     if (speakerId == null || widget.taskId == null) return;
 
     try {
+      final authState = ref.read(authStateProvider);
+      if (!authState.isAuthenticated) {
+        throw StateError('화자 이름 저장은 로그인 후 사용할 수 있습니다.');
+      }
+
       final saved = await _upsertGlobalSpeakerName(speakerId, newName);
+      if (newName != tapped.speakerName && mounted) {
+        setState(() {
+          for (int i = 0; i < segments.length; i++) {
+            final sameSpeaker = tapped.speakerId != null
+                ? segments[i].speakerId == tapped.speakerId
+                : segments[i].speakerName == tapped.speakerName;
+            if (sameSpeaker) {
+              segments[i] = TranscriptSegment(
+                speakerId: segments[i].speakerId,
+                speakerName: newName,
+                text: segments[i].text,
+                start: segments[i].start,
+                end: segments[i].end,
+                speakerIndex: segments[i].speakerIndex,
+                isEstimatedSpeaker: false,
+                voiceprintSimilarity: segments[i].voiceprintSimilarity,
+              );
+            }
+          }
+        });
+      }
       ref.invalidate(speakerListProvider(widget.taskId));
       ref.invalidate(speakerNameMapProvider(widget.taskId));
       ref.invalidate(transcriptSegmentsProvider(widget.taskId!));

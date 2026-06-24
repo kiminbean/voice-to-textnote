@@ -5,16 +5,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:voice_to_textnote/models/auth_user.dart';
 import 'package:voice_to_textnote/models/meeting.dart';
 import 'package:voice_to_textnote/models/sales_contact_brief.dart';
 import 'package:voice_to_textnote/models/speaker_profile.dart';
 import 'package:voice_to_textnote/models/study_pack.dart';
 import 'package:voice_to_textnote/models/team.dart';
 import 'package:voice_to_textnote/models/translation.dart';
+import 'package:voice_to_textnote/providers/auth_provider.dart';
 import 'package:voice_to_textnote/providers/meeting_list_provider.dart';
 import 'package:voice_to_textnote/services/sales_contact_brief_api.dart';
 import 'package:voice_to_textnote/providers/team_provider.dart';
 import 'package:voice_to_textnote/screens/result_screen.dart';
+import 'package:voice_to_textnote/services/auth_api.dart';
+import 'package:voice_to_textnote/services/auth_service.dart';
 import 'package:voice_to_textnote/services/minutes_api.dart';
 import 'package:voice_to_textnote/services/speaker_api.dart';
 import 'package:voice_to_textnote/services/study_pack_api.dart';
@@ -32,6 +36,10 @@ class MockStudyPackApi extends Mock implements StudyPackApi {}
 class MockSalesContactBriefApi extends Mock implements SalesContactBriefApi {}
 
 class MockTranslationApi extends Mock implements TranslationApi {}
+
+class MockAuthApi extends Mock implements AuthApi {}
+
+class MockAuthService extends Mock implements AuthService {}
 
 // 테스트용 Meeting 목록 Notifier (AsyncNotifier이므로 Future<List<Meeting>> 반환)
 class _MockMeetingListNotifier extends MeetingListNotifier {
@@ -84,6 +92,19 @@ Finder _tabText(String label) {
     of: find.byType(TabBar),
     matching: find.text(label),
   );
+}
+
+Override _authenticatedUserOverride() {
+  return authStateProvider.overrideWith((ref) {
+    final notifier = AuthNotifier(MockAuthApi(), MockAuthService());
+    notifier.setAuthenticatedStateForTest(const AuthUser(
+      id: 'user-001',
+      email: 't@test.com',
+      displayName: '테스트 사용자',
+      isActive: true,
+    ));
+    return notifier;
+  });
 }
 
 void main() {
@@ -378,7 +399,7 @@ void main() {
             ],
           });
 
-      await tester.pumpWidget(buildTestWidget([]));
+      await tester.pumpWidget(buildTestWidget([_authenticatedUserOverride()]));
       await tester.pumpAndSettle();
 
       await tester.tap(_tabText('회의 내용'));
@@ -388,7 +409,10 @@ void main() {
       expect(find.text('다음 녹음에서 같은 화자 라벨에 이 이름을 자동으로 적용합니다.'), findsOneWidget);
 
       await tester.enterText(find.byType(TextField), '영자');
-      await tester.tap(find.text('저장'));
+      await tester.tap(find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.text('저장'),
+      ));
       await tester.pumpAndSettle();
 
       final captured =
@@ -398,6 +422,39 @@ void main() {
       expect(payload.displayName, '영자');
       expect(payload.enrollmentTaskId, 'min-task-001');
       expect(find.text('화자 이름과 목소리 정보를 저장했습니다'), findsOneWidget);
+    });
+
+    testWidgets('로그인 상태가 아니면 저장 실패 후 화면 이름을 임시 변경하지 않아야 함',
+        (WidgetTester tester) async {
+      when(() => mockMinApi.getResult('min-task-001')).thenAnswer((_) async => {
+            'segments': [
+              {
+                'speaker_id': 'SPEAKER_00',
+                'speaker_name': 'Speaker 1',
+                'text': '안녕하세요.',
+                'start': 0.0,
+                'end': 2.0,
+              },
+            ],
+          });
+
+      await tester.pumpWidget(buildTestWidget([]));
+      await tester.pumpAndSettle();
+
+      await tester.tap(_tabText('회의 내용'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField), '평범한 사업가');
+      await tester.tap(find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.text('저장'),
+      ));
+      await tester.pumpAndSettle();
+
+      verifyNever(() => mockSpeakerApi.create(any()));
+      expect(find.text('평범한 사업가'), findsNothing);
+      expect(find.text('Speaker 1'), findsOneWidget);
+      expect(find.textContaining('화자 이름 저장 실패'), findsOneWidget);
     });
 
     testWidgets('목소리 기반 자동 매칭 이름은 추정됨 배지를 표시해야 함',

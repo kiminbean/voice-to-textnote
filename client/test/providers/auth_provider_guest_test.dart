@@ -3,6 +3,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:voice_to_textnote/models/auth_user.dart';
 import 'package:voice_to_textnote/providers/auth_provider.dart';
 import 'package:voice_to_textnote/services/auth_api.dart';
 import 'package:voice_to_textnote/services/auth_service.dart';
@@ -122,6 +123,29 @@ void main() {
 
       final state = container.read(authStateProvider);
       expect(state.status, AuthStatus.unauthenticated);
+    });
+
+    test('checkAuth는 게스트 토큰이 남아 있어도 로그인 토큰을 우선해야 함', () async {
+      const user = AuthUser(
+        id: 'user-001',
+        email: 't@test.com',
+        displayName: '테스트 사용자',
+        isActive: true,
+      );
+      when(() => mockAuthService.hasTokens()).thenAnswer((_) async => true);
+      when(() => mockAuthService.isAccessTokenExpired())
+          .thenAnswer((_) async => false);
+      when(() => mockAuthService.getAccessToken())
+          .thenAnswer((_) async => 'access-token');
+      when(() => mockAuthApi.getMe('access-token')).thenAnswer((_) async => user);
+      when(() => mockAuthService.clearTokens()).thenAnswer((_) async {});
+
+      await container.read(authStateProvider.notifier).checkAuth();
+
+      final state = container.read(authStateProvider);
+      expect(state.status, AuthStatus.authenticated);
+      expect(state.user?.email, 't@test.com');
+      verifyNever(() => mockAuthService.isGuestMode());
     });
   });
 }

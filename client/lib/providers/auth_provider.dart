@@ -48,38 +48,40 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> checkAuth() async {
     state = const AuthState.loading();
     try {
-      // 게스트 토큰 먼저 확인
+      // 실제 로그인 토큰을 게스트 세션보다 우선 복원한다.
+      // 게스트 토큰이 남아 있으면 사용자 전용 API(/speakers 등)가 401을 반환한다.
+      final hasTokens = await _authService.hasTokens();
+      if (hasTokens) {
+        // 만료 여부 확인 후 갱신 시도
+        final isExpired = await _authService.isAccessTokenExpired();
+        if (isExpired) {
+          final refreshed = await _tryRefresh();
+          if (!refreshed) {
+            state = const AuthState.unauthenticated();
+            return;
+          }
+        }
+
+        // 사용자 정보 조회
+        final accessToken = await _authService.getAccessToken();
+        if (accessToken == null) {
+          state = const AuthState.unauthenticated();
+          return;
+        }
+
+        final user = await _authApi.getMe(accessToken);
+        state = AuthState.authenticated(user);
+        return;
+      }
+
+      // 로그인 토큰이 없을 때만 게스트 세션을 복원한다.
       final isGuest = await _authService.isGuestMode();
       if (isGuest) {
         state = const AuthState.guest();
         return;
       }
 
-      final hasTokens = await _authService.hasTokens();
-      if (!hasTokens) {
-        state = const AuthState.unauthenticated();
-        return;
-      }
-
-      // 만료 여부 확인 후 갱신 시도
-      final isExpired = await _authService.isAccessTokenExpired();
-      if (isExpired) {
-        final refreshed = await _tryRefresh();
-        if (!refreshed) {
-          state = const AuthState.unauthenticated();
-          return;
-        }
-      }
-
-      // 사용자 정보 조회
-      final accessToken = await _authService.getAccessToken();
-      if (accessToken == null) {
-        state = const AuthState.unauthenticated();
-        return;
-      }
-
-      final user = await _authApi.getMe(accessToken);
-      state = AuthState.authenticated(user);
+      state = const AuthState.unauthenticated();
     } catch (_) {
       await _authService.clearTokens();
       state = const AuthState.unauthenticated();

@@ -29,6 +29,8 @@ class AuthService {
     await Future.wait([
       _storage.write(key: _kAccessToken, value: accessToken),
       _storage.write(key: _kRefreshToken, value: refreshToken),
+      _storage.delete(key: _kGuestToken),
+      _storage.delete(key: _kGuestSessionId),
     ]);
   }
 
