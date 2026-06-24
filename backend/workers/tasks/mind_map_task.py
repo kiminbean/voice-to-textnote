@@ -67,6 +67,9 @@ def _update_mind_map_status(
 def _cache_mind_map_result(task_id: str, result: dict) -> None:
     r = _get_redis()
     r.setex(f"task:mind:result:{task_id}", settings.summary_result_ttl, json.dumps(result))
+    summary_task_id = result.get("summary_task_id")
+    if summary_task_id and result.get("status") == TaskStatus.completed.value:
+        r.setex(f"task:mind:by_summary:{summary_task_id}", settings.summary_result_ttl, task_id)
 
 
 def mind_map_task(task_id: str, summary_task_id: str, max_tokens: int = 2048) -> dict:
@@ -151,6 +154,23 @@ def mind_map_task(task_id: str, summary_task_id: str, max_tokens: int = 2048) ->
         }
 
         _cache_mind_map_result(task_id, final_result)
+        try:
+            from backend.services.sync_service import persist_task_result
+
+            persist_task_result(
+                task_id=task_id,
+                task_type="mind_map",
+                status="completed",
+                result_data=final_result,
+                source_task_id=summary_task_id,
+            )
+        except Exception:  # pragma: no cover
+            logger.warning(
+                "DB 결과 저장 실패 - Redis 캐시로 폴백",
+                task_id=task_id,
+                exc_info=True,
+                category="db_fallback",
+            )
         _update_mind_map_status(
             task_id,
             summary_task_id,

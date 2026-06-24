@@ -18,6 +18,7 @@ import 'package:voice_to_textnote/models/speaker_profile.dart';
 import 'package:voice_to_textnote/models/study_pack.dart';
 import 'package:voice_to_textnote/models/translation.dart';
 import 'package:voice_to_textnote/providers/meeting_list_provider.dart';
+import 'package:voice_to_textnote/providers/obsidian_provider.dart';
 import 'package:voice_to_textnote/providers/sales_contact_brief_provider.dart';
 import 'package:voice_to_textnote/providers/speaker_provider.dart';
 import 'package:voice_to_textnote/providers/team_provider.dart';
@@ -44,7 +45,6 @@ import 'package:voice_to_textnote/widgets/audio_enhancement_panel.dart';
 import 'package:voice_to_textnote/widgets/tone_timeline.dart';
 import 'package:voice_to_textnote/providers/audio_player_provider.dart';
 import 'package:voice_to_textnote/providers/qa_provider.dart';
-import 'package:voice_to_textnote/services/obsidian_api.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 // ConsumerStatefulWidget으로 변경: _isExporting 상태 관리 필요
@@ -139,15 +139,25 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     setState(() => _isExporting = true);
 
     try {
-      final api = ref.read(obsidianApiProvider);
-      final result = await api.exportMeeting(minutesTaskId);
+      final notifier = ref.read(obsidianExportProvider.notifier);
+      await notifier.exportMeeting(minutesTaskId);
+      final exportState = ref.read(obsidianExportProvider);
+      if (exportState.hasError) {
+        throw exportState.error!;
+      }
+      final result = exportState.value;
+      if (result == null) {
+        throw StateError('Obsidian 저장 결과를 받지 못했습니다.');
+      }
 
       if (!context.mounted) return;
 
       if (result.success) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Obsidian에 저장되었습니다'),
+            content: Text(result.filePath.isNotEmpty
+                ? '현재 서버/Mac의 Obsidian vault에 저장되었습니다: ${result.filePath}'
+                : '현재 서버/Mac의 Obsidian vault에 저장되었습니다'),
             action: result.obsidianUri.isNotEmpty
                 ? SnackBarAction(
                     label: '열기',
@@ -177,21 +187,38 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           ),
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text('Obsidian 저장 실패: ${result.error ?? "알 수 없는 오류"}')),
+        _showObsidianFailureSnackBar(
+          context,
+          result.error ?? '알 수 없는 오류',
         );
       }
     } catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Obsidian 저장 실패: $e')),
-      );
+      _showObsidianFailureSnackBar(context, '$e');
     } finally {
       if (mounted) {
         setState(() => _isExporting = false);
       }
     }
+  }
+
+  void _showObsidianFailureSnackBar(BuildContext context, String message) {
+    final needsConfig = message.contains('OBSIDIAN_NOT_CONFIGURED') ||
+        message.contains('vault 경로가 설정되지 않았습니다') ||
+        message.contains('OBSIDIAN_VAULT_INVALID');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(needsConfig
+            ? 'Obsidian 저장 실패: 현재 서버/Mac의 vault 경로를 설정해주세요.'
+            : 'Obsidian 저장 실패: $message'),
+        action: needsConfig
+            ? SnackBarAction(
+                label: '설정',
+                onPressed: () => context.push('/settings'),
+              )
+            : null,
+      ),
+    );
   }
 
   Future<void> _showShareDialog(

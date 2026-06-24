@@ -102,6 +102,33 @@ def study_pack_data():
     }
 
 
+@pytest.fixture
+def mind_map_data():
+    return {
+        "root": {
+            "title": "회의 핵심 관계",
+            "summary": "결정과 후속 작업의 관계",
+            "children": [
+                {
+                    "title": "견적 결정",
+                    "summary": "고객에게 견적을 보내기로 함",
+                    "children": [],
+                }
+            ],
+        },
+        "edges": [{"source": "root", "target": "quote", "relation": "drives"}],
+    }
+
+
+@pytest.fixture
+def sales_brief_data():
+    return {
+        "next_steps": ["고객에게 견적 발송", "다음 주 후속 연락"],
+        "follow_up_message": "안녕하세요, 회의에서 논의한 견적을 전달드립니다.",
+        "crm": {"company": "Acme", "contact_name": "Kim"},
+    }
+
+
 class TestValidateVault:
     def test_valid_vault(self, service, tmp_vault):
         result = service.validate_vault(str(tmp_vault))
@@ -375,6 +402,33 @@ class TestBuildNoteBody:
         assert "### ja (회의록)" in markdown
         assert "日本語の議事録" in markdown
 
+    def test_mind_map_and_sales_brief_sections_are_included(
+        self,
+        service,
+        meeting_data,
+        minutes_data,
+        summary_data,
+        mind_map_data,
+        sales_brief_data,
+    ):
+        body = service.build_note_body(
+            meeting_data,
+            minutes_data,
+            summary_data,
+            None,
+            None,
+            mind_map_data=mind_map_data,
+            sales_brief_data=sales_brief_data,
+        )
+
+        assert "## 🧠 마인드맵" in body
+        assert "회의 핵심 관계" in body
+        assert "견적 결정" in body
+        assert "## 💼 영업 브리프" in body
+        assert "고객에게 견적 발송" in body
+        assert "후속 메일 초안" not in body
+        assert "회의에서 논의한 견적" in body
+
 
 class TestAtomicWrite:
     def test_write_creates_file(self, service, tmp_path):
@@ -490,6 +544,8 @@ class TestObsidianUriAndCompose:
 
         note = service.compose_note(
             meeting_data,
+            None,
+            None,
             None,
             None,
             None,

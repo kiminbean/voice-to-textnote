@@ -7,7 +7,8 @@ final obsidianConfigProvider =
   return api.getConfig();
 });
 
-class ObsidianExportNotifier extends StateNotifier<AsyncValue<ObsidianExportResult?>> {
+class ObsidianExportNotifier
+    extends StateNotifier<AsyncValue<ObsidianExportResult?>> {
   final ObsidianApi _api;
   ObsidianExportNotifier(this._api) : super(const AsyncValue.data(null));
 
@@ -26,8 +27,8 @@ class ObsidianExportNotifier extends StateNotifier<AsyncValue<ObsidianExportResu
   }
 }
 
-final obsidianExportProvider =
-    StateNotifierProvider<ObsidianExportNotifier, AsyncValue<ObsidianExportResult?>>(
+final obsidianExportProvider = StateNotifierProvider<ObsidianExportNotifier,
+    AsyncValue<ObsidianExportResult?>>(
   (ref) {
     final api = ref.watch(obsidianApiProvider);
     return ObsidianExportNotifier(api);

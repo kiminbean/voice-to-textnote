@@ -8,6 +8,7 @@ import pytest
 
 from backend.app.api.v1.integrations import obsidian
 from backend.app.exceptions import VoiceNoteError
+from backend.db.models import TaskResult
 from backend.schemas.obsidian import ObsidianConfigRequest, ObsidianValidateRequest
 
 
@@ -69,6 +70,7 @@ def _redis_with(values: dict[str, object], scan_keys: list[str] | None = None):
                 yield key
 
     redis.get = AsyncMock(side_effect=get)
+    redis.delete = AsyncMock()
     redis.scan_iter = MagicMock(side_effect=scan_iter)
     return redis
 
@@ -92,6 +94,37 @@ def _session_with_existing(existing):
     return session
 
 
+class _AsyncScalarResult:
+    def __init__(self, value=None):
+        self.value = value
+
+    def scalar_one_or_none(self):
+        return self.value
+
+    def scalars(self):
+        values = self.value if isinstance(self.value, list) else [self.value]
+        return _AsyncScalars(values)
+
+
+class _AsyncScalars:
+    def __init__(self, values):
+        self.values = [value for value in values if value is not None]
+
+    def first(self):
+        return self.values[0] if self.values else None
+
+
+class _FakeAsyncSession:
+    def __init__(self, *values):
+        self.values = list(values)
+        self.executed = []
+
+    async def execute(self, stmt):
+        self.executed.append(stmt)
+        value = self.values.pop(0) if self.values else None
+        return _AsyncScalarResult(value)
+
+
 def test_get_config_from_db_returns_latest_or_none_on_error(monkeypatch):
     cfg = _cfg()
     session = _session_with_existing(cfg)
@@ -106,6 +139,17 @@ def test_get_config_from_db_returns_latest_or_none_on_error(monkeypatch):
         lambda: (_ for _ in ()).throw(RuntimeError("db down")),
     )
     assert obsidian._get_config_from_db() is None
+
+
+def test_get_config_from_db_scopes_by_user(monkeypatch):
+    cfg = _cfg(user_id="user-1")
+    session = _session_with_existing(cfg)
+    monkeypatch.setattr(obsidian, "get_sync_session", lambda: _SessionContext(session))
+
+    assert obsidian._get_config_from_db(user_id="user-1") is cfg
+
+    rendered = str(session.scalars.call_args.args[0])
+    assert "obsidian_configs.user_id" in rendered
 
 
 def test_save_config_to_db_updates_existing_config(monkeypatch):
@@ -124,6 +168,7 @@ def test_save_config_to_db_updates_existing_config(monkeypatch):
             note_template_id="template-1",
         ),
         "NewVault",
+        user_id="user-1",
     )
 
     assert result is existing
@@ -131,6 +176,7 @@ def test_save_config_to_db_updates_existing_config(monkeypatch):
     assert existing.vault_name == "NewVault"
     assert existing.auto_export is True
     assert existing.conflict_policy == "skip"
+    assert existing.user_id == "user-1"
     session.commit.assert_called_once()
     session.refresh.assert_called_once_with(existing)
     session.add.assert_not_called()
@@ -140,10 +186,15 @@ def test_save_config_to_db_creates_new_config(monkeypatch):
     session = _session_with_existing(None)
     monkeypatch.setattr(obsidian, "get_sync_session", lambda: _SessionContext(session))
 
-    result = obsidian._save_config_to_db(ObsidianConfigRequest(vault_path="/vault"), "Vault")
+    result = obsidian._save_config_to_db(
+        ObsidianConfigRequest(vault_path="/vault"),
+        "Vault",
+        user_id="user-1",
+    )
 
     assert result.vault_path == "/vault"
     assert result.vault_name == "Vault"
+    assert result.user_id == "user-1"
     session.add.assert_called_once_with(result)
     session.commit.assert_called_once()
     session.refresh.assert_called_once_with(result)
@@ -168,7 +219,11 @@ def test_config_to_response_validates_saved_config(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_get_config_reads_saved_config(monkeypatch):
-    monkeypatch.setattr(obsidian, "_get_config_from_db", lambda: _cfg(vault_name="SavedVault"))
+    monkeypatch.setattr(
+        obsidian,
+        "_get_config_from_db",
+        lambda **kwargs: _cfg(vault_name="SavedVault"),
+    )
     monkeypatch.setattr(obsidian.obsidian_service, "validate_vault", lambda path: _valid_vault())
 
     response = await obsidian.get_config()
@@ -252,7 +307,7 @@ async def test_save_config_persists_valid_config(monkeypatch):
         obsidian.obsidian_service, "validate_vault", lambda path: _valid_vault("TeamVault")
     )
     saved = _cfg(vault_name="TeamVault")
-    monkeypatch.setattr(obsidian, "_save_config_to_db", lambda req, vault_name: saved)
+    monkeypatch.setattr(obsidian, "_save_config_to_db", lambda req, vault_name, **kwargs: saved)
 
     response = await obsidian.save_config(
         ObsidianConfigRequest(vault_path="/vault", conflict_policy="skip")
@@ -263,8 +318,40 @@ async def test_save_config_persists_valid_config(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_export_meeting_uses_scoped_config_and_task_access(monkeypatch, tmp_path):
+    cfg = _cfg(vault_path=str(tmp_path), user_id="user-1")
+    target = tmp_path / "n.md"
+    request = MagicMock()
+    request.state.user_id = "user-1"
+    current_user = MagicMock(id="user-1")
+    db = _FakeAsyncSession()
+    require_access = AsyncMock()
+    monkeypatch.setattr(obsidian, "_get_config_from_db", MagicMock(return_value=cfg))
+    monkeypatch.setattr(obsidian, "require_task_access", require_access)
+    monkeypatch.setattr(obsidian.obsidian_service, "validate_vault", lambda path: _valid_vault())
+    monkeypatch.setattr(obsidian.obsidian_service, "compute_file_path", lambda *args: target)
+    monkeypatch.setattr(obsidian.obsidian_service, "compose_note", lambda *args, **kwargs: "note")
+    monkeypatch.setattr(obsidian.obsidian_service, "atomic_write", lambda *args, **kwargs: True)
+    monkeypatch.setattr(
+        obsidian.obsidian_service, "build_obsidian_uri", lambda *args: "obsidian://open"
+    )
+
+    response = await obsidian.export_meeting(
+        "meeting-1",
+        _redis_with({"task:min:result:meeting-1": _completed_minutes()}),
+        request=request,
+        db=db,
+        current_user=current_user,
+    )
+
+    assert response.success is True
+    obsidian._get_config_from_db.assert_called_once_with(user_id="user-1")
+    require_access.assert_awaited_once()
+
+
+@pytest.mark.asyncio
 async def test_export_meeting_requires_config(monkeypatch):
-    monkeypatch.setattr(obsidian, "_get_config_from_db", lambda: None)
+    monkeypatch.setattr(obsidian, "_get_config_from_db", lambda **kwargs: None)
 
     with pytest.raises(VoiceNoteError) as exc:
         await obsidian.export_meeting("meeting-1", AsyncMock())
@@ -274,7 +361,7 @@ async def test_export_meeting_requires_config(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_export_meeting_returns_not_found_without_minutes(monkeypatch):
-    monkeypatch.setattr(obsidian, "_get_config_from_db", lambda: _cfg())
+    monkeypatch.setattr(obsidian, "_get_config_from_db", lambda **kwargs: _cfg())
     monkeypatch.setattr(obsidian.obsidian_service, "validate_vault", lambda path: _valid_vault())
 
     with pytest.raises(VoiceNoteError) as exc:
@@ -285,7 +372,7 @@ async def test_export_meeting_returns_not_found_without_minutes(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_export_meeting_rejects_invalid_vault(monkeypatch):
-    monkeypatch.setattr(obsidian, "_get_config_from_db", lambda: _cfg())
+    monkeypatch.setattr(obsidian, "_get_config_from_db", lambda **kwargs: _cfg())
     monkeypatch.setattr(
         obsidian.obsidian_service,
         "validate_vault",
@@ -300,7 +387,7 @@ async def test_export_meeting_rejects_invalid_vault(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_export_meeting_translates_path_traversal(monkeypatch):
-    monkeypatch.setattr(obsidian, "_get_config_from_db", lambda: _cfg())
+    monkeypatch.setattr(obsidian, "_get_config_from_db", lambda **kwargs: _cfg())
     monkeypatch.setattr(obsidian.obsidian_service, "validate_vault", lambda path: _valid_vault())
     monkeypatch.setattr(
         obsidian.obsidian_service,
@@ -319,7 +406,7 @@ async def test_export_meeting_translates_path_traversal(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_export_meeting_translates_generic_compute_path_error(monkeypatch):
-    monkeypatch.setattr(obsidian, "_get_config_from_db", lambda: _cfg())
+    monkeypatch.setattr(obsidian, "_get_config_from_db", lambda **kwargs: _cfg())
     monkeypatch.setattr(obsidian.obsidian_service, "validate_vault", lambda path: _valid_vault())
     monkeypatch.setattr(
         obsidian.obsidian_service,
@@ -340,7 +427,7 @@ async def test_export_meeting_translates_generic_compute_path_error(monkeypatch)
 @pytest.mark.asyncio
 async def test_export_meeting_returns_write_error(monkeypatch, tmp_path):
     cfg = _cfg(vault_path=str(tmp_path))
-    monkeypatch.setattr(obsidian, "_get_config_from_db", lambda: cfg)
+    monkeypatch.setattr(obsidian, "_get_config_from_db", lambda **kwargs: cfg)
     monkeypatch.setattr(obsidian.obsidian_service, "validate_vault", lambda path: _valid_vault())
     monkeypatch.setattr(
         obsidian.obsidian_service, "compute_file_path", lambda *args: tmp_path / "n.md"
@@ -365,7 +452,7 @@ async def test_export_meeting_returns_write_error(monkeypatch, tmp_path):
 async def test_export_meeting_reports_skip_policy(monkeypatch, tmp_path):
     cfg = _cfg(vault_path=str(tmp_path), conflict_policy="skip")
     target = tmp_path / "n.md"
-    monkeypatch.setattr(obsidian, "_get_config_from_db", lambda: cfg)
+    monkeypatch.setattr(obsidian, "_get_config_from_db", lambda **kwargs: cfg)
     monkeypatch.setattr(obsidian.obsidian_service, "validate_vault", lambda path: _valid_vault())
     monkeypatch.setattr(obsidian.obsidian_service, "compute_file_path", lambda *args: target)
     monkeypatch.setattr(obsidian.obsidian_service, "compose_note", lambda *args, **kwargs: "note")
@@ -389,7 +476,7 @@ async def test_export_meeting_success(monkeypatch, tmp_path):
     cfg = _cfg(vault_path=str(tmp_path))
     target = tmp_path / "n.md"
     compose = MagicMock(return_value="note")
-    monkeypatch.setattr(obsidian, "_get_config_from_db", lambda: cfg)
+    monkeypatch.setattr(obsidian, "_get_config_from_db", lambda **kwargs: cfg)
     monkeypatch.setattr(obsidian.obsidian_service, "validate_vault", lambda path: _valid_vault())
     monkeypatch.setattr(obsidian.obsidian_service, "compute_file_path", lambda *args: target)
     monkeypatch.setattr(obsidian.obsidian_service, "compose_note", compose)
@@ -414,7 +501,7 @@ async def test_export_meeting_passes_cached_study_pack_to_note(monkeypatch, tmp_
     cfg = _cfg(vault_path=str(tmp_path))
     target = tmp_path / "n.md"
     compose = MagicMock(return_value="note")
-    monkeypatch.setattr(obsidian, "_get_config_from_db", lambda: cfg)
+    monkeypatch.setattr(obsidian, "_get_config_from_db", lambda **kwargs: cfg)
     monkeypatch.setattr(obsidian.obsidian_service, "validate_vault", lambda path: _valid_vault())
     monkeypatch.setattr(obsidian.obsidian_service, "compute_file_path", lambda *args: target)
     monkeypatch.setattr(obsidian.obsidian_service, "compose_note", compose)
@@ -439,6 +526,93 @@ async def test_export_meeting_passes_cached_study_pack_to_note(monkeypatch, tmp_
     )
 
     assert compose.call_args.kwargs["study_pack_data"]["study_notes"] == "학습 노트"
+
+
+@pytest.mark.asyncio
+async def test_export_meeting_passes_mind_map_and_sales_brief_to_note(monkeypatch, tmp_path):
+    cfg = _cfg(vault_path=str(tmp_path))
+    compose = MagicMock(return_value="note")
+    monkeypatch.setattr(obsidian, "_get_config_from_db", lambda **kwargs: cfg)
+    monkeypatch.setattr(obsidian.obsidian_service, "validate_vault", lambda path: _valid_vault())
+    monkeypatch.setattr(
+        obsidian.obsidian_service, "compute_file_path", lambda *args: tmp_path / "n.md"
+    )
+    monkeypatch.setattr(obsidian.obsidian_service, "compose_note", compose)
+    monkeypatch.setattr(obsidian.obsidian_service, "atomic_write", lambda *args, **kwargs: True)
+    monkeypatch.setattr(
+        obsidian.obsidian_service, "build_obsidian_uri", lambda *args: "obsidian://open"
+    )
+
+    await obsidian.export_meeting(
+        "meeting-1",
+        _redis_with(
+            {
+                "task:min:result:meeting-1": _completed_minutes(),
+                "task:sum:by_minutes:meeting-1": "sum-1",
+                "task:sum:result:sum-1": {
+                    "task_id": "sum-1",
+                    "status": "completed",
+                    "minutes_task_id": "meeting-1",
+                },
+                "task:mind:by_summary:sum-1": "mind-1",
+                "task:mind:result:mind-1": {
+                    "status": "completed",
+                    "root": {"title": "핵심 관계", "children": []},
+                    "edges": [],
+                },
+                "sales_contact_brief:meeting-1": {
+                    "next_steps": ["고객에게 견적 발송"],
+                    "follow_up_message": "후속 메일 초안",
+                    "created_at": "2026-06-24T00:00:00Z",
+                },
+            }
+        ),
+    )
+
+    assert compose.call_args.kwargs["mind_map_data"]["root"]["title"] == "핵심 관계"
+    assert compose.call_args.kwargs["sales_brief_data"]["next_steps"] == ["고객에게 견적 발송"]
+
+
+@pytest.mark.asyncio
+async def test_gather_meeting_data_falls_back_to_db_when_redis_minutes_missing():
+    record = TaskResult(
+        task_id="meeting-1",
+        task_type="minutes",
+        status="completed",
+        result_data=_completed_minutes(),
+    )
+
+    meeting, minutes, summary, sentiment, tone = await obsidian._gather_meeting_data(
+        "meeting-1",
+        _redis_with({}),
+        db=_FakeAsyncSession(record),
+    )
+
+    assert meeting["meeting_id"] == "meeting-1"
+    assert minutes["status"] == "completed"
+    assert summary is None
+    assert sentiment is None
+    assert tone is None
+
+
+@pytest.mark.asyncio
+async def test_find_summary_uses_source_index_before_scan():
+    redis = _redis_with(
+        {
+            "task:sum:by_minutes:meeting-1": "sum-indexed",
+            "task:sum:result:sum-indexed": {
+                "status": "completed",
+                "minutes_task_id": "meeting-1",
+                "completed_at": "2026-06-24T00:00:00Z",
+            },
+        },
+        scan_keys=["task:sum:result:old"],
+    )
+
+    result = await obsidian._find_summary_by_meeting(redis, "meeting-1")
+
+    assert result["completed_at"] == "2026-06-24T00:00:00Z"
+    redis.scan_iter.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -588,11 +762,11 @@ async def test_find_cached_study_pack_returns_none_when_scan_iter_is_not_async_i
 
 @pytest.mark.asyncio
 async def test_auto_export_if_enabled_isolated_paths(monkeypatch, tmp_path):
-    monkeypatch.setattr(obsidian, "_get_config_from_db", lambda: _cfg(auto_export=False))
+    monkeypatch.setattr(obsidian, "_get_config_from_db", lambda **kwargs: _cfg(auto_export=False))
     await obsidian.auto_export_if_enabled("meeting-1", AsyncMock())
 
     cfg = _cfg(vault_path=str(tmp_path), auto_export=True)
-    monkeypatch.setattr(obsidian, "_get_config_from_db", lambda: cfg)
+    monkeypatch.setattr(obsidian, "_get_config_from_db", lambda **kwargs: cfg)
     monkeypatch.setattr(obsidian.obsidian_service, "validate_vault", lambda path: _valid_vault())
     monkeypatch.setattr(
         obsidian, "_gather_meeting_data", AsyncMock(return_value=(None, None, None, None, None))
@@ -603,7 +777,7 @@ async def test_auto_export_if_enabled_isolated_paths(monkeypatch, tmp_path):
 @pytest.mark.asyncio
 async def test_auto_export_if_enabled_skips_invalid_vault_and_writes_success(monkeypatch, tmp_path):
     cfg = _cfg(vault_path=str(tmp_path), auto_export=True)
-    monkeypatch.setattr(obsidian, "_get_config_from_db", lambda: cfg)
+    monkeypatch.setattr(obsidian, "_get_config_from_db", lambda **kwargs: cfg)
     monkeypatch.setattr(
         obsidian.obsidian_service,
         "validate_vault",

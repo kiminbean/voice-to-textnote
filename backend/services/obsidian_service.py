@@ -231,6 +231,8 @@ class ObsidianService:
         sentiment_data: dict[str, Any] | None,
         tone_data: dict[str, Any] | None,
         study_pack_data: dict[str, Any] | None = None,
+        mind_map_data: dict[str, Any] | None = None,
+        sales_brief_data: dict[str, Any] | None = None,
     ) -> str:
         """REQ-OBS-005: 노트 본문 섹션 생성."""
         title = meeting_data.get("title", "회의록")
@@ -280,6 +282,20 @@ class ObsidianService:
             sections.append(translation_md)
             sections.append("")
 
+        if mind_map_data:
+            mind_map_md = self._build_mind_map_md(mind_map_data)
+            if mind_map_md:
+                sections.append("## 🧠 마인드맵\n")
+                sections.append(mind_map_md)
+                sections.append("")
+
+        if sales_brief_data:
+            sales_brief_md = self._build_sales_brief_md(sales_brief_data)
+            if sales_brief_md:
+                sections.append("## 💼 영업 브리프\n")
+                sections.append(sales_brief_md)
+                sections.append("")
+
         if minutes_data:
             transcript_md = self._build_transcript_md(minutes_data)
             if transcript_md:
@@ -308,6 +324,66 @@ class ObsidianService:
         sections.append(f"[[{date_link}]] | [[Meetings]] | [[Voice-to-TextNote]]\n")
 
         return "\n".join(sections)
+
+    def _build_mind_map_md(self, mind_map_data: dict[str, Any]) -> str:
+        root = mind_map_data.get("root")
+        if not isinstance(root, dict):
+            return ""
+        lines: list[str] = []
+
+        def append_node(node: dict[str, Any], depth: int = 0) -> None:
+            title = str(node.get("title", "")).strip()
+            summary = str(node.get("summary", "")).strip()
+            if title:
+                indent = "  " * depth
+                suffix = f": {summary}" if summary else ""
+                lines.append(f"{indent}- **{title}**{suffix}")
+            children = node.get("children") or []
+            if isinstance(children, list):
+                for child in children:
+                    if isinstance(child, dict):
+                        append_node(child, depth + 1)
+
+        append_node(root)
+
+        edges = mind_map_data.get("edges") or []
+        if isinstance(edges, list) and edges:
+            lines.append("")
+            lines.append("### 관계")
+            for edge in edges:
+                if not isinstance(edge, dict):
+                    continue
+                source = str(edge.get("source", "")).strip()
+                target = str(edge.get("target", "")).strip()
+                relation = str(edge.get("relation", "")).strip()
+                if source or target or relation:
+                    lines.append(f"- `{source}` → `{target}`: {relation}")
+
+        return "\n".join(lines).strip()
+
+    def _build_sales_brief_md(self, sales_brief_data: dict[str, Any]) -> str:
+        lines: list[str] = []
+        crm = sales_brief_data.get("crm")
+        if isinstance(crm, dict):
+            company = str(crm.get("company", "")).strip()
+            contact_name = str(crm.get("contact_name", "")).strip()
+            if company or contact_name:
+                lines.append(f"- 고객: {company or '미지정'} / {contact_name or '미지정'}")
+                lines.append("")
+
+        next_steps = sales_brief_data.get("next_steps") or []
+        if isinstance(next_steps, list) and next_steps:
+            lines.append("### 다음 영업 단계")
+            for step in next_steps:
+                lines.append(f"- {step}")
+            lines.append("")
+
+        follow_up_message = str(sales_brief_data.get("follow_up_message", "")).strip()
+        if follow_up_message:
+            lines.append("### 후속 메시지")
+            lines.append(follow_up_message)
+
+        return "\n".join(lines).strip()
 
     def _build_study_pack_md(self, study_pack_data: dict[str, Any]) -> str:
         lines: list[str] = []
@@ -511,6 +587,8 @@ class ObsidianService:
         sentiment_data: dict[str, Any] | None,
         tone_data: dict[str, Any] | None,
         study_pack_data: dict[str, Any] | None = None,
+        mind_map_data: dict[str, Any] | None = None,
+        sales_brief_data: dict[str, Any] | None = None,
         frontmatter_custom: dict[str, Any] | None = None,
     ) -> str:
         frontmatter = self.build_frontmatter(
@@ -528,6 +606,8 @@ class ObsidianService:
             sentiment_data,
             tone_data,
             study_pack_data,
+            mind_map_data,
+            sales_brief_data,
         )
         return f"{frontmatter}\n\n{body}"
 

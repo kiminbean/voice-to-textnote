@@ -74,6 +74,9 @@ def _cache_result(task_id: str, result: dict) -> None:
     r = _get_redis()
     result_key = f"task:sum:result:{task_id}"
     r.setex(result_key, settings.summary_result_ttl, json.dumps(result))
+    minutes_task_id = result.get("minutes_task_id")
+    if minutes_task_id and result.get("status") == TaskStatus.completed.value:
+        r.setex(f"task:sum:by_minutes:{minutes_task_id}", settings.summary_result_ttl, task_id)
 
 
 def _extract_cached_error_message(result: dict) -> str | None:
@@ -423,42 +426,25 @@ def _safe_json_load_sync(raw) -> dict | None:
 
 
 def _find_latest_summary_sync(r, minutes_task_id: str):
-    """동기 Redis 클라이언트로 completed 상태의 최신 summary를 찾는다."""
-    return _find_latest_completed_by_minutes_sync(r, "task:sum:result:*", minutes_task_id)
+    from backend.app.api.v1.integrations.obsidian import (
+        _find_latest_completed_by_minutes_sync as find,
+    )
+
+    return find(r, "task:sum:result:*", minutes_task_id)
 
 
 def _find_latest_completed_by_minutes_sync(r, pattern: str, minutes_task_id: str):
-    """동기 Redis SCAN으로 minutes_task_id가 일치하는 completed 결과를 최신순으로 찾는다."""
-    candidates = []
-    for key in r.scan_iter(match=pattern, count=100):
-        d = _safe_json_load_sync(r.get(key))
-        if not d or d.get("minutes_task_id") != minutes_task_id:
-            continue
-        if d.get("status") != "completed":
-            continue
-        ts = d.get("completed_at") or d.get("created_at") or ""
-        candidates.append((ts, d))
+    from backend.app.api.v1.integrations.obsidian import (
+        _find_latest_completed_by_minutes_sync as find,
+    )
 
-    if not candidates:
-        return None
-    candidates.sort(key=lambda x: x[0], reverse=True)
-    return candidates[0][1]
+    return find(r, pattern, minutes_task_id)
 
 
 def _find_latest_study_pack_sync(r, minutes_task_id: str):
-    """동기 Redis SCAN으로 최신 Study Pack 캐시를 찾는다."""
-    candidates = []
-    for key in r.scan_iter(match=f"study_pack:{minutes_task_id}:*", count=100):
-        d = _safe_json_load_sync(r.get(key))
-        if not d:
-            continue
-        ts = d.get("created_at") or ""
-        candidates.append((ts, d))
+    from backend.app.api.v1.integrations.obsidian import _find_latest_study_pack_sync as find
 
-    if not candidates:
-        return None
-    candidates.sort(key=lambda x: x[0], reverse=True)
-    return candidates[0][1]
+    return find(r, minutes_task_id)
 
 
 def _trigger_obsidian_auto_export(minutes_task_id: str) -> None:
@@ -467,110 +453,10 @@ def _trigger_obsidian_auto_export(minutes_task_id: str) -> None:
     REQ-OBS-014: 모든 예외를 삼켜 파이프라인에 영향을 주지 않는다.
     """
     try:
-        from backend.app.api.v1.integrations.obsidian import _get_config_from_db
-        from backend.services.obsidian_service import obsidian_service
+        from backend.app.api.v1.integrations.obsidian import auto_export_if_enabled_sync
         from backend.workers.redis_client import get_worker_redis
 
-        cfg = _get_config_from_db()
-        if cfg is None or not cfg.auto_export or not cfg.vault_path:
-            return
-
-        validation = obsidian_service.validate_vault(cfg.vault_path)
-        if not validation["valid"]:
-            logger.warning(
-                "Obsidian 자동 export 건너뜀: vault 무효",
-                vault=cfg.vault_path,
-                category="obsidian_auto_export",
-            )
-            return
-
-        r = get_worker_redis()
-        minutes_raw = r.get(f"task:min:result:{minutes_task_id}")
-        if not minutes_raw:
-            return
-        minutes_data = _safe_json_load_sync(minutes_raw)
-        if not minutes_data or minutes_data.get("status") != "completed":
-            logger.warning(
-                "Obsidian 자동 export 건너뜀: minutes 미완료 또는 파싱 실패",
-                minutes_task_id=minutes_task_id,
-                category="obsidian_auto_export",
-            )
-            return
-
-        summary_data = _find_latest_summary_sync(r, minutes_task_id)
-
-        dia_task_id = minutes_data.get("diarization_task_id")
-        sentiment_data = None
-        tone_data = None
-        if dia_task_id:
-            sent_raw = r.get(f"task:sentiment:result:{dia_task_id}")
-            if sent_raw:
-                sentiment_data = _safe_json_load_sync(sent_raw)
-                if sentiment_data and sentiment_data.get("status") != "completed":
-                    sentiment_data = None
-            tone_raw = r.get(f"task:tone:result:{dia_task_id}")
-            if tone_raw:
-                tone_data = _safe_json_load_sync(tone_raw)
-                if tone_data and tone_data.get("status") != "completed":
-                    tone_data = None
-
-        if sentiment_data is None:
-            sentiment_data = _find_latest_completed_by_minutes_sync(
-                r, "task:sentiment:result:*", minutes_task_id
-            )
-        study_pack_data = _find_latest_study_pack_sync(r, minutes_task_id)
-
-        if not summary_data:
-            logger.info(
-                "Obsidian 자동 export 건너뜀: 요약 미완료",
-                minutes_task_id=minutes_task_id,
-                category="obsidian_auto_export",
-            )
-            return
-
-        meeting_data = {
-            "meeting_id": minutes_task_id,
-            "title": f"회의록 {minutes_data.get('created_at', '')[:10]}",
-            "created_at": minutes_data.get("created_at", ""),
-            "duration": minutes_data.get("total_duration"),
-        }
-
-        file_path = obsidian_service.compute_file_path(
-            cfg.vault_path,
-            cfg.folder_pattern,
-            cfg.filename_pattern,
-            meeting_data,
-        )
-
-        note_content = obsidian_service.compose_note(
-            meeting_data,
-            minutes_data,
-            summary_data,
-            sentiment_data,
-            tone_data,
-            study_pack_data=study_pack_data,
-            frontmatter_custom=cfg.frontmatter_custom,
-        )
-
-        written = obsidian_service.atomic_write(
-            file_path,
-            note_content,
-            exist_ok=(cfg.conflict_policy != "skip"),
-        )
-        if not written:
-            logger.info(
-                "Obsidian 자동 export 건너뜀: 기존 파일 (skip)",
-                path=str(file_path),
-                category="obsidian_auto_export",
-            )
-            return
-
-        logger.info(
-            "Obsidian 자동 export 완료",
-            meeting_id=minutes_task_id,
-            file_path=str(file_path),
-            category="obsidian_auto_export",
-        )
+        auto_export_if_enabled_sync(minutes_task_id, get_worker_redis())
     except Exception as e:
         logger.warning(
             "Obsidian 자동 export 실패 (파이프라인 영향 없음)",
