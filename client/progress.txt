@@ -106,3 +106,26 @@
 - All changes are syntactically minimal and surgical
 - No API interfaces changed, no tests affected
 - Korean text and labels preserved
+
+## Date: 2026-06-24 Follow-up
+
+### Speaker Voiceprint UI and Result Name Priority
+
+- Result screen now automatically prompts users to replace default `Speaker N` labels with real speaker names when transcript segments load.
+- Manual speaker-name tap editing remains available.
+- Saved speaker profiles include the current task id and speaker label so the backend can enroll a matching voiceprint from the recording.
+- Voiceprint-identified names now take precedence over older saved label names in `result_provider.dart`; this prevents stale names from hiding a fresh acoustic match.
+- Voiceprint-matched transcript rows show the `추정됨` badge and correction tooltip.
+
+### iPhone Release State
+
+- A fresh signed release build was installed on the USB-connected iPhone after the frontend speaker prompt/voiceprint UI changes.
+- Device: `Inbean의 iPhone`
+- Device id: `00008150-000239020C08401C`
+- The later Alembic/SQLite repair commit was backend/DB-only and does not require another iPhone release build.
+
+### Verification
+
+- `flutter test test/providers/result_provider_test.dart --plain-name "voiceprint 식별 이름은 저장된 label 이름보다 우선해야 함"` passed after reproducing the stale-name failure.
+- Broader Flutter test run: `47 passed`.
+- `flutter analyze`: `No issues found`.

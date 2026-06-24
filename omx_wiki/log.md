@@ -2,6 +2,7 @@
 
 ## 2026-06-24
 
+- Updated [[session-2026-06-24-recording-pipeline-recovery]] with the stale speaker-name precedence fix and Alembic/local SQLite recovery.
 - Updated [[session-2026-06-24-recording-pipeline-recovery]] with the voiceprint improvement pass: enrollment status messages, historical backfill, estimated-match badge, and threshold tuning script.
 - Updated [[session-2026-06-24-recording-pipeline-recovery]] after adding automatic real-name prompting for default `Speaker N` labels and pushing `f987bb4`.
 - Updated [[session-2026-06-24-recording-pipeline-recovery]] with voiceprint enrollment/matching so saved real speaker names can be applied across later recordings even when diarization labels change.

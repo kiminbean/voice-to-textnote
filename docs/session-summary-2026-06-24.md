@@ -297,6 +297,18 @@ flutter run --release -d 00008150-000239020C08401C
 - acoustic voiceprint smoke → `{'backend': 'acoustic', 'dims': 48, 'same': 1.0, 'different': 0.7555}`
 - `5253fd6 Identify recurring speakers by voiceprint`, `f987bb4 Prompt for real speaker names automatically` pushed to `origin/main`.
 
+### 후속 수정: 화자 이름 우선순위와 Alembic/DB 복구
+
+- voiceprint로 식별된 `identified_speaker_name`이 오래된 저장 label 이름보다 우선 적용되도록 `result_provider.dart`를 수정했습니다.
+- 재현된 증상: 테스트에서 `Expected: 영자 Actual: 철수`로, 실제 voiceprint 매칭 이름이 과거 label 이름에 의해 가려졌습니다.
+- 누락된 Alembic revision `003_add_search_guest`를 복원하고 `004_unique_minutes_versions_task_version.py`의 `down_revision`을 연결했습니다.
+- `005_add_team_sharing_policy.py`는 `sharing_policy` 컬럼이 이미 존재하는 SQLite DB에서도 upgrade가 중단되지 않도록 idempotent 처리했습니다.
+- 로컬 `voice_to_textnote.db`는 백업 후 `alembic upgrade head`를 완료했고, orphan `meeting_ownership` FK row를 제거했습니다.
+- 최종 DB 상태: `PRAGMA integrity_check` → `ok`, `PRAGMA foreign_key_check` → clean, `alembic_version` → `005_add_team_sharing_policy`.
+- 검증: stale-name targeted Flutter test pass, Flutter 관련 전체 테스트 `47 passed`, `flutter analyze` clean, 백엔드 선택 테스트 `85 passed`, backend ruff clean, 임시 SQLite `alembic upgrade head` 성공.
+- Commits: `1f3fb44 Prefer voiceprint names over stale labels`, `a93304e Restore missing Alembic guest revision`.
+- iPhone 상태: frontend speaker prompt/voiceprint UI 변경 후 release build는 이미 설치 완료. 이후 Alembic/DB-only 수정은 iPhone 재빌드가 필요하지 않습니다.
+
 ### Docs
 
 - `docs/session-summary-2026-06-24.md`
@@ -312,6 +324,6 @@ flutter run --release -d 00008150-000239020C08401C
 
 ## 남은 주의사항
 
-- Alembic local DB migration은 현재 `alembic_version`이 repo에 없는 `003_add_search_guest`를 가리켜 `alembic upgrade head`가 실패합니다. 이번 세션에서는 `sharing_policy` 컬럼을 SQLite에 직접 추가해 로컬 서버를 복구했습니다.
+- Alembic local DB migration 문제는 `003_add_search_guest` 복원과 local DB upgrade로 해결했습니다. 현재 local DB는 head `005_add_team_sharing_policy`이며 integrity/FK check가 통과합니다.
 - 톤 분석은 `librosa.core` import 오류로 실패할 수 있지만, tone 실패가 DIA/회의록 pipeline 실패로 오염되지 않도록 이벤트 발행을 분리했습니다.
 - 학습/영업/마인드맵은 LLM API rate limit 또는 긴 응답 시간의 영향을 받습니다. 앱은 생성 시간을 견디도록 보강했지만, 외부 API 429는 재시도 후에도 실패할 수 있습니다.

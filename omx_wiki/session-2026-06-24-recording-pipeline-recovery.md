@@ -46,6 +46,19 @@ Fixed a chain of production-like local issues around authenticated meeting histo
 - `backend/scripts/tune_voiceprint_threshold.py` analyzes stored voiceprint pairs and prints a recommended threshold when enough real recordings exist.
 - The backend prefers `pyannote/embedding`; if model loading fails because the Hugging Face token or model access is unavailable, it falls back to local acoustic embedding so the pipeline stays functional.
 - Existing global speaker names that were saved before this change are backfilled when historical matching voiceprints exist; otherwise the user must correct/save that speaker once from a recording that contains DIA voiceprints.
+- Voiceprint-matched names now override stale saved label names in the result provider, so an older saved `SPEAKER_00` label cannot hide a fresh `identified_speaker_name` acoustic match.
+
+## Alembic and Local DB Recovery
+
+- Restored missing migration `003_add_search_guest`.
+- Connected `004_unique_minutes_versions_task_version.py` after `003_add_search_guest`.
+- Made `005_add_team_sharing_policy.py` safe when `sharing_policy` already exists.
+- Repaired the local SQLite DB with `alembic upgrade head` after backup.
+- Deleted orphan `meeting_ownership` rows that referenced missing users.
+- Verified local DB:
+  - `PRAGMA integrity_check` -> `ok`
+  - `PRAGMA foreign_key_check` -> clean
+  - `alembic_version` -> `005_add_team_sharing_policy`
 
 ## Representative Recovered Tasks
 
@@ -73,7 +86,10 @@ Fixed a chain of production-like local issues around authenticated meeting histo
 - Voiceprint smoke: acoustic fallback produced 48-dimensional embeddings; same segment similarity `1.0`, different segment similarity `0.7555`.
 - Automatic speaker-name prompt UI: `flutter test test/screens/result_screen_test.dart` -> `30 passed`; `flutter analyze` -> no issues.
 - Voiceprint improvement pass: backend speaker voice tests -> `40 passed`; Flutter result/provider/widget tests -> `46 passed`; threshold tuning script -> `recommendation=insufficient-data` on current local DB.
-- Commits pushed: `5253fd6 Identify recurring speakers by voiceprint`, `f987bb4 Prompt for real speaker names automatically`.
+- Stale-name regression: reproduced `Expected: 영자 Actual: 철수`; fixed and re-ran the targeted Flutter test successfully.
+- Broader Flutter validation after the stale-name fix: `47 passed`; `flutter analyze` clean.
+- Alembic/DB repair validation: backend selected tests `85 passed`; backend ruff clean; temp SQLite `alembic upgrade head` succeeded; local DB integrity/FK checks clean.
+- Commits pushed: `5253fd6 Identify recurring speakers by voiceprint`, `f987bb4 Prompt for real speaker names automatically`, `52e4413 Close voiceprint feedback loops`, `1f3fb44 Prefer voiceprint names over stale labels`, `a93304e Restore missing Alembic guest revision`.
 
 ## iPhone Build
 
@@ -82,9 +98,10 @@ Fixed a chain of production-like local issues around authenticated meeting histo
 - Command: `flutter run --release -d 00008150-000239020C08401C`
 - Signing team: `4NJ9JSQFW9`
 - Release build installed and launched successfully.
+- Frontend-required release build is already installed. The latest Alembic/DB-only repair does not require another iPhone build.
 
 ## Known Follow-ups
 
-- Local Alembic state still references missing revision `003_add_search_guest`; local SQLite was patched directly for `sharing_policy`.
+- Real-world voiceprint quality still depends on audio quality, speech length, overlap, embedding backend, and threshold data.
 - Tone analysis may still fail on `librosa.core` import, but this no longer breaks DIA/minutes status.
 - External LLM rate limiting can still fail mind-map/study/sales generation; the app now handles timing/race conditions, not upstream quota exhaustion.
