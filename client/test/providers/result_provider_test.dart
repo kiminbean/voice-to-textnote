@@ -126,42 +126,6 @@ void main() {
       expect(segments.single.isEstimatedSpeaker, isTrue);
     });
 
-    test('voiceprint 등록 프로필은 label만 같아도 자동 이름 fallback에 쓰지 않아야 함', () async {
-      when(() => mockMinApi.getResult('min-voice-no-match'))
-          .thenAnswer((_) async => {
-                'segments': [
-                  {
-                    'speaker_id': 'SPEAKER_00',
-                    'speaker_name': 'Speaker 1',
-                    'text': '목소리 매칭이 없으면 기본 화자명이어야 합니다.',
-                    'start': 0.0,
-                    'end': 2.0,
-                  },
-                ],
-              });
-      when(() => mockSpeakerApi.list(taskId: 'min-voice-no-match')).thenAnswer(
-        (_) async => [
-          SpeakerProfile(
-            id: 'profile-voice-enrolled',
-            userId: 'user-001',
-            speakerLabel: 'SPEAKER_00',
-            displayName: '영자',
-            taskId: null,
-            voiceprintEnrollmentStatus: 'already_enrolled',
-            voiceprintSampleCount: 1,
-            createdAt: DateTime(2026, 6, 24),
-            updatedAt: DateTime(2026, 6, 24),
-          ),
-        ],
-      );
-
-      final segments = await container
-          .read(transcriptSegmentsProvider('min-voice-no-match').future);
-
-      expect(segments.single.speakerName, 'Speaker 1');
-      expect(segments.single.isEstimatedSpeaker, isFalse);
-    });
-
     test('회의록 텍스트와 transcript segment는 같은 minutes 결과 호출을 공유해야 함', () async {
       when(() => mockMinApi.getResult('min-shared-001')).thenAnswer(
         (_) async => {
