@@ -152,6 +152,38 @@ void main() {
       verify(() => mockMinApi.getResult('min-shared-001')).called(1);
     });
 
+    test('화자 프로필 조회가 401이어도 transcript segment를 표시해야 함', () async {
+      when(() => mockMinApi.getResult('min-speaker-401')).thenAnswer(
+        (_) async => {
+          'segments': [
+            {
+              'speaker_id': 'SPEAKER_00',
+              'speaker_name': 'Speaker 1',
+              'text': '회의록 본문은 표시되어야 합니다.',
+              'start': 0.0,
+              'end': 2.0,
+            },
+          ],
+        },
+      );
+      when(() => mockSpeakerApi.list(taskId: 'min-speaker-401')).thenThrow(
+        DioException(
+          requestOptions: RequestOptions(path: '/speakers'),
+          response: Response(
+            statusCode: 401,
+            requestOptions: RequestOptions(path: '/speakers'),
+          ),
+          type: DioExceptionType.badResponse,
+        ),
+      );
+
+      final segments = await container
+          .read(transcriptSegmentsProvider('min-speaker-401').future);
+
+      expect(segments.single.speakerName, 'Speaker 1');
+      expect(segments.single.text, '회의록 본문은 표시되어야 합니다.');
+    });
+
     // 로딩 초기 상태 테스트
     test('초기 상태는 loading이어야 함', () async {
       // Arrange: 느린 응답 시뮬레이션

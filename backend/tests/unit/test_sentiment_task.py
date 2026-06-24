@@ -7,6 +7,7 @@ import json
 import uuid
 from unittest.mock import MagicMock, patch
 
+from backend.db.models import TaskResult
 from backend.schemas.sentiment import (
     SentimentResult,
     SentimentSegment,
@@ -171,6 +172,50 @@ class TestSentimentTaskHappyPath:
         assert result_writes
         cached_result = json.loads(result_writes[-1].args[2])
         assert cached_result["status"] == "completed"
+
+    def test_task_falls_back_to_db_when_minutes_redis_missing(self):
+        from backend.workers.tasks.sentiment_task import sentiment_task
+
+        task_id = str(uuid.uuid4())
+        minutes_task_id = str(uuid.uuid4())
+        mock_redis = _make_mock_redis()
+        analyzer_cls = MagicMock()
+        analyzer_cls.return_value.analyze.return_value = _make_sentiment_result()
+
+        class Session:
+            def scalars(self, stmt):
+                result = MagicMock()
+                result.first.return_value = TaskResult(
+                    task_id=minutes_task_id,
+                    task_type="minutes",
+                    status="completed",
+                    result_data={**MOCK_MIN_RESULT, "task_id": minutes_task_id},
+                )
+                return result
+
+        class SessionContext:
+            def __enter__(self):
+                return Session()
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+        with (
+            patch("backend.workers.tasks.sentiment_task._get_redis", return_value=mock_redis),
+            patch("backend.workers.tasks.sentiment_task.settings") as mock_settings,
+            patch("backend.workers.tasks.sentiment_task.SentimentAnalyzer", analyzer_cls),
+            patch("backend.db.sync_engine.get_sync_session", return_value=SessionContext()),
+            patch("backend.services.sync_service.persist_task_result"),
+        ):
+            _configure_settings(mock_settings)
+            result = sentiment_task(task_id=task_id, minutes_task_id=minutes_task_id)
+
+        assert result["status"] == "completed"
+        analyzer_cls.return_value.analyze.assert_called_once()
+        assert any(
+            call.args[0] == f"task:min:result:{minutes_task_id}"
+            for call in mock_redis.setex.call_args_list
+        )
 
 
 class TestSentimentTaskErrors:

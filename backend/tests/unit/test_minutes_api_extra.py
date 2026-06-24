@@ -14,6 +14,24 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
+from backend.db.models import TaskResult
+
+
+class _ScalarResult:
+    def __init__(self, record):
+        self.record = record
+
+    def scalar_one_or_none(self):
+        return self.record
+
+
+class _AsyncSession:
+    def __init__(self, record):
+        self.record = record
+
+    async def execute(self, stmt):
+        return _ScalarResult(self.record)
+
 
 class TestMinutesAPI:
     """회의록 API 테스트 스위트"""
@@ -208,6 +226,39 @@ class TestMinutesAPI:
         assert len(data["segments"]) == 1
         assert len(data["speakers"]) == 1
         assert data["markdown"] is not None
+
+    @pytest.mark.asyncio
+    async def test_load_completed_minutes_from_db_rehydrates_redis(self, mock_redis_client):
+        from backend.app.api.v1.minutes import minutes as minutes_api
+
+        task_id = "minutes-db-123"
+        result_data = {
+            "task_id": task_id,
+            "status": "completed",
+            "diarization_task_id": "dia-db-123",
+            "segments": [],
+            "speakers": [],
+            "total_duration": 0.0,
+            "total_speakers": 0,
+        }
+        record = TaskResult(
+            task_id=task_id,
+            task_type="minutes",
+            status="completed",
+            result_data=result_data,
+        )
+
+        data = await minutes_api._load_completed_minutes_from_db(
+            task_id,
+            mock_redis_client,
+            _AsyncSession(record),
+        )
+
+        assert data["task_id"] == task_id
+        assert data["diarization_task_id"] == "dia-db-123"
+        assert mock_redis_client.setex.await_args_list[0].args[0] == (
+            f"task:min:result:{task_id}"
+        )
 
     def test_get_minutes_result_pending(self, client, mock_redis_client):
         """

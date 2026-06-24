@@ -67,6 +67,42 @@ def _cache_result(task_id: str, result: dict) -> None:
     r.setex(result_key, settings.summary_result_ttl, json.dumps(result))
 
 
+def _load_minutes_result(minutes_task_id: str) -> dict | None:
+    r = _get_redis()
+    min_result_key = f"task:min:result:{minutes_task_id}"
+    min_result_raw = r.get(min_result_key)
+    if min_result_raw is not None:
+        return json.loads(cast(str | bytes | bytearray, min_result_raw))
+
+    try:
+        from sqlalchemy import select
+
+        from backend.db.models import TaskResult
+        from backend.db.sync_engine import get_sync_session
+
+        with get_sync_session() as session:
+            stmt = select(TaskResult).where(
+                TaskResult.task_id == minutes_task_id,
+                TaskResult.task_type == "minutes",
+                TaskResult.status == TaskStatus.completed.value,
+            )
+            record = session.scalars(stmt).first()
+            if record is None or not isinstance(record.result_data, dict):
+                return None
+            minutes_data = dict(record.result_data)
+            minutes_data.setdefault("task_id", minutes_task_id)
+            minutes_data.setdefault("status", TaskStatus.completed.value)
+            r.setex(min_result_key, settings.minutes_result_ttl, json.dumps(minutes_data))
+            return minutes_data
+    except Exception as exc:  # pragma: no cover
+        logger.warning(
+            "감정 분석 minutes DB fallback 실패",
+            minutes_task_id=minutes_task_id,
+            error=str(exc),
+        )
+        return None
+
+
 def _get_active_sentiment_count() -> int:
     """현재 활성 감정 분석 작업 수 조회 (고아 항목 자동 정리)"""
     r = _get_redis()
@@ -135,17 +171,12 @@ def sentiment_task(
     try:
         _update_task_status(task_id, TaskStatus.processing, 0.1, "회의록 결과 조회 중...")
 
-        # 회의록 결과 조회
-        r = _get_redis()
-        min_result_key = f"task:min:result:{minutes_task_id}"
-        min_result_raw = r.get(min_result_key)
-
-        if min_result_raw is None:
+        min_result = _load_minutes_result(minutes_task_id)
+        if min_result is None:
             raise FileNotFoundError(
                 f"회의록 결과를 찾을 수 없습니다: minutes_task_id={minutes_task_id}"
             )
 
-        min_result = json.loads(cast(str | bytes | bytearray, min_result_raw))
         min_status = min_result.get("status")
         if min_status and min_status != TaskStatus.completed.value:
             upstream_error = min_result.get("error_message") or (

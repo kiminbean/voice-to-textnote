@@ -15,6 +15,7 @@ from datetime import UTC, datetime
 
 import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends, Request, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.config import settings
@@ -25,6 +26,7 @@ from backend.app.dependencies import (
     require_task_access,
 )
 from backend.app.errors import not_found, too_many_requests
+from backend.db.models import TaskResult
 from backend.schemas.minutes import (
     MinutesCreateRequest,
     MinutesResponse,
@@ -43,6 +45,58 @@ router = APIRouter(prefix="/minutes", tags=["minutes"])
 async def _scard(redis_client: aioredis.Redis, key: str) -> int:
     value = redis_client.scard(key)
     return int(await value if inspect.isawaitable(value) else value)
+
+
+def _decode_redis_value(value: object) -> str:
+    if isinstance(value, bytes):
+        return value.decode("utf-8")
+    return str(value)
+
+
+async def _load_completed_minutes_from_db(
+    task_id: str,
+    redis_client: aioredis.Redis,
+    db: AsyncSession,
+) -> dict | None:
+    result = await db.execute(
+        select(TaskResult).where(
+            TaskResult.task_id == task_id,
+            TaskResult.task_type == "minutes",
+            TaskResult.status == TaskStatus.completed.value,
+        )
+    )
+    record = result.scalar_one_or_none()
+    if inspect.isawaitable(record):
+        record = await record
+    data = getattr(record, "result_data", None) if record is not None else None
+    if not isinstance(data, dict):
+        return None
+
+    minutes_data = dict(data)
+    minutes_data.setdefault("task_id", task_id)
+    minutes_data.setdefault("status", TaskStatus.completed.value)
+    await redis_client.setex(
+        f"task:min:result:{task_id}",
+        settings.minutes_result_ttl,
+        json.dumps(minutes_data),
+    )
+    await redis_client.setex(
+        f"task:min:status:{task_id}",
+        settings.minutes_result_ttl,
+        json.dumps(
+            {
+                "task_id": task_id,
+                "diarization_task_id": minutes_data.get("diarization_task_id", ""),
+                "status": TaskStatus.completed.value,
+                "progress": 1.0,
+                "updated_at": minutes_data.get("completed_at") or datetime.now(UTC).isoformat(),
+                "user_id": minutes_data.get("user_id"),
+                "is_guest": bool(minutes_data.get("is_guest", False)),
+                "guest_session_id": minutes_data.get("guest_session_id"),
+            }
+        ),
+    )
+    return minutes_data
 
 
 @router.post(
@@ -140,9 +194,19 @@ async def get_minutes_status(
     raw = await redis_client.get(status_key)
 
     if raw is None:
-        not_found("회의록 작업을 찾을 수 없습니다.")
+        completed_data = await _load_completed_minutes_from_db(task_id, redis_client, db)
+        if completed_data is None:
+            not_found("회의록 작업을 찾을 수 없습니다.")
+        await require_task_access(http_request, db, task_id, completed_data)
+        return MinutesStatusResponse(
+            task_id=task_id,
+            status=TaskStatus.completed,
+            progress=1.0,
+            message="회의록 생성 완료",
+            error_message=completed_data.get("error_message"),
+        )
 
-    data = json.loads(raw)
+    data = json.loads(_decode_redis_value(raw))
     await require_task_access(http_request, db, task_id, data)
 
     return MinutesStatusResponse(
@@ -173,30 +237,34 @@ async def get_minutes_result(
     raw = await redis_client.get(result_key)
 
     if raw is None:
-        # Redis 캐시 미스 → 상태 확인
-        status_key = f"task:min:status:{task_id}"
-        status_raw = await redis_client.get(status_key)
+        completed_data = await _load_completed_minutes_from_db(task_id, redis_client, db)
+        if completed_data is not None:
+            raw = json.dumps(completed_data)
+        else:
+            # Redis 캐시 미스 → 상태 확인
+            status_key = f"task:min:status:{task_id}"
+            status_raw = await redis_client.get(status_key)
 
-        if status_raw is None:
-            not_found("회의록 작업을 찾을 수 없습니다.")
+            if status_raw is None:
+                not_found("회의록 작업을 찾을 수 없습니다.")
 
-        status_data = json.loads(status_raw)
-        await require_task_access(http_request, db, task_id, status_data)
-        task_status = TaskStatus(status_data["status"])
+            status_data = json.loads(_decode_redis_value(status_raw))
+            await require_task_access(http_request, db, task_id, status_data)
+            task_status = TaskStatus(status_data["status"])
 
-        # 아직 처리 중 → 빈 결과 반환
-        return MinutesResponse(
-            task_id=task_id,
-            status=task_status,
-            diarization_task_id=status_data.get("diarization_task_id", ""),
-            segments=[],
-            speakers=[],
-            total_duration=0.0,
-            total_speakers=0,
-            error_message=status_data.get("error_message"),
-        )
+            # 아직 처리 중 → 빈 결과 반환
+            return MinutesResponse(
+                task_id=task_id,
+                status=task_status,
+                diarization_task_id=status_data.get("diarization_task_id", ""),
+                segments=[],
+                speakers=[],
+                total_duration=0.0,
+                total_speakers=0,
+                error_message=status_data.get("error_message"),
+            )
 
-    data = json.loads(raw)
+    data = json.loads(_decode_redis_value(raw))
     await require_task_access(http_request, db, task_id, data)
 
     # MinutesSegment, SpeakerStats 객체 변환
