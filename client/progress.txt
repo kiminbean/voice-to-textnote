@@ -10,7 +10,7 @@
 | RESULT-002 | Mind map tab shows retry after creation | ✅ Fixed | Provider retries short-lived 404 race immediately after `POST /summaries/{summaryTaskId}/mind-map`. Backend parent task access fallback also added. |
 | RESULT-003 | Study tab shows retry while generating | ✅ Fixed | Study Pack generation can take >30s; create request now uses 2-minute receive timeout. |
 | RESULT-004 | Sales tab shows retry while generating | ✅ Fixed | Sales Contact Brief generation can take >30s; create request now uses 2-minute receive timeout. |
-| RESULT-005 | Default `Speaker N` names are not guided or saved | ✅ Fixed | Tapping a default speaker name now prompts for the real name, saves it as a global speaker profile, and overlays saved profile names on later transcript loads. |
+| RESULT-005 | Default `Speaker N` names are not guided or saved | ✅ Fixed | Opening the meeting transcript now automatically prompts for real names when default Speaker labels remain. Manual tap-to-rename also still works. |
 | RESULT-006 | Same real person may return as a different `Speaker N` in a later recording | ✅ Fixed | Renaming a speaker now enrolls the current task's voiceprint. Later diarization labels are matched by voiceprint and rendered with the saved real name when similarity passes the server threshold. |
 
 ### Changes Made
@@ -36,7 +36,9 @@
    - Applies saved `SpeakerProfile` names by `speaker_id` before rendering meeting text and transcript segments.
 
 7. **lib/screens/result_screen.dart**
-   - Prompts default `Speaker N` labels with “이 화자의 이름을 알려주세요”.
+   - Automatically prompts default `Speaker N` labels with “이 화자의 이름을 알려주세요” after transcript segments load.
+   - Keeps manual tap-to-rename support for speaker labels.
+   - Tracks already prompted speaker ids so the same default speaker does not repeatedly reopen stacked dialogs.
    - Saves renamed speakers through `/speakers` as global profiles for reuse in later meetings.
    - Sends the current meeting task id and speaker label so the backend can enroll the speaker voiceprint from the recording.
 
@@ -50,6 +52,7 @@
 - `flutter test test/providers/result_provider_test.dart test/providers/study_pack_provider_test.dart test/providers/sales_contact_brief_provider_test.dart test/services/study_pack_api_test.dart test/services/sales_contact_brief_api_test.dart` → `All tests passed`
 - `flutter test test/providers/result_provider_test.dart test/screens/result_screen_test.dart` → `42 passed`
 - `flutter test test/screens/result_screen_test.dart test/providers/result_provider_test.dart` → `42 passed`
+- `flutter test test/screens/result_screen_test.dart` → `30 passed`
 - `flutter analyze` → `No issues found`
 - `flutter analyze ...` → `No issues found`
 - USB/wireless detected iPhone release install: `flutter run --release -d 00008150-000239020C08401C`

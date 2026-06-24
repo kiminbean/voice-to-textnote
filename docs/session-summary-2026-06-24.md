@@ -149,13 +149,14 @@ DB 영속 저장이 끝나기 전 짧은 구간에 앱이 status를 조회하면
 - 회의록 생성 워커가 로그인 사용자의 전역 `SpeakerProfile` 이름을 읽어 `MinutesFormatter`에 자동 적용합니다.
 - 저장된 이름이 적용된 화자도 등장 순서에 포함해, `SPEAKER_00=영자` 이후 미등록 `SPEAKER_01`은 `Speaker 2`로 표시됩니다.
 - 앱의 transcript provider가 `speaker_id`를 유지하고, 서버의 `/speakers` 프로필 이름을 `speaker_id` 기준으로 오버레이합니다.
-- 회의 내용 탭에서 기본 `Speaker N`을 탭하면 “이 화자의 이름을 알려주세요” 다이얼로그로 실제 이름 입력을 유도합니다.
+- 회의 내용 탭에서 기본 `Speaker N`이 남아 있으면 자동으로 “이 화자의 이름을 알려주세요” 다이얼로그를 띄워 실제 이름 입력을 유도합니다.
+- 사용자가 자동 안내를 닫았거나 나중에 다시 수정하려는 경우를 위해 기존 speaker label 탭 수정 흐름도 유지합니다.
 - 입력한 이름은 전역 화자 프로필로 저장되어 이후 같은 사용자 계정의 회의록 표시명에 재사용됩니다.
 
 ### 추가 해결: 목소리 자체를 기억하는 화자 식별
 
 - diarization 결과에서 화자별 voiceprint embedding을 추출해 DIA task result의 `voiceprints`에 저장합니다.
-- 회의 내용 화면에서 `Speaker N`을 실제 이름으로 수정하면 앱이 현재 minutes task id와 speaker label을 `/speakers` API에 함께 보내고, 서버가 연결된 DIA task의 voiceprint를 전역 `SpeakerVoiceProfile.features.voiceprint`에 등록합니다.
+- 회의 내용 화면의 자동 이름 입력 UI 또는 수동 speaker label 탭 수정으로 `Speaker N`을 실제 이름으로 저장하면 앱이 현재 minutes task id와 speaker label을 `/speakers` API에 함께 보내고, 서버가 연결된 DIA task의 voiceprint를 전역 `SpeakerVoiceProfile.features.voiceprint`에 등록합니다.
 - 이후 녹음에서는 새 diarization label이 `Speaker 1`, `Speaker 2`, `Speaker 3`처럼 달라도 저장된 전역 voiceprint와 cosine similarity를 비교해 임계값 이상이면 저장된 실제 이름을 회의록에 적용합니다.
 - embedding backend는 `pyannote/embedding`을 우선 사용하고, Hugging Face 토큰/모델 접근 문제로 로드 실패 시 로컬 acoustic embedding fallback으로 계속 동작합니다.
 
@@ -280,8 +281,10 @@ flutter run --release -d 00008150-000239020C08401C
 - `ruff check ...` → `All checks passed!`
 - `.venv/bin/python -m pytest backend/tests/unit/test_speakers_api.py backend/tests/unit/test_speakers_voice_api.py backend/tests/unit/test_speaker_voice_service.py backend/tests/unit/test_minutes_task.py backend/tests/unit/test_diarization_voiceprint.py -q --no-cov` → `68 passed`
 - `flutter test test/screens/result_screen_test.dart test/providers/result_provider_test.dart` → `42 passed`
+- `flutter test test/screens/result_screen_test.dart` → `30 passed`
 - `flutter analyze` → `No issues found`
 - acoustic voiceprint smoke → `{'backend': 'acoustic', 'dims': 48, 'same': 1.0, 'different': 0.7555}`
+- `5253fd6 Identify recurring speakers by voiceprint`, `f987bb4 Prompt for real speaker names automatically` pushed to `origin/main`.
 
 ### Docs
 
