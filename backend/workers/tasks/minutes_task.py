@@ -125,12 +125,36 @@ def _load_saved_speaker_names(user_id: str | None) -> dict[str, str]:
 def _merge_speaker_names(
     user_id: str | None,
     speaker_names: dict[str, str] | None,
+    voiceprint_speaker_names: dict[str, str] | None = None,
 ) -> dict[str, str] | None:
     """저장된 전역 프로필 이름에 요청별 이름 매핑을 덮어쓴다."""
     saved_names = _load_saved_speaker_names(user_id)
-    if not saved_names and not speaker_names:
+    if not saved_names and not voiceprint_speaker_names and not speaker_names:
         return None
-    return {**saved_names, **(speaker_names or {})}
+    return {**saved_names, **(voiceprint_speaker_names or {}), **(speaker_names or {})}
+
+
+def _voiceprint_speaker_names_from_dia_result(dia_result: dict) -> dict[str, str]:
+    names: dict[str, str] = {}
+    speakers = dia_result.get("speakers")
+    if isinstance(speakers, list):
+        for speaker in speakers:
+            if not isinstance(speaker, dict):
+                continue
+            speaker_id = speaker.get("speaker_id")
+            identified_name = speaker.get("identified_speaker_name")
+            if speaker_id and identified_name:
+                names[str(speaker_id)] = str(identified_name)
+    segments = dia_result.get("segments")
+    if isinstance(segments, list):
+        for segment in segments:
+            if not isinstance(segment, dict):
+                continue
+            speaker_id = segment.get("speaker_id")
+            identified_name = segment.get("identified_speaker_name")
+            if speaker_id and identified_name:
+                names[str(speaker_id)] = str(identified_name)
+    return names
 
 
 def _get_active_min_count() -> int:
@@ -289,7 +313,11 @@ def minutes_task(
 
         # --- 3단계: MinutesFormatter로 회의록 생성 ---
         formatter = MinutesFormatter(
-            speaker_names=_merge_speaker_names(user_id, speaker_names)
+            speaker_names=_merge_speaker_names(
+                user_id,
+                speaker_names,
+                _voiceprint_speaker_names_from_dia_result(dia_result),
+            )
         )
         minutes_segments = formatter.format_minutes(diarized_segments)
 

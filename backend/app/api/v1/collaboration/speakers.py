@@ -55,9 +55,18 @@ async def create_speaker(
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(get_current_user),
     svc: SpeakerService = Depends(get_speaker_service),
+    voice_svc: SpeakerVoiceService = Depends(get_speaker_voice_service),
 ) -> SpeakerProfileResponse:
     """REQ-SPEAKER-001: 화자 프로필 생성."""
     profile = await svc.create(db, user.id, payload)
+    if payload.enrollment_task_id:
+        await voice_svc.enroll_from_task(
+            db,
+            profile.id,
+            user.id,
+            source_task_id=payload.enrollment_task_id,
+            source_speaker_label=payload.speaker_label,
+        )
     return SpeakerProfileResponse.model_validate(profile)
 
 
@@ -113,8 +122,17 @@ async def update_speaker(
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(get_current_user),
     svc: SpeakerService = Depends(get_speaker_service),
+    voice_svc: SpeakerVoiceService = Depends(get_speaker_voice_service),
 ) -> SpeakerProfileResponse:
     profile = await svc.update(db, speaker_id, user.id, payload)
+    if payload.enrollment_task_id:
+        await voice_svc.enroll_from_task(
+            db,
+            profile.id,
+            user.id,
+            source_task_id=payload.enrollment_task_id,
+            source_speaker_label=payload.enrollment_speaker_label or profile.speaker_label,
+        )
     return SpeakerProfileResponse.model_validate(profile)
 
 

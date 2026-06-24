@@ -46,6 +46,7 @@ class SpeakerProfileCreate {
   final String? role;
   final String? note;
   final String? taskId;
+  final String? enrollmentTaskId;
 
   const SpeakerProfileCreate({
     required this.speakerLabel,
@@ -53,6 +54,7 @@ class SpeakerProfileCreate {
     this.role,
     this.note,
     this.taskId,
+    this.enrollmentTaskId,
   });
 
   Map<String, dynamic> toJson() => {
@@ -61,6 +63,7 @@ class SpeakerProfileCreate {
         if (role != null) 'role': role,
         if (note != null) 'note': note,
         if (taskId != null) 'task_id': taskId,
+        if (enrollmentTaskId != null) 'enrollment_task_id': enrollmentTaskId,
       };
 }
 
@@ -69,12 +72,23 @@ class SpeakerProfileUpdate {
   final String? displayName;
   final String? role;
   final String? note;
+  final String? enrollmentTaskId;
+  final String? enrollmentSpeakerLabel;
 
-  const SpeakerProfileUpdate({this.displayName, this.role, this.note});
+  const SpeakerProfileUpdate({
+    this.displayName,
+    this.role,
+    this.note,
+    this.enrollmentTaskId,
+    this.enrollmentSpeakerLabel,
+  });
 
   Map<String, dynamic> toJson() => {
         if (displayName != null) 'display_name': displayName,
         if (role != null) 'role': role,
         if (note != null) 'note': note,
+        if (enrollmentTaskId != null) 'enrollment_task_id': enrollmentTaskId,
+        if (enrollmentSpeakerLabel != null)
+          'enrollment_speaker_label': enrollmentSpeakerLabel,
       };
 }

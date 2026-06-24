@@ -152,9 +152,17 @@ DB 영속 저장이 끝나기 전 짧은 구간에 앱이 status를 조회하면
 - 회의 내용 탭에서 기본 `Speaker N`을 탭하면 “이 화자의 이름을 알려주세요” 다이얼로그로 실제 이름 입력을 유도합니다.
 - 입력한 이름은 전역 화자 프로필로 저장되어 이후 같은 사용자 계정의 회의록 표시명에 재사용됩니다.
 
-### 한계
+### 추가 해결: 목소리 자체를 기억하는 화자 식별
 
-현재 구현은 저장된 `speaker_id`/프로필 이름을 재사용하는 방식입니다. 완전한 “목소리 자체를 기억해 다른 diarization label이어도 동일인으로 판별”하려면 speaker embedding 모델, 등록 샘플 추출, 유사도 임계값, 오인식 보정 UI가 별도로 필요합니다.
+- diarization 결과에서 화자별 voiceprint embedding을 추출해 DIA task result의 `voiceprints`에 저장합니다.
+- 회의 내용 화면에서 `Speaker N`을 실제 이름으로 수정하면 앱이 현재 minutes task id와 speaker label을 `/speakers` API에 함께 보내고, 서버가 연결된 DIA task의 voiceprint를 전역 `SpeakerVoiceProfile.features.voiceprint`에 등록합니다.
+- 이후 녹음에서는 새 diarization label이 `Speaker 1`, `Speaker 2`, `Speaker 3`처럼 달라도 저장된 전역 voiceprint와 cosine similarity를 비교해 임계값 이상이면 저장된 실제 이름을 회의록에 적용합니다.
+- embedding backend는 `pyannote/embedding`을 우선 사용하고, Hugging Face 토큰/모델 접근 문제로 로드 실패 시 로컬 acoustic embedding fallback으로 계속 동작합니다.
+
+### 운영상 주의사항
+
+- 기존에 이름만 저장된 전역 화자 프로필은 voiceprint가 아직 없으므로, 한 번은 해당 화자의 이름을 회의 화면에서 다시 수정/저장해야 voiceprint enrollment가 됩니다.
+- 실제 현장 정확도는 발화 길이, 잡음, 마이크 품질, 화자 겹침, embedding backend에 영향을 받습니다. 운영 품질은 `HUGGINGFACE_TOKEN`으로 pyannote embedding 모델을 활성화했을 때 더 안정적입니다.
 
 ### 변경 파일
 
@@ -245,6 +253,35 @@ flutter run --release -d 00008150-000239020C08401C
 - `client/lib/providers/result_provider.dart`
 - `client/test/providers/result_provider_test.dart`
 - `client/test/screens/result_screen_test.dart`
+
+## 이번 목소리 기억 작업 변경 묶음
+
+### Backend
+
+- `backend/ml/speaker_embedding_engine.py`
+- `backend/services/speaker_voice_service.py`
+- `backend/workers/tasks/diarization_task.py`
+- `backend/workers/tasks/minutes_task.py`
+- `backend/app/api/v1/collaboration/speakers.py`
+- `backend/schemas/speaker.py`
+- `backend/tests/unit/test_speaker_voice_service.py`
+- `backend/tests/unit/test_speakers_voice_api.py`
+- `backend/tests/unit/test_minutes_task.py`
+- `backend/tests/unit/test_diarization_voiceprint.py`
+
+### Client
+
+- `client/lib/models/speaker_profile.dart`
+- `client/lib/screens/result_screen.dart`
+- `client/test/screens/result_screen_test.dart`
+
+### 검증
+
+- `ruff check ...` → `All checks passed!`
+- `.venv/bin/python -m pytest backend/tests/unit/test_speakers_api.py backend/tests/unit/test_speakers_voice_api.py backend/tests/unit/test_speaker_voice_service.py backend/tests/unit/test_minutes_task.py backend/tests/unit/test_diarization_voiceprint.py -q --no-cov` → `68 passed`
+- `flutter test test/screens/result_screen_test.dart test/providers/result_provider_test.dart` → `42 passed`
+- `flutter analyze` → `No issues found`
+- acoustic voiceprint smoke → `{'backend': 'acoustic', 'dims': 48, 'same': 1.0, 'different': 0.7555}`
 
 ### Docs
 

@@ -114,6 +114,20 @@
 
 ## 2026-06-14 작업 내역
 
+---
+
+## 2026-06-24 작업 내역
+
+### 화자 목소리 기억/자동 이름 적용
+- **Files:** `backend/ml/speaker_embedding_engine.py`, `backend/services/speaker_voice_service.py`, `backend/workers/tasks/diarization_task.py`, `backend/workers/tasks/minutes_task.py`, `backend/app/api/v1/collaboration/speakers.py`, `backend/schemas/speaker.py`
+- **내용:** 녹음 완료 후 diarization 결과에서 화자별 voiceprint embedding을 추출해 저장하고, 이후 녹음에서 같은 사용자 계정의 저장된 전역 화자 프로필과 cosine similarity로 매칭해 `Speaker N` 대신 저장된 실제 이름을 회의록에 적용합니다.
+- **등록 흐름:** 회의 내용 화면에서 `Speaker N`을 실제 이름으로 수정하면 앱이 현재 회의 task id와 speaker label을 `/speakers` API에 보내고, 서버가 해당 회의의 diarization voiceprint를 전역 speaker profile에 등록합니다. 같은 사람이 다음 녹음에서 `Speaker 3`처럼 다른 diarization label로 나오더라도 저장된 voiceprint와 매칭되면 실제 이름이 적용됩니다.
+- **모델 경로:** `pyannote/embedding`을 우선 사용하며, Hugging Face 토큰/모델 사용권 문제로 로드되지 않으면 로컬 acoustic embedding fallback으로 기능이 계속 동작합니다.
+- **검증:** `ruff check ...` → `All checks passed!`
+- **검증:** `.venv/bin/python -m pytest backend/tests/unit/test_speakers_api.py backend/tests/unit/test_speakers_voice_api.py backend/tests/unit/test_speaker_voice_service.py backend/tests/unit/test_minutes_task.py backend/tests/unit/test_diarization_voiceprint.py -q --no-cov` → `68 passed`
+- **검증:** acoustic voiceprint smoke → `{'backend': 'acoustic', 'dims': 48, 'same': 1.0, 'different': 0.7555}`
+- **남은 리스크:** 실제 현장 정확도는 음질, 발화 길이, 모델 백엔드, 유사도 임계값에 좌우됩니다. 운영 품질을 높이려면 `HUGGINGFACE_TOKEN`으로 pyannote embedding 모델을 사용할 수 있게 두는 것이 좋습니다.
+
 ### API 커버리지 100% 달성
 - **Files:** `backend/tests/unit/test_api_coverage_completion.py`, `backend/tests/unit/test_devices_api_coverage.py`
 - **내용:** API 라우터 및 직접 호출 경로의 잔여 미커버 라인을 보강. history/templates/tone/vocabulary/quality/bookmarks/speakers/batch/devices/collab WebSocket 경로 포함.

@@ -24,6 +24,11 @@ class SpeakerProfileCreate(BaseModel):
         max_length=255,
         description="회의록 전용 오버라이드용 task_id. None이면 전역 프로필.",
     )
+    enrollment_task_id: str | None = Field(
+        default=None,
+        max_length=255,
+        description="voiceprint 등록에 사용할 minutes 또는 diarization task_id.",
+    )
 
 
 class SpeakerProfileUpdate(BaseModel):
@@ -32,6 +37,8 @@ class SpeakerProfileUpdate(BaseModel):
     display_name: str | None = Field(default=None, min_length=1, max_length=100)
     role: str | None = Field(default=None, max_length=100)
     note: str | None = Field(default=None, max_length=1000)
+    enrollment_task_id: str | None = Field(default=None, max_length=255)
+    enrollment_speaker_label: str | None = Field(default=None, max_length=50)
 
 
 class SpeakerProfileResponse(BaseModel):

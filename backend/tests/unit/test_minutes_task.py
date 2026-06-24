@@ -265,6 +265,41 @@ class TestMinutesTaskHappyPath:
         assert "영자" in speaker_names_in_result
         assert "Speaker 1" not in speaker_names_in_result
 
+    def test_task_uses_voiceprint_identified_names_from_diarization(self):
+        """DIA voiceprint 매칭 이름을 회의록 화자 이름에 적용."""
+        from backend.workers.tasks.minutes_task import minutes_task
+
+        task_id = str(uuid.uuid4())
+        dia_task_id = str(uuid.uuid4())
+        dia_result = {
+            **MOCK_DIA_RESULT,
+            "speakers": [
+                {
+                    "speaker_id": "SPEAKER_00",
+                    "total_speaking_time": 5.0,
+                    "segment_count": 1,
+                    "identified_speaker_name": "영자",
+                },
+                {"speaker_id": "SPEAKER_01", "total_speaking_time": 5.0, "segment_count": 1},
+            ],
+        }
+
+        mock_redis = _make_mock_redis()
+        mock_redis.get.side_effect = lambda key: (
+            json.dumps(dia_result) if f"dia:result:{dia_task_id}" in key else None
+        )
+
+        with (
+            patch("backend.workers.tasks.minutes_task._get_redis", return_value=mock_redis),
+            patch("backend.workers.tasks.minutes_task.settings") as mock_settings,
+            patch("backend.workers.tasks.minutes_task._load_saved_speaker_names", return_value={}),
+        ):
+            mock_settings.minutes_result_ttl = 86400
+            mock_settings.max_concurrent_minutes = 3
+            result = minutes_task(task_id=task_id, diarization_task_id=dia_task_id)
+
+        assert [seg["speaker_name"] for seg in result["segments"]] == ["영자", "Speaker 2"]
+
 
 # ---------------------------------------------------------------------------
 # 오류 조건 처리 테스트

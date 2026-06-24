@@ -32,7 +32,14 @@ Fixed a chain of production-like local issues around authenticated meeting histo
 - Minutes generation loads authenticated users' global `SpeakerProfile` names before falling back to automatic `Speaker N` labels.
 - Renaming a default speaker in the meeting transcript saves a global profile so later transcript loads can show the saved name.
 - Saved speakers count toward automatic numbering; a saved `SPEAKER_00=영자` does not cause the next unnamed speaker to restart at `Speaker 1`.
-- This is label/profile reuse, not full voiceprint matching. Speaker embedding enrollment remains the next step for identifying the same person across arbitrary diarization labels.
+
+## Voiceprint Speaker Matching
+
+- Diarization now extracts per-speaker voiceprint embeddings from the recorded audio and stores them on the DIA task result.
+- When a user corrects `Speaker N` to a real name in the meeting screen, the client sends the current task id and speaker label; the server follows the minutes task to its DIA task and enrolls that voiceprint into the global speaker voice profile.
+- Future recordings compare fresh speaker embeddings against saved global voiceprints. If cosine similarity passes `SPEAKER_VOICEPRINT_SIMILARITY_THRESHOLD`, the saved display name is applied even if the new diarization label is `Speaker 3` or another automatic label.
+- The backend prefers `pyannote/embedding`; if model loading fails because the Hugging Face token or model access is unavailable, it falls back to local acoustic embedding so the pipeline stays functional.
+- Existing global speaker names that were saved before this change do not have voiceprints until the user corrects/saves that speaker once from a recording that contains DIA voiceprints.
 
 ## Representative Recovered Tasks
 
@@ -56,6 +63,8 @@ Fixed a chain of production-like local issues around authenticated meeting histo
 - Flutter analyze: no issues found
 - API health at `100.69.69.119:8000`: healthy
 - Study Pack, Sales Contact Brief, and Mind Map APIs returned `200 OK` for the current checked meeting.
+- Voiceprint tests: `68 passed` across speaker APIs, voice service, minutes worker, and DIA voiceprint matching.
+- Voiceprint smoke: acoustic fallback produced 48-dimensional embeddings; same segment similarity `1.0`, different segment similarity `0.7555`.
 
 ## iPhone Build
 

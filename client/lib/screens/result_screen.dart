@@ -1149,11 +1149,16 @@ class _TranscriptTabState extends ConsumerState<_TranscriptTab> {
       await api.create(SpeakerProfileCreate(
         speakerLabel: speakerId,
         displayName: displayName,
+        enrollmentTaskId: widget.taskId,
       ));
     } else {
       await api.update(
         existing.id,
-        SpeakerProfileUpdate(displayName: displayName),
+        SpeakerProfileUpdate(
+          displayName: displayName,
+          enrollmentTaskId: widget.taskId,
+          enrollmentSpeakerLabel: speakerId,
+        ),
       );
     }
   }

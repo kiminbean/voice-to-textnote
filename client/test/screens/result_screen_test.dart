@@ -391,6 +391,7 @@ void main() {
       final payload = captured.single as SpeakerProfileCreate;
       expect(payload.speakerLabel, 'SPEAKER_00');
       expect(payload.displayName, '영자');
+      expect(payload.enrollmentTaskId, 'min-task-001');
     });
   });
 

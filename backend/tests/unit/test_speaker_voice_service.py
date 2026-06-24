@@ -23,7 +23,7 @@ import backend.db.auth_models  # noqa: F401
 import backend.db.speaker_models  # noqa: F401
 import backend.db.speaker_voice_models  # noqa: F401
 from backend.db.auth_models import User
-from backend.db.models import Base
+from backend.db.models import Base, TaskResult
 from backend.db.speaker_models import SpeakerProfile
 from backend.db.speaker_voice_models import SpeakerVoiceProfile
 from backend.ml.audio_analysis_engine import AudioAnalysisResult
@@ -216,6 +216,88 @@ class TestMergeSample:
         svc._merge_sample(voice, _make_sample(sample_rate=None, quality_score=None))
         assert voice.avg_sample_rate == 16000.0
         assert voice.avg_quality_score == 0.7
+
+
+class TestVoiceprintEnrollment:
+    """Voiceprint embedding enrollment and matching."""
+
+    @pytest.mark.asyncio
+    async def test_enroll_voiceprint_stores_embedding(self, svc, db_session, seeded_speaker):
+        voice = await svc.enroll_voiceprint(
+            session=db_session,
+            speaker_id=seeded_speaker.id,
+            user_id=seeded_speaker.user_id,
+            embedding=[1.0, 0.0, 0.0],
+            source_task_id="min-001",
+            source_speaker_label="SPEAKER_00",
+            embedding_backend="test",
+        )
+
+        voiceprint = voice.features["voiceprint"]
+        assert voiceprint["embedding"] == [1.0, 0.0, 0.0]
+        assert voiceprint["sample_count"] == 1
+        assert voiceprint["last_source_task_id"] == "min-001"
+
+    @pytest.mark.asyncio
+    async def test_match_voiceprints_returns_best_profile(self, svc, db_session, seeded_speaker):
+        await svc.enroll_voiceprint(
+            session=db_session,
+            speaker_id=seeded_speaker.id,
+            user_id=seeded_speaker.user_id,
+            embedding=[1.0, 0.0, 0.0],
+            embedding_backend="test",
+        )
+
+        matches = await svc.match_voiceprints(
+            db_session,
+            seeded_speaker.user_id,
+            {"SPEAKER_03": {"embedding": [0.99, 0.01, 0.0]}},
+            threshold=0.9,
+        )
+
+        assert matches["SPEAKER_03"]["display_name"] == "김철수"
+        assert matches["SPEAKER_03"]["speaker_profile_id"] == str(seeded_speaker.id)
+
+    @pytest.mark.asyncio
+    async def test_enroll_from_minutes_task_uses_diarization_voiceprint(
+        self,
+        svc,
+        db_session,
+        seeded_speaker,
+    ):
+        dia = TaskResult(
+            task_id="dia-voice-001",
+            task_type="diarization",
+            status="completed",
+            result_data={
+                "voiceprints": {
+                    "SPEAKER_02": {
+                        "embedding": [0.0, 1.0, 0.0],
+                        "embedding_backend": "test",
+                    }
+                }
+            },
+        )
+        minutes = TaskResult(
+            task_id="min-voice-001",
+            task_type="minutes",
+            status="completed",
+            result_data={"diarization_task_id": "dia-voice-001"},
+        )
+        db_session.add_all([dia, minutes])
+        await db_session.commit()
+
+        voice = await svc.enroll_from_task(
+            db_session,
+            seeded_speaker.id,
+            seeded_speaker.user_id,
+            source_task_id="min-voice-001",
+            source_speaker_label="SPEAKER_02",
+        )
+
+        assert voice is not None
+        assert voice.features["voiceprint"]["embedding"] == [0.0, 1.0, 0.0]
+        assert voice.features["voiceprint"]["last_source_speaker_label"] == "SPEAKER_02"
 
 
 # ===========================================================================

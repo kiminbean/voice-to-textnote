@@ -17,9 +17,11 @@ import redis
 from celery.exceptions import SoftTimeLimitExceeded
 
 from backend.app.config import settings
+from backend.db.sync_engine import get_sync_session
 from backend.events.publisher import publish_task_event_sync
 from backend.ml.diarization_engine import DiarizationEngine
-from backend.pipeline.speaker_matcher import SpeakerMatcher
+from backend.ml.speaker_embedding_engine import SpeakerEmbeddingEngine, cosine_similarity
+from backend.pipeline.speaker_matcher import SpeakerMatcher, SpeakerSegment
 from backend.schemas.transcription import TaskStatus
 from backend.utils.logger import get_logger
 from backend.workers.celery_app import celery_app
@@ -107,6 +109,122 @@ def _cache_result(task_id: str, result: dict) -> None:
 def _extract_cached_error_message(result: dict) -> str | None:
     """레거시 error 키와 신규 error_message 키를 모두 지원"""
     return result.get("error_message") or result.get("error")
+
+
+def _extract_and_match_voiceprints(
+    *,
+    user_id: str | None,
+    audio_path: Path,
+    dia_segments: list[SpeakerSegment],
+) -> tuple[dict[str, dict], dict[str, dict]]:
+    """Extract speaker voiceprints and match them to saved user profiles."""
+    if not user_id or not dia_segments:
+        return {}, {}
+
+    try:
+        import uuid
+
+        from sqlalchemy import select
+
+        from backend.db.speaker_models import SpeakerProfile
+        from backend.db.speaker_voice_models import SpeakerVoiceProfile
+
+        owner_id = uuid.UUID(str(user_id))
+        engine = SpeakerEmbeddingEngine.get_instance()
+        voiceprints = engine.extract_for_speakers(
+            audio_path,
+            dia_segments,
+            max_seconds_per_speaker=settings.speaker_voiceprint_max_seconds_per_speaker,
+        )
+        if not voiceprints:
+            return {}, {}
+
+        with get_sync_session() as session:
+            rows = (
+                session.execute(
+                    select(SpeakerProfile, SpeakerVoiceProfile)
+                    .join(
+                        SpeakerVoiceProfile,
+                        SpeakerVoiceProfile.speaker_profile_id == SpeakerProfile.id,
+                    )
+                    .where(SpeakerProfile.user_id == owner_id, SpeakerProfile.task_id.is_(None))
+                )
+                .all()
+            )
+
+        matches: dict[str, dict] = {}
+        for speaker_label, voiceprint in voiceprints.items():
+            embedding = voiceprint.get("embedding")
+            if not isinstance(embedding, list):
+                continue
+            best: tuple[float, object] | None = None
+            for profile, saved_voice in rows:
+                saved_voiceprint = (
+                    (saved_voice.features or {}).get("voiceprint")
+                    if saved_voice.features
+                    else None
+                )
+                if not isinstance(saved_voiceprint, dict):
+                    continue
+                saved_embedding = saved_voiceprint.get("embedding")
+                if not isinstance(saved_embedding, list):
+                    continue
+                score = cosine_similarity(embedding, saved_embedding)
+                if best is None or score > best[0]:
+                    best = (score, profile)
+
+            if best is None or best[0] < settings.speaker_voiceprint_similarity_threshold:
+                continue
+            score, profile = best
+            matches[speaker_label] = {
+                "speaker_profile_id": str(profile.id),
+                "speaker_label": profile.speaker_label,
+                "display_name": profile.display_name,
+                "similarity": round(score, 4),
+            }
+
+        return voiceprints, matches
+    except Exception:
+        logger.warning(
+            "화자 voiceprint 추출/매칭 실패 - 기본 화자 라벨로 폴백",
+            exc_info=True,
+            category="voiceprint",
+        )
+        return {}, {}
+
+
+def _apply_voiceprint_matches(
+    final_result: dict,
+    voiceprints: dict[str, dict],
+    matches: dict[str, dict],
+) -> None:
+    """Attach voiceprint metadata and identified names to a diarization result."""
+    if voiceprints:
+        final_result["voiceprints"] = voiceprints
+    if not matches:
+        return
+
+    for speaker in final_result.get("speakers", []):
+        if not isinstance(speaker, dict):
+            continue
+        speaker_id = speaker.get("speaker_id")
+        match = matches.get(str(speaker_id))
+        if not match:
+            continue
+        speaker["identified_speaker_profile_id"] = match["speaker_profile_id"]
+        speaker["identified_speaker_name"] = match["display_name"]
+        speaker["voiceprint_similarity"] = match["similarity"]
+
+    for segment in final_result.get("segments", []):
+        if not isinstance(segment, dict):
+            continue
+        speaker_id = segment.get("speaker_id")
+        match = matches.get(str(speaker_id))
+        if not match:
+            continue
+        segment["identified_speaker_profile_id"] = match["speaker_profile_id"]
+        segment["identified_speaker_name"] = match["display_name"]
+        segment["voiceprint_similarity"] = match["similarity"]
 
 
 def _get_active_dia_count() -> int:
@@ -368,6 +486,13 @@ def diarization_task(
                 "created_at": processing_start.isoformat(),
                 "completed_at": processing_end.isoformat(),
             }
+
+        voiceprints, voiceprint_matches = _extract_and_match_voiceprints(
+            user_id=user_id,
+            audio_path=wav_path,
+            dia_segments=dia_segments,
+        )
+        _apply_voiceprint_matches(final_result, voiceprints, voiceprint_matches)
 
         _cache_result(task_id, final_result)
 

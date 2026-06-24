@@ -181,6 +181,56 @@ async def test_create_voice_profile_with_samples(db_engine, seeded_db):
 
 
 @pytest.mark.asyncio
+async def test_create_speaker_with_enrollment_task_stores_voiceprint(db_engine, seeded_db):
+    """화자 생성 시 현재 회의 voiceprint를 전역 프로필에 등록."""
+    session_factory = async_sessionmaker(db_engine, expire_on_commit=False)
+    async with session_factory() as session:
+        session.add_all(
+            [
+                TaskResult(
+                    task_id="dia-enroll-001",
+                    task_type="diarization",
+                    status="completed",
+                    result_data={
+                        "voiceprints": {
+                            "SPEAKER_07": {
+                                "embedding": [1.0, 0.0, 0.0],
+                                "embedding_backend": "test",
+                            }
+                        }
+                    },
+                ),
+                TaskResult(
+                    task_id="min-enroll-001",
+                    task_type="minutes",
+                    status="completed",
+                    result_data={"diarization_task_id": "dia-enroll-001"},
+                ),
+            ]
+        )
+        await session.commit()
+
+    app = _make_app(db_engine, seeded_db["user_a"])
+    with TestClient(app) as client:
+        sp = client.post(
+            "/api/v1/speakers",
+            json={
+                "speaker_label": "SPEAKER_07",
+                "display_name": "영자",
+                "enrollment_task_id": "min-enroll-001",
+            },
+        )
+        speaker_id = sp.json()["id"]
+        resp = client.get(f"/api/v1/speakers/{speaker_id}/voice-characteristics")
+
+    assert sp.status_code == 201
+    assert resp.status_code == 200
+    voiceprint = resp.json()["features"]["voiceprint"]
+    assert voiceprint["embedding"] == [1.0, 0.0, 0.0]
+    assert voiceprint["last_source_speaker_label"] == "SPEAKER_07"
+
+
+@pytest.mark.asyncio
 async def test_voice_profile_overwrite_resets_counters(db_engine, seeded_db):
     """overwrite=True 시 누적값이 초기화된다."""
     app = _make_app(db_engine, seeded_db["user_a"])

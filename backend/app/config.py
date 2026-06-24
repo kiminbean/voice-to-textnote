@@ -72,6 +72,11 @@ class Settings(BaseSettings):
     # pyannote 3.1은 16kHz로 학습됐으므로 다운샘플링 시 정확도 영향 가능.
     dia_target_sample_rate: int = 0
 
+    # Voiceprint speaker identification.
+    speaker_embedding_model: str = "pyannote/embedding"
+    speaker_voiceprint_similarity_threshold: float = Field(default=0.72, ge=0.0, le=1.0)
+    speaker_voiceprint_max_seconds_per_speaker: float = Field(default=30.0, ge=1.0, le=300.0)
+
     # 회의록 생성 설정 (REQ-MIN-008, REQ-MIN-013)
     max_concurrent_minutes: int = 3  # 최대 동시 회의록 생성 작업 수
     minutes_result_ttl: int = 604800  # 결과 캐시 TTL: 7일 (초)

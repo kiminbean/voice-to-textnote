@@ -20,8 +20,10 @@ from fastapi import HTTPException, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.db.models import TaskResult
 from backend.db.speaker_models import SpeakerProfile
 from backend.db.speaker_voice_models import SpeakerVoiceProfile
+from backend.ml.speaker_embedding_engine import cosine_similarity
 from backend.schemas.speaker import (
     VoiceCharacteristics,
     VoiceProfileCreateRequest,
@@ -134,6 +136,190 @@ class SpeakerVoiceService:
         voice.total_duration_seconds = (voice.total_duration_seconds or 0.0) + (
             sample.duration_seconds or 0.0
         )
+
+    @staticmethod
+    def _merge_voiceprint_embedding(
+        current: list[float] | None,
+        current_n: int,
+        new_embedding: list[float],
+    ) -> list[float]:
+        """Running average for fixed-length voiceprint embeddings."""
+        if not new_embedding:
+            return current or []
+        if not current or len(current) != len(new_embedding) or current_n <= 0:
+            return [float(value) for value in new_embedding]
+        merged = [
+            ((float(current[i]) * current_n) + float(new_embedding[i])) / (current_n + 1)
+            for i in range(len(new_embedding))
+        ]
+        norm = sum(value * value for value in merged) ** 0.5
+        if norm <= 0:
+            return []
+        return [round(value / norm, 8) for value in merged]
+
+    async def enroll_voiceprint(
+        self,
+        session: AsyncSession,
+        speaker_id: uuid.UUID,
+        user_id: uuid.UUID,
+        *,
+        embedding: list[float],
+        source_task_id: str | None = None,
+        source_speaker_label: str | None = None,
+        embedding_backend: str | None = None,
+    ) -> SpeakerVoiceProfile:
+        """Attach or update a speaker voiceprint embedding."""
+        await self._ensure_speaker_owned(session, speaker_id, user_id)
+        voice = await self._load_or_create_voice_profile(session, speaker_id)
+
+        features = dict(voice.features or {})
+        voiceprint = dict(features.get("voiceprint") or {})
+        count = int(voiceprint.get("sample_count") or 0)
+        current_embedding = voiceprint.get("embedding")
+        if not isinstance(current_embedding, list):
+            current_embedding = None
+
+        merged_embedding = self._merge_voiceprint_embedding(
+            current_embedding,
+            count,
+            embedding,
+        )
+        voiceprint.update(
+            {
+                "embedding": merged_embedding,
+                "sample_count": count + 1,
+                "embedding_backend": embedding_backend or voiceprint.get("embedding_backend"),
+                "last_source_task_id": source_task_id,
+                "last_source_speaker_label": source_speaker_label,
+            }
+        )
+        features["voiceprint"] = voiceprint
+        voice.features = features
+
+        await session.commit()
+        await session.refresh(voice)
+        return voice
+
+    async def match_voiceprints(
+        self,
+        session: AsyncSession,
+        user_id: uuid.UUID,
+        candidate_embeddings: dict[str, dict],
+        *,
+        threshold: float,
+    ) -> dict[str, dict]:
+        """Match diarization speaker embeddings against saved speaker profiles."""
+        stmt = (
+            select(SpeakerProfile, SpeakerVoiceProfile)
+            .join(
+                SpeakerVoiceProfile,
+                SpeakerVoiceProfile.speaker_profile_id == SpeakerProfile.id,
+            )
+            .where(SpeakerProfile.user_id == user_id, SpeakerProfile.task_id.is_(None))
+        )
+        rows = (await session.execute(stmt)).all()
+
+        matches: dict[str, dict] = {}
+        for candidate_label, candidate in candidate_embeddings.items():
+            candidate_embedding = candidate.get("embedding")
+            if not isinstance(candidate_embedding, list):
+                continue
+
+            best: tuple[float, SpeakerProfile] | None = None
+            for profile, voice in rows:
+                voiceprint = (voice.features or {}).get("voiceprint") if voice.features else None
+                if not isinstance(voiceprint, dict):
+                    continue
+                stored_embedding = voiceprint.get("embedding")
+                if not isinstance(stored_embedding, list):
+                    continue
+                score = cosine_similarity(candidate_embedding, stored_embedding)
+                if best is None or score > best[0]:
+                    best = (score, profile)
+
+            if best is None or best[0] < threshold:
+                continue
+            score, profile = best
+            matches[candidate_label] = {
+                "speaker_profile_id": str(profile.id),
+                "speaker_label": profile.speaker_label,
+                "display_name": profile.display_name,
+                "similarity": round(score, 4),
+            }
+        return matches
+
+    async def enroll_from_task(
+        self,
+        session: AsyncSession,
+        speaker_id: uuid.UUID,
+        user_id: uuid.UUID,
+        *,
+        source_task_id: str,
+        source_speaker_label: str,
+    ) -> SpeakerVoiceProfile | None:
+        """Enroll a profile from voiceprints stored on a minutes/diarization result."""
+        voiceprint = await self._find_task_voiceprint(
+            session,
+            source_task_id=source_task_id,
+            speaker_label=source_speaker_label,
+        )
+        if voiceprint is None:
+            return None
+        embedding = voiceprint.get("embedding")
+        if not isinstance(embedding, list):
+            return None
+        return await self.enroll_voiceprint(
+            session=session,
+            speaker_id=speaker_id,
+            user_id=user_id,
+            embedding=[float(value) for value in embedding],
+            source_task_id=source_task_id,
+            source_speaker_label=source_speaker_label,
+            embedding_backend=voiceprint.get("embedding_backend"),
+        )
+
+    async def _find_task_voiceprint(
+        self,
+        session: AsyncSession,
+        *,
+        source_task_id: str,
+        speaker_label: str,
+    ) -> dict | None:
+        task = (
+            await session.execute(select(TaskResult).where(TaskResult.task_id == source_task_id))
+        ).scalar_one_or_none()
+        if task is None or not isinstance(task.result_data, dict):
+            return None
+
+        result_data = task.result_data
+        if task.task_type == "minutes":
+            direct = self._voiceprint_from_result(result_data, speaker_label)
+            if direct is not None:
+                return direct
+            diarization_task_id = result_data.get("diarization_task_id")
+            if diarization_task_id:
+                dia_task = (
+                    await session.execute(
+                        select(TaskResult).where(TaskResult.task_id == str(diarization_task_id))
+                    )
+                ).scalar_one_or_none()
+                if dia_task is not None and isinstance(dia_task.result_data, dict):
+                    return self._voiceprint_from_result(dia_task.result_data, speaker_label)
+            return None
+
+        return self._voiceprint_from_result(result_data, speaker_label)
+
+    @staticmethod
+    def _voiceprint_from_result(result_data: dict, speaker_label: str) -> dict | None:
+        voiceprints = result_data.get("voiceprints")
+        if isinstance(voiceprints, dict):
+            value = voiceprints.get(speaker_label)
+            return value if isinstance(value, dict) else None
+        if isinstance(voiceprints, list):
+            for item in voiceprints:
+                if isinstance(item, dict) and item.get("speaker_id") == speaker_label:
+                    return item
+        return None
 
     async def analyze_upload(
         self,
