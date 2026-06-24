@@ -51,6 +51,11 @@ class SpeakerProfileResponse(BaseModel):
     role: str | None
     note: str | None
     task_id: str | None
+    voiceprint_enrollment_status: str | None = Field(
+        default=None,
+        description="not_requested, enrolled, unavailable, already_enrolled 중 하나.",
+    )
+    voiceprint_sample_count: int | None = Field(default=None, ge=0)
     created_at: datetime
     updated_at: datetime
 
@@ -62,6 +67,15 @@ class SpeakerProfileListResponse(BaseModel):
 
     items: list[SpeakerProfileResponse]
     total: int
+
+
+class SpeakerVoiceprintBackfillResponse(BaseModel):
+    """기존 전역 화자 프로필 voiceprint 보강 결과."""
+
+    scanned_profiles: int = Field(..., ge=0)
+    enrolled_profiles: int = Field(..., ge=0)
+    skipped_profiles: int = Field(..., ge=0)
+    missing_voiceprints: list[str] = Field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------

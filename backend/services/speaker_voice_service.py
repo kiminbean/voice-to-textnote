@@ -278,6 +278,120 @@ class SpeakerVoiceService:
             embedding_backend=voiceprint.get("embedding_backend"),
         )
 
+    async def backfill_missing_voiceprints(
+        self,
+        session: AsyncSession,
+        user_id: uuid.UUID,
+    ) -> dict[str, object]:
+        """Enroll saved global speakers from historical task voiceprints when labels match."""
+        profiles = (
+            await session.execute(
+                select(SpeakerProfile).where(
+                    SpeakerProfile.user_id == user_id,
+                    SpeakerProfile.task_id.is_(None),
+                )
+            )
+        ).scalars().all()
+
+        scanned = 0
+        enrolled = 0
+        missing: list[str] = []
+        for profile in profiles:
+            scanned += 1
+            if await self.voiceprint_sample_count(session, profile.id) > 0:
+                continue
+
+            voiceprint = await self._find_historical_voiceprint(
+                session,
+                user_id=user_id,
+                speaker_label=profile.speaker_label,
+            )
+            if voiceprint is None:
+                missing.append(profile.speaker_label)
+                continue
+
+            embedding = voiceprint.get("embedding")
+            if not isinstance(embedding, list):
+                missing.append(profile.speaker_label)
+                continue
+
+            await self.enroll_voiceprint(
+                session=session,
+                speaker_id=profile.id,
+                user_id=user_id,
+                embedding=[float(value) for value in embedding],
+                source_task_id=voiceprint.get("source_task_id"),
+                source_speaker_label=profile.speaker_label,
+                embedding_backend=voiceprint.get("embedding_backend"),
+            )
+            enrolled += 1
+
+        return {
+            "scanned_profiles": scanned,
+            "enrolled_profiles": enrolled,
+            "skipped_profiles": scanned - enrolled - len(missing),
+            "missing_voiceprints": missing,
+        }
+
+    async def voiceprint_sample_count(
+        self,
+        session: AsyncSession,
+        speaker_id: uuid.UUID,
+    ) -> int:
+        voice = (
+            await session.execute(
+                select(SpeakerVoiceProfile).where(
+                    SpeakerVoiceProfile.speaker_profile_id == speaker_id
+                )
+            )
+        ).scalar_one_or_none()
+        if voice is None or not isinstance(voice.features, dict):
+            return 0
+        voiceprint = voice.features.get("voiceprint")
+        if not isinstance(voiceprint, dict):
+            return 0
+        return int(voiceprint.get("sample_count") or 0)
+
+    async def _find_historical_voiceprint(
+        self,
+        session: AsyncSession,
+        *,
+        user_id: uuid.UUID,
+        speaker_label: str,
+    ) -> dict | None:
+        rows = (
+            await session.execute(
+                select(TaskResult)
+                .where(TaskResult.status == "completed")
+                .order_by(TaskResult.updated_at.desc())
+            )
+        ).scalars().all()
+
+        for task in rows:
+            if not self._task_result_belongs_to_user(task, user_id):
+                continue
+            if not isinstance(task.result_data, dict):
+                continue
+            voiceprint = self._voiceprint_from_result(task.result_data, speaker_label)
+            if voiceprint is None:
+                continue
+            voiceprint = dict(voiceprint)
+            voiceprint.setdefault("source_task_id", task.task_id)
+            return voiceprint
+        return None
+
+    @staticmethod
+    def _task_result_belongs_to_user(task: TaskResult, user_id: uuid.UUID) -> bool:
+        expected = str(user_id)
+        for payload in (task.input_metadata, task.result_data):
+            if not isinstance(payload, dict):
+                continue
+            for key in ("user_id", "owner_user_id", "created_by"):
+                value = payload.get(key)
+                if value is not None and str(value) == expected:
+                    return True
+        return False
+
     async def _find_task_voiceprint(
         self,
         session: AsyncSession,

@@ -37,6 +37,13 @@ class SpeakerApi {
     return SpeakerProfile.fromJson(res.data as Map<String, dynamic>);
   }
 
+  /// 기존 이름-only 전역 화자 프로필에 과거 voiceprint를 보강
+  Future<SpeakerVoiceprintBackfillResult> backfillVoiceprints() async {
+    final res = await _dio.post('/speakers/voiceprints/backfill');
+    return SpeakerVoiceprintBackfillResult.fromJson(
+        res.data as Map<String, dynamic>);
+  }
+
   /// 화자 프로필 삭제
   Future<void> delete(String id) async {
     await _dio.delete('/speakers/$id');

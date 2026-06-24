@@ -162,8 +162,16 @@ DB 영속 저장이 끝나기 전 짧은 구간에 앱이 status를 조회하면
 
 ### 운영상 주의사항
 
-- 기존에 이름만 저장된 전역 화자 프로필은 voiceprint가 아직 없으므로, 한 번은 해당 화자의 이름을 회의 화면에서 다시 수정/저장해야 voiceprint enrollment가 됩니다.
+- 기존에 이름만 저장된 전역 화자 프로필은 회의 내용 탭 진입 시 `POST /api/v1/speakers/voiceprints/backfill`로 과거 DIA voiceprint 연결을 1회 자동 시도합니다. 과거 task에 같은 speaker label voiceprint가 없으면 이후 한 번은 해당 화자의 이름을 회의 화면에서 다시 수정/저장해야 voiceprint enrollment가 됩니다.
 - 실제 현장 정확도는 발화 길이, 잡음, 마이크 품질, 화자 겹침, embedding backend에 영향을 받습니다. 운영 품질은 `HUGGINGFACE_TOKEN`으로 pyannote embedding 모델을 활성화했을 때 더 안정적입니다.
+
+### 추가 개선: 상태 표시, backfill, 오인식 방지, threshold 튜닝
+
+- `/speakers` create/update 응답에 `voiceprint_enrollment_status`, `voiceprint_sample_count`를 추가해 앱이 저장 결과를 구분합니다.
+- 앱 snackbar는 “화자 이름과 목소리 정보를 저장했습니다”와 “화자 이름은 저장했지만 목소리 샘플은 부족합니다”를 구분해 표시합니다.
+- voiceprint 자동 매칭된 transcript speaker는 `추정됨` 배지와 tooltip을 표시해 오인식 가능성을 사용자에게 알리고, tap-to-rename 보정 흐름을 유지합니다.
+- `POST /api/v1/speakers/voiceprints/backfill`로 기존 이름-only 전역 화자 프로필을 과거 DIA voiceprint에서 보강합니다.
+- `python -m backend.scripts.tune_voiceprint_threshold` 운영 스크립트로 실제 저장 voiceprint pair를 분석해 threshold 추천값을 계산합니다.
 
 ### 변경 파일
 
@@ -282,7 +290,10 @@ flutter run --release -d 00008150-000239020C08401C
 - `.venv/bin/python -m pytest backend/tests/unit/test_speakers_api.py backend/tests/unit/test_speakers_voice_api.py backend/tests/unit/test_speaker_voice_service.py backend/tests/unit/test_minutes_task.py backend/tests/unit/test_diarization_voiceprint.py -q --no-cov` → `68 passed`
 - `flutter test test/screens/result_screen_test.dart test/providers/result_provider_test.dart` → `42 passed`
 - `flutter test test/screens/result_screen_test.dart` → `30 passed`
+- `flutter test test/screens/result_screen_test.dart test/providers/result_provider_test.dart test/widgets/speaker_segment_test.dart` → `46 passed`
 - `flutter analyze` → `No issues found`
+- `.venv/bin/python -m pytest backend/tests/unit/test_speaker_voice_service.py backend/tests/unit/test_speakers_voice_api.py -q --no-cov` → `40 passed`
+- `python -m backend.scripts.tune_voiceprint_threshold` → `voiceprints=0`, `recommendation=insufficient-data`
 - acoustic voiceprint smoke → `{'backend': 'acoustic', 'dims': 48, 'same': 1.0, 'different': 0.7555}`
 - `5253fd6 Identify recurring speakers by voiceprint`, `f987bb4 Prompt for real speaker names automatically` pushed to `origin/main`.
 

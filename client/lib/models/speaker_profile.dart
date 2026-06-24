@@ -9,6 +9,8 @@ class SpeakerProfile {
   final String? role;
   final String? note;
   final String? taskId;
+  final String? voiceprintEnrollmentStatus;
+  final int? voiceprintSampleCount;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -20,6 +22,8 @@ class SpeakerProfile {
     this.role,
     this.note,
     this.taskId,
+    this.voiceprintEnrollmentStatus,
+    this.voiceprintSampleCount,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -33,6 +37,9 @@ class SpeakerProfile {
       role: json['role'] as String?,
       note: json['note'] as String?,
       taskId: json['task_id'] as String?,
+      voiceprintEnrollmentStatus:
+          json['voiceprint_enrollment_status'] as String?,
+      voiceprintSampleCount: json['voiceprint_sample_count'] as int?,
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
     );
@@ -91,4 +98,29 @@ class SpeakerProfileUpdate {
         if (enrollmentSpeakerLabel != null)
           'enrollment_speaker_label': enrollmentSpeakerLabel,
       };
+}
+
+class SpeakerVoiceprintBackfillResult {
+  final int scannedProfiles;
+  final int enrolledProfiles;
+  final int skippedProfiles;
+  final List<String> missingVoiceprints;
+
+  const SpeakerVoiceprintBackfillResult({
+    required this.scannedProfiles,
+    required this.enrolledProfiles,
+    required this.skippedProfiles,
+    this.missingVoiceprints = const [],
+  });
+
+  factory SpeakerVoiceprintBackfillResult.fromJson(Map<String, dynamic> json) {
+    return SpeakerVoiceprintBackfillResult(
+      scannedProfiles: json['scanned_profiles'] as int? ?? 0,
+      enrolledProfiles: json['enrolled_profiles'] as int? ?? 0,
+      skippedProfiles: json['skipped_profiles'] as int? ?? 0,
+      missingVoiceprints: (json['missing_voiceprints'] as List<dynamic>? ?? [])
+          .map((e) => e.toString())
+          .toList(),
+    );
+  }
 }

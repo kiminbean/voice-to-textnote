@@ -135,8 +135,17 @@ void main() {
         speakerLabel: 'SPEAKER_00',
         displayName: '영자',
         taskId: null,
+        voiceprintEnrollmentStatus: 'enrolled',
+        voiceprintSampleCount: 1,
         createdAt: DateTime(2026, 6, 24),
         updatedAt: DateTime(2026, 6, 24),
+      ),
+    );
+    when(() => mockSpeakerApi.backfillVoiceprints()).thenAnswer(
+      (_) async => const SpeakerVoiceprintBackfillResult(
+        scannedProfiles: 0,
+        enrolledProfiles: 0,
+        skippedProfiles: 0,
       ),
     );
     when(() => mockSumApi.createMindMap(any())).thenAnswer(
@@ -388,6 +397,65 @@ void main() {
       expect(payload.speakerLabel, 'SPEAKER_00');
       expect(payload.displayName, '영자');
       expect(payload.enrollmentTaskId, 'min-task-001');
+      expect(find.text('화자 이름과 목소리 정보를 저장했습니다'), findsOneWidget);
+    });
+
+    testWidgets('목소리 기반 자동 매칭 이름은 추정됨 배지를 표시해야 함',
+        (WidgetTester tester) async {
+      when(() => mockMinApi.getResult('min-task-001')).thenAnswer((_) async => {
+            'segments': [
+              {
+                'speaker_id': 'SPEAKER_03',
+                'speaker_name': 'Speaker 3',
+                'identified_speaker_name': '영자',
+                'voiceprint_similarity': 0.86,
+                'text': '다시 만났습니다.',
+                'start': 0.0,
+                'end': 3.0,
+              },
+            ],
+          });
+
+      await tester.pumpWidget(buildTestWidget([]));
+      await tester.pumpAndSettle();
+
+      await tester.tap(_tabText('회의 내용'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('영자'), findsOneWidget);
+      expect(find.text('추정됨'), findsOneWidget);
+      expect(find.text('이 화자의 이름을 알려주세요'), findsNothing);
+    });
+
+    testWidgets('회의 내용 진입 시 기존 화자 voiceprint 보강을 한 번 시도해야 함',
+        (WidgetTester tester) async {
+      when(() => mockMinApi.getResult('min-task-001')).thenAnswer((_) async => {
+            'segments': [
+              {
+                'speaker_id': 'SPEAKER_00',
+                'speaker_name': '영자',
+                'text': '안녕하세요.',
+                'start': 0.0,
+                'end': 2.0,
+              },
+            ],
+          });
+      when(() => mockSpeakerApi.backfillVoiceprints()).thenAnswer(
+        (_) async => const SpeakerVoiceprintBackfillResult(
+          scannedProfiles: 2,
+          enrolledProfiles: 1,
+          skippedProfiles: 1,
+        ),
+      );
+
+      await tester.pumpWidget(buildTestWidget([]));
+      await tester.pumpAndSettle();
+
+      await tester.tap(_tabText('회의 내용'));
+      await tester.pumpAndSettle();
+
+      verify(() => mockSpeakerApi.backfillVoiceprints()).called(1);
+      expect(find.text('기존 화자 1명의 목소리 정보를 보강했습니다'), findsOneWidget);
     });
   });
 

@@ -12,6 +12,8 @@
 | RESULT-004 | Sales tab shows retry while generating | ✅ Fixed | Sales Contact Brief generation can take >30s; create request now uses 2-minute receive timeout. |
 | RESULT-005 | Default `Speaker N` names are not guided or saved | ✅ Fixed | Opening the meeting transcript now automatically prompts for real names when default Speaker labels remain. Manual tap-to-rename also still works. |
 | RESULT-006 | Same real person may return as a different `Speaker N` in a later recording | ✅ Fixed | Renaming a speaker now enrolls the current task's voiceprint. Later diarization labels are matched by voiceprint and rendered with the saved real name when similarity passes the server threshold. |
+| RESULT-007 | Voiceprint enrollment/match state is invisible | ✅ Fixed | Save snackbar now distinguishes name+voice saved from name-only saved; automatic voice matches show a `추정됨` badge with correction guidance. |
+| RESULT-008 | Existing name-only speakers need voiceprint backfill | ✅ Fixed | Transcript tab runs one opportunistic backfill call and reports how many existing speakers were enriched. |
 
 ### Changes Made
 
@@ -41,10 +43,17 @@
    - Tracks already prompted speaker ids so the same default speaker does not repeatedly reopen stacked dialogs.
    - Saves renamed speakers through `/speakers` as global profiles for reuse in later meetings.
    - Sends the current meeting task id and speaker label so the backend can enroll the speaker voiceprint from the recording.
+   - Shows enrollment-specific save messages.
+   - Runs one automatic voiceprint backfill when the transcript tab opens.
 
 8. **lib/models/speaker_profile.dart**
    - Added optional enrollment task fields to create/update payloads.
+   - Added optional voiceprint enrollment status and backfill result models.
    - Keeps the existing speaker profile API shape backward-compatible when enrollment metadata is absent.
+
+9. **lib/widgets/speaker_segment.dart**
+   - Shows a `추정됨` badge for voiceprint-matched speaker names.
+   - Tooltip explains that the name is voice-based automatic matching and can be corrected by tapping the speaker name.
 
 ### Verification
 
@@ -52,7 +61,7 @@
 - `flutter test test/providers/result_provider_test.dart test/providers/study_pack_provider_test.dart test/providers/sales_contact_brief_provider_test.dart test/services/study_pack_api_test.dart test/services/sales_contact_brief_api_test.dart` → `All tests passed`
 - `flutter test test/providers/result_provider_test.dart test/screens/result_screen_test.dart` → `42 passed`
 - `flutter test test/screens/result_screen_test.dart test/providers/result_provider_test.dart` → `42 passed`
-- `flutter test test/screens/result_screen_test.dart` → `30 passed`
+- `flutter test test/screens/result_screen_test.dart test/providers/result_provider_test.dart test/widgets/speaker_segment_test.dart` → `46 passed`
 - `flutter analyze` → `No issues found`
 - `flutter analyze ...` → `No issues found`
 - USB/wireless detected iPhone release install: `flutter run --release -d 00008150-000239020C08401C`

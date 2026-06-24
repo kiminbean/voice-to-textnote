@@ -23,6 +23,8 @@ class SpeakerSegment extends StatelessWidget {
   final Duration? startTime;
   final Duration? endTime;
   final int speakerIndex;
+  final bool isEstimatedSpeaker;
+  final double? voiceprintSimilarity;
   final String? searchQuery;
   final bool isHighlighted;
   final VoidCallback? onSpeakerTap;
@@ -34,6 +36,8 @@ class SpeakerSegment extends StatelessWidget {
     this.startTime,
     this.endTime,
     this.speakerIndex = 0,
+    this.isEstimatedSpeaker = false,
+    this.voiceprintSimilarity,
     this.searchQuery,
     this.isHighlighted = false,
     this.onSpeakerTap,
@@ -75,6 +79,30 @@ class SpeakerSegment extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
+                  if (isEstimatedSpeaker) ...[
+                    const SizedBox(height: 4),
+                    Tooltip(
+                      message: voiceprintSimilarity == null
+                          ? '목소리 기반 자동 매칭입니다. 틀리면 이름을 눌러 수정하세요.'
+                          : '목소리 유사도 ${(voiceprintSimilarity! * 100).round()}% 자동 매칭입니다. 틀리면 이름을 눌러 수정하세요.',
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 5, vertical: 1),
+                        decoration: BoxDecoration(
+                          borderRadius: AppRadius.brSm,
+                          border: Border.all(color: color.withAlpha(130)),
+                        ),
+                        child: Text(
+                          '추정됨',
+                          style: TextStyle(
+                            color: color,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                   if (startTime != null) ...[
                     const SizedBox(height: 4),
                     Text(

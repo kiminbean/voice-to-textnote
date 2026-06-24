@@ -25,6 +25,7 @@ from backend.schemas.speaker import (
     SpeakerProfileListResponse,
     SpeakerProfileResponse,
     SpeakerProfileUpdate,
+    SpeakerVoiceprintBackfillResponse,
     VoiceCharacteristics,
     VoiceProfileCreateRequest,
     VoiceSampleAnalyzeResponse,
@@ -45,6 +46,40 @@ def get_speaker_voice_service() -> SpeakerVoiceService:
     return SpeakerVoiceService()
 
 
+async def _speaker_response(
+    profile,
+    voice_svc: SpeakerVoiceService,
+    db: AsyncSession,
+    *,
+    enrollment_attempted: bool = False,
+    enrollment_succeeded: bool = False,
+) -> SpeakerProfileResponse:
+    count = await voice_svc.voiceprint_sample_count(db, profile.id)
+    status_value: str | None
+    if enrollment_succeeded:
+        status_value = "enrolled"
+    elif enrollment_attempted:
+        status_value = "unavailable"
+    elif count > 0:
+        status_value = "already_enrolled"
+    else:
+        status_value = None
+
+    return SpeakerProfileResponse(
+        id=profile.id,
+        user_id=profile.user_id,
+        speaker_label=profile.speaker_label,
+        display_name=profile.display_name,
+        role=profile.role,
+        note=profile.note,
+        task_id=profile.task_id,
+        voiceprint_enrollment_status=status_value,
+        voiceprint_sample_count=count,
+        created_at=profile.created_at,
+        updated_at=profile.updated_at,
+    )
+
+
 @router.post(
     "",
     response_model=SpeakerProfileResponse,
@@ -59,15 +94,40 @@ async def create_speaker(
 ) -> SpeakerProfileResponse:
     """REQ-SPEAKER-001: 화자 프로필 생성."""
     profile = await svc.create(db, user.id, payload)
+    enrolled = False
     if payload.enrollment_task_id:
-        await voice_svc.enroll_from_task(
-            db,
-            profile.id,
-            user.id,
-            source_task_id=payload.enrollment_task_id,
-            source_speaker_label=payload.speaker_label,
+        enrolled = (
+            await voice_svc.enroll_from_task(
+                db,
+                profile.id,
+                user.id,
+                source_task_id=payload.enrollment_task_id,
+                source_speaker_label=payload.speaker_label,
+            )
+            is not None
         )
-    return SpeakerProfileResponse.model_validate(profile)
+    return await _speaker_response(
+        profile,
+        voice_svc,
+        db,
+        enrollment_attempted=payload.enrollment_task_id is not None,
+        enrollment_succeeded=enrolled,
+    )
+
+
+@router.post(
+    "/voiceprints/backfill",
+    response_model=SpeakerVoiceprintBackfillResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def backfill_speaker_voiceprints(
+    db: AsyncSession = Depends(get_db_session),
+    user: User = Depends(get_current_user),
+    voice_svc: SpeakerVoiceService = Depends(get_speaker_voice_service),
+) -> SpeakerVoiceprintBackfillResponse:
+    """기존 전역 화자 프로필에 과거 task voiceprint를 연결한다."""
+    result = await voice_svc.backfill_missing_voiceprints(db, user.id)
+    return SpeakerVoiceprintBackfillResponse(**result)
 
 
 @router.get("", response_model=SpeakerProfileListResponse)
@@ -98,10 +158,11 @@ async def list_speakers(
         limit=page_size,
         offset=offset,
     )
-    return SpeakerProfileListResponse(
-        items=[SpeakerProfileResponse.model_validate(item) for item in items],
-        total=total,
-    )
+    responses = [
+        await _speaker_response(item, SpeakerVoiceService(), db)
+        for item in items
+    ]
+    return SpeakerProfileListResponse(items=responses, total=total)
 
 
 @router.get("/{speaker_id}", response_model=SpeakerProfileResponse)
@@ -110,9 +171,10 @@ async def get_speaker(
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(get_current_user),
     svc: SpeakerService = Depends(get_speaker_service),
+    voice_svc: SpeakerVoiceService = Depends(get_speaker_voice_service),
 ) -> SpeakerProfileResponse:
     profile = await svc.get_by_id(db, speaker_id, user.id)
-    return SpeakerProfileResponse.model_validate(profile)
+    return await _speaker_response(profile, voice_svc, db)
 
 
 @router.patch("/{speaker_id}", response_model=SpeakerProfileResponse)
@@ -125,15 +187,25 @@ async def update_speaker(
     voice_svc: SpeakerVoiceService = Depends(get_speaker_voice_service),
 ) -> SpeakerProfileResponse:
     profile = await svc.update(db, speaker_id, user.id, payload)
+    enrolled = False
     if payload.enrollment_task_id:
-        await voice_svc.enroll_from_task(
-            db,
-            profile.id,
-            user.id,
-            source_task_id=payload.enrollment_task_id,
-            source_speaker_label=payload.enrollment_speaker_label or profile.speaker_label,
+        enrolled = (
+            await voice_svc.enroll_from_task(
+                db,
+                profile.id,
+                user.id,
+                source_task_id=payload.enrollment_task_id,
+                source_speaker_label=payload.enrollment_speaker_label or profile.speaker_label,
+            )
+            is not None
         )
-    return SpeakerProfileResponse.model_validate(profile)
+    return await _speaker_response(
+        profile,
+        voice_svc,
+        db,
+        enrollment_attempted=payload.enrollment_task_id is not None,
+        enrollment_succeeded=enrolled,
+    )
 
 
 @router.delete("/{speaker_id}", status_code=status.HTTP_204_NO_CONTENT)

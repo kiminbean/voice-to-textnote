@@ -17,6 +17,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import pytest_asyncio
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 import backend.db.auth_models  # noqa: F401
@@ -298,6 +299,47 @@ class TestVoiceprintEnrollment:
         assert voice is not None
         assert voice.features["voiceprint"]["embedding"] == [0.0, 1.0, 0.0]
         assert voice.features["voiceprint"]["last_source_speaker_label"] == "SPEAKER_02"
+
+    @pytest.mark.asyncio
+    async def test_backfill_missing_voiceprints_from_owned_task(
+        self,
+        svc,
+        db_session,
+        seeded_speaker,
+    ):
+        dia = TaskResult(
+            task_id="dia-backfill-001",
+            task_type="diarization",
+            status="completed",
+            input_metadata={"user_id": str(seeded_speaker.user_id)},
+            result_data={
+                "voiceprints": {
+                    "SPEAKER_00": {
+                        "embedding": [0.0, 0.0, 1.0],
+                        "embedding_backend": "test",
+                    }
+                }
+            },
+        )
+        db_session.add(dia)
+        await db_session.commit()
+
+        result = await svc.backfill_missing_voiceprints(
+            db_session,
+            seeded_speaker.user_id,
+        )
+
+        assert result["scanned_profiles"] == 1
+        assert result["enrolled_profiles"] == 1
+        assert result["missing_voiceprints"] == []
+        voice = (
+            await db_session.execute(
+                select(SpeakerVoiceProfile).where(
+                    SpeakerVoiceProfile.speaker_profile_id == seeded_speaker.id
+                )
+            )
+        ).scalar_one()
+        assert voice.features["voiceprint"]["embedding"] == [0.0, 0.0, 1.0]
 
 
 # ===========================================================================

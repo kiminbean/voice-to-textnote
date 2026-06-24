@@ -20,6 +20,8 @@ class TranscriptSegment {
   final double start;
   final double end;
   final int speakerIndex;
+  final bool isEstimatedSpeaker;
+  final double? voiceprintSimilarity;
 
   const TranscriptSegment({
     this.speakerId,
@@ -28,16 +30,23 @@ class TranscriptSegment {
     required this.start,
     required this.end,
     this.speakerIndex = 0,
+    this.isEstimatedSpeaker = false,
+    this.voiceprintSimilarity,
   });
 
   factory TranscriptSegment.fromJson(Map<String, dynamic> json, int index) =>
       TranscriptSegment(
         speakerId: json['speaker_id'] as String?,
-        speakerName: json['speaker_name'] as String? ?? '알 수 없음',
+        speakerName: json['identified_speaker_name'] as String? ??
+            json['speaker_name'] as String? ??
+            '알 수 없음',
         text: json['text'] as String? ?? '',
         start: (json['start'] as num?)?.toDouble() ?? 0.0,
         end: (json['end'] as num?)?.toDouble() ?? 0.0,
         speakerIndex: index,
+        isEstimatedSpeaker: json['identified_speaker_name'] != null,
+        voiceprintSimilarity:
+            (json['voiceprint_similarity'] as num?)?.toDouble(),
       );
 }
 
@@ -126,6 +135,8 @@ final transcriptSegmentsProvider =
       start: seg.start,
       end: seg.end,
       speakerIndex: seen[key]!,
+      isEstimatedSpeaker: seg.isEstimatedSpeaker,
+      voiceprintSimilarity: seg.voiceprintSimilarity,
     );
   }).toList();
 });

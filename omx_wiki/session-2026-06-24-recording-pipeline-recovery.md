@@ -40,8 +40,12 @@ Fixed a chain of production-like local issues around authenticated meeting histo
 - When a user corrects `Speaker N` to a real name in the meeting screen, the client sends the current task id and speaker label; the server follows the minutes task to its DIA task and enrolls that voiceprint into the global speaker voice profile.
 - The automatic prompt path and manual tap path share the same save/enrollment API call.
 - Future recordings compare fresh speaker embeddings against saved global voiceprints. If cosine similarity passes `SPEAKER_VOICEPRINT_SIMILARITY_THRESHOLD`, the saved display name is applied even if the new diarization label is `Speaker 3` or another automatic label.
+- Speaker save responses now expose enrollment status so the app can tell the user whether both name and voice information were saved or only the name was saved.
+- The transcript tab runs one opportunistic backfill call to connect older name-only global speaker profiles to historical DIA voiceprints.
+- Voiceprint-matched speakers show a `추정됨` badge and correction tooltip to reduce silent false-positive risk.
+- `backend/scripts/tune_voiceprint_threshold.py` analyzes stored voiceprint pairs and prints a recommended threshold when enough real recordings exist.
 - The backend prefers `pyannote/embedding`; if model loading fails because the Hugging Face token or model access is unavailable, it falls back to local acoustic embedding so the pipeline stays functional.
-- Existing global speaker names that were saved before this change do not have voiceprints until the user corrects/saves that speaker once from a recording that contains DIA voiceprints.
+- Existing global speaker names that were saved before this change are backfilled when historical matching voiceprints exist; otherwise the user must correct/save that speaker once from a recording that contains DIA voiceprints.
 
 ## Representative Recovered Tasks
 
@@ -68,6 +72,7 @@ Fixed a chain of production-like local issues around authenticated meeting histo
 - Voiceprint tests: `68 passed` across speaker APIs, voice service, minutes worker, and DIA voiceprint matching.
 - Voiceprint smoke: acoustic fallback produced 48-dimensional embeddings; same segment similarity `1.0`, different segment similarity `0.7555`.
 - Automatic speaker-name prompt UI: `flutter test test/screens/result_screen_test.dart` -> `30 passed`; `flutter analyze` -> no issues.
+- Voiceprint improvement pass: backend speaker voice tests -> `40 passed`; Flutter result/provider/widget tests -> `46 passed`; threshold tuning script -> `recommendation=insufficient-data` on current local DB.
 - Commits pushed: `5253fd6 Identify recurring speakers by voiceprint`, `f987bb4 Prompt for real speaker names automatically`.
 
 ## iPhone Build

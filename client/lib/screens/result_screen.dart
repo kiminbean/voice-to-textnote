@@ -786,6 +786,7 @@ class _TranscriptTabState extends ConsumerState<_TranscriptTab> {
   final _scrollController = ScrollController();
   final Set<String> _promptedDefaultSpeakerIds = <String>{};
   bool _renameDialogOpen = false;
+  bool _voiceprintBackfillAttempted = false;
 
   void _updateSearch(String query, String content) {
     setState(() {
@@ -845,6 +846,7 @@ class _TranscriptTabState extends ConsumerState<_TranscriptTab> {
           );
         }
 
+        _scheduleVoiceprintBackfill();
         _scheduleDefaultSpeakerNamePrompt(segments);
         return _buildSegmentList(segments);
       },
@@ -935,6 +937,8 @@ class _TranscriptTabState extends ConsumerState<_TranscriptTab> {
                   startTime: Duration(milliseconds: (seg.start * 1000).round()),
                   endTime: Duration(milliseconds: (seg.end * 1000).round()),
                   speakerIndex: seg.speakerIndex,
+                  isEstimatedSpeaker: seg.isEstimatedSpeaker,
+                  voiceprintSimilarity: seg.voiceprintSimilarity,
                   searchQuery: _searchQuery,
                   isHighlighted: isActive,
                   onSpeakerTap: () => _showRenameDialog(segments, index),
@@ -1023,6 +1027,30 @@ class _TranscriptTabState extends ConsumerState<_TranscriptTab> {
         );
       }
     }
+  }
+
+  void _scheduleVoiceprintBackfill() {
+    if (_voiceprintBackfillAttempted) return;
+    _voiceprintBackfillAttempted = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      try {
+        final result = await ref.read(speakerApiProvider).backfillVoiceprints();
+        if (!mounted || result.enrolledProfiles <= 0) return;
+        ref.invalidate(speakerListProvider(widget.taskId));
+        ref.invalidate(speakerNameMapProvider(widget.taskId));
+        if (widget.taskId != null) {
+          ref.invalidate(transcriptSegmentsProvider(widget.taskId!));
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('기존 화자 ${result.enrolledProfiles}명의 목소리 정보를 보강했습니다'),
+          ),
+        );
+      } catch (_) {
+        // Backfill is opportunistic; normal transcript viewing must not fail.
+      }
+    });
   }
 
   void _scheduleDefaultSpeakerNamePrompt(List<TranscriptSegment> segments) {
@@ -1127,6 +1155,8 @@ class _TranscriptTabState extends ConsumerState<_TranscriptTab> {
               start: segments[i].start,
               end: segments[i].end,
               speakerIndex: segments[i].speakerIndex,
+              isEstimatedSpeaker: false,
+              voiceprintSimilarity: segments[i].voiceprintSimilarity,
             );
           }
         }
@@ -1139,13 +1169,13 @@ class _TranscriptTabState extends ConsumerState<_TranscriptTab> {
     if (speakerId == null || widget.taskId == null) return;
 
     try {
-      await _upsertGlobalSpeakerName(speakerId, newName);
+      final saved = await _upsertGlobalSpeakerName(speakerId, newName);
       ref.invalidate(speakerListProvider(widget.taskId));
       ref.invalidate(speakerNameMapProvider(widget.taskId));
       ref.invalidate(transcriptSegmentsProvider(widget.taskId!));
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('화자 이름을 저장했습니다')),
+          SnackBar(content: Text(_speakerSaveMessage(saved))),
         );
       }
     } catch (e) {
@@ -1157,7 +1187,19 @@ class _TranscriptTabState extends ConsumerState<_TranscriptTab> {
     }
   }
 
-  Future<void> _upsertGlobalSpeakerName(
+  String _speakerSaveMessage(SpeakerProfile profile) {
+    switch (profile.voiceprintEnrollmentStatus) {
+      case 'enrolled':
+      case 'already_enrolled':
+        return '화자 이름과 목소리 정보를 저장했습니다';
+      case 'unavailable':
+        return '화자 이름은 저장했지만 목소리 샘플은 부족합니다';
+      default:
+        return '화자 이름을 저장했습니다';
+    }
+  }
+
+  Future<SpeakerProfile> _upsertGlobalSpeakerName(
       String speakerId, String displayName) async {
     final api = ref.read(speakerApiProvider);
     final profiles = await api.list();
@@ -1170,13 +1212,13 @@ class _TranscriptTabState extends ConsumerState<_TranscriptTab> {
     }
 
     if (existing == null) {
-      await api.create(SpeakerProfileCreate(
+      return api.create(SpeakerProfileCreate(
         speakerLabel: speakerId,
         displayName: displayName,
         enrollmentTaskId: widget.taskId,
       ));
     } else {
-      await api.update(
+      return api.update(
         existing.id,
         SpeakerProfileUpdate(
           displayName: displayName,
