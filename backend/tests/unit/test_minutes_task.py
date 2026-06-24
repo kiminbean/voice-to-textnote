@@ -265,6 +265,20 @@ class TestMinutesTaskHappyPath:
         assert "영자" in speaker_names_in_result
         assert "Speaker 1" not in speaker_names_in_result
 
+    def test_enrolled_voiceprint_profile_is_not_label_fallback(self):
+        """voiceprint 등록 프로필은 label 기본 이름으로 쓰지 않는다."""
+        from backend.workers.tasks.minutes_task import _has_enrolled_voiceprint
+
+        class Voice:
+            features = {"voiceprint": {"sample_count": 1}}
+
+        class NameOnlyVoice:
+            features = {}
+
+        assert _has_enrolled_voiceprint(Voice()) is True
+        assert _has_enrolled_voiceprint(NameOnlyVoice()) is False
+        assert _has_enrolled_voiceprint(None) is False
+
     def test_task_uses_voiceprint_identified_names_from_diarization(self):
         """DIA voiceprint 매칭 이름을 회의록 화자 이름에 적용."""
         from backend.workers.tasks.minutes_task import minutes_task

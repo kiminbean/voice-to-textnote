@@ -93,24 +93,28 @@ def _load_saved_speaker_names(user_id: str | None) -> dict[str, str]:
         from sqlalchemy import select
 
         from backend.db.speaker_models import SpeakerProfile
+        from backend.db.speaker_voice_models import SpeakerVoiceProfile
         from backend.db.sync_engine import get_sync_session
 
         owner_id = uuid.UUID(str(user_id))
         with get_sync_session() as session:
-            profiles = (
-                session.execute(
-                    select(SpeakerProfile).where(
-                        SpeakerProfile.user_id == owner_id,
-                        SpeakerProfile.task_id.is_(None),
-                    )
+            rows = session.execute(
+                select(SpeakerProfile, SpeakerVoiceProfile)
+                .outerjoin(
+                    SpeakerVoiceProfile,
+                    SpeakerVoiceProfile.speaker_profile_id == SpeakerProfile.id,
                 )
-                .scalars()
-                .all()
-            )
+                .where(
+                    SpeakerProfile.user_id == owner_id,
+                    SpeakerProfile.task_id.is_(None),
+                )
+            ).all()
             return {
                 profile.speaker_label: profile.display_name
-                for profile in profiles
-                if profile.speaker_label and profile.display_name
+                for profile, voice in rows
+                if profile.speaker_label
+                and profile.display_name
+                and not _has_enrolled_voiceprint(voice)
             }
     except Exception:
         logger.warning(
@@ -120,6 +124,16 @@ def _load_saved_speaker_names(user_id: str | None) -> dict[str, str]:
             category="speaker_profile",
         )
         return {}
+
+
+def _has_enrolled_voiceprint(voice: object | None) -> bool:
+    features = getattr(voice, "features", None)
+    if not isinstance(features, dict):
+        return False
+    voiceprint = features.get("voiceprint")
+    if not isinstance(voiceprint, dict):
+        return False
+    return int(voiceprint.get("sample_count") or 0) > 0
 
 
 def _merge_speaker_names(
@@ -366,7 +380,12 @@ def minutes_task(
                 guest_session_id=guest_session_id,
             )
         except Exception:
-            logger.warning("DB 결과 저장 실패 - Redis 캐시로 폴백", task_id=task_id, exc_info=True, category="db_fallback")
+            logger.warning(
+                "DB 결과 저장 실패 - Redis 캐시로 폴백",
+                task_id=task_id,
+                exc_info=True,
+                category="db_fallback",
+            )
 
         _update_task_status(task_id, TaskStatus.completed, 1.0, "회의록 생성 완료")
 
@@ -419,7 +438,12 @@ def minutes_task(
                 guest_session_id=guest_session_id,
             )
         except Exception:  # pragma: no cover
-            logger.warning("DB 결과 저장 실패 - Redis 캐시로 폴백", task_id=task_id, exc_info=True, category="db_fallback")
+            logger.warning(
+                "DB 결과 저장 실패 - Redis 캐시로 폴백",
+                task_id=task_id,
+                exc_info=True,
+                category="db_fallback",
+            )
 
         if user_id:
             from backend.app.workers.hooks.celery_push_hooks import fire_push_sync
@@ -463,7 +487,12 @@ def minutes_task(
                 guest_session_id=guest_session_id,
             )
         except Exception:  # pragma: no cover
-            logger.warning("DB 결과 저장 실패 - Redis 캐시로 폴백", task_id=task_id, exc_info=True, category="db_fallback")
+            logger.warning(
+                "DB 결과 저장 실패 - Redis 캐시로 폴백",
+                task_id=task_id,
+                exc_info=True,
+                category="db_fallback",
+            )
 
         if user_id:
             from backend.app.workers.hooks.celery_push_hooks import fire_push_sync

@@ -37,5 +37,8 @@ final speakerNameMapProvider =
     }
     rethrow;
   }
-  return {for (final p in profiles) p.speakerLabel: p.displayName};
+  return {
+    for (final p in profiles)
+      if ((p.voiceprintSampleCount ?? 0) <= 0) p.speakerLabel: p.displayName,
+  };
 });
