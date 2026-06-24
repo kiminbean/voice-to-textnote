@@ -784,6 +784,8 @@ class _TranscriptTabState extends ConsumerState<_TranscriptTab> {
   int _matchCount = 0;
   int _currentMatchIndex = 0;
   final _scrollController = ScrollController();
+  final Set<String> _promptedDefaultSpeakerIds = <String>{};
+  bool _renameDialogOpen = false;
 
   void _updateSearch(String query, String content) {
     setState(() {
@@ -843,6 +845,7 @@ class _TranscriptTabState extends ConsumerState<_TranscriptTab> {
           );
         }
 
+        _scheduleDefaultSpeakerNamePrompt(segments);
         return _buildSegmentList(segments);
       },
     );
@@ -1022,7 +1025,26 @@ class _TranscriptTabState extends ConsumerState<_TranscriptTab> {
     }
   }
 
+  void _scheduleDefaultSpeakerNamePrompt(List<TranscriptSegment> segments) {
+    if (_renameDialogOpen) return;
+
+    final index = segments.indexWhere((segment) {
+      if (!_isDefaultSpeakerName(segment.speakerName)) return false;
+      final promptKey = segment.speakerId ?? segment.speakerName;
+      return !_promptedDefaultSpeakerIds.contains(promptKey);
+    });
+    if (index < 0) return;
+
+    final promptKey = segments[index].speakerId ?? segments[index].speakerName;
+    _promptedDefaultSpeakerIds.add(promptKey);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _renameDialogOpen) return;
+      _showRenameDialog(segments, index);
+    });
+  }
+
   void _showRenameDialog(List<TranscriptSegment> segments, int tappedIndex) {
+    _renameDialogOpen = true;
     final tapped = segments[tappedIndex];
     final controller = TextEditingController(text: tapped.speakerName);
     showDialog(
@@ -1072,7 +1094,9 @@ class _TranscriptTabState extends ConsumerState<_TranscriptTab> {
           ),
         ],
       ),
-    );
+    ).whenComplete(() {
+      _renameDialogOpen = false;
+    });
   }
 
   bool _isDefaultSpeakerName(String name) =>

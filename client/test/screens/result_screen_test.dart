@@ -355,7 +355,7 @@ void main() {
   });
 
   group('화자 이름 저장', () {
-    testWidgets('기본 Speaker 이름을 실제 이름으로 저장하도록 유도해야 함',
+    testWidgets('기본 Speaker 이름이 있으면 자동으로 실제 이름 저장을 유도해야 함',
         (WidgetTester tester) async {
       when(() => mockMinApi.getResult('min-task-001')).thenAnswer((_) async => {
             'segments': [
@@ -373,10 +373,6 @@ void main() {
       await tester.pumpAndSettle();
 
       await tester.tap(_tabText('회의 내용'));
-      await tester.pumpAndSettle();
-
-      await tester.ensureVisible(find.text('Speaker 1'));
-      await tester.tap(find.text('Speaker 1'));
       await tester.pumpAndSettle();
 
       expect(find.text('이 화자의 이름을 알려주세요'), findsOneWidget);
