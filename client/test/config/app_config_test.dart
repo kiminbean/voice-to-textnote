@@ -9,8 +9,9 @@ void main() {
       // --dart-define 없이 실행하면 staging 기본값 사용
       expect(
         AppConfig.apiBaseUrl,
-        equals('http://100.69.69.119:8000/api/v1'),
+        equals(AppConfig.stagingApiBaseUrl),
       );
+      expect(AppConfig.stagingApiBaseUrl, contains('100.69.69.119'));
     });
 
     test('Environment enum이 dev, staging, production 값을 가져야 한다', () {

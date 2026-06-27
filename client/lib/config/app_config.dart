@@ -15,6 +15,9 @@ enum Environment {
 }
 
 class AppConfig {
+  static const String stagingApiBaseUrl =
+      'http://100.69.69.119:8000/api/v1';
+
   // 컴파일 시 --dart-define=ENV=dev|staging|production 으로 주입 가능
   // 기본값: staging (기존 동작 유지)
   static const String _envName =
@@ -51,7 +54,7 @@ class AppConfig {
       case Environment.dev:
         return 'http://localhost:8000/api/v1';
       case Environment.staging:
-        return 'http://100.69.69.119:8000/api/v1';
+        return stagingApiBaseUrl;
       case Environment.production:
         return 'https://api.voicetextnote.com/api/v1';
     }
