@@ -26,6 +26,7 @@ class PipelineNotifier extends Notifier<PipelineState> {
   // pending 상태 장기 체류 감지 임계값 (연속 400회 = 20분)
   // STT/화자분리 모델 최초 로드(~2분) + 큐 대기 + 긴 오디오 전처리 시간 고려
   static const int _stalePendingThreshold = 400;
+  static const Duration _sseIdleTimeout = Duration(seconds: 10);
 
   @override
   PipelineState build() {
@@ -35,6 +36,7 @@ class PipelineNotifier extends Notifier<PipelineState> {
   // 파이프라인 취소 - 화면 종료 시 또는 명시적 취소 시 호출
   Future<void> cancelPipeline() async {
     _cancelled = true;
+    ref.read(sseServiceProvider).disconnect();
   }
 
   // 파이프라인 전체 처리 시작
@@ -181,61 +183,57 @@ class PipelineNotifier extends Notifier<PipelineState> {
     final sseService = ref.read(sseServiceProvider);
 
     try {
-      bool completedViaSse = false;
-      try {
-        await for (final event in sseService.connect(taskId)) {
-          if (_cancelled) {
-            throw Exception('파이프라인이 취소되었습니다');
-          }
-
-          final eventStatus = event['status'] as String?;
-          if (eventStatus == 'completed') {
-            completedViaSse = true;
-            return;
-          }
-          if (eventStatus == 'failed') {
-            final errMsg =
-                event['error_message'] ?? event['error'] ?? '알 수 없는 오류';
-            throw Exception('태스크 처리 실패: $errMsg');
-          }
-
-          // 서버에서 보고한 진행률을 UI에 반영 (폴링 경로와 동일한 보간 로직)
-          final serverProgress = event['progress'] as num?;
-          if (serverProgress != null && serverProgress > 0) {
-            final currentBase = state.progress;
-            const stepRange = 0.2;
-            final adjustedProgress =
-                currentBase + (serverProgress.toDouble() * stepRange);
-            if (adjustedProgress > state.progress) {
-              state = state.copyWith(
-                progress: adjustedProgress.clamp(0.0, 0.99),
-              );
-            }
-          }
+      final stream = sseService.connect(taskId).timeout(
+            _sseIdleTimeout,
+            onTimeout: (sink) => sink.close(),
+          );
+      await for (final event in stream) {
+        if (_cancelled) {
+          throw Exception('파이프라인이 취소되었습니다');
         }
-      } on Exception {
-        // 사용자 취소나 명시적 failure는 그대로 위로 전파
-        if (_cancelled) rethrow;
-        // 그 외 SSE 통신 실패(네트워크/서버 미지원)는 폴링 폴백
-        // 호출 직후 한 번 상태를 확인하고, 완료 아니면 기존 폴링으로 전환
-        final fallbackStatus = await getStatus();
-        if (fallbackStatus['status'] == 'completed') {
+
+        final eventStatus = event['status'] as String?;
+        if (eventStatus == 'completed') {
           return;
         }
-        await _pollUntilCompleted(getStatus);
-        return;
-      }
+        if (eventStatus == 'failed') {
+          final errMsg =
+              event['error_message'] ?? event['error'] ?? '알 수 없는 오류';
+          throw Exception('태스크 처리 실패: $errMsg');
+        }
 
-      // SSE 스트림이 자연 종료됐지만 completed 이벤트가 없었던 경우 (드뭄)
-      if (!completedViaSse) {
-        final finalStatus = await getStatus();
-        if (finalStatus['status'] != 'completed') {
-          // 안전망: 폴링으로 마무리 확인
-          await _pollUntilCompleted(getStatus);
+        // 서버에서 보고한 진행률을 UI에 반영 (폴링 경로와 동일한 보간 로직)
+        final serverProgress = event['progress'] as num?;
+        if (serverProgress != null && serverProgress > 0) {
+          final currentBase = state.progress;
+          const stepRange = 0.2;
+          final adjustedProgress =
+              currentBase + (serverProgress.toDouble() * stepRange);
+          if (adjustedProgress > state.progress) {
+            state = state.copyWith(
+              progress: adjustedProgress.clamp(0.0, 0.99),
+            );
+          }
         }
       }
-    } finally {
-      sseService.disconnect();
+    } on Exception {
+      // 사용자 취소나 명시적 failure는 그대로 위로 전파
+      if (_cancelled) rethrow;
+      // 그 외 SSE 통신 실패(네트워크/서버 미지원)는 폴링 폴백
+      // 호출 직후 한 번 상태를 확인하고, 완료 아니면 기존 폴링으로 전환
+      final fallbackStatus = await getStatus();
+      if (fallbackStatus['status'] == 'completed') {
+        return;
+      }
+      await _pollUntilCompleted(getStatus);
+      return;
+    }
+
+    // SSE 스트림이 종료됐지만 completed 이벤트가 없었던 경우.
+    // 서버가 이미 완료 이벤트를 보낸 뒤 연결되었거나 heartbeat만 오는 경우 폴링으로 전환한다.
+    final finalStatus = await getStatus();
+    if (finalStatus['status'] != 'completed') {
+      await _pollUntilCompleted(getStatus);
     }
   }
 
@@ -357,5 +355,27 @@ final pipelineProvider = NotifierProvider<PipelineNotifier, PipelineState>(
 );
 
 final sseServiceProvider = Provider<SseService>(
-  (_) => SseService(baseUrl: AppConfig.apiBaseUrl),
+  (ref) {
+    final authService = ref.watch(authServiceProvider);
+    return SseService(
+      baseUrl: AppConfig.apiBaseUrl,
+      headersProvider: () async {
+        if (AppConfig.apiKey.isNotEmpty) {
+          return {'X-API-Key': AppConfig.apiKey};
+        }
+
+        final accessToken = await authService.getAccessToken();
+        if (accessToken != null && accessToken.isNotEmpty) {
+          return {'Authorization': 'Bearer $accessToken'};
+        }
+
+        final guestToken = await authService.getGuestToken();
+        if (guestToken != null && guestToken.isNotEmpty) {
+          return {'Authorization': 'Bearer guest:$guestToken'};
+        }
+
+        return const {};
+      },
+    );
+  },
 );

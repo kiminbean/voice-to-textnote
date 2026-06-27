@@ -13,7 +13,6 @@ import 'package:voice_to_textnote/providers/meeting_list_provider.dart';
 import 'package:voice_to_textnote/providers/pipeline_provider.dart';
 import 'package:voice_to_textnote/providers/template_provider.dart';
 import 'package:voice_to_textnote/services/sse_service.dart';
-import 'package:voice_to_textnote/config/app_config.dart';
 import 'package:voice_to_textnote/theme/app_colors.dart';
 import 'package:voice_to_textnote/theme/app_spacing.dart';
 import 'package:voice_to_textnote/widgets/pipeline_progress.dart';
@@ -56,7 +55,7 @@ class _ProcessingScreenState extends ConsumerState<ProcessingScreen>
     );
 
     // SSE 서비스 초기화
-    _sseService = SseService(baseUrl: AppConfig.apiBaseUrl);
+    _sseService = ref.read(sseServiceProvider);
 
     // 파이프라인 시작 (Meeting의 audioFilePath 사용)
     WidgetsBinding.instance.addPostFrameCallback((_) {

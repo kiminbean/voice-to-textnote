@@ -17,7 +17,8 @@ void main() {
   setUpAll(() {
     // Uri fallback 등록
     registerFallbackValue(Uri.parse('http://localhost:8000'));
-    registerFallbackValue(http.Request('GET', Uri.parse('http://localhost:8000')));
+    registerFallbackValue(
+        http.Request('GET', Uri.parse('http://localhost:8000')));
   });
 
   late MockHttpClient mockClient;
@@ -48,10 +49,10 @@ void main() {
       // http 패키지의 ByteStream 사용
       final byteStream = http.ByteStream(streamController.stream);
       final mockResponse = MockStreamedResponse();
+      when(() => mockResponse.statusCode).thenReturn(200);
       when(() => mockResponse.stream).thenAnswer((_) => byteStream);
 
-      when(() => mockClient.send(any()))
-          .thenAnswer((_) async {
+      when(() => mockClient.send(any())).thenAnswer((_) async {
         // 비동기로 데이터 전송
         Future.microtask(() {
           for (final chunk in sseData) {
@@ -79,8 +80,7 @@ void main() {
     // 연결 실패 시 예외 전파 테스트
     test('SSE 연결 실패 시 예외를 던져야 함', () async {
       // Arrange
-      when(() => mockClient.send(any()))
-          .thenThrow(Exception('연결 실패'));
+      when(() => mockClient.send(any())).thenThrow(Exception('연결 실패'));
 
       // Act & Assert
       expect(
@@ -107,10 +107,10 @@ void main() {
 
       final byteStream = http.ByteStream(streamController.stream);
       final mockResponse = MockStreamedResponse();
+      when(() => mockResponse.statusCode).thenReturn(200);
       when(() => mockResponse.stream).thenAnswer((_) => byteStream);
 
-      when(() => mockClient.send(any()))
-          .thenAnswer((_) async {
+      when(() => mockClient.send(any())).thenAnswer((_) async {
         Future.microtask(() {
           for (final chunk in sseData) {
             streamController.add(utf8.encode(chunk));
@@ -129,6 +129,35 @@ void main() {
       // Assert: 유효한 이벤트만 수신
       expect(events, hasLength(1));
       expect(events[0]['status'], 'processing');
+    });
+
+    test('headersProvider가 반환한 인증 헤더를 요청에 포함해야 함', () async {
+      sseService = SseService(
+        baseUrl: 'http://localhost:8000',
+        clientFactory: () => mockClient,
+        headersProvider: () async => {'Authorization': 'Bearer token-001'},
+      );
+      when(() => mockClient.send(any())).thenAnswer(
+        (_) async => http.StreamedResponse(const Stream.empty(), 200),
+      );
+
+      await sseService.connect('task-123').toList();
+
+      final request = verify(() => mockClient.send(captureAny()))
+          .captured
+          .single as http.Request;
+      expect(request.headers['Authorization'], 'Bearer token-001');
+    });
+
+    test('성공 상태 코드가 아니면 예외를 던져 폴링 폴백을 가능하게 해야 함', () async {
+      when(() => mockClient.send(any())).thenAnswer(
+        (_) async => http.StreamedResponse(const Stream.empty(), 401),
+      );
+
+      expect(
+        () => sseService.connect('task-123').toList(),
+        throwsA(isA<http.ClientException>()),
+      );
     });
   });
 }
