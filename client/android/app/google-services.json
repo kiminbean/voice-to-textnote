@@ -12,7 +12,20 @@
           "package_name": "com.voicetextnote.app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "546416114080-fe259i7nfkdqcatii3rqu4bdfmflgiq5.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.voicetextnote.app",
+            "certificate_hash": "4aca83cdc7d163579d048cb7d82df67b0ebcbae6"
+          }
+        },
+        {
+          "client_id": "546416114080-rqu4hpn5rdes9dein5r2squenh17q646.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyBK_6Mz-WG1svjs-fuT3gXwiezp8snhs88"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "546416114080-rqu4hpn5rdes9dein5r2squenh17q646.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "546416114080-456ie1r6jeolaitjfheaflsko521tqt0.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.voicetextnote.app"
+              }
+            }
+          ]
         }
       }
     }

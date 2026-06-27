@@ -6,12 +6,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:go_router/go_router.dart';
 import 'package:voice_to_textnote/providers/auth_provider.dart';
+import 'package:voice_to_textnote/router/app_router.dart';
 import 'package:voice_to_textnote/screens/login_screen.dart';
 import 'package:voice_to_textnote/services/auth_api.dart';
 import 'package:voice_to_textnote/services/auth_service.dart';
 
 // Mock 클래스
 class MockAuthApi extends Mock implements AuthApi {}
+
 class MockAuthService extends Mock implements AuthService {}
 
 // 테스트용 GoRouter 래퍼
@@ -120,6 +122,14 @@ void main() {
 
       // createGuestSession이 호출되었는지 확인
       verify(() => mockAuthApi.createGuestSession()).called(1);
+    });
+
+    test('게스트 시작 후 로그인 화면에서는 홈으로 이동해야 함', () {
+      expect(authRedirect(const AuthState.guest(), '/login'), '/');
+    });
+
+    test('게스트 상태에서도 회원가입 화면 이동은 허용해야 함', () {
+      expect(authRedirect(const AuthState.guest(), '/register'), isNull);
     });
   });
 }

@@ -51,6 +51,8 @@ _GOOGLE_PAYLOAD = {
     "email": "test@gmail.com",
     "name": "테스트유저",
     "picture": "https://avatar.example.com/test.jpg",
+    "iss": "https://accounts.google.com",
+    "aud": "test-client-id",
 }
 
 _APPLE_PAYLOAD = {
@@ -101,6 +103,68 @@ class TestVerifyGoogleToken:
         assert result.avatar_url == "https://avatar.example.com/test.jpg"
 
     @pytest.mark.asyncio
+    async def test_multiple_client_ids_accepts_matching_audience(self):
+        """쉼표로 여러 Google client ID를 설정하면 일치하는 audience를 허용."""
+        with (
+            patch("backend.services.oauth_service.settings") as mock_settings,
+            patch("backend.services.oauth_service.httpx.AsyncClient") as mock_client_cls,
+            patch("backend.services.oauth_service.jwt") as mock_jwt,
+        ):
+            mock_settings.google_client_id = "android-client-id, web-client-id"
+
+            mock_resp = MagicMock()
+            mock_resp.json.return_value = _GOOGLE_CERTS
+            mock_resp.raise_for_status = MagicMock()
+            mock_client = AsyncMock()
+            mock_client.get.return_value = mock_resp
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock(return_value=False)
+            mock_client_cls.return_value = mock_client
+
+            mock_jwt.get_unverified_header.return_value = {"kid": "google-kid-123"}
+            mock_jwt.decode.return_value = {
+                **_GOOGLE_PAYLOAD,
+                "aud": "web-client-id",
+            }
+
+            result = await verify_google_token("fake-id-token")
+
+        assert result.provider_id == "google-user-123"
+        assert mock_jwt.decode.call_args.kwargs["options"] == {
+            "verify_aud": False,
+            "verify_at_hash": False,
+        }
+
+    @pytest.mark.asyncio
+    async def test_audience_mismatch_raises(self):
+        """설정되지 않은 aud 값이면 ValueError."""
+        with (
+            patch("backend.services.oauth_service.settings") as mock_settings,
+            patch("backend.services.oauth_service.httpx.AsyncClient") as mock_client_cls,
+            patch("backend.services.oauth_service.jwt") as mock_jwt,
+        ):
+            mock_settings.google_client_id = "web-client-id, ios-client-id"
+
+            mock_resp = MagicMock()
+            mock_resp.json.return_value = _GOOGLE_CERTS
+            mock_resp.raise_for_status = MagicMock()
+            mock_client = AsyncMock()
+            mock_client.get.return_value = mock_resp
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock(return_value=False)
+            mock_client_cls.return_value = mock_client
+
+            mock_jwt.get_unverified_header.return_value = {"kid": "google-kid-123"}
+            mock_jwt.get_unverified_claims.return_value = {"aud": "unexpected-client-id"}
+            mock_jwt.decode.return_value = {
+                **_GOOGLE_PAYLOAD,
+                "aud": "unexpected-client-id",
+            }
+
+            with pytest.raises(ValueError, match="audience"):
+                await verify_google_token("fake-id-token")
+
+    @pytest.mark.asyncio
     async def test_no_client_id_raises(self):
         """GOOGLE_CLIENT_ID 미설정 시 ValueError."""
         with patch("backend.services.oauth_service.settings") as mock_settings:
@@ -130,6 +194,31 @@ class TestVerifyGoogleToken:
 
             with pytest.raises(ValueError, match="kid"):
                 await verify_google_token("fake-id-token")
+
+    @pytest.mark.asyncio
+    async def test_malformed_header_raises_value_error(self):
+        """JWT 헤더 파싱 실패 시 API 레이어가 처리 가능한 ValueError로 변환."""
+        from jose import JWTError
+
+        with (
+            patch("backend.services.oauth_service.settings") as mock_settings,
+            patch("backend.services.oauth_service.httpx.AsyncClient") as mock_client_cls,
+            patch("backend.services.oauth_service.jwt") as mock_jwt,
+        ):
+            mock_settings.google_client_id = "test-client-id"
+            mock_resp = MagicMock()
+            mock_resp.json.return_value = _GOOGLE_CERTS
+            mock_resp.raise_for_status = MagicMock()
+            mock_client = AsyncMock()
+            mock_client.get.return_value = mock_resp
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock(return_value=False)
+            mock_client_cls.return_value = mock_client
+
+            mock_jwt.get_unverified_header.side_effect = JWTError("bad header")
+
+            with pytest.raises(ValueError, match="헤더 검증 실패"):
+                await verify_google_token("malformed-token")
 
     @pytest.mark.asyncio
     async def test_no_matching_key_raises(self):
@@ -173,7 +262,12 @@ class TestVerifyGoogleToken:
             mock_client_cls.return_value = mock_client
 
             mock_jwt.get_unverified_header.return_value = {"kid": "google-kid-123"}
-            mock_jwt.decode.return_value = {"sub": None, "email": None}
+            mock_jwt.decode.return_value = {
+                "sub": None,
+                "email": None,
+                "iss": "https://accounts.google.com",
+                "aud": "test-client-id",
+            }
 
             with pytest.raises(ValueError, match="필수 필드"):
                 await verify_google_token("fake-id-token")
@@ -226,6 +320,8 @@ class TestVerifyGoogleToken:
             mock_jwt.decode.return_value = {
                 "sub": "user-1",
                 "email": "myname@gmail.com",
+                "iss": "https://accounts.google.com",
+                "aud": "test-client-id",
             }
 
             result = await verify_google_token("fake-id-token")

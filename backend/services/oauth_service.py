@@ -32,6 +32,26 @@ class OAuthUserInfo:
     avatar_url: str | None = None
 
 
+def _google_audiences() -> list[str]:
+    """Return comma-separated Google OAuth client IDs accepted by the backend."""
+    raw_audiences = settings.google_client_id or ""
+    return [
+        audience.strip()
+        for audience in raw_audiences.split(",")
+        if audience.strip()
+    ]
+
+
+def _audience_matches(token_audience: str | list[str] | tuple[str, ...] | None, audiences: list[str]) -> bool:
+    if token_audience is None:
+        return False
+    if isinstance(token_audience, str):
+        token_audiences = {token_audience}
+    else:
+        token_audiences = {audience for audience in token_audience if isinstance(audience, str)}
+    return bool(token_audiences.intersection(audiences))
+
+
 async def verify_google_token(id_token: str) -> OAuthUserInfo:
     """
     Google ID token을 검증하고 사용자 정보를 반환합니다.
@@ -42,7 +62,8 @@ async def verify_google_token(id_token: str) -> OAuthUserInfo:
     3. iss(issuer) 일치 확인
     4. exp(만료) 확인
     """
-    if not settings.google_client_id:
+    audiences = _google_audiences()
+    if not audiences:
         raise ValueError("GOOGLE_CLIENT_ID가 설정되지 않았습니다")
 
     # Google 공개 키 가져오기
@@ -52,7 +73,10 @@ async def verify_google_token(id_token: str) -> OAuthUserInfo:
         certs = resp.json()
 
     # JWT 헤더에서 kid 추출 후 공개 키 선택
-    unverified_header = jwt.get_unverified_header(id_token)
+    try:
+        unverified_header = jwt.get_unverified_header(id_token)
+    except JWTError as e:
+        raise ValueError(f"Google ID token 헤더 검증 실패: {e}") from e
     kid = unverified_header.get("kid")
     if not kid:
         raise ValueError("Google ID token에 kid가 없습니다")
@@ -66,17 +90,38 @@ async def verify_google_token(id_token: str) -> OAuthUserInfo:
     if public_key is None:
         raise ValueError("Google 공개 키를 찾을 수 없습니다")
 
-    # JWT 검증 (서명, 만료, issuer, audience)
+    try:
+        unverified_claims = jwt.get_unverified_claims(id_token)
+    except JWTError:
+        unverified_claims = {}
+
+    # JWT 검증 (서명, 만료) 후 issuer/audience는 명시적으로 검사한다.
+    # python-jose의 audience/issuer 검증은 다중 네이티브 OAuth client ID를
+    # 허용하는 모바일 앱 구성에서 실패 원인 추적이 어렵기 때문에 분리한다.
     try:
         payload = jwt.decode(
             id_token,
             public_key,
             algorithms=["RS256"],
-            audience=settings.google_client_id,
-            issuer=_GOOGLE_ISSUERS,
+            options={"verify_aud": False, "verify_at_hash": False},
         )
     except JWTError as e:
         raise ValueError(f"Google ID token 검증 실패: {e}") from e
+
+    issuer = payload.get("iss")
+    if issuer not in _GOOGLE_ISSUERS:
+        raise ValueError(f"Google ID token issuer 불일치: {issuer}")
+
+    token_audience = payload.get("aud")
+    if not _audience_matches(token_audience, audiences):
+        logger.warning(
+            "Google ID token audience mismatch",
+            token_audience=token_audience or unverified_claims.get("aud"),
+            authorized_audience_count=len(audiences),
+            authorized_audience_suffixes=[audience.split(".")[0][-12:] for audience in audiences],
+            azp=payload.get("azp") or unverified_claims.get("azp"),
+        )
+        raise ValueError("Google ID token audience가 서버 설정과 일치하지 않습니다")
 
     sub = payload.get("sub")
     email = payload.get("email")
@@ -105,7 +150,10 @@ async def verify_apple_token(id_token: str) -> OAuthUserInfo:
     if not settings.apple_client_id or not settings.apple_team_id:
         raise ValueError("Apple Sign-In 설정(APPLE_CLIENT_ID, APPLE_TEAM_ID)이 필요합니다")
 
-    unverified_header = jwt.get_unverified_header(id_token)
+    try:
+        unverified_header = jwt.get_unverified_header(id_token)
+    except JWTError as e:
+        raise ValueError(f"Apple ID token 헤더 검증 실패: {e}") from e
     kid = unverified_header.get("kid")
     if not kid:
         raise ValueError("Apple ID token에 kid가 없습니다")

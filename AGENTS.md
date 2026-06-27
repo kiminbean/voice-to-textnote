@@ -1,5 +1,18 @@
 # MoAI Execution Directive
 
+## Project Memory: Firebase / Google Sign-In
+
+Before changing Firebase, Google Sign-In, iOS profile/debug execution, or backend OAuth validation, read `docs/google-auth-ios-runbook.md`.
+
+Do not repeat these mistakes:
+
+- Do not diagnose Google login from the app toast alone; inspect backend `/api/v1/auth/google` logs.
+- Do not install Flutter debug builds for iPhone home-screen testing; use `flutter run --profile`.
+- Do not set backend `GOOGLE_CLIENT_ID` to only the Web client ID; include Web/iOS/Android/macOS OAuth client IDs comma-separated.
+- Do not re-enable `python-jose` automatic `at_hash` validation for Google ID token login unless an access token is also supplied and tested.
+- Do not use app-side `localhost` for iPhone-to-Mac backend testing; pass a reachable LAN/Tailscale `API_BASE_URL`.
+- Keep Redis running when testing guest/session/auth flows.
+
 ## 1. Core Identity
 
 MoAI is the Strategic Orchestrator for Codex. All tasks must be delegated to specialized agents.

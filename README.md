@@ -15,6 +15,7 @@
 - [빠른 시작](#빠른-시작)
 - [API 엔드포인트](#api-엔드포인트)
 - [개발 설정](#개발-설정)
+- [Firebase / Google 로그인 운영 메모](#firebase--google-로그인-운영-메모)
 - [디렉토리 구조](#디렉토리-구조)
 - [라이선스](#라이선스)
 
@@ -242,6 +243,28 @@ flutter run -d chrome
 
 **API 문서**: http://localhost:8000/docs (Swagger UI)
 **Flutter 앱**: http://localhost:50505
+
+## Firebase / Google 로그인 운영 메모
+
+Firebase와 Google Sign-In 설정 및 iPhone 실기기 로그인 디버깅 절차는 `docs/google-auth-ios-runbook.md`를 우선 확인합니다.
+
+반복 실수를 막기 위한 핵심 규칙:
+
+- iPhone 홈 화면에서 직접 실행해 테스트할 앱은 Flutter debug 빌드가 아니라 profile 빌드로 설치합니다.
+- iPhone에서 로컬 백엔드에 붙을 때 앱의 `localhost`는 Mac이 아닙니다. `API_BASE_URL`은 Mac LAN/Tailscale IP를 사용합니다.
+- Google ID token 검증용 `GOOGLE_CLIENT_ID`는 Web/iOS/Android/macOS OAuth client ID를 쉼표로 모두 포함해야 합니다.
+- Google 로그인 실패 시 앱 메시지만 보지 말고 백엔드 `/api/v1/auth/google` 로그의 원인을 먼저 봅니다.
+- `Invalid audience`와 `No access_token provided to compare against at_hash claim`은 각각 다른 문제입니다. 자세한 원인과 해결은 runbook에 기록되어 있습니다.
+
+실기기 profile 설치 예:
+
+```bash
+cd client
+flutter run --profile \
+  -d 00008150-000239020C08401C \
+  --dart-define=ENV=dev \
+  --dart-define=API_BASE_URL=http://100.69.69.119:8000/api/v1
+```
 
 ### 서버 배포 (Ubuntu + systemd)
 

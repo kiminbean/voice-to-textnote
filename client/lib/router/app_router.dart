@@ -27,6 +27,32 @@ import 'package:voice_to_textnote/services/shared_import_service.dart';
 // 인증이 불필요한 공개 경로 목록
 const _publicPaths = ['/login', '/register'];
 
+String? authRedirect(AuthState authState, String currentPath) {
+  final isAuthenticated = authState.isAuthenticated;
+  // SPEC-GUEST-001: 게스트 모드도 홈 접근 허용
+  final isGuest = authState.isGuest;
+  final isLoading =
+      authState.isLoading || authState.status == AuthStatus.initial;
+
+  // 초기화/로딩 중에는 리다이렉트 없음
+  if (isLoading) return null;
+
+  final isPublicPath = _publicPaths.contains(currentPath);
+
+  // 미인증 + 비게스트 상태에서 보호된 경로 접근 시 로그인으로
+  if (!isAuthenticated && !isGuest && !isPublicPath) return '/login';
+
+  // 게스트 시작은 /login에서 발생하므로 상태 전환 직후 홈으로 보내야 한다.
+  // 단, /register는 게스트→회원가입 전환 흐름이라 계속 허용한다.
+  if (isGuest && currentPath == '/login') return '/';
+
+  // 인증(정식 로그인) 상태에서 공개 경로(로그인/회원가입) 접근 시 홈으로
+  // @MX:WARN: 게스트의 /register는 제외 — 게스트→회원가입 전환은 정상 플로우이므로 허용해야 함.
+  if (isAuthenticated && !isGuest && isPublicPath) return '/';
+
+  return null;
+}
+
 // @MX:ANCHOR: 앱 전역 라우터 - 인증 리다이렉트 로직 포함
 // @MX:REASON: goRouter는 ProviderScope 외부에서 생성되므로 ref를 직접 받아야 함
 GoRouter createRouter(ProviderContainer container) {
@@ -36,28 +62,8 @@ GoRouter createRouter(ProviderContainer container) {
     refreshListenable: _AuthStateNotifier(container),
     redirect: (context, state) {
       final authState = container.read(authStateProvider);
-      final isAuthenticated = authState.isAuthenticated;
-      // SPEC-GUEST-001: 게스트 모드도 홈 접근 허용
-      final isGuest = authState.isGuest;
-      final isLoading =
-          authState.isLoading || authState.status == AuthStatus.initial;
       final currentPath = state.uri.path;
-
-      // 초기화/로딩 중에는 리다이렉트 없음
-      if (isLoading) return null;
-
-      final isPublicPath = _publicPaths.contains(currentPath);
-
-      // 미인증 + 비게스트 상태에서 보호된 경로 접근 시 로그인으로
-      if (!isAuthenticated && !isGuest && !isPublicPath) return '/login';
-
-      // 인증(정식 로그인) 상태에서 공개 경로(로그인/회원가입) 접근 시 홈으로
-      // @MX:WARN: 게스트는 제외 — 게스트→회원가입 전환은 정상 플로우이므로 허용해야 함.
-      // 이전 코드는 (isAuthenticated || isGuest) 조건으로 게스트의 /register 이동을 차단하여
-      // "가입하기 버튼이 먹통"인 버그의 원인이 됨.
-      if (isAuthenticated && !isGuest && isPublicPath) return '/';
-
-      return null;
+      return authRedirect(authState, currentPath);
     },
     routes: [
       // 홈 화면 - 미팅 목록

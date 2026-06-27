@@ -1,4 +1,7 @@
 // 인증 상태 관리 프로바이더
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
@@ -47,6 +50,47 @@ class AuthState {
   bool get isLoading => status == AuthStatus.loading;
   // SPEC-GUEST-001: 게스트 여부 - 라우터와 홈 배너에서 사용
   bool get isGuest => status == AuthStatus.guest;
+}
+
+@visibleForTesting
+const googleIosClientId = String.fromEnvironment(
+  'GOOGLE_IOS_CLIENT_ID',
+  defaultValue:
+      '546416114080-456ie1r6jeolaitjfheaflsko521tqt0.apps.googleusercontent.com',
+);
+
+@visibleForTesting
+const googleMacosClientId = String.fromEnvironment(
+  'GOOGLE_MACOS_CLIENT_ID',
+  defaultValue:
+      '546416114080-qvu4stec0b25hl4bksrsl77rgb9bk7dg.apps.googleusercontent.com',
+);
+
+@visibleForTesting
+const googleServerClientId = String.fromEnvironment(
+  'GOOGLE_SERVER_CLIENT_ID',
+  defaultValue:
+      '546416114080-rqu4hpn5rdes9dein5r2squenh17q646.apps.googleusercontent.com',
+);
+
+@visibleForTesting
+String? googleClientIdForPlatform({
+  required bool isIOS,
+  bool isMacOS = false,
+}) {
+  if (isIOS) return googleIosClientId;
+  if (isMacOS) return googleMacosClientId;
+  return null;
+}
+
+@visibleForTesting
+bool isGoogleSignInConfiguredForPlatform({
+  required bool isIOS,
+  bool isMacOS = false,
+}) {
+  final clientId = googleClientIdForPlatform(isIOS: isIOS, isMacOS: isMacOS);
+  return googleServerClientId.isNotEmpty &&
+      (clientId == null || clientId.isNotEmpty);
 }
 
 // @MX:ANCHOR: 앱 전역 인증 상태를 관리하는 핵심 Notifier
@@ -229,7 +273,21 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> loginWithGoogle() async {
     state = const AuthState.loading();
     try {
-      final googleSignIn = GoogleSignIn();
+      if (!isGoogleSignInConfiguredForPlatform(isIOS: Platform.isIOS)) {
+        state = const AuthState.unauthenticated(
+          'Google 로그인 설정이 완료되지 않았습니다. OAuth 클라이언트 설정이 필요합니다.',
+        );
+        return;
+      }
+
+      final clientId = googleClientIdForPlatform(
+        isIOS: Platform.isIOS,
+        isMacOS: Platform.isMacOS,
+      );
+      final googleSignIn = GoogleSignIn(
+        clientId: clientId,
+        serverClientId: googleServerClientId,
+      );
       final googleAccount = await googleSignIn.signIn();
       if (googleAccount == null) {
         state = const AuthState.unauthenticated();
@@ -249,7 +307,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       final user = await _authApi.getMe(response.accessToken);
       state = AuthState.authenticated(user);
     } on Exception catch (e) {
-      state = AuthState.unauthenticated(_parseError(e));
+      state = AuthState.unauthenticated(_parseSocialLoginError(e, 'Google'));
     }
   }
 
@@ -284,7 +342,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       final user = await _authApi.getMe(response.accessToken);
       state = AuthState.authenticated(user);
     } on Exception catch (e) {
-      state = AuthState.unauthenticated(_parseError(e));
+      state = AuthState.unauthenticated(_parseSocialLoginError(e, 'Apple'));
     }
   }
 
@@ -316,6 +374,17 @@ class AuthNotifier extends StateNotifier<AuthState> {
       return '서버에 연결할 수 없습니다. 네트워크를 확인해주세요.';
     }
     return '오류가 발생했습니다. 다시 시도해주세요.';
+  }
+
+  String _parseSocialLoginError(Exception e, String provider) {
+    final msg = e.toString();
+    if (msg.contains('401') || msg.contains('Unauthorized')) {
+      return '$provider 인증에 실패했습니다. 잠시 후 다시 시도해주세요.';
+    }
+    if (msg.contains('SocketException') || msg.contains('connection')) {
+      return '서버에 연결할 수 없습니다. 네트워크를 확인해주세요.';
+    }
+    return '$provider 로그인 중 오류가 발생했습니다. 다시 시도해주세요.';
   }
 }
 
