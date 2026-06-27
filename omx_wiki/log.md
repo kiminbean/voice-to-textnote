@@ -1,5 +1,9 @@
 # Wiki Log
 
+## 2026-06-27
+
+- Added [[session-2026-06-27-iphone-backend-stt-recovery]] after stabilizing Google auth, deploying the `100.69.69.119` backend, fixing authenticated SSE progress handling, and confirming the iPhone release build works.
+
 ## 2026-06-24
 
 - Updated [[session-2026-06-24-recording-pipeline-recovery]] with the stale speaker-name precedence fix and Alembic/local SQLite recovery.

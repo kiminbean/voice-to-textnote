@@ -4,7 +4,7 @@ Date: 2026-06-27
 
 ## Summary
 
-Firebase project setup, Google Sign-In configuration, backend OAuth token validation, and iPhone profile-build testing were stabilized for `voice-to-textnote`.
+Firebase project setup, Google Sign-In configuration, backend OAuth token validation, and iPhone profile-build testing were stabilized for `voice-to-textnote`. Later in the same session, the STT processing flow that stalled at 20% on iPhone was diagnosed and fixed.
 
 ## Important Outcomes
 
@@ -18,6 +18,18 @@ Firebase project setup, Google Sign-In configuration, backend OAuth token valida
 - iOS local network and ATS development exceptions were added for local backend testing.
 - Backend Google token verification now accepts comma-separated OAuth audiences and disables `at_hash` auto-validation while still validating issuer/audience explicitly.
 - iPhone profile build was installed because debug builds cannot be launched directly from the home screen.
+- Backend server for the app is `http://100.69.69.119:8000/api/v1`.
+- Backend project on the server is `/Users/ibkim/Projects/voice-to-textnote`; local project is `/Users/ibkim/Project/voice-to-textnote`.
+- Commit `537a0ac` fixes the STT 20% stall by authenticating SSE task streams, allowing independent parallel SSE clients, and falling back to polling when SSE is idle or misses events.
+- iPhone release build was installed successfully with:
+
+```bash
+cd client
+flutter run --release --no-pub --no-resident \
+  -d 00008150-000239020C08401C \
+  --dart-define=ENV=dev \
+  --dart-define=API_BASE_URL=http://100.69.69.119:8000/api/v1
+```
 
 ## Failures And Lessons
 
@@ -30,10 +42,16 @@ Firebase project setup, Google Sign-In configuration, backend OAuth token valida
 | App showed email/password error for Google login | Social login errors need separate user-facing messages. |
 | Guest endpoint failed with 500 | Redis was not running. |
 | OpenAPI failed with 500 | Pydantic package files and metadata were out of sync. |
+| STT processing stayed at 20% | 20% means upload succeeded and the app is waiting for STT/DIA. The client SSE stream lacked bearer/guest auth, reused one HTTP client for parallel STT/DIA streams, and could wait too long before polling fallback. |
+| `flutter run --profile` failed with precompiled header cache error | Run `flutter clean`, regenerate Flutter metadata with `flutter pub get`, then rebuild. Restore unrelated generated/lock-file diffs before committing. |
 
 ## Canonical Runbook
 
-Use `docs/google-auth-ios-runbook.md`.
+Use:
+
+- `docs/google-auth-ios-runbook.md`
+- `docs/stt-processing-runbook.md`
+- `omx_wiki/session-2026-06-27-iphone-backend-stt-recovery.md`
 
 ## Verification Performed
 
@@ -41,6 +59,8 @@ Use `docs/google-auth-ios-runbook.md`.
 pytest backend/tests/unit/test_oauth_service.py -q --no-cov
 flutter analyze
 flutter test test/providers/auth_provider_google_test.dart test/config/ios_permission_config_test.dart
+flutter test --no-pub test/services/sse_service_test.dart test/providers/pipeline_provider_test.dart
+flutter analyze --no-pub
 ```
 
 Backend and Redis were running in tmux:
@@ -56,4 +76,13 @@ Expected endpoint checks:
 guest:200
 openapi:200
 PONG
+```
+
+Additional server verification for the STT/SSE fix:
+
+```text
+external_health:200
+external_openapi:200
+external_guest:200
+guest-authenticated SSE probe: HTTP 200 with status_update event
 ```

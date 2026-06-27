@@ -70,6 +70,16 @@ flutter run --profile \
   --dart-define=API_BASE_URL=http://100.69.69.119:8000/api/v1
 ```
 
+실기기에 최종 확인용으로 올릴 때는 release 빌드를 사용한다.
+
+```bash
+cd client
+flutter run --release --no-pub --no-resident \
+  -d 00008150-000239020C08401C \
+  --dart-define=ENV=dev \
+  --dart-define=API_BASE_URL=http://100.69.69.119:8000/api/v1
+```
+
 `flutter run --profile`이 VM service 연결 문제로 종료되더라도 앱 설치 자체가 완료되고 profile 앱 프로세스가 살아 있으면 홈 화면 실행은 가능하다.
 
 프로세스 확인:
@@ -131,6 +141,44 @@ openapi:200
 | `/openapi.json` 500 | `pydantic` 파일/메타데이터 버전 불일치 | 서버 Python에서 `pydantic[email]>=2.9` 재설치 |
 | 앱에서 로컬 API 접근 실패 가능 | iPhone의 `localhost`는 Mac이 아니며, iOS Local Network/ATS 설정 필요 | `API_BASE_URL`을 Mac LAN/Tailscale IP로 지정하고 `Info.plist`에 local network/ATS 예외 추가 |
 | `/api/v1/history` 401 `API Key 누락` | API key 보호 라우트 호출 | Google 로그인 실패와 별개. 로그인 디버깅 시 `/auth/google` 로그를 기준으로 판단 |
+| 녹음 후 `STT 처리중 20%`에서 멈춤 | 20%는 업로드 성공 후 STT/DIA 완료를 기다리는 지점이다. 클라이언트 SSE가 `Authorization`/guest 토큰 없이 연결했고, 병렬 STT/DIA 대기 중 하나의 SSE HTTP client를 공유했으며, 이벤트가 없을 때 폴링 fallback이 늦었다. | commit `537a0ac`처럼 SSE에 API key 또는 bearer/guest 인증 헤더를 넣고, 연결별 HTTP client를 사용하며, idle timeout 후 status polling으로 전환한다. |
+| iOS 빌드가 `FlutterEngine.h has been modified since the precompiled header`로 실패 | Xcode/Flutter precompiled header cache 불일치 | `flutter clean && flutter pub get --offline` 후 다시 빌드한다. 이 과정에서 `pubspec.lock`, `Podfile.lock`, generated registrant, SwiftPM `Package.resolved`가 흔들릴 수 있으므로 커밋 전 관련 없는 diff를 되돌린다. |
+
+## STT 20% 멈춤 진단 규칙
+
+앱 진행률 20%는 `PipelineStep.transcribing` 진입 직후다. 즉 파일 업로드는 성공했고, 앱이 STT task와 diarization task 완료를 기다리는 상태다.
+
+점검 순서:
+
+1. 앱이 최신 빌드인지 확인한다. `537a0ac` 이후 빌드여야 한다.
+2. 서버가 살아 있는지 확인한다.
+
+```bash
+curl -sS -o /tmp/vtt_health.out -w 'health:%{http_code}\n' http://100.69.69.119:8000/health
+curl -sS -o /tmp/vtt_openapi.out -w 'openapi:%{http_code}\n' http://100.69.69.119:8000/openapi.json
+curl -sS -o /tmp/vtt_guest.out -w 'guest:%{http_code}\n' -X POST http://100.69.69.119:8000/api/v1/auth/guest
+```
+
+기대값은 모두 `200`이다.
+
+3. 실제 짧은 WAV를 업로드해 STT와 DIA task가 `completed`까지 가는지 확인한다.
+4. SSE는 인증이 필요하다. guest 앱 경로에서는 `Authorization: Bearer guest:<guest_token>` 헤더가 있어야 `GET /api/v1/tasks/{task_id}/stream`이 `200 text/event-stream`을 반환한다.
+5. 서버 처리 자체가 완료되는데 앱만 멈추면 `client/lib/services/sse_service.dart`와 `client/lib/providers/pipeline_provider.dart`의 인증 헤더, 연결별 client, polling fallback을 먼저 본다.
+
+관련 파일:
+
+- `client/lib/services/sse_service.dart`
+- `client/lib/providers/pipeline_provider.dart`
+- `client/lib/screens/processing_screen.dart`
+- `client/test/services/sse_service_test.dart`
+
+관련 검증:
+
+```bash
+cd client
+flutter test --no-pub test/services/sse_service_test.dart test/providers/pipeline_provider_test.dart
+flutter analyze --no-pub
+```
 
 ## Google token 검증 원칙
 
