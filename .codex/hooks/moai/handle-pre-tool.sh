@@ -3,26 +3,78 @@
 # This script forwards stdin JSON to the moai hook pre-tool command.
 # Project-local hook: .claude/hooks/moai/pre-tool.sh
 
-# Create temp file to store stdin
+# Create temp files to store stdin and hook output
 temp_file=$(mktemp)
-trap 'rm -f "$temp_file"' EXIT
+output_file=$(mktemp)
+trap 'rm -f "$temp_file" "$output_file"' EXIT
 
 # Read stdin into temp file
 cat > "$temp_file"
 
+run_moai_pre_tool() {
+	"$@" hook pre-tool < "$temp_file" > "$output_file"
+	rc=$?
+
+	if [ "$rc" -ne 0 ]; then
+		cat "$output_file"
+		return "$rc"
+	fi
+
+	# Codex 0.142.x rejects the legacy Claude/MoAI
+	# hookSpecificOutput.permissionDecision="allow" value. In Codex,
+	# a successful PreToolUse hook with no blocking decision is already
+	# an allow, so drop only that compatibility field.
+	if command -v node &> /dev/null; then
+		node - "$output_file" <<'NODE'
+const fs = require("fs");
+const path = process.argv[2];
+const raw = fs.readFileSync(path, "utf8");
+if (!raw.trim()) {
+  process.exit(0);
+}
+
+try {
+  const data = JSON.parse(raw);
+  const specific = data && typeof data === "object" ? data.hookSpecificOutput : null;
+  if (specific && specific.permissionDecision === "allow") {
+    delete specific.permissionDecision;
+    if ("permissionDecisionReason" in specific && !specific.permissionDecisionReason) {
+      delete specific.permissionDecisionReason;
+    }
+  }
+
+  const topKeys = Object.keys(data);
+  const specificKeys = specific && typeof specific === "object" ? Object.keys(specific) : [];
+  if (topKeys.length === 1 && topKeys[0] === "hookSpecificOutput" && specificKeys.length === 1 && specific.hookEventName === "PreToolUse") {
+    process.exit(0);
+  }
+
+  process.stdout.write(`${JSON.stringify(data)}\n`);
+} catch {
+  process.stdout.write(raw);
+}
+NODE
+	else
+		cat "$output_file"
+	fi
+}
+
 # Try moai command in PATH
 if command -v moai &> /dev/null; then
-	exec moai hook pre-tool < "$temp_file"
+	run_moai_pre_tool moai
+	exit $?
 fi
 
 # Try detected Go bin path from initialization
 if [ -f "/Users/ibkim/go/bin/moai" ]; then
-	exec "/Users/ibkim/go/bin/moai" hook pre-tool < "$temp_file"
+	run_moai_pre_tool "/Users/ibkim/go/bin/moai"
+	exit $?
 fi
 
 # Try default ~/go/bin/moai
 if [ -f "$HOME/go/bin/moai" ]; then
-	exec "$HOME/go/bin/moai" hook pre-tool < "$temp_file"
+	run_moai_pre_tool "$HOME/go/bin/moai"
+	exit $?
 fi
 
 # Not found - exit silently (Claude Code handles missing hooks gracefully)
