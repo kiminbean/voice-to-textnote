@@ -8,7 +8,7 @@
 
 - iPhone device ID: `00008150-000239020C08401C`
 - Backend base URL: `http://100.69.69.119:8000/api/v1`
-- Local project path: `/Users/ibkim/Project/voice-to-textnote`
+- Local project path: `/Users/ibkim/Projects/voice-to-textnote`
 - Server project path: `/Users/ibkim/Projects/voice-to-textnote`
 - Latest confirmed fix commit: `537a0ac Keep STT progress from stalling on SSE gaps`
 
@@ -102,7 +102,7 @@ guest:200
 최종 성공한 릴리스 설치 명령:
 
 ```bash
-cd /Users/ibkim/Project/voice-to-textnote/client
+cd /Users/ibkim/Projects/voice-to-textnote/client
 flutter run --release --no-pub --no-resident \
   -d 00008150-000239020C08401C \
   --dart-define=ENV=dev \

@@ -19,7 +19,7 @@ Firebase project setup, Google Sign-In configuration, backend OAuth token valida
 - Backend Google token verification now accepts comma-separated OAuth audiences and disables `at_hash` auto-validation while still validating issuer/audience explicitly.
 - iPhone profile build was installed because debug builds cannot be launched directly from the home screen.
 - Backend server for the app is `http://100.69.69.119:8000/api/v1`.
-- Backend project on the server is `/Users/ibkim/Projects/voice-to-textnote`; local project is `/Users/ibkim/Project/voice-to-textnote`.
+- Backend project on the server is `/Users/ibkim/Projects/voice-to-textnote`; local project is `/Users/ibkim/Projects/voice-to-textnote`.
 - Commit `537a0ac` fixes the STT 20% stall by authenticating SSE task streams, allowing independent parallel SSE clients, and falling back to polling when SSE is idle or misses events.
 - iPhone release build was installed successfully with:
 

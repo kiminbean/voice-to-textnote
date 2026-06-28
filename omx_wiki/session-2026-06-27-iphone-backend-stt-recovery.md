@@ -8,7 +8,7 @@ The app was stabilized against the Tailscale backend `100.69.69.119`, Google sig
 
 ## Canonical Environment
 
-- Local repo: `/Users/ibkim/Project/voice-to-textnote`
+- Local repo: `/Users/ibkim/Projects/voice-to-textnote`
 - Server repo: `/Users/ibkim/Projects/voice-to-textnote`
 - Backend URL for app builds: `http://100.69.69.119:8000/api/v1`
 - iPhone UDID: `00008150-000239020C08401C`

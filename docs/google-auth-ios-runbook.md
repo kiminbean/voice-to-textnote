@@ -107,7 +107,7 @@ tmux new-session -d -s voice-to-textnote-redis \
   '/opt/homebrew/bin/redis-server --port 6379 --save "" --appendonly no'
 
 tmux new-session -d -s voice-to-textnote-server \
-  -c /Users/ibkim/Project/voice-to-textnote \
+  -c /Users/ibkim/Projects/voice-to-textnote \
   'PYTEST_CURRENT_TEST=server_startup HUGGINGFACE_TOKEN= python -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 2>&1 | tee -a logs/backend.log'
 ```
 
