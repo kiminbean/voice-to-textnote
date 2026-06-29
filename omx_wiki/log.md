@@ -1,5 +1,9 @@
 # Wiki Log
 
+## 2026-06-30
+
+- Added [[session-2026-06-30-apns-fcm-push]] after verifying iPhone APNs token readiness, backend iOS FCM token registration, Firebase Admin `mock_mode False`, and actual FCM/APNs send message id `projects/voice-to-textnote/messages/1782749586143713`.
+
 ## 2026-06-27
 
 - Added [[session-2026-06-27-iphone-backend-stt-recovery]] after stabilizing Google auth, deploying the `100.69.69.119` backend, fixing authenticated SSE progress handling, and confirming the iPhone release build works.

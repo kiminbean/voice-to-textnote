@@ -14,6 +14,8 @@
 - iPhone device ID: `00008150-000239020C08401C`
 - iPhone CoreDevice ID: `C7DD57C9-48FC-5362-B2FB-ED87CFFD51FA`
 - Local backend for iPhone profile build: `http://100.69.69.119:8000/api/v1`
+- Remote backend PC: Tailscale `100.69.69.119`, repo `/Users/ibkim/Projects/voice-to-textnote`
+- Last verified APNs/FCM commit: `25dce3d`
 
 ## Firebase 파일 위치
 
@@ -98,6 +100,67 @@ xcrun devicectl device process launch \
   com.voicetextnote.app
 ```
 
+## APNs / FCM 실기기 Push 규칙
+
+2026-06-30 기준 iPhone 실기기 개발 Push는 실제 FCM/APNs 전송까지 검증되었다.
+
+확인된 상태:
+
+- Xcode signing은 Automatic이다.
+- `client/ios/Runner.xcodeproj/project.pbxproj`가 `Runner/Runner.entitlements`를 사용한다.
+- `AppDelegate.swift`가 APNs registration을 호출하고, `didRegisterForRemoteNotificationsWithDeviceToken`에서 `Messaging.messaging().apnsToken`을 설정한다.
+- Flutter `PushNotificationService`는 iOS/macOS에서 FCM token 요청 전에 APNs token을 짧게 기다린다.
+- 앱은 백엔드 `/devices/register`에 `platform=ios`로 device token을 등록한다.
+- 실제 iPhone에서 `APNs 토큰 준비 완료`, `토픽 구독 완료: all`, `/api/v1/devices/register` 201이 확인되었다.
+
+프로필 빌드로 iPhone에 설치할 때:
+
+```bash
+cd client
+flutter run --profile --no-pub \
+  -d 00008150-000239020C08401C \
+  --dart-define=ENV=staging \
+  --dart-define=API_BASE_URL=http://100.69.69.119:8000/api/v1
+```
+
+원격 백엔드 PC의 Firebase Admin 설정:
+
+```text
+FIREBASE_CREDENTIALS_PATH=/Users/ibkim/secure/voice-to-textnote/firebase-adminsdk-fbsvc.json
+```
+
+주의:
+
+- 서비스 계정 JSON은 repo 밖에 두고 git에 커밋하지 않는다.
+- 원격 `.env`에 `FIREBASE_PROJECT_ID`를 추가하지 않는다. 현재 Settings 모델이 허용하지 않아 서버가 시작 실패한다.
+- 로컬 `.env`를 원격으로 동기화할 때 원격의 `FIREBASE_CREDENTIALS_PATH`를 보존한다.
+
+실제 모드 확인:
+
+```bash
+ssh 100.69.69.119 'cd /Users/ibkim/Projects/voice-to-textnote && .venv/bin/python - <<'"'"'PY'"'"'
+from backend.services.push_service import PushService
+
+svc = PushService()
+svc._ensure_firebase_initialized()
+print("mock_mode", svc._is_mock_mode)
+PY'
+```
+
+기대값:
+
+```text
+mock_mode False
+```
+
+실제 전송 검증은 Firebase Admin SDK의 `messaging.send(...)`가 message id를 반환하면 성공으로 본다. 2026-06-30 검증 message id:
+
+```text
+projects/voice-to-textnote/messages/1782749586143713
+```
+
+iOS 앱이 포그라운드 상태이면 시스템 배너가 보이지 않을 수 있다. 배너 표시까지 확인하려면 앱을 백그라운드로 보내거나 화면을 잠근 상태에서 전송한다. 서버 측 성공 여부는 Firebase message id와 예외 없는 `send_ok True`를 기준으로 판단한다.
+
 ## 로컬 서버 실행 규칙
 
 Google 로그인 테스트 전에 Redis와 백엔드가 떠 있어야 한다.
@@ -143,6 +206,9 @@ openapi:200
 | `/api/v1/history` 401 `API Key 누락` | API key 보호 라우트 호출 | Google 로그인 실패와 별개. 로그인 디버깅 시 `/auth/google` 로그를 기준으로 판단 |
 | 녹음 후 `STT 처리중 20%`에서 멈춤 | 20%는 업로드 성공 후 STT/DIA 완료를 기다리는 지점이다. 클라이언트 SSE가 `Authorization`/guest 토큰 없이 연결했고, 병렬 STT/DIA 대기 중 하나의 SSE HTTP client를 공유했으며, 이벤트가 없을 때 폴링 fallback이 늦었다. | commit `537a0ac`처럼 SSE에 API key 또는 bearer/guest 인증 헤더를 넣고, 연결별 HTTP client를 사용하며, idle timeout 후 status polling으로 전환한다. |
 | iOS 빌드가 `FlutterEngine.h has been modified since the precompiled header`로 실패 | Xcode/Flutter precompiled header cache 불일치 | `flutter clean && flutter pub get --offline` 후 다시 빌드한다. 이 과정에서 `pubspec.lock`, `Podfile.lock`, generated registrant, SwiftPM `Package.resolved`가 흔들릴 수 있으므로 커밋 전 관련 없는 diff를 되돌린다. |
+| FCM token이 늦게 나오거나 backend device registration이 누락됨 | iOS APNs token이 Firebase Messaging에 연결되기 전에 FCM token을 요청했거나 auth restore 전에 notification 초기화를 시작함 | `AppDelegate.swift`의 APNs token bridge, `PushNotificationService._waitForApnsToken()`, auth state 전환 후 notification 초기화 흐름을 유지한다. |
+| 백엔드 PushService가 MOCK 모드 | 원격 `.env`에 `FIREBASE_CREDENTIALS_PATH`가 없거나 서비스 계정 JSON 경로/권한이 잘못됨 | 원격 파일 `/Users/ibkim/secure/voice-to-textnote/firebase-adminsdk-fbsvc.json`과 `.env` 키를 확인하고 백엔드를 재시작한다. |
+| 백엔드가 `firebase_project_id extra_forbidden`으로 시작 실패 | `.env`에 현재 Settings 모델이 허용하지 않는 `FIREBASE_PROJECT_ID`가 들어감 | 원격 `.env`에서 `FIREBASE_PROJECT_ID`를 제거하고 재시작한다. |
 
 ## STT 20% 멈춤 진단 규칙
 

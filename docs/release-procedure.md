@@ -33,6 +33,25 @@ python3 client/scripts/verify_release_readiness.py --strict 2>&1 | grep Firebase
 # 기대: PASS Firebase service account
 ```
 
+개발 백엔드 PC 기준 현재 확인값:
+
+```text
+Host: 100.69.69.119
+Repo: /Users/ibkim/Projects/voice-to-textnote
+FIREBASE_CREDENTIALS_PATH=/Users/ibkim/secure/voice-to-textnote/firebase-adminsdk-fbsvc.json
+```
+
+운영 메모:
+
+- 서비스 계정 JSON은 repo 밖에 두고 권한은 `600`으로 유지한다.
+- 원격 `.env`에 `FIREBASE_PROJECT_ID`를 추가하지 않는다. 현재 설정 모델에서 허용하지 않아 서버 시작이 실패한다.
+- 로컬 `.env`를 원격으로 동기화할 때 원격의 `FIREBASE_CREDENTIALS_PATH`를 보존한다.
+- 실제 개발 Push 검증은 2026-06-30에 `mock_mode False`와 Firebase message id 반환으로 완료되었다.
+
+```text
+projects/voice-to-textnote/messages/1782749586143713
+```
+
 ### 1.2 APNs 인증 키
 
 ```bash

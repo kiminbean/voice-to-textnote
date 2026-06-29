@@ -9,6 +9,8 @@
 - [ ] 백엔드 서버 실행 (FastAPI + Celery + Redis)
 - [ ] 클라이언트 디바이스 등록 (로그인 → FCM 토큰 등록)
 - [ ] Firebase 프로젝트 설정 완료 (T-019)
+- [ ] 개발 백엔드 PushService 실제 모드 확인: `mock_mode False`
+- [ ] iOS 개발 Push 검증 시 원격 `.env`의 `FIREBASE_CREDENTIALS_PATH` 보존 확인
 - [ ] 테스트 기기 준비 (Android / iOS 각 1대)
 - [ ] Android SDK 확인: `flutter doctor -v`에서 Android toolchain이 `Android SDK version 36.0.0`으로 표시
 - [ ] CocoaPods 확인: `cd client/ios && pod install`
@@ -158,6 +160,53 @@ python3 client/scripts/create_release_e2e_evidence.py \
 | 4.4 | 앱 백그라운드 시 푸시 | 알림 배지 표시 | ☐ |
 | 4.5 | 푸시 탭 → 결과 화면 | 딥링크로 이동 | ☐ |
 | 4.6 | 콜드 스타트 시 푸시 | 앱 실행 후 결과 화면 | ☐ |
+
+#### iOS 개발 Push 사전 검증
+
+2026-06-30 기준 iPhone `00008150-000239020C08401C`와 원격 백엔드 `100.69.69.119`에서 실제 FCM/APNs 전송이 검증되었다.
+
+백엔드 실제 모드 확인:
+
+```bash
+ssh 100.69.69.119 'cd /Users/ibkim/Projects/voice-to-textnote && .venv/bin/python - <<'"'"'PY'"'"'
+from backend.services.push_service import PushService
+
+svc = PushService()
+svc._ensure_firebase_initialized()
+print("mock_mode", svc._is_mock_mode)
+PY'
+```
+
+기대값:
+
+```text
+mock_mode False
+```
+
+iPhone에 profile build 설치:
+
+```bash
+cd client
+flutter run --profile --no-pub \
+  -d 00008150-000239020C08401C \
+  --dart-define=ENV=staging \
+  --dart-define=API_BASE_URL=http://100.69.69.119:8000/api/v1
+```
+
+앱/서버 로그 기대값:
+
+- 앱 로그: `APNs 토큰 준비 완료`
+- 앱 로그: `토픽 구독 완료: all`
+- 서버 로그: `/api/v1/devices/register` 201
+- DB: 최신 `device_tokens.platform = ios`
+
+실제 전송 성공 evidence 예:
+
+```text
+Firebase message id: projects/voice-to-textnote/messages/1782749586143713
+```
+
+앱이 포그라운드이면 iOS가 배너를 표시하지 않을 수 있다. 배너 UI까지 확인하는 시나리오는 앱을 백그라운드로 보내거나 화면 잠금 상태에서 전송한다.
 
 ### 5. 딥링크 (REQ-004)
 

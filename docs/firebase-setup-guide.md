@@ -40,6 +40,48 @@
    ```
 4. `config.py`에서 `firebase_credentials_path` 설정 확인
 
+### 현재 개발 백엔드 기준값
+
+2026-06-30 기준 원격 개발 백엔드 PC는 Tailscale `100.69.69.119`이며, 저장소 경로는 `/Users/ibkim/Projects/voice-to-textnote`다.
+
+서비스 계정 JSON은 저장소 밖에 둔다.
+
+```text
+/Users/ibkim/secure/voice-to-textnote/firebase-adminsdk-fbsvc.json
+```
+
+원격 `.env`에는 아래 키가 필요하다.
+
+```env
+FIREBASE_CREDENTIALS_PATH=/Users/ibkim/secure/voice-to-textnote/firebase-adminsdk-fbsvc.json
+```
+
+주의:
+
+- `FIREBASE_PROJECT_ID`는 현재 `Settings` 모델에 없는 키이므로 원격 `.env`에 추가하지 않는다. 추가하면 백엔드 기동이 `extra_forbidden` 검증 오류로 실패한다.
+- 로컬 `.env`를 원격 백엔드 PC에 동기화할 때는 원격에만 있는 `FIREBASE_CREDENTIALS_PATH`를 보존한다.
+- 서비스 계정 JSON은 로그, 채팅, 문서, git diff에 출력하지 않는다.
+- 파일 권한은 `600`을 권장한다.
+
+백엔드 재시작 후 실제 모드 확인:
+
+```bash
+cd /Users/ibkim/Projects/voice-to-textnote
+.venv/bin/python - <<'PY'
+from backend.services.push_service import PushService
+
+svc = PushService()
+svc._ensure_firebase_initialized()
+print("mock_mode", svc._is_mock_mode)
+PY
+```
+
+기대값:
+
+```text
+mock_mode False
+```
+
 ## 5. FCM 설정 확인
 
 ### 클라이언트 (Flutter)
@@ -77,11 +119,33 @@ flutter run -d <device> --verbose
 # 백엔드 FCM 전송 테스트 (MOCK 모드)
 python -c "from backend.services.push_service import PushService; svc = PushService(); print(svc._is_mock_mode)"
 
-# 실제 전송 테스트
-curl -X POST http://localhost:8000/api/v1/devices/register \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"fcm_token": "<DEVICE_TOKEN>"}'
+# iOS 기기가 등록한 최신 FCM token으로 실제 전송 테스트
+TOKEN=$(sqlite3 voice_to_textnote.db \
+  "select fcm_token from device_tokens where platform='ios' and is_active=1 order by updated_at desc limit 1;")
+TOKEN="$TOKEN" .venv/bin/python - <<'PY'
+import os
+from firebase_admin import messaging
+from backend.services.push_service import PushService
+
+svc = PushService()
+svc._ensure_firebase_initialized()
+message_id = messaging.send(messaging.Message(
+    notification=messaging.Notification(
+        title="Voice to TextNote 테스트",
+        body="실제 FCM/APNs 푸시 전송 확인",
+    ),
+    data={"source": "manual-fcm-test"},
+    token=os.environ["TOKEN"],
+))
+print("mock_mode", svc._is_mock_mode)
+print("message_id", message_id)
+PY
+```
+
+2026-06-30 실기기 검증에서 Firebase가 반환한 실제 message id:
+
+```text
+projects/voice-to-textnote/messages/1782749586143713
 ```
 
 ## 7. 문제 해결
