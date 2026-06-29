@@ -11,7 +11,7 @@ void main() {
 
   setUp(() {
     mockDio = MockDio();
-    deviceApi = DeviceApi(mockDio);
+    deviceApi = DeviceApi(mockDio, platform: 'ios');
   });
 
   group('DeviceApi', () {
@@ -34,7 +34,7 @@ void main() {
             '/devices/register',
             data: {
               'fcm_token': 'test_token_123',
-              'platform': 'flutter',
+              'platform': 'ios',
             },
           )).called(1);
     });

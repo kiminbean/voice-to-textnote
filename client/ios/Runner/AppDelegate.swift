@@ -3,6 +3,7 @@
 import Flutter
 import UIKit
 import AVFAudio
+import FirebaseMessaging
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
@@ -26,12 +27,37 @@ import AVFAudio
     setupRecordingMethodChannel()
     setupSharedImportMethodChannel()
     setupAudioSessionObservers()
+    DispatchQueue.main.async {
+      application.registerForRemoteNotifications()
+    }
 
     return result
   }
 
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+  }
+
+  override func application(
+    _ application: UIApplication,
+    didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
+  ) {
+    Messaging.messaging().apnsToken = deviceToken
+    super.application(
+      application,
+      didRegisterForRemoteNotificationsWithDeviceToken: deviceToken
+    )
+  }
+
+  override func application(
+    _ application: UIApplication,
+    didFailToRegisterForRemoteNotificationsWithError error: Error
+  ) {
+    NSLog("APNs 등록 실패: %@", error.localizedDescription)
+    super.application(
+      application,
+      didFailToRegisterForRemoteNotificationsWithError: error
+    )
   }
 
   // MARK: - MethodChannel 설정

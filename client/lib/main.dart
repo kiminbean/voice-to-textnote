@@ -38,20 +38,35 @@ class _VoiceToTextNoteAppState extends State<VoiceToTextNoteApp>
     with WidgetsBindingObserver {
   late final ProviderContainer _container;
   late final router = createRouter(_container);
+  ProviderSubscription<AuthState>? _authSubscription;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _container = ProviderContainer();
-    _container.read(authStateProvider.notifier).checkAuth();
-    _container.read(notificationProvider.notifier).initialize();
+    _authSubscription = _container.listen<AuthState>(
+      authStateProvider,
+      (previous, next) {
+        final wasSignedIn = previous?.isAuthenticated == true ||
+            previous?.isGuest == true;
+        final isSignedIn = next.isAuthenticated || next.isGuest;
+        if (!wasSignedIn && isSignedIn) {
+          _container.read(notificationProvider.notifier).initialize();
+        }
+      },
+    );
+    _initializeAuthAndNotifications();
     _container.read(themeModeProvider.notifier).load();
 
     // SPEC-MOBILE-004 T-005: 딥링크 핸들러 연동
     DeepLinkService.instance.handleBackgroundResume();
     _checkColdStartDeepLink();
     _checkInitialSharedImport();
+  }
+
+  Future<void> _initializeAuthAndNotifications() async {
+    await _container.read(authStateProvider.notifier).checkAuth();
   }
 
   Future<void> _checkColdStartDeepLink() async {
@@ -130,6 +145,7 @@ class _VoiceToTextNoteAppState extends State<VoiceToTextNoteApp>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _authSubscription?.close();
     _container.dispose();
     super.dispose();
   }

@@ -2,6 +2,8 @@
 // @MX:ANCHOR: FCM 초기화 및 토큰 관리의 핵심 서비스
 // @MX:REASON: 앱 시작 시 초기화 + 백그라운드 메시지 처리
 
+import 'dart:io' show Platform;
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -36,6 +38,9 @@ class PushNotificationService {
       // 로컬 알림 초기화
       await _setupLocalNotifications();
 
+      // iOS는 APNs token이 늦게 준비될 수 있어 FCM token 요청 전에 짧게 대기한다.
+      await _waitForApnsToken();
+
       // FCM 토큰 요청
       await _subscribeToTopic();
 
@@ -49,6 +54,7 @@ class PushNotificationService {
   /// FCM 토큰 조회
   Future<FcmTokenResult> getFCMToken() async {
     try {
+      await _waitForApnsToken();
       final token = await FirebaseMessaging.instance.getToken();
       if (token == null) {
         return const FcmTokenResult(error: 'FCM 토큰을 가져올 수 없습니다');
@@ -125,6 +131,22 @@ class PushNotificationService {
   String? extractMeetingId(RemoteMessage message) {
     final data = message.data;
     return data['meeting_id'] as String?;
+  }
+
+  Future<String?> _waitForApnsToken() async {
+    if (!Platform.isIOS && !Platform.isMacOS) return null;
+
+    for (var attempt = 0; attempt < 12; attempt++) {
+      final token = await FirebaseMessaging.instance.getAPNSToken();
+      if (token != null && token.isNotEmpty) {
+        debugPrint('APNs 토큰 준비 완료');
+        return token;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+    }
+
+    debugPrint('APNs 토큰 대기 시간 초과');
+    return null;
   }
 }
 

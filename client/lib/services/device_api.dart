@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:voice_to_textnote/services/api_client.dart';
@@ -10,8 +12,10 @@ final deviceApiProvider = Provider<DeviceApi>((ref) {
 
 class DeviceApi {
   final Dio _dio;
+  final String _platform;
 
-  DeviceApi(this._dio);
+  DeviceApi(this._dio, {String? platform})
+      : _platform = platform ?? _currentPlatform();
 
   /// FCM 토큰을 백엔드에 등록
   Future<void> registerDeviceToken(String token) async {
@@ -19,8 +23,14 @@ class DeviceApi {
       '/devices/register',
       data: {
         'fcm_token': token,
-        'platform': 'flutter',
+        'platform': _platform,
       },
     );
+  }
+
+  static String _currentPlatform() {
+    if (Platform.isIOS) return 'ios';
+    if (Platform.isAndroid) return 'android';
+    return 'ios';
   }
 }
