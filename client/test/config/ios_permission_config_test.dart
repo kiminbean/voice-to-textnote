@@ -31,11 +31,12 @@ void main() {
       );
     });
 
-    test('Info.plist allows local development API over HTTP', () {
+    test('Info.plist blocks insecure HTTP exceptions for release', () {
       final plist = readInfoPlist();
 
-      expect(plist, contains('NSAllowsLocalNetworking'));
-      expect(plist, contains('NSExceptionAllowsInsecureHTTPLoads'));
+      expect(plist, contains('NSAllowsArbitraryLoads'));
+      expect(plist, isNot(contains('NSAllowsLocalNetworking')));
+      expect(plist, isNot(contains('NSExceptionAllowsInsecureHTTPLoads')));
     });
 
     test('Podfile enables permission_handler microphone group', () {
