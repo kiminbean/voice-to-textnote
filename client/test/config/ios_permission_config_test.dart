@@ -18,7 +18,8 @@ void main() {
       expect(readInfoPlist(), contains('NSLocalNetworkUsageDescription'));
     });
 
-    test('Info.plist declares Google Sign-In client IDs and callback scheme', () {
+    test('Info.plist declares Google Sign-In client IDs and callback scheme',
+        () {
       final plist = readInfoPlist();
 
       expect(plist, contains('GIDClientID'));
@@ -31,12 +32,26 @@ void main() {
       );
     });
 
-    test('Info.plist blocks insecure HTTP exceptions for release', () {
+    test('Info.plist scopes insecure HTTP exception to staging host', () {
       final plist = readInfoPlist();
 
       expect(plist, contains('NSAllowsArbitraryLoads'));
       expect(plist, isNot(contains('NSAllowsLocalNetworking')));
-      expect(plist, isNot(contains('NSExceptionAllowsInsecureHTTPLoads')));
+      expect(plist, contains('NSExceptionDomains'));
+      expect(plist, contains('100.69.69.119'));
+      expect(plist, contains('NSExceptionAllowsInsecureHTTPLoads'));
+    });
+
+    test('iPhone orientations are locked to portrait', () {
+      final plist = readInfoPlist();
+      final iphoneOrientations = plist.substring(
+        plist.indexOf('<key>UISupportedInterfaceOrientations</key>'),
+        plist.indexOf('<key>UISupportedInterfaceOrientations~ipad</key>'),
+      );
+
+      expect(iphoneOrientations, contains('UIInterfaceOrientationPortrait'));
+      expect(iphoneOrientations, isNot(contains('LandscapeLeft')));
+      expect(iphoneOrientations, isNot(contains('LandscapeRight')));
     });
 
     test('Podfile enables permission_handler microphone group', () {

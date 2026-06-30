@@ -1,11 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- SPEC-SEC-002: Release/Profile network security baseline.
-     Cleartext HTTP is denied by default. Debug-only localhost/Tailscale
-     exceptions live in src/debug/res/xml/network_security_config.xml. -->
+     Cleartext HTTP is denied by default. A scoped Tailscale staging exception
+     exists only for explicit ENV=staging release validation. -->
 <network-security-config>
     <base-config cleartextTrafficPermitted="false">
         <trust-anchors>
             <certificates src="system" />
         </trust-anchors>
     </base-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">100.69.69.119</domain>
+    </domain-config>
 </network-security-config>

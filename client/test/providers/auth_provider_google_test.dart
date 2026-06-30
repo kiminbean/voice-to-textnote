@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:voice_to_textnote/providers/auth_provider.dart';
 
@@ -35,6 +36,29 @@ void main() {
 
     test('iOS keeps the existing Google sign-in behavior', () {
       expect(shouldClearGoogleSelectionBeforeSignIn(isIOS: true), isFalse);
+    });
+
+    test('Android OAuth registration errors show configuration guidance', () {
+      final message = socialLoginErrorMessage(
+        PlatformException(
+          code: 'sign_in_failed',
+          message:
+              'This android application is not registered to use OAuth2.0.',
+        ),
+        'Google',
+      );
+
+      expect(message, contains('Google 로그인 설정에 문제가 있습니다'));
+      expect(message, contains('앱 서명과 OAuth 클라이언트 설정'));
+    });
+
+    test('Google DEVELOPER_ERROR status shows configuration guidance', () {
+      final message = socialLoginErrorMessage(
+        Exception('DEVELOPER_ERROR: server client id is invalid'),
+        'Google',
+      );
+
+      expect(message, contains('Google 로그인 설정에 문제가 있습니다'));
     });
   });
 }

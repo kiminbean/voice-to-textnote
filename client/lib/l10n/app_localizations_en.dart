@@ -9,7 +9,7 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
-  String get appTitle => 'Voice to TextNote';
+  String get appTitle => 'Voice TextNote';
 
   @override
   String get newRecording => 'New Recording';

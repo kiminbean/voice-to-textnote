@@ -5,16 +5,14 @@ Moltbook Hot Posts Fetcher
 Moltbook 인기글 다이제스트용 데이터 가져오기 스크립트
 """
 
+import hashlib
 import json
-import os
+import random
 import sys
 import time
-import random
-import hashlib
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path
 from urllib.request import Request, urlopen
-from urllib.error import HTTPError, URLError
 
 # ─── 설정 ────────────────────────────────────────────
 CACHE_DIR = Path("/tmp/moltbook_cache")
@@ -41,7 +39,7 @@ def cache_get(url):
         if age < CACHE_TTL:
             try:
                 return path.read_text()
-            except:
+            except OSError:
                 return None
     return None
 
@@ -76,19 +74,19 @@ def fetch_hot_posts(limit=3):
     """Moltbook 인기글 가져오기"""
     # API 엔드포인트 추정 (moltgram-promotion.log 참조)
     url = "https://moltbook.com/api/v1/posts/hot"
-    
+
     data, status = fetch_url(url, timeout=10)
     if not data:
         # 백업: 데모 데이터 사용
         return get_demo_posts(limit)
-    
+
     try:
         response = json.loads(data)
         posts = response.get("posts", []) or response.get("data", []) or []
-        
+
         # 상위 limit개만 반환
         posts = posts[:limit]
-        
+
         # 각 포스트에 기본 정보 보장
         for post in posts:
             if "title" not in post:
@@ -99,7 +97,7 @@ def fetch_hot_posts(limit=3):
                 post["upvotes"] = 0
             if "id" not in post:
                 post["id"] = f"post-{hashlib.md5(post['title'].encode()).hexdigest()[:8]}"
-        
+
         return posts
     except json.JSONDecodeError:
         # JSON 파싱 실패 시 데모 데이터 사용
@@ -117,7 +115,7 @@ def get_demo_posts(limit=3):
             "created_at": "2026-06-25T10:30:00Z"
         },
         {
-            "id": "demo-post-2", 
+            "id": "demo-post-2",
             "title": "Web3 개발자를 위한 가이드",
             "author": "blockchain_dev",
             "upvotes": 892,
@@ -133,56 +131,56 @@ def get_demo_posts(limit=3):
             "created_at": "2026-06-25T08:45:00Z"
         }
     ]
-    
+
     return demo_posts[:limit]
 
 def format_telegram(posts):
     """Telegram 스타일로 포스트 포맷팅"""
     if not posts:
         return "🦞 현재 인기글이 없습니다."
-    
+
     result = []
     result.append("🦞 **Moltbook 인기글 다이제스트** 🦞")
     result.append("")
     result.append(f"📅 {datetime.now(timezone(timedelta(hours=9))).strftime('%Y년 %m월 %d일 %H:%M')} (KST)")
     result.append("")
-    
+
     for i, post in enumerate(posts, 1):
         title = post.get("title", "제목 없음")
         author = post.get("author", "익명")
         upvotes = post.get("upvotes", 0)
-        
+
         # Telegram 마크다운 형식
         result.append(f"**{i}. {title}**")
         result.append(f"   👤 작성자: {author}")
         result.append(f"   ⬆️ 추천수: {upvotes:,}")
         result.append("")
-    
+
     return "\n".join(result)
 
 def main():
     """메인 실행 함수"""
-    print(f"[*] Moltbook 인기글 다이제스트 생성 중...")
-    
+    print("[*] Moltbook 인기글 다이제스트 생성 중...")
+
     # 인기글 가져오기
     posts = fetch_hot_posts(limit=3)
-    
+
     # Telegram 형식으로 포맷팅
     telegram_text = format_telegram(posts)
-    
+
     # 출력
     print("=" * 50)
     print(telegram_text)
     print("=" * 50)
-    
+
     # JSON 형식으로도 출력 (디버깅용)
     output = {
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "seoul_time": datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d %H:%M KST"),
         "posts": posts,
         "telegram_text": telegram_text
     }
-    
+
     if len(sys.argv) > 1 and sys.argv[1] == "--json":
         print(json.dumps(output, ensure_ascii=False, indent=2))
     else:

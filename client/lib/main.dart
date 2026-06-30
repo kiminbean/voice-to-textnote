@@ -48,8 +48,8 @@ class _VoiceToTextNoteAppState extends State<VoiceToTextNoteApp>
     _authSubscription = _container.listen<AuthState>(
       authStateProvider,
       (previous, next) {
-        final wasSignedIn = previous?.isAuthenticated == true ||
-            previous?.isGuest == true;
+        final wasSignedIn =
+            previous?.isAuthenticated == true || previous?.isGuest == true;
         final isSignedIn = next.isAuthenticated || next.isGuest;
         if (!wasSignedIn && isSignedIn) {
           _container.read(notificationProvider.notifier).initialize();
@@ -158,7 +158,7 @@ class _VoiceToTextNoteAppState extends State<VoiceToTextNoteApp>
         builder: (context, ref, _) {
           final themeState = ref.watch(themeModeProvider);
           return MaterialApp.router(
-            title: 'Voice to TextNote',
+            title: 'Voice TextNote',
             debugShowCheckedModeBanner: false,
             theme: buildAppLightTheme(),
             darkTheme: buildAppDarkTheme(),

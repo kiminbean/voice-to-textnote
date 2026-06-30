@@ -84,12 +84,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     const SizedBox(height: AppSpacing.xl),
                     // 타이틀
                     Text(
-                      'Voice to TextNote',
+                      'Voice TextNote',
                       textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: -0.3,
-                          ),
+                      style:
+                          Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: -0.3,
+                              ),
                     ),
                     const SizedBox(height: AppSpacing.sm),
                     Text(
@@ -142,7 +143,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 : Icons.visibility_outlined,
                           ),
                           onPressed: () {
-                            setState(() => _obscurePassword = !_obscurePassword);
+                            setState(
+                                () => _obscurePassword = !_obscurePassword);
                           },
                         ),
                       ),
@@ -176,12 +178,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       children: [
                         Expanded(child: Divider(color: scheme.border)),
                         Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.md),
                           child: Text(
                             '또는',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: scheme.textTertiary,
-                                ),
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: scheme.textTertiary,
+                                    ),
                           ),
                         ),
                         Expanded(child: Divider(color: scheme.border)),
@@ -212,7 +216,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         children: [
                           Text(
                             '계정이 없으신가요?',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyMedium
+                                ?.copyWith(
                                   color: scheme.textTertiary,
                                 ),
                           ),

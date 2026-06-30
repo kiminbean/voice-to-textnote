@@ -9,7 +9,7 @@ class AppLocalizationsKo extends AppLocalizations {
   AppLocalizationsKo([String locale = 'ko']) : super(locale);
 
   @override
-  String get appTitle => 'Voice to TextNote';
+  String get appTitle => 'Voice TextNote';
 
   @override
   String get newRecording => '새 녹음';

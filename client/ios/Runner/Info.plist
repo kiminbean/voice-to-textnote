@@ -34,6 +34,16 @@
 		<dict>
 			<key>NSAllowsArbitraryLoads</key>
 			<false/>
+			<key>NSExceptionDomains</key>
+			<dict>
+				<key>100.69.69.119</key>
+				<dict>
+					<key>NSExceptionAllowsInsecureHTTPLoads</key>
+					<true/>
+					<key>NSIncludesSubdomains</key>
+					<false/>
+				</dict>
+			</dict>
 		</dict>
 		<key>NSCameraUsageDescription</key>
 		<string>명함을 촬영해 영업 연락처 브리프를 만들기 위해 카메라 접근이 필요합니다.</string>
@@ -125,8 +135,6 @@
 		<key>UISupportedInterfaceOrientations</key>
 		<array>
 			<string>UIInterfaceOrientationPortrait</string>
-			<string>UIInterfaceOrientationLandscapeLeft</string>
-			<string>UIInterfaceOrientationLandscapeRight</string>
 		</array>
 		<key>UISupportedInterfaceOrientations~ipad</key>
 		<array>

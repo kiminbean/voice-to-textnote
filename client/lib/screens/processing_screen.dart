@@ -34,6 +34,7 @@ class _ProcessingScreenState extends ConsumerState<ProcessingScreen>
 
   // SSE 스트림 구독
   StreamSubscription<Map<String, dynamic>>? _sseSubscription;
+  ProviderSubscription<PipelineState>? _pipelineSubscription;
 
   // 펄스 애니메이션 컨트롤러
   late AnimationController _pulseController;
@@ -56,6 +57,17 @@ class _ProcessingScreenState extends ConsumerState<ProcessingScreen>
 
     // SSE 서비스 초기화
     _sseService = ref.read(sseServiceProvider);
+    _pipelineSubscription = ref.listenManual<PipelineState>(
+      pipelineProvider,
+      (previous, next) {
+        final prevTaskId = previous?.currentTaskId;
+        final nextTaskId = next.currentTaskId;
+        if (nextTaskId != null && nextTaskId != prevTaskId) {
+          _sseSubscription?.cancel();
+          _connectSse();
+        }
+      },
+    );
 
     // 파이프라인 시작 (Meeting의 audioFilePath 사용)
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -78,9 +90,6 @@ class _ProcessingScreenState extends ConsumerState<ProcessingScreen>
     // 이전 completed 상태가 즉시 결과 화면으로 이동하는 버그 방지
     // 새 녹음 시작 전 반드시 상태를 초기화
     ref.read(pipelineProvider.notifier).reset();
-
-    // SSE 연결 감시 시작 (currentTaskId 변경 시 자동 연결)
-    _watchTaskIdAndConnectSse();
 
     // 양식 선택 다이얼로그 표시 후 파이프라인 시작
     // 선택된 templateId는 요약 생성 시 사용
@@ -122,18 +131,6 @@ class _ProcessingScreenState extends ConsumerState<ProcessingScreen>
     // templateId는 SUM 단계에서 summaryApi.create() 호출 시 사용
     ref.read(pipelineProvider.notifier).startPipeline(audioFilePath,
         templateId: templateId, vocabularyId: vocabularyId);
-  }
-
-  // currentTaskId 변경 감지 시 SSE 재연결
-  void _watchTaskIdAndConnectSse() {
-    ref.listen<PipelineState>(pipelineProvider, (previous, next) {
-      final prevTaskId = previous?.currentTaskId;
-      final nextTaskId = next.currentTaskId;
-      if (nextTaskId != null && nextTaskId != prevTaskId) {
-        _sseSubscription?.cancel();
-        _connectSse();
-      }
-    });
   }
 
   // 파이프라인 완료 시 Meeting 업데이트 및 결과 화면 이동
@@ -208,6 +205,7 @@ class _ProcessingScreenState extends ConsumerState<ProcessingScreen>
   @override
   void dispose() {
     _pulseController.dispose();
+    _pipelineSubscription?.close();
     _sseSubscription?.cancel();
     _sseService.disconnect();
     super.dispose();

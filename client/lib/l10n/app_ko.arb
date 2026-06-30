@@ -1,6 +1,6 @@
 {
   "@@locale": "ko",
-  "appTitle": "Voice to TextNote",
+  "appTitle": "Voice TextNote",
   "@appTitle": {
     "description": "Application title"
   },

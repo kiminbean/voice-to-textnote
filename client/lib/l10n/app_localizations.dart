@@ -101,7 +101,7 @@ abstract class AppLocalizations {
   /// Application title
   ///
   /// In ko, this message translates to:
-  /// **'Voice to TextNote'**
+  /// **'Voice TextNote'**
   String get appTitle;
 
   /// FAB tooltip for starting new recording

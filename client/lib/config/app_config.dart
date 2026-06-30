@@ -1,6 +1,7 @@
 // 앱 환경 설정 — SPEC-ENV-001
 // @MX:ANCHOR: [AUTO] AppConfig.apiBaseUrl은 api_client, auth_api, processing_screen 3곳에서 참조
 // @MX:REASON: 환경별 URL 분기의 핵심 계약 지점
+import 'package:flutter/foundation.dart';
 
 /// 앱 실행 환경을 나타내는 열거형
 enum Environment {
@@ -15,13 +16,12 @@ enum Environment {
 }
 
 class AppConfig {
-  static const String stagingApiBaseUrl =
-      'http://100.69.69.119:8000/api/v1';
+  static const String stagingApiBaseUrl = 'http://100.69.69.119:8000/api/v1';
 
   // 컴파일 시 --dart-define=ENV=dev|staging|production 으로 주입 가능
-  // 기본값: staging (기존 동작 유지)
+  // 기본값: production. staging HTTP 서버는 명시적으로 선택한 개발/검증 빌드에서만 사용한다.
   static const String _envName =
-      String.fromEnvironment('ENV', defaultValue: 'staging');
+      String.fromEnvironment('ENV', defaultValue: 'production');
 
   // 컴파일 시 --dart-define=API_BASE_URL=https://... 으로 직접 URL 지정 가능
   // 비어 있으면 환경별 기본 URL 사용
@@ -49,15 +49,32 @@ class AppConfig {
   /// API 기본 URL
   /// 우선순위: --dart-define=API_BASE_URL > 환경별 기본값
   static String get apiBaseUrl {
-    if (_apiBaseUrlOverride.isNotEmpty) return _apiBaseUrlOverride;
-    switch (environment) {
-      case Environment.dev:
-        return 'http://localhost:8000/api/v1';
-      case Environment.staging:
-        return stagingApiBaseUrl;
-      case Environment.production:
-        return 'https://api.voicetextnote.com/api/v1';
+    late final String url;
+    if (_apiBaseUrlOverride.isNotEmpty) {
+      url = _apiBaseUrlOverride;
+    } else {
+      switch (environment) {
+        case Environment.dev:
+          url = 'http://localhost:8000/api/v1';
+        case Environment.staging:
+          url = stagingApiBaseUrl;
+        case Environment.production:
+          url = 'https://api.voicetextnote.com/api/v1';
+      }
     }
+
+    final isExplicitStagingHttp =
+        environment == Environment.staging && url == stagingApiBaseUrl;
+    if (kReleaseMode &&
+        Uri.parse(url).scheme != 'https' &&
+        !isExplicitStagingHttp) {
+      throw UnsupportedError(
+        'Release builds require an HTTPS API_BASE_URL. '
+        'Use --dart-define=API_BASE_URL=https://... or '
+        '--dart-define=ENV=staging for the private Tailscale staging server.',
+      );
+    }
+    return url;
   }
 
   /// 디버그 모드 여부 (production이 아닌 환경에서 true)

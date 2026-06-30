@@ -113,7 +113,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // 헤더 타이틀 확인 (SliverAppBar.large는 확장/축소 상태 각각 렌더링)
-      expect(find.text('Bean Notes'), findsWidgets);
+      expect(find.text('Voice TextNote'), findsWidgets);
       expect(find.text('AI가 회의 기록을 대신합니다'), findsOneWidget);
       expect(find.text('원탭 녹음'), findsOneWidget);
 

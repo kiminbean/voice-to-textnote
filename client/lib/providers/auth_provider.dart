@@ -2,6 +2,7 @@
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
@@ -98,6 +99,36 @@ bool shouldClearGoogleSelectionBeforeSignIn({
   required bool isIOS,
 }) {
   return !isIOS;
+}
+
+@visibleForTesting
+String socialLoginErrorMessage(Exception e, String provider) {
+  final msg = e.toString();
+  final lowerMsg = msg.toLowerCase();
+  final platformCode = e is PlatformException ? e.code.toLowerCase() : '';
+  final platformMessage =
+      e is PlatformException ? (e.message ?? '').toLowerCase() : '';
+
+  final isProviderConfigurationError = provider == 'Google' &&
+      (platformCode.contains('developer_error') ||
+          platformCode == '10' ||
+          platformMessage.contains('developer_error') ||
+          platformMessage.contains('oauth') ||
+          platformMessage.contains('not registered') ||
+          lowerMsg.contains('developer_error') ||
+          lowerMsg.contains('oauth') ||
+          lowerMsg.contains('not registered') ||
+          lowerMsg.contains('server client id'));
+  if (isProviderConfigurationError) {
+    return 'Google 로그인 설정에 문제가 있습니다. 앱 서명과 OAuth 클라이언트 설정을 확인해주세요.';
+  }
+  if (msg.contains('401') || msg.contains('Unauthorized')) {
+    return '$provider 인증에 실패했습니다. 잠시 후 다시 시도해주세요.';
+  }
+  if (msg.contains('SocketException') || msg.contains('connection')) {
+    return '서버에 연결할 수 없습니다. 네트워크를 확인해주세요.';
+  }
+  return '$provider 로그인 중 오류가 발생했습니다. 다시 시도해주세요.';
 }
 
 // @MX:ANCHOR: 앱 전역 인증 상태를 관리하는 핵심 Notifier
@@ -387,14 +418,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   String _parseSocialLoginError(Exception e, String provider) {
-    final msg = e.toString();
-    if (msg.contains('401') || msg.contains('Unauthorized')) {
-      return '$provider 인증에 실패했습니다. 잠시 후 다시 시도해주세요.';
-    }
-    if (msg.contains('SocketException') || msg.contains('connection')) {
-      return '서버에 연결할 수 없습니다. 네트워크를 확인해주세요.';
-    }
-    return '$provider 로그인 중 오류가 발생했습니다. 다시 시도해주세요.';
+    return socialLoginErrorMessage(e, provider);
   }
 }
 

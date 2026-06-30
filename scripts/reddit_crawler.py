@@ -24,18 +24,17 @@ Usage:
 """
 
 import argparse
+import hashlib
 import json
-import os
+import random
+import re
 import sys
 import time
-import random
-import hashlib
-import re
-from datetime import datetime, timezone, timedelta
-from pathlib import Path
-from urllib.request import Request, urlopen
-from urllib.error import HTTPError, URLError
 import xml.etree.ElementTree as ET
+from datetime import UTC, datetime, timedelta, timezone
+from pathlib import Path
+from urllib.error import HTTPError
+from urllib.request import Request, urlopen
 
 # ─── 설정 ────────────────────────────────────────────
 CACHE_DIR = Path("/tmp/reddit_crawler_cache")
@@ -215,7 +214,7 @@ def strategy_json_api(subreddit="all", limit=25):
             if isinstance(data, bytes) and len(data) > 100:
                 pass
             elif data:
-                return [], f"json_short"
+                return [], "json_short"
 
         obj = json.loads(data)
         children = obj.get("data", {}).get("children", [])
@@ -361,7 +360,7 @@ def _ai_from_all(limit=25):
 def format_output(all_posts, ai_posts, strategy_all, strategy_ai):
     """통일된 JSON 출력"""
     output = {
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "seoul_time": datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d %H:%M KST"),
         "strategies_used": {
             "all": strategy_all,

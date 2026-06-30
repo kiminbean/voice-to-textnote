@@ -6,6 +6,8 @@ Date: 2026-06-30
 
 Android release APK and iOS release IPA/archive were built. The iOS release app was installed and launched on the USB-connected iPhone. Android Google Sign-In was traced to Google OAuth console registration, not backend connectivity. Backend MVP gap implementations were committed and pushed.
 
+Later in the same session, a broader client audit fixed six release/UI findings. The most important follow-up was an iPhone release login failure after Google account selection: Google OAuth completed, but the app was built against the unresolved production API host `https://api.voicetextnote.com/api/v1`, while the reachable backend was the private Tailscale staging server `http://100.69.69.119:8000/api/v1`. Rebuilding iOS release with `--dart-define=ENV=staging` and scoped ATS/network-security exceptions for `100.69.69.119` fixed the issue.
+
 ## Backend Work
 
 Committed and pushed:
@@ -150,6 +152,92 @@ Launched application with com.voicetextnote.app bundle identifier.
 
 Voice TextNote   com.voicetextnote.app   1.0.0   1
 ```
+
+## 2026-06-30 Client Audit Fixes
+
+Six findings were fixed and verified:
+
+- Release API default now uses production HTTPS instead of implicitly pointing at HTTP staging.
+- Explicit staging release builds can use the private Tailscale backend at `http://100.69.69.119:8000/api/v1`.
+- Release cleartext exceptions are scoped to `100.69.69.119` only:
+  - iOS ATS: `NSExceptionDomains` entry for `100.69.69.119`.
+  - Android release/profile network security config: one cleartext domain exception for `100.69.69.119`.
+- Android Google OAuth/SHA registration failures are shown as configuration errors, not generic retry messages.
+- `ProcessingScreen` uses `ref.listenManual` for the SSE task listener instead of calling `ref.listen` outside build.
+- Product naming is unified as `Voice TextNote`; internal benchmark/home copy was removed.
+- iPhone orientation is portrait-only, matching Android phone behavior.
+
+Verification after the fixes:
+
+```text
+flutter analyze --no-pub: No issues found
+flutter test --no-pub --reporter=compact: 463 tests passed
+flutter build apk --release --no-pub: built app-release.apk
+flutter build ios --release --dart-define=ENV=staging: built Runner.app
+```
+
+## iPhone Google Login Root Cause
+
+Observed symptom:
+
+```text
+After tapping "Continue with Google", selecting a Gmail account, the app showed:
+"서버에 연결할 수 없습니다."
+```
+
+Confirmed facts:
+
+```text
+curl https://api.voicetextnote.com/api/v1/health
+=> Could not resolve host: api.voicetextnote.com
+
+curl http://100.69.69.119:8000/api/v1/health
+=> {"status":"healthy", ...}
+
+POST http://100.69.69.119:8000/api/v1/auth/google with an invalid token
+=> 401 Unauthorized from backend, proving the endpoint is reachable
+```
+
+Root cause:
+
+- Google account selection succeeded.
+- The failure happened in the next step, when the app posted the Google ID token to backend `/auth/google`.
+- The installed release build was using the unresolved production host `api.voicetextnote.com`.
+- The actual active backend was `100.69.69.119`.
+
+Fix applied:
+
+```bash
+cd client
+flutter build ios --release --dart-define=ENV=staging
+xcrun devicectl device install app \
+  --device C7DD57C9-48FC-5362-B2FB-ED87CFFD51FA \
+  build/ios/iphoneos/Runner.app
+xcrun devicectl device process launch \
+  --device C7DD57C9-48FC-5362-B2FB-ED87CFFD51FA \
+  com.voicetextnote.app
+```
+
+The user confirmed the iPhone Google login worked after installing this staging release build.
+
+## Backend Server Note
+
+The backend PC was not pulled or restarted during this follow-up because SSH access failed:
+
+```text
+ssh 100.69.69.119
+=> Permission denied (publickey,password,keyboard-interactive)
+```
+
+The backend was already healthy and serving:
+
+```text
+Host: 100.69.69.119
+Health: healthy
+started_at: 2026-06-29T16:28:57.568313+00:00
+```
+
+Therefore, the final successful login was caused by the corrected client release build pointing to the currently running backend, not by a backend restart.
 
 ## Current Worktree Note
 

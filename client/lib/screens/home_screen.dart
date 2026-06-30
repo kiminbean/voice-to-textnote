@@ -161,7 +161,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
-          'Bean Notes',
+          'Voice TextNote',
           style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                 fontWeight: FontWeight.w700,
                 letterSpacing: -0.3,
@@ -244,7 +244,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           FilledButton.icon(
             onPressed: () => context.push('/recording'),
             icon: const Icon(Icons.radio_button_checked_rounded),
-            label: const Text('Download Now 대신 바로 기록 시작'),
+            label: const Text('바로 기록 시작'),
             style: FilledButton.styleFrom(
               backgroundColor: const Color(0xFFF8DD3F),
               foregroundColor: const Color(0xFF102027),
@@ -253,7 +253,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
           const SizedBox(height: AppSpacing.sm),
           Text(
-            '#1 AI Note Taker 스타일 벤치마크',
+            '회의 내용을 놓치지 않도록 자동으로 정리합니다',
             style: Theme.of(context).textTheme.labelMedium?.copyWith(
                   color: scheme.isDark
                       ? Colors.white.withAlpha(180)

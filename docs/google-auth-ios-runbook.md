@@ -13,12 +13,12 @@
 - Android package: `com.voicetextnote.app`
 - iPhone device ID: `00008150-000239020C08401C`
 - iPhone CoreDevice ID: `C7DD57C9-48FC-5362-B2FB-ED87CFFD51FA`
-- Local backend for iPhone profile build: `http://100.69.69.119:8000/api/v1`
+- Local/private staging backend for iPhone profile and staging release builds: `http://100.69.69.119:8000/api/v1`
 - Remote backend PC: Tailscale `100.69.69.119`, repo `/Users/ibkim/Projects/voice-to-textnote`
 - Last verified APNs/FCM commit: `25dce3d`
 - Last verified backend MVP gap commit: `12d077b`
 - Last verified iOS release install device: `Inbean의 iPhone`, iOS `26.5.1`, UDID `00008150-000239020C08401C`
-- Last verified iOS release install method: `xcrun devicectl device install app` from `build/ios/archive/Runner.xcarchive/Products/Applications/Runner.app`
+- Last verified iOS staging release install method: `flutter build ios --release --dart-define=ENV=staging`, then `xcrun devicectl device install app` from `build/ios/iphoneos/Runner.app`
 
 ## Firebase 파일 위치
 
@@ -79,7 +79,7 @@ cd client
 - `GIDServerClientID`: Web OAuth client ID
 - `CFBundleURLTypes`: iOS `GoogleService-Info.plist`의 `REVERSED_CLIENT_ID`
 - `NSLocalNetworkUsageDescription`: 실기기에서 로컬 백엔드 접근 시 필요
-- ATS local HTTP 예외: 개발용 `localhost`, Tailscale/LAN IP 접근 허용
+- ATS local HTTP 예외: 현재 private staging release 검증용 `100.69.69.119`만 좁게 허용
 
 macOS도 `client/macos/Runner/Info.plist`에 macOS client ID와 Web server client ID를 둔다.
 
@@ -109,8 +109,7 @@ flutter run --profile \
 cd client
 flutter run --release --no-pub --no-resident \
   -d 00008150-000239020C08401C \
-  --dart-define=ENV=dev \
-  --dart-define=API_BASE_URL=http://100.69.69.119:8000/api/v1
+  --dart-define=ENV=staging
 ```
 
 `flutter run --profile`이 VM service 연결 문제로 종료되더라도 앱 설치 자체가 완료되고 profile 앱 프로세스가 살아 있으면 홈 화면 실행은 가능하다.
@@ -135,11 +134,11 @@ xcrun devicectl device process launch \
 
 ```bash
 cd client
-flutter build ipa --release
+flutter build ios --release --dart-define=ENV=staging
 
 xcrun devicectl device install app \
   --device C7DD57C9-48FC-5362-B2FB-ED87CFFD51FA \
-  build/ios/archive/Runner.xcarchive/Products/Applications/Runner.app
+  build/ios/iphoneos/Runner.app
 
 xcrun devicectl device process launch \
   --device C7DD57C9-48FC-5362-B2FB-ED87CFFD51FA \
@@ -258,6 +257,55 @@ openapi:200
 | `/auth/guest` 500 | Redis 미기동 | `voice-to-textnote-redis` tmux 세션으로 Redis 실행 |
 | `/openapi.json` 500 | `pydantic` 파일/메타데이터 버전 불일치 | 서버 Python에서 `pydantic[email]>=2.9` 재설치 |
 | 앱에서 로컬 API 접근 실패 가능 | iPhone의 `localhost`는 Mac이 아니며, iOS Local Network/ATS 설정 필요 | `API_BASE_URL`을 Mac LAN/Tailscale IP로 지정하고 `Info.plist`에 local network/ATS 예외 추가 |
+| iPhone release에서 Google 계정 선택 후 "서버에 연결할 수 없습니다" | release 앱이 unresolved production host `https://api.voicetextnote.com/api/v1`로 빌드됨. 실제 서버는 `http://100.69.69.119:8000/api/v1` | `flutter build ios --release --dart-define=ENV=staging`으로 재빌드하고 `build/ios/iphoneos/Runner.app` 설치 |
+
+## 2026-06-30 iPhone release Google login incident
+
+증상:
+
+```text
+Google 계정 선택은 성공하지만 선택 직후 "서버에 연결할 수 없습니다"가 표시됨
+```
+
+진단:
+
+```bash
+curl -I --max-time 10 https://api.voicetextnote.com/api/v1/health
+# Could not resolve host: api.voicetextnote.com
+
+curl --max-time 10 http://100.69.69.119:8000/api/v1/health
+# {"status":"healthy", ...}
+
+curl -i -X POST http://100.69.69.119:8000/api/v1/auth/google \
+  -H 'Content-Type: application/json' \
+  -d '{"id_token":"invalid-test-token"}'
+# 401 Unauthorized from backend, proving /auth/google is reachable
+```
+
+정확한 원인:
+
+- Google picker/OAuth account selection은 성공했다.
+- 실패 지점은 앱이 Google ID token을 백엔드 `/auth/google`로 전송하는 단계였다.
+- 설치된 release 앱은 기본 production API host인 `api.voicetextnote.com`으로 붙도록 빌드되어 있었고, 해당 host는 DNS 해석이 되지 않았다.
+- 현재 실제 백엔드는 Tailscale `100.69.69.119`에서 정상 동작 중이었다.
+
+수정:
+
+```bash
+cd client
+flutter build ios --release --dart-define=ENV=staging
+xcrun devicectl device install app \
+  --device C7DD57C9-48FC-5362-B2FB-ED87CFFD51FA \
+  build/ios/iphoneos/Runner.app
+xcrun devicectl device process launch \
+  --device C7DD57C9-48FC-5362-B2FB-ED87CFFD51FA \
+  com.voicetextnote.app
+```
+
+결과:
+
+- 사용자가 iPhone에서 Google login 정상 동작을 확인했다.
+- 백엔드 PC에서 `git pull` 또는 서버 재시작은 수행하지 않았다. SSH 접근은 `Permission denied`였고, 기존 서버가 이미 healthy였다.
 | `/api/v1/history` 401 `API Key 누락` | API key 보호 라우트 호출 | Google 로그인 실패와 별개. 로그인 디버깅 시 `/auth/google` 로그를 기준으로 판단 |
 | 녹음 후 `STT 처리중 20%`에서 멈춤 | 20%는 업로드 성공 후 STT/DIA 완료를 기다리는 지점이다. 클라이언트 SSE가 `Authorization`/guest 토큰 없이 연결했고, 병렬 STT/DIA 대기 중 하나의 SSE HTTP client를 공유했으며, 이벤트가 없을 때 폴링 fallback이 늦었다. | commit `537a0ac`처럼 SSE에 API key 또는 bearer/guest 인증 헤더를 넣고, 연결별 HTTP client를 사용하며, idle timeout 후 status polling으로 전환한다. |
 | iOS 빌드가 `FlutterEngine.h has been modified since the precompiled header`로 실패 | Xcode/Flutter precompiled header cache 불일치 | `flutter clean && flutter pub get --offline` 후 다시 빌드한다. 이 과정에서 `pubspec.lock`, `Podfile.lock`, generated registrant, SwiftPM `Package.resolved`가 흔들릴 수 있으므로 커밋 전 관련 없는 diff를 되돌린다. |
