@@ -137,7 +137,29 @@ REQUIRE_ANDROID_RELEASE_SIGNING=true ./scripts/verify_mobile.sh --native
 
 # iOS (Xcode에서 코드사인 필요)
 flutter build ios --release
+
+# App Store IPA / archive
+flutter build ipa --release
 ```
+
+2026-06-30 실기기 릴리스 설치 기준:
+
+```bash
+cd client
+xcrun devicectl list devices
+xcrun devicectl device info details \
+  --device C7DD57C9-48FC-5362-B2FB-ED87CFFD51FA
+
+xcrun devicectl device install app \
+  --device C7DD57C9-48FC-5362-B2FB-ED87CFFD51FA \
+  build/ios/archive/Runner.xcarchive/Products/Applications/Runner.app
+
+xcrun devicectl device process launch \
+  --device C7DD57C9-48FC-5362-B2FB-ED87CFFD51FA \
+  com.voicetextnote.app
+```
+
+Flutter가 Developer Mode 오류를 표시해도 `devicectl`에서 `developerModeStatus: enabled`, `paired`, `wired`, `available`이면 archive의 서명된 앱을 직접 설치할 수 있다.
 
 ### 2.3 E2E 증거 수집
 

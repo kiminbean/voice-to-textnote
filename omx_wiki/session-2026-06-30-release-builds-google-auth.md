@@ -1,0 +1,44 @@
+# Session 2026-06-30: Release Builds And Google Auth
+
+## Durable Facts
+
+- Backend MVP gap commit pushed: `12d077b`.
+- Android package: `com.voicetextnote.app`.
+- Android local test release APK SHA-1: `1F:84:A6:04:D6:18:F5:17:EE:AC:5D:6D:5A:D5:EE:62:B0:C0:FC:66`.
+- Android local test release APK SHA-256: `22:9C:9D:7D:E9:8F:17:9C:AC:D4:65:E3:E9:FD:BA:D4:59:01:9C:BF:7C:21:F0:37:BF:0C:C5:04:D4:71:0D:1B`.
+- Android Google Sign-In is blocked at Google Play Services if this package/SHA-1 is not registered in Google Cloud/Firebase Android OAuth client settings.
+- `serverClientId` must be a Web OAuth client ID. Android OAuth client ID as `serverClientId` returns `You must use a Web client as the server client ID`.
+- iOS release IPA built: `client/build/ios/ipa/Voice TextNote.ipa`.
+- iOS archive built: `client/build/ios/archive/Runner.xcarchive`.
+- iPhone CoreDevice ID: `C7DD57C9-48FC-5362-B2FB-ED87CFFD51FA`.
+- iPhone UDID: `00008150-000239020C08401C`.
+- iPhone release app install and launch succeeded through `xcrun devicectl`.
+
+## Commands That Worked
+
+```bash
+cd client
+flutter build apk --release --target-platform android-arm64
+flutter build ipa --release
+
+xcrun devicectl device install app \
+  --device C7DD57C9-48FC-5362-B2FB-ED87CFFD51FA \
+  build/ios/archive/Runner.xcarchive/Products/Applications/Runner.app
+
+xcrun devicectl device process launch \
+  --device C7DD57C9-48FC-5362-B2FB-ED87CFFD51FA \
+  com.voicetextnote.app
+```
+
+## Operational Warning
+
+Flutter can report Developer Mode as disabled even when `devicectl` says:
+
+```text
+developerModeStatus: enabled
+pairingState: paired
+transportType: wired
+tunnelState: connected
+```
+
+In that case, use `devicectl` to install the signed archive app directly.

@@ -16,6 +16,9 @@
 - Local backend for iPhone profile build: `http://100.69.69.119:8000/api/v1`
 - Remote backend PC: Tailscale `100.69.69.119`, repo `/Users/ibkim/Projects/voice-to-textnote`
 - Last verified APNs/FCM commit: `25dce3d`
+- Last verified backend MVP gap commit: `12d077b`
+- Last verified iOS release install device: `Inbean의 iPhone`, iOS `26.5.1`, UDID `00008150-000239020C08401C`
+- Last verified iOS release install method: `xcrun devicectl device install app` from `build/ios/archive/Runner.xcarchive/Products/Applications/Runner.app`
 
 ## Firebase 파일 위치
 
@@ -39,6 +42,34 @@ GOOGLE_CLIENT_ID=<WEB_CLIENT_ID>,<ANDROID_CLIENT_ID>,<IOS_CLIENT_ID>,<MACOS_CLIE
 ```
 
 이 값은 토큰 원문이나 secret이 아니라 OAuth audience 허용 목록이다. 그래도 불필요하게 채팅이나 로그에 전체 값을 노출하지 않는다.
+
+Android 앱에서 Google Sign-In을 시작할 때 `serverClientId`는 Web OAuth client ID여야 한다. Android OAuth client ID를 넣으면 Google Play Services가 아래 오류를 반환한다.
+
+```text
+You must use a Web client as the server client ID.
+```
+
+Android 계정 선택 후 토큰 발급 전에 아래 오류가 나오면 앱 코드보다 Google Cloud Console의 Android OAuth client 등록 상태를 먼저 본다.
+
+```text
+This android application is not registered to use OAuth2.0
+```
+
+2026-06-30 실기기 릴리스 APK 기준값:
+
+```text
+Package name: com.voicetextnote.app
+Installed APK SHA-1: 1F:84:A6:04:D6:18:F5:17:EE:AC:5D:6D:5A:D5:EE:62:B0:C0:FC:66
+Installed APK SHA-256: 22:9C:9D:7D:E9:8F:17:9C:AC:D4:65:E3:E9:FD:BA:D4:59:01:9C:BF:7C:21:F0:37:BF:0C:C5:04:D4:71:0D:1B
+```
+
+확인 명령:
+
+```bash
+cd client
+/Users/ibkim/Library/Android/sdk/build-tools/36.0.0/apksigner \
+  verify --print-certs build/app/outputs/flutter-apk/app-release.apk
+```
 
 ## iOS Info.plist 필수 항목
 
@@ -98,6 +129,30 @@ xcrun devicectl device process launch \
   --device C7DD57C9-48FC-5362-B2FB-ED87CFFD51FA \
   --terminate-existing \
   com.voicetextnote.app
+```
+
+2026-06-30에는 Flutter가 `enable Developer Mode` 오류를 계속 표시했지만, `devicectl` 기준 기기는 `developerModeStatus: enabled`, `paired`, `wired`, `available`이었다. 이 경우 Flutter install 대신 archive의 서명된 앱을 직접 설치한다.
+
+```bash
+cd client
+flutter build ipa --release
+
+xcrun devicectl device install app \
+  --device C7DD57C9-48FC-5362-B2FB-ED87CFFD51FA \
+  build/ios/archive/Runner.xcarchive/Products/Applications/Runner.app
+
+xcrun devicectl device process launch \
+  --device C7DD57C9-48FC-5362-B2FB-ED87CFFD51FA \
+  com.voicetextnote.app
+```
+
+성공 증거:
+
+```text
+App installed:
+• bundleID: com.voicetextnote.app
+
+Launched application with com.voicetextnote.app bundle identifier.
 ```
 
 ## APNs / FCM 실기기 Push 규칙
@@ -209,6 +264,9 @@ openapi:200
 | FCM token이 늦게 나오거나 backend device registration이 누락됨 | iOS APNs token이 Firebase Messaging에 연결되기 전에 FCM token을 요청했거나 auth restore 전에 notification 초기화를 시작함 | `AppDelegate.swift`의 APNs token bridge, `PushNotificationService._waitForApnsToken()`, auth state 전환 후 notification 초기화 흐름을 유지한다. |
 | 백엔드 PushService가 MOCK 모드 | 원격 `.env`에 `FIREBASE_CREDENTIALS_PATH`가 없거나 서비스 계정 JSON 경로/권한이 잘못됨 | 원격 파일 `/Users/ibkim/secure/voice-to-textnote/firebase-adminsdk-fbsvc.json`과 `.env` 키를 확인하고 백엔드를 재시작한다. |
 | 백엔드가 `firebase_project_id extra_forbidden`으로 시작 실패 | `.env`에 현재 Settings 모델이 허용하지 않는 `FIREBASE_PROJECT_ID`가 들어감 | 원격 `.env`에서 `FIREBASE_PROJECT_ID`를 제거하고 재시작한다. |
+| Android Google 계정 선택 후 `not registered to use OAuth2.0` | 실제 설치 APK의 package/SHA-1 조합이 Google Cloud Console Android OAuth client에 등록되어 있지 않음 | 설치 APK SHA-1을 확인하고 `com.voicetextnote.app` Android OAuth client에 등록한다. |
+| Android Google 로그인에서 `You must use a Web client as the server client ID` | `serverClientId`에 Android OAuth client ID를 넣음 | Web OAuth client ID를 사용한다. |
+| Flutter iOS install이 Developer Mode 오류를 내지만 기기는 available | Flutter device detection과 CoreDevice 상태 불일치 | `xcrun devicectl device info details`로 `developerModeStatus: enabled` 확인 후 `devicectl device install app` 사용 |
 
 ## STT 20% 멈춤 진단 규칙
 

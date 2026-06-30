@@ -35,6 +35,6 @@ SPEC CHECKSUMS:
   sign_in_with_apple: c5dcc141574c8c54d5ac99dd2163c0c72ad22418
   whisper_ggml_plus: 03dbc05ca07acd625beec982db80b41dae2fe005
 
-PODFILE CHECKSUM: 22e5a815f524d8d239c26b3ea1ddce04f62ed8b5
+PODFILE CHECKSUM: b7940fe58db6274dec49cf7197af90e93dbca7d1
 
 COCOAPODS: 1.16.2
