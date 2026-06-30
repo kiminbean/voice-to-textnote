@@ -7,9 +7,11 @@ import 'package:voice_to_textnote/models/action_item.dart';
 import 'package:voice_to_textnote/models/mind_map_result.dart';
 import 'package:voice_to_textnote/models/speaker_profile.dart';
 import 'package:voice_to_textnote/models/summary_result.dart';
+import 'package:voice_to_textnote/models/tone_model.dart';
 import 'package:voice_to_textnote/providers/result_provider.dart';
 import 'package:voice_to_textnote/services/minutes_api.dart';
 import 'package:voice_to_textnote/services/speaker_api.dart';
+import 'package:voice_to_textnote/services/statistics_api.dart';
 import 'package:voice_to_textnote/services/sentiment_api.dart';
 import 'package:voice_to_textnote/services/summary_api.dart';
 import 'package:voice_to_textnote/services/tone_api.dart';
@@ -17,6 +19,8 @@ import 'package:voice_to_textnote/services/tone_api.dart';
 class MockMinutesApi extends Mock implements MinutesApi {}
 
 class MockSpeakerApi extends Mock implements SpeakerApi {}
+
+class MockStatisticsApi extends Mock implements StatisticsApi {}
 
 class MockSummaryApi extends Mock implements SummaryApi {}
 
@@ -27,6 +31,7 @@ class MockToneApi extends Mock implements ToneApi {}
 void main() {
   late MockMinutesApi mockMinApi;
   late MockSpeakerApi mockSpeakerApi;
+  late MockStatisticsApi mockStatisticsApi;
   late MockSummaryApi mockSumApi;
   late MockSentimentApi mockSentimentApi;
   late MockToneApi mockToneApi;
@@ -35,6 +40,7 @@ void main() {
   setUp(() {
     mockMinApi = MockMinutesApi();
     mockSpeakerApi = MockSpeakerApi();
+    mockStatisticsApi = MockStatisticsApi();
     mockSumApi = MockSummaryApi();
     mockSentimentApi = MockSentimentApi();
     mockToneApi = MockToneApi();
@@ -45,6 +51,7 @@ void main() {
       overrides: [
         minutesApiProvider.overrideWithValue(mockMinApi),
         speakerApiProvider.overrideWithValue(mockSpeakerApi),
+        statisticsApiProvider.overrideWithValue(mockStatisticsApi),
         summaryApiProvider.overrideWithValue(mockSumApi),
         sentimentApiProvider.overrideWithValue(mockSentimentApi),
         toneApiProvider.overrideWithValue(mockToneApi),
@@ -88,6 +95,87 @@ void main() {
 
       expect(segments.single.speakerId, 'SPEAKER_00');
       expect(segments.single.speakerName, '영자');
+    });
+
+    test('저장된 화자 프로필 이름을 statistics speaker에 적용해야 함', () async {
+      when(() => mockStatisticsApi.getStatistics('min-stats-001')).thenAnswer(
+        (_) async => const StatisticsResponse(
+          taskId: 'min-stats-001',
+          totalSegments: 1,
+          totalWords: 3,
+          totalDurationSeconds: 2.0,
+          uniqueSpeakers: 1,
+          speakers: [
+            SpeakerStat(
+              speaker: 'SPEAKER_00',
+              speakingTimeSeconds: 2.0,
+              speakingRatio: 1.0,
+              segmentCount: 1,
+              wordCount: 3,
+            ),
+          ],
+          topKeywords: [],
+        ),
+      );
+      when(() => mockSpeakerApi.list(taskId: 'min-stats-001')).thenAnswer(
+        (_) async => [
+          SpeakerProfile(
+            id: 'profile-stats-001',
+            userId: 'user-001',
+            speakerLabel: 'SPEAKER_00',
+            displayName: '영자',
+            taskId: null,
+            createdAt: DateTime(2026, 6, 24),
+            updatedAt: DateTime(2026, 6, 24),
+          ),
+        ],
+      );
+
+      final stats =
+          await container.read(statisticsProvider('min-stats-001').future);
+
+      expect(stats.speakers.single.speaker, '영자');
+    });
+
+    test('기본 Speaker N 이름도 statistics speaker에서 저장 이름으로 변환해야 함', () async {
+      when(() => mockStatisticsApi.getStatistics('min-stats-default'))
+          .thenAnswer(
+        (_) async => const StatisticsResponse(
+          taskId: 'min-stats-default',
+          totalSegments: 1,
+          totalWords: 3,
+          totalDurationSeconds: 2.0,
+          uniqueSpeakers: 1,
+          speakers: [
+            SpeakerStat(
+              speaker: 'Speaker 1',
+              speakingTimeSeconds: 2.0,
+              speakingRatio: 1.0,
+              segmentCount: 1,
+              wordCount: 3,
+            ),
+          ],
+          topKeywords: [],
+        ),
+      );
+      when(() => mockSpeakerApi.list(taskId: 'min-stats-default')).thenAnswer(
+        (_) async => [
+          SpeakerProfile(
+            id: 'profile-stats-default',
+            userId: 'user-001',
+            speakerLabel: 'SPEAKER_00',
+            displayName: '영자',
+            taskId: null,
+            createdAt: DateTime(2026, 6, 24),
+            updatedAt: DateTime(2026, 6, 24),
+          ),
+        ],
+      );
+
+      final stats =
+          await container.read(statisticsProvider('min-stats-default').future);
+
+      expect(stats.speakers.single.speaker, '영자');
     });
 
     test('voiceprint 식별 이름은 저장된 label 이름보다 우선해야 함', () async {
@@ -533,6 +621,122 @@ void main() {
       expect(result.overallSentiment, 'positive');
       expect(statusCalls, 3);
       expect(resultCalls, 2);
+    });
+
+    test('sentimentFullProvider가 저장된 화자 이름을 적용해야 함', () async {
+      when(() => mockSentimentApi.create('min-sentiment-speaker')).thenAnswer(
+        (_) async => {'task_id': 'sentiment-speaker-task', 'status': 'pending'},
+      );
+      when(() => mockSentimentApi.getStatus('sentiment-speaker-task'))
+          .thenAnswer((_) async => {'status': 'completed'});
+      when(() => mockSentimentApi.getFullResult('sentiment-speaker-task'))
+          .thenAnswer(
+        (_) async => SentimentFullResponse.fromJson({
+          'task_id': 'sentiment-speaker-task',
+          'minutes_task_id': 'min-sentiment-speaker',
+          'status': 'completed',
+          'overall_sentiment': 'positive',
+          'overall_emotion': 'confident',
+          'segments': [
+            {
+              'start': 0.0,
+              'end': 2.0,
+              'speaker': 'SPEAKER_00',
+              'text': '좋습니다',
+              'sentiment': 'positive',
+              'emotion': 'confident',
+            },
+          ],
+          'speakers': [
+            {
+              'speaker': 'Speaker 1',
+              'total_segments': 1,
+              'positive_ratio': 1.0,
+              'neutral_ratio': 0.0,
+              'negative_ratio': 0.0,
+              'dominant_emotion': 'confident',
+              'emotion_distribution': {'confident': 1},
+            },
+          ],
+          'emotional_timeline': [
+            {
+              'time': 1.0,
+              'sentiment': 'positive',
+              'emotion': 'confident',
+              'speaker': 'SPEAKER_00',
+            },
+          ],
+        }),
+      );
+      when(() => mockSpeakerApi.list(taskId: 'min-sentiment-speaker'))
+          .thenAnswer(
+        (_) async => [
+          SpeakerProfile(
+            id: 'profile-sentiment-speaker',
+            userId: 'user-001',
+            speakerLabel: 'SPEAKER_00',
+            displayName: '영자',
+            taskId: null,
+            createdAt: DateTime(2026, 6, 24),
+            updatedAt: DateTime(2026, 6, 24),
+          ),
+        ],
+      );
+
+      final result = await container
+          .read(sentimentFullProvider('min-sentiment-speaker').future);
+
+      expect(result.segments.single.speaker, '영자');
+      expect(result.speakers.single.speaker, '영자');
+      expect(result.emotionalTimeline.single.speaker, '영자');
+    });
+
+    test('toneProvider가 저장된 화자 이름을 적용해야 함', () async {
+      when(() => mockToneApi.getToneByMeeting('min-tone-speaker')).thenAnswer(
+        (_) async => const ToneResponse(
+          taskId: 'tone-speaker-task',
+          status: 'completed',
+          overallTone: 'calm',
+          segments: [
+            ToneSegment(
+              start: 0.0,
+              end: 2.0,
+              speaker: 'Speaker 1',
+              tone: 'calm',
+              confidence: 0.8,
+              prosodyFeatures: {},
+            ),
+          ],
+          speakers: [
+            SpeakerTone(
+              speaker: 'SPEAKER_00',
+              dominantTone: 'calm',
+              toneDistribution: {'calm': 1.0},
+              avgPitch: 0.1,
+              avgEnergy: 0.2,
+            ),
+          ],
+        ),
+      );
+      when(() => mockSpeakerApi.list(taskId: 'min-tone-speaker')).thenAnswer(
+        (_) async => [
+          SpeakerProfile(
+            id: 'profile-tone-speaker',
+            userId: 'user-001',
+            speakerLabel: 'SPEAKER_00',
+            displayName: '영자',
+            taskId: null,
+            createdAt: DateTime(2026, 6, 24),
+            updatedAt: DateTime(2026, 6, 24),
+          ),
+        ],
+      );
+
+      final result =
+          await container.read(toneProvider('min-tone-speaker').future);
+
+      expect(result.segments.single.speaker, '영자');
+      expect(result.speakers.single.speaker, '영자');
     });
 
     // MeetingResult에 keyDecisions와 nextSteps가 포함되는지 테스트

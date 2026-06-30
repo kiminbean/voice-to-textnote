@@ -32,7 +32,7 @@ class SttModelInfo {
     displayName: 'Whisper Base (오프라인)',
     downloadUrl:
         'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin',
-    sizeBytes: 147951193,
+    sizeBytes: 147951465,
     sha256Checksum:
         '60ed5bc3dd14eea856493d334349b405782ddcaf0028d4b5df4088345fba2efe',
   );

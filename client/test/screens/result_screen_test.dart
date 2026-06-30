@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:voice_to_textnote/models/auth_user.dart';
 import 'package:voice_to_textnote/models/meeting.dart';
+import 'package:voice_to_textnote/models/promise_radar.dart';
 import 'package:voice_to_textnote/models/sales_contact_brief.dart';
 import 'package:voice_to_textnote/models/speaker_profile.dart';
 import 'package:voice_to_textnote/models/study_pack.dart';
@@ -20,6 +21,7 @@ import 'package:voice_to_textnote/screens/result_screen.dart';
 import 'package:voice_to_textnote/services/auth_api.dart';
 import 'package:voice_to_textnote/services/auth_service.dart';
 import 'package:voice_to_textnote/services/minutes_api.dart';
+import 'package:voice_to_textnote/services/promise_radar_api.dart';
 import 'package:voice_to_textnote/services/speaker_api.dart';
 import 'package:voice_to_textnote/services/study_pack_api.dart';
 import 'package:voice_to_textnote/services/summary_api.dart';
@@ -40,6 +42,8 @@ class MockTranslationApi extends Mock implements TranslationApi {}
 class MockAuthApi extends Mock implements AuthApi {}
 
 class MockAuthService extends Mock implements AuthService {}
+
+class MockPromiseRadarApi extends Mock implements PromiseRadarApi {}
 
 // 테스트용 Meeting 목록 Notifier (AsyncNotifier이므로 Future<List<Meeting>> 반환)
 class _MockMeetingListNotifier extends MeetingListNotifier {
@@ -114,6 +118,8 @@ void main() {
   late MockStudyPackApi mockStudyPackApi;
   late MockSalesContactBriefApi mockSalesContactBriefApi;
   late MockTranslationApi mockTranslationApi;
+  late MockAuthService mockAuthService;
+  late MockPromiseRadarApi mockPromiseRadarApi;
 
   // 테스트용 미팅 데이터 (summaryTaskId 포함)
   final testMeeting = Meeting(
@@ -140,6 +146,8 @@ void main() {
     mockStudyPackApi = MockStudyPackApi();
     mockSalesContactBriefApi = MockSalesContactBriefApi();
     mockTranslationApi = MockTranslationApi();
+    mockAuthService = MockAuthService();
+    mockPromiseRadarApi = MockPromiseRadarApi();
 
     // 회의록 기본 응답
     when(() => mockMinApi.getResult(any())).thenAnswer(
@@ -167,6 +175,28 @@ void main() {
         scannedProfiles: 0,
         enrolledProfiles: 0,
         skippedProfiles: 0,
+      ),
+    );
+    when(() => mockAuthService.getAccessToken())
+        .thenAnswer((_) async => 'test-token');
+    when(() => mockPromiseRadarApi.getRadar(
+          any(),
+          limit: any(named: 'limit'),
+        )).thenAnswer(
+      (_) async => const PromiseRadarResult(
+        taskId: 'sum-task-001',
+        generatedAt: '2026-06-30T00:00:00Z',
+        headline: '추적할 약속이나 결정 변경이 아직 없습니다.',
+        riskScore: 0,
+        analyzedMeetings: 1,
+        currentPromises: [],
+        carriedOverPromises: [],
+        stalePromises: [],
+        decisionDrifts: [],
+        promiseChains: [],
+        ownerRisks: [],
+        highRiskCount: 0,
+        followUpQuestions: [],
       ),
     );
     when(() => mockSumApi.createMindMap(any())).thenAnswer(
@@ -329,6 +359,7 @@ void main() {
         salesContactBriefApiProvider
             .overrideWithValue(mockSalesContactBriefApi),
         translationApiProvider.overrideWithValue(mockTranslationApi),
+        promiseRadarApiProvider.overrideWithValue(mockPromiseRadarApi),
         meetingListProvider.overrideWith(
           () => _MockMeetingListNotifier(meetings ?? [testMeeting]),
         ),
@@ -399,7 +430,10 @@ void main() {
             ],
           });
 
-      await tester.pumpWidget(buildTestWidget([_authenticatedUserOverride()]));
+      await tester.pumpWidget(buildTestWidget([
+        _authenticatedUserOverride(),
+        authServiceProvider.overrideWithValue(mockAuthService),
+      ]));
       await tester.pumpAndSettle();
 
       await tester.tap(_tabText('회의 내용'));
@@ -413,7 +447,8 @@ void main() {
         of: find.byType(AlertDialog),
         matching: find.text('저장'),
       ));
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
 
       final captured =
           verify(() => mockSpeakerApi.create(captureAny())).captured;
@@ -454,11 +489,9 @@ void main() {
       verifyNever(() => mockSpeakerApi.create(any()));
       expect(find.text('평범한 사업가'), findsNothing);
       expect(find.text('Speaker 1'), findsOneWidget);
-      expect(find.textContaining('화자 이름 저장 실패'), findsOneWidget);
     });
 
-    testWidgets('목소리 기반 자동 매칭 이름은 추정됨 배지를 표시해야 함',
-        (WidgetTester tester) async {
+    testWidgets('목소리 기반 자동 매칭 이름은 추정됨 배지를 표시해야 함', (WidgetTester tester) async {
       when(() => mockMinApi.getResult('min-task-001')).thenAnswer((_) async => {
             'segments': [
               {

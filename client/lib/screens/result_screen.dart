@@ -13,6 +13,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:voice_to_textnote/models/action_item.dart';
 import 'package:voice_to_textnote/models/meeting.dart';
 import 'package:voice_to_textnote/models/mind_map_result.dart';
+import 'package:voice_to_textnote/models/promise_radar.dart';
 import 'package:voice_to_textnote/models/sales_contact_brief.dart';
 import 'package:voice_to_textnote/models/summary_result.dart';
 import 'package:voice_to_textnote/models/speaker_profile.dart';
@@ -277,7 +278,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         : const AsyncData(<Team>[]);
 
     return DefaultTabController(
-      length: 11,
+      length: 12,
       child: Scaffold(
         appBar: AppBar(
           leading: IconButton(
@@ -364,6 +365,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
               Tab(text: 'AI 요약'),
               Tab(text: '회의 내용'),
               Tab(text: '액션 아이템'),
+              Tab(text: '약속 레이더'),
               Tab(text: '회의록'),
               Tab(text: '마인드맵'),
               Tab(text: '영업'),
@@ -401,6 +403,8 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                       transcriptionTaskId: meeting?.transcriptionTaskId),
                   // 액션 아이템 탭 (summaryTaskId 사용)
                   _ActionItemsTab(taskId: summaryTaskId),
+                  // 약속 레이더: 과거 회의와 현재 회의의 약속/결정 연속성 분석
+                  _PromiseRadarTab(taskId: summaryTaskId),
                   // 회의록 탭: 양식 기반 테이블 형태 회의록
                   _MinutesTab(taskId: summaryTaskId, meeting: meeting),
                   // 마인드맵 탭: 백엔드 AI 생성 API 기반 관계 그래프
@@ -1222,6 +1226,7 @@ class _TranscriptTabState extends ConsumerState<_TranscriptTab> {
       ref.invalidate(speakerListProvider(widget.taskId));
       ref.invalidate(speakerNameMapProvider(widget.taskId));
       ref.invalidate(transcriptSegmentsProvider(widget.taskId!));
+      ref.invalidate(statisticsProvider(widget.taskId!));
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(_speakerSaveMessage(saved))),
@@ -4982,6 +4987,494 @@ class _MindMapRelations extends StatelessWidget {
                 ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _PromiseRadarTab extends ConsumerWidget {
+  final String? taskId;
+
+  const _PromiseRadarTab({required this.taskId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (taskId == null) {
+      return const EmptyStateWidget(
+        icon: Icons.track_changes_outlined,
+        title: '약속 레이더 준비 중',
+        subtitle: '요약 처리가 완료되면 과거 회의와 약속을 비교합니다',
+      );
+    }
+
+    final radarAsync = ref.watch(promiseRadarProvider(taskId!));
+    return radarAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, _) => ErrorRetryWidget(
+        message: '약속 레이더를 불러올 수 없습니다',
+        onRetry: () => ref.invalidate(promiseRadarProvider(taskId!)),
+      ),
+      data: (radar) => RefreshIndicator(
+        onRefresh: () async => ref.invalidate(promiseRadarProvider(taskId!)),
+        child: ListView(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          children: [
+            _buildHeader(context, radar),
+            if (radar.ownerRisks.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.md),
+              _buildOwnerRiskSection(context, radar.ownerRisks),
+            ],
+            if (radar.promiseChains.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.md),
+              _buildPromiseChainSection(context, radar.promiseChains),
+            ],
+            const SizedBox(height: AppSpacing.md),
+            if (radar.followUpQuestions.isNotEmpty)
+              _buildQuestionSection(context, radar.followUpQuestions),
+            if (radar.stalePromises.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.md),
+              _buildPromiseSection(
+                context,
+                title: '미확인 과거 약속',
+                icon: Icons.report_problem_outlined,
+                items: radar.stalePromises,
+              ),
+            ],
+            if (radar.carriedOverPromises.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.md),
+              _buildCarryOverSection(context, radar.carriedOverPromises),
+            ],
+            if (radar.decisionDrifts.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.md),
+              _buildDecisionDriftSection(context, radar.decisionDrifts),
+            ],
+            const SizedBox(height: AppSpacing.md),
+            _buildPromiseSection(
+              context,
+              title: '이번 회의의 새 약속',
+              icon: Icons.add_task_outlined,
+              items: radar.currentPromises,
+              emptyText: '이번 회의에서 구조화된 새 약속을 찾지 못했습니다.',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader(BuildContext context, PromiseRadarResult radar) {
+    final theme = Theme.of(context);
+    final color = _riskColor(radar.riskScore, theme.colorScheme);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.track_changes_outlined, color: color),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Text(
+                    '약속 레이더',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                Text(
+                  '${radar.riskScore}%',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    color: color,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(999),
+              child: LinearProgressIndicator(
+                value: radar.riskScore / 100,
+                minHeight: 8,
+                color: color,
+                backgroundColor: theme.colorScheme.surfaceContainerHighest,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Text(radar.headline, style: theme.textTheme.bodyMedium),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              '분석한 회의 ${radar.analyzedMeetings}개 · 새 약속 ${radar.currentPromises.length}개 · 미확인 ${radar.stalePromises.length}개 · 고위험 ${radar.highRiskCount}개',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOwnerRiskSection(
+    BuildContext context,
+    List<PromiseRadarOwnerRisk> owners,
+  ) {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _sectionTitle(context, Icons.person_search_outlined, '담당자별 약속 리스크'),
+            const SizedBox(height: AppSpacing.sm),
+            for (final owner in owners.take(6))
+              Padding(
+                padding: const EdgeInsets.only(top: AppSpacing.sm),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            owner.owner,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          '${owner.riskScore}%',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color:
+                                _riskColor(owner.riskScore, theme.colorScheme),
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      '열린 약속 ${owner.openPromises}개 · 미확인 ${owner.stalePromises}개 · 반복 ${owner.recurringPromises}개',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    if (owner.latestPromises.isNotEmpty) ...[
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        owner.latestPromises.take(2).join(' / '),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPromiseChainSection(
+    BuildContext context,
+    List<PromiseRadarPromiseChain> chains,
+  ) {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _sectionTitle(context, Icons.timeline_outlined, '회의를 넘어 이어진 약속 체인'),
+            const SizedBox(height: AppSpacing.sm),
+            for (final chain in chains.take(6))
+              Padding(
+                padding: const EdgeInsets.only(top: AppSpacing.sm),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            chain.canonicalText,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        _RiskChip(level: chain.riskLevel),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      '${chain.occurrences}회 등장 · ${chain.ageDays}일 경과 · ${_chainStatusLabel(chain.status)}',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    if (chain.links.length > 1) ...[
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        chain.links
+                            .take(3)
+                            .map((link) => link.text)
+                            .join(' → '),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuestionSection(BuildContext context, List<String> questions) {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _sectionTitle(context, Icons.help_outline, '다음 회의에서 바로 확인할 질문'),
+            const SizedBox(height: AppSpacing.sm),
+            for (final question in questions)
+              Padding(
+                padding: const EdgeInsets.only(top: AppSpacing.xs),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('• ', style: theme.textTheme.bodyMedium),
+                    Expanded(child: Text(question)),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPromiseSection(
+    BuildContext context, {
+    required String title,
+    required IconData icon,
+    required List<PromiseRadarPromise> items,
+    String emptyText = '표시할 약속이 없습니다.',
+  }) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _sectionTitle(context, icon, title),
+            const SizedBox(height: AppSpacing.sm),
+            if (items.isEmpty)
+              Text(
+                emptyText,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+              )
+            else
+              for (final item in items) _PromiseTile(item: item),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCarryOverSection(
+    BuildContext context,
+    List<PromiseRadarCarryOver> items,
+  ) {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _sectionTitle(context, Icons.loop_rounded, '반복 등장한 약속'),
+            const SizedBox(height: AppSpacing.sm),
+            for (final item in items)
+              Padding(
+                padding: const EdgeInsets.only(top: AppSpacing.sm),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(item.current.text,
+                        style: theme.textTheme.bodyMedium
+                            ?.copyWith(fontWeight: FontWeight.w600)),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      '이전 표현: ${item.previous.text}',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDecisionDriftSection(
+    BuildContext context,
+    List<PromiseRadarDecisionDrift> items,
+  ) {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _sectionTitle(context, Icons.compare_arrows_rounded, '결정 변경 후보'),
+            const SizedBox(height: AppSpacing.sm),
+            for (final item in items)
+              Padding(
+                padding: const EdgeInsets.only(top: AppSpacing.sm),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('현재: ${item.currentDecision}',
+                        style: theme.textTheme.bodyMedium
+                            ?.copyWith(fontWeight: FontWeight.w600)),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      '이전: ${item.previousDecision}',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _sectionTitle(BuildContext context, IconData icon, String title) {
+    final theme = Theme.of(context);
+    return Row(
+      children: [
+        Icon(icon, size: 20, color: theme.colorScheme.primary),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: Text(
+            title,
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Color _riskColor(int score, ColorScheme scheme) {
+    if (score >= 70) return scheme.error;
+    if (score >= 35) return AppColors.warning;
+    return AppColors.success;
+  }
+
+  String _chainStatusLabel(String status) {
+    return switch (status) {
+      'recurring' => '반복 추적 중',
+      'stale' => '현재 회의에서 미확인',
+      _ => '현재 활성',
+    };
+  }
+}
+
+class _RiskChip extends StatelessWidget {
+  final String level;
+
+  const _RiskChip({required this.level});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final (label, color) = switch (level) {
+      'high' => ('높음', theme.colorScheme.error),
+      'medium' => ('중간', AppColors.warning),
+      _ => ('낮음', AppColors.success),
+    };
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: 4,
+      ),
+      decoration: BoxDecoration(
+        color: color.withAlpha(28),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: theme.textTheme.labelSmall?.copyWith(
+          color: color,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
+class _PromiseTile extends StatelessWidget {
+  final PromiseRadarPromise item;
+
+  const _PromiseTile({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final meta = [
+      if (item.owner?.trim().isNotEmpty == true) item.owner!,
+      if (item.dueDate?.trim().isNotEmpty == true) item.dueDate!,
+      item.priority,
+    ].join(' · ');
+
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.sm),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            item.text,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          if (meta.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              meta,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

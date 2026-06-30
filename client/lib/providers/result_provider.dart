@@ -10,8 +10,10 @@ import 'package:voice_to_textnote/services/statistics_api.dart';
 import 'package:voice_to_textnote/services/bookmark_api.dart';
 import 'package:voice_to_textnote/services/sentiment_api.dart';
 import 'package:voice_to_textnote/services/summary_api.dart';
+import 'package:voice_to_textnote/services/promise_radar_api.dart';
 import 'package:voice_to_textnote/services/tone_api.dart';
 import 'package:voice_to_textnote/models/tone_model.dart';
+import 'package:voice_to_textnote/models/promise_radar.dart';
 
 const _auxiliaryPollInterval = Duration(seconds: 1);
 const _auxiliaryShortRaceRetries = 30;
@@ -22,6 +24,99 @@ bool _isDioNotFound(Object error) =>
 
 Future<void> _waitForAuxiliaryRetry() =>
     Future<void>.delayed(_auxiliaryPollInterval);
+
+String? _speakerLabelFromDefaultName(String speaker) {
+  final match =
+      RegExp(r'^Speaker\s+(\d+)$', caseSensitive: false).firstMatch(speaker);
+  if (match == null) return null;
+  final number = int.tryParse(match.group(1)!);
+  if (number == null || number <= 0) return null;
+  return 'SPEAKER_${(number - 1).toString().padLeft(2, '0')}';
+}
+
+String _speakerDisplayName(
+  String speaker,
+  Map<String, String> speakerNames,
+) {
+  final trimmed = speaker.trim();
+  final directName = speakerNames[trimmed];
+  if (directName != null) return directName;
+  final speakerLabel = _speakerLabelFromDefaultName(trimmed);
+  if (speakerLabel != null) {
+    return speakerNames[speakerLabel] ?? speaker;
+  }
+  return speaker;
+}
+
+SentimentFullResponse _applySpeakerNamesToSentiment(
+  SentimentFullResponse response,
+  Map<String, String> speakerNames,
+) {
+  if (speakerNames.isEmpty) return response;
+  return SentimentFullResponse(
+    taskId: response.taskId,
+    status: response.status,
+    minutesTaskId: response.minutesTaskId,
+    overallSentiment: response.overallSentiment,
+    overallEmotion: response.overallEmotion,
+    segments: [
+      for (final segment in response.segments)
+        SentimentSegment(
+          start: segment.start,
+          end: segment.end,
+          speaker: _speakerDisplayName(segment.speaker, speakerNames),
+          text: segment.text,
+          sentiment: segment.sentiment,
+          emotion: segment.emotion,
+          confidence: segment.confidence,
+        ),
+    ],
+    speakers: [
+      for (final speaker in response.speakers)
+        SpeakerSentiment(
+          speaker: _speakerDisplayName(speaker.speaker, speakerNames),
+          totalSegments: speaker.totalSegments,
+          positiveRatio: speaker.positiveRatio,
+          neutralRatio: speaker.neutralRatio,
+          negativeRatio: speaker.negativeRatio,
+          dominantEmotion: speaker.dominantEmotion,
+          emotionDistribution: speaker.emotionDistribution,
+        ),
+    ],
+    emotionalTimeline: [
+      for (final entry in response.emotionalTimeline)
+        EmotionTimelineEntry(
+          time: entry.time,
+          sentiment: entry.sentiment,
+          emotion: entry.emotion,
+          speaker: _speakerDisplayName(entry.speaker, speakerNames),
+        ),
+    ],
+    generationTimeSeconds: response.generationTimeSeconds,
+    errorMessage: response.errorMessage,
+  );
+}
+
+ToneResponse _applySpeakerNamesToTone(
+  ToneResponse response,
+  Map<String, String> speakerNames,
+) {
+  if (speakerNames.isEmpty) return response;
+  return response.copyWith(
+    segments: [
+      for (final segment in response.segments)
+        segment.copyWith(
+          speaker: _speakerDisplayName(segment.speaker, speakerNames),
+        ),
+    ],
+    speakers: [
+      for (final speaker in response.speakers)
+        speaker.copyWith(
+          speaker: _speakerDisplayName(speaker.speaker, speakerNames),
+        ),
+    ],
+  );
+}
 
 class TranscriptSegment {
   final String? speakerId;
@@ -169,6 +264,12 @@ final summaryResultProvider =
   return SummaryResult.fromJson(data);
 });
 
+final promiseRadarProvider =
+    FutureProvider.family<PromiseRadarResult, String>((ref, summaryTaskId) {
+  final api = ref.watch(promiseRadarApiProvider);
+  return api.getRadar(summaryTaskId);
+});
+
 // 관계 추론형 마인드맵 결과 로딩 프로바이더.
 // 백엔드가 비동기 생성 작업을 반환하므로 create → status polling → result 순서로 처리한다.
 final mindMapResultProvider =
@@ -228,7 +329,21 @@ final mindMapResultProvider =
 final statisticsProvider =
     FutureProvider.family<StatisticsResponse, String>((ref, taskId) async {
   final api = ref.watch(statisticsApiProvider);
-  return api.getStatistics(taskId);
+  final stats = await api.getStatistics(taskId);
+  final speakerNames = await ref.watch(speakerNameMapProvider(taskId).future);
+  if (speakerNames.isEmpty) return stats;
+
+  return stats.copyWith(
+    speakers: [
+      for (final speaker in stats.speakers)
+        speaker.copyWith(
+          speaker: _speakerDisplayName(
+            speaker.speaker,
+            speakerNames,
+          ),
+        ),
+    ],
+  );
 });
 
 final bookmarksProvider =
@@ -287,7 +402,10 @@ final sentimentFullProvider =
           resultAttempt < _auxiliaryShortRaceRetries;
           resultAttempt++) {
         try {
-          return await api.getFullResult(sentimentTaskId);
+          final response = await api.getFullResult(sentimentTaskId);
+          final speakerNames =
+              await ref.watch(speakerNameMapProvider(minutesTaskId).future);
+          return _applySpeakerNamesToSentiment(response, speakerNames);
         } on DioException catch (error) {
           if (error.response?.statusCode == 404) {
             await _waitForAuxiliaryRetry();
@@ -333,9 +451,13 @@ final toneProvider =
       if (status == 'completed' ||
           response.segments.isNotEmpty ||
           response.speakers.isNotEmpty) {
-        return response;
+        final speakerNames =
+            await ref.watch(speakerNameMapProvider(meetingId).future);
+        return _applySpeakerNamesToTone(response, speakerNames);
       }
-      return response;
+      final speakerNames =
+          await ref.watch(speakerNameMapProvider(meetingId).future);
+      return _applySpeakerNamesToTone(response, speakerNames);
     } on ToneDisabledException {
       rethrow;
     } on ToneNotFoundException catch (error) {

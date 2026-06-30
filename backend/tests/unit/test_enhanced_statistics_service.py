@@ -426,6 +426,64 @@ class TestEnhancedStatisticsService:
         assert patterns[1].speaker == "Bob"
         assert patterns[1].total_speaking_time == 30.0
 
+    def test_analyze_speaker_patterns_uses_speaker_names_without_speaker_field(self):
+        """speaker 필드가 없어도 speaker_id/name 기반으로 화자 패턴을 합산."""
+        service = EnhancedStatisticsService()
+        segments = [
+            {
+                "start": 0.0,
+                "end": 20.0,
+                "speaker_id": "SPEAKER_00",
+                "speaker_name": "Speaker 1",
+            },
+            {
+                "start": 20.0,
+                "end": 45.0,
+                "speaker_id": "SPEAKER_00",
+                "speaker_name": "Speaker 1",
+                "identified_speaker_name": "영자",
+            },
+            {
+                "start": 45.0,
+                "end": 60.0,
+                "speaker_id": "SPEAKER_01",
+                "speaker_name": "철수",
+            },
+        ]
+
+        patterns = service._analyze_speaker_patterns(segments)
+
+        speakers = {p.speaker: p for p in patterns}
+        assert set(speakers) == {"영자", "철수"}
+        assert speakers["영자"].total_speaking_time == 45.0
+        assert speakers["영자"].intervention_count == 2
+        assert speakers["철수"].total_speaking_time == 15.0
+
+    def test_analyze_speaker_patterns_uses_name_when_speaker_is_unknown(self):
+        """speaker=UNKNOWN이어도 speaker_name이 있으면 이름별로 분리."""
+        service = EnhancedStatisticsService()
+        segments = [
+            {
+                "start": 0.0,
+                "end": 10.0,
+                "speaker": "UNKNOWN",
+                "speaker_name": "김팀장",
+            },
+            {
+                "start": 10.0,
+                "end": 25.0,
+                "speaker": "UNKNOWN",
+                "speaker_name": "이개발",
+            },
+        ]
+
+        patterns = service._analyze_speaker_patterns(segments)
+
+        speakers = {p.speaker: p for p in patterns}
+        assert set(speakers) == {"김팀장", "이개발"}
+        assert speakers["김팀장"].total_speaking_time == 10.0
+        assert speakers["이개발"].total_speaking_time == 15.0
+
     def test_analyze_speaker_patterns_with_unknown_speaker(self):
         """알 수 없는 화자 처리."""
         service = EnhancedStatisticsService()

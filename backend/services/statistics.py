@@ -112,6 +112,85 @@ _STOPWORDS: frozenset[str] = frozenset(
     }
 )
 
+UNKNOWN_SPEAKER = "UNKNOWN"
+_SPEAKER_ID_RE = re.compile(r"^SPEAKER[_\s-]?\d+$", re.IGNORECASE)
+_DEFAULT_SPEAKER_RE = re.compile(r"^Speaker\s+\d+$", re.IGNORECASE)
+
+
+def _clean_speaker_value(value: Any) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
+
+
+def is_placeholder_speaker_name(name: str | None) -> bool:
+    text = _clean_speaker_value(name)
+    if text is None:
+        return True
+    normalized = text.upper()
+    return (
+        normalized in {"UNKNOWN", "UNKNOWN SPEAKER"}
+        or text == "알 수 없음"
+        or bool(_SPEAKER_ID_RE.fullmatch(text))
+        or bool(_DEFAULT_SPEAKER_RE.fullmatch(text))
+    )
+
+
+def resolve_segment_speaker_key(segment: dict[str, Any]) -> str:
+    """Return the stable identity used for speaker aggregation."""
+    speaker_id = _clean_speaker_value(segment.get("speaker_id"))
+    if speaker_id:
+        return speaker_id
+
+    speaker = _clean_speaker_value(segment.get("speaker"))
+    if speaker and speaker.upper() not in {"UNKNOWN", "UNKNOWN SPEAKER"}:
+        return speaker
+
+    speaker_name = _clean_speaker_value(segment.get("speaker_name"))
+    if speaker_name and not is_placeholder_speaker_name(speaker_name):
+        return speaker_name
+
+    identified_name = _clean_speaker_value(segment.get("identified_speaker_name"))
+    if identified_name and not is_placeholder_speaker_name(identified_name):
+        return identified_name
+
+    return speaker_name or identified_name or speaker or UNKNOWN_SPEAKER
+
+
+def resolve_segment_speaker_name(segment: dict[str, Any]) -> str:
+    """Return the best display name available on a minutes segment."""
+    identified_name = _clean_speaker_value(segment.get("identified_speaker_name"))
+    if identified_name and not is_placeholder_speaker_name(identified_name):
+        return identified_name
+
+    speaker_name = _clean_speaker_value(segment.get("speaker_name"))
+    if speaker_name and not is_placeholder_speaker_name(speaker_name):
+        return speaker_name
+
+    speaker = _clean_speaker_value(segment.get("speaker"))
+    if speaker and not is_placeholder_speaker_name(speaker):
+        return speaker
+
+    speaker_id = _clean_speaker_value(segment.get("speaker_id"))
+    if speaker_id:
+        return speaker_id
+    if speaker:
+        return speaker
+    if speaker_name:
+        return speaker_name
+    if identified_name:
+        return identified_name
+    return UNKNOWN_SPEAKER
+
+
+def choose_speaker_display_name(current: str | None, candidate: str) -> str:
+    if current is None:
+        return candidate
+    if is_placeholder_speaker_name(current) and not is_placeholder_speaker_name(candidate):
+        return candidate
+    return current
+
 
 async def _fetch_minutes_result(
     redis_client: aioredis.Redis,
@@ -205,6 +284,7 @@ class StatisticsService:
         speaker_time: dict[str, float] = {}
         speaker_segments: dict[str, int] = {}
         speaker_words: dict[str, int] = {}
+        speaker_names: dict[str, str] = {}
         keyword_counter: Counter[str] = Counter()
 
         total_duration = 0.0
@@ -222,14 +302,19 @@ class StatisticsService:
 
             duration = max(0.0, end - start)
             text = str(seg.get("text") or "")
-            speaker = str(seg.get("speaker") or "UNKNOWN")
+            speaker_key = resolve_segment_speaker_key(seg)
+            speaker_name = resolve_segment_speaker_name(seg)
+            speaker_names[speaker_key] = choose_speaker_display_name(
+                speaker_names.get(speaker_key),
+                speaker_name,
+            )
 
             tokens = [t for t in _TOKEN_SPLIT.split(text) if t]
             word_count = len(tokens)
 
-            speaker_time[speaker] = speaker_time.get(speaker, 0.0) + duration
-            speaker_segments[speaker] = speaker_segments.get(speaker, 0) + 1
-            speaker_words[speaker] = speaker_words.get(speaker, 0) + word_count
+            speaker_time[speaker_key] = speaker_time.get(speaker_key, 0.0) + duration
+            speaker_segments[speaker_key] = speaker_segments.get(speaker_key, 0) + 1
+            speaker_words[speaker_key] = speaker_words.get(speaker_key, 0) + word_count
 
             for tok in tokens:
                 lowered = tok.lower()
@@ -244,15 +329,15 @@ class StatisticsService:
             total_segments += 1
 
         speakers: list[SpeakerStat] = []
-        for name, t in sorted(speaker_time.items(), key=lambda kv: -kv[1]):
+        for speaker_key, t in sorted(speaker_time.items(), key=lambda kv: -kv[1]):
             ratio = (t / total_duration) if total_duration > 0 else 0.0
             speakers.append(
                 SpeakerStat(
-                    speaker=name,
+                    speaker=speaker_names.get(speaker_key, speaker_key),
                     speaking_time_seconds=round(t, 3),
                     speaking_ratio=round(ratio, 4),
-                    segment_count=speaker_segments.get(name, 0),
-                    word_count=speaker_words.get(name, 0),
+                    segment_count=speaker_segments.get(speaker_key, 0),
+                    word_count=speaker_words.get(speaker_key, 0),
                 )
             )
 

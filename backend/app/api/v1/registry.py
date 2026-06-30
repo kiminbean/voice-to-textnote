@@ -70,6 +70,7 @@ from backend.app.api.v1.minutes import (
     external_import,
     keywords,
     minutes,
+    promise_radar,
     sales_contact_brief,
     sales_contacts,
     study_pack,
@@ -88,7 +89,7 @@ from backend.app.api.v1.transcription import (
 )
 
 # 각 튜플: (APIRouter, requires_api_key)
-# 총 46개 라우터. 동일 router 중복 등록 금지.
+# 총 47개 라우터. 동일 router 중복 등록 금지.
 ROUTER_REGISTRY: list[tuple[APIRouter, bool]] = [
     # ── 핵심 STT/처리 파이프라인 (API Key 필수) ──────────────────────────────────
     # 주의: batch는 transcription 보다 반드시 먼저 와야 함 (경로 충돌 방지)
@@ -101,6 +102,7 @@ ROUTER_REGISTRY: list[tuple[APIRouter, bool]] = [
     (summary.router, True),
     (sales_contact_brief.router, True),  # SPEC-OWLL-SALES-001: sales/contact follow-up brief
     (sales_contacts.router, True),  # SPEC-OWLL-SALES-002: sales/contact list surface
+    (promise_radar.router, True),  # Cross-meeting promise/decision continuity radar
     (study_pack.router, True),  # SPEC-STUDY-001: transcript-grounded study packs
     (translation.router, True),  # SPEC-OWLL-TRANSLATION-001: persisted artifact translation
     # ── 공개 엔드포인트 (API Key 불필요) ────────────────────────────────────────

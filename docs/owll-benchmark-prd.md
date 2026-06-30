@@ -1,8 +1,8 @@
 # Owll Benchmark PRD
 
-**Status**: Study Pack core implemented; Cross-Meeting Q&A evidence search and synthesis exposed in search; sales follow-up briefs are searchable and listable; 2026-06-22 benchmark refreshed; follow-up competitive gaps remain
+**Status**: Study Pack core implemented; Cross-Meeting Q&A evidence search and synthesis exposed in search; sales follow-up briefs are searchable and listable; 2026-06-30 benchmark refreshed; Promise Radar v2 implemented
 **Created**: 2026-06-21  
-**Last verified**: 2026-06-22
+**Last verified**: 2026-06-30
 **Owner**: Voice to TextNote  
 **Scope**: Benchmark Owll AI Note Taker & Assistant and define feature upgrades that fit this project.
 
@@ -19,6 +19,23 @@ Sources checked:
 - Owll meeting recorder blog: https://owll.ai/blog/best-meeting-recorder-app
 - Owll team plan blog: https://owll.ai/blog/ai-note-taker-for-teams
 - Owll transcription workflow blog: https://owll.ai/blog/best-ai-transcription-tools-how-to-turn-meetings-into-action
+
+2026-06-30 additional benchmark sources checked:
+
+- Otter AI Meeting Assistant: https://otter.ai/features/ai-meeting-assistant
+- Fireflies AI meeting assistant: https://fireflies.ai/
+- Notta features: https://www.notta.ai/en/features
+- Granola AI notes: https://www.granola.ai/
+- PLAUD AI voice recorder/note products: https://www.plaud.ai/
+- NAVER CLOVA Note: https://clovanote.naver.com/
+
+2026-06-30 competitive conclusion:
+
+- The competitive field clusters around transcription, speaker labels, summaries, action items, meeting search/chat, translation, templates, collaboration, and integrations.
+- Those features are necessary but no longer defensible as a unique reason to choose this app.
+- The most defensible direction is a compounding private memory feature: something that becomes more valuable only after this user's meetings, corrected speaker names, and private history accumulate.
+- Selected killer feature: **Promise Radar**. It compares the current meeting against prior meetings and surfaces repeated promises, stale promises that disappeared from the current meeting, possible decision drift, and concrete follow-up questions.
+- Why it is hard to copy: it depends on long-term private meeting history, ownership boundaries, speaker/action naming hygiene, and repeated local usage. A competitor can copy the screen, but not the user's accumulated promise ledger.
 
 2026-06-22 freshness notes:
 
@@ -71,6 +88,54 @@ Voice to TextNote already covers many core Owll-equivalent capabilities:
 Do not copy Owll feature-for-feature. Improve the project by leaning into strengths Owll does not foreground: local/privacy-first processing, offline STT, richer meeting analytics, Obsidian export, and strict release evidence.
 
 The first implementation should be a Study Pack feature because it is high-impact, fits existing backend summary/Q&A infrastructure, avoids new native platform risk, and creates a visible competitive upgrade for lectures, interviews, sermons, and research recordings.
+
+2026-06-30 update: Study Pack, Cross-Meeting Q&A, translation, sales briefs, smart summary modes, and analytics are now implemented. The next differentiator is not another output format; it is continuity across meetings. Promise Radar is now the primary "must use Voice to TextNote" wedge for teams and individuals who lose decisions and follow-ups across recurring meetings.
+
+## 4.1 Killer Feature: Promise Radar
+
+**Implementation status (2026-06-30)**: Backend schema/service/API, route registration, Flutter API/model/provider, Result-screen `약속 레이더` tab, and focused unit/model tests are implemented. v2 adds promise chains, owner-level risk, high-risk counts, and recurring promise follow-up questions.
+
+### Problem
+
+Meeting assistant apps summarize what happened in one meeting, but users often lose what changed between meetings: who promised what last time, whether the promise was repeated or ignored, and whether a decision silently drifted. This is the point where summaries fail as a workflow.
+
+### Product Bet
+
+Voice to TextNote should become the app that remembers meeting obligations over time, not just the app that writes cleaner notes.
+
+### UX
+
+- A new `약속 레이더` tab appears in the meeting result screen.
+- The tab shows:
+  - risk score and headline
+  - owner-level promise risk
+  - promise chains across meetings
+  - follow-up questions for the next meeting
+  - stale promises from previous meetings
+  - repeated/carried-over promises
+  - possible decision changes
+  - current meeting promises
+
+### Backend Contract
+
+- Endpoint: `GET /api/v1/promise-radar/{summary_task_id}?limit=30`
+- Source data: persisted `TaskResult` summary rows using `action_items`, `key_decisions`, and `next_steps`.
+- Access model: current task access is verified; previous meetings are filtered by current user ownership or guest session where available.
+- Fallback principle: the first slice is deterministic and does not require a successful LLM call.
+- v2 response additions:
+  - `promise_chains`: grouped promise history with first/last seen timestamps, age, occurrence count, status, and risk level.
+  - `owner_risks`: per-owner open/stale/recurring promise counts and risk score.
+  - `high_risk_count`: number of high-risk chains/owners needing attention.
+
+### Acceptance Criteria
+
+- Given a current summary with action items, the tab lists current promises.
+- Given a previous similar action item, the API returns it as a carried-over promise.
+- Given a previous action item absent from the current meeting, the API returns it as stale and creates a follow-up question.
+- Given related but changed decisions, the API returns a decision drift candidate.
+- Given no extractable promises, the UI shows a useful empty state instead of failing.
+- Given the same promise appears across multiple meetings, the API groups it into one chain.
+- Given promises accumulate under one owner, the UI surfaces that owner as a risk hotspot.
 
 ## 5. PRD: Study Pack Generation
 

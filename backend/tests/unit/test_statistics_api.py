@@ -132,6 +132,86 @@ class TestStatistics:
         # 비율 합은 1.0 근사
         assert sum(s["speaking_ratio"] for s in body["speakers"]) == pytest.approx(1.0, rel=1e-3)
 
+    def test_speaker_names_are_resolved_without_speaker_field(self, db_engine):
+        """speaker 필드가 없어도 speaker_id/name 기반으로 집계하고 UNKNOWN을 피해야 함."""
+        import json
+
+        client = _make_app_with_redis(
+            db_engine,
+            json.dumps(
+                {
+                    "segments": [
+                        {
+                            "start": 0.0,
+                            "end": 4.0,
+                            "speaker_id": "SPEAKER_00",
+                            "speaker_name": "Speaker 1",
+                            "text": "안녕하세요 회의 시작합니다",
+                        },
+                        {
+                            "start": 4.0,
+                            "end": 9.0,
+                            "speaker_id": "SPEAKER_00",
+                            "speaker_name": "Speaker 1",
+                            "identified_speaker_name": "영자",
+                            "text": "제가 이어서 설명합니다",
+                        },
+                        {
+                            "start": 9.0,
+                            "end": 12.0,
+                            "speaker_id": "SPEAKER_01",
+                            "speaker_name": "철수",
+                            "text": "질문이 있습니다",
+                        },
+                    ]
+                }
+            ),
+        )
+
+        body = client.get("/api/v1/statistics/minutes-stats-001").json()
+
+        speakers = {s["speaker"]: s for s in body["speakers"]}
+        assert set(speakers) == {"영자", "철수"}
+        assert speakers["영자"]["speaking_time_seconds"] == pytest.approx(9.0)
+        assert speakers["영자"]["segment_count"] == 2
+        assert speakers["철수"]["speaking_time_seconds"] == pytest.approx(3.0)
+        assert "UNKNOWN" not in speakers
+
+    def test_placeholder_speaker_uses_available_speaker_name(self, db_engine):
+        """speaker=UNKNOWN이어도 speaker_name이 있으면 이름별로 분리 집계."""
+        import json
+
+        client = _make_app_with_redis(
+            db_engine,
+            json.dumps(
+                {
+                    "segments": [
+                        {
+                            "start": 0.0,
+                            "end": 2.0,
+                            "speaker": "UNKNOWN",
+                            "speaker_name": "김팀장",
+                            "text": "첫 번째 발화",
+                        },
+                        {
+                            "start": 2.0,
+                            "end": 5.0,
+                            "speaker": "UNKNOWN",
+                            "speaker_name": "이개발",
+                            "text": "두 번째 발화",
+                        },
+                    ]
+                }
+            ),
+        )
+
+        body = client.get("/api/v1/statistics/minutes-stats-001").json()
+
+        speakers = {s["speaker"]: s for s in body["speakers"]}
+        assert set(speakers) == {"김팀장", "이개발"}
+        assert speakers["김팀장"]["speaking_time_seconds"] == pytest.approx(2.0)
+        assert speakers["이개발"]["speaking_time_seconds"] == pytest.approx(3.0)
+
     def test_top_keywords_include_repeated_terms(self, client):
         body = client.get(
             "/api/v1/statistics/minutes-stats-001",

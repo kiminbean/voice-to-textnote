@@ -24,6 +24,12 @@ from backend.schemas.enhanced_statistics import (
     SpeakerParticipationPattern,
     TimeSeriesDataPoint,
 )
+from backend.services.statistics import (
+    UNKNOWN_SPEAKER,
+    choose_speaker_display_name,
+    resolve_segment_speaker_key,
+    resolve_segment_speaker_name,
+)
 from backend.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -191,8 +197,10 @@ class EnhancedStatisticsService:
 
             # 참가자 추출
             for seg in segments:
-                if isinstance(seg, dict) and seg.get("speaker"):
-                    all_participants.add(seg["speaker"])
+                if isinstance(seg, dict):
+                    speaker_key = resolve_segment_speaker_key(seg)
+                    if speaker_key != UNKNOWN_SPEAKER:
+                        all_participants.add(speaker_key)
 
             # 효율성 점수 계산
             efficiency = self._calculate_efficiency_score(segments)
@@ -207,9 +215,10 @@ class EnhancedStatisticsService:
                     "created_at": record.created_at,
                     "participant_count": len(
                         {
-                            s.get("speaker")
+                            resolve_segment_speaker_key(s)
                             for s in segments
-                            if isinstance(s, dict) and s.get("speaker")
+                            if isinstance(s, dict)
+                            and resolve_segment_speaker_key(s) != UNKNOWN_SPEAKER
                         }
                     ),
                 }
@@ -238,19 +247,25 @@ class EnhancedStatisticsService:
 
         # 4) 활발한 화자 목록 (발화 시간 기준 상위 10)
         speaker_durations: dict[str, float] = {}
+        speaker_names: dict[str, str] = {}
         for record in records:
             segments = record.result_data.get("segments", []) if record.result_data else []
             for seg in segments:
                 if isinstance(seg, dict):
-                    speaker = seg.get("speaker", "UNKNOWN")
+                    speaker_key = resolve_segment_speaker_key(seg)
+                    speaker_names[speaker_key] = choose_speaker_display_name(
+                        speaker_names.get(speaker_key),
+                        resolve_segment_speaker_name(seg),
+                    )
                     start = float(seg.get("start", 0) or 0)
                     end = float(seg.get("end", 0) or 0)
-                    speaker_durations[speaker] = speaker_durations.get(speaker, 0.0) + max(
-                        0.0, end - start
-                    )
+                    speaker_durations[speaker_key] = speaker_durations.get(
+                        speaker_key, 0.0
+                    ) + max(0.0, end - start)
 
         active_speakers = [
-            speaker for speaker, _ in sorted(speaker_durations.items(), key=lambda x: -x[1])[:10]
+            speaker_names.get(speaker, speaker)
+            for speaker, _ in sorted(speaker_durations.items(), key=lambda x: -x[1])[:10]
         ]
 
         # 5) 트렌딩 키워드 (전체 세그먼트 집계)
@@ -349,7 +364,8 @@ class EnhancedStatisticsService:
             if not isinstance(seg, dict):
                 continue
 
-            speaker = str(seg.get("speaker") or "UNKNOWN")
+            speaker_key = resolve_segment_speaker_key(seg)
+            speaker_name = resolve_segment_speaker_name(seg)
 
             try:
                 start = float(seg.get("start", 0) or 0)
@@ -360,24 +376,32 @@ class EnhancedStatisticsService:
             duration = max(0.0, end - start)
             hour = datetime.fromtimestamp(start).strftime("%H:00")
 
-            if speaker not in speaker_data:
-                speaker_data[speaker] = {
+            if speaker_key not in speaker_data:
+                speaker_data[speaker_key] = {
+                    "speaker": speaker_name,
                     "total_time": 0.0,
                     "segment_count": 0,
                     "durations": [],
                     "hours": {},
                 }
+            else:
+                speaker_data[speaker_key]["speaker"] = choose_speaker_display_name(
+                    speaker_data[speaker_key]["speaker"],
+                    speaker_name,
+                )
 
-            speaker_data[speaker]["total_time"] += duration
-            speaker_data[speaker]["segment_count"] += 1
-            speaker_data[speaker]["durations"].append(duration)
-            speaker_data[speaker]["hours"][hour] = speaker_data[speaker]["hours"].get(hour, 0) + 1
+            speaker_data[speaker_key]["total_time"] += duration
+            speaker_data[speaker_key]["segment_count"] += 1
+            speaker_data[speaker_key]["durations"].append(duration)
+            speaker_data[speaker_key]["hours"][hour] = (
+                speaker_data[speaker_key]["hours"].get(hour, 0) + 1
+            )
 
         # 전체 발화 시간 계산
         total_time = sum(data["total_time"] for data in speaker_data.values())
 
         patterns = []
-        for speaker, data in speaker_data.items():
+        for data in speaker_data.values():
             # 참여율
             participation_rate = data["total_time"] / total_time if total_time > 0 else 0.0
 
@@ -396,7 +420,7 @@ class EnhancedStatisticsService:
 
             patterns.append(
                 SpeakerParticipationPattern(
-                    speaker=speaker,
+                    speaker=data["speaker"],
                     total_speaking_time=round(data["total_time"], 3),
                     participation_rate=round(participation_rate, 4),
                     average_segment_length=round(avg_segment_length, 3),
@@ -523,7 +547,7 @@ class EnhancedStatisticsService:
                 continue
 
             duration = max(0.0, end - start)
-            speaker = str(seg.get("speaker") or "UNKNOWN")
+            speaker = resolve_segment_speaker_key(seg)
 
             total_duration = max(total_duration, end)  # 전체 회의 시간
             effective_duration += duration
