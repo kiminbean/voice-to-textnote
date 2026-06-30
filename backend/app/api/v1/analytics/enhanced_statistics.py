@@ -9,7 +9,7 @@ SPEC-ENHANCED-STATS-001: 고급 통계 대시보드 API
 """
 
 import redis.asyncio as aioredis
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.dependencies import (
@@ -35,7 +35,7 @@ def get_enhanced_statistics_service() -> EnhancedStatisticsService:
 @router.get("/{task_id}", response_model=EnhancedStatisticsResponse)
 async def get_enhanced_statistics(
     task_id: str,
-    request: Request = Depends(get_request_context),
+    request = Depends(get_request_context),
     time_range: str = Query(
         default="7d", pattern="^(1d|7d|30d|90d)$", description="시간 범위 (1d, 7d, 30d, 90d)"
     ),

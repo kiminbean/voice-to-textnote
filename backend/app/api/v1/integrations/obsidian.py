@@ -7,7 +7,7 @@ from inspect import isawaitable
 from typing import Any
 
 import redis.asyncio as aioredis
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -220,7 +220,7 @@ async def save_config(
 async def export_meeting(
     meeting_id: str,
     redis_client: aioredis.Redis = Depends(get_redis_client),
-    request: Request = Depends(get_request_context),
+    request = Depends(get_request_context),
     db: AsyncSession = Depends(get_db_session),
     current_user=Depends(get_current_user),
 ) -> ObsidianExportResponse:

@@ -8,7 +8,7 @@ SPEC-STATS-001: 회의 통계 대시보드 API
 """
 
 import redis.asyncio as aioredis
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.dependencies import (
@@ -31,7 +31,7 @@ def get_statistics_service() -> StatisticsService:
 @router.get("/{task_id}", response_model=StatisticsResponse)
 async def get_statistics(
     task_id: str,
-    request: Request = Depends(get_request_context),
+    request = Depends(get_request_context),
     top_n: int | None = Query(
         default=None,
         ge=1,

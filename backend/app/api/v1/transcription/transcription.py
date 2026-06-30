@@ -318,7 +318,7 @@ async def upload_transcription(
 )
 async def get_task_status(
     task_id: str,
-    http_request: Request = Depends(get_request_context),
+    http_request = Depends(get_request_context),
     redis_client: aioredis.Redis = Depends(get_redis_client),
     db: AsyncSession = Depends(get_db_session),
 ) -> TaskStatusResponse:
@@ -357,7 +357,7 @@ async def get_task_status(
 )
 async def get_transcription_result(
     task_id: str,
-    http_request: Request = Depends(get_request_context),
+    http_request = Depends(get_request_context),
     redis_client: aioredis.Redis = Depends(get_redis_client),
     db: AsyncSession = Depends(get_db_session),
 ) -> TranscriptionResponse:
@@ -435,7 +435,7 @@ async def get_transcription_result(
 )
 async def delete_transcription(
     task_id: str,
-    http_request: Request = Depends(get_request_context),
+    http_request = Depends(get_request_context),
     redis_client: aioredis.Redis = Depends(get_redis_client),
     db: AsyncSession = Depends(get_db_session),
 ) -> None:

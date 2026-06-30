@@ -43,7 +43,7 @@ def get_qa_service() -> QAService:
 )
 async def ask_question(
     payload: MeetingAskRequest,
-    request: Request = Depends(get_request_context),
+    request = Depends(get_request_context),
     db: AsyncSession = Depends(get_db_session),
     redis_client: aioredis.Redis = Depends(get_redis_client),
     svc: QAService = Depends(get_qa_service),
@@ -72,7 +72,7 @@ async def ask_question(
 )
 async def ask_across_meetings(
     payload: CrossMeetingAskRequest,
-    request: Request = Depends(get_request_context),
+    request = Depends(get_request_context),
     db: AsyncSession = Depends(get_db_session),
     current_user=Depends(get_optional_current_user),
     svc: QAService = Depends(get_qa_service),
@@ -104,7 +104,7 @@ async def ask_across_meetings(
 )
 async def get_qa_history(
     task_id: str,
-    request: Request = Depends(get_request_context),
+    request = Depends(get_request_context),
     db: AsyncSession = Depends(get_db_session),
     redis_client: aioredis.Redis = Depends(get_redis_client),
     svc: QAService = Depends(get_qa_service),

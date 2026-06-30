@@ -1,6 +1,6 @@
 # Owll Benchmark PRD
 
-**Status**: Study Pack core implemented; Cross-Meeting Q&A evidence search and synthesis exposed in search; sales follow-up briefs are searchable and listable; 2026-06-30 benchmark refreshed; Promise Radar v2 implemented
+**Status**: Study Pack core implemented; Cross-Meeting Q&A evidence search and synthesis exposed in search; sales follow-up briefs are searchable and listable; 2026-06-30 benchmark refreshed; Promise Radar v3 ledger loop implemented
 **Created**: 2026-06-21  
 **Last verified**: 2026-06-30
 **Owner**: Voice to TextNote  
@@ -93,7 +93,7 @@ The first implementation should be a Study Pack feature because it is high-impac
 
 ## 4.1 Killer Feature: Promise Radar
 
-**Implementation status (2026-06-30)**: Backend schema/service/API, route registration, Flutter API/model/provider, Result-screen `약속 레이더` tab, and focused unit/model tests are implemented. v2 adds promise chains, owner-level risk, high-risk counts, and recurring promise follow-up questions.
+**Implementation status (2026-07-01)**: Backend schema/service/API, route registration, Flutter API/model/provider, Result-screen `약속 레이더` tab, and focused unit/model tests are implemented. v2 added promise chains, owner-level risk, high-risk counts, and recurring promise follow-up questions. v3 adds a persistent Promise Ledger, transcript/speaker/timestamp evidence, user confirmation/status correction, next-meeting briefing, internal reminder/calendar candidates, internal ActionItem conversion, and ZAI GLM-5.2 semantic normalization with deterministic fallback.
 
 ### Problem
 
@@ -108,6 +108,9 @@ Voice to TextNote should become the app that remembers meeting obligations over 
 - A new `약속 레이더` tab appears in the meeting result screen.
 - The tab shows:
   - risk score and headline
+  - next-meeting briefing
+  - editable promise ledger
+  - transcript/speaker/timestamp evidence
   - owner-level promise risk
   - promise chains across meetings
   - follow-up questions for the next meeting
@@ -119,13 +122,26 @@ Voice to TextNote should become the app that remembers meeting obligations over 
 ### Backend Contract
 
 - Endpoint: `GET /api/v1/promise-radar/{summary_task_id}?limit=30`
+- Ledger endpoints:
+  - `GET /api/v1/promise-radar/ledger`
+  - `PATCH /api/v1/promise-radar/ledger/{entry_id}`
+  - `GET /api/v1/promise-radar/briefing/next`
+  - `POST /api/v1/promise-radar/ledger/{entry_id}/calendar`
+  - `POST /api/v1/promise-radar/ledger/{entry_id}/action-item`
 - Source data: persisted `TaskResult` summary rows using `action_items`, `key_decisions`, and `next_steps`.
 - Access model: current task access is verified; previous meetings are filtered by current user ownership or guest session where available.
-- Fallback principle: the first slice is deterministic and does not require a successful LLM call.
+- Persistence model: `promise_ledger_entries` stores user/guest-scoped promises with status, owner, due date, risk, occurrences, evidence, confirmation state, and reminder/calendar metadata.
+- Fallback principle: deterministic extraction remains the source of truth when ZAI is unavailable or returns invalid JSON.
 - v2 response additions:
   - `promise_chains`: grouped promise history with first/last seen timestamps, age, occurrence count, status, and risk level.
   - `owner_risks`: per-owner open/stale/recurring promise counts and risk score.
   - `high_risk_count`: number of high-risk chains/owners needing attention.
+- v3 response additions:
+  - `ledger_entries`: persisted editable obligations with status and evidence.
+  - `next_meeting_briefing`: unresolved/high-risk promises and questions before the next meeting.
+  - `semantic_enrichment_status`: whether ZAI semantic normalization was applied, unavailable, failed, or deterministic only.
+  - `reminder_candidates`: internal reminder/calendar payloads derived from due dates.
+  - `action_item_id`: internal ActionItem linkage when a promise is converted into a task.
 
 ### Acceptance Criteria
 
@@ -136,6 +152,12 @@ Voice to TextNote should become the app that remembers meeting obligations over 
 - Given no extractable promises, the UI shows a useful empty state instead of failing.
 - Given the same promise appears across multiple meetings, the API groups it into one chain.
 - Given promises accumulate under one owner, the UI surfaces that owner as a risk hotspot.
+- Given a logged-in or guest-scoped user opens Promise Radar, current promises are upserted into the persistent Promise Ledger.
+- Given a transcript/minutes source contains matching segments, each ledger entry includes speaker, timestamp, transcript, and meeting link evidence.
+- Given the user marks a promise completed/blocked/confirmed, the ledger status updates and the Promise Radar tab refreshes.
+- Given unresolved promises exist, the next-meeting briefing returns high-risk/overdue/due-soon counts, owner hotspots, questions, and reminder candidates.
+- Given a logged-in user turns a promise into a task, the backend creates one internal ActionItem and remembers the link idempotently.
+- Given ZAI GLM-5.2 is configured, semantic normalization may improve canonical promise matching; if it fails, deterministic matching still returns a usable radar.
 
 ## 5. PRD: Study Pack Generation
 

@@ -35,6 +35,7 @@ import 'package:voice_to_textnote/services/statistics_api.dart';
 import 'package:voice_to_textnote/services/sentiment_api.dart';
 import 'package:voice_to_textnote/services/bookmark_api.dart';
 import 'package:voice_to_textnote/services/auth_service.dart';
+import 'package:voice_to_textnote/services/promise_radar_api.dart';
 import 'package:voice_to_textnote/services/team_api.dart';
 import 'package:voice_to_textnote/theme/app_colors.dart';
 import 'package:voice_to_textnote/theme/app_spacing.dart';
@@ -5020,6 +5021,14 @@ class _PromiseRadarTab extends ConsumerWidget {
           padding: const EdgeInsets.all(AppSpacing.md),
           children: [
             _buildHeader(context, radar),
+            if (radar.nextMeetingBriefing != null) ...[
+              const SizedBox(height: AppSpacing.md),
+              _buildNextBriefingSection(context, radar.nextMeetingBriefing!),
+            ],
+            if (radar.ledgerEntries.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.md),
+              _buildLedgerSection(context, ref, radar.ledgerEntries, taskId!),
+            ],
             if (radar.ownerRisks.isNotEmpty) ...[
               const SizedBox(height: AppSpacing.md),
               _buildOwnerRiskSection(context, radar.ownerRisks),
@@ -5111,6 +5120,178 @@ class _PromiseRadarTab extends ConsumerWidget {
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNextBriefingSection(
+    BuildContext context,
+    PromiseNextMeetingBriefing briefing,
+  ) {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _sectionTitle(context, Icons.event_available_outlined, briefing.title),
+            const SizedBox(height: AppSpacing.sm),
+            Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.xs,
+              children: [
+                _PromiseMetricPill(label: '고위험', value: '${briefing.highRiskCount}'),
+                _PromiseMetricPill(label: '기한 초과', value: '${briefing.overdueCount}'),
+                _PromiseMetricPill(label: '3일 내', value: '${briefing.dueSoonCount}'),
+              ],
+            ),
+            if (briefing.questions.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.sm),
+              for (final question in briefing.questions.take(3))
+                Padding(
+                  padding: const EdgeInsets.only(top: AppSpacing.xs),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        Icons.question_answer_outlined,
+                        size: 16,
+                        color: theme.colorScheme.primary,
+                      ),
+                      const SizedBox(width: AppSpacing.xs),
+                      Expanded(child: Text(question)),
+                    ],
+                  ),
+                ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLedgerSection(
+    BuildContext context,
+    WidgetRef ref,
+    List<PromiseLedgerEntry> entries,
+    String summaryTaskId,
+  ) {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _sectionTitle(context, Icons.fact_check_outlined, '약속 원장'),
+            const SizedBox(height: AppSpacing.sm),
+            for (final entry in entries.take(6))
+              Padding(
+                padding: const EdgeInsets.only(top: AppSpacing.sm),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    border: Border(
+                      left: BorderSide(
+                        color: _riskLevelColor(entry.riskLevel, theme.colorScheme),
+                        width: 3,
+                      ),
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: AppSpacing.sm),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                entry.text,
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                            _StatusChip(status: entry.status),
+                          ],
+                        ),
+                        const SizedBox(height: AppSpacing.xs),
+                        Text(
+                          '${entry.owner ?? entry.speakerLabel ?? '담당자 미지정'} · ${entry.occurrences}회 추적'
+                          '${entry.dueDate != null ? ' · ${entry.dueDate}' : ''}',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        if (entry.evidence.isNotEmpty) ...[
+                          const SizedBox(height: AppSpacing.xs),
+                          Text(
+                            _evidenceLabel(entry.evidence.first),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodySmall,
+                          ),
+                        ],
+                        const SizedBox(height: AppSpacing.xs),
+                        Wrap(
+                          spacing: AppSpacing.xs,
+                          children: [
+                            TextButton.icon(
+                              onPressed: () => _updateLedgerStatus(
+                                context,
+                                ref,
+                                summaryTaskId,
+                                entry.id,
+                                'completed',
+                              ),
+                              icon: const Icon(Icons.check_circle_outline, size: 18),
+                              label: const Text('완료'),
+                            ),
+                            TextButton.icon(
+                              onPressed: () => _updateLedgerStatus(
+                                context,
+                                ref,
+                                summaryTaskId,
+                                entry.id,
+                                'blocked',
+                              ),
+                              icon: const Icon(Icons.block_outlined, size: 18),
+                              label: const Text('차단'),
+                            ),
+                            TextButton.icon(
+                              onPressed: () => _updateLedgerStatus(
+                                context,
+                                ref,
+                                summaryTaskId,
+                                entry.id,
+                                entry.status,
+                                userConfirmed: true,
+                              ),
+                              icon: const Icon(Icons.verified_outlined, size: 18),
+                              label: const Text('맞음'),
+                            ),
+                            TextButton.icon(
+                              onPressed: entry.actionItemId == null
+                                  ? () => _createActionItem(
+                                        context,
+                                        ref,
+                                        summaryTaskId,
+                                        entry.id,
+                                      )
+                                  : null,
+                              icon: const Icon(Icons.add_task_outlined, size: 18),
+                              label: Text(entry.actionItemId == null ? '할 일' : '연결됨'),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
       ),
@@ -5398,12 +5579,154 @@ class _PromiseRadarTab extends ConsumerWidget {
     return AppColors.success;
   }
 
+  Color _riskLevelColor(String level, ColorScheme scheme) {
+    return switch (level) {
+      'high' => scheme.error,
+      'medium' => AppColors.warning,
+      _ => AppColors.success,
+    };
+  }
+
   String _chainStatusLabel(String status) {
     return switch (status) {
       'recurring' => '반복 추적 중',
       'stale' => '현재 회의에서 미확인',
       _ => '현재 활성',
     };
+  }
+
+  String _evidenceLabel(PromiseRadarEvidence evidence) {
+    final speaker = evidence.speaker ?? evidence.speakerLabel;
+    final time = evidence.startSeconds != null
+        ? '${evidence.startSeconds!.toStringAsFixed(1)}s'
+        : null;
+    final prefix = [
+      if (speaker != null && speaker.isNotEmpty) speaker,
+      if (time != null) time,
+    ].join(' · ');
+    return prefix.isEmpty ? evidence.transcript : '$prefix: ${evidence.transcript}';
+  }
+
+  Future<void> _updateLedgerStatus(
+    BuildContext context,
+    WidgetRef ref,
+    String summaryTaskId,
+    String entryId,
+    String status, {
+    bool? userConfirmed,
+  }) async {
+    try {
+      await ref.read(promiseRadarApiProvider).updateLedgerEntry(
+            entryId,
+            PromiseLedgerUpdateRequest(
+              status: status,
+              userConfirmed: userConfirmed,
+            ),
+          );
+      ref.invalidate(promiseRadarProvider(summaryTaskId));
+      ref.invalidate(promiseLedgerProvider);
+      ref.invalidate(promiseNextMeetingBriefingProvider);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('약속 원장이 업데이트됐습니다.')),
+        );
+      }
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('약속 원장 업데이트에 실패했습니다.')),
+        );
+      }
+    }
+  }
+
+  Future<void> _createActionItem(
+    BuildContext context,
+    WidgetRef ref,
+    String summaryTaskId,
+    String entryId,
+  ) async {
+    try {
+      await ref.read(promiseRadarApiProvider).createActionItem(entryId);
+      ref.invalidate(promiseRadarProvider(summaryTaskId));
+      ref.invalidate(promiseLedgerProvider);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('약속이 할 일로 연결됐습니다.')),
+        );
+      }
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('할 일 생성에 실패했습니다.')),
+        );
+      }
+    }
+  }
+}
+
+class _PromiseMetricPill extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _PromiseMetricPill({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xs,
+      ),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        '$label $value',
+        style: theme.textTheme.labelSmall?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
+class _StatusChip extends StatelessWidget {
+  final String status;
+
+  const _StatusChip({required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final label = switch (status) {
+      'completed' => '완료',
+      'dismissed' => '제외',
+      'delegated' => '위임',
+      'blocked' => '차단',
+      'changed' => '변경',
+      _ => '진행',
+    };
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xs,
+      ),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: theme.textTheme.labelSmall?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
   }
 }
 

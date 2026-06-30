@@ -194,7 +194,7 @@ async def _persist_mode_summary_history(
 async def create_smart_summary(
     minutes_task_id: str,
     request: SummaryRequest,
-    http_request: Request = Depends(get_request_context),
+    http_request = Depends(get_request_context),
     db: AsyncSession = Depends(get_db_session),
     redis_client: aioredis.Redis = Depends(get_redis_client),
     svc: SmartSummaryService = Depends(get_smart_summary_service),
@@ -342,7 +342,7 @@ async def create_smart_summary(
 @router.get("/history/{minutes_task_id}")
 async def get_smart_summary_history(
     minutes_task_id: str,
-    request: Request = Depends(get_request_context),
+    request = Depends(get_request_context),
     db: AsyncSession = Depends(get_db_session),
 ) -> dict[str, Any]:
     """회의록에 저장된 목적별 스마트 요약 히스토리 조회."""
@@ -379,7 +379,7 @@ async def get_smart_summary_history(
 @router.get("/status/{task_id}", response_model=SmartSummaryStatus)
 async def get_smart_summary_status(
     task_id: str,
-    request: Request = Depends(get_request_context),
+    request = Depends(get_request_context),
     redis_client: aioredis.Redis = Depends(get_redis_client),
     db: AsyncSession = Depends(get_db_session),
 ) -> SmartSummaryStatus:
@@ -420,7 +420,7 @@ async def get_smart_summary_status(
 @router.get("/results/{task_id}", response_model=SmartSummaryResponse)
 async def get_smart_summary_result(
     task_id: str,
-    request: Request = Depends(get_request_context),
+    request = Depends(get_request_context),
     redis_client: aioredis.Redis = Depends(get_redis_client),
     db: AsyncSession = Depends(get_db_session),
 ) -> SmartSummaryResponse:

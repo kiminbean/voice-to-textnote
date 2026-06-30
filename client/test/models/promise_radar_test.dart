@@ -92,6 +92,65 @@ void main() {
           }
         ],
         'high_risk_count': 1,
+        'ledger_entries': [
+          {
+            'id': 'ledger-1',
+            'canonical_key': 'qa checklist',
+            'canonical_text': 'QA 체크리스트 마무리',
+            'text': 'QA 체크리스트 마무리',
+            'owner': '김기수',
+            'speaker_label': 'SPEAKER_01',
+            'status': 'open',
+            'priority': 'high',
+            'risk_level': 'medium',
+            'confidence': 0.91,
+            'due_date': '오늘',
+            'occurrences': 2,
+            'first_seen_at': '2026-06-23T00:00:00Z',
+            'last_seen_at': '2026-06-30T00:00:00Z',
+            'user_confirmed': false,
+            'action_item_id': 'action-1',
+            'evidence': [
+              {
+                'source_task_id': 'min-1',
+                'meeting_link': '/results/min-1',
+                'transcript': 'QA 체크리스트를 마무리하겠습니다.',
+                'speaker': '김기수',
+                'speaker_label': 'SPEAKER_01',
+                'voiceprint_similarity': 0.91,
+                'start_seconds': 12.3,
+                'end_seconds': 18.9,
+              }
+            ],
+          }
+        ],
+        'next_meeting_briefing': {
+          'title': '다음 회의 전 확인할 약속',
+          'high_risk_count': 1,
+          'overdue_count': 0,
+          'due_soon_count': 1,
+          'owner_hotspots': [
+            {
+              'owner': '김기수',
+              'open_promises': 1,
+              'stale_promises': 0,
+              'recurring_promises': 1,
+              'risk_score': 24,
+              'latest_promises': ['QA 체크리스트 마무리'],
+            }
+          ],
+          'promises': [],
+          'questions': ['QA 체크리스트 진행 상태를 확인했습니까?'],
+          'reminder_candidates': [
+            {
+              'ledger_entry_id': 'ledger-1',
+              'title': '약속 확인: QA 체크리스트 마무리',
+              'owner': '김기수',
+              'calendar_event': {'source': 'promise_radar'},
+            }
+          ],
+        },
+        'semantic_enrichment_status': 'zai_applied',
         'follow_up_questions': ['QA 체크리스트 상태는 확인됐습니까?'],
       });
 
@@ -104,7 +163,39 @@ void main() {
       expect(result.promiseChains.single.links.last.dueDate, '오늘');
       expect(result.ownerRisks.single.owner, '김기수');
       expect(result.highRiskCount, 1);
+      expect(result.ledgerEntries.single.actionItemId, 'action-1');
+      expect(result.ledgerEntries.single.evidence.single.startSeconds, 12.3);
+      expect(result.nextMeetingBriefing!.dueSoonCount, 1);
+      expect(
+        result.nextMeetingBriefing!.reminderCandidates.single.calendarEvent!['source'],
+        'promise_radar',
+      );
+      expect(result.semanticEnrichmentStatus, 'zai_applied');
       expect(result.followUpQuestions.single, contains('QA 체크리스트'));
+    });
+
+    test('serializes ledger update request without null fields', () {
+      const request = PromiseLedgerUpdateRequest(
+        status: 'completed',
+        userConfirmed: true,
+      );
+
+      expect(request.toJson(), {
+        'status': 'completed',
+        'user_confirmed': true,
+      });
+    });
+
+    test('parses task link response', () {
+      final response = PromiseTaskLinkResponse.fromJson({
+        'ledger_entry_id': 'ledger-1',
+        'action_item_id': 'action-1',
+        'title': 'QA 체크리스트 마무리',
+        'status': 'pending',
+      });
+
+      expect(response.actionItemId, 'action-1');
+      expect(response.status, 'pending');
     });
   });
 }

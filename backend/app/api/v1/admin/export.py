@@ -13,7 +13,7 @@ import json
 import re
 
 import redis.asyncio as aioredis
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -123,7 +123,7 @@ async def _get_task_result(
 )
 async def export_pdf(
     minutes_task_id: str,
-    request: Request = Depends(get_request_context),
+    request = Depends(get_request_context),
     summary_task_id: str | None = Query(
         default=None,
         description="요약 태스크 ID (지정하면 요약 섹션 포함)",
@@ -217,7 +217,7 @@ async def export_pdf(
 )
 async def export_docx(
     minutes_task_id: str,
-    request: Request = Depends(get_request_context),
+    request = Depends(get_request_context),
     summary_task_id: str | None = Query(
         default=None,
         description="요약 태스크 ID (지정하면 요약 섹션 포함)",
@@ -291,7 +291,7 @@ async def export_docx(
 )
 async def export_markdown(
     minutes_task_id: str,
-    request: Request = Depends(get_request_context),
+    request = Depends(get_request_context),
     summary_task_id: str | None = Query(
         default=None,
         description="요약 태스크 ID (지정하면 요약 섹션 포함)",

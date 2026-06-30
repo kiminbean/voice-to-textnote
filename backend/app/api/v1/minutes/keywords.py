@@ -8,7 +8,7 @@ SPEC-KEYWORD-001: 자동 키워드 추출/추천 API
 """
 
 import redis.asyncio as aioredis
-from fastapi import APIRouter, Depends, Query, Request, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.dependencies import (
@@ -58,7 +58,7 @@ async def extract_keywords(
 )
 async def get_meeting_keywords(
     task_id: str,
-    request: Request = Depends(get_request_context),
+    request = Depends(get_request_context),
     max_keywords: int | None = Query(
         default=None,
         ge=1,
@@ -94,7 +94,7 @@ async def get_meeting_keywords(
 )
 async def recommend_meeting_keywords(
     task_id: str,
-    request: Request = Depends(get_request_context),
+    request = Depends(get_request_context),
     payload: KeywordRecommendRequest | None = None,
     redis_client: aioredis.Redis = Depends(get_redis_client),
     db: AsyncSession = Depends(get_db_session),

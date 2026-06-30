@@ -223,7 +223,7 @@ async def create_summary(
 async def create_mind_map(
     summary_task_id: str,
     request: MindMapCreateRequest | None = None,
-    http_request: Request = Depends(get_request_context),
+    http_request = Depends(get_request_context),
     redis_client: aioredis.Redis = Depends(get_redis_client),
     db: AsyncSession = Depends(get_db_session),
 ) -> dict:
@@ -303,7 +303,7 @@ async def create_mind_map(
 )
 async def get_mind_map_status(
     task_id: str,
-    http_request: Request = Depends(get_request_context),
+    http_request = Depends(get_request_context),
     redis_client: aioredis.Redis = Depends(get_redis_client),
     db: AsyncSession = Depends(get_db_session),
 ) -> SummaryStatusResponse:
@@ -333,7 +333,7 @@ async def get_mind_map_status(
 )
 async def get_mind_map_result(
     task_id: str,
-    http_request: Request = Depends(get_request_context),
+    http_request = Depends(get_request_context),
     redis_client: aioredis.Redis = Depends(get_redis_client),
     db: AsyncSession = Depends(get_db_session),
 ) -> MindMapResponse:
@@ -384,7 +384,7 @@ async def get_mind_map_result(
 )
 async def get_summary_status(
     task_id: str,
-    http_request: Request = Depends(get_request_context),
+    http_request = Depends(get_request_context),
     redis_client: aioredis.Redis = Depends(get_redis_client),
     db: AsyncSession = Depends(get_db_session),
 ) -> SummaryStatusResponse:
@@ -417,7 +417,7 @@ async def get_summary_status(
 )
 async def get_summary_result(
     task_id: str,
-    http_request: Request = Depends(get_request_context),
+    http_request = Depends(get_request_context),
     redis_client: aioredis.Redis = Depends(get_redis_client),
     db: AsyncSession = Depends(get_db_session),
 ) -> SummaryResponse:
@@ -491,7 +491,7 @@ async def get_summary_result(
 )
 async def delete_summary(
     task_id: str,
-    http_request: Request = Depends(get_request_context),
+    http_request = Depends(get_request_context),
     redis_client: aioredis.Redis = Depends(get_redis_client),
     db: AsyncSession = Depends(get_db_session),
 ) -> None:

@@ -88,6 +88,9 @@ async def validate_startup() -> dict:
         # SPEC-BOOKMARK-001: 북마크 모델 import
         import backend.db.bookmark_models  # noqa: F401
 
+        # SPEC-PROMISE-RADAR-LEDGER-001: 약속 원장 모델 import
+        import backend.db.promise_ledger_models  # noqa: F401
+
         # SPEC-SPEAKER-001: 화자 프로필 모델 import
         import backend.db.speaker_models  # noqa: F401
 

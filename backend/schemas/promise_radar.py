@@ -2,6 +2,8 @@
 Cross-meeting promise radar schemas.
 """
 
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 
 
@@ -72,6 +74,95 @@ class PromiseRadarOwnerRisk(BaseModel):
     latest_promises: list[str] = Field(default_factory=list)
 
 
+class PromiseRadarEvidence(BaseModel):
+    """Source-grounded evidence for one ledger promise."""
+
+    source_task_id: str
+    meeting_link: str
+    transcript: str
+    speaker: str | None = None
+    speaker_label: str | None = None
+    speaker_profile_id: str | None = None
+    voiceprint_similarity: float | None = Field(default=None, ge=0.0, le=1.0)
+    start_seconds: float | None = Field(default=None, ge=0.0)
+    end_seconds: float | None = Field(default=None, ge=0.0)
+
+
+class PromiseLedgerEntryResponse(BaseModel):
+    """Editable persisted promise ledger item."""
+
+    id: str
+    canonical_key: str
+    canonical_text: str
+    text: str
+    owner: str | None = None
+    speaker_label: str | None = None
+    speaker_profile_id: str | None = None
+    status: str = Field(description="open, completed, dismissed, delegated, blocked, or changed")
+    priority: str
+    risk_level: str
+    confidence: float = Field(ge=0.0, le=1.0)
+    due_date: str | None = None
+    due_at: datetime | None = None
+    reminder_at: datetime | None = None
+    occurrences: int = Field(ge=1)
+    first_seen_at: datetime
+    last_seen_at: datetime
+    evidence: list[PromiseRadarEvidence] = Field(default_factory=list)
+    user_confirmed: bool = False
+    semantic_summary: str | None = None
+    calendar_event: dict | None = None
+    action_item_id: str | None = None
+
+
+class PromiseLedgerUpdateRequest(BaseModel):
+    """User correction for a ledger item."""
+
+    status: str | None = Field(
+        default=None,
+        description="open, completed, dismissed, delegated, blocked, or changed",
+    )
+    owner: str | None = None
+    due_date: str | None = None
+    due_at: datetime | None = None
+    reminder_at: datetime | None = None
+    user_confirmed: bool | None = None
+    dismissed_reason: str | None = None
+
+
+class PromiseReminderCandidate(BaseModel):
+    """Internal reminder/calendar candidate derived from a promise."""
+
+    ledger_entry_id: str
+    title: str
+    owner: str | None = None
+    due_at: datetime | None = None
+    reminder_at: datetime | None = None
+    calendar_event: dict | None = None
+
+
+class PromiseTaskLinkResponse(BaseModel):
+    """Result of converting a promise into an internal action item."""
+
+    ledger_entry_id: str
+    action_item_id: str
+    title: str
+    status: str
+
+
+class PromiseNextMeetingBriefing(BaseModel):
+    """Pre-meeting brief assembled from unresolved ledger entries."""
+
+    title: str
+    high_risk_count: int = Field(ge=0)
+    overdue_count: int = Field(ge=0)
+    due_soon_count: int = Field(ge=0)
+    owner_hotspots: list[PromiseRadarOwnerRisk] = Field(default_factory=list)
+    promises: list[PromiseLedgerEntryResponse] = Field(default_factory=list)
+    questions: list[str] = Field(default_factory=list)
+    reminder_candidates: list[PromiseReminderCandidate] = Field(default_factory=list)
+
+
 class PromiseRadarResponse(BaseModel):
     """Promise radar response for one current meeting."""
 
@@ -87,4 +178,10 @@ class PromiseRadarResponse(BaseModel):
     promise_chains: list[PromiseRadarPromiseChain] = Field(default_factory=list)
     owner_risks: list[PromiseRadarOwnerRisk] = Field(default_factory=list)
     high_risk_count: int = Field(default=0, ge=0)
+    ledger_entries: list[PromiseLedgerEntryResponse] = Field(default_factory=list)
+    next_meeting_briefing: PromiseNextMeetingBriefing | None = None
+    semantic_enrichment_status: str = Field(
+        default="deterministic",
+        description="deterministic, zai_applied, zai_unavailable, or zai_failed",
+    )
     follow_up_questions: list[str] = Field(default_factory=list)

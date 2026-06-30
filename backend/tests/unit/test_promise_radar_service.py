@@ -1,7 +1,28 @@
+import uuid
 from datetime import datetime, timedelta
 
-from backend.db.models import TaskResult
+import pytest
+import pytest_asyncio
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
+import backend.db.auth_models  # noqa: F401
+import backend.db.promise_ledger_models  # noqa: F401
+from backend.db.auth_models import MeetingOwnership
+from backend.db.models import ActionItem, TaskResult
+from backend.db.promise_ledger_models import PromiseLedgerEntry
+from backend.schemas.promise_radar import PromiseLedgerUpdateRequest
 from backend.services.promise_radar_service import PromiseRadarService
+
+
+@pytest_asyncio.fixture
+async def session_factory():
+    engine = create_async_engine("sqlite+aiosqlite://", echo=False)
+    async with engine.begin() as conn:
+        await conn.run_sync(TaskResult.metadata.create_all)
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    yield factory
+    await engine.dispose()
 
 
 def _summary_record(
@@ -109,3 +130,176 @@ def test_promise_radar_falls_back_to_next_steps():
     assert result.current_promises[0].confidence < 0.7
     assert result.promise_chains[0].status == "active"
     assert result.stale_promises == []
+
+
+@pytest.mark.asyncio
+async def test_build_radar_persists_ledger_with_evidence_and_user_corrections(session_factory):
+    service = PromiseRadarService()
+    owner_id = uuid.uuid4()
+    base = datetime(2026, 6, 30, 9, 0, 0)
+
+    minutes = TaskResult(
+        task_id="min-current",
+        task_type="minutes",
+        status="completed",
+        created_at=base,
+        completed_at=base,
+        result_data={
+            "segments": [
+                {
+                    "speaker_id": "SPEAKER_01",
+                    "identified_speaker_name": "김기수",
+                    "identified_speaker_profile_id": str(uuid.uuid4()),
+                    "voiceprint_similarity": 0.91,
+                    "start": 12.3,
+                    "end": 18.9,
+                    "text": "모바일 앱 QA 체크리스트를 오늘 마무리하겠습니다.",
+                }
+            ]
+        },
+    )
+    current = _summary_record(
+        "sum-current",
+        created_at=base,
+        action_items=[
+            {
+                "task": "모바일 앱 QA 체크리스트 마무리",
+                "assignee": "김기수",
+                "deadline": "오늘",
+                "priority": "high",
+            }
+        ],
+    )
+    current.input_metadata = {"minutes_task_id": "min-current"}
+
+    async with session_factory() as session:
+        session.add_all(
+            [
+                minutes,
+                current,
+                MeetingOwnership(task_id="sum-current", owner_id=owner_id),
+                MeetingOwnership(task_id="min-current", owner_id=owner_id),
+            ]
+        )
+        await session.commit()
+
+        radar = await service.build_radar(session, "sum-current", owner_id=owner_id)
+
+        assert radar.ledger_entries
+        entry = radar.ledger_entries[0]
+        assert entry.owner == "김기수"
+        assert entry.status == "open"
+        assert entry.evidence[0].speaker == "김기수"
+        assert entry.evidence[0].start_seconds == 12.3
+        assert radar.next_meeting_briefing is not None
+        assert radar.next_meeting_briefing.questions
+
+        updated = await service.update_ledger_entry(
+            session,
+            entry.id,
+            PromiseLedgerUpdateRequest(status="completed", user_confirmed=True),
+            owner_id=owner_id,
+        )
+
+        assert updated.status == "completed"
+        assert updated.user_confirmed is True
+
+        stored = (
+            await session.execute(
+                select(PromiseLedgerEntry).where(PromiseLedgerEntry.id == uuid.UUID(entry.id))
+            )
+        ).scalar_one()
+        assert stored.completed_at is not None
+
+
+@pytest.mark.asyncio
+async def test_create_action_item_from_ledger_entry_is_idempotent(session_factory):
+    service = PromiseRadarService()
+    owner_id = uuid.uuid4()
+    now = datetime.now()
+
+    async with session_factory() as session:
+        entry = PromiseLedgerEntry(
+            owner_id=owner_id,
+            source_task_id="sum-action",
+            last_source_task_id="sum-action",
+            canonical_key="qa checklist",
+            canonical_text="QA 체크리스트 마무리",
+            text="QA 체크리스트 마무리",
+            owner_name="김기수",
+            status="open",
+            priority="high",
+            risk_level="high",
+            confidence=0.9,
+            due_date_text="내일",
+            due_at=now + timedelta(days=1),
+            occurrences=2,
+            first_seen_at=now,
+            last_seen_at=now,
+            evidence=[
+                {
+                    "source_task_id": "sum-action",
+                    "meeting_link": "/results/sum-action",
+                    "transcript": "QA 체크리스트를 마무리하겠습니다.",
+                }
+            ],
+        )
+        session.add(entry)
+        await session.commit()
+        await session.refresh(entry)
+
+        first = await service.create_action_item(session, entry.id, owner_id=owner_id)
+        second = await service.create_action_item(session, entry.id, owner_id=owner_id)
+
+        assert first.action_item_id == second.action_item_id
+        action_item = (
+            await session.execute(
+                select(ActionItem).where(ActionItem.id == uuid.UUID(first.action_item_id))
+            )
+        ).scalar_one()
+        assert action_item.title == "QA 체크리스트 마무리"
+        assert action_item.priority == "critical"
+        assert action_item.category == "promise-radar"
+
+
+@pytest.mark.asyncio
+async def test_next_meeting_briefing_builds_reminder_candidates(session_factory):
+    service = PromiseRadarService()
+    owner_id = uuid.uuid4()
+    due_at = datetime.now() + timedelta(days=1)
+
+    async with session_factory() as session:
+        session.add(
+            PromiseLedgerEntry(
+                owner_id=owner_id,
+                source_task_id="sum-brief",
+                last_source_task_id="sum-brief",
+                canonical_key="qa checklist",
+                canonical_text="QA 체크리스트 마무리",
+                text="QA 체크리스트 마무리",
+                owner_name="김기수",
+                status="open",
+                priority="high",
+                risk_level="medium",
+                confidence=0.8,
+                due_date_text="내일",
+                due_at=due_at,
+                occurrences=2,
+                first_seen_at=datetime.now(),
+                last_seen_at=datetime.now(),
+                evidence=[
+                    {
+                        "source_task_id": "sum-brief",
+                        "meeting_link": "/results/sum-brief",
+                        "transcript": "QA 체크리스트를 마무리하겠습니다.",
+                    }
+                ],
+            )
+        )
+        await session.commit()
+
+        briefing = await service.build_next_meeting_briefing(session, owner_id=owner_id)
+
+        assert briefing.due_soon_count == 1
+        assert briefing.owner_hotspots[0].owner == "김기수"
+        assert briefing.reminder_candidates[0].calendar_event["source"] == "promise_radar"

@@ -108,7 +108,7 @@ def _extract_minutes_content(task: TaskResult) -> tuple[str, str]:
 )
 async def get_quality_assessment(
     task_id: str,
-    request: Request = Depends(get_request_context),
+    request = Depends(get_request_context),
     include_details: bool = Query(default=True, description="세부 평가 항목 포함 여부"),
     db: AsyncSession = Depends(get_db_session),
     svc: QualityService = Depends(get_quality_service),
@@ -157,7 +157,7 @@ async def get_quality_assessment(
 async def request_quality_assessment(
     task_id: str,
     payload: QualityAssessmentRequest,
-    request: Request = Depends(get_request_context),
+    request = Depends(get_request_context),
     db: AsyncSession = Depends(get_db_session),
     svc: QualityService = Depends(get_quality_service),
 ) -> QualityAssessmentResponse:
@@ -204,7 +204,7 @@ async def request_quality_assessment(
 )
 async def get_improvement_suggestions(
     task_id: str,
-    request: Request = Depends(get_request_context),
+    request = Depends(get_request_context),
     improvement_type: str | None = Query(
         default="all", description="개선 제안 유형 (structure, content, clarity, completeness, all)"
     ),
@@ -290,7 +290,7 @@ async def _load_minutes_text_or_404(
 )
 async def get_live_quality_score(
     task_id: str,
-    request: Request = Depends(get_request_context),
+    request = Depends(get_request_context),
     persist: bool = Query(
         default=True,
         description="True면 점수 스냅샷을 저장해 추세 분석에 활용",
@@ -328,7 +328,7 @@ async def get_live_quality_score(
 async def submit_quality_feedback(
     task_id: str,
     payload: QualityFeedbackCreate,
-    request: Request = Depends(get_request_context),
+    request = Depends(get_request_context),
     db: AsyncSession = Depends(get_db_session),
     svc: QualityService = Depends(get_quality_service),
 ) -> QualityFeedbackResponse:
@@ -360,7 +360,7 @@ async def submit_quality_feedback(
 )
 async def list_quality_feedback(
     task_id: str,
-    request: Request = Depends(get_request_context),
+    request = Depends(get_request_context),
     recent_limit: int = Query(default=10, ge=1, le=50),
     db: AsyncSession = Depends(get_db_session),
     svc: QualityService = Depends(get_quality_service),
@@ -386,7 +386,7 @@ async def list_quality_feedback(
 )
 async def get_quality_trends(
     task_id: str,
-    request: Request = Depends(get_request_context),
+    request = Depends(get_request_context),
     limit: int = Query(default=50, ge=1, le=500),
     warning_drop_threshold: float | None = Query(
         default=None,

@@ -182,7 +182,7 @@ async def create_minutes(
 )
 async def get_minutes_status(
     task_id: str,
-    http_request: Request = Depends(get_request_context),
+    http_request = Depends(get_request_context),
     redis_client: aioredis.Redis = Depends(get_redis_client),
     db: AsyncSession = Depends(get_db_session),
 ) -> MinutesStatusResponse:
@@ -225,7 +225,7 @@ async def get_minutes_status(
 )
 async def get_minutes_result(
     task_id: str,
-    http_request: Request = Depends(get_request_context),
+    http_request = Depends(get_request_context),
     redis_client: aioredis.Redis = Depends(get_redis_client),
     db: AsyncSession = Depends(get_db_session),
 ) -> MinutesResponse:
@@ -290,7 +290,7 @@ async def get_minutes_result(
 )
 async def delete_minutes(
     task_id: str,
-    http_request: Request = Depends(get_request_context),
+    http_request = Depends(get_request_context),
     redis_client: aioredis.Redis = Depends(get_redis_client),
     db: AsyncSession = Depends(get_db_session),
 ) -> None:

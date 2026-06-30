@@ -270,6 +270,17 @@ final promiseRadarProvider =
   return api.getRadar(summaryTaskId);
 });
 
+final promiseLedgerProvider = FutureProvider<List<PromiseLedgerEntry>>((ref) {
+  final api = ref.watch(promiseRadarApiProvider);
+  return api.listLedger(statuses: const ['open', 'delegated', 'blocked', 'changed']);
+});
+
+final promiseNextMeetingBriefingProvider =
+    FutureProvider<PromiseNextMeetingBriefing>((ref) {
+  final api = ref.watch(promiseRadarApiProvider);
+  return api.getNextMeetingBriefing();
+});
+
 // 관계 추론형 마인드맵 결과 로딩 프로바이더.
 // 백엔드가 비동기 생성 작업을 반환하므로 create → status polling → result 순서로 처리한다.
 final mindMapResultProvider =

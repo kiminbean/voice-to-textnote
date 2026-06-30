@@ -1,7 +1,7 @@
 """Study Pack API endpoints."""
 
 import redis.asyncio as aioredis
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.dependencies import (
@@ -38,7 +38,7 @@ def get_study_pack_service() -> StudyPackService:
 async def create_study_pack(
     task_id: str,
     payload: StudyPackCreateRequest,
-    request: Request = Depends(get_request_context),
+    request = Depends(get_request_context),
     redis_client: aioredis.Redis = Depends(get_redis_client),
     db: AsyncSession = Depends(get_db_session),
     svc: StudyPackService = Depends(get_study_pack_service),
@@ -72,7 +72,7 @@ async def create_study_pack(
 )
 async def get_study_pack(
     task_id: str,
-    request: Request = Depends(get_request_context),
+    request = Depends(get_request_context),
     mode: StudyPackMode = Query(default=StudyPackMode.GENERAL),
     redis_client: aioredis.Redis = Depends(get_redis_client),
     db: AsyncSession = Depends(get_db_session),

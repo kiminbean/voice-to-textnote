@@ -49,7 +49,7 @@ async def _scard(redis_client: aioredis.Redis, key: str) -> int:
 )
 async def create_diarization(
     request: DiarizationCreateRequest,
-    http_request: Request = Depends(get_request_context),
+    http_request = Depends(get_request_context),
     redis_client: aioredis.Redis = Depends(get_redis_client),
 ) -> dict:
     """
@@ -126,7 +126,7 @@ async def create_diarization(
 )
 async def get_diarization_status(
     task_id: str,
-    http_request: Request = Depends(get_request_context),
+    http_request = Depends(get_request_context),
     redis_client: aioredis.Redis = Depends(get_redis_client),
     db_session: AsyncSession = Depends(get_db_session),
 ) -> DiarizationStatusResponse:
@@ -166,7 +166,7 @@ async def get_diarization_status(
 )
 async def get_diarization_result(
     task_id: str,
-    http_request: Request = Depends(get_request_context),
+    http_request = Depends(get_request_context),
     redis_client: aioredis.Redis = Depends(get_redis_client),
     db_session: AsyncSession = Depends(get_db_session),
 ) -> DiarizationResponse:
@@ -239,7 +239,7 @@ async def get_diarization_result(
 )
 async def delete_diarization(
     task_id: str,
-    http_request: Request = Depends(get_request_context),
+    http_request = Depends(get_request_context),
     redis_client: aioredis.Redis = Depends(get_redis_client),
     db_session: AsyncSession = Depends(get_db_session),
 ) -> None:
