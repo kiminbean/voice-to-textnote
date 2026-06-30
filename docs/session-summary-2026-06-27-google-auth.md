@@ -51,7 +51,6 @@ Use:
 
 - `docs/google-auth-ios-runbook.md`
 - `docs/stt-processing-runbook.md`
-- `omx_wiki/session-2026-06-27-iphone-backend-stt-recovery.md`
 
 ## Verification Performed
 

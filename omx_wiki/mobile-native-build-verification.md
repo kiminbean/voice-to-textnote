@@ -42,4 +42,3 @@ Native mobile verification is now proven locally for `client`.
 
 - Flutter currently warns that app/plugins using Kotlin Gradle Plugin should migrate to Built-in Kotlin in a future Flutter release. This is not a current build failure.
 - Do not commit machine-specific `sdk.dir` from `client/android/local.properties`.
-- `.omx/metrics.json` and `.omx/state/tmux-hook-state.json` are runtime state, not project documentation.

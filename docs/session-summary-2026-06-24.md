@@ -315,13 +315,6 @@ flutter run --release -d 00008150-000239020C08401C
 - `progress.txt`
 - `client/progress.txt`
 
-### Runtime state
-
-- `.omx/metrics.json`
-- `.omx/state/tmux-hook-state.json`
-
----
-
 ## 남은 주의사항
 
 - Alembic local DB migration 문제는 `003_add_search_guest` 복원과 local DB upgrade로 해결했습니다. 현재 local DB는 head `005_add_team_sharing_policy`이며 integrity/FK check가 통과합니다.

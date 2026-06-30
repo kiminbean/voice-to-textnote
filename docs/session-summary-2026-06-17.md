@@ -139,5 +139,5 @@ xcrun devicectl device install app --device C7DD57C9-48FC-5362-B2FB-ED87CFFD51FA
 
 1. **DIA 처리 시간**: pyannote.audio CPU 모드로 인해 1분 녹음에 약 11분 소요 (워커 재시작 시 모델 콜드스타트 포함)
 2. **Obsidian Sync 충돌**: vault에 단일 sync backend만 사용 권장 (Obsidian Sync + iCloud 동시 사용 금지)
-3. **API Key 노출**: `.moai/state/session-memo.md`에 평문 키 포함 — 즉시 폐기 및 재발급 권장
+3. **API Key 노출**: 과거 세션 메모에 평문 키 포함 가능성 — 즉시 폐기 및 재발급 권장
 4. **tone AGPL 라이선스**: opensmile은 AGPL-3.0이므로 로컬 전용 처리 환경에서만 사용
