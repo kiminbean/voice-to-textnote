@@ -79,7 +79,7 @@ def mind_map_task(task_id: str, summary_task_id: str, max_tokens: int = 2048) ->
     Args:
         task_id: 마인드맵 작업 UUID
         summary_task_id: 완료된 요약 작업 UUID
-        max_tokens: OpenAI API 최대 응답 토큰 수
+        max_tokens: ZAI-compatible API 최대 응답 토큰 수
     """
     processing_start = datetime.now(UTC)
     logger.info("마인드맵 생성 작업 시작", task_id=task_id, summary_task_id=summary_task_id)

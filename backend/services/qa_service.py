@@ -1,5 +1,5 @@
 """
-SPEC-QA-001: 회의 Q&A 서비스 — OpenAI 기반
+SPEC-QA-001: 회의 Q&A 서비스 — ZAI-compatible LLM 기반
 
 회의 트랜스크립트를 컨텍스트로 사용하여 자연어 질문에 답변한다.
 """
@@ -10,11 +10,10 @@ from typing import cast
 from uuid import UUID
 
 import redis.asyncio as aioredis
-from openai import OpenAI
-from openai.types.chat import ChatCompletionMessageParam
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.config import settings
+from backend.ml.zai_client import ZAIClient
 from backend.schemas.qa import (
     CrossMeetingAskResponse,
     CrossMeetingSource,
@@ -30,13 +29,14 @@ logger = get_logger(__name__)
 
 # Redis 키 프리픽스
 _QA_KEY_PREFIX = "qa:history:"
+ChatMessage = dict[str, str]
 
 
 class QAService:
     """회의 Q&A 서비스"""
 
-    def _get_client(self) -> OpenAI:
-        return OpenAI(api_key=settings.llm_api_key, base_url=settings.llm_base_url)
+    def _get_client(self) -> ZAIClient:
+        return ZAIClient(api_key=settings.llm_api_key, base_url=settings.llm_base_url)
 
     def _build_prompt(self, question: str, transcript: str) -> str:
         return f"""다음은 회의 녹취록입니다. 이 회의 내용을 바탕으로 질문에 답변해 주세요.
@@ -94,7 +94,7 @@ class QAService:
             redis_client, task_id, thread_id, question, transcript
         )
 
-        # 3. OpenAI API 호출
+        # 3. ZAI-compatible LLM API 호출
         client = self._get_client()
         logger.info("Q&A API 호출", task_id=task_id, question_len=len(question))
 
@@ -188,7 +188,7 @@ class QAService:
         self,
         question: str,
         sources: list[CrossMeetingSource],
-    ) -> list[ChatCompletionMessageParam]:
+    ) -> list[ChatMessage]:
         """Cross-meeting Q&A 합성용 메시지를 구성합니다."""
         source_blocks = []
         for index, source in enumerate(sources[:8], start=1):
@@ -243,9 +243,9 @@ class QAService:
         thread_id: str,
         question: str,
         transcript: str,
-    ) -> list[ChatCompletionMessageParam]:
+    ) -> list[ChatMessage]:
         """대화 이력을 포함한 메시지 목록 생성"""
-        messages: list[ChatCompletionMessageParam] = [
+        messages: list[ChatMessage] = [
             {
                 "role": "system",
                 "content": "당신은 회의 내용을 분석하는 AI 어시스턴트입니다. 주어진 회의록을 바탕으로 정확하게 답변하세요.",

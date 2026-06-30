@@ -83,7 +83,7 @@ iPhone release install:
 cd client
 flutter run --release --no-pub --no-resident \
   -d 00008150-000239020C08401C \
-  --dart-define=ENV=dev \
+  --dart-define=ENV=staging \
   --dart-define=API_BASE_URL=http://100.69.69.119:8000/api/v1
 ```
 

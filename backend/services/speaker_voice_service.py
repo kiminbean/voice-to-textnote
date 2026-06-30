@@ -20,6 +20,7 @@ from fastapi import HTTPException, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.config import settings
 from backend.db.models import TaskResult
 from backend.db.speaker_models import SpeakerProfile
 from backend.db.speaker_voice_models import SpeakerVoiceProfile
@@ -50,6 +51,14 @@ def _get_max_samples_per_profile() -> int:
         return max(1, int(raw))
     except (TypeError, ValueError):
         return 100
+
+
+def _voiceprint_duration_seconds(voiceprint: dict) -> float:
+    """Return the usable speech duration stored with a task voiceprint."""
+    try:
+        return float(voiceprint.get("sample_duration_seconds") or 0.0)
+    except (TypeError, ValueError):
+        return 0.0
 
 
 # 분석 가능한 오디오 확장자
@@ -167,6 +176,7 @@ class SpeakerVoiceService:
         source_task_id: str | None = None,
         source_speaker_label: str | None = None,
         embedding_backend: str | None = None,
+        sample_duration_seconds: float | None = None,
     ) -> SpeakerVoiceProfile:
         """Attach or update a speaker voiceprint embedding."""
         await self._ensure_speaker_owned(session, speaker_id, user_id)
@@ -193,6 +203,11 @@ class SpeakerVoiceService:
                 "last_source_speaker_label": source_speaker_label,
             }
         )
+        if sample_duration_seconds is not None:
+            duration = max(0.0, float(sample_duration_seconds))
+            previous_total = float(voiceprint.get("total_sample_duration_seconds") or 0.0)
+            voiceprint["last_sample_duration_seconds"] = round(duration, 3)
+            voiceprint["total_sample_duration_seconds"] = round(previous_total + duration, 3)
         features["voiceprint"] = voiceprint
         voice.features = features
 
@@ -268,6 +283,17 @@ class SpeakerVoiceService:
         embedding = voiceprint.get("embedding")
         if not isinstance(embedding, list):
             return None
+        duration = _voiceprint_duration_seconds(voiceprint)
+        if duration < settings.speaker_voiceprint_min_enroll_seconds:
+            logger.info(
+                "voiceprint enrollment skipped: not enough confirmed speech",
+                source_task_id=source_task_id,
+                source_speaker_label=source_speaker_label,
+                sample_duration_seconds=round(duration, 3),
+                min_seconds=settings.speaker_voiceprint_min_enroll_seconds,
+                category="voiceprint",
+            )
+            return None
         return await self.enroll_voiceprint(
             session=session,
             speaker_id=speaker_id,
@@ -276,6 +302,7 @@ class SpeakerVoiceService:
             source_task_id=source_task_id,
             source_speaker_label=source_speaker_label,
             embedding_backend=voiceprint.get("embedding_backend"),
+            sample_duration_seconds=duration,
         )
 
     async def backfill_missing_voiceprints(
@@ -314,6 +341,17 @@ class SpeakerVoiceService:
             if not isinstance(embedding, list):
                 missing.append(profile.speaker_label)
                 continue
+            duration = _voiceprint_duration_seconds(voiceprint)
+            if duration < settings.speaker_voiceprint_min_enroll_seconds:
+                missing.append(profile.speaker_label)
+                logger.info(
+                    "voiceprint backfill skipped: not enough historical speech",
+                    speaker_label=profile.speaker_label,
+                    sample_duration_seconds=round(duration, 3),
+                    min_seconds=settings.speaker_voiceprint_min_enroll_seconds,
+                    category="voiceprint",
+                )
+                continue
 
             await self.enroll_voiceprint(
                 session=session,
@@ -323,6 +361,7 @@ class SpeakerVoiceService:
                 source_task_id=voiceprint.get("source_task_id"),
                 source_speaker_label=profile.speaker_label,
                 embedding_backend=voiceprint.get("embedding_backend"),
+                sample_duration_seconds=duration,
             )
             enrolled += 1
 

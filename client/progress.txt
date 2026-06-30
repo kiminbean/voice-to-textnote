@@ -52,7 +52,8 @@
    - Keeps the existing speaker profile API shape backward-compatible when enrollment metadata is absent.
 
 9. **lib/widgets/speaker_segment.dart**
-   - Shows a `추정됨` badge for voiceprint-matched speaker names.
+- Shows a `추정됨` badge for voiceprint-matched speaker names.
+- 2026-06-30: `pyannote/embedding` access is verified with the active Hugging Face token; backend no longer depends on acoustic fallback when pyannote embedding loads successfully.
    - Tooltip explains that the name is voice-based automatic matching and can be corrected by tapping the speaker name.
 
 ### Verification
@@ -64,7 +65,7 @@
 - `flutter test test/screens/result_screen_test.dart test/providers/result_provider_test.dart test/widgets/speaker_segment_test.dart` → `46 passed`
 - `flutter analyze` → `No issues found`
 - `flutter analyze ...` → `No issues found`
-- USB/wireless detected iPhone release install: `flutter run --release -d 00008150-000239020C08401C`
+- USB/wireless detected iPhone release install: `flutter run --release -d 00008150-000239020C08401C --dart-define=ENV=staging --dart-define=API_BASE_URL=http://100.69.69.119:8000/api/v1`
 
 ## Date: 2026-05-07
 

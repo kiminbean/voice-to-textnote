@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:dio/dio.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:voice_to_textnote/models/action_item.dart';
 import 'package:voice_to_textnote/models/meeting.dart';
@@ -32,6 +33,7 @@ import 'package:voice_to_textnote/services/speaker_api.dart';
 import 'package:voice_to_textnote/services/statistics_api.dart';
 import 'package:voice_to_textnote/services/sentiment_api.dart';
 import 'package:voice_to_textnote/services/bookmark_api.dart';
+import 'package:voice_to_textnote/services/auth_service.dart';
 import 'package:voice_to_textnote/services/team_api.dart';
 import 'package:voice_to_textnote/theme/app_colors.dart';
 import 'package:voice_to_textnote/theme/app_spacing.dart';
@@ -1188,7 +1190,10 @@ class _TranscriptTabState extends ConsumerState<_TranscriptTab> {
 
     try {
       final authState = ref.read(authStateProvider);
-      if (!authState.isAuthenticated) {
+      final accessToken = await ref.read(authServiceProvider).getAccessToken();
+      if (!authState.isAuthenticated ||
+          accessToken == null ||
+          accessToken.isEmpty) {
         throw StateError('화자 이름 저장은 로그인 후 사용할 수 있습니다.');
       }
 
@@ -1223,12 +1228,24 @@ class _TranscriptTabState extends ConsumerState<_TranscriptTab> {
         );
       }
     } catch (e) {
+      final message = _speakerSaveErrorMessage(e);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('화자 이름 저장 실패: $e')),
+          SnackBar(content: Text(message)),
         );
       }
     }
+  }
+
+  String _speakerSaveErrorMessage(Object error) {
+    if (error is DioException && error.response?.statusCode == 401) {
+      Future.microtask(() => ref.read(authStateProvider.notifier).checkAuth());
+      return '화자 이름 저장은 로그인 후 사용할 수 있습니다. 다시 로그인해 주세요.';
+    }
+    if (error is StateError) {
+      return error.message;
+    }
+    return '화자 이름 저장 실패: $error';
   }
 
   String _speakerSaveMessage(SpeakerProfile profile) {

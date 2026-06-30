@@ -43,14 +43,14 @@ PYTHONPATH=. venv/bin/python -c "import audioop; print('ok')"
 
 각 항목별 테스트 요건:
 - 정상 경로 + 경계/오류 경로(존재하지 않는 task_id → 404, 잘못된 입력 → 422, 빈 결과) 모두 커버.
-- OpenAI 호출이 있는 경로(`assess_minutes`, `compute_live_score` 일부)는 `get_openai_client`를 mock하여 AI 호출 없이 검증. `OPENAI_API_KEY` 미설정 환경에서도 통과해야 함.
+- ZAI 호출이 있는 경로(`assess_minutes`, `compute_live_score` 일부)는 `get_zai_client`를 mock하여 AI 호출 없이 검증. `ZAI_API_KEY` 미설정 환경에서도 통과해야 함.
 - DB 의존은 기존 conftest의 테스트 세션 fixture 사용.
 
 ### P2 — origin 신규 미테스트
 
 | 모듈 | 현재 cov | 테스트 대상 |
 |------|---------:|------------|
-| `services/qa_service.py` | 21% | `ask`, `get_history` (Q&A, OpenAI mock 필요) |
+| `services/qa_service.py` | 21% | `ask`, `get_history` (Q&A, ZAI mock 필요) |
 | `services/oauth_service.py` | 25% | `verify_google_token`, `verify_apple_token`, `verify_apple_code_callback` (외부 토큰 검증 — httpx/jwt mock) |
 | `app/api/v1/batch.py` | 21% | `POST` upload_batch_transcription, `GET` get_batch_status |
 | `app/api/v1/audio_preprocess.py` | 23% | 라우트 점검 후 정상/오류 경로 |

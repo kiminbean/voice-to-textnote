@@ -62,7 +62,6 @@ def _reset_engine():
     WhisperEngine._load_time_seconds = None
     WhisperEngine._device = "cpu"
     WhisperEngine._backend = "unknown"
-    WhisperEngine._whisper_model = None
     WhisperEngine._faster_whisper_model = None
 
 
@@ -172,7 +171,6 @@ class TestForcedBackendLoad:
         [
             ("mlx", "_try_load_mlx"),
             ("faster_whisper", "_try_load_faster_whisper"),
-            ("whisper", "_try_load_whisper"),
         ],
     )
     def test_load_uses_forced_backend_when_loader_succeeds(
@@ -208,43 +206,6 @@ class TestForcedBackendLoad:
                 engine.load()
 
         assert engine.is_loaded is False
-
-
-class TestWhisperBackendLoad:
-    """라인 239-241: openai-whisper 로드 실패 처리"""
-
-    def setup_method(self):
-        _reset_engine()
-
-    def test_whisper_load_import_error_returns_false(self):
-        """openai-whisper ImportError 시 False 반환"""
-        from backend.ml.stt_engine import WhisperEngine
-
-        engine = WhisperEngine.get_instance()
-
-        with patch.dict(
-            sys.modules, {"whisper": None, "mlx_whisper": None, "faster_whisper": None}
-        ):
-            with patch("platform.system", return_value="Linux"):
-                result = engine._try_load_whisper()
-                assert result is False
-
-    def test_whisper_load_exception_returns_false(self):
-        """openai-whisper 로드 중 예외 발생 시 False 반환"""
-        from backend.ml.stt_engine import WhisperEngine
-
-        engine = WhisperEngine.get_instance()
-
-        mock_whisper = MagicMock()
-        mock_whisper.load_model.side_effect = RuntimeError("Load failed")
-        mock_whisper.__name__ = "whisper"
-
-        with patch.dict(
-            sys.modules, {"whisper": mock_whisper, "mlx_whisper": None, "faster_whisper": None}
-        ):
-            with patch("platform.system", return_value="Linux"):
-                result = engine._try_load_whisper()
-                assert result is False
 
 
 class TestTranscribeMlx:
@@ -340,129 +301,6 @@ class TestTranscribeMlx:
                 kwargs = call_args.kwargs
                 assert "path_or_hf_repo" in kwargs
                 assert "mlx-community" in kwargs["path_or_hf_repo"]
-
-
-class TestTranscribeWhisper:
-    """라인 342: openai-whisper 백엔드 추론"""
-
-    def setup_method(self):
-        _reset_engine()
-
-    def test_transcribe_whisper_without_initial_prompt(self, test_audio_file: Path):
-        """openai-whisper 백엔드: initial_prompt 없이 추론"""
-        from backend.ml.stt_engine import WhisperEngine
-
-        mock_whisper = MagicMock()
-        mock_model = MagicMock()
-        mock_model.transcribe.return_value = {
-            "segments": [{"id": 0, "start": 0.0, "end": 4.0, "text": "테스트"}],
-            "language": "ko",
-        }
-        mock_whisper.load_model.return_value = mock_model
-
-        with patch.dict(
-            sys.modules,
-            {
-                "whisper": mock_whisper,
-                "mlx_whisper": None,
-                "torch": _make_mock_torch(cuda_available=False),
-            },
-        ):
-            with (
-                patch("platform.system", return_value="Linux"),
-            ):
-                engine = WhisperEngine.get_instance()
-                engine._backend = "whisper"
-                engine._whisper_model = mock_model
-                engine._model_loaded = True
-                result = engine._transcribe_whisper(test_audio_file, "ko", None)
-
-                assert "segments" in result
-                assert mock_model.transcribe.called
-
-    def test_transcribe_whisper_with_initial_prompt(self, test_audio_file: Path):
-        """openai-whisper 백엔드: initial_prompt 포함 추론"""
-        from backend.ml.stt_engine import WhisperEngine
-
-        mock_whisper = MagicMock()
-        mock_model = MagicMock()
-        mock_model.transcribe.return_value = {"segments": [], "language": "ko"}
-        mock_whisper.load_model.return_value = mock_model
-
-        with patch.dict(
-            sys.modules,
-            {
-                "whisper": mock_whisper,
-                "mlx_whisper": None,
-                "torch": _make_mock_torch(cuda_available=False),
-            },
-        ):
-            with (
-                patch("platform.system", return_value="Linux"),
-            ):
-                engine = WhisperEngine.get_instance()
-                engine._backend = "whisper"
-                engine._whisper_model = mock_model
-                engine._model_loaded = True
-                engine._transcribe_whisper(test_audio_file, "ko", "회의록")
-
-                call_args = mock_model.transcribe.call_args
-                kwargs = call_args.kwargs
-                assert kwargs.get("initial_prompt") == "회의록"
-
-    def test_transcribe_whisper_includes_word_timestamps(self, test_audio_file: Path):
-        """openai-whisper 백엔드: word_timestamps=True 포함"""
-        from backend.ml.stt_engine import WhisperEngine
-
-        mock_whisper = MagicMock()
-        mock_model = MagicMock()
-        mock_model.transcribe.return_value = {"segments": [], "language": "ko"}
-        mock_whisper.load_model.return_value = mock_model
-
-        with patch.dict(
-            sys.modules,
-            {
-                "whisper": mock_whisper,
-                "mlx_whisper": None,
-                "torch": _make_mock_torch(cuda_available=False),
-            },
-        ):
-            with (
-                patch("platform.system", return_value="Linux"),
-            ):
-                engine = WhisperEngine.get_instance()
-                engine._backend = "whisper"
-                engine._whisper_model = mock_model
-                engine._model_loaded = True
-                engine._transcribe_whisper(test_audio_file, "ko", None)
-
-                call_args = mock_model.transcribe.call_args
-                kwargs = call_args.kwargs
-                assert kwargs.get("word_timestamps") is True
-
-    def test_transcribe_whisper_with_cuda_device(self, test_audio_file: Path):
-        """openai-whisper 백엔드: CUDA 장치 사용"""
-        from backend.ml.stt_engine import WhisperEngine
-
-        mock_whisper = MagicMock()
-        mock_model = MagicMock()
-        mock_model.transcribe.return_value = {"segments": [], "language": "ko"}
-        mock_whisper.load_model.return_value = mock_model
-
-        with patch.dict(
-            sys.modules,
-            {
-                "whisper": mock_whisper,
-                "mlx_whisper": None,
-                "torch": _make_mock_torch(cuda_available=True),
-            },
-        ):
-            with patch("platform.system", return_value="Linux"):
-                engine = WhisperEngine.get_instance()
-                assert engine._try_load_whisper() is True
-
-                assert engine.device == "cuda"
-                mock_whisper.load_model.assert_called_once_with("small", device="cuda")
 
 
 class TestTranscribeFasterWhisper:

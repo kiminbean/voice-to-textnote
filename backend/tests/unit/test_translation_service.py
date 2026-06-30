@@ -16,7 +16,7 @@ from backend.services.translation_service import (
 )
 
 
-def stub_openai_client(text: str) -> MagicMock:
+def stub_zai_client(text: str) -> MagicMock:
     message = MagicMock()
     message.content = text
     choice = MagicMock()
@@ -28,7 +28,22 @@ def stub_openai_client(text: str) -> MagicMock:
     return client
 
 
-class FakeOpenAI:
+def stub_zai_client_sequence(texts: list[str]) -> MagicMock:
+    responses = []
+    for text in texts:
+        message = MagicMock()
+        message.content = text
+        choice = MagicMock()
+        choice.message = message
+        response = MagicMock()
+        response.choices = [choice]
+        responses.append(response)
+    client = MagicMock()
+    client.chat.completions.create.side_effect = responses
+    return client
+
+
+class FakeZAI:
     def __init__(self, api_key: str, base_url: str | None = None) -> None:
         self.api_key = api_key
         self.base_url = base_url
@@ -64,7 +79,7 @@ async def test_translate_summary_persists_translation(session_factory, monkeypat
         "summary-001",
         {"summary_text": "회의에서 출시 일정과 고객 피드백을 논의했습니다."},
     )
-    client = stub_openai_client("The meeting discussed the launch schedule and customer feedback.")
+    client = stub_zai_client("The meeting discussed the launch schedule and customer feedback.")
     svc = TranslationService()
     monkeypatch.setattr(svc, "_get_client", lambda: client)
 
@@ -91,7 +106,7 @@ async def test_translate_summary_persists_translation(session_factory, monkeypat
 
 
 @pytest.mark.asyncio
-async def test_translate_returns_cached_result_without_openai(session_factory, monkeypatch):
+async def test_translate_returns_cached_result_without_zai(session_factory, monkeypatch):
     await seed_task(
         session_factory,
         "minutes-001",
@@ -111,7 +126,7 @@ async def test_translate_returns_cached_result_without_openai(session_factory, m
             },
         },
     )
-    client = stub_openai_client("Should not be used")
+    client = stub_zai_client("Should not be used")
     svc = TranslationService()
     monkeypatch.setattr(svc, "_get_client", lambda: client)
 
@@ -169,7 +184,7 @@ async def test_translate_minutes_segments_when_summary_absent(session_factory, m
             ]
         },
     )
-    client = stub_openai_client(
+    client = stub_zai_client(
         "[0 | 1.5s | 진행자] Confirm the next action items.\n"
         "[1 | 참석자] I will share the draft by Friday."
     )
@@ -191,7 +206,7 @@ async def test_translate_minutes_segments_when_summary_absent(session_factory, m
 @pytest.mark.asyncio
 async def test_translate_forced_summary_source(session_factory, monkeypatch):
     await seed_task(session_factory, "summary-005", {"markdown": "# 회의\n결정 사항"})
-    client = stub_openai_client("# Meeting\nDecisions")
+    client = stub_zai_client("# Meeting\nDecisions")
     svc = TranslationService()
     monkeypatch.setattr(svc, "_get_client", lambda: client)
 
@@ -210,7 +225,7 @@ async def test_translate_forced_summary_source(session_factory, monkeypatch):
 @pytest.mark.asyncio
 async def test_translate_auto_falls_back_to_minutes_text(session_factory, monkeypatch):
     await seed_task(session_factory, "minutes-003", {"raw_text": "원문 회의록"})
-    client = stub_openai_client("Original minutes")
+    client = stub_zai_client("Original minutes")
     svc = TranslationService()
     monkeypatch.setattr(svc, "_get_client", lambda: client)
 
@@ -228,7 +243,7 @@ async def test_translate_minutes_skips_invalid_segment_items(session_factory, mo
         "minutes-004",
         {"segments": ["bad", {"text": ""}, {"speaker": "A", "text": "유효한 문장"}]},
     )
-    client = stub_openai_client("[2 | A] Valid sentence")
+    client = stub_zai_client("[2 | A] Valid sentence")
     svc = TranslationService()
     monkeypatch.setattr(svc, "_get_client", lambda: client)
 
@@ -291,11 +306,25 @@ async def test_translate_empty_summary_source_raises_validation(session_factory)
 async def test_translate_empty_ai_response_raises_validation(session_factory, monkeypatch):
     await seed_task(session_factory, "summary-004", {"summary_text": "요약"})
     svc = TranslationService()
-    monkeypatch.setattr(svc, "_get_client", lambda: stub_openai_client(" "))
+    monkeypatch.setattr(svc, "_get_client", lambda: stub_zai_client(" "))
 
     async with session_factory() as session:
         with pytest.raises(TranslationValidationError):
             await svc.translate("summary-004", session, target_language="en")
+
+
+@pytest.mark.asyncio
+async def test_translate_retries_empty_ai_response(session_factory, monkeypatch):
+    await seed_task(session_factory, "summary-empty-retry", {"summary_text": "요약"})
+    client = stub_zai_client_sequence([" ", "Retried translation"])
+    svc = TranslationService()
+    monkeypatch.setattr(svc, "_get_client", lambda: client)
+
+    async with session_factory() as session:
+        result = await svc.translate("summary-empty-retry", session, target_language="en")
+
+    assert result.translated_text == "Retried translation"
+    assert client.chat.completions.create.call_count == 2
 
 
 def test_language_key_normalizes_case_and_space():
@@ -303,7 +332,7 @@ def test_language_key_normalizes_case_and_space():
 
 
 def test_get_client_uses_llm_api_key(monkeypatch):
-    monkeypatch.setattr("backend.services.translation_service.OpenAI", FakeOpenAI)
+    monkeypatch.setattr("backend.services.translation_service.ZAIClient", FakeZAI)
     monkeypatch.setattr(
         "backend.services.translation_service.settings",
         SimpleNamespace(
@@ -314,6 +343,6 @@ def test_get_client_uses_llm_api_key(monkeypatch):
 
     client = TranslationService()._get_client()
 
-    assert isinstance(client, FakeOpenAI)
+    assert isinstance(client, FakeZAI)
     assert client.api_key == "zai-test-key"
     assert client.base_url == "https://api.z.ai/api/coding/paas/v4"

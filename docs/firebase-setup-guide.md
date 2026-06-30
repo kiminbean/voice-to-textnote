@@ -216,7 +216,7 @@ Cannot create a FlutterEngine instance in debug mode without Flutter tooling or 
 cd client
 flutter run --profile \
   -d 00008150-000239020C08401C \
-  --dart-define=ENV=dev \
+  --dart-define=ENV=staging \
   --dart-define=API_BASE_URL=http://100.69.69.119:8000/api/v1
 ```
 

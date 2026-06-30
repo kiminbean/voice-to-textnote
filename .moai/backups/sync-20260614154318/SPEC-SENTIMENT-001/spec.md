@@ -22,7 +22,7 @@ related_specs: [SPEC-MIN-001, SPEC-SUM-001, SPEC-ANALYTICS-001]
 
 ## 1. 배경 및 목표
 
-본 SPEC은 이미 약 85% 구현된 텍스트 감정 분석 기능에 대한 **역추적 SPEC(retrospective SPEC)** 이다. 백엔드 감정 분석 스키마, OpenAI 기반 분석기, Celery 태스크, API 라우터, 일부 Flutter 카드 UI는 존재하지만 SPEC 문서가 없고, Celery 태스크 등록 누락으로 실제 워커가 `sentiment_celery_task`를 발견하지 못해 작업이 영원히 실행되지 않는 치명적 결함이 있다.
+본 SPEC은 이미 약 85% 구현된 텍스트 감정 분석 기능에 대한 **역추적 SPEC(retrospective SPEC)** 이다. 백엔드 감정 분석 스키마, ZAI 기반 분석기, Celery 태스크, API 라우터, 일부 Flutter 카드 UI는 존재하지만 SPEC 문서가 없고, Celery 태스크 등록 누락으로 실제 워커가 `sentiment_celery_task`를 발견하지 못해 작업이 영원히 실행되지 않는 치명적 결함이 있다.
 
 목표는 감정 분석 로직을 새로 작성하는 것이 아니라, 기존 구현을 보존하면서 다음을 완료하는 것이다.
 
@@ -40,8 +40,8 @@ related_specs: [SPEC-MIN-001, SPEC-SUM-001, SPEC-ANALYTICS-001]
 |------|------|
 | platform | M4 Mac Mini 24GB, Apple Silicon, 로컬 우선 처리 환경 |
 | runtime | Python >= 3.11, FastAPI >= 0.135, Flutter 3.x, Dart 3.x |
-| AI API | OpenAI API |
-| model | `gpt-4o-mini` |
+| AI API | ZAI API |
+| model | `glm-5.2` |
 | async | Celery >= 5.6, Redis >= 7.0 |
 | input data | SPEC-MIN-001의 minutes 결과: `task:min:result:{minutes_task_id}` 및 `TaskResult.result_data` |
 
@@ -51,8 +51,8 @@ related_specs: [SPEC-MIN-001, SPEC-SUM-001, SPEC-ANALYTICS-001]
 
 - `backend/pipeline/sentiment_analyzer.py`, `backend/workers/tasks/sentiment_task.py`, `backend/schemas/sentiment.py`, `backend/app/api/v1/analytics/sentiment.py`의 기존 감정 분석 로직은 재구현하지 않고 유지한다.
 - 감정 분석 입력은 `minutes_task` 완료 후 생성된 화자별 회의록 세그먼트이며, 원본 오디오 파일은 필요하지 않다.
-- OpenAI API 키와 모델 설정은 기존 `backend/app/config.py`의 OpenAI 설정을 따른다.
-- 신규 라이브러리 의존성은 추가하지 않고 기존 OpenAI SDK, Pydantic, Celery, Redis, Riverpod, Dio, Material 위젯만 사용한다.
+- ZAI API 키와 모델 설정은 기존 `backend/app/config.py`의 ZAI 설정을 따른다.
+- 신규 라이브러리 의존성은 추가하지 않고 기존 ZAI SDK, Pydantic, Celery, Redis, Riverpod, Dio, Material 위젯만 사용한다.
 - 기존 `/api/v1/sentiment/*` 엔드포인트와 `SentimentResponse` 스키마는 하위 호환성을 유지해야 한다.
 - `emotional_timeline`은 백엔드가 이미 반환하는 `[{time, sentiment, emotion, speaker}]` 형태의 데이터를 클라이언트에서 시각화하는 범위로 제한한다.
 
@@ -98,7 +98,7 @@ related_specs: [SPEC-MIN-001, SPEC-SUM-001, SPEC-ANALYTICS-001]
 
 **[REQ-SEN-014] [이벤트 기반]** WHEN 본 SPEC 구현이 완료되면 THEN README의 고급 분석 계획 항목은 완료된 텍스트 감정 분석과 향후 분석 항목을 분리하여 표시해야 한다.
 
-**[REQ-SEN-015] [유비쿼터스]** README와 관련 문서는 항상 실제 구현 모델을 OpenAI `gpt-4o-mini`로 설명해야 하며, 부정확한 Claude 모델 표기를 유지하지 않아야 한다.
+**[REQ-SEN-015] [유비쿼터스]** README와 관련 문서는 항상 실제 구현 모델을 ZAI `glm-5.2`로 설명해야 하며, 부정확한 Claude 모델 표기를 유지하지 않아야 한다.
 
 ---
 
@@ -129,7 +129,7 @@ related_specs: [SPEC-MIN-001, SPEC-SUM-001, SPEC-ANALYTICS-001]
 
 | 라이브러리 | 버전 | 용도 |
 |-----------|------|------|
-| openai | 기존 프로젝트 버전 | OpenAI `gpt-4o-mini` 감정 분석 호출 |
+| zai | 기존 프로젝트 버전 | ZAI `glm-5.2` 감정 분석 호출 |
 | FastAPI | >= 0.135 | sentiment API 라우터 제공 |
 | Pydantic | >= 2.9 | `SentimentResponse`, `SpeakerSentiment`, `SentimentSegment` 검증 |
 | Celery | >= 5.6 | 감정 분석 백그라운드 태스크 실행 |
@@ -147,7 +147,7 @@ related_specs: [SPEC-MIN-001, SPEC-SUM-001, SPEC-ANALYTICS-001]
 | SPEC ID | 관계 | 설명 |
 |---------|------|------|
 | SPEC-MIN-001 | 직접 의존 | 감정 분석 입력인 minutes 결과를 생성 |
-| SPEC-SUM-001 | 유사 패턴 | OpenAI/LLM 기반 비동기 분석, Celery 상태 관리, 결과 캐시 패턴 참조 |
+| SPEC-SUM-001 | 유사 패턴 | ZAI/LLM 기반 비동기 분석, Celery 상태 관리, 결과 캐시 패턴 참조 |
 | SPEC-ANALYTICS-001 | 상위 로드맵 | 분석 기능 분할 로드맵의 첫 번째 완료 대상 |
 
 ---

@@ -128,21 +128,21 @@ class TestPdfGenerator:
 class TestMindMapGenerator:
     """mind_map_generator.py line 128: 마인드맵 생성 실패"""
 
-    @patch("backend.pipeline.mind_map_generator.OpenAI")
-    def test_generate_mind_map_empty_data(self, mock_openai):
+    @patch("backend.pipeline.mind_map_generator.ZAIClient")
+    def test_generate_mind_map_empty_data(self, mock_zai):
         """빈 데이터로 마인드맵 생성"""
         from backend.pipeline.mind_map_generator import MindMapGenerator
 
         generator = MindMapGenerator()
         data = {}
 
-        # OpenAI 응답 모킹
+        # ZAI 응답 모킹
         mock_client = MagicMock()
         mock_response = MagicMock()
         mock_response.choices = [MagicMock()]
         mock_response.choices[0].message.content = '{"root": {"id": "root", "title": "Test"}}'
         mock_client.chat.completions.create.return_value = mock_response
-        mock_openai.return_value = mock_client
+        mock_zai.return_value = mock_client
 
         result = generator.generate_mind_map(
             summary_data=data, api_key="test_key", model="gpt-4", max_tokens=1000

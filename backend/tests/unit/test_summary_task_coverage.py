@@ -138,8 +138,8 @@ class TestSummaryTaskCoverage:
         ):
             mock_settings.summary_result_ttl = 86400
             mock_settings.max_concurrent_summaries = 2
-            mock_settings.openai_api_key = "sk-test"
-            mock_settings.summary_model = "gpt-4o-mini"
+            mock_settings.zai_api_key = "sk-test"
+            mock_settings.summary_model = "glm-5.2"
 
             result = summary_task(task_id=task_id, minutes_task_id=min_task_id)
 

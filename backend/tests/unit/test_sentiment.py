@@ -89,6 +89,10 @@ class TestBuildPrompt:
         assert "대화 내용 없음" in prompt
         assert "화자 정보 없음" in prompt
 
+    def test_response_instruction_does_not_echo_source_text(self, analyzer, sample_segments, sample_speaker_stats):
+        prompt = analyzer.build_prompt(sample_segments, sample_speaker_stats)
+        assert "text 원문은 응답에 절대 포함하지 말고 id로만 참조하세요" in prompt
+
 
 # ── Response Parsing ──
 
@@ -128,8 +132,41 @@ class TestParseResponse:
         assert len(result.segments) == 2
         assert result.segments[0].sentiment == "positive"
         assert result.segments[1].emotion == "frustration"
-        assert len(result.speakers) == 2
-        assert len(result.emotional_timeline) == 2
+
+    def test_malformed_json_falls_back_to_neutral_source_segments(self, analyzer, sample_segments):
+        result = analyzer.parse_response('{"segments": [{"id": 0,', sample_segments)
+
+        assert len(result.segments) == len(sample_segments)
+        assert result.segments[0].speaker == "김대리"
+        assert result.segments[0].text == "안녕하세요, 오늘 회의 시작하겠습니다."
+        assert result.segments[0].sentiment == "neutral"
+        assert result.speakers
+        assert result.emotional_timeline
+
+    def test_id_based_response_recovers_source_text(self, analyzer, sample_segments):
+        response = json.dumps(
+            {
+                "overall_sentiment": "neutral",
+                "overall_emotion": "interest",
+                "segments": [
+                    {
+                        "id": 2,
+                        "sentiment": "negative",
+                        "emotion": "frustration",
+                        "confidence": 0.8,
+                    }
+                ],
+            }
+        )
+
+        result = analyzer.parse_response(response, sample_segments)
+
+        assert len(result.segments) == 1
+        assert result.segments[0].speaker == "박부장"
+        assert result.segments[0].text.startswith("일정이 계속 지연")
+        assert result.segments[0].start == 12.0
+        assert len(result.speakers) == 1
+        assert len(result.emotional_timeline) == 1
 
     def test_markdown_wrapped_response(self, analyzer):
         inner = json.dumps(

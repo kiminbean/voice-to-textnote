@@ -20,7 +20,7 @@ ActionItem {
 - `key_decisions: list[str]`, `next_steps: list[str]` 포함
 
 **AI Prompt** (`backend/pipeline/summary_generator.py:59-75`):
-- OpenAI API에 JSON 형식으로 액션 아이템 추출 지시
+- ZAI API에 JSON 형식으로 액션 아이템 추출 지시
 - assignee, task, deadline, priority 4개 필드 명시
 
 ### Flutter Client (수정 대상)

@@ -106,8 +106,8 @@ async def db_session(db_engine):
 
 
 @pytest.fixture
-def mock_openai_client():
-    """OpenAI 클라이언트 mock."""
+def mock_zai_client():
+    """ZAI 클라이언트 mock."""
     mock_client = MagicMock()
     mock_response = MagicMock()
 
@@ -129,10 +129,10 @@ def mock_openai_client():
 
 
 @pytest.fixture
-def service(mock_openai_client):
+def service(mock_zai_client):
     """QualityService 인스턴스."""
     with patch(
-        "backend.services.quality_service.get_openai_client", return_value=mock_openai_client
+        "backend.services.quality_service.get_zai_client", return_value=mock_zai_client
     ):
         from backend.services.quality_service import QualityService
 

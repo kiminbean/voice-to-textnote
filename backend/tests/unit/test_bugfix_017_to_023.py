@@ -110,14 +110,14 @@ class TestStatisticsRedisCorruption:
 
 
 class TestSentimentEmptyChoices:
-    """OpenAI 응답이 빈 choices를 반환해도 IndexError가 발생하지 않아야 한다."""
+    """ZAI 응답이 빈 choices를 반환해도 IndexError가 발생하지 않아야 한다."""
 
     def test_empty_choices_returns_fallback_result(self):
         from backend.pipeline.sentiment_analyzer import SentimentAnalyzer
 
         analyzer = SentimentAnalyzer()
 
-        # OpenAI 응답 모의: choices가 빈 리스트
+        # ZAI 응답 모의: choices가 빈 리스트
         mock_response = MagicMock()
         mock_response.choices = []
         mock_response.usage = None
@@ -125,7 +125,7 @@ class TestSentimentEmptyChoices:
         mock_client = MagicMock()
         mock_client.chat.completions.create.return_value = mock_response
 
-        with patch("backend.pipeline.sentiment_analyzer.OpenAI", return_value=mock_client):
+        with patch("backend.pipeline.sentiment_analyzer.ZAIClient", return_value=mock_client):
             # 폴백 처리: IndexError가 발생하지 않고 빈 응답 파싱 결과를 반환해야 한다.
             result = analyzer.analyze(
                 segments=[{"speaker": "S1", "text": "hello", "start": 0, "end": 1}],

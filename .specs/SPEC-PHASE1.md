@@ -9,7 +9,7 @@ Phase 1 (Quick Wins) of the Plaud-competitive feature roadmap. Three features th
 **Goal**: Improve STT accuracy for domain-specific terms (names, jargon, acronyms).
 
 **Backend**:
-- Add `initial_prompt` parameter to `WhisperEngine.transcribe()` and all 3 backends (mlx, faster-whisper, openai-whisper)
+- Add `initial_prompt` parameter to `WhisperEngine.transcribe()` and all 3 backends (mlx, faster-whisper, faster-whisper)
 - New `CustomVocabulary` DB model: `id`, `name`, `words` (JSON list), `created_at`, `updated_at`
 - New `/api/v1/vocabulary` CRUD endpoints (list, create, update, delete)
 - Thread `initial_prompt` from upload endpoint through `transcription_task` → `engine.transcribe()`

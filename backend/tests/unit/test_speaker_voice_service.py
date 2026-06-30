@@ -275,6 +275,7 @@ class TestVoiceprintEnrollment:
                     "SPEAKER_02": {
                         "embedding": [0.0, 1.0, 0.0],
                         "embedding_backend": "test",
+                        "sample_duration_seconds": 12.0,
                     }
                 }
             },
@@ -299,6 +300,43 @@ class TestVoiceprintEnrollment:
         assert voice is not None
         assert voice.features["voiceprint"]["embedding"] == [0.0, 1.0, 0.0]
         assert voice.features["voiceprint"]["last_source_speaker_label"] == "SPEAKER_02"
+        assert voice.features["voiceprint"]["last_sample_duration_seconds"] == 12.0
+
+    @pytest.mark.asyncio
+    async def test_enroll_from_task_skips_short_voiceprint(
+        self,
+        svc,
+        db_session,
+        seeded_speaker,
+    ):
+        dia = TaskResult(
+            task_id="dia-voice-short-001",
+            task_type="diarization",
+            status="completed",
+            result_data={
+                "voiceprints": {
+                    "SPEAKER_02": {
+                        "embedding": [0.0, 1.0, 0.0],
+                        "embedding_backend": "test",
+                        "sample_duration_seconds": 3.0,
+                    }
+                }
+            },
+        )
+        db_session.add(dia)
+        await db_session.commit()
+
+        voice = await svc.enroll_from_task(
+            db_session,
+            seeded_speaker.id,
+            seeded_speaker.user_id,
+            source_task_id="dia-voice-short-001",
+            source_speaker_label="SPEAKER_02",
+        )
+
+        assert voice is None
+        count = await svc.voiceprint_sample_count(db_session, seeded_speaker.id)
+        assert count == 0
 
     @pytest.mark.asyncio
     async def test_backfill_missing_voiceprints_from_owned_task(
@@ -317,6 +355,7 @@ class TestVoiceprintEnrollment:
                     "SPEAKER_00": {
                         "embedding": [0.0, 0.0, 1.0],
                         "embedding_backend": "test",
+                        "sample_duration_seconds": 12.0,
                     }
                 }
             },

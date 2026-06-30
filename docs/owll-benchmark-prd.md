@@ -126,7 +126,7 @@ Users can currently transcribe, summarize, search, and export meetings, but lear
   - `source_refs`
   - `created_at`
 - Add generation service that consumes existing transcript/minutes/summary payloads.
-- Use existing OpenAI client/config patterns where AI generation is already used.
+- Use existing ZAI client/config patterns where AI generation is already used.
 - Cache or persist generated study packs consistently with current result storage conventions.
 - Expose endpoints:
   - `POST /api/v1/minutes/{task_id}/study-pack`
@@ -256,7 +256,7 @@ Add optional sales/contact follow-up and SOAP-style healthcare templates as conf
 ## 7. Implementation Plan
 
 1. Backend RED tests for study-pack schema and API.
-2. Backend service implementation using existing summary/OpenAI patterns.
+2. Backend service implementation using existing summary/ZAI patterns.
 3. Persistence/cache integration with current result storage.
 4. Flutter provider/API client/model additions.
 5. Result screen Study tab UI.

@@ -14,7 +14,7 @@ from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.db.quality_feedback_models import QualityFeedback, QualityScoreSnapshot
-from backend.ml.openai_client import get_openai_client
+from backend.ml.zai_client import get_zai_client
 from backend.schemas.quality import (
     AssessmentFocus,
     AssessmentSummary,
@@ -62,7 +62,7 @@ class QualityService:
     """회의록 품질 평가 서비스"""
 
     def __init__(self):
-        self.openai_client = get_openai_client()
+        self.zai_client = get_zai_client()
         self.assessment_weights = {
             "completeness": 0.25,  # 완전성
             "clarity": 0.20,  # 명확성
@@ -228,7 +228,7 @@ class QualityService:
 
         try:
             # response_format=json_object: 모델이 항상 valid JSON을 반환하도록 강제.
-            response = await self.openai_client.chat.completions.create(
+            response = await self.zai_client.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.1,

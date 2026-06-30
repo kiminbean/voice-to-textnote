@@ -356,8 +356,8 @@ class TestQualityServiceCoverage:
         mock_response.choices[
             0
         ].message.content = 'Some text before\n{"score": 85}\nSome text after'
-        service.openai_client = MagicMock()
-        service.openai_client.chat.completions.create = AsyncMock(return_value=mock_response)
+        service.zai_client = MagicMock()
+        service.zai_client.chat.completions.create = AsyncMock(return_value=mock_response)
 
         result = await service._ai_based_assessment(
             "test content", "Test Title", assessment_focus=[]
@@ -374,8 +374,8 @@ class TestQualityServiceCoverage:
         mock_response = MagicMock()
         mock_response.choices = [MagicMock()]
         mock_response.choices[0].message.content = "No JSON here, just text"
-        service.openai_client = MagicMock()
-        service.openai_client.chat.completions.create = AsyncMock(return_value=mock_response)
+        service.zai_client = MagicMock()
+        service.zai_client.chat.completions.create = AsyncMock(return_value=mock_response)
 
         result = await service._ai_based_assessment(
             "test content", "Test Title", assessment_focus=[]

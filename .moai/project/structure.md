@@ -28,7 +28,7 @@ FastAPI 서버 + Celery 비동기 작업 큐 + ML 파이프라인. Phase 1-7 전
 backend/
 ├── app/
 │   ├── main.py                  # FastAPI 앱 초기화, 모델 워밍업
-│   ├── config.py                # 환경 설정 (Redis, Whisper, OpenAI, 동시 제한)
+│   ├── config.py                # 환경 설정 (Redis, Whisper, ZAI, 동시 제한)
 │   ├── dependencies.py          # 의존성 주입 (DB, Redis, JWT)
 │   ├── errors.py                # 공통 에러 헬퍼 (not_found, bad_request)
 │   ├── exceptions.py            # 도메인 예외 계층 (VoiceNoteError + 서브클래스)
@@ -91,7 +91,7 @@ backend/
 │   ├── chunk_manager.py         # 청크 분할/병합 (30분 단위)
 │   ├── speaker_matcher.py       # STT-DIA 타임스탬프 overlap 매칭
 │   ├── minutes_formatter.py     # 회의록 포맷터 (세그먼트 병합, 통계, Markdown)
-│   ├── summary_generator.py     # OpenAI gpt-4o-mini 요약 생성기
+│   ├── summary_generator.py     # ZAI glm-5.2 요약 생성기
 │   ├── sentiment_analyzer.py    # 감정 분석 파이프라인 (Phase 7)
 │   ├── template_parser.py       # DOCX/PDF 양식 구조 추출
 │   ├── pdf_generator.py         # PDF 내보내기 (fpdf2 + NotoSansKR)
@@ -101,7 +101,7 @@ backend/
 ├── ml/                          # ML 엔진 (7개)
 │   ├── stt_engine.py            # mlx-whisper 래퍼 (싱글톤)
 │   ├── diarization_engine.py    # pyannote.audio 3.1 화자 분리 (싱글톤)
-│   ├── openai_client.py         # OpenAI gpt-4o-mini 클라이언트 (요약/감정)
+│   ├── zai_client.py         # ZAI glm-5.2 클라이언트 (요약/감정)
 │   ├── tone_engine.py           # opensmile eGeMAPSv02 + librosa 톤 분석 (Phase 7)
 │   ├── audio_analysis_engine.py # 오디오 품질 분석
 │   ├── action_items_engine.py   # 액션 아이템 추출
@@ -124,7 +124,7 @@ backend/
 │   ├── transcription_task.py    # mlx-whisper STT
 │   ├── diarization_task.py      # pyannote 화자 분리 (동시 2개)
 │   ├── minutes_task.py          # 회의록 생성 (동시 3개)
-│   ├── summary_task.py          # AI 요약 (동시 2개, OpenAI gpt-4o-mini)
+│   ├── summary_task.py          # AI 요약 (동시 2개, ZAI glm-5.2)
 │   ├── sentiment_task.py        # 감정 분석 (동시 3개, Phase 7)
 │   ├── tone_task.py             # 톤/운율 분석 (Phase 7)
 │   ├── mind_map_task.py         # 마인드맵 생성
@@ -245,8 +245,8 @@ Celery 작업 큐 ← Redis (브로커/캐시)
 ├── STT 워커 → mlx-whisper (MPS 가속)
 ├── DIA 워커 → pyannote.audio
 ├── MIN 워커 → 회의록 포맷터
-├── SUM 워커 → OpenAI gpt-4o-mini  (요약)
-├── SENTIMENT 워커 → OpenAI gpt-4o-mini  (감정 분석)
+├── SUM 워커 → ZAI glm-5.2  (요약)
+├── SENTIMENT 워커 → ZAI glm-5.2  (감정 분석)
 └── TONE 워크 → opensmile + librosa  (톤/운율)
     ↓
 PostgreSQL (영구 저장소) + Alembic (마이그레이션)
@@ -257,7 +257,7 @@ PostgreSQL (영구 저장소) + Alembic (마이그레이션)
 ```
 DATABASE_URL=postgresql://...     # 프로덕션 (개발: SQLite)
 REDIS_URL=redis://localhost:6379/0
-OPENAI_API_KEY=sk-...             # gpt-4o-mini (요약/감정 분석)
+ZAI_API_KEY=
 API_KEY_SECRET=...                # API Key 암호화
 WHISPER_MODEL_PATH=/models/whisper/whisper-large-v3-turbo
 TONE_MODEL=                       # 빈 값 시 톤 분석 503 비활성화 (opensmile AGPL)

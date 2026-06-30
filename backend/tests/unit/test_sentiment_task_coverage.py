@@ -83,8 +83,8 @@ class TestSentimentTaskCoverage:
             patch("backend.workers.tasks.sentiment_task.SentimentAnalyzer", mock_analyzer_cls),
         ):
             mock_settings.summary_result_ttl = 86400
-            mock_settings.openai_api_key = "sk-test"
-            mock_settings.summary_model = "gpt-4o-mini"
+            mock_settings.zai_api_key = "sk-test"
+            mock_settings.summary_model = "glm-5.2"
             mock_settings.max_concurrent_sentiment = 3
 
             result = sentiment_task(task_id=task_id, minutes_task_id=minutes_task_id)

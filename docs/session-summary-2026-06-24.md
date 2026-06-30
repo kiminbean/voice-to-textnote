@@ -172,6 +172,10 @@ DB 영속 저장이 끝나기 전 짧은 구간에 앱이 status를 조회하면
 - voiceprint 자동 매칭된 transcript speaker는 `추정됨` 배지와 tooltip을 표시해 오인식 가능성을 사용자에게 알리고, tap-to-rename 보정 흐름을 유지합니다.
 - `POST /api/v1/speakers/voiceprints/backfill`로 기존 이름-only 전역 화자 프로필을 과거 DIA voiceprint에서 보강합니다.
 - `python -m backend.scripts.tune_voiceprint_threshold` 운영 스크립트로 실제 저장 voiceprint pair를 분석해 threshold 추천값을 계산합니다.
+- 2026-06-30 업데이트: 기본 voiceprint similarity threshold를 `0.82`로 올렸고, 자동 매칭/저장/백필용 최소 발화 길이 `8초`를 적용했습니다. 짧은 샘플은 voiceprint 평균에 누적하지 않습니다.
+- 2026-06-30 업데이트: Hugging Face gated 모델 접근 활성화 절차와 검증 명령은 `docs/speaker-voiceprint-runbook.md`를 기준으로 관리합니다.
+- 2026-06-30 업데이트: 과거 로그에서 유효한 `kiminbean` Hugging Face 토큰(`...voer`)을 복구해 active `.env`에 적용했고, 사용자가 `pyannote/embedding` gated 조건에 동의한 뒤 checkpoint 다운로드와 `Model.from_pretrained("pyannote/embedding")` 로드가 성공했습니다. 누락 의존성 `omegaconf>=2.3.0`도 프로젝트/배포 의존성에 추가했습니다.
+- 2026-06-30 재발 방지: 토큰 `READ` 표시만 보지 말고 `whoami`, `pyannote/embedding/pytorch_model.bin` 다운로드, `SpeakerEmbeddingEngine()._load_pyannote()` 로드를 모두 확인해야 합니다. 자세한 절차는 `docs/session-summary-2026-06-30-pyannote-voiceprint.md`와 `docs/speaker-voiceprint-runbook.md`에 있습니다.
 
 ### 변경 파일
 
@@ -234,7 +238,7 @@ tmux new-window -t voice-to-textnote-server -n worker \
 
 ```bash
 cd client
-flutter run --release -d 00008150-000239020C08401C
+flutter run --release -d 00008150-000239020C08401C --dart-define=ENV=staging --dart-define=API_BASE_URL=http://100.69.69.119:8000/api/v1
 ```
 
 ### 결과

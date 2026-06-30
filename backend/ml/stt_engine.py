@@ -1,5 +1,5 @@
 """
-mlx-whisper / openai-whisper STT 엔진 래퍼 - 싱글톤 패턴
+mlx-whisper / faster-whisper STT 엔진 래퍼 - 싱글톤 패턴
 REQ-STT-005: whisper 모델 + language="ko"
 REQ-STT-006: MLX Apple Silicon 가속 (MPS), CPU/CUDA 폴백
 REQ-STT-007: 지연 로딩 (lazy load) + 재사용
@@ -8,7 +8,7 @@ REQ-STT-022: 메모리 사용량 모니터링
 
 플랫폼별 백엔드:
   - macOS (Apple Silicon): mlx_whisper 사용
-  - Linux/기타: openai-whisper 사용 (CPU/CUDA)
+  - Linux/기타: faster-whisper 사용 (CPU/CUDA)
 """
 
 import os
@@ -31,20 +31,9 @@ MEMORY_WARNING_THRESHOLD_BYTES = 19 * 1024 * 1024 * 1024
 
 # 플랫폼별 기본 모델명
 MLX_DEFAULT_MODEL = "mlx-community/whisper-small-mlx"
-WHISPER_DEFAULT_MODEL = "small"
-
-# mlx-community 모델명 → openai-whisper 모델명 매핑
-_MLX_TO_WHISPER_MODEL_MAP = {
-    "mlx-community/whisper-tiny-mlx": "tiny",
-    "mlx-community/whisper-base-mlx": "base",
-    "mlx-community/whisper-small-mlx": "small",
-    "mlx-community/whisper-medium-mlx": "medium",
-    "mlx-community/whisper-large-v3-turbo": "turbo",
-    "mlx-community/whisper-large-v3-mlx": "large-v3",
-}
 
 # mlx-community 모델명 → faster-whisper 모델명 매핑
-# (faster-whisper는 OpenAI 모델명을 동일하게 사용하지만 turbo는 large-v3-turbo)
+# (faster-whisper는 ZAI 모델명을 동일하게 사용하지만 turbo는 large-v3-turbo)
 _MLX_TO_FASTER_MODEL_MAP = {
     "mlx-community/whisper-tiny-mlx": "tiny",
     "mlx-community/whisper-base-mlx": "base",
@@ -62,11 +51,6 @@ _MLX_METAL_COMPILER_ERROR_MARKERS = (
 )
 
 
-def _resolve_whisper_model(model_name: str) -> str:
-    """mlx-community 모델명을 openai-whisper 모델명으로 변환"""
-    return _MLX_TO_WHISPER_MODEL_MAP.get(model_name, model_name)
-
-
 def _resolve_faster_whisper_model(model_name: str) -> str:
     """mlx-community 모델명을 faster-whisper 모델명으로 변환"""
     return _MLX_TO_FASTER_MODEL_MAP.get(model_name, model_name)
@@ -76,7 +60,7 @@ class WhisperEngine:
     """
     플랫폼 적응형 Whisper 싱글톤 엔진
     - macOS: mlx_whisper 사용 (Apple Silicon 가속)
-    - Linux: faster-whisper 우선 (CTranslate2 int8 - CPU에서 4~6배 빠름), 미설치 시 openai-whisper 폴백
+    - Linux: faster-whisper 사용 (CTranslate2 int8 - CPU 가속)
     - 프로세스당 1개 인스턴스
     - 스레드 안전 초기화
     """
@@ -88,8 +72,7 @@ class WhisperEngine:
     _load_time_seconds: float | None = None
     _model_name: str = MLX_DEFAULT_MODEL
     _device: str = "cpu"
-    _backend: str = "unknown"  # "mlx", "faster_whisper", 또는 "whisper"
-    _whisper_model: Any = None  # openai-whisper 모델 객체
+    _backend: str = "unknown"  # "mlx" 또는 "faster_whisper"
     _faster_whisper_model: Any = None  # faster-whisper WhisperModel 객체
 
     def __init__(self) -> None:
@@ -108,7 +91,7 @@ class WhisperEngine:
         """
         모델 로드 (REQ-STT-007: lazy load + 재사용)
         이미 로드된 경우 즉시 반환
-        플랫폼에 따라 mlx_whisper 또는 openai-whisper 사용
+        플랫폼에 따라 mlx_whisper 또는 faster-whisper 사용
         """
         if self._model_loaded:
             logger.info("모델 이미 로드됨, 재사용", model=self._model_name)
@@ -124,32 +107,27 @@ class WhisperEngine:
             logger.info("모델 로드 시작", model=self._model_name)
             start_time = time.time()
 
-            # 플랫폼별 백엔드 선택 (우선순위: MLX → faster-whisper → openai-whisper)
+            # 플랫폼별 백엔드 선택 (우선순위: MLX → faster-whisper)
             forced_backend = os.environ.get("STT_BACKEND", "").strip().lower()
             if forced_backend == "mlx" and self._try_load_mlx():
                 pass
             elif forced_backend == "faster_whisper" and self._try_load_faster_whisper():
-                pass
-            elif forced_backend == "whisper" and self._try_load_whisper():
                 pass
             elif not forced_backend:
                 if self._try_load_mlx():
                     pass  # MLX 로드 성공 (macOS Apple Silicon)
                 elif self._try_load_faster_whisper():
                     pass  # faster-whisper 로드 성공 (CPU int8 또는 CUDA)
-                elif self._try_load_whisper():
-                    pass  # openai-whisper 로드 성공 (최후의 폴백)
                 else:
                     raise RuntimeError(
                         "STT 백엔드를 찾을 수 없습니다. "
                         "macOS: 'pip install mlx-whisper>=0.4.3', "
-                        "Linux: 'pip install faster-whisper>=1.0.0' (권장) "
-                        "또는 'pip install openai-whisper'로 설치하세요."
+                        "Linux: 'pip install faster-whisper>=1.0.0'로 설치하세요."
                     )
             else:
                 raise RuntimeError(
                     f"지정한 STT_BACKEND='{forced_backend}' 백엔드 로드에 실패했습니다. "
-                    f"사용 가능: mlx, faster_whisper, whisper"
+                    f"사용 가능: mlx, faster_whisper"
                 )
 
             self._load_time_seconds = time.time() - start_time
@@ -185,7 +163,7 @@ class WhisperEngine:
     def _try_load_faster_whisper(self) -> bool:
         """faster-whisper 백엔드 로드 시도 (CPU int8 또는 CUDA, 빠름)
 
-        REQ-STT-PERF-001: CPU에서 openai-whisper 대비 약 4~6배 빠름
+        REQ-STT-PERF-001: CTranslate2 int8 양자화 + VAD 필터링
         (CTranslate2 int8 양자화 + VAD 필터링)
         """
         try:
@@ -235,38 +213,6 @@ class WhisperEngine:
             logger.error("faster-whisper 로드 실패", error=str(e))
             return False
 
-    def _try_load_whisper(self) -> bool:
-        """openai-whisper 백엔드 로드 시도 (CPU/CUDA)"""
-        try:
-            import whisper
-
-            # mlx 모델명을 openai-whisper 모델명으로 변환
-            whisper_model_name = _resolve_whisper_model(self._model_name)
-
-            # CUDA 가용성 확인
-            import torch  # pragma: no cover
-
-            if torch.cuda.is_available():
-                self._device = "cuda"  # pragma: no cover
-            else:
-                self._device = "cpu"
-
-            logger.info(
-                "openai-whisper 모델 로드 중",
-                model=whisper_model_name,
-                device=self._device,
-            )
-            self._whisper_model = whisper.load_model(whisper_model_name, device=self._device)
-            self._backend = "whisper"
-            logger.info("openai-whisper 백엔드 선택", device=self._device)
-            return True
-        except ImportError:
-            logger.info("openai-whisper 미설치")
-            return False
-        except Exception as e:
-            logger.error("openai-whisper 로드 실패", error=str(e))
-            return False
-
     def transcribe(
         self,
         audio_path: str | Path,
@@ -305,7 +251,7 @@ class WhisperEngine:
             elif self._backend == "faster_whisper":
                 result = self._transcribe_faster_whisper(audio_path, language, initial_prompt)
             else:  # pragma: no cover
-                result = self._transcribe_whisper(audio_path, language, initial_prompt)
+                raise RuntimeError(f"알 수 없는 STT 백엔드입니다: {self._backend}")
 
             elapsed = time.time() - start_time
             segment_count = len(result.get("segments", []))
@@ -340,7 +286,7 @@ class WhisperEngine:
         return any(marker in message for marker in _MLX_METAL_COMPILER_ERROR_MARKERS)
 
     def _switch_mlx_to_cpu_backend(self) -> bool:
-        """MLX 런타임 장애 시 faster-whisper/openai-whisper CPU 백엔드로 전환한다."""
+        """MLX 런타임 장애 시 faster-whisper CPU 백엔드로 전환한다."""
         forced_backend = os.environ.get("STT_BACKEND", "").strip().lower()
         if forced_backend == "mlx":
             logger.error("STT_BACKEND=mlx 강제 설정으로 MLX 장애 폴백을 건너뜀")
@@ -351,10 +297,9 @@ class WhisperEngine:
         self._device = "cpu"
         self._model_loaded = False
         self._faster_whisper_model = None
-        self._whisper_model = None
 
         start_time = time.time()
-        if self._try_load_faster_whisper() or self._try_load_whisper():
+        if self._try_load_faster_whisper():
             self._model_loaded = True
             self._load_time_seconds = time.time() - start_time
             logger.info(
@@ -390,23 +335,6 @@ class WhisperEngine:
 
         return mlx_whisper.transcribe(str(audio_path), **kwargs)
 
-    def _transcribe_whisper(
-        self,
-        audio_path: str | Path,
-        language: str,
-        initial_prompt: str | None = None,
-    ) -> dict[str, Any]:
-        """openai-whisper 백엔드 추론"""
-        kwargs: dict[str, Any] = dict(
-            language=language,
-            word_timestamps=True,
-        )
-        if initial_prompt:
-            kwargs["initial_prompt"] = initial_prompt
-
-        result = self._whisper_model.transcribe(str(audio_path), **kwargs)
-        return result
-
     def _transcribe_faster_whisper(
         self,
         audio_path: str | Path,
@@ -415,7 +343,7 @@ class WhisperEngine:
     ) -> dict[str, Any]:
         """faster-whisper 백엔드 추론
 
-        openai-whisper와 호환되는 형식으로 결과를 반환한다.
+        앱 내부 STT 결과 형식으로 반환한다.
         - word_timestamps=False: 단어 단위 타임스탬프는 필요 없으므로 비활성화 (약 20% 가속)
         - beam_size=1: greedy decoding (속도 우선, small 모델은 정확도 차이 미미)
         - vad_filter=True: Silero VAD로 무음 구간 제거 (정확도/속도 향상)

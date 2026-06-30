@@ -72,16 +72,16 @@ class TestValidateEnvironment:
             old_api = os.environ.get("API_KEYS")
             old_jwt = os.environ.get("JWT_SECRET")
             old_firebase = os.environ.get("FIREBASE_CREDENTIALS_PATH")
-            old_openai = os.environ.get("OPENAI_API_KEY")
+            old_zai = os.environ.get("ZAI_API_KEY")
             old_cors = os.environ.get("CORS_ALLOW_ORIGINS")
             try:
                 os.environ["ENVIRONMENT"] = env
-                # production 환경에서는 API_KEYS/JWT_SECRET/FIREBASE_CREDENTIALS_PATH/OPENAI_API_KEY 필요
+                # production 환경에서는 API_KEYS/JWT_SECRET/FIREBASE_CREDENTIALS_PATH/ZAI_API_KEY 필요
                 if env == "production":
                     os.environ["API_KEYS"] = "test-key"
                     os.environ["JWT_SECRET"] = "x" * 48
                     os.environ["FIREBASE_CREDENTIALS_PATH"] = "/tmp/firebase.json"
-                    os.environ["OPENAI_API_KEY"] = "sk-test-openai"
+                    os.environ["ZAI_API_KEY"] = "sk-test-zai"
                     os.environ["CORS_ALLOW_ORIGINS"] = '["https://app.example.com"]'
                 # Settings 생성 시 검증됨
                 settings = make_settings()
@@ -103,10 +103,10 @@ class TestValidateEnvironment:
                     os.environ["FIREBASE_CREDENTIALS_PATH"] = old_firebase
                 else:
                     os.environ.pop("FIREBASE_CREDENTIALS_PATH", None)
-                if old_openai:
-                    os.environ["OPENAI_API_KEY"] = old_openai
+                if old_zai:
+                    os.environ["ZAI_API_KEY"] = old_zai
                 else:
-                    os.environ.pop("OPENAI_API_KEY", None)
+                    os.environ.pop("ZAI_API_KEY", None)
                 if old_cors:
                     os.environ["CORS_ALLOW_ORIGINS"] = old_cors
                 else:
@@ -120,13 +120,13 @@ class TestValidateEnvironment:
         old_api = os.environ.get("API_KEYS")
         old_jwt = os.environ.get("JWT_SECRET")
         old_firebase = os.environ.get("FIREBASE_CREDENTIALS_PATH")
-        old_openai = os.environ.get("OPENAI_API_KEY")
+        old_zai = os.environ.get("ZAI_API_KEY")
         try:
             os.environ["ENVIRONMENT"] = "invalid_env"
             os.environ["API_KEYS"] = "test-key"
             os.environ["JWT_SECRET"] = "x" * 48
             os.environ["FIREBASE_CREDENTIALS_PATH"] = "/tmp/firebase.json"
-            os.environ["OPENAI_API_KEY"] = "sk-test-openai"
+            os.environ["ZAI_API_KEY"] = "sk-test-zai"
             with pytest.raises(ValidationError) as exc_info:
                 make_settings()
             assert "environment는 다음 중 하나여야 합니다" in str(exc_info.value)
@@ -147,10 +147,10 @@ class TestValidateEnvironment:
                 os.environ["FIREBASE_CREDENTIALS_PATH"] = old_firebase
             else:
                 os.environ.pop("FIREBASE_CREDENTIALS_PATH", None)
-            if old_openai:
-                os.environ["OPENAI_API_KEY"] = old_openai
+            if old_zai:
+                os.environ["ZAI_API_KEY"] = old_zai
             else:
-                os.environ.pop("OPENAI_API_KEY", None)
+                os.environ.pop("ZAI_API_KEY", None)
 
     def test_environment_normalization(self):
         """환경값 정규화 (라인 216)"""
@@ -160,13 +160,13 @@ class TestValidateEnvironment:
         old_api = os.environ.get("API_KEYS")
         old_jwt = os.environ.get("JWT_SECRET")
         old_firebase = os.environ.get("FIREBASE_CREDENTIALS_PATH")
-        old_openai = os.environ.get("OPENAI_API_KEY")
+        old_zai = os.environ.get("ZAI_API_KEY")
         try:
             os.environ["ENVIRONMENT"] = "  Development  "
             os.environ["API_KEYS"] = "test-key"
             os.environ["JWT_SECRET"] = "x" * 48
             os.environ["FIREBASE_CREDENTIALS_PATH"] = "/tmp/firebase.json"
-            os.environ["OPENAI_API_KEY"] = "sk-test-openai"
+            os.environ["ZAI_API_KEY"] = "sk-test-zai"
             settings = make_settings()
             assert settings.environment == "development"
         finally:
@@ -186,10 +186,10 @@ class TestValidateEnvironment:
                 os.environ["FIREBASE_CREDENTIALS_PATH"] = old_firebase
             else:
                 os.environ.pop("FIREBASE_CREDENTIALS_PATH", None)
-            if old_openai:
-                os.environ["OPENAI_API_KEY"] = old_openai
+            if old_zai:
+                os.environ["ZAI_API_KEY"] = old_zai
             else:
-                os.environ.pop("OPENAI_API_KEY", None)
+                os.environ.pop("ZAI_API_KEY", None)
 
 
 class TestValidateCorsAllowMethods:
@@ -260,13 +260,13 @@ class TestValidateProductionSecurity:
         old_env = os.environ.get("ENVIRONMENT")
         old_jwt = os.environ.get("JWT_SECRET")
         old_firebase = os.environ.get("FIREBASE_CREDENTIALS_PATH")
-        old_openai = os.environ.get("OPENAI_API_KEY")
+        old_zai = os.environ.get("ZAI_API_KEY")
         try:
             os.environ.pop("API_KEYS", None)
             os.environ["ENVIRONMENT"] = "production"
             os.environ["JWT_SECRET"] = "x" * 48
             os.environ["FIREBASE_CREDENTIALS_PATH"] = "/tmp/firebase.json"
-            os.environ["OPENAI_API_KEY"] = "sk-test-openai"
+            os.environ["ZAI_API_KEY"] = "sk-test-zai"
             with pytest.raises(ValidationError) as exc_info:
                 make_settings()
             assert "production 환경에서는 API_KEYS를 반드시 설정해야 합니다" in str(exc_info.value)
@@ -287,10 +287,10 @@ class TestValidateProductionSecurity:
                 os.environ["FIREBASE_CREDENTIALS_PATH"] = old_firebase
             else:
                 os.environ.pop("FIREBASE_CREDENTIALS_PATH", None)
-            if old_openai:
-                os.environ["OPENAI_API_KEY"] = old_openai
+            if old_zai:
+                os.environ["ZAI_API_KEY"] = old_zai
             else:
-                os.environ.pop("OPENAI_API_KEY", None)
+                os.environ.pop("ZAI_API_KEY", None)
 
     def test_production_without_jwt_secret_raises_error(self):
         """production 환경에서 JWT_SECRET 없으면 에러"""
@@ -300,13 +300,13 @@ class TestValidateProductionSecurity:
         old_env = os.environ.get("ENVIRONMENT")
         old_jwt = os.environ.get("JWT_SECRET")
         old_firebase = os.environ.get("FIREBASE_CREDENTIALS_PATH")
-        old_openai = os.environ.get("OPENAI_API_KEY")
+        old_zai = os.environ.get("ZAI_API_KEY")
         try:
             os.environ["API_KEYS"] = "test-key"
             os.environ["ENVIRONMENT"] = "production"
             os.environ.pop("JWT_SECRET", None)
             os.environ["FIREBASE_CREDENTIALS_PATH"] = "/tmp/firebase.json"
-            os.environ["OPENAI_API_KEY"] = "sk-test-openai"
+            os.environ["ZAI_API_KEY"] = "sk-test-zai"
             with pytest.raises(ValidationError) as exc_info:
                 make_settings()
             assert "production 환경에서는 JWT_SECRET을 반드시 설정해야 합니다" in str(
@@ -329,10 +329,10 @@ class TestValidateProductionSecurity:
                 os.environ["FIREBASE_CREDENTIALS_PATH"] = old_firebase
             else:
                 os.environ.pop("FIREBASE_CREDENTIALS_PATH", None)
-            if old_openai:
-                os.environ["OPENAI_API_KEY"] = old_openai
+            if old_zai:
+                os.environ["ZAI_API_KEY"] = old_zai
             else:
-                os.environ.pop("OPENAI_API_KEY", None)
+                os.environ.pop("ZAI_API_KEY", None)
 
     def test_production_with_short_jwt_secret_raises_error(self):
         """production 환경에서 JWT_SECRET이 짧으면 에러"""
@@ -342,13 +342,13 @@ class TestValidateProductionSecurity:
         old_env = os.environ.get("ENVIRONMENT")
         old_jwt = os.environ.get("JWT_SECRET")
         old_firebase = os.environ.get("FIREBASE_CREDENTIALS_PATH")
-        old_openai = os.environ.get("OPENAI_API_KEY")
+        old_zai = os.environ.get("ZAI_API_KEY")
         try:
             os.environ["API_KEYS"] = "test-key"
             os.environ["ENVIRONMENT"] = "production"
             os.environ["JWT_SECRET"] = "short-secret"
             os.environ["FIREBASE_CREDENTIALS_PATH"] = "/tmp/firebase.json"
-            os.environ["OPENAI_API_KEY"] = "sk-test-openai"
+            os.environ["ZAI_API_KEY"] = "sk-test-zai"
             with pytest.raises(ValidationError) as exc_info:
                 make_settings()
             assert "JWT_SECRET은 최소 32자 이상" in str(exc_info.value)
@@ -369,10 +369,10 @@ class TestValidateProductionSecurity:
                 os.environ["FIREBASE_CREDENTIALS_PATH"] = old_firebase
             else:
                 os.environ.pop("FIREBASE_CREDENTIALS_PATH", None)
-            if old_openai:
-                os.environ["OPENAI_API_KEY"] = old_openai
+            if old_zai:
+                os.environ["ZAI_API_KEY"] = old_zai
             else:
-                os.environ.pop("OPENAI_API_KEY", None)
+                os.environ.pop("ZAI_API_KEY", None)
 
     def test_production_without_firebase_credentials_path_raises_error(self):
         """production 환경에서 FIREBASE_CREDENTIALS_PATH 없으면 에러"""
@@ -382,12 +382,12 @@ class TestValidateProductionSecurity:
         old_env = os.environ.get("ENVIRONMENT")
         old_jwt = os.environ.get("JWT_SECRET")
         old_firebase = os.environ.get("FIREBASE_CREDENTIALS_PATH")
-        old_openai = os.environ.get("OPENAI_API_KEY")
+        old_zai = os.environ.get("ZAI_API_KEY")
         try:
             os.environ["API_KEYS"] = "test-key"
             os.environ["ENVIRONMENT"] = "production"
             os.environ["JWT_SECRET"] = "x" * 48
-            os.environ["OPENAI_API_KEY"] = "sk-test-openai"
+            os.environ["ZAI_API_KEY"] = "sk-test-zai"
             os.environ.pop("FIREBASE_CREDENTIALS_PATH", None)
             with pytest.raises(ValidationError) as exc_info:
                 make_settings()
@@ -409,12 +409,12 @@ class TestValidateProductionSecurity:
                 os.environ["FIREBASE_CREDENTIALS_PATH"] = old_firebase
             else:
                 os.environ.pop("FIREBASE_CREDENTIALS_PATH", None)
-            if old_openai:
-                os.environ["OPENAI_API_KEY"] = old_openai
+            if old_zai:
+                os.environ["ZAI_API_KEY"] = old_zai
             else:
-                os.environ.pop("OPENAI_API_KEY", None)
+                os.environ.pop("ZAI_API_KEY", None)
 
-    def test_production_without_openai_api_key_raises_error(self):
+    def test_production_without_zai_api_key_raises_error(self):
         """production 환경에서 LLM API key 없으면 에러"""
         import os
 
@@ -422,14 +422,12 @@ class TestValidateProductionSecurity:
         old_env = os.environ.get("ENVIRONMENT")
         old_jwt = os.environ.get("JWT_SECRET")
         old_firebase = os.environ.get("FIREBASE_CREDENTIALS_PATH")
-        old_openai = os.environ.get("OPENAI_API_KEY")
         old_zai = os.environ.get("ZAI_API_KEY")
         try:
             os.environ["API_KEYS"] = "test-key"
             os.environ["ENVIRONMENT"] = "production"
             os.environ["JWT_SECRET"] = "x" * 48
             os.environ["FIREBASE_CREDENTIALS_PATH"] = "/tmp/firebase.json"
-            os.environ.pop("OPENAI_API_KEY", None)
             os.environ.pop("ZAI_API_KEY", None)
             with pytest.raises(ValidationError) as exc_info:
                 make_settings(
@@ -437,7 +435,6 @@ class TestValidateProductionSecurity:
                     api_keys=["test-key"],
                     jwt_secret="x" * 48,
                     firebase_credentials_path="/tmp/firebase.json",
-                    openai_api_key="",
                     zai_api_key="",
                     cors_allow_origins=["https://example.com"],
                 )
@@ -459,10 +456,10 @@ class TestValidateProductionSecurity:
                 os.environ["FIREBASE_CREDENTIALS_PATH"] = old_firebase
             else:
                 os.environ.pop("FIREBASE_CREDENTIALS_PATH", None)
-            if old_openai:
-                os.environ["OPENAI_API_KEY"] = old_openai
+            if old_zai:
+                os.environ["ZAI_API_KEY"] = old_zai
             else:
-                os.environ.pop("OPENAI_API_KEY", None)
+                os.environ.pop("ZAI_API_KEY", None)
             if old_zai:
                 os.environ["ZAI_API_KEY"] = old_zai
             else:
@@ -476,7 +473,7 @@ class TestValidateProductionSecurity:
                 api_keys=["test-key"],
                 jwt_secret="x" * 48,
                 firebase_credentials_path="/tmp/firebase.json",
-                openai_api_key="sk-test-openai",
+                zai_api_key="sk-test-zai",
                 cors_allow_origins=["http://localhost:3000"],
             )
         assert "production 환경에서는 localhost CORS origin을 사용할 수 없습니다" in str(
@@ -491,7 +488,7 @@ class TestValidateProductionSecurity:
                 api_keys=["test-key"],
                 jwt_secret="x" * 48,
                 firebase_credentials_path="/tmp/firebase.json",
-                openai_api_key="sk-test-openai",
+                zai_api_key="sk-test-zai",
                 cors_allow_origins=["http://app.example.com"],
             )
         assert "production 환경에서는 HTTPS CORS origin만 허용됩니다" in str(exc_info.value)
@@ -562,14 +559,14 @@ class TestSettingsIntegration:
         old_env = os.environ.get("ENVIRONMENT")
         old_jwt = os.environ.get("JWT_SECRET")
         old_firebase = os.environ.get("FIREBASE_CREDENTIALS_PATH")
-        old_openai = os.environ.get("OPENAI_API_KEY")
+        old_zai = os.environ.get("ZAI_API_KEY")
         old_cors = os.environ.get("CORS_ALLOW_ORIGINS")
         try:
             os.environ["API_KEYS"] = "test-key"
             os.environ["ENVIRONMENT"] = "production"
             os.environ["JWT_SECRET"] = "x" * 48
             os.environ["FIREBASE_CREDENTIALS_PATH"] = "/tmp/firebase.json"
-            os.environ["OPENAI_API_KEY"] = "sk-test-openai"
+            os.environ["ZAI_API_KEY"] = "sk-test-zai"
             os.environ["CORS_ALLOW_ORIGINS"] = '["https://app.example.com"]'
             settings = make_settings(max_file_size_mb=1000, max_concurrent_jobs=5)
             assert settings.max_file_size_mb == 1000
@@ -592,10 +589,10 @@ class TestSettingsIntegration:
                 os.environ["FIREBASE_CREDENTIALS_PATH"] = old_firebase
             else:
                 os.environ.pop("FIREBASE_CREDENTIALS_PATH", None)
-            if old_openai:
-                os.environ["OPENAI_API_KEY"] = old_openai
+            if old_zai:
+                os.environ["ZAI_API_KEY"] = old_zai
             else:
-                os.environ.pop("OPENAI_API_KEY", None)
+                os.environ.pop("ZAI_API_KEY", None)
             if old_cors:
                 os.environ["CORS_ALLOW_ORIGINS"] = old_cors
             else:
@@ -608,18 +605,18 @@ class TestSettingsIntegration:
         old_env = os.environ.get("ENVIRONMENT")
         old_jwt = os.environ.get("JWT_SECRET")
         old_firebase = os.environ.get("FIREBASE_CREDENTIALS_PATH")
-        old_openai = os.environ.get("OPENAI_API_KEY")
+        old_zai = os.environ.get("ZAI_API_KEY")
         try:
             os.environ["ENVIRONMENT"] = "production"
             os.environ["API_KEYS"] = "test-key"
             os.environ["JWT_SECRET"] = "x" * 48
             os.environ["FIREBASE_CREDENTIALS_PATH"] = "/tmp/firebase.json"
-            os.environ["OPENAI_API_KEY"] = "sk-test-openai"
+            os.environ["ZAI_API_KEY"] = "sk-test-zai"
             settings = make_settings(
                 environment="production",
                 jwt_secret="x" * 48,
                 firebase_credentials_path="/tmp/firebase.json",
-                openai_api_key="sk-test-openai",
+                zai_api_key="sk-test-zai",
                 cors_allow_origins=["https://example.com"],
                 cors_allow_methods=["GET", "POST"],
             )
@@ -639,7 +636,7 @@ class TestSettingsIntegration:
                 os.environ["FIREBASE_CREDENTIALS_PATH"] = old_firebase  # pragma: no cover
             else:
                 os.environ.pop("FIREBASE_CREDENTIALS_PATH", None)
-            if old_openai:
-                os.environ["OPENAI_API_KEY"] = old_openai  # pragma: no cover
+            if old_zai:
+                os.environ["ZAI_API_KEY"] = old_zai  # pragma: no cover
             else:
-                os.environ.pop("OPENAI_API_KEY", None)
+                os.environ.pop("ZAI_API_KEY", None)

@@ -11,7 +11,6 @@ from io import StringIO
 from typing import Any, cast
 
 import redis.asyncio as aioredis
-from openai import OpenAI
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,7 +18,7 @@ from backend.app.config import settings
 from backend.db.auth_models import MeetingOwnership
 from backend.db.models import TaskResult
 from backend.db.search_models import ensure_search_index_table, index_search_entry
-from backend.ml.openai_client import structured_json_completion_options
+from backend.ml.zai_client import ZAIClient, structured_json_completion_options
 from backend.schemas.sales_contact_brief import (
     SalesContactBriefResponse,
     SalesContactCrmUpdateRequest,
@@ -87,8 +86,8 @@ class SalesContactBriefValidationError(ValueError):
 class SalesContactBriefService:
     """Generate customer/contact follow-up artifacts from completed minutes results."""
 
-    def _get_client(self) -> OpenAI:
-        return OpenAI(api_key=settings.llm_api_key, base_url=settings.llm_base_url)
+    def _get_client(self) -> ZAIClient:
+        return ZAIClient(api_key=settings.llm_api_key, base_url=settings.llm_base_url)
 
     async def get(
         self,

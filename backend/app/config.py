@@ -15,7 +15,6 @@ _DEFAULT_CORS_ORIGINS = [
     "http://localhost:5173",
 ]
 _ZAI_CODING_PLAN_BASE_URL = "https://api.z.ai/api/coding/paas/v4"
-_OPENAI_BASE_URL = "https://api.openai.com/v1"
 
 
 class Settings(BaseSettings):
@@ -39,7 +38,7 @@ class Settings(BaseSettings):
     # STT 모델
     whisper_model: str = "mlx-community/whisper-small-mlx"
     whisper_language: str = "ko"
-    stt_backend: str = ""  # "mlx", "faster_whisper", "whisper", "" (auto-detect)
+    stt_backend: str = ""  # "mlx", "faster_whisper", "" (auto-detect)
 
     # 처리 제한
     # REQ-ERR-007: 범위 유효성 검사 (1-10)
@@ -74,26 +73,26 @@ class Settings(BaseSettings):
 
     # Voiceprint speaker identification.
     speaker_embedding_model: str = "pyannote/embedding"
-    speaker_voiceprint_similarity_threshold: float = Field(default=0.72, ge=0.0, le=1.0)
+    speaker_voiceprint_similarity_threshold: float = Field(default=0.82, ge=0.0, le=1.0)
     speaker_voiceprint_max_seconds_per_speaker: float = Field(default=30.0, ge=1.0, le=300.0)
+    speaker_voiceprint_min_match_seconds: float = Field(default=8.0, ge=0.2, le=120.0)
+    speaker_voiceprint_min_enroll_seconds: float = Field(default=8.0, ge=0.2, le=120.0)
 
     # 회의록 생성 설정 (REQ-MIN-008, REQ-MIN-013)
     max_concurrent_minutes: int = 3  # 최대 동시 회의록 생성 작업 수
     minutes_result_ttl: int = 604800  # 결과 캐시 TTL: 7일 (초)
 
     # AI 요약 생성 설정 (REQ-SUM-008, REQ-SUM-011, REQ-SUM-014)
-    # Z.AI Coding Plan is OpenAI-compatible; keep OPENAI_* compatibility while
-    # preferring ZAI_API_KEY when LLM_PROVIDER=zai.
-    llm_provider: str = "openai"
+    # Z.AI Coding Plan is the default LLM provider.
+    llm_provider: str = "zai"
     anthropic_api_key: str = ""  # ANTHROPIC_API_KEY 환경 변수 (미사용 - 호환성 유지)
-    openai_api_key: str = ""  # OPENAI_API_KEY 환경 변수
     zai_api_key: str = ""  # ZAI_API_KEY 환경 변수
-    openai_base_url: str = ""  # OPENAI_BASE_URL 환경 변수 (OpenAI-compatible endpoint)
+    zai_base_url: str = ""  # ZAI_BASE_URL 환경 변수
     max_concurrent_summaries: int = 2  # 최대 동시 요약 작업 수
     summary_result_ttl: int = 604800  # 요약 결과 캐시 TTL: 7일 (초)
     # 양식 섹션 포함 시 4000+ 토큰 필요 (9개 섹션 + action_items + key_decisions)
-    summary_max_tokens: int = 4096  # OpenAI API 최대 응답 토큰
-    summary_model: str = "gpt-4o-mini"  # OpenAI-compatible 모델명
+    summary_max_tokens: int = 4096  # ZAI API 최대 응답 토큰
+    summary_model: str = "glm-5.2"  # ZAI 모델명
 
     # SPEC-SENTIMENT-001: 감정 분석 동시 실행 제한 (REQ-SEN-004)
     # 기존 MAX_CONCURRENT_SENTIMENT=3 하드코딩에서 설정 이관
@@ -325,19 +324,14 @@ class Settings(BaseSettings):
 
     @property
     def llm_api_key(self) -> str:
-        provider = self.llm_provider.strip().lower()
-        if provider == "zai":
-            return self.zai_api_key.strip() or self.openai_api_key.strip()
-        return self.openai_api_key.strip() or self.zai_api_key.strip()
+        return self.zai_api_key.strip()
 
     @property
     def llm_base_url(self) -> str:
-        configured = self.openai_base_url.strip()
+        configured = self.zai_base_url.strip()
         if configured:
             return configured.rstrip("/")
-        if self.llm_provider.strip().lower() == "zai":
-            return _ZAI_CODING_PLAN_BASE_URL
-        return _OPENAI_BASE_URL
+        return _ZAI_CODING_PLAN_BASE_URL
 
 
 settings = Settings()

@@ -180,7 +180,7 @@ class TestRuleBasedTags:
 
 
 # ==========================================================================
-# generate_auto_tags 함수 테스트 (OpenAI API 호출 경로)
+# generate_auto_tags 함수 테스트 (ZAI API 호출 경로)
 # ==========================================================================
 
 
@@ -188,10 +188,10 @@ class TestGenerateAutoTags:
     """자동 태그 생성 함수 테스트"""
 
     @pytest.mark.asyncio
-    async def test_generate_auto_tags_without_openai_key_fallback(self):
-        """OpenAI API 키 없으면 규칙 기반 폴백"""
+    async def test_generate_auto_tags_without_zai_key_fallback(self):
+        """ZAI API 키 없으면 규칙 기반 폴백"""
         with patch("backend.ml.tagging_engine.settings") as mock_settings:
-            mock_settings.openai_api_key = None
+            mock_settings.zai_api_key = None
 
             tags = await generate_auto_tags("회의 내용입니다", max_tags=10)
 
@@ -224,7 +224,7 @@ class TestGenerateAutoTags:
             return mock_response
 
         with patch("backend.ml.tagging_engine.settings") as mock_settings:
-            mock_settings.openai_api_key = "test-key"
+            mock_settings.zai_api_key = "test-key"
             mock_settings.summary_model = "gpt-4"
 
             with patch("backend.ml.tagging_engine._get_http_client"):
@@ -258,7 +258,7 @@ class TestGenerateAutoTags:
             return mock_response
 
         with patch("backend.ml.tagging_engine.settings") as mock_settings:
-            mock_settings.openai_api_key = "test-key"
+            mock_settings.zai_api_key = "test-key"
             mock_settings.summary_model = "gpt-4"
 
             with patch("backend.ml.tagging_engine._get_http_client"):
@@ -270,12 +270,12 @@ class TestGenerateAutoTags:
 
     @pytest.mark.asyncio
     async def test_generate_auto_tags_api_failure_fallback_to_rules(self):
-        """OpenAI API 실패 시 규칙 기반 폴백"""
+        """ZAI API 실패 시 규칙 기반 폴백"""
         mock_client = AsyncMock()
         mock_client.post = MagicMock(side_effect=Exception("API Error"))
 
         with patch("backend.ml.tagging_engine.settings") as mock_settings:
-            mock_settings.openai_api_key = "test-key"
+            mock_settings.zai_api_key = "test-key"
             mock_settings.summary_model = "gpt-4"
 
             with patch("backend.ml.tagging_engine._get_http_client", return_value=mock_client):
@@ -296,7 +296,7 @@ class TestGenerateAutoTags:
         )
 
         with patch("backend.ml.tagging_engine.settings") as mock_settings:
-            mock_settings.openai_api_key = "test-key"
+            mock_settings.zai_api_key = "test-key"
             mock_settings.summary_model = "gpt-4"
 
             with patch("backend.ml.tagging_engine._get_http_client", return_value=mock_client):
@@ -317,7 +317,7 @@ class TestGenerateAutoTags:
         mock_client.post = MagicMock(return_value=mock_response)
 
         with patch("backend.ml.tagging_engine.settings") as mock_settings:
-            mock_settings.openai_api_key = "test-key"
+            mock_settings.zai_api_key = "test-key"
             mock_settings.summary_model = "gpt-3.5-turbo"
 
             with patch("backend.ml.tagging_engine._get_http_client", return_value=mock_client):
@@ -415,7 +415,7 @@ class TestEdgeCases:
         content = "한글 회의록입니다. 이모지도 포함 🎯"
 
         with patch("backend.ml.tagging_engine.settings") as mock_settings:
-            mock_settings.openai_api_key = None
+            mock_settings.zai_api_key = None
 
             tags = await generate_auto_tags(content, max_tags=10)
             assert isinstance(tags, list)
@@ -444,7 +444,7 @@ class TestEdgeCases:
             return mock_response  # pragma: no cover
 
         with patch("backend.ml.tagging_engine.settings") as mock_settings:
-            mock_settings.openai_api_key = "test-key"
+            mock_settings.zai_api_key = "test-key"
             mock_settings.summary_model = "gpt-4"
 
             with patch("backend.ml.tagging_engine._get_http_client"):

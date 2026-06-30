@@ -1,6 +1,6 @@
 """
 미커버 모듈 집중 보완 테스트
-- openai_client.py (86% → 95%+): 예외 처리 경로
+- zai_client.py (86% → 95%+): 예외 처리 경로
 - quality_assessment.py (85% → 93%+): 텍스트 추출 헬퍼
 - dashboard.py (90% → 95%+): 빈 레코드/세그먼트 파싱
 """
@@ -8,45 +8,45 @@
 from unittest.mock import MagicMock, patch
 
 # ---------------------------------------------------------------------------
-# openai_client.py (lines 39-42): 예외 처리 경로
+# zai_client.py (lines 39-42): 예외 처리 경로
 # ---------------------------------------------------------------------------
 
 
-class TestOpenaiClientExceptionPath:
-    """OpenAI 클라이언트 초기화 실패 시 대체 클라이언트 반환 테스트"""
+class TestZAIClientExceptionPath:
+    """ZAIClient 클라이언트 초기화 실패 시 대체 클라이언트 반환 테스트"""
 
     def test_returns_dummy_client_on_init_exception(self):
-        """AsyncOpenAI 생성 중 예외 발생 시 dummy-key 클라이언트 반환"""
-        from backend.ml.openai_client import get_openai_client
+        """AsyncZAIClient 생성 중 예외 발생 시 dummy-key 클라이언트 반환"""
+        from backend.ml.zai_client import get_zai_client
 
         # 첫 번째 호출(try 블록)은 실패, 두 번째 호출(except 블록)은 성공
         mock_client = MagicMock()
         with (
             patch(
-                "backend.ml.openai_client.AsyncOpenAI",
+                "backend.ml.zai_client.AsyncZAIClient",
                 side_effect=[Exception("설정 오류"), mock_client],
             ),
-            patch.dict("os.environ", {"OPENAI_API_KEY": "sk-test"}),
+            patch.dict("os.environ", {"ZAI_API_KEY": "sk-test"}),
         ):
-            client = get_openai_client()
+            client = get_zai_client()
 
         assert client is mock_client  # except 블록에서 반환된 클라이언트
 
     def test_cached_client_returns_same_instance(self):
-        """get_cached_openai_client는 동일 인스턴스 반환"""
-        import backend.ml.openai_client as mod
-        from backend.ml.openai_client import get_cached_openai_client
+        """get_cached_zai_client는 동일 인스턴스 반환"""
+        import backend.ml.zai_client as mod
+        from backend.ml.zai_client import get_cached_zai_client
 
         # 캐시 초기화
-        mod._openai_client = None
+        mod._zai_client = None
 
         mock_client = MagicMock()
-        with patch("backend.ml.openai_client.get_openai_client", return_value=mock_client):
-            c1 = get_cached_openai_client()
-            c2 = get_cached_openai_client()
+        with patch("backend.ml.zai_client.get_zai_client", return_value=mock_client):
+            c1 = get_cached_zai_client()
+            c2 = get_cached_zai_client()
 
         assert c1 is c2
-        mod._openai_client = None  # 정리
+        mod._zai_client = None  # 정리
 
 
 # ---------------------------------------------------------------------------

@@ -45,6 +45,8 @@ Fixed a chain of production-like local issues around authenticated meeting histo
 - Voiceprint-matched speakers show a `추정됨` badge and correction tooltip to reduce silent false-positive risk.
 - `backend/scripts/tune_voiceprint_threshold.py` analyzes stored voiceprint pairs and prints a recommended threshold when enough real recordings exist.
 - The backend prefers `pyannote/embedding`; if model loading fails because the Hugging Face token or model access is unavailable, it falls back to local acoustic embedding so the pipeline stays functional.
+- 2026-06-30 update: `pyannote/embedding` access is now verified for Hugging Face user `kiminbean` with the active token ending in `...voer`. `Model.from_pretrained("pyannote/embedding")` loads as `XVectorSincNet`, and `SpeakerEmbeddingEngine()._load_pyannote()` returns `Inference`.
+- 2026-06-30 update: `omegaconf>=2.3.0` is required for the pyannote embedding checkpoint and is now pinned in project and deployment dependencies.
 - Existing global speaker names that were saved before this change are backfilled when historical matching voiceprints exist; otherwise the user must correct/save that speaker once from a recording that contains DIA voiceprints.
 - Voiceprint-matched names now override stale saved label names in the result provider, so an older saved `SPEAKER_00` label cannot hide a fresh `identified_speaker_name` acoustic match.
 
@@ -84,6 +86,7 @@ Fixed a chain of production-like local issues around authenticated meeting histo
 - Study Pack, Sales Contact Brief, and Mind Map APIs returned `200 OK` for the current checked meeting.
 - Voiceprint tests: `68 passed` across speaker APIs, voice service, minutes worker, and DIA voiceprint matching.
 - Voiceprint smoke: acoustic fallback produced 48-dimensional embeddings; same segment similarity `1.0`, different segment similarity `0.7555`.
+- pyannote embedding access recovery: `huggingface-cli whoami` -> `kiminbean`; `pyannote/embedding/pytorch_model.bin` download -> ok; `SpeakerEmbeddingEngine()._load_pyannote()` -> `Inference`; backend/Celery health at `100.69.69.119:8000` -> healthy.
 - Automatic speaker-name prompt UI: `flutter test test/screens/result_screen_test.dart` -> `30 passed`; `flutter analyze` -> no issues.
 - Voiceprint improvement pass: backend speaker voice tests -> `40 passed`; Flutter result/provider/widget tests -> `46 passed`; threshold tuning script -> `recommendation=insufficient-data` on current local DB.
 - Stale-name regression: reproduced `Expected: 영자 Actual: 철수`; fixed and re-ran the targeted Flutter test successfully.
@@ -95,7 +98,7 @@ Fixed a chain of production-like local issues around authenticated meeting histo
 
 - Device: `Inbean의 iPhone`
 - Device id: `00008150-000239020C08401C`
-- Command: `flutter run --release -d 00008150-000239020C08401C`
+- Command: `flutter run --release -d 00008150-000239020C08401C --dart-define=ENV=staging --dart-define=API_BASE_URL=http://100.69.69.119:8000/api/v1`
 - Signing team: `4NJ9JSQFW9`
 - Release build installed and launched successfully.
 - Frontend-required release build is already installed. The latest Alembic/DB-only repair does not require another iPhone build.

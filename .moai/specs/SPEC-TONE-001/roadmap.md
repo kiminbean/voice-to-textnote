@@ -28,7 +28,7 @@
 
 ### 1.2 README 부정확성
 
-README에 "Claude 3.5 Sonnet" 사용으로 명시되어 있으나, 실제 구현은 **OpenAI `gpt-4o-mini`** (`config.py:78-84`에서 `anthropic_api_key`는 "미사용" 표시). 이 README 오류는 SPEC-SENTIMENT-001 문서화 시 함께 수정 필요.
+README에 "Claude 3.5 Sonnet" 사용으로 명시되어 있으나, 실제 구현은 **ZAI `glm-5.2`** (`config.py:78-84`에서 `anthropic_api_key`는 "미사용" 표시). 이 README 오류는 SPEC-SENTIMENT-001 문서화 시 함께 수정 필요.
 
 ---
 
@@ -54,7 +54,7 @@ README에 "Claude 3.5 Sonnet" 사용으로 명시되어 있으나, 실제 구현
   - silent failure → error retry UI로 개선
 - 문서화
   - 역추적 SPEC 문서 작성 (이미 구현된 코드의 요구사항 정의)
-  - README "Phase 5" 섹션 수정 ("완료"로 이동 + Claude→OpenAI 정정)
+  - README "Phase 5" 섹션 수정 ("완료"로 이동 + Claude→ZAI 정정)
 - 테스트
   - 감정 분석 통합 테스트 (실제 Celery 실행 확인)
   - Flutter 위젯 테스트
@@ -76,7 +76,7 @@ README에 "Claude 3.5 Sonnet" 사용으로 명시되어 있으나, 실제 구현
 | `.moai/specs/SPEC-SENTIMENT-001/plan.md` | 신규 | 구현 계획 |
 | `.moai/specs/SPEC-SENTIMENT-001/acceptance.md` | 신규 | 검수 기준 |
 
-**라이브러리 의존성**: 없음 (기존 OpenAI SDK, Pydantic, Riverpod만 사용)
+**라이브러리 의존성**: 없음 (기존 ZAI SDK, Pydantic, Riverpod만 사용)
 
 **리스크**: 낮음. 이미 구현된 코드의 버그 수정 + 문서화이므로 기능적 리스크 최소.
 
@@ -145,7 +145,7 @@ README에 "Claude 3.5 Sonnet" 사용으로 명시되어 있으나, 실제 구현
   - 9-class 출력: angry/disgusted/fearful/happy/neutral/other/sad/surprised/unknown
 - 하이브리드 fusion
   - `backend/pipeline/emotion_fusion.py` 신규
-  - Adaptive Late Fusion (학습 가중치) + Claude/OpenAI fallback (low confidence 케이스)
+  - Adaptive Late Fusion (학습 가중치) + Claude/ZAI fallback (low confidence 케이스)
   - 9-class SER + 10-class 텍스트 감정 → meeting 7-class 통합 매핑
 - Celery 태스크
   - `backend/workers/tasks/ser_task.py` 신규
@@ -252,7 +252,7 @@ SPEC-SENTIMENT-001 실행 중 병렬로 진행할 수 있는 작업:
 | 컴포넌트 | 메모리 | 단계 |
 |----------|--------|------|
 | 현재 사용 (Whisper+pyannote+FastAPI+Redis) | ~12GB | 기준 |
-| SPEC-SENTIMENT-001 (OpenAI API, 추가 모델 없음) | +0GB | 1-2일 |
+| SPEC-SENTIMENT-001 (ZAI API, 추가 모델 없음) | +0GB | 1-2일 |
 | SPEC-TONE-001 (opensmile + librosa) | +0.1GB | 3-5일 |
 | SPEC-SER-001 (emotion2vec_plus_base fp32) | +0.4GB | 1-2주 |
 | **최종 총합** | **~12.5GB** | 경고선 19.2GB 내 안전 |

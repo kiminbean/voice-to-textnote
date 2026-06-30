@@ -18,7 +18,7 @@
 - Last verified APNs/FCM commit: `25dce3d`
 - Last verified backend MVP gap commit: `12d077b`
 - Last verified iOS release install device: `Inbean의 iPhone`, iOS `26.5.1`, UDID `00008150-000239020C08401C`
-- Last verified iOS staging release install method: `flutter build ios --release --dart-define=ENV=staging`, then `xcrun devicectl device install app` from `build/ios/iphoneos/Runner.app`
+- Last verified iOS staging release install method: `flutter build ios --release --dart-define=ENV=staging --dart-define=API_BASE_URL=http://100.69.69.119:8000/api/v1`, then `xcrun devicectl device install app` from `build/ios/iphoneos/Runner.app`
 
 ## Firebase 파일 위치
 
@@ -99,7 +99,7 @@ Cannot create a FlutterEngine instance in debug mode without Flutter tooling or 
 cd client
 flutter run --profile \
   -d 00008150-000239020C08401C \
-  --dart-define=ENV=dev \
+  --dart-define=ENV=staging \
   --dart-define=API_BASE_URL=http://100.69.69.119:8000/api/v1
 ```
 
@@ -109,7 +109,8 @@ flutter run --profile \
 cd client
 flutter run --release --no-pub --no-resident \
   -d 00008150-000239020C08401C \
-  --dart-define=ENV=staging
+  --dart-define=ENV=staging \
+  --dart-define=API_BASE_URL=http://100.69.69.119:8000/api/v1
 ```
 
 `flutter run --profile`이 VM service 연결 문제로 종료되더라도 앱 설치 자체가 완료되고 profile 앱 프로세스가 살아 있으면 홈 화면 실행은 가능하다.
@@ -134,7 +135,7 @@ xcrun devicectl device process launch \
 
 ```bash
 cd client
-flutter build ios --release --dart-define=ENV=staging
+flutter build ios --release --dart-define=ENV=staging --dart-define=API_BASE_URL=http://100.69.69.119:8000/api/v1
 
 xcrun devicectl device install app \
   --device C7DD57C9-48FC-5362-B2FB-ED87CFFD51FA \
@@ -257,7 +258,7 @@ openapi:200
 | `/auth/guest` 500 | Redis 미기동 | `voice-to-textnote-redis` tmux 세션으로 Redis 실행 |
 | `/openapi.json` 500 | `pydantic` 파일/메타데이터 버전 불일치 | 서버 Python에서 `pydantic[email]>=2.9` 재설치 |
 | 앱에서 로컬 API 접근 실패 가능 | iPhone의 `localhost`는 Mac이 아니며, iOS Local Network/ATS 설정 필요 | `API_BASE_URL`을 Mac LAN/Tailscale IP로 지정하고 `Info.plist`에 local network/ATS 예외 추가 |
-| iPhone release에서 Google 계정 선택 후 "서버에 연결할 수 없습니다" | release 앱이 unresolved production host `https://api.voicetextnote.com/api/v1`로 빌드됨. 실제 서버는 `http://100.69.69.119:8000/api/v1` | `flutter build ios --release --dart-define=ENV=staging`으로 재빌드하고 `build/ios/iphoneos/Runner.app` 설치 |
+| iPhone release에서 Google 계정 선택 후 "서버에 연결할 수 없습니다" | release 앱이 unresolved production host `https://api.voicetextnote.com/api/v1`로 빌드됨. 실제 서버는 `http://100.69.69.119:8000/api/v1` | `flutter build ios --release --dart-define=ENV=staging --dart-define=API_BASE_URL=http://100.69.69.119:8000/api/v1`으로 재빌드하고 `build/ios/iphoneos/Runner.app` 설치 |
 
 ## 2026-06-30 iPhone release Google login incident
 
@@ -293,7 +294,7 @@ curl -i -X POST http://100.69.69.119:8000/api/v1/auth/google \
 
 ```bash
 cd client
-flutter build ios --release --dart-define=ENV=staging
+flutter build ios --release --dart-define=ENV=staging --dart-define=API_BASE_URL=http://100.69.69.119:8000/api/v1
 xcrun devicectl device install app \
   --device C7DD57C9-48FC-5362-B2FB-ED87CFFD51FA \
   build/ios/iphoneos/Runner.app

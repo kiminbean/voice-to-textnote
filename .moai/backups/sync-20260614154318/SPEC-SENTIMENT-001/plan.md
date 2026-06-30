@@ -23,7 +23,7 @@
 | `client/lib/screens/result_screen.dart` | 기능추가 | `_SentimentTab`을 신규 위젯으로 추가하고 TabBar/TabBarView에 감정 분석 탭을 연결한다. 기존 `_buildSentimentCard` 로직은 전용 탭에서 재사용/이관하고 `emotional_timeline` 시각화를 추가한다. | REQ-SEN-007, REQ-SEN-008, REQ-SEN-009, REQ-SEN-010 |
 | `client/lib/services/sentiment_api.dart` | 기능추가 | 기존 segments 중심 응답 파싱을 확장하여 `getTimeline()`, `getSpeakerSentiment()` 또는 동등한 전체 응답 접근 메서드를 제공한다. | REQ-SEN-008, REQ-SEN-009, REQ-SEN-011 |
 | `client/lib/providers/result_provider.dart` | 리팩토링 | `sentimentProvider`가 오류를 빈 리스트로 삼키지 않도록 하고, precomputed `SpeakerSentiment` 및 `emotional_timeline` 데이터를 UI에 전달한다. | REQ-SEN-008, REQ-SEN-010 |
-| `README.md` | 문서 | 고급 분석 계획 항목에서 완료된 텍스트 감정 분석을 분리하고, 부정확한 Claude 모델 표기를 OpenAI `gpt-4o-mini`로 정정한다. | REQ-SEN-014, REQ-SEN-015 |
+| `README.md` | 문서 | 고급 분석 계획 항목에서 완료된 텍스트 감정 분석을 분리하고, 부정확한 Claude 모델 표기를 ZAI `glm-5.2`로 정정한다. | REQ-SEN-014, REQ-SEN-015 |
 
 ### 2.2 신규 파일
 
@@ -41,7 +41,7 @@
 |------|------|-----------|------------------|
 | Backend API | FastAPI | 기존 `/api/v1/sentiment/*` 라우터 유지 | 없음 |
 | Schema | Pydantic v2 | `SentimentResponse`, `SpeakerSentiment`, `SentimentSegment` 유지 | 없음 |
-| LLM | OpenAI SDK | 기존 `gpt-4o-mini` 기반 감정 분석 호출 유지 | 없음 |
+| LLM | ZAI SDK | 기존 `glm-5.2` 기반 감정 분석 호출 유지 | 없음 |
 | Async | Celery + Redis | `sentiment_task` 등록, 상태 캐시, SSE 이벤트 전달 | 없음 |
 | Flutter API | Dio | 기존 `SentimentApi` 확장 | 없음 |
 | Flutter State | Riverpod | 기존 manual `FutureProvider.family` 패턴 유지 | 없음 |
@@ -58,7 +58,7 @@
 | Flutter가 오류를 빈 결과로 처리하여 장애가 숨겨짐 | 운영 장애 탐지 지연, 사용자 혼란 | `sentimentProvider`에서 예외를 삼키지 않고 `AsyncValue.error`로 전달하여 `ErrorRetryWidget`을 표시한다. | REQ-SEN-010 |
 | 기존 클라이언트가 `List<SentimentSegment>`만 기대함 | 하위 호환성 파손 가능 | 기존 `getResult()`/`getByMeeting()`의 반환 의미를 유지하고, 전체 응답 접근 메서드는 별도로 추가한다. | REQ-SEN-011 |
 | UI 탭 추가로 기존 TabController length 불일치 발생 | 런타임 예외 | TabBar와 TabBarView 항목 수를 함께 수정하고 위젯 테스트로 검증한다. | REQ-SEN-007 |
-| README가 실제 모델과 계속 불일치 | 운영자 설정 오류 | `config.py`의 실제 OpenAI 모델 설정과 README 문구를 대조하여 문서 테스트 또는 리뷰 체크리스트에 포함한다. | REQ-SEN-015 |
+| README가 실제 모델과 계속 불일치 | 운영자 설정 오류 | `config.py`의 실제 ZAI 모델 설정과 README 문구를 대조하여 문서 테스트 또는 리뷰 체크리스트에 포함한다. | REQ-SEN-015 |
 
 ---
 
@@ -94,7 +94,7 @@
 
 8. **README 정합성 수정**
    - 완료된 텍스트 감정 분석 기능과 향후 분석 항목을 분리한다.
-   - 모델 설명을 OpenAI `gpt-4o-mini`로 정정한다.
+   - 모델 설명을 ZAI `glm-5.2`로 정정한다.
 
 9. **검증**
    - Celery 등록, SSE 스트리밍, Flutter 탭 렌더링, 하위 호환성 시나리오를 `acceptance.md` 기준으로 확인한다.

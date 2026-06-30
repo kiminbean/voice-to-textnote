@@ -12,7 +12,7 @@
 감정 분석 탭에서 "감정 분석을 불러올 수 없습니다" 오류 + "다시 시도" 버튼 표시
 
 ### 원인
-`result_provider.dart`의 `sentimentFullProvider`가 잘못된 엔드포인트(`GET /sentiment/meeting/{id}`)를 호출하고 있었습니다. 이 엔드포인트는 lexicon 기반이며 OpenAI 감정 분석 스키마와 호환되지 않았습니다. 또한 `POST /sentiment`가 클라이언트에서 한 번도 호출되지 않아 감정 분석이 생성된 적이 없었습니다.
+`result_provider.dart`의 `sentimentFullProvider`가 잘못된 엔드포인트(`GET /sentiment/meeting/{id}`)를 호출하고 있었습니다. 이 엔드포인트는 lexicon 기반이며 ZAI 감정 분석 스키마와 호환되지 않았습니다. 또한 `POST /sentiment`가 클라이언트에서 한 번도 호출되지 않아 감정 분석이 생성된 적이 없었습니다.
 
 ### 해결
 `sentimentFullProvider`를 on-demand 패턴으로 변경: `POST /sentiment` → poll `GET /sentiment/{id}/status` → `GET /sentiment/{id}`
@@ -121,7 +121,7 @@ de12506 fix(SPEC-OBSIDIAN-001): Oracle R10 - skip 정책 success=False
 cd backend && source ../venv/bin/activate && \
   export STT_BACKEND=faster_whisper && \
   export HUGGINGFACE_TOKEN=... && \
-  export OPENAI_API_KEY=... && \
+  export ZAI_API_KEY=... && \
   export TONE_MODEL=opensmile && \
   uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 

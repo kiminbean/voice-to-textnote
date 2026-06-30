@@ -50,8 +50,8 @@ def _settings():
     settings.max_concurrent_summaries = 2
     settings.llm_api_key = "sk-test"
     settings.llm_api_key = "sk-test"
-    settings.llm_base_url = "https://api.openai.com/v1"
-    settings.summary_model = "gpt-4o-mini"
+    settings.llm_base_url = "https://api.z.ai/api/coding/paas/v4"
+    settings.summary_model = "glm-5.2"
     return settings
 
 

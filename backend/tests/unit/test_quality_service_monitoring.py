@@ -24,8 +24,8 @@ from backend.schemas.quality import (
     QualityTrendsResponse,
 )
 
-# get_openai_client를 mock하여 QualityService 초기화 시 외부 API 호출 차단
-# import 전에 패치해야 생성자에서 호출되는 get_openai_client가 mock됨
+# get_zai_client를 mock하여 QualityService 초기화 시 외부 API 호출 차단
+# import 전에 패치해야 생성자에서 호출되는 get_zai_client가 mock됨
 
 
 _SAMPLE_MINUTES = (
@@ -86,8 +86,8 @@ async def seeded_task(db_session):
 
 @pytest.fixture
 def svc():
-    """QualityService 인스턴스 (OpenAI client mock)."""
-    with patch("backend.services.quality_service.get_openai_client") as mock_get:
+    """QualityService 인스턴스 (ZAI client mock)."""
+    with patch("backend.services.quality_service.get_zai_client") as mock_get:
         mock_get.return_value = MagicMock()
         from backend.services.quality_service import QualityService
 

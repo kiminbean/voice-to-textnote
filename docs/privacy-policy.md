@@ -61,7 +61,7 @@ We use the following third-party services:
 |---------|---------|-------------|
 | Google/Apple Sign-In | Authentication | Email, name |
 | Firebase Cloud Messaging | Push notifications | Device token, notification content |
-| OpenAI API | AI transcription & summarization | Audio recordings (processed, not stored by third party) |
+| Z.AI Coding Plan API | AI summarization, translation, Q&A, and analysis | Transcripts/minutes text (processed, not stored by third party) |
 
 ### 5. Your Rights
 
@@ -148,7 +148,7 @@ VoiceToTextNote("당사", "본 앱")는 서비스 제공을 위해 다음 정보
 |--------|------|------------|
 | Google/Apple 로그인 | 인증 | 이메일, 이름 |
 | Firebase Cloud Messaging | 푸시 알림 | 기기 토큰, 알림 내용 |
-| OpenAI API | AI 변환 및 요약 | 음성 녹음 (처리 후 제3자에 저장되지 않음) |
+| Z.AI Coding Plan API | AI 요약, 번역, Q&A, 분석 | 전사/회의록 텍스트 (처리 후 제3자에 저장되지 않음) |
 
 ### 5. 사용자 권리
 

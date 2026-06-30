@@ -32,7 +32,7 @@
   - sentiment_api.dart: SpeakerSentiment, EmotionTimelineEntry, SentimentFullResponse + getFullByMeeting/getFullResult (REQ-SEN-008/009/011)
   - result_provider.dart: sentimentFullProvider with error propagation (REQ-SEN-010)
   - result_screen.dart: _SentimentTab 추가, DefaultTabController length 7→8, _StatisticsTab 감정 카드 제거
-- B3 README: Claude→OpenAI gpt-4o-mini 정정, SPEC 목록 업데이트 (29→30)
+- B3 README: Claude→ZAI glm-5.2 정정, SPEC 목록 업데이트 (29→30)
 
 ### Phase 2.5 (Quality Validation) - COMPLETE
 - ruff check: All checks passed (0 errors)
@@ -46,5 +46,5 @@
 - AC-SEN-003 (Flutter 감정 분석 탭): PASS - _SentimentTab 추가됨, 301 widget tests 통과
 - AC-SEN-004 (하위 호환성): PASS - getResult/getByMeeting 시그니처 유지, 기존 테스트 통과
 - AC-SEN-005 (오류 복구 UI): PASS - SizedBox.shrink silent fallback 제거, ErrorRetryWidget 사용
-- AC-SEN-006 (README 정확성): PASS - Claude→gpt-4o-mini 정정, SPEC 목록 업데이트
+- AC-SEN-006 (README 정확성): PASS - Claude→glm-5.2 정정, SPEC 목록 업데이트
 - AC-SEN-007 (동시성 설정): PASS - settings.max_concurrent_sentiment 사용, 기본값 3 유지

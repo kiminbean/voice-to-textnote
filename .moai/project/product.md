@@ -57,7 +57,7 @@
 
 ### 4. AI 회의 요약 백엔드 (SPEC-SUM-001 ✅)
 
-- **OpenAI gpt-4o-mini 통합**: 회의록을 OpenAI API에 전송하여 자동 요약 생성
+- **ZAI glm-5.2 통합**: 회의록을 ZAI API에 전송하여 자동 요약 생성
 - **액션 아이템 추출**: 회의 중 결정된 할당 업무를 구조화된 형태로 추출 (assignee, task, deadline, priority)
 - **결정사항/다음 단계**: 핵심 결정사항과 후속 작업을 자동 식별
 - **Graceful Fallback**: API 응답 파싱 실패 시 원문 텍스트로 안전하게 대체
@@ -108,7 +108,7 @@
 
 - **Ubuntu systemd 서비스**: voicenote-api, voicenote-worker 자동 관리
 - **원클릭 배포 스크립트**: deploy/setup-ubuntu.sh (Redis, Python, systemd 자동 설정)
-- **듀얼 STT 백엔드**: macOS(mlx_whisper) + Linux(openai-whisper) 자동 감지
+- **듀얼 STT 백엔드**: macOS(mlx_whisper) + Linux(faster-whisper) 자동 감지
 - **환경 분리**: 개발(SQLite) / 프로덕션(PostgreSQL) 설정 분리
 - **Tailscale 원격 접속**: VPN 메시로 포트 개방 없이 외부 접속
 
@@ -262,7 +262,7 @@
 | 초기 비용 | 무료 | 월 $10+ | 무료 |
 | 오프라인 지원 | ✓ | ✗ | ✗ |
 | 크로스 플랫폼 | ✓ (Flutter) | 제한적 | Google 제품만 |
-| AI 요약 | OpenAI gpt-4o-mini | Otter AI | Google Gemini |
+| AI 요약 | ZAI glm-5.2 | Otter AI | Google Gemini |
 
 ## 성공 메트릭
 
@@ -279,7 +279,7 @@
 - **SPEC-STT-001**: 기본 녹음 및 STT 기능 (mlx-whisper)
 - **SPEC-DIA-001**: 스피커 식별 (pyannote.audio)
 - **SPEC-MIN-001**: 회의록 자동 생성
-- **SPEC-SUM-001**: OpenAI gpt-4o-mini 요약 및 액션 아이템
+- **SPEC-SUM-001**: ZAI glm-5.2 요약 및 액션 아이템
 - **SPEC-APP-001**: Flutter 클라이언트 (Web + macOS)
 
 ### Phase 2 ✅ (완료): 보안 & 인프라
@@ -321,7 +321,7 @@
 ### Phase 7 ✅ (완료): 보안 강화 & 감정 분석
 
 - **SPEC-SEC-002**: 보안 강화 — 매직 바이트 검증 + iOS ATS/Android Network Security + 보안 헤더 고도화
-- **SPEC-SENTIMENT-001**: 텍스트 감정 분석 — OpenAI gpt-4o-mini 기반 화자별/구간별 감정 분석 + emotional_timeline + Flutter 전용 탭
+- **SPEC-SENTIMENT-001**: 텍스트 감정 분석 — ZAI glm-5.2 기반 화자별/구간별 감정 분석 + emotional_timeline + Flutter 전용 탭
 
 ### 23. 실시간 협업 편집 (SPEC-COLLAB-001 ✅)
 
@@ -341,7 +341,7 @@
 
 ### 25. 텍스트 감정 분석 (SPEC-SENTIMENT-001 ✅)
 
-- **OpenAI gpt-4o-mini 기반 감정 분석**: 회의록 세그먼트 입력 → 구간별/화자별 감정 분석
+- **ZAI glm-5.2 기반 감정 분석**: 회의록 세그먼트 입력 → 구간별/화자별 감정 분석
 - **감정 레이블 체계**: positive/neutral/negative + 세부 감정 (joy/satisfaction/frustration/anger/sadness/surprise)
 - **화자별 precomputed 통계**: SpeakerSentiment (positive/neutral/negative 비율, dominant_emotion, emotion_distribution)을 백엔드에서 계산하여 클라이언트에 제공
 - **감정 변화 타임라인**: emotional_timeline ({time, sentiment, emotion, speaker}) 시계열 데이터

@@ -43,6 +43,7 @@ class SpeakerEmbeddingEngine:
         speaker_segments: list[SpeakerSegment],
         *,
         max_seconds_per_speaker: float = 30.0,
+        min_seconds_per_speaker: float = 0.0,
     ) -> dict[str, dict[str, Any]]:
         """Return voiceprint data keyed by diarization speaker id."""
         grouped: dict[str, list[SpeakerSegment]] = {}
@@ -53,6 +54,16 @@ class SpeakerEmbeddingEngine:
 
         result: dict[str, dict[str, Any]] = {}
         for speaker_id, segments in grouped.items():
+            sample_duration = sum(max(0.0, seg.end - seg.start) for seg in segments)
+            if sample_duration < min_seconds_per_speaker:
+                logger.info(
+                    "voiceprint extraction skipped: not enough speech",
+                    speaker_id=speaker_id,
+                    sample_duration_seconds=round(sample_duration, 3),
+                    min_seconds_per_speaker=min_seconds_per_speaker,
+                    category="voiceprint",
+                )
+                continue
             embedding, backend = self.extract_embedding(
                 audio_path,
                 segments,
@@ -63,10 +74,7 @@ class SpeakerEmbeddingEngine:
                     "speaker_id": speaker_id,
                     "embedding": embedding,
                     "embedding_backend": backend,
-                    "sample_duration_seconds": round(
-                        sum(max(0.0, seg.end - seg.start) for seg in segments),
-                        3,
-                    ),
+                    "sample_duration_seconds": round(sample_duration, 3),
                 }
         return result
 

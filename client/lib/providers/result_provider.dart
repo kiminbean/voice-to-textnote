@@ -249,7 +249,7 @@ final sentimentProvider =
 
 // SPEC-SENTIMENT-001: 감정 분석 전체 응답 프로바이더 (REQ-SEN-008/009/010)
 // @MX:ANCHOR: _SentimentTab에서 minutesTaskId로 감정 분석 결과 로드
-// @MX:REASON: 백엔드 비동기 감정 분석(openAI) 작업을 create→poll→fetch 순서로 처리
+// @MX:REASON: 백엔드 비동기 감정 분석(ZAI) 작업을 create→poll→fetch 순서로 처리
 // mindMapResultProvider와 동일한 패턴 - POST /sentiment 생성 후 폴링, GET /sentiment/{taskId}로 결과 조회
 // 오류를 삼키지 않고 AsyncValue.error로 전파하여 ErrorRetryWidget이 표시되도록 함
 final sentimentFullProvider =
@@ -257,7 +257,7 @@ final sentimentFullProvider =
         (ref, minutesTaskId) async {
   final api = ref.watch(sentimentApiProvider);
 
-  // 1. 감정 분석 태스크 생성 (POST /sentiment → Celery + OpenAI gpt-4o-mini)
+  // 1. 감정 분석 태스크 생성 (POST /sentiment → Celery + Z.AI glm-5.2)
   final createData = await api.create(minutesTaskId);
   final sentimentTaskId = createData['task_id'] as String? ?? '';
 
@@ -266,7 +266,7 @@ final sentimentFullProvider =
   }
 
   // 2. 완료 대기 - 폴링 (최대 5분 = 150회 × 2초)
-  // OpenAI gpt-4o-mini 감정 분석은 회의록 길이에 따라 3~30초 소요
+  // Z.AI glm-5.2 감정 분석은 회의록 길이에 따라 3~30초 소요
   for (var attempt = 0; attempt < _auxiliaryLongPollRetries; attempt++) {
     Map<String, dynamic> statusData;
     try {

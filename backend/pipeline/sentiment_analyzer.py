@@ -1,5 +1,5 @@
 """
-회의 감정 분석기 - OpenAI API 기반
+회의 감정 분석기 - ZAI-compatible LLM API 기반
 SPEC-SENTIMENT-001: 화자별 발화 구간 감정 분석
 - 텍스트 기반 감정 분석 (positive/neutral/negative + 세부 감정)
 - 화자별 감정 요약 통계
@@ -10,8 +10,7 @@ import json
 import re
 from collections import Counter
 
-from openai import OpenAI
-
+from backend.ml.zai_client import ZAIClient, structured_json_completion_options
 from backend.schemas.sentiment import (
     SentimentResult,
     SentimentSegment,
@@ -39,11 +38,11 @@ VALID_SENTIMENTS = {"positive", "neutral", "negative"}
 
 
 class SentimentAnalyzer:
-    """OpenAI API를 사용하여 회의 감정 분석을 수행하는 클래스"""
+    """ZAI-compatible LLM API를 사용하여 회의 감정 분석을 수행하는 클래스"""
 
     JSON_FORMAT_INSTRUCTION = (
         '다음 JSON 형식으로 응답하세요: {"segments": [...], "overall_sentiment": "...", "overall_emotion": "..."} '
-        '각 segment는 {"start": float, "end": float, "speaker": "...", "text": "...", '
+        '각 segment는 {"id": int, "start": float, "end": float, "speaker": "...", '
         '"sentiment": "positive|neutral|negative", "emotion": "...", "confidence": float} 형식입니다.'
     )
 
@@ -52,12 +51,12 @@ class SentimentAnalyzer:
 
         # 대화 내용
         dialogue_lines = []
-        for seg in segments:
+        for index, seg in enumerate(segments):
             speaker = seg.get("speaker_name", "알 수 없음")
             text = seg.get("text", "")
             start = seg.get("start", 0.0)
             end = seg.get("end", 0.0)
-            dialogue_lines.append(f"[{start:.1f}-{end:.1f}] {speaker}: {text}")
+            dialogue_lines.append(f"[id={index} | {start:.1f}-{end:.1f} | {speaker}] {text}")
         dialogue_section = "\n".join(dialogue_lines) if dialogue_lines else "대화 내용 없음"
 
         # 화자 정보
@@ -81,6 +80,7 @@ class SentimentAnalyzer:
    - sentiment: positive / neutral / negative (3가지만)
    - emotion: joy, satisfaction, interest, neutral, frustration, anger, sadness, surprise, anxiety, confusion 중 선택
    - confidence: 0.0~1.0 (분석 신뢰도)
+   - text 원문은 응답에 절대 포함하지 말고 id로만 참조하세요.
 
 2. 회의 전체 감정(overall_sentiment)과 주요 감정(overall_emotion)도 판단하세요.
 
@@ -95,8 +95,15 @@ class SentimentAnalyzer:
 
         return prompt
 
-    def parse_response(self, response_text: str) -> SentimentResult:
+    def parse_response(
+        self,
+        response_text: str,
+        source_segments: list[dict] | None = None,
+    ) -> SentimentResult:
         """API 응답 텍스트를 SentimentResult로 파싱"""
+        source_by_id = {
+            index: seg for index, seg in enumerate(source_segments or []) if isinstance(seg, dict)
+        }
         try:
             cleaned = response_text.strip()
             if cleaned.startswith("```"):
@@ -114,15 +121,19 @@ class SentimentAnalyzer:
             for seg in raw_segments:
                 if not isinstance(seg, dict):
                     continue
+                source = source_by_id.get(seg.get("id"))
                 sentiment = seg.get("sentiment", "neutral")
                 if sentiment not in VALID_SENTIMENTS:
                     sentiment = "neutral"
                 segments.append(
                     SentimentSegment(
-                        start=seg.get("start", 0.0),
-                        end=seg.get("end", 0.0),
-                        speaker=seg.get("speaker", "알 수 없음"),
-                        text=seg.get("text", ""),
+                        start=seg.get("start", source.get("start", 0.0) if source else 0.0),
+                        end=seg.get("end", source.get("end", 0.0) if source else 0.0),
+                        speaker=seg.get(
+                            "speaker",
+                            source.get("speaker_name", "알 수 없음") if source else "알 수 없음",
+                        ),
+                        text=seg.get("text", source.get("text", "") if source else ""),
                         sentiment=sentiment,
                         emotion=seg.get("emotion", "neutral"),
                         confidence=min(1.0, max(0.0, seg.get("confidence", 0.0))),
@@ -157,7 +168,46 @@ class SentimentAnalyzer:
                 error=str(exc),
                 response_preview=response_text[:200],
             )
-            return SentimentResult()
+            return self._fallback_neutral_result(source_segments or [])
+
+    def _fallback_neutral_result(self, source_segments: list[dict]) -> SentimentResult:
+        """Return neutral per-segment data when model JSON is malformed or truncated."""
+        segments: list[SentimentSegment] = []
+        for seg in source_segments:
+            if not isinstance(seg, dict):
+                continue
+            text = str(seg.get("text", "")).strip()
+            if not text:
+                continue
+            segments.append(
+                SentimentSegment(
+                    start=seg.get("start", 0.0),
+                    end=seg.get("end", 0.0),
+                    speaker=seg.get("speaker_name") or seg.get("speaker") or "알 수 없음",
+                    text=text,
+                    sentiment="neutral",
+                    emotion="neutral",
+                    confidence=0.0,
+                )
+            )
+
+        speakers = self._compute_speaker_stats(segments)
+        timeline = [
+            {
+                "time": seg.start,
+                "sentiment": seg.sentiment,
+                "emotion": seg.emotion,
+                "speaker": seg.speaker,
+            }
+            for seg in segments
+        ]
+        return SentimentResult(
+            overall_sentiment="neutral",
+            overall_emotion="neutral",
+            segments=segments,
+            speakers=speakers,
+            emotional_timeline=timeline,
+        )
 
     def _compute_speaker_stats(self, segments: list[SentimentSegment]) -> list[SpeakerSentiment]:
         """세그먼트에서 화자별 감정 통계 계산"""
@@ -198,7 +248,7 @@ class SentimentAnalyzer:
         max_tokens: int = 4096,
         base_url: str | None = None,
     ) -> SentimentResult:
-        """OpenAI API를 호출하여 감정 분석 수행"""
+        """ZAI-compatible LLM API를 호출하여 감정 분석 수행"""
         prompt = self.build_prompt(segments, speaker_stats)
 
         logger.info(
@@ -208,20 +258,21 @@ class SentimentAnalyzer:
             segments_count=len(segments),
         )
 
-        client = OpenAI(api_key=api_key, base_url=base_url) if base_url else OpenAI(api_key=api_key)
+        client = ZAIClient(api_key=api_key, base_url=base_url) if base_url else ZAIClient(api_key=api_key)
         response = client.chat.completions.create(
             model=model,
             max_tokens=max_tokens,
             messages=[{"role": "user", "content": prompt}],
+            **structured_json_completion_options(model, base_url),
         )
 
-        # OpenAI가 안전 필터 등으로 빈 choices를 반환하면 IndexError가 발생하므로 방어.
+        # ZAI가 안전 필터 등으로 빈 choices를 반환하면 IndexError가 발생하므로 방어.
         if not response.choices:
             logger.warning(
                 "감정 분석 API가 빈 choices를 반환 — 빈 결과로 폴백",
                 model=model,
             )
-            return self.parse_response("")
+            return self._fallback_neutral_result(segments)
 
         response_text = response.choices[0].message.content or ""  # pragma: no cover
 
@@ -231,4 +282,8 @@ class SentimentAnalyzer:
             output_tokens=response.usage.completion_tokens if response.usage else 0,
         )
 
-        return self.parse_response(response_text)  # pragma: no cover
+        if not response_text.strip():
+            logger.warning("감정 분석 API 응답이 비어 있어 중립 fallback 사용", model=model)
+            return self._fallback_neutral_result(segments)
+
+        return self.parse_response(response_text, segments)  # pragma: no cover

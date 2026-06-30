@@ -4,7 +4,7 @@ SPEC-QA-001: 회의 Q&A 서비스 단위 테스트
 대상: services/qa_service.py
   - _format_transcript (순수 함수)
   - _extract_sources (순수 함수)
-  - ask (Redis + OpenAI mock)
+  - ask (Redis + ZAIClient mock)
   - get_history (Redis mock)
 """
 
@@ -134,12 +134,12 @@ class TestExtractSources:
 
 
 # ---------------------------------------------------------------------------
-# ask (Redis + OpenAI mock)
+# ask (Redis + ZAIClient mock)
 # ---------------------------------------------------------------------------
 
 
 class TestAsk:
-    """Q&A 질문-답변 (Redis + OpenAI mock)."""
+    """Q&A 질문-답변 (Redis + ZAIClient mock)."""
 
     @pytest.mark.asyncio
     async def test_successful_ask(self):
@@ -157,7 +157,7 @@ class TestAsk:
         redis_mock.get.side_effect = _redis_get
         redis_mock.set = AsyncMock()
 
-        # OpenAI mock
+        # ZAIClient mock
         mock_response = MagicMock()
         mock_response.choices = [MagicMock()]
         mock_response.choices[0].message.content = "분기 매출이 전년 대비 15% 증가했습니다."
@@ -318,7 +318,7 @@ class TestAskAcrossMeetings:
 
         with patch.object(svc, "_get_client") as mock_get_client:
             mock_client = MagicMock()
-            mock_client.chat.completions.create.side_effect = RuntimeError("OpenAI 장애")
+            mock_client.chat.completions.create.side_effect = RuntimeError("ZAIClient 장애")
             mock_get_client.return_value = mock_client
 
             result = await svc.ask_across_meetings(
@@ -472,15 +472,15 @@ class TestGetClient:
     """_get_client() 메서드 테스트"""
 
     @patch("backend.services.qa_service.settings")
-    def test_returns_openai_client(self, mock_settings):
-        """_get_client가 LLM 설정으로 OpenAI 호환 클라이언트를 반환한다"""
-        from openai import OpenAI
+    def test_returns_zai_client(self, mock_settings):
+        """_get_client가 LLM 설정으로 ZAIClient 호환 클라이언트를 반환한다"""
+        from backend.ml.zai_client import ZAIClient
 
         mock_settings.llm_api_key = "zai-test-key"
         mock_settings.llm_base_url = "https://api.z.ai/api/paas/v4/"
         svc = QAService()
         client = svc._get_client()
-        assert isinstance(client, OpenAI)
+        assert isinstance(client, ZAIClient)
 
 
 class TestBuildMessagesWithHistory:

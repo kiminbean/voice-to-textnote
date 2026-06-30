@@ -173,7 +173,7 @@ Verification after the fixes:
 flutter analyze --no-pub: No issues found
 flutter test --no-pub --reporter=compact: 463 tests passed
 flutter build apk --release --no-pub: built app-release.apk
-flutter build ios --release --dart-define=ENV=staging: built Runner.app
+flutter build ios --release --dart-define=ENV=staging --dart-define=API_BASE_URL=http://100.69.69.119:8000/api/v1: built Runner.app
 ```
 
 ## iPhone Google Login Root Cause
@@ -209,7 +209,7 @@ Fix applied:
 
 ```bash
 cd client
-flutter build ios --release --dart-define=ENV=staging
+flutter build ios --release --dart-define=ENV=staging --dart-define=API_BASE_URL=http://100.69.69.119:8000/api/v1
 xcrun devicectl device install app \
   --device C7DD57C9-48FC-5362-B2FB-ED87CFFD51FA \
   build/ios/iphoneos/Runner.app

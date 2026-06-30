@@ -32,7 +32,7 @@ class SummaryCreateRequest(BaseModel):
     # 회의록 작업 ID (필수)
     minutes_task_id: str = Field(..., description="회의록 작업 ID")
     # 최대 토큰 수 (기본값: 2000)
-    max_tokens: int = Field(default=4096, description="OpenAI API 최대 응답 토큰 수")
+    max_tokens: int = Field(default=4096, description="ZAI-compatible API 최대 응답 토큰 수")
     # REQ-TMPL-004: 양식 ID (None이면 기본 4개 항목으로 요약)
     template_id: str | None = Field(default=None, description="양식 ID (양식 기반 요약 시 사용)")
 
@@ -102,7 +102,7 @@ class MindMapCreateRequest(BaseModel):
     """POST /api/v1/summaries/{summary_task_id}/mind-map 요청 본문"""
 
     max_tokens: int = Field(
-        default=2048, ge=512, le=8192, description="OpenAI API 최대 응답 토큰 수"
+        default=2048, ge=512, le=8192, description="ZAI-compatible API 최대 응답 토큰 수"
     )
 
 

@@ -5,10 +5,9 @@
 import json
 import re
 
-from openai import OpenAI
 from pydantic import ValidationError
 
-from backend.ml.openai_client import structured_json_completion_options
+from backend.ml.zai_client import ZAIClient, structured_json_completion_options
 from backend.schemas.summary import MindMapEdge, MindMapNode
 from backend.utils.json_helpers import strip_json_comments
 from backend.utils.logger import get_logger
@@ -17,7 +16,7 @@ logger = get_logger(__name__)
 
 
 class MindMapGenerator:
-    """OpenAI API를 사용해 완료된 요약 결과를 마인드맵 그래프로 변환한다."""
+    """ZAI-compatible LLM API를 사용해 완료된 요약 결과를 마인드맵 그래프로 변환한다."""
 
     JSON_FORMAT_INSTRUCTION = (
         '다음 JSON 형식으로만 응답하세요: {"root": {"id": "root", "title": "...", '
@@ -96,18 +95,18 @@ class MindMapGenerator:
         max_tokens: int,
         base_url: str | None = None,
     ) -> tuple[MindMapNode, list[MindMapEdge]]:
-        """OpenAI API를 호출해 마인드맵을 생성한다."""
+        """ZAI-compatible LLM API를 호출해 마인드맵을 생성한다."""
         prompt = self.build_prompt(summary_data)
 
         logger.info(
-            "OpenAI API 마인드맵 생성 시작",
+            "ZAI-compatible API 마인드맵 생성 시작",
             model=model,
             max_tokens=max_tokens,
             summary_task_id=summary_data.get("task_id"),
         )
 
-        client = OpenAI(api_key=api_key, base_url=base_url) if base_url else OpenAI(api_key=api_key)
-        # response_format=json_object: gpt-4o-mini가 항상 valid JSON을 반환하도록 강제.
+        client = ZAIClient(api_key=api_key, base_url=base_url) if base_url else ZAIClient(api_key=api_key)
+        # response_format=json_object: ZAI-compatible 모델이 valid JSON을 반환하도록 강제.
         # 일반 모드는 간헐적으로 깨진 JSON(이스케이프 누락 등)을 생성해 파싱이 실패함.
         response = client.chat.completions.create(
             model=model,
@@ -120,7 +119,7 @@ class MindMapGenerator:
         usage = response.usage
 
         logger.info(
-            "OpenAI API 마인드맵 응답 수신",
+            "ZAI-compatible API 마인드맵 응답 수신",
             input_tokens=usage.prompt_tokens if usage else 0,
             output_tokens=usage.completion_tokens if usage else 0,
         )

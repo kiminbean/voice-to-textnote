@@ -136,10 +136,11 @@ EOF
 REQUIRE_ANDROID_RELEASE_SIGNING=true ./scripts/verify_mobile.sh --native
 
 # iOS (Xcode에서 코드사인 필요)
-flutter build ios --release
+# iOS production release requires an explicit live HTTPS backend:
+# flutter build ios --release --dart-define=API_BASE_URL=https://api.voicetextnote.com/api/v1
 
 # Private staging release validation against the Tailscale backend
-flutter build ios --release --dart-define=ENV=staging
+flutter build ios --release --dart-define=ENV=staging --dart-define=API_BASE_URL=http://100.69.69.119:8000/api/v1
 flutter build apk --release --dart-define=ENV=staging
 
 # App Store IPA / archive
@@ -164,7 +165,26 @@ Health: http://100.69.69.119:8000/api/v1/health
 
 ```bash
 cd client
-flutter build ios --release --dart-define=ENV=staging
+./scripts/run_ios_staging_release.sh
+```
+
+동일한 명령을 직접 실행해야 할 때:
+
+```bash
+cd client
+flutter run --release --no-pub --no-resident \
+  -d 00008150-000239020C08401C \
+  --dart-define=ENV=staging \
+  --dart-define=API_BASE_URL=http://100.69.69.119:8000/api/v1
+```
+
+Archive 설치 경로를 써야 할 때:
+
+```bash
+cd client
+flutter build ios --release \
+  --dart-define=ENV=staging \
+  --dart-define=API_BASE_URL=http://100.69.69.119:8000/api/v1
 xcrun devicectl list devices
 xcrun devicectl device info details \
   --device C7DD57C9-48FC-5362-B2FB-ED87CFFD51FA

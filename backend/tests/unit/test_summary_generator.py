@@ -72,7 +72,7 @@ INVALID_JSON_RESPONSE = "안녕하세요. 이것은 회의 요약입니다. {잘
 
 
 def _make_mock_claude_response(text: str) -> MagicMock:
-    """OpenAI API 응답 mock 생성 (chat.completions.create 반환값 형식)"""
+    """ZAI API 응답 mock 생성 (chat.completions.create 반환값 형식)"""
     mock_response = MagicMock()
     mock_choice = MagicMock()
     mock_choice.message.content = text
@@ -81,9 +81,9 @@ def _make_mock_claude_response(text: str) -> MagicMock:
     return mock_response
 
 
-def _patch_openai():
-    """OpenAI 클라이언트 패처 반환"""
-    return patch("backend.pipeline.summary_generator.OpenAI")
+def _patch_zai():
+    """ZAI 클라이언트 패처 반환"""
+    return patch("backend.pipeline.summary_generator.ZAIClient")
 
 
 # ---------------------------------------------------------------------------
@@ -254,7 +254,7 @@ class TestGenerateSummary:
 
         mock_response = _make_mock_claude_response(VALID_CLAUDE_RESPONSE_JSON)
 
-        with patch("backend.pipeline.summary_generator.OpenAI") as mock_cls:
+        with patch("backend.pipeline.summary_generator.ZAIClient") as mock_cls:
             mock_client = MagicMock()
             mock_client.chat.completions.create.return_value = mock_response
             mock_cls.return_value = mock_client
@@ -264,19 +264,19 @@ class TestGenerateSummary:
                 segments=MOCK_MINUTES_SEGMENTS,
                 speaker_stats=MOCK_SPEAKER_STATS,
                 api_key="test-api-key",
-                model="gpt-4o-mini",
+                model="glm-5.2",
                 max_tokens=2000,
             )
 
         assert isinstance(result, SummaryResult)
 
     def test_generate_summary_calls_claude_api(self):
-        """generate_summary() → OpenAI API 호출 확인"""
+        """generate_summary() → ZAI API 호출 확인"""
         from backend.pipeline.summary_generator import SummaryGenerator
 
         mock_response = _make_mock_claude_response(VALID_CLAUDE_RESPONSE_JSON)
 
-        with patch("backend.pipeline.summary_generator.OpenAI") as mock_cls:
+        with patch("backend.pipeline.summary_generator.ZAIClient") as mock_cls:
             mock_client = MagicMock()
             mock_client.chat.completions.create.return_value = mock_response
             mock_cls.return_value = mock_client
@@ -286,19 +286,19 @@ class TestGenerateSummary:
                 segments=MOCK_MINUTES_SEGMENTS,
                 speaker_stats=MOCK_SPEAKER_STATS,
                 api_key="test-api-key",
-                model="gpt-4o-mini",
+                model="glm-5.2",
                 max_tokens=2000,
             )
 
         mock_client.chat.completions.create.assert_called_once()
 
     def test_generate_summary_passes_api_key_to_client(self):
-        """api_key를 OpenAI 클라이언트에 직접 전달"""
+        """api_key를 ZAI 클라이언트에 직접 전달"""
         from backend.pipeline.summary_generator import SummaryGenerator
 
         mock_response = _make_mock_claude_response(VALID_CLAUDE_RESPONSE_JSON)
 
-        with patch("backend.pipeline.summary_generator.OpenAI") as mock_cls:
+        with patch("backend.pipeline.summary_generator.ZAIClient") as mock_cls:
             mock_client = MagicMock()
             mock_client.chat.completions.create.return_value = mock_response
             mock_cls.return_value = mock_client
@@ -308,18 +308,18 @@ class TestGenerateSummary:
                 segments=MOCK_MINUTES_SEGMENTS,
                 speaker_stats=MOCK_SPEAKER_STATS,
                 api_key="my-secret-key",
-                model="gpt-4o-mini",
+                model="glm-5.2",
                 max_tokens=2000,
             )
 
-        # api_key가 OpenAI() 생성자에 전달되어야 함
+        # api_key가 ZAI() 생성자에 전달되어야 함
         mock_cls.assert_called_once_with(api_key="my-secret-key")
 
     def test_generate_summary_api_error_raises_exception(self):
         """API 오류(네트워크/타임아웃) → 예외 발생 (REQ-SUM-003)"""
         from backend.pipeline.summary_generator import SummaryGenerator
 
-        with patch("backend.pipeline.summary_generator.OpenAI") as mock_cls:
+        with patch("backend.pipeline.summary_generator.ZAIClient") as mock_cls:
             mock_client = MagicMock()
             mock_client.chat.completions.create.side_effect = Exception("API 연결 실패")
             mock_cls.return_value = mock_client
@@ -330,7 +330,7 @@ class TestGenerateSummary:
                     segments=MOCK_MINUTES_SEGMENTS,
                     speaker_stats=MOCK_SPEAKER_STATS,
                     api_key="test-key",
-                    model="gpt-4o-mini",
+                    model="glm-5.2",
                     max_tokens=2000,
                 )
 
@@ -341,7 +341,7 @@ class TestGenerateSummary:
 
         mock_response = _make_mock_claude_response(INVALID_JSON_RESPONSE)
 
-        with patch("backend.pipeline.summary_generator.OpenAI") as mock_cls:
+        with patch("backend.pipeline.summary_generator.ZAIClient") as mock_cls:
             mock_client = MagicMock()
             mock_client.chat.completions.create.return_value = mock_response
             mock_cls.return_value = mock_client
@@ -351,7 +351,7 @@ class TestGenerateSummary:
                 segments=MOCK_MINUTES_SEGMENTS,
                 speaker_stats=MOCK_SPEAKER_STATS,
                 api_key="test-key",
-                model="gpt-4o-mini",
+                model="glm-5.2",
                 max_tokens=2000,
             )
 
@@ -369,7 +369,7 @@ class TestGenerateSummary:
         )
         mock_response = _make_mock_claude_response(empty_response)
 
-        with patch("backend.pipeline.summary_generator.OpenAI") as mock_cls:
+        with patch("backend.pipeline.summary_generator.ZAIClient") as mock_cls:
             mock_client = MagicMock()
             mock_client.chat.completions.create.return_value = mock_response
             mock_cls.return_value = mock_client
@@ -379,7 +379,7 @@ class TestGenerateSummary:
                 segments=[],
                 speaker_stats=[],
                 api_key="test-key",
-                model="gpt-4o-mini",
+                model="glm-5.2",
                 max_tokens=2000,
             )
 
@@ -489,7 +489,7 @@ class TestGenerateSummaryWithTemplateStructure:
         from backend.pipeline.summary_generator import SummaryGenerator
         from backend.schemas.summary import SummaryResult
 
-        with patch("backend.pipeline.summary_generator.OpenAI") as mock_cls:
+        with patch("backend.pipeline.summary_generator.ZAIClient") as mock_cls:
             mock_client = MagicMock()
             mock_choice = MagicMock()
             mock_choice.message.content = VALID_CLAUDE_RESPONSE_JSON
@@ -504,7 +504,7 @@ class TestGenerateSummaryWithTemplateStructure:
                 segments=MOCK_MINUTES_SEGMENTS,
                 speaker_stats=MOCK_SPEAKER_STATS,
                 api_key="test-key",
-                model="gpt-4o-mini",
+                model="glm-5.2",
                 max_tokens=2000,
                 template_structure=SAMPLE_TEMPLATE_STRUCTURE,
             )
@@ -527,7 +527,7 @@ class TestGenerateSummaryWithTemplateStructure:
         from backend.pipeline.summary_generator import SummaryGenerator
         from backend.schemas.summary import SummaryResult
 
-        with patch("backend.pipeline.summary_generator.OpenAI") as mock_cls:
+        with patch("backend.pipeline.summary_generator.ZAIClient") as mock_cls:
             mock_client = MagicMock()
             mock_choice = MagicMock()
             mock_choice.message.content = VALID_CLAUDE_RESPONSE_JSON
@@ -543,7 +543,7 @@ class TestGenerateSummaryWithTemplateStructure:
                 segments=MOCK_MINUTES_SEGMENTS,
                 speaker_stats=MOCK_SPEAKER_STATS,
                 api_key="test-key",
-                model="gpt-4o-mini",
+                model="glm-5.2",
                 max_tokens=2000,
             )
 

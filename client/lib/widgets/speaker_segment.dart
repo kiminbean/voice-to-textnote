@@ -83,8 +83,8 @@ class SpeakerSegment extends StatelessWidget {
                     const SizedBox(height: 4),
                     Tooltip(
                       message: voiceprintSimilarity == null
-                          ? '목소리 기반 자동 매칭입니다. 틀리면 이름을 눌러 수정하세요.'
-                          : '목소리 유사도 ${(voiceprintSimilarity! * 100).round()}% 자동 매칭입니다. 틀리면 이름을 눌러 수정하세요.',
+                          ? '목소리 기반 자동 추정입니다. 맞으면 이름을 눌러 저장하고, 틀리면 수정하세요.'
+                          : '목소리 유사도 ${(voiceprintSimilarity! * 100).round()}% 자동 추정입니다. 맞으면 이름을 눌러 저장하고, 틀리면 수정하세요.',
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 5, vertical: 1),

@@ -108,7 +108,7 @@
 
 - **Ubuntu systemd 서비스**: voicenote-api, voicenote-worker 자동 관리
 - **원클릭 배포 스크립트**: deploy/setup-ubuntu.sh (Redis, Python, systemd 자동 설정)
-- **듀얼 STT 백엔드**: macOS(mlx_whisper) + Linux(openai-whisper) 자동 감지
+- **듀얼 STT 백엔드**: macOS(mlx_whisper) + Linux(faster-whisper) 자동 감지
 - **환경 분리**: 개발(SQLite) / 프로덕션(PostgreSQL) 설정 분리
 - **Tailscale 원격 접속**: VPN 메시로 포트 개방 없이 외부 접속
 

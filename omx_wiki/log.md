@@ -2,6 +2,7 @@
 
 ## 2026-06-30
 
+- Added [[session-2026-06-30-pyannote-voiceprint-access]] after recovering the valid `kiminbean` Hugging Face token, approving `pyannote/embedding`, adding `omegaconf`, verifying `SpeakerEmbeddingEngine` loads pyannote `Inference`, and restarting backend/Celery.
 - Added [[session-2026-06-30-release-builds-google-auth]] after completing Android/iOS release builds, diagnosing Android Google OAuth registration failure, installing and launching the iOS release app via `devicectl`, and pushing backend MVP gap commit `12d077b`.
 - Added [[session-2026-06-30-apns-fcm-push]] after verifying iPhone APNs token readiness, backend iOS FCM token registration, Firebase Admin `mock_mode False`, and actual FCM/APNs send message id `projects/voice-to-textnote/messages/1782749586143713`.
 

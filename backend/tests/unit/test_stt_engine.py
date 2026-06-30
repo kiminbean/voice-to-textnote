@@ -559,7 +559,6 @@ class TestFasterWhisperBackend:
         WhisperEngine._device = "cpu"
         WhisperEngine._backend = "unknown"
         WhisperEngine._faster_whisper_model = None
-        WhisperEngine._whisper_model = None
 
     def test_faster_whisper_loads_on_linux_when_mlx_unavailable(self):
         """MLX 미설치 + faster-whisper 설치 시 faster-whisper 백엔드 선택"""
@@ -634,8 +633,8 @@ class TestFasterWhisperBackend:
         # 매핑에 없는 이름은 그대로 반환 (자유 형식 모델 지원)
         assert _resolve_faster_whisper_model("custom/my-model") == "custom/my-model"
 
-    def test_faster_whisper_transcribe_returns_compatible_format(self, test_audio_file: Path):
-        """faster-whisper 출력이 openai-whisper와 호환되는 형식인지 검증"""
+    def test_faster_whisper_transcribe_returns_app_format(self, test_audio_file: Path):
+        """faster-whisper 출력이 앱 내부 STT 형식인지 검증"""
         from backend.ml.stt_engine import WhisperEngine
 
         segments = [
@@ -655,7 +654,7 @@ class TestFasterWhisperBackend:
                 engine.load()
                 result = engine.transcribe(test_audio_file)
 
-        # openai-whisper 호환 키 확인
+        # 앱 내부 STT 결과 키 확인
         assert "segments" in result
         assert "language" in result
         assert "text" in result
@@ -697,27 +696,19 @@ class TestFasterWhisperBackend:
                 assert kwargs.get("beam_size") == 1
                 assert kwargs.get("vad_filter") is True
 
-    def test_falls_back_to_openai_whisper_when_faster_unavailable(self):
-        """faster-whisper 미설치 시 openai-whisper로 폴백"""
+    def test_raises_when_faster_whisper_unavailable(self):
+        """faster-whisper 미설치 시 지원 백엔드 없음 오류를 반환"""
         from backend.ml.stt_engine import WhisperEngine
-
-        mock_whisper = MagicMock()
-        mock_whisper.load_model.return_value = MagicMock()
-        mock_torch = MagicMock()
-        mock_torch.cuda.is_available.return_value = False
 
         # faster_whisper는 ImportError 발생 시뮬레이션 → None 매핑
         with patch.dict(
             sys.modules,
             {
                 "faster_whisper": None,
-                "whisper": mock_whisper,
-                "torch": mock_torch,
                 "mlx_whisper": None,
             },
         ):
             with patch("platform.system", return_value="Linux"):
                 engine = WhisperEngine.get_instance()
-                engine.load()
-                # faster-whisper 실패 → openai-whisper 선택
-                assert engine.backend == "whisper"
+                with pytest.raises(RuntimeError, match="STT 백엔드를 찾을 수 없습니다"):
+                    engine.load()

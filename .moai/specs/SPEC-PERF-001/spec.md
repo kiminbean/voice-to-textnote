@@ -21,7 +21,7 @@ related_specs:
 ### 1.1 시스템 구성
 
 - **백엔드**: FastAPI + Celery + Redis (브로커/결과 저장소)
-- **STT 엔진**: openai-whisper (whisper-small), Ubuntu 서버, CPU 전용
+- **STT 엔진**: faster-whisper (whisper-small), Ubuntu 서버, CPU 전용
 - **화자 분리 엔진**: pyannote/speaker-diarization-3.1, CPU 전용
 - **클라이언트**: Flutter iOS 앱 (Tailscale 경유 접속)
 - **설정**: chunk_duration_minutes=30, max_file_size_mb=500, max_duration_hours=4

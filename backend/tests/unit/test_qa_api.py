@@ -121,7 +121,7 @@ class TestAskQuestion:
 
     def test_ask_internal_error_returns_500(self, app_client):
         client, _, mock_svc = app_client
-        mock_svc.ask = AsyncMock(side_effect=RuntimeError("OpenAI 장애"))
+        mock_svc.ask = AsyncMock(side_effect=RuntimeError("ZAI 장애"))
 
         resp = client.post(
             "/api/v1/qa/ask",

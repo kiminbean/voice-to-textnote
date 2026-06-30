@@ -6,7 +6,7 @@
 
 **요약 생성 흐름**:
 ```
-POST /summaries → Celery task → SummaryGenerator.build_prompt() → OpenAI API → JSON 파싱 → Redis 캐싱
+POST /summaries → Celery task → SummaryGenerator.build_prompt() → ZAI API → JSON 파싱 → Redis 캐싱
 ```
 
 **프롬프트** (`backend/pipeline/summary_generator.py:30-77`):
@@ -58,7 +58,7 @@ POST /summaries → Celery task → SummaryGenerator.build_prompt() → OpenAI A
   → POST /api/v1/summaries {minutes_task_id, template_id}
   → [Celery] Redis에서 템플릿 구조 로드
   → [Celery] SummaryGenerator.build_prompt(segments, stats, template_structure)
-  → [OpenAI] 템플릿 양식에 맞춘 응답
+  → [ZAI] 템플릿 양식에 맞춘 응답
   → Redis 캐싱
 ```
 

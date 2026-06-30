@@ -95,7 +95,7 @@ def make_ai_payload() -> dict:
     }
 
 
-def stub_openai_client(payload: dict | str) -> MagicMock:
+def stub_zai_client(payload: dict | str) -> MagicMock:
     message = MagicMock()
     message.content = (
         json.dumps(payload, ensure_ascii=False) if isinstance(payload, dict) else payload
@@ -115,12 +115,12 @@ async def test_generate_study_pack_from_minutes(monkeypatch):
     redis.values["task:min:result:min-001"] = json.dumps(make_minutes_payload(), ensure_ascii=False)
     monkeypatch.setattr("backend.services.study_pack_service.settings.llm_provider", "zai")
     monkeypatch.setattr(
-        "backend.services.study_pack_service.settings.openai_base_url",
+        "backend.services.study_pack_service.settings.zai_base_url",
         "https://api.z.ai/api/coding/paas/v4",
     )
     monkeypatch.setattr("backend.services.study_pack_service.settings.summary_model", "glm-5.2")
     svc = StudyPackService()
-    client = stub_openai_client(make_ai_payload())
+    client = stub_zai_client(make_ai_payload())
     monkeypatch.setattr(svc, "_get_client", lambda: client)
 
     result = await svc.generate("min-001", redis, mode=StudyPackMode.LECTURE)
@@ -146,7 +146,7 @@ async def test_generate_study_pack_falls_back_on_invalid_ai_json(monkeypatch):
     redis = FakeRedis()
     redis.values["task:min:result:min-001"] = json.dumps(make_minutes_payload(), ensure_ascii=False)
     svc = StudyPackService()
-    client = stub_openai_client("")
+    client = stub_zai_client("")
     monkeypatch.setattr(svc, "_get_client", lambda: client)
 
     result = await svc.generate("min-001", redis, mode=StudyPackMode.LECTURE)
@@ -177,7 +177,7 @@ async def test_generate_returns_cached_study_pack(monkeypatch):
     }
     redis.values["study_pack:min-001:general"] = json.dumps(cached, ensure_ascii=False)
     svc = StudyPackService()
-    client = stub_openai_client(make_ai_payload())
+    client = stub_zai_client(make_ai_payload())
     monkeypatch.setattr(svc, "_get_client", lambda: client)
 
     result = await svc.generate("min-001", redis)
@@ -225,7 +225,7 @@ async def test_generate_uses_mode_specific_cache(monkeypatch):
     }
     redis.values["study_pack:min-001:lecture"] = json.dumps(cached, ensure_ascii=False)
     svc = StudyPackService()
-    client = stub_openai_client(make_ai_payload())
+    client = stub_zai_client(make_ai_payload())
     monkeypatch.setattr(svc, "_get_client", lambda: client)
 
     result = await svc.generate("min-001", redis, mode=StudyPackMode.INTERVIEW)
@@ -258,25 +258,25 @@ async def test_get_uses_mode_specific_cache():
     assert result.study_notes == "인터뷰 모드 캐시"
 
 
-def test_get_client_constructs_openai_client(monkeypatch):
+def test_get_client_constructs_zai_client(monkeypatch):
     constructed = {}
 
-    class FakeOpenAI:
+    class FakeZAI:
         def __init__(self, api_key: str, base_url: str | None = None) -> None:
             constructed["api_key"] = api_key
             constructed["base_url"] = base_url
 
-    monkeypatch.setattr("backend.services.study_pack_service.OpenAI", FakeOpenAI)
+    monkeypatch.setattr("backend.services.study_pack_service.ZAIClient", FakeZAI)
     monkeypatch.setattr("backend.services.study_pack_service.settings.llm_provider", "zai")
     monkeypatch.setattr("backend.services.study_pack_service.settings.zai_api_key", "test-key")
     monkeypatch.setattr(
-        "backend.services.study_pack_service.settings.openai_base_url",
+        "backend.services.study_pack_service.settings.zai_base_url",
         "https://example.test/v1",
     )
 
     client = StudyPackService()._get_client()
 
-    assert isinstance(client, FakeOpenAI)
+    assert isinstance(client, FakeZAI)
     assert constructed["api_key"] == "test-key"
     assert constructed["base_url"] == "https://example.test/v1"
 
@@ -294,7 +294,7 @@ async def test_generate_falls_back_on_malformed_ai_response(monkeypatch):
     redis = FakeRedis()
     redis.values["task:min:result:min-001"] = json.dumps(make_minutes_payload(), ensure_ascii=False)
     svc = StudyPackService()
-    monkeypatch.setattr(svc, "_get_client", lambda: stub_openai_client("{not json"))
+    monkeypatch.setattr(svc, "_get_client", lambda: stub_zai_client("{not json"))
 
     result = await svc.generate("min-001", redis)
 
@@ -451,7 +451,7 @@ async def test_generate_falls_back_on_incomplete_ai_payload(monkeypatch, payload
     redis = FakeRedis()
     redis.values["task:min:result:min-001"] = json.dumps(make_minutes_payload(), ensure_ascii=False)
     svc = StudyPackService()
-    monkeypatch.setattr(svc, "_get_client", lambda: stub_openai_client(payload))
+    monkeypatch.setattr(svc, "_get_client", lambda: stub_zai_client(payload))
 
     result = await svc.generate("min-001", redis, force_refresh=True)
 

@@ -39,7 +39,7 @@ class SentimentCreateRequest(BaseModel):
     """POST /api/v1/sentiment 요청 본문"""
 
     minutes_task_id: str = Field(..., description="회의록 작업 ID")
-    max_tokens: int = Field(default=4096, description="OpenAI API 최대 응답 토큰 수")
+    max_tokens: int = Field(default=4096, description="ZAI-compatible API 최대 응답 토큰 수")
 
 
 class SentimentResult(BaseModel):

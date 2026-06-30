@@ -71,7 +71,7 @@ if [ ! -f "$ENV_FILE" ]; then
     echo ""
     echo "⚠️  .env 파일이 생성되었습니다. 다음 값을 반드시 설정하세요:"
     echo "   - HUGGINGFACE_TOKEN: 화자 분리용 HuggingFace 토큰"
-    echo "   - OPENAI_API_KEY: AI 요약용 OpenAI API 키"
+    echo "   - ZAI_API_KEY: Z.AI Coding Plan API 키 (glm-5.2)"
     echo "   - API_KEYS: API 인증 키 (쉼표 구분)"
     echo ""
     echo "   편집: nano $ENV_FILE"

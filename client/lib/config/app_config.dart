@@ -17,6 +17,8 @@ enum Environment {
 
 class AppConfig {
   static const String stagingApiBaseUrl = 'http://100.69.69.119:8000/api/v1';
+  static const String productionApiBaseUrl =
+      'https://api.voicetextnote.com/api/v1';
 
   // 컴파일 시 --dart-define=ENV=dev|staging|production 으로 주입 가능
   // 기본값: production. staging HTTP 서버는 명시적으로 선택한 개발/검증 빌드에서만 사용한다.
@@ -59,12 +61,24 @@ class AppConfig {
         case Environment.staging:
           url = stagingApiBaseUrl;
         case Environment.production:
-          url = 'https://api.voicetextnote.com/api/v1';
+          url = productionApiBaseUrl;
       }
     }
 
     final isExplicitStagingHttp =
         environment == Environment.staging && url == stagingApiBaseUrl;
+    final isDefaultProductionRelease = kReleaseMode &&
+        environment == Environment.production &&
+        _apiBaseUrlOverride.isEmpty;
+    if (isDefaultProductionRelease) {
+      throw UnsupportedError(
+        'Release production builds require an explicit API_BASE_URL. '
+        'Current private device validation must use '
+        '--dart-define=ENV=staging '
+        '--dart-define=API_BASE_URL=$stagingApiBaseUrl. '
+        'Use production only after api.voicetextnote.com is live.',
+      );
+    }
     if (kReleaseMode &&
         Uri.parse(url).scheme != 'https' &&
         !isExplicitStagingHttp) {

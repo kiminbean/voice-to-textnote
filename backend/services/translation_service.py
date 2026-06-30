@@ -6,12 +6,12 @@ import asyncio
 from datetime import UTC, datetime
 from typing import Any
 
-from openai import OpenAI
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.config import settings
 from backend.db.models import TaskResult
+from backend.ml.zai_client import ZAIClient
 from backend.schemas.translation import TranslationResponse, TranslationSourceType
 from backend.utils.logger import get_logger
 
@@ -29,8 +29,8 @@ class TranslationValidationError(ValueError):
 class TranslationService:
     """Translate persisted minutes or summary content."""
 
-    def _get_client(self) -> OpenAI:
-        return OpenAI(api_key=settings.llm_api_key, base_url=settings.llm_base_url)
+    def _get_client(self) -> ZAIClient:
+        return ZAIClient(api_key=settings.llm_api_key, base_url=settings.llm_base_url)
 
     async def get(
         self,
@@ -80,13 +80,11 @@ class TranslationService:
             source_type=resolved_type.value,
             target_language=target_language,
         )
-        response = await asyncio.to_thread(
-            client.chat.completions.create,
-            model=settings.summary_model,
+        translated_text = await self._translate_with_retry(
+            client,
+            prompt,
             max_tokens=max_tokens,
-            messages=[{"role": "user", "content": prompt}],
         )
-        translated_text = (response.choices[0].message.content or "").strip()
         if not translated_text:
             raise TranslationValidationError("AI 번역 응답이 비어 있습니다.")
 
@@ -205,6 +203,38 @@ Rules:
 
 Source:
 {source_text}"""
+
+    async def _translate_with_retry(
+        self,
+        client: ZAIClient,
+        prompt: str,
+        *,
+        max_tokens: int,
+    ) -> str:
+        """Call ZAI for plain text translation and retry once on an empty final answer."""
+        for attempt in range(2):
+            response = await asyncio.to_thread(
+                client.chat.completions.create,
+                model=settings.summary_model,
+                max_tokens=max(max_tokens, 4096),
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0,
+                top_p=0.01,
+                extra_body={
+                    "thinking": {"type": "disabled"},
+                    "reasoning_effort": "none",
+                },
+            )
+            if response.choices:
+                translated_text = (response.choices[0].message.content or "").strip()
+                if translated_text:
+                    return translated_text
+            logger.warning(
+                "AI 번역 응답이 비어 있어 재시도",
+                attempt=attempt + 1,
+                max_tokens=max_tokens,
+            )
+        return ""
 
     async def _persist_translation(
         self,

@@ -24,7 +24,7 @@ class StudyPackCreateRequest(BaseModel):
         default=1800,
         ge=512,
         le=4096,
-        description="OpenAI API max response tokens",
+        description="ZAI-compatible API max response tokens",
     )
     force_refresh: bool = Field(default=False, description="Regenerate even when cached")
 
@@ -76,4 +76,3 @@ class StudyPackResponse(BaseModel):
     study_notes: str = Field(default="")
     source_refs: list[StudySourceRef] = Field(default_factory=list)
     created_at: str = Field(..., description="ISO-8601 creation timestamp")
-

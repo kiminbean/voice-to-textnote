@@ -135,6 +135,7 @@ def _extract_and_match_voiceprints(
             audio_path,
             dia_segments,
             max_seconds_per_speaker=settings.speaker_voiceprint_max_seconds_per_speaker,
+            min_seconds_per_speaker=settings.speaker_voiceprint_min_match_seconds,
         )
         if not voiceprints:
             return {}, {}

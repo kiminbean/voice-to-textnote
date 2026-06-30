@@ -60,7 +60,7 @@ def _default_patches(mock_redis, mock_settings):
 # ---------------------------------------------------------------------------
 
 
-class TestMindMapTaskOpenAIKeyMissing:
+class TestMindMapTaskZAIKeyMissing:
     """LLM API 키 설정 관련 테스트"""
 
     def test_fails_when_llm_api_key_not_configured(self):

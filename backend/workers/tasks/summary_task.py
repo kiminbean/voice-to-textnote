@@ -122,7 +122,7 @@ def summary_task(
     Args:
         task_id: 요약 작업 UUID
         minutes_task_id: 회의록 작업 UUID (결과 조회용)
-        max_tokens: OpenAI API 최대 응답 토큰 수
+        max_tokens: ZAI-compatible API 최대 응답 토큰 수
         template_id: 양식 ID (REQ-TMPL-004: None이면 기본 4개 항목으로 요약)
 
     Returns:
@@ -488,7 +488,7 @@ def summary_celery_task(
     Args:
         task_id: 요약 작업 UUID
         minutes_task_id: 회의록 작업 UUID
-        max_tokens: OpenAI API 최대 응답 토큰
+        max_tokens: ZAI-compatible API 최대 응답 토큰
         template_id: 양식 ID (REQ-TMPL-004: None이면 기본 요약)
         user_id: 사용자 ID (Push 알림용, None이면 알림 없음)
     """

@@ -174,7 +174,7 @@
   - Flutter 테스트 62개 (89% 커버리지), 백엔드 테스트 39개 (100% 성공률)
 
 - **STT 백엔드 다중화 (REQ-STT-PERF-001)**: `backend/ml/stt_engine.py`에 `faster-whisper` 백엔드 추가.
-  - 로드 우선순위: MLX → faster-whisper → openai-whisper
+  - 로드 우선순위: MLX → faster-whisper
   - Linux CPU 환경에서 `int8` 양자화로 small 모델 RT가 0.6+ → **약 0.45**로 단축
   - `beam_size=1`, `vad_filter=True`, `word_timestamps=False`로 추가 가속
   - 의존성 추가: `faster-whisper>=1.0.0`
@@ -206,12 +206,12 @@
 - **ruff UP038**: `backend/db/version_service.py`의 `isinstance(x, (str, int))` → `isinstance(x, str | int)` 변환 (부수 lint).
 - **E2E 테스트 Python 3.14 호환성**: `c4efc3b` — E2E 테스트가 Python 3.14에서 실패하던 문제 수정
 - **CI 테스트 14건 그린화**: ffmpeg 설치 추가, STT/retention 테스트 환경 비의존화 (`9bedd37`)
-- **openai 의존성 누락**: 런타임 의존성에 `openai` 추가 (CI 테스트 collection 실패 해소)
+- **zai 의존성 누락**: 런타임 의존성에 `zai` 추가 (CI 테스트 collection 실패 해소)
 - **ruff 위반 84건 정리**: `46b127d` + export.py 예외 import 누락 수정
 
 ### Changed
 
-- `WhisperEngine.load()`의 로드 우선순위가 MLX → faster-whisper → openai-whisper로 변경됨 (Apple Silicon은 MLX, Linux는 faster-whisper, 그 외는 openai-whisper).
+- `WhisperEngine.load()`의 로드 우선순위가 MLX → faster-whisper로 변경됨 (Apple Silicon은 MLX, Linux는 faster-whisper, 그 외는 지원 백엔드 없음).
 - `DiarizationEngine.diarize()` 시그니처가 `vad_filter`/`num_speakers`/`min_speakers`/`max_speakers`/`target_sample_rate` 인자를 받도록 확장. 기본값은 기존 동작과 호환.
 - `MinutesCreateRequest`에 `stt_task_id` 선택 필드 추가 (병렬 모드에서 매칭에 사용).
 - `TranscriptionCreate` 응답에 `diarization_task_id` 선택 필드 추가.

@@ -381,9 +381,11 @@ class TestPushService:
         assert InvalidArgumentError is not None
 
     @pytest.mark.asyncio
-    async def test_send_push_returns_true_in_mock_mode(self):
+    async def test_send_push_returns_true_in_mock_mode(self, monkeypatch):
         from backend.services.push_service import PushService
 
+        monkeypatch.setattr("backend.services.push_service.settings.firebase_credentials_path", None)
+        monkeypatch.setattr("backend.services.push_service.settings.environment", "development")
         svc = PushService()
         # MVP mock mode — always returns True
         result = await svc.send_push(token="test_token", title="t", body="b")
@@ -525,13 +527,14 @@ class TestSTTEngine:
         result = WhisperEngine._detect_device()
         assert result in ("mps", "cpu")
 
-    def test_try_load_whisper_import_error(self):
+    def test_transcribe_unknown_backend_raises(self):
         from backend.ml.stt_engine import WhisperEngine
 
         engine = WhisperEngine()
-        with patch.dict("sys.modules", {"whisper": None}):
-            result = engine._try_load_whisper()
-            assert result is False
+        engine._backend = "unknown"
+        engine._model_loaded = True
+        with pytest.raises(RuntimeError, match="알 수 없는 STT 백엔드"):
+            engine.transcribe("/fake/path.wav", "en")
 
     def test_try_load_faster_whisper_import_error(self):
         from backend.ml.stt_engine import WhisperEngine
@@ -548,20 +551,6 @@ class TestSTTEngine:
         with patch.dict("sys.modules", {"mlx_whisper": None}):
             result = engine._try_load_mlx()
             assert result is False
-
-    def test_transcribe_whisper_backend(self):
-        from backend.ml.stt_engine import WhisperEngine
-
-        engine = WhisperEngine()
-        engine._backend = "whisper"
-        engine._whisper_model = MagicMock()
-        engine._whisper_model.transcribe.return_value = {
-            "text": "hello",
-            "segments": [{"start": 0, "end": 1, "text": "hello"}],
-            "language": "en",
-        }
-        result = engine._transcribe_whisper("/fake/path.wav", "en")
-        assert result["text"] == "hello"
 
     def test_transcribe_faster_whisper_backend(self):
         from backend.ml.stt_engine import WhisperEngine

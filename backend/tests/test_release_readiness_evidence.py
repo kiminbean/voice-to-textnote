@@ -2060,7 +2060,7 @@ def test_local_env_git_policy_rejects_missing_ignore(monkeypatch, tmp_path):
 def test_tracked_secret_leak_check_rejects_real_api_key(tmp_path, monkeypatch):
     module = load_release_readiness_module()
     (tmp_path / "README.md").write_text(
-        "OPENAI_API_KEY=sk-proj-" + ("A" * 40),
+        "ZAI_API_KEY=sk-proj-" + ("A" * 40),
         encoding="utf-8",
     )
     monkeypatch.setattr(module, "tracked_product_files", lambda root: [root / "README.md"])
@@ -2068,7 +2068,7 @@ def test_tracked_secret_leak_check_rejects_real_api_key(tmp_path, monkeypatch):
     reporter = module.Reporter()
     module.check_tracked_secret_leaks(tmp_path, reporter)
 
-    assert any("OpenAI API key" in error for error in reporter.errors)
+    assert any("ZAI API key" in error for error in reporter.errors)
 
 
 def test_tracked_secret_leak_check_rejects_obsolete_api_key_secret(tmp_path, monkeypatch):

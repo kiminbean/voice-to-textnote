@@ -110,10 +110,10 @@ class TestMindMapParseResponse:
 
 
 class TestGenerateMindMap:
-    def test_generate_mind_map_calls_openai(self):
+    def test_generate_mind_map_calls_zai(self):
         from backend.pipeline.mind_map_generator import MindMapGenerator
 
-        with patch("backend.pipeline.mind_map_generator.OpenAI") as mock_cls:
+        with patch("backend.pipeline.mind_map_generator.ZAIClient") as mock_cls:
             mock_client = MagicMock()
             mock_client.chat.completions.create.return_value = _make_mock_response(
                 VALID_MIND_MAP_JSON
@@ -123,7 +123,7 @@ class TestGenerateMindMap:
             root, edges = MindMapGenerator().generate_mind_map(
                 summary_data=MOCK_SUMMARY_RESULT,
                 api_key="sk-test-key",
-                model="gpt-4o-mini",
+                model="glm-5.2",
                 max_tokens=2048,
             )
 
@@ -135,7 +135,7 @@ class TestGenerateMindMap:
     def test_generate_mind_map_falls_back_when_ai_json_is_empty(self):
         from backend.pipeline.mind_map_generator import MindMapGenerator
 
-        with patch("backend.pipeline.mind_map_generator.OpenAI") as mock_cls:
+        with patch("backend.pipeline.mind_map_generator.ZAIClient") as mock_cls:
             mock_client = MagicMock()
             mock_client.chat.completions.create.return_value = _make_mock_response("")
             mock_cls.return_value = mock_client

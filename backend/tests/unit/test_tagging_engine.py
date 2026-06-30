@@ -16,8 +16,8 @@ class TestTaggingEngineExceptions:
     async def test_generate_auto_tags_api_failure_falls_back_to_rule_based(self):
         """Test API failure falls back to rule-based tagging (line 117-119)"""
         with patch("backend.ml.tagging_engine.settings") as mock_settings:
-            mock_settings.openai_api_key = "test-key"
-            mock_settings.summary_model = "gpt-4o-mini"
+            mock_settings.zai_api_key = "test-key"
+            mock_settings.summary_model = "glm-5.2"
 
             # Mock http client to raise exception
             mock_client = AsyncMock()
@@ -34,8 +34,8 @@ class TestTaggingEngineExceptions:
     async def test_generate_auto_tags_invalid_json_response_fallback(self):
         """Test invalid JSON response falls back to rule-based (line 117-119)"""
         with patch("backend.ml.tagging_engine.settings") as mock_settings:
-            mock_settings.openai_api_key = "test-key"
-            mock_settings.summary_model = "gpt-4o-mini"
+            mock_settings.zai_api_key = "test-key"
+            mock_settings.summary_model = "glm-5.2"
 
             # Mock response with invalid JSON
             mock_response = Mock()
@@ -60,7 +60,7 @@ class TestTaggingEngineExceptions:
     async def test_generate_auto_tags_no_api_key_uses_rule_based(self):
         """Test missing API key uses rule-based tagging directly (line 81-83)"""
         with patch("backend.ml.tagging_engine.settings") as mock_settings:
-            mock_settings.openai_api_key = None
+            mock_settings.zai_api_key = None
 
             result = await generate_auto_tags("긴급 회의입니다", max_tags=10)
 
@@ -74,8 +74,8 @@ class TestTaggingEngineExceptions:
     async def test_generate_auto_tags_http_error_fallback(self):
         """Test HTTP error falls back to rule-based (line 117-119)"""
         with patch("backend.ml.tagging_engine.settings") as mock_settings:
-            mock_settings.openai_api_key = "test-key"
-            mock_settings.summary_model = "gpt-4o-mini"
+            mock_settings.zai_api_key = "test-key"
+            mock_settings.summary_model = "glm-5.2"
 
             # Mock HTTP error
             mock_client = AsyncMock()
@@ -93,8 +93,8 @@ class TestTaggingEngineExceptions:
     async def test_generate_auto_tags_truncates_long_content(self):
         """Test long content is truncated (line 87)"""
         with patch("backend.ml.tagging_engine.settings") as mock_settings:
-            mock_settings.openai_api_key = "test-key"
-            mock_settings.summary_model = "gpt-4o-mini"
+            mock_settings.zai_api_key = "test-key"
+            mock_settings.summary_model = "glm-5.2"
 
             # Create content longer than 6000 chars
             long_content = "A" * 7000
@@ -125,8 +125,8 @@ class TestTaggingEngineExceptions:
         import json
 
         with patch("backend.ml.tagging_engine.settings") as mock_settings:
-            mock_settings.openai_api_key = "test-key"
-            mock_settings.summary_model = "gpt-4o-mini"
+            mock_settings.zai_api_key = "test-key"
+            mock_settings.summary_model = "glm-5.2"
 
             # Mock response with more tags than max_tags
             mock_response = AsyncMock()

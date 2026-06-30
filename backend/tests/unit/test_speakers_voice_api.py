@@ -197,6 +197,7 @@ async def test_create_speaker_with_enrollment_task_stores_voiceprint(db_engine, 
                             "SPEAKER_07": {
                                 "embedding": [1.0, 0.0, 0.0],
                                 "embedding_backend": "test",
+                                "sample_duration_seconds": 12.0,
                             }
                         }
                     },
@@ -249,6 +250,7 @@ async def test_backfill_speaker_voiceprints_enrolls_existing_profile(db_engine, 
                         "SPEAKER_03": {
                             "embedding": [0.0, 1.0, 0.0],
                             "embedding_backend": "test",
+                            "sample_duration_seconds": 12.0,
                         }
                     }
                 },

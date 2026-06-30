@@ -33,7 +33,7 @@ I've successfully written comprehensive pytest unit tests to cover uncovered lin
 - `TestWhisperEngineLoadModelName` - Model name parameter handling
 - `TestWhisperEngineMpxImportFailure` - MLX import failures
 - `TestWhisperEngineFasterWhisperFailure` - faster-whisper exceptions
-- `TestWhisperEngineOpenAIWhisperFailure` - openai-whisper errors
+- `TestWhisperEngineZAIWhisperFailure` - faster-whisper errors
 - `TestWhisperEngineTranscribeWhisperBackend` - Whisper backend transcription
 - `TestWhisperEngineMPSDeviceDetection` - MPS device detection
 - `TestWhisperEngineProperties` - Property accessors
@@ -156,7 +156,7 @@ def mock_redis():
    - Uncovered lines: 109-115
    - Status: Not started
 
-4. **backend/ml/openai_client.py** (86% → 95%)
+4. **backend/ml/zai_client.py** (86% → 95%)
    - Uncovered lines: 39-42
    - Status: Not started
 

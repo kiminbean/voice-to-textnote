@@ -55,13 +55,13 @@ AI_SUBREDDITS = [
     "singularity",
     "AIgateway",
     "StableDiffusion",
-    "OpenAI",
+    "ZAI",
 ]
 
 # AI 관련 키워드 (r/all에서 필터링용)
 AI_KEYWORDS = [
     "ai", "gpt", "llm", "machine learning", "deep learning", "neural",
-    "openai", "anthropic", "claude", "gemini", "diffusion", "transformer",
+    "zai", "anthropic", "claude", "gemini", "diffusion", "transformer",
     "chatbot", "chatgpt", "copilot", "midjourney", "stable diffusion",
     "llama", "mistral", "grok", "agi", "generative", "huggingface",
     "rag", "fine-tun", "prompt", "token", "inference", "embedding",

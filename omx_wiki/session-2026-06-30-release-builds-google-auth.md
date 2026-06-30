@@ -24,7 +24,7 @@
 cd client
 flutter build apk --release --target-platform android-arm64
 flutter build ipa --release
-flutter build ios --release --dart-define=ENV=staging
+flutter build ios --release --dart-define=ENV=staging --dart-define=API_BASE_URL=http://100.69.69.119:8000/api/v1
 
 xcrun devicectl device install app \
   --device C7DD57C9-48FC-5362-B2FB-ED87CFFD51FA \
@@ -70,7 +70,7 @@ Resolution:
 
 ```bash
 cd client
-flutter build ios --release --dart-define=ENV=staging
+flutter build ios --release --dart-define=ENV=staging --dart-define=API_BASE_URL=http://100.69.69.119:8000/api/v1
 xcrun devicectl device install app \
   --device C7DD57C9-48FC-5362-B2FB-ED87CFFD51FA \
   build/ios/iphoneos/Runner.app

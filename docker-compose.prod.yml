@@ -80,7 +80,7 @@ services:
       - API_KEYS=${API_KEYS:?API_KEYS is required}
       - JWT_SECRET=${JWT_SECRET:?JWT_SECRET is required}
       - LLM_PROVIDER=${LLM_PROVIDER:-zai}
-      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.z.ai/api/coding/paas/v4}
+      - ZAI_BASE_URL=${ZAI_BASE_URL:-https://api.z.ai/api/coding/paas/v4}
       - ZAI_API_KEY=${ZAI_API_KEY:?ZAI_API_KEY is required}
       - SUMMARY_MODEL=${SUMMARY_MODEL:-glm-5.2}
       - FIREBASE_CREDENTIALS_PATH=/run/secrets/firebase-service-account.json
@@ -122,7 +122,7 @@ services:
       - API_KEYS=${API_KEYS:?API_KEYS is required}
       - JWT_SECRET=${JWT_SECRET:?JWT_SECRET is required}
       - LLM_PROVIDER=${LLM_PROVIDER:-zai}
-      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.z.ai/api/coding/paas/v4}
+      - ZAI_BASE_URL=${ZAI_BASE_URL:-https://api.z.ai/api/coding/paas/v4}
       - ZAI_API_KEY=${ZAI_API_KEY:?ZAI_API_KEY is required}
       - SUMMARY_MODEL=${SUMMARY_MODEL:-glm-5.2}
       - FIREBASE_CREDENTIALS_PATH=/run/secrets/firebase-service-account.json

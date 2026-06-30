@@ -2,7 +2,7 @@
 SPEC-TAG-001: AI 기반 자동 태깅 엔진
 
 회의록 텍스트에서 주제, 카테고리, 중요도 태그를 자동 추출.
-OpenAI API 기반 (settings.summary_model 사용).
+ZAI-compatible LLM API 기반 (settings.summary_model 사용).
 """
 
 import json

@@ -8,13 +8,12 @@ from datetime import UTC, datetime
 from typing import Any, cast
 
 import redis.asyncio as aioredis
-from openai import OpenAI
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.config import settings
 from backend.db.models import TaskResult
-from backend.ml.openai_client import structured_json_completion_options
+from backend.ml.zai_client import ZAIClient, structured_json_completion_options
 from backend.schemas.study_pack import (
     StudyFlashcard,
     StudyKeyConcept,
@@ -46,8 +45,8 @@ class StudyPackValidationError(ValueError):
 class StudyPackService:
     """Generate study artifacts from completed minutes results."""
 
-    def _get_client(self) -> OpenAI:
-        return OpenAI(api_key=settings.llm_api_key, base_url=settings.llm_base_url)
+    def _get_client(self) -> ZAIClient:
+        return ZAIClient(api_key=settings.llm_api_key, base_url=settings.llm_base_url)
 
     async def get(
         self,

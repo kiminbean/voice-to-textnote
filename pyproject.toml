@@ -12,7 +12,7 @@ dependencies = [
     "redis>=5.0",
     "mlx-whisper>=0.4.3; platform_system == 'Darwin'",
     "mlx>=0.31.1; platform_system == 'Darwin'",
-    # Linux/CPU 환경에서 STT 가속 (CTranslate2 int8, openai-whisper 대비 ~4-6배 빠름)
+    # Linux/CPU 환경에서 STT 가속 (CTranslate2 int8)
     "faster-whisper>=1.0.0",
     "pyannote-audio>=3.1.0",
     # REQ-DIA-PERF-002: 화자 분리 전 무음 구간 제거 (회의 무음 비율만큼 가속)
@@ -28,8 +28,6 @@ dependencies = [
     "psutil>=5.9",
     "aiofiles>=24.0",
     "anthropic>=0.28.0",
-    # qa_service / sentiment_analyzer / summary_generator / mind_map_generator가 사용
-    "openai>=2.0",
     "slowapi>=0.1.9",
     "prometheus-fastapi-instrumentator>=7.0",
     "prometheus-client>=0.20",
@@ -54,6 +52,7 @@ dependencies = [
     "opensmile>=2.6.0",
     # librosa: F0(pYIN), RMS energy, speaking rate 추출
     "librosa>=0.10.0",
+    "omegaconf>=2.3.0",
 ]
 
 [project.optional-dependencies]

@@ -13,7 +13,7 @@ class SalesContactBriefCreateRequest(BaseModel):
         default=1200,
         ge=512,
         le=4096,
-        description="OpenAI API max response tokens",
+        description="ZAI-compatible API max response tokens",
     )
     force_refresh: bool = Field(default=False, description="Regenerate even when cached")
 

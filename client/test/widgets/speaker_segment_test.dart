@@ -37,4 +37,24 @@ void main() {
 
     expect(find.text('0:12'), findsOneWidget);
   });
+
+  testWidgets('목소리 매칭 이름은 자동 추정 안내를 표시해야 함', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: SpeakerSegment(
+            speakerName: '김기수',
+            text: '회의 내용입니다.',
+            isEstimatedSpeaker: true,
+            voiceprintSimilarity: 0.84,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('추정됨'), findsOneWidget);
+    final tooltip = tester.widget<Tooltip>(find.byType(Tooltip));
+    expect(tooltip.message, contains('84% 자동 추정'));
+    expect(tooltip.message, contains('이름을 눌러 저장'));
+  });
 }

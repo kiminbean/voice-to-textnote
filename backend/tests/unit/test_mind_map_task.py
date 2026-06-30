@@ -56,10 +56,10 @@ class TestMindMapTaskHappyPath:
         with patch("backend.workers.tasks.mind_map_task._get_redis", return_value=mock_redis):
             with patch("backend.workers.tasks.mind_map_task.settings") as mock_settings:
                 mock_settings.summary_result_ttl = 86400
-                mock_settings.openai_api_key = "sk-test-key"
+                mock_settings.zai_api_key = "sk-test-key"
                 mock_settings.llm_api_key = "sk-test-key"
-                mock_settings.llm_base_url = "https://api.openai.com/v1"
-                mock_settings.summary_model = "gpt-4o-mini"
+                mock_settings.llm_base_url = "https://api.z.ai/api/coding/paas/v4"
+                mock_settings.summary_model = "glm-5.2"
                 with patch(
                     "backend.workers.tasks.mind_map_task.MindMapGenerator",
                     _make_mock_generator(),
@@ -80,8 +80,8 @@ class TestMindMapTaskHappyPath:
         with patch("backend.workers.tasks.mind_map_task._get_redis", return_value=mock_redis):
             with patch("backend.workers.tasks.mind_map_task.settings") as mock_settings:
                 mock_settings.summary_result_ttl = 86400
-                mock_settings.openai_api_key = "sk-test-key"
-                mock_settings.summary_model = "gpt-4o-mini"
+                mock_settings.zai_api_key = "sk-test-key"
+                mock_settings.summary_model = "glm-5.2"
                 with patch(
                     "backend.workers.tasks.mind_map_task.MindMapGenerator",
                     _make_mock_generator(),
@@ -103,14 +103,14 @@ class TestMindMapTaskFailures:
         with patch("backend.workers.tasks.mind_map_task._get_redis", return_value=mock_redis):
             with patch("backend.workers.tasks.mind_map_task.settings") as mock_settings:
                 mock_settings.summary_result_ttl = 86400
-                mock_settings.openai_api_key = "sk-test-key"
-                mock_settings.summary_model = "gpt-4o-mini"
+                mock_settings.zai_api_key = "sk-test-key"
+                mock_settings.summary_model = "glm-5.2"
                 result = mind_map_task(task_id, summary_task_id)
 
         assert result["status"] == "failed"
         assert "요약 결과를 찾을 수 없습니다" in result["error_message"]
 
-    def test_task_fails_when_openai_key_missing(self):
+    def test_task_fails_when_zai_key_missing(self):
         from backend.workers.tasks.mind_map_task import mind_map_task
 
         task_id = str(uuid.uuid4())
@@ -120,7 +120,7 @@ class TestMindMapTaskFailures:
         with patch("backend.workers.tasks.mind_map_task._get_redis", return_value=mock_redis):
             with patch("backend.workers.tasks.mind_map_task.settings") as mock_settings:
                 mock_settings.summary_result_ttl = 86400
-                mock_settings.openai_api_key = ""
+                mock_settings.zai_api_key = ""
                 mock_settings.llm_api_key = ""
                 result = mind_map_task(task_id, summary_task_id)
 

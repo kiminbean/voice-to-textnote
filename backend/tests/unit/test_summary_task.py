@@ -453,7 +453,7 @@ class TestSummaryTaskErrors:
                 mock_settings.summary_result_ttl = 86400
                 mock_settings.max_concurrent_summaries = 2
                 mock_settings.llm_api_key = "zai-test-key"
-                mock_settings.summary_model = "gpt-4o-mini"
+                mock_settings.summary_model = "glm-5.2"
 
                 result = summary_task(task_id=task_id, minutes_task_id=min_task_id)
 
@@ -486,7 +486,7 @@ class TestSummaryTaskErrors:
                 mock_settings.summary_result_ttl = 86400
                 mock_settings.max_concurrent_summaries = 2
                 mock_settings.llm_api_key = "zai-test-key"
-                mock_settings.summary_model = "gpt-4o-mini"
+                mock_settings.summary_model = "glm-5.2"
                 with patch("backend.workers.tasks.summary_task.SummaryGenerator", mock_gen_cls):
                     result = summary_task(
                         task_id=task_id,
@@ -521,7 +521,7 @@ class TestSummaryTaskErrors:
                 mock_settings.summary_result_ttl = 86400
                 mock_settings.max_concurrent_summaries = 2
                 mock_settings.llm_api_key = "zai-test-key"
-                mock_settings.summary_model = "gpt-4o-mini"
+                mock_settings.summary_model = "glm-5.2"
                 with patch("backend.workers.tasks.summary_task.SummaryGenerator", mock_gen_cls):
                     result = summary_task(
                         task_id=task_id,

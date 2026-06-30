@@ -15,7 +15,7 @@
 | **발화 톤/운율 분석 (prosody)** | ❌ 없음 | pitch/energy/tempo 분석 미존재 |
 | **SPEC-SENTIMENT-001 문서** | ❌ 없음 | 코드는 존재하나 `.moai/specs/SPEC-SENTIMENT-001/` 디렉토리 없음 |
 
-또한 **README의 "Claude 3.5 Sonnet" 언급은 부정확**합니다. 실제 구현은 OpenAI `gpt-4o-mini`입니다 (`config.py` L78-84).
+또한 **README의 "Claude 3.5 Sonnet" 언급은 부정확**합니다. 실제 구현은 ZAI `glm-5.2`입니다 (`config.py` L78-84).
 
 ---
 
@@ -139,7 +139,7 @@ faster-whisper 백엔드 매핑 (`stt_engine.py` L367-393): `seg.start`, `seg.en
    │ 저장: Redis task:min:result:{task_id} + DB
    ▼
 [sentiment_task.py L97-247] 또는 [summary_task.py L111-378]
-   │ minutes 결과 조회 → OpenAI LLM 호출 → 결과 저장
+   │ minutes 결과 조회 → ZAI LLM 호출 → 결과 저장
 ```
 
 ### 2.2 STT 태스크 정의
@@ -326,26 +326,26 @@ class WhisperEngine:
 
 ---
 
-## 7. LLM 통합 패턴 (Claude가 아닌 OpenAI)
+## 7. LLM 통합 패턴 (Claude가 아닌 ZAI)
 
-### 7.1 README 부정확성 — 실제는 OpenAI
+### 7.1 README 부정확성 — 실제는 ZAI
 
-**README는 "Claude 3.5 Sonnet"이라 명시하나, 실제 구현은 OpenAI `gpt-4o-mini`입니다.**
+**README는 "Claude 3.5 Sonnet"이라 명시하나, 실제 구현은 ZAI `glm-5.2`입니다.**
 
 `backend/app/config.py` L78-84:
 ```python
 anthropic_api_key: str = ""  # ANTHROPIC_API_KEY 환경 변수 (미사용 - 호환성 유지)
-openai_api_key: str = ""     # OPENAI_API_KEY 환경 변수
-summary_model: str = "gpt-4o-mini"  # OpenAI 모델명
+zai_api_key: str = ""     # ZAI_API_KEY 환경 변수
+summary_model: str = "glm-5.2"  # ZAI 모델명
 ```
 
-감정 분석 (`sentiment_task.py` L173)과 요약 (`summary_task.py` L234) 모두 `settings.summary_model` (gpt-4o-mini) 사용.
+감정 분석 (`sentiment_task.py` L173)과 요약 (`summary_task.py` L234) 모두 `settings.summary_model` (glm-5.2) 사용.
 
 ### 7.2 API 호출 패턴
 
 **SummaryGenerator** (`summary_generator.py` L212-265):
 ```python
-client = OpenAI(api_key=api_key)  # 동기 클라이언트
+client = ZAI(api_key=api_key)  # 동기 클라이언트
 response = client.chat.completions.create(
     model=model,
     max_tokens=max_tokens,
@@ -356,7 +356,7 @@ response = client.chat.completions.create(
 
 **SentimentAnalyzer** (`sentiment_analyzer.py` L192-233):
 ```python
-client = OpenAI(api_key=api_key)
+client = ZAI(api_key=api_key)
 response = client.chat.completions.create(
     model=model,
     max_tokens=max_tokens,
@@ -385,7 +385,7 @@ response = client.chat.completions.create(
 
 `EMOTION_LABELS` (sentiment_analyzer.py L25-36): joy, satisfaction, interest, neutral, frustration, anger, sadness, surprise, anxiety, confusion (10개). SER 모델의 출력 레이블을 이 집합에 매핑해야 일관성 유지.
 
-**별도 존재**: `backend/ml/openai_client.py` — `AsyncOpenAI` 캐싱 싱글톤 (L14-61). 하지만 analyzer들은 동기 `OpenAI`를 직접 사용하므로 사실상 미사용. 비동기 전환 시 활용 가능.
+**별도 존재**: `backend/ml/zai_client.py` — `AsyncZAI` 캐싱 싱글톤 (L14-61). 하지만 analyzer들은 동기 `ZAI`를 직접 사용하므로 사실상 미사용. 비동기 전환 시 활용 가능.
 
 ---
 
@@ -398,7 +398,7 @@ response = client.chat.completions.create(
 | 세그먼트별 오디오 미보존 | SER를 minutes/sentiment 실행 시점에 수행 불가 | **CRITICAL** |
 | 관계형 Segment 테이블 부재 | 감정 메타데이터를 세그먼트에 효율적으로 조인하기 어려움 (JSON scan) | HIGH |
 | 모델 레지스트리 부재 | SER 엔진 추가 시 보일러플레이트 중복 | MEDIUM |
-| README와 코드 불일치 (Claude vs OpenAI) | 기획자가 잘못된 전제로 접근 가능 | MEDIUM (문서 수정으로 해결) |
+| README와 코드 불일치 (Claude vs ZAI) | 기획자가 잘못된 전제로 접근 가능 | MEDIUM (문서 수정으로 해결) |
 
 ### 8.2 감정 분석 중복 리스크
 

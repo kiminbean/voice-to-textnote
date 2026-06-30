@@ -159,7 +159,7 @@
 ### 음성 처리 (STT/Diarization)
 
 **STT (Speech-to-Text)**: mlx-whisper (Whisper Large-v3-Turbo)
-- **모델**: OpenAI Whisper Large-v3-Turbo
+- **모델**: ZAI Whisper Large-v3-Turbo
 - **크기**: ~3GB
 - **언어**: 99개 언어 지원 (한국어 포함)
 - **정확도**: WER(Word Error Rate) < 5% (한국어)
@@ -178,6 +178,12 @@
   - Diarization Error Rate: < 15% (5명 이하 회의)
   - 처리 시간: 녹음 시간의 0.5~1배
 - **출력**: [(start_time, end_time, speaker_id), ...]
+- **재등장 화자 식별**: `pyannote/embedding` voiceprint를 우선 사용하고 실패 시 acoustic fallback
+- **운영 검증**:
+  - `HUGGINGFACE_TOKEN`은 token READ 표시만으로 충분하지 않음
+  - `huggingface-cli whoami`, `pyannote/embedding/pytorch_model.bin` 다운로드, `Model.from_pretrained("pyannote/embedding")`, `SpeakerEmbeddingEngine()._load_pyannote()`를 모두 확인
+  - 현재 검증된 Hugging Face 계정은 `kiminbean`, active token suffix는 `...voer`
+  - `pyannote/embedding` checkpoint 로드에는 `omegaconf>=2.3.0` 필요
 - **왜 CPU?**
   - 안정성: GPU 메모리 부족 리스크 없음
   - 비용: GPU 서버 불필요
@@ -207,13 +213,13 @@ NUM_SPEAKERS = None  # 스피커 수 자동 추정
 
 ### AI 기반 처리
 
-**LLM**: OpenAI gpt-4o-mini (OpenAI API)
+**LLM**: ZAI glm-5.2 (ZAI API)
 - **용도**: 회의 요약, 액션 아이템 추출, 감정 분석, 텍스트 정렬
-- **API 버전**: gpt-4o-mini
+- **API 버전**: glm-5.2
 - **요청 형식**:
   ```json
   {
-    "model": "gpt-4o-mini",
+    "model": "glm-5.2",
     "messages": [
       {
         "role": "user",
@@ -235,7 +241,7 @@ NUM_SPEAKERS = None  # 스피커 수 자동 추정
 - **데이터베이스**: SQLite (개발) / PostgreSQL (프로덕션)
 - **STT 엔진**: 플랫폼 자동 감지
   - macOS: mlx_whisper (Apple Silicon 가속)
-  - Linux: openai-whisper (CPU/CUDA)
+  - Linux: faster-whisper (CPU/CUDA)
 
 **원격 접속**: Tailscale VPN 메시
 - 서버/클라이언트에 Tailscale 설치
@@ -259,7 +265,7 @@ NUM_SPEAKERS = None  # 스피커 수 자동 추정
 
 **배포 환경**:
 - **개발**: macOS (M1 MacBook Pro, mlx-whisper)
-- **프로덕션**: Ubuntu 24.04 PC (systemd + Redis + openai-whisper)
+- **프로덕션**: Ubuntu 24.04 PC (systemd + Redis + faster-whisper)
 - **클라이언트**: Flutter iOS 앱 (Tailscale로 서버 접속)
 
 ---
@@ -302,7 +308,7 @@ NUM_SPEAKERS = None  # 스피커 수 자동 추정
             └────────┘ └──────┘ └────┘ │    │
                                 ┌──────▼──┐
                                 │요약워커  │
-                                │(gpt-4o-mini)│
+                                │(glm-5.2)│
                                 └─────────┘
 ```
 
@@ -320,7 +326,7 @@ NUM_SPEAKERS = None  # 스피커 수 자동 추정
 5. Celery 작업 체인 시작:
    a) transcription_task: mlx-whisper로 음성→텍스트 (30초~5분)
    b) diarization_task: pyannote로 스피커 식별 (20초~3분)
-   c) summary_task: OpenAI API로 요약 생성 (10초~1분)
+   c) summary_task: ZAI API로 요약 생성 (10초~1분)
    ↓
 6. Redis 캐시에 중간 결과 저장
    ↓
@@ -510,13 +516,13 @@ curl http://localhost:8000/api/v1/health
 
 ## 주요 통합 지점
 
-### OpenAI API 통합
+### ZAI API 통합
 
 ```python
-# ml/openai_client.py
-from openai import AsyncOpenAI
+# ml/zai_client.py
+from zai import AsyncZAI
 
-client = AsyncOpenAI(api_key=settings.openai_api_key)
+client = AsyncZAI(api_key=settings.zai_api_key)
 
 async def generate_summary(transcript: str, speakers: List[str]) -> Dict:
     """회의록 요약 생성"""

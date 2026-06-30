@@ -126,7 +126,7 @@ SECRET_SCAN_EXCLUDED_PREFIXES = (
     "client/test/",
 )
 TRACKED_SECRET_PATTERNS = (
-    ("OpenAI API key", re.compile(r"\bsk-(?:proj-)?[A-Za-z0-9_-]{32,}\b")),
+    ("ZAI API key", re.compile(r"\bsk-(?:proj-)?[A-Za-z0-9_-]{32,}\b")),
     ("Anthropic API key", re.compile(r"\bsk-ant-[A-Za-z0-9_-]{32,}\b")),
     ("obsolete API_KEY_SECRET placeholder", re.compile(r"API_KEY_SECRET\s*=\s*your-secret-key")),
 )
@@ -1072,7 +1072,7 @@ def check_docs(root: Path, reporter: Reporter) -> None:
         "Audio Recordings",
         "Push Notification Token",
         "Firebase Cloud Messaging",
-        "OpenAI API",
+        "ZAI API",
         "Data Used for Tracking: None",
         "privacy@voicetextnote.com",
     ]

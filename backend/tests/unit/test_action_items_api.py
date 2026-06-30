@@ -27,6 +27,7 @@ def action_items_client():
     """
     from backend.app.dependencies import get_db_session, get_redis_client
     from backend.app.main import app
+    from backend.app.middleware.auth import verify_api_key
 
     async def mock_db_session():
         yield AsyncMock()
@@ -34,8 +35,12 @@ def action_items_client():
     async def mock_redis():
         yield AsyncMock()
 
+    async def mock_verify_api_key():
+        return "test-bypass"
+
     app.dependency_overrides[get_db_session] = mock_db_session
     app.dependency_overrides[get_redis_client] = mock_redis
+    app.dependency_overrides[verify_api_key] = mock_verify_api_key
 
     with patch("backend.app.main.WhisperEngine"):
         with patch("backend.app.main.DiarizationEngine"):
@@ -251,6 +256,7 @@ class TestExtractFromMeetingAPI:
         """Redis mock이 적용된 TestClient"""
         from backend.app.dependencies import get_db_session, get_redis_client
         from backend.app.main import app
+        from backend.app.middleware.auth import verify_api_key
 
         async def mock_db_session():
             yield AsyncMock()  # pragma: no cover
@@ -262,8 +268,12 @@ class TestExtractFromMeetingAPI:
         async def mock_redis():
             return mock_redis_instance
 
+        async def mock_verify_api_key():
+            return "test-bypass"
+
         app.dependency_overrides[get_db_session] = mock_db_session
         app.dependency_overrides[get_redis_client] = mock_redis
+        app.dependency_overrides[verify_api_key] = mock_verify_api_key
 
         with patch("backend.app.main.WhisperEngine"):
             with patch("backend.app.main.DiarizationEngine"):

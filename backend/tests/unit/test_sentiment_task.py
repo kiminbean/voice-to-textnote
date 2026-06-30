@@ -92,10 +92,10 @@ def _make_sentiment_result() -> SentimentResult:
 
 def _configure_settings(mock_settings: MagicMock) -> None:
     mock_settings.summary_result_ttl = 86400
-    mock_settings.openai_api_key = "sk-test-key"
+    mock_settings.zai_api_key = "sk-test-key"
     mock_settings.llm_api_key = "sk-test-key"
-    mock_settings.llm_base_url = "https://api.openai.com/v1"
-    mock_settings.summary_model = "gpt-4o-mini"
+    mock_settings.llm_base_url = "https://api.z.ai/api/coding/paas/v4"
+    mock_settings.summary_model = "glm-5.2"
     # SPEC-SENTIMENT-001: 설정 기반 동시성 제한 (REQ-SEN-004)
     mock_settings.max_concurrent_sentiment = 3
 
@@ -138,9 +138,9 @@ class TestSentimentTaskHappyPath:
             segments=MOCK_MIN_RESULT["segments"],
             speaker_stats=MOCK_MIN_RESULT["speakers"],
             api_key="sk-test-key",
-            model="gpt-4o-mini",
+            model="glm-5.2",
             max_tokens=1024,
-            base_url="https://api.openai.com/v1",
+            base_url="https://api.z.ai/api/coding/paas/v4",
         )
 
     def test_task_caches_completed_result(self):
@@ -230,7 +230,7 @@ class TestSentimentTaskErrors:
             patch("backend.workers.tasks.sentiment_task.settings") as mock_settings,
         ):
             _configure_settings(mock_settings)
-            mock_settings.openai_api_key = ""
+            mock_settings.zai_api_key = ""
             mock_settings.llm_api_key = ""
 
             result = sentiment_task(task_id="task-id", minutes_task_id="minutes-id")
@@ -303,7 +303,7 @@ class TestSentimentTaskErrors:
             json.dumps(MOCK_MIN_RESULT) if f"min:result:{minutes_task_id}" in key else None
         )
         analyzer_cls = MagicMock()
-        analyzer_cls.return_value.analyze.side_effect = RuntimeError("OpenAI timeout")
+        analyzer_cls.return_value.analyze.side_effect = RuntimeError("ZAI timeout")
 
         with (
             patch("backend.workers.tasks.sentiment_task._get_redis", return_value=mock_redis),
@@ -315,7 +315,7 @@ class TestSentimentTaskErrors:
             result = sentiment_task(task_id="task-id", minutes_task_id=minutes_task_id)
 
         assert result["status"] == "failed"
-        assert "OpenAI timeout" in result["error"]
+        assert "ZAI timeout" in result["error"]
 
 
 class TestSentimentTaskHelpers:
