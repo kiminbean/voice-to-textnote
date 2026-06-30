@@ -28,5 +28,13 @@ void main() {
       expect(googleClientIdForPlatform(isIOS: false), isNull);
       expect(isGoogleSignInConfiguredForPlatform(isIOS: false), isTrue);
     });
+
+    test('Android clears the previous Google account selection first', () {
+      expect(shouldClearGoogleSelectionBeforeSignIn(isIOS: false), isTrue);
+    });
+
+    test('iOS keeps the existing Google sign-in behavior', () {
+      expect(shouldClearGoogleSelectionBeforeSignIn(isIOS: true), isFalse);
+    });
   });
 }

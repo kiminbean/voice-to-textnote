@@ -93,6 +93,13 @@ bool isGoogleSignInConfiguredForPlatform({
       (clientId == null || clientId.isNotEmpty);
 }
 
+@visibleForTesting
+bool shouldClearGoogleSelectionBeforeSignIn({
+  required bool isIOS,
+}) {
+  return !isIOS;
+}
+
 // @MX:ANCHOR: 앱 전역 인증 상태를 관리하는 핵심 Notifier
 // @MX:REASON: goRouter redirect, dioProvider interceptor 양쪽에서 참조
 class AuthNotifier extends StateNotifier<AuthState> {
@@ -288,6 +295,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
         clientId: clientId,
         serverClientId: googleServerClientId,
       );
+      if (shouldClearGoogleSelectionBeforeSignIn(isIOS: Platform.isIOS)) {
+        await googleSignIn.signOut();
+      }
       final googleAccount = await googleSignIn.signIn();
       if (googleAccount == null) {
         state = const AuthState.unauthenticated();
