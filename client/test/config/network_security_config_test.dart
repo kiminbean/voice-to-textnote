@@ -14,6 +14,16 @@ void main() {
       );
     });
 
+    test('main Android activity is locked to portrait', () {
+      final manifest = File('android/app/src/main/AndroidManifest.xml');
+
+      expect(manifest.existsSync(), isTrue);
+      expect(
+        manifest.readAsStringSync(),
+        contains('android:screenOrientation="portrait"'),
+      );
+    });
+
     test('release/profile cleartext traffic is denied by default', () {
       final config = File('android/app/src/main/res/xml/network_security_config.xml');
 
