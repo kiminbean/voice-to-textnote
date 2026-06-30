@@ -34,21 +34,6 @@
 		<dict>
 			<key>NSAllowsArbitraryLoads</key>
 			<false/>
-			<key>NSAllowsLocalNetworking</key>
-			<true/>
-			<key>NSExceptionDomains</key>
-			<dict>
-				<key>localhost</key>
-				<dict>
-					<key>NSExceptionAllowsInsecureHTTPLoads</key>
-					<true/>
-				</dict>
-				<key>100.69.69.119</key>
-				<dict>
-					<key>NSExceptionAllowsInsecureHTTPLoads</key>
-					<true/>
-				</dict>
-			</dict>
 		</dict>
 		<key>NSCameraUsageDescription</key>
 		<string>명함을 촬영해 영업 연락처 브리프를 만들기 위해 카메라 접근이 필요합니다.</string>
