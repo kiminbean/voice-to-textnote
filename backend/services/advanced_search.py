@@ -2,6 +2,7 @@
 고급 검색 서비스
 """
 
+import json
 import time
 from datetime import UTC, datetime
 from typing import Any, cast
@@ -302,7 +303,7 @@ class AdvancedSearchService:  # pragma: no cover
         history_data = {
             "id": history_id,
             "query": request.query,
-            "filters": request.filters.dict(),
+            "filters": request.filters.model_dump(mode="json"),
             "result_count": 0,  # 실제 결과 수는 이후에 업데이트
             "search_time_ms": search_time_ms,
             "created_at": datetime.now(UTC).isoformat(),
@@ -313,7 +314,7 @@ class AdvancedSearchService:  # pragma: no cover
         await self.redis_client.setex(
             f"search_history:{history_id}",
             30 * 24 * 60 * 60,  # 30 days TTL
-            str(history_data),
+            json.dumps(history_data, ensure_ascii=False),
         )
 
         # 최근 검색 기록 목록에 추가 (최대 100개)
@@ -333,6 +334,11 @@ class AdvancedSearchService:  # pragma: no cover
         for history_id in history_ids:
             data = await self.redis_client.get(f"search_history:{history_id}")
             if data:
-                history.append(eval(data))  # 실제로는 json.loads 사용
+                try:
+                    parsed = json.loads(data)
+                except (TypeError, json.JSONDecodeError, UnicodeDecodeError):
+                    continue
+                if isinstance(parsed, dict):
+                    history.append(parsed)
 
         return history

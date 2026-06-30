@@ -21,6 +21,10 @@ from pydantic import ValidationError
 from backend.app.config import Settings
 
 
+def make_settings(**kwargs) -> Settings:
+    return Settings(_env_file=None, **kwargs)
+
+
 class TestParseListFromString:
     """parse_list_from_string 메서드 테스트"""
 
@@ -80,7 +84,7 @@ class TestValidateEnvironment:
                     os.environ["OPENAI_API_KEY"] = "sk-test-openai"
                     os.environ["CORS_ALLOW_ORIGINS"] = '["https://app.example.com"]'
                 # Settings 생성 시 검증됨
-                settings = Settings()
+                settings = make_settings()
                 assert settings.environment == env
             finally:
                 if old_val:
@@ -124,7 +128,7 @@ class TestValidateEnvironment:
             os.environ["FIREBASE_CREDENTIALS_PATH"] = "/tmp/firebase.json"
             os.environ["OPENAI_API_KEY"] = "sk-test-openai"
             with pytest.raises(ValidationError) as exc_info:
-                Settings()
+                make_settings()
             assert "environment는 다음 중 하나여야 합니다" in str(exc_info.value)
         finally:
             if old_val:
@@ -163,7 +167,7 @@ class TestValidateEnvironment:
             os.environ["JWT_SECRET"] = "x" * 48
             os.environ["FIREBASE_CREDENTIALS_PATH"] = "/tmp/firebase.json"
             os.environ["OPENAI_API_KEY"] = "sk-test-openai"
-            settings = Settings()
+            settings = make_settings()
             assert settings.environment == "development"
         finally:
             if old_val:
@@ -194,7 +198,7 @@ class TestValidateCorsAllowMethods:
     def test_empty_methods_raises_error(self):
         """빈 메서드 목록은 에러 (라인 227)"""
         with pytest.raises(ValidationError) as exc_info:
-            Settings(cors_allow_methods=[])
+            make_settings(cors_allow_methods=[])
         assert "cors_allow_methods는 최소 1개 이상의 메서드를 포함해야 합니다" in str(
             exc_info.value
         )
@@ -202,17 +206,17 @@ class TestValidateCorsAllowMethods:
     def test_wildcard_raises_error(self):
         """와일드카드(*)는 에러 (라인 229)"""
         with pytest.raises(ValidationError) as exc_info:
-            Settings(cors_allow_methods=["*"])
+            make_settings(cors_allow_methods=["*"])
         assert "cors_allow_methods에 와일드카드(*)를 사용할 수 없습니다" in str(exc_info.value)
 
     def test_valid_methods(self):
         """유효한 메서드 목록"""
-        settings = Settings(cors_allow_methods=["GET", "POST"])
+        settings = make_settings(cors_allow_methods=["GET", "POST"])
         assert settings.cors_allow_methods == ["GET", "POST"]
 
     def test_methods_normalization(self):
         """메서드 대문자 정규화 (라인 225)"""
-        settings = Settings(cors_allow_methods=["get", "post"])
+        settings = make_settings(cors_allow_methods=["get", "post"])
         assert settings.cors_allow_methods == ["GET", "POST"]
 
 
@@ -222,7 +226,7 @@ class TestValidateCorsAllowOrigins:
     def test_empty_origins_raises_error(self):
         """빈 origin 목록은 에러 (라인 237)"""
         with pytest.raises(ValidationError) as exc_info:
-            Settings(cors_allow_origins=[])
+            make_settings(cors_allow_origins=[])
         assert "cors_allow_origins는 최소 1개 이상의 origin을 포함해야 합니다" in str(
             exc_info.value
         )
@@ -230,18 +234,18 @@ class TestValidateCorsAllowOrigins:
     def test_wildcard_with_credentials_raises_error(self):
         """allow_credentials=True일 때 와일드카드(*)는 에러 (라인 239)"""
         with pytest.raises(ValidationError) as exc_info:
-            Settings(cors_allow_origins=["*"], allow_credentials=True)
+            make_settings(cors_allow_origins=["*"], allow_credentials=True)
         assert "cors_allow_origins에 '*'를 사용할 수 없습니다" in str(exc_info.value)
 
     def test_invalid_origin_format(self):
         """유효하지 않은 origin 형식 (라인 244)"""
         with pytest.raises(ValidationError) as exc_info:
-            Settings(cors_allow_origins=["invalid-origin"])
+            make_settings(cors_allow_origins=["invalid-origin"])
         assert "유효하지 않은 origin 형식입니다" in str(exc_info.value)
 
     def test_valid_origins(self):
         """유효한 origin 목록"""
-        settings = Settings(cors_allow_origins=["http://localhost:3000", "https://example.com"])
+        settings = make_settings(cors_allow_origins=["http://localhost:3000", "https://example.com"])
         assert len(settings.cors_allow_origins) == 2
 
 
@@ -264,7 +268,7 @@ class TestValidateProductionSecurity:
             os.environ["FIREBASE_CREDENTIALS_PATH"] = "/tmp/firebase.json"
             os.environ["OPENAI_API_KEY"] = "sk-test-openai"
             with pytest.raises(ValidationError) as exc_info:
-                Settings()
+                make_settings()
             assert "production 환경에서는 API_KEYS를 반드시 설정해야 합니다" in str(exc_info.value)
         finally:
             if old_val:
@@ -304,7 +308,7 @@ class TestValidateProductionSecurity:
             os.environ["FIREBASE_CREDENTIALS_PATH"] = "/tmp/firebase.json"
             os.environ["OPENAI_API_KEY"] = "sk-test-openai"
             with pytest.raises(ValidationError) as exc_info:
-                Settings()
+                make_settings()
             assert "production 환경에서는 JWT_SECRET을 반드시 설정해야 합니다" in str(
                 exc_info.value
             )
@@ -346,7 +350,7 @@ class TestValidateProductionSecurity:
             os.environ["FIREBASE_CREDENTIALS_PATH"] = "/tmp/firebase.json"
             os.environ["OPENAI_API_KEY"] = "sk-test-openai"
             with pytest.raises(ValidationError) as exc_info:
-                Settings()
+                make_settings()
             assert "JWT_SECRET은 최소 32자 이상" in str(exc_info.value)
         finally:
             if old_api:
@@ -386,7 +390,7 @@ class TestValidateProductionSecurity:
             os.environ["OPENAI_API_KEY"] = "sk-test-openai"
             os.environ.pop("FIREBASE_CREDENTIALS_PATH", None)
             with pytest.raises(ValidationError) as exc_info:
-                Settings()
+                make_settings()
             assert "FIREBASE_CREDENTIALS_PATH" in str(exc_info.value)
         finally:
             if old_api:
@@ -428,7 +432,7 @@ class TestValidateProductionSecurity:
             os.environ.pop("OPENAI_API_KEY", None)
             os.environ.pop("ZAI_API_KEY", None)
             with pytest.raises(ValidationError) as exc_info:
-                Settings(
+                make_settings(
                     environment="production",
                     api_keys=["test-key"],
                     jwt_secret="x" * 48,
@@ -467,7 +471,7 @@ class TestValidateProductionSecurity:
     def test_production_rejects_localhost_cors_origin(self):
         """production 환경에서는 localhost CORS origin을 허용하지 않는다"""
         with pytest.raises(ValidationError) as exc_info:
-            Settings(
+            make_settings(
                 environment="production",
                 api_keys=["test-key"],
                 jwt_secret="x" * 48,
@@ -482,7 +486,7 @@ class TestValidateProductionSecurity:
     def test_production_rejects_insecure_http_cors_origin(self):
         """production 환경에서는 HTTPS CORS origin만 허용한다"""
         with pytest.raises(ValidationError) as exc_info:
-            Settings(
+            make_settings(
                 environment="production",
                 api_keys=["test-key"],
                 jwt_secret="x" * 48,
@@ -502,7 +506,7 @@ class TestValidateProductionSecurity:
             os.environ.pop("API_KEYS", None)
             os.environ["ENVIRONMENT"] = "development"
             # 에러 없이 생성됨
-            settings = Settings()
+            settings = make_settings()
             assert settings.environment == "development"
         finally:
             if old_val:
@@ -520,22 +524,22 @@ class TestProperties:
 
     def test_max_file_size_bytes(self):
         """max_file_size_bytes 속성 (라인 255)"""
-        settings = Settings(max_file_size_mb=500)
+        settings = make_settings(max_file_size_mb=500)
         assert settings.max_file_size_bytes == 500 * 1024 * 1024
 
     def test_max_duration_seconds(self):
         """max_duration_seconds 속성 (라인 259)"""
-        settings = Settings(max_duration_hours=4)
+        settings = make_settings(max_duration_hours=4)
         assert settings.max_duration_seconds == 4 * 3600
 
     def test_chunk_duration_ms(self):
         """chunk_duration_ms 속성 (라인 263)"""
-        settings = Settings(chunk_duration_minutes=30)
+        settings = make_settings(chunk_duration_minutes=30)
         assert settings.chunk_duration_ms == 30 * 60 * 1000
 
     def test_chunk_overlap_ms(self):
         """chunk_overlap_ms 속성 (라인 267)"""
-        settings = Settings(chunk_overlap_seconds=5)
+        settings = make_settings(chunk_overlap_seconds=5)
         assert settings.chunk_overlap_ms == 5 * 1000
 
 
@@ -544,7 +548,7 @@ class TestSettingsIntegration:
 
     def test_default_values(self):
         """기본값 설정 확인"""
-        settings = Settings()
+        settings = make_settings()
         assert settings.environment == "development"
         assert settings.max_file_size_mb == 500
         assert settings.max_concurrent_jobs == 3
@@ -567,7 +571,7 @@ class TestSettingsIntegration:
             os.environ["FIREBASE_CREDENTIALS_PATH"] = "/tmp/firebase.json"
             os.environ["OPENAI_API_KEY"] = "sk-test-openai"
             os.environ["CORS_ALLOW_ORIGINS"] = '["https://app.example.com"]'
-            settings = Settings(max_file_size_mb=1000, max_concurrent_jobs=5)
+            settings = make_settings(max_file_size_mb=1000, max_concurrent_jobs=5)
             assert settings.max_file_size_mb == 1000
             assert settings.max_concurrent_jobs == 5
             assert settings.environment == "production"
@@ -611,7 +615,7 @@ class TestSettingsIntegration:
             os.environ["JWT_SECRET"] = "x" * 48
             os.environ["FIREBASE_CREDENTIALS_PATH"] = "/tmp/firebase.json"
             os.environ["OPENAI_API_KEY"] = "sk-test-openai"
-            settings = Settings(
+            settings = make_settings(
                 environment="production",
                 jwt_secret="x" * 48,
                 firebase_credentials_path="/tmp/firebase.json",
