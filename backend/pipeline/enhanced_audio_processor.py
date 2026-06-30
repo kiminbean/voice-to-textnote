@@ -1,6 +1,6 @@
 """
 고급 오디오 전처리 파이프라인
-- AI 기반 노이즈 제거
+- spectral-gate 기반 노이즈 제거
 - 배치 처리
 - 실시간 전처리 파이프라인
 - 다중 오디오 포맷 지원
@@ -29,9 +29,8 @@ TARGET_SAMPLE_RATE = 16000
 TARGET_CHANNELS = 1
 TARGET_DBFS = -20.0
 
-# AI 노이즈 제거 설정
+# 노이즈 제거 설정
 AI_NOISE_REMOVAL_ENABLED = True
-AI_NOISE_MODEL_PATH = "/models/noise_reduction_model"
 AI_NOISE_THRESHOLD = 0.1  # 노이즈 감지 임계값
 
 # 배치 처리 설정
@@ -90,58 +89,108 @@ class BatchPreprocessResult:
 
 
 class AIModelManager:
-    """AI 노이즈 제거 모델 관리"""
+    """내장 spectral-gate 노이즈 제거기 관리."""
 
     def __init__(self):
         self.model = None
         self.model_loaded = False
 
     async def load_model(self) -> bool:
-        """AI 노이즈 제거 모델 로드"""
+        """외부 모델 의존성 없이 사용할 DSP 노이즈 제거 프로필 초기화."""
         if not AI_NOISE_REMOVAL_ENABLED:
             return False
 
         try:
-            # 실제 AI 모델 로드 (예: RNNoise, SpeechBrain 등)
-            # 여기서는 가상 구현
-            # self.model = load_noise_reduction_model(AI_NOISE_MODEL_PATH)
-            logger.info("AI 노이즈 제거 모델 로드 완료")
+            self.model = {
+                "frame_length": 512,
+                "hop_length": 128,
+                "noise_scale": 1.5,
+                "gain_floor": 0.15,
+            }
+            logger.info("spectral-gate 노이즈 제거기 초기화 완료")
             self.model_loaded = True
             return True
         except Exception as e:  # pragma: no cover
-            logger.error("AI 노이즈 제거 모델 로드 실패", error=str(e))
+            logger.error("노이즈 제거기 초기화 실패", error=str(e))
             return False
 
     def remove_noise(self, audio: np.ndarray) -> np.ndarray:
-        """AI 기반 노이즈 제거"""
+        """Spectral-gate 기반 노이즈 제거"""
         if not self.model_loaded:
             return audio
 
         try:
-            # 실제 노이즈 제거 처리
-            # processed_audio = self.model(audio)
-            # 예시 구현 (실제로는 AI 모델 호출)
-            processed_audio = self._simple_noise_reduction(audio)
-            return processed_audio
+            return self._spectral_gate_noise_reduction(audio)
         except Exception as e:  # pragma: no cover
             logger.error("노이즈 제거 실패", error=str(e))
             return audio
 
     def _simple_noise_reduction(self, audio: np.ndarray) -> np.ndarray:
-        """간단한 노이즈 제거 (실제로는 AI 모델로 교체)"""
-        # 스펙트럼 감쇠 기반 간단한 노이즈 제거
+        """이전 테스트/호출 호환용 래퍼."""
+        return self._spectral_gate_noise_reduction(audio)
+
+    def _spectral_gate_noise_reduction(self, audio: np.ndarray) -> np.ndarray:
+        """Quiet-frame noise profile로 주파수 대역별 잡음을 감쇠한다."""
         if len(audio) == 0:
             return audio
 
-        # 기본 노이즈 감쇠 (실제 AI 모델과 교체 필요)
-        noise_factor = 0.1  # 노이즈 감쇠 정도
-        reduced = audio * (1 - noise_factor)
+        original_dtype = audio.dtype
+        signal = np.asarray(audio, dtype=np.float32).reshape(-1)
+        peak = float(np.max(np.abs(signal))) if signal.size else 0.0
+        if peak == 0.0:
+            return signal.astype(original_dtype, copy=False)
 
-        # 크기 유지
-        if np.max(np.abs(reduced)) > 0:
-            reduced = reduced / np.max(np.abs(reduced))
+        config = self.model or {}
+        frame_length = int(config.get("frame_length", 512))
+        hop_length = int(config.get("hop_length", 128))
+        noise_scale = float(config.get("noise_scale", 1.5))
+        gain_floor = float(config.get("gain_floor", 0.15))
 
-        return reduced.astype(np.float32)
+        if signal.size < frame_length:
+            frame_length = max(32, int(2 ** np.floor(np.log2(max(signal.size, 2)))))
+            hop_length = max(1, frame_length // 4)
+
+        pad = frame_length
+        padded = np.pad(signal, (pad, pad), mode="reflect" if signal.size > 1 else "constant")
+        frame_count = 1 + max(0, (len(padded) - frame_length) // hop_length)
+        window = np.hanning(frame_length).astype(np.float32)
+
+        frames = np.stack(
+            [
+                padded[i * hop_length : i * hop_length + frame_length] * window
+                for i in range(frame_count)
+            ]
+        )
+        spectra = np.fft.rfft(frames, axis=1)
+        magnitudes = np.abs(spectra)
+        phases = np.angle(spectra)
+
+        frame_energy = np.mean(magnitudes, axis=1)
+        quiet_count = max(1, frame_count // 10)
+        quiet_indices = np.argsort(frame_energy)[:quiet_count]
+        noise_profile = np.median(magnitudes[quiet_indices], axis=0)
+
+        gain = (magnitudes - noise_scale * noise_profile) / (magnitudes + 1e-8)
+        gain = np.clip(gain, gain_floor, 1.0)
+        reduced_spectra = magnitudes * gain * np.exp(1j * phases)
+        reduced_frames = np.fft.irfft(reduced_spectra, n=frame_length, axis=1).astype(np.float32)
+
+        output = np.zeros_like(padded, dtype=np.float32)
+        weight = np.zeros_like(padded, dtype=np.float32)
+        for i, frame in enumerate(reduced_frames):
+            start = i * hop_length
+            output[start : start + frame_length] += frame * window
+            weight[start : start + frame_length] += window**2
+
+        valid = weight > 1e-8
+        output[valid] /= weight[valid]
+        output = output[pad : pad + signal.size]
+
+        reduced_peak = float(np.max(np.abs(output))) if output.size else 0.0
+        if reduced_peak > peak:
+            output *= peak / reduced_peak
+
+        return output.astype(original_dtype if np.issubdtype(original_dtype, np.floating) else np.float32)
 
 
 class EnhancedAudioProcessor:
@@ -245,7 +294,7 @@ class EnhancedAudioProcessor:
                 self._apply_preprocessing_pipeline, audio, options
             )
 
-            # AI 노이즈 제거 (비동기)  # pragma: no cover
+            # 노이즈 제거 (비동기)  # pragma: no cover
             if options.ai_noise_removal:
                 audio_array = await asyncio.to_thread(  # pragma: no cover
                     self._audio_to_numpy, processed_audio

@@ -2,6 +2,7 @@
 액션 아이템 관리 서비스
 """
 
+import re
 import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any, Literal
@@ -374,7 +375,7 @@ class ActionItemService:
         avg_actual = sum(actual_hours) / len(actual_hours) if actual_hours else None
         efficiency_ratio = (avg_actual / avg_estimated) if avg_estimated and avg_actual else None
 
-        # 추이 분석 (간단한 구현)
+        # 추이 분석
         trending_status: Literal["improving", "declining", "stable"] = "stable"
         weekly_trend = self._calculate_weekly_completion_trend(items)
         productivity_metrics = self._calculate_productivity_metrics(items)
@@ -447,23 +448,94 @@ class ActionItemService:
 
     def _calculate_weekly_completion_trend(self, items: list[ActionItemModel]) -> list[dict]:
         """주간 완료 추이 계산"""
-        # 간단한 구현 - 실제로는 시간대별로 그룹화
-        return [
-            {"week": 1, "completed": 5, "created": 8},
-            {"week": 2, "completed": 7, "created": 6},
-            {"week": 3, "completed": 6, "created": 9},
-            {"week": 4, "completed": 8, "created": 7},
-        ]
+        now = datetime.now(UTC)
+        trend = []
+        for offset in range(3, -1, -1):
+            week_start = now - timedelta(days=(offset + 1) * 7)
+            week_end = now - timedelta(days=offset * 7)
+            created = 0
+            completed = 0
+            for item in items:
+                created_at = self._as_aware_datetime(getattr(item, "created_at", None))
+                completed_at = self._as_aware_datetime(getattr(item, "completed_at", None))
+                if created_at and week_start <= created_at < week_end:
+                    created += 1
+                if completed_at and week_start <= completed_at < week_end:
+                    completed += 1
+            trend.append(
+                {
+                    "week": 4 - offset,
+                    "start_date": week_start.date().isoformat(),
+                    "end_date": week_end.date().isoformat(),
+                    "completed": completed,
+                    "created": created,
+                }
+            )
+        return trend
 
     def _calculate_productivity_metrics(self, items: list[ActionItemModel]) -> dict[str, float]:
         """생산성 지표 계산"""
-        # 간단한 구현
+        total = len(items)
+        if total == 0:
+            return {
+                "completion_velocity": 0.0,
+                "backlog_ratio": 0.0,
+                "priority_fulfillment": 0.0,
+                "time_accuracy": 0.0,
+            }
+
+        completed_items = [
+            item
+            for item in items
+            if getattr(item, "status", None) in {ActionItemStatus.completed, "completed"}
+        ]
+        backlog_count = sum(
+            1
+            for item in items
+            if getattr(item, "status", None)
+            in {ActionItemStatus.pending, ActionItemStatus.in_progress, "pending", "in_progress"}
+        )
+        high_priority_items = [
+            item
+            for item in items
+            if getattr(item, "priority", None)
+            in {ActionItemPriority.high, ActionItemPriority.critical, "high", "critical"}
+        ]
+        completed_high_priority = [
+            item
+            for item in high_priority_items
+            if getattr(item, "status", None) == ActionItemStatus.completed
+            or getattr(item, "status", None) == "completed"
+        ]
+
+        time_accuracy_values = []
+        for item in completed_items:
+            estimated = getattr(item, "estimated_hours", None)
+            actual = getattr(item, "actual_hours", None)
+            if estimated and actual is not None:
+                time_accuracy_values.append(max(0.0, 1.0 - abs(actual - estimated) / estimated))
+
         return {
-            "completion_velocity": 7.2,  # 주당 완료율
-            "backlog_ratio": 0.3,  # 백로그 비율
-            "priority_fulfillment": 0.85,  # 우선순위 이행률
-            "time_accuracy": 0.92,  # 시간 예측 정확도
+            "completion_velocity": round(len(completed_items) / 4, 2),
+            "backlog_ratio": round(backlog_count / total, 2),
+            "priority_fulfillment": round(
+                len(completed_high_priority) / len(high_priority_items)
+                if high_priority_items
+                else 0.0,
+                2,
+            ),
+            "time_accuracy": round(
+                sum(time_accuracy_values) / len(time_accuracy_values)
+                if time_accuracy_values
+                else 0.0,
+                2,
+            ),
         }
+
+    def _as_aware_datetime(self, value: Any) -> datetime | None:
+        if not isinstance(value, datetime):
+            return None
+        return value if value.tzinfo else value.replace(tzinfo=UTC)
 
     async def extract_action_items_from_meeting(
         self, session: AsyncSession, meeting_id: str
@@ -490,39 +562,95 @@ class ActionItemService:
         if not meeting or not meeting.result_data:
             return []
 
-        # 여기서는 간단한 구현 - 실제로는 NLP를 사용해 액션 아이템 패턴 인식
-        # 예: 액션 아이템 키워드 포함 문장 추출
         segments = meeting.result_data.get("segments", [])
         action_items = []
 
-        action_keywords = [
-            "할 일",
-            "해야 할",
-            "수행해야",
-            "처리해야",
-            "받아야",
-            "해결",
-            "진행",
-            "시작",
-            "완료",
-            "제출",
-            "보고",
-            "검토",
-            "확인",
-        ]
+        explicit_items = meeting.result_data.get("action_items")
+        if isinstance(explicit_items, list):
+            for item in explicit_items:
+                if not isinstance(item, dict):
+                    continue
+                title = str(item.get("title") or item.get("task") or "").strip()
+                if not title:
+                    continue
+                action_items.append(
+                    ActionItemCreate(
+                        title=title[:200],
+                        description=str(item.get("description") or title),
+                        meeting_id=meeting_id,
+                        priority=self._infer_priority(str(item)),
+                        due_date=self._infer_due_date(str(item)),
+                        category="meeting",
+                    )
+                )
+
+        action_pattern = re.compile(
+            r"(해야\s*할|해\s*주세요|해주세요|진행|처리|작성|검토|확인|공유|전달|"
+            r"제출|보고|완료|해결|준비|수행|follow\s*up|action\s*item|todo)",
+            re.IGNORECASE,
+        )
+        seen_descriptions = {item.description for item in action_items if item.description}
 
         for i, segment in enumerate(segments):
-            text = str(segment.get("text", "") or "")
-            if text:
-                # 간단한 키워드 기반 추출
-                if any(keyword in text for keyword in action_keywords):
-                    # 액션 아이템 생성
-                    action_item = ActionItemCreate(
-                        title=f"회의 내용 {i + 1}: {text[:50]}...",
-                        description=text,
-                        meeting_id=meeting_id,
-                        priority=ActionItemPriority.medium,
-                    )
-                    action_items.append(action_item)
+            if not isinstance(segment, dict):
+                continue
+            text = str(segment.get("text", "") or "").strip()
+            if not text or not action_pattern.search(text):
+                continue
+            if text in seen_descriptions:
+                continue
+
+            title = self._build_action_title(text, i)
+            action_item = ActionItemCreate(
+                title=title,
+                description=text,
+                meeting_id=meeting_id,
+                priority=self._infer_priority(text),
+                due_date=self._infer_due_date(text),
+                tags=self._infer_tags(text),
+                category="meeting",
+            )
+            action_items.append(action_item)
+            seen_descriptions.add(text)
 
         return action_items
+
+    def _build_action_title(self, text: str, index: int) -> str:
+        cleaned = re.sub(r"\s+", " ", text).strip(" .。")
+        match = re.search(r"([^.!?。]*?(?:해야\s*할|해주세요|진행|처리|작성|검토|확인|제출|보고|완료|해결|준비)[^.!?。]*)", cleaned)
+        title = match.group(1).strip() if match else cleaned
+        if len(title) > 180:
+            title = f"{title[:177]}..."
+        return title or f"회의 액션 아이템 {index + 1}"
+
+    def _infer_priority(self, text: str) -> ActionItemPriority:
+        lowered = text.lower()
+        if any(keyword in lowered for keyword in ["긴급", "critical", "urgent", "즉시"]):
+            return ActionItemPriority.critical
+        if any(keyword in lowered for keyword in ["중요", "high priority", "우선"]):
+            return ActionItemPriority.high
+        if any(keyword in lowered for keyword in ["낮은", "나중", "low priority"]):
+            return ActionItemPriority.low
+        return ActionItemPriority.medium
+
+    def _infer_due_date(self, text: str) -> datetime | None:
+        now = datetime.now(UTC)
+        if "오늘" in text:
+            return now
+        if "내일" in text:
+            return now + timedelta(days=1)
+        if "이번 주" in text or "이번주" in text:
+            return now + timedelta(days=7)
+        if "다음 주" in text or "다음주" in text:
+            return now + timedelta(days=14)
+        return None
+
+    def _infer_tags(self, text: str) -> list[str]:
+        tags = ["meeting-action"]
+        if any(keyword in text for keyword in ["보고", "공유", "전달"]):
+            tags.append("communication")
+        if any(keyword in text for keyword in ["검토", "확인"]):
+            tags.append("review")
+        if any(keyword in text for keyword in ["작성", "제출", "준비"]):
+            tags.append("deliverable")
+        return tags

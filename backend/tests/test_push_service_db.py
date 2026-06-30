@@ -18,6 +18,22 @@ from backend.services.push_service import get_push_service
 class TestPushServiceDBBacked:
     """REQ-MOBILE-001~006: DB-backed PushService 테스트"""
 
+    @pytest.fixture(autouse=True)
+    def reset_push_service(self, monkeypatch):
+        """로컬 credentials와 싱글톤 상태에 영향받지 않도록 격리."""
+        import backend.services.push_service as push_service_module
+
+        monkeypatch.setattr(push_service_module.settings, "firebase_credentials_path", None)
+        monkeypatch.setattr(push_service_module.settings, "environment", "development")
+        service = push_service_module.get_push_service()
+        service._devices.clear()
+        service._firebase_initialized = False
+        service._is_local_fallback_mode = True
+        yield
+        service._devices.clear()
+        service._firebase_initialized = False
+        service._is_local_fallback_mode = True
+
     @pytest.mark.asyncio
     async def test_register_device_creates_record(self, db_session):
         """DB에 디바이스 토큰 레코드 생성"""
@@ -255,7 +271,7 @@ class TestPushServiceDBBacked:
             body="회의록이 생성되었습니다.",
         )
 
-        # MVP: mock 전송으로 항상 성공
+        # 비프로덕션 local fallback 전송으로 성공 처리
         assert result["success_count"] == 2
         assert result["failure_count"] == 0
 

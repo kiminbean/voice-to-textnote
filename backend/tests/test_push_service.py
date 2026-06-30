@@ -7,6 +7,8 @@ TDD 접근법:
 3. Device API 엔드포인트 테스트
 """
 
+from types import SimpleNamespace
+
 import pytest
 from fastapi import status
 from pydantic import ValidationError
@@ -205,6 +207,22 @@ class TestDeviceListResponse:
 class TestPushService:
     """REQ-MOBILE-004~006: PushService 기능 테스트"""
 
+    @pytest.fixture(autouse=True)
+    def reset_push_service(self, monkeypatch):
+        """로컬 credentials에 영향받지 않도록 fallback 모드로 격리."""
+        import backend.services.push_service as push_service_module
+
+        monkeypatch.setattr(push_service_module.settings, "firebase_credentials_path", None)
+        monkeypatch.setattr(push_service_module.settings, "environment", "development")
+        service = push_service_module.get_push_service()
+        service._devices.clear()
+        service._firebase_initialized = False
+        service._is_local_fallback_mode = True
+        yield
+        service._devices.clear()
+        service._firebase_initialized = False
+        service._is_local_fallback_mode = True
+
     def test_singleton_instance(self):
         """PushService 싱글톤 패턴"""
         from backend.services.push_service import get_push_service
@@ -215,7 +233,7 @@ class TestPushService:
 
     @pytest.mark.asyncio
     async def test_send_push_success(self):
-        """REQ-MOBILE-004: 단일 푸시 전송 성공 (MOCK)"""
+        """REQ-MOBILE-004: 단일 푸시 전송 성공 (local fallback)"""
         from backend.services.push_service import get_push_service
 
         service = get_push_service()
@@ -224,7 +242,7 @@ class TestPushService:
             title="Test Notification",
             body="Test body",
         )
-        assert result is True  # MVP: 항상 성공
+        assert result is True
 
     @pytest.mark.asyncio
     async def test_send_push_with_data(self):
@@ -349,7 +367,7 @@ class TestPushService:
 
     @pytest.mark.asyncio
     async def test_send_push_empty_title(self):
-        """빈 제목으로 푸시 전송 (MVP: 허용됨)"""
+        """빈 제목으로 푸시 전송"""
         from backend.services.push_service import get_push_service
 
         service = get_push_service()
@@ -362,7 +380,7 @@ class TestPushService:
 
     @pytest.mark.asyncio
     async def test_send_push_empty_body(self):
-        """빈 본문으로 푸시 전송 (MVP: 허용됨)"""
+        """빈 본문으로 푸시 전송"""
         from backend.services.push_service import get_push_service
 
         service = get_push_service()
@@ -405,6 +423,27 @@ class TestPushService:
 
         assert result["success_count"] == 1
         assert result["failure_count"] == 0
+
+    def test_collect_invalid_tokens_from_firebase_response(self):
+        """Firebase multicast 실패 응답에서 무효 토큰만 추출"""
+        from backend.services.push_service import get_push_service
+
+        service = get_push_service()
+        response = SimpleNamespace(
+            responses=[
+                SimpleNamespace(success=True, exception=None),
+                SimpleNamespace(
+                    success=False,
+                    exception=SimpleNamespace(code="messaging/registration-token-not-registered"),
+                ),
+                SimpleNamespace(success=False, exception=RuntimeError("temporary unavailable")),
+                SimpleNamespace(success=False, exception=RuntimeError("UNREGISTERED")),
+            ]
+        )
+
+        assert service._collect_invalid_tokens(
+            ["ok", "invalid-1", "retryable", "invalid-2"], response
+        ) == ["invalid-1", "invalid-2"]
 
 
 # ---------------------------------------------------------------------------

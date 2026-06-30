@@ -6,7 +6,8 @@ REQ-MOBILE-005: 멀티캐스트 푸시 알림 전송
 REQ-MOBILE-006: FCM 토큰 무효화 처리
 
 TASK-003: DB-backed 디바이스 관리 (DeviceToken 모델 사용)
-MVP: 인메모리 저장 (dict) 사용, Firebase 프로젝트 생성 필요 없음
+프로덕션에서는 Firebase credentials와 DB-backed DeviceToken을 사용하고,
+개발/테스트 환경에서는 credentials 없이 local fallback 전송 모드를 사용합니다.
 """
 
 import asyncio
@@ -38,25 +39,20 @@ class PushService:
     """
     Firebase Cloud Messaging Push Service
 
-    MVP 구현:
-    - 인메모리 디바이스 저장 (dict)
-    - Firebase Admin SDK mock (실제 전송 X)
-    - 토큰 무효화 시뮬레이션
-
-    프로덕션 이동 시:
-    - 데이터베이스 연동
-    - 실제 Firebase 프로젝트 설정
-    - firebase_admin.credentials 패치 제거
+    - Firebase credentials가 있으면 실제 FCM API로 전송
+    - credentials가 없는 비프로덕션 환경에서는 local fallback 전송 성공으로 처리
+    - DB-backed DeviceToken 등록/해제와 invalid token 비활성화 지원
+    - 레거시 동기 테스트를 위한 인메모리 device store 유지
     """
 
     def __init__(self) -> None:
         """Push Service 초기화"""
         self._devices: dict[str, str] = {}
         self._firebase_initialized = False
-        self._is_mock_mode = True
+        self._is_local_fallback_mode = True
 
     def _ensure_firebase_initialized(self) -> None:
-        """Firebase Admin SDK 초기화 (credentials 있으면 실제, 없으면 MOCK)"""
+        """Firebase Admin SDK 초기화 (credentials 있으면 실제, 없으면 local fallback)"""
         if self._firebase_initialized:
             return
 
@@ -64,8 +60,8 @@ class PushService:
         if not creds_path:
             if settings.environment == "production":
                 raise RuntimeError("Firebase credentials are required in production")
-            logger.info("Firebase Admin SDK 초기화 (MOCK 모드)")
-            self._is_mock_mode = True
+            logger.info("Firebase Admin SDK credentials 없음 - local fallback 모드")
+            self._is_local_fallback_mode = True
             self._firebase_initialized = True
             return
 
@@ -79,13 +75,13 @@ class PushService:
                 logger.info("Firebase Admin SDK 초기화 완료 (프로덕션 모드)")
             else:
                 logger.info("Firebase Admin SDK 이미 초기화됨")
-            self._is_mock_mode = False
+            self._is_local_fallback_mode = False
             self._firebase_initialized = True
         except Exception as e:
             if settings.environment == "production":
                 raise RuntimeError("Firebase initialization failed in production") from e
-            logger.warning(f"Firebase 초기화 실패, MOCK 모드로 폴백: {e}")
-            self._is_mock_mode = True
+            logger.warning(f"Firebase 초기화 실패, local fallback 모드로 폴백: {e}")
+            self._is_local_fallback_mode = True
             self._firebase_initialized = True
 
     async def send_push(
@@ -114,12 +110,13 @@ class PushService:
         self._ensure_firebase_initialized()
 
         try:
-            if self._is_mock_mode:
+            if self._is_local_fallback_mode:
                 logger.info(
-                    f"[MOCK] FCM 전송: title={title}, body={body}, {_fcm_token_log_label(token)}"
+                    f"[LOCAL_FALLBACK] FCM 전송: title={title}, body={body}, "
+                    f"{_fcm_token_log_label(token)}"
                 )
                 if data:
-                    logger.info(f"[MOCK] FCM 데이터: {data}")
+                    logger.info(f"[LOCAL_FALLBACK] FCM 데이터: {data}")
             else:
                 from firebase_admin import messaging
 
@@ -168,9 +165,9 @@ class PushService:
             logger.warning("FCM 멀티캐스트: 빈 토큰 리스트")
             return {"success_count": 0, "failure_count": 0, "invalid_tokens": []}
 
-        if self._is_mock_mode:
-            logger.info(f"[MOCK] FCM 멀티캐스트: {len(tokens)}개 디바이스")
-            logger.info(f"[MOCK] title={title}, body={body}")
+        if self._is_local_fallback_mode:
+            logger.info(f"[LOCAL_FALLBACK] FCM 멀티캐스트: {len(tokens)}개 디바이스")
+            logger.info(f"[LOCAL_FALLBACK] title={title}, body={body}")
             return {
                 "success_count": len(tokens),
                 "failure_count": 0,
@@ -188,8 +185,35 @@ class PushService:
         return {
             "success_count": response.success_count,
             "failure_count": response.failure_count,
-            "invalid_tokens": [],
+            "invalid_tokens": self._collect_invalid_tokens(tokens, response),
         }
+
+    def _collect_invalid_tokens(self, tokens: list[str], response: Any) -> list[str]:
+        """Firebase multicast 응답에서 재시도해도 실패할 등록 토큰을 추출."""
+        invalid_tokens = []
+        responses = getattr(response, "responses", []) or []
+        for token, send_response in zip(tokens, responses, strict=False):
+            if getattr(send_response, "success", False):
+                continue
+            exception = getattr(send_response, "exception", None)
+            if self._is_invalid_token_error(exception):
+                invalid_tokens.append(token)
+        return invalid_tokens
+
+    def _is_invalid_token_error(self, exception: Any) -> bool:
+        if exception is None:
+            return False
+        code = str(getattr(exception, "code", "") or "").lower()
+        text = str(exception).lower()
+        invalid_markers = {
+            "invalid-registration-token",
+            "registration-token-not-registered",
+            "messaging/invalid-registration-token",
+            "messaging/registration-token-not-registered",
+            "unregistered",
+            "invalid_argument",
+        }
+        return any(marker in code or marker in text for marker in invalid_markers)
 
     async def register_device(
         self,
@@ -407,8 +431,10 @@ class PushService:
         payload = data or {}
         payload["meeting_id"] = meeting_id
 
-        # 멀티캐스트 전송
-        return await self.send_multicast(tokens=tokens, title=title, body=body, data=payload)
+        result = await self.send_multicast(tokens=tokens, title=title, body=body, data=payload)
+        for invalid_token in result.get("invalid_tokens", []):
+            await self.invalidate_token(db, invalid_token)
+        return result
 
     def get_all_devices(self) -> dict[str, str]:
         """

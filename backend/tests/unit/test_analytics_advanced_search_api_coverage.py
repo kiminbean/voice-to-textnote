@@ -363,7 +363,19 @@ class TestGetHistoryEndpoint:
                 "filters": None,
                 "result_count": 5,
                 "search_time_ms": 100.0,
+                "created_at": "2026-01-01T00:00:00+00:00",
                 "is_saved": False,
+            }
+        ]
+        mock_svc.get_saved_searches.return_value = [
+            {
+                "id": "saved_1",
+                "name": "저장 검색",
+                "query": "테스트 쿼리",
+                "filters": {},
+                "created_at": "2026-01-01T00:00:00+00:00",
+                "last_used_at": "2026-01-02T00:00:00+00:00",
+                "usage_count": 1,
             }
         ]
 
@@ -379,12 +391,14 @@ class TestGetHistoryEndpoint:
         assert "saved_searches" in data
         assert len(data["history"]) == 1
         assert data["history"][0]["query"] == "테스트 쿼리"
+        assert data["saved_searches"][0]["name"] == "저장 검색"
 
     @pytest.mark.asyncio
     async def test_history_empty(self):
         """빈 검색 기록"""
         mock_svc = AsyncMock()
         mock_svc.get_search_history.return_value = []
+        mock_svc.get_saved_searches.return_value = []
 
         app = _create_app(svc_override=mock_svc)
 
@@ -395,7 +409,7 @@ class TestGetHistoryEndpoint:
         assert resp.status_code == 200
         data = resp.json()
         assert data["history"] == []
-        assert len(data["saved_searches"]) == 2  # 하드코딩 샘플 데이터
+        assert data["saved_searches"] == []
 
     @pytest.mark.asyncio
     async def test_history_generic_exception(self):
@@ -416,6 +430,7 @@ class TestGetHistoryEndpoint:
         """기본 limit=50 동작 확인"""
         mock_svc = AsyncMock()
         mock_svc.get_search_history.return_value = []
+        mock_svc.get_saved_searches.return_value = []
 
         app = _create_app(svc_override=mock_svc)
 
@@ -428,9 +443,20 @@ class TestGetHistoryEndpoint:
 
     @pytest.mark.asyncio
     async def test_history_saved_searches_structure(self):
-        """saved_searches에 샘플 데이터 2개 포함 확인"""
+        """saved_searches가 Redis 저장 데이터로 구성됨"""
         mock_svc = AsyncMock()
         mock_svc.get_search_history.return_value = []
+        mock_svc.get_saved_searches.return_value = [
+            {
+                "id": "saved_real",
+                "name": "실제 저장 검색",
+                "query": "프로젝트",
+                "filters": {"content_types": ["minutes"]},
+                "created_at": "2026-01-01T00:00:00+00:00",
+                "last_used_at": "2026-01-02T00:00:00+00:00",
+                "usage_count": 3,
+            }
+        ]
 
         app = _create_app(svc_override=mock_svc)
 
@@ -440,9 +466,9 @@ class TestGetHistoryEndpoint:
 
         data = resp.json()
         saved = data["saved_searches"]
-        assert len(saved) == 2
-        assert saved[0]["id"] == "saved_1"
-        assert saved[1]["id"] == "saved_2"
+        assert len(saved) == 1
+        assert saved[0]["id"] == "saved_real"
+        assert saved[0]["usage_count"] == 3
 
     @pytest.mark.asyncio
     async def test_history_voice_note_error_propagates(self):
@@ -474,8 +500,18 @@ class TestSaveSearchEndpoint:
     @pytest.mark.asyncio
     async def test_save_search_success(self):
         """검색 저장 성공"""
-        mock_redis = AsyncMock()
-        app = _create_app(redis_override=mock_redis)
+        mock_svc = AsyncMock()
+        mock_svc.save_search.return_value = {
+            "id": "saved_1",
+            "name": "내 검색",
+            "query": "테스트",
+            "filters": {},
+            "created_at": "2026-01-01T00:00:00+00:00",
+            "last_used_at": "2026-01-01T00:00:00+00:00",
+            "usage_count": 1,
+            "search_id": "search_123",
+        }
+        app = _create_app(svc_override=mock_svc)
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -489,16 +525,15 @@ class TestSaveSearchEndpoint:
         assert data["success"] is True
         assert data["saved_search"]["name"] == "내 검색"
         assert data["saved_search"]["search_id"] == "search_123"
-        # Redis에 setex가 호출되었는지 확인
-        assert mock_redis.setex.called
+        mock_svc.save_search.assert_called_once_with(search_id="search_123", name="내 검색")
 
     @pytest.mark.asyncio
     async def test_save_search_exception_returns_500(self):
         """저장 중 예외 발생 시 500"""
-        mock_redis = AsyncMock()
-        mock_redis.setex.side_effect = RuntimeError("Redis 연결 실패")
+        mock_svc = AsyncMock()
+        mock_svc.save_search.side_effect = RuntimeError("Redis 연결 실패")
 
-        app = _create_app(redis_override=mock_redis)
+        app = _create_app(svc_override=mock_svc)
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -510,10 +545,37 @@ class TestSaveSearchEndpoint:
         assert resp.status_code == 500
 
     @pytest.mark.asyncio
+    async def test_save_search_missing_history_returns_404(self):
+        """저장할 검색 기록이 없으면 404"""
+        mock_svc = AsyncMock()
+        mock_svc.save_search.return_value = None
+
+        app = _create_app(svc_override=mock_svc)
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.post(
+                "/api/v1/advanced-search/save-search",
+                params={"search_id": "missing", "name": "내 검색"},
+            )
+
+        assert resp.status_code == 404
+
+    @pytest.mark.asyncio
     async def test_save_search_response_structure(self):
         """저장 응답 구조 확인"""
-        mock_redis = AsyncMock()
-        app = _create_app(redis_override=mock_redis)
+        mock_svc = AsyncMock()
+        mock_svc.save_search.return_value = {
+            "id": "saved_abc",
+            "name": "테스트",
+            "query": "테스트",
+            "filters": {},
+            "created_at": "2026-01-01T00:00:00+00:00",
+            "last_used_at": "2026-01-01T00:00:00+00:00",
+            "usage_count": 1,
+            "search_id": "sid_001",
+        }
+        app = _create_app(svc_override=mock_svc)
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -541,10 +603,9 @@ class TestDeleteHistoryEndpoint:
     @pytest.mark.asyncio
     async def test_delete_success(self):
         """검색 기록 삭제 성공"""
-        mock_redis = AsyncMock()
-        mock_redis.delete.return_value = 1
+        mock_svc = AsyncMock()
 
-        app = _create_app(redis_override=mock_redis)
+        app = _create_app(svc_override=mock_svc)
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -554,15 +615,15 @@ class TestDeleteHistoryEndpoint:
         data = resp.json()
         assert data["success"] is True
         assert "삭제" in data["message"]
-        mock_redis.delete.assert_called_once_with("search_history:hist_123")
+        mock_svc.delete_search_history.assert_called_once_with("hist_123")
 
     @pytest.mark.asyncio
     async def test_delete_exception_returns_500(self):
         """삭제 중 예외 발생 시 500"""
-        mock_redis = AsyncMock()
-        mock_redis.delete.side_effect = RuntimeError("Redis 오류")
+        mock_svc = AsyncMock()
+        mock_svc.delete_search_history.side_effect = RuntimeError("Redis 오류")
 
-        app = _create_app(redis_override=mock_redis)
+        app = _create_app(svc_override=mock_svc)
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -573,14 +634,14 @@ class TestDeleteHistoryEndpoint:
     @pytest.mark.asyncio
     async def test_delete_voice_note_error_propagates(self):
         """VoiceNoteError 발생 시 해당 status_code로 응답"""
-        mock_redis = AsyncMock()
-        mock_redis.delete.side_effect = VoiceNoteError(
+        mock_svc = AsyncMock()
+        mock_svc.delete_search_history.side_effect = VoiceNoteError(
             error_code="FORBIDDEN",
             message="삭제 권한 없음",
             status_code=403,
         )
 
-        app = _create_app(redis_override=mock_redis)
+        app = _create_app(svc_override=mock_svc)
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:

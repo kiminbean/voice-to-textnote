@@ -9,7 +9,7 @@ from typing import Any, cast
 from uuid import uuid4
 
 import redis.asyncio as aioredis
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.db.models import TaskResult
@@ -36,22 +36,11 @@ class AdvancedSearchService:  # pragma: no cover
         """고급 검색 실행"""
         start_time = time.time()
 
-        # 검색 쿼리 생성
+        # 검색 쿼리 생성: DB 컬럼으로 좁힐 수 있는 조건만 먼저 적용한다.
+        # JSON 결과 본문/세그먼트/태그/화자 조건은 DB별 JSON dialect 차이를 피하기 위해
+        # Python에서 동일한 추출 로직으로 필터링한다.
         query = select(TaskResult)
-
-        # 기본 조건: TaskResult의 실제 컬럼만 사용한다.
         search_conditions = []
-
-        # 내용 검색 (간단한 텍스트 검색 - 실제로는 FTS5를 사용해야 함)
-        if request.query:
-            search_conditions.append(
-                or_(
-                    TaskResult.task_id.ilike(f"%{request.query}%"),
-                    TaskResult.task_type.ilike(f"%{request.query}%"),
-                    TaskResult.status.ilike(f"%{request.query}%"),
-                    TaskResult.error_message.ilike(f"%{request.query}%"),
-                )
-            )
 
         # 날짜 필터
         if request.filters.start_date:
@@ -68,25 +57,14 @@ class AdvancedSearchService:  # pragma: no cover
         if search_conditions:
             query = query.where(and_(*search_conditions))
 
-        # 정렬
-        if request.sort_by == "date":
-            order_column = TaskResult.created_at
-        else:  # relevance
-            order_column = TaskResult.created_at  # 기본값
-
-        if request.sort_order == "desc":
-            query = query.order_by(order_column.desc())
-        else:
-            query = query.order_by(order_column.asc())
-
-        # 페이징
-        offset = (request.page - 1) * request.page_size
-        query = query.offset(offset).limit(request.page_size)
-
         # 검색 실행
         result = await db.execute(query)
         task_results = list(result.scalars().all())
 
+        if request.query:
+            task_results = [
+                task for task in task_results if self._matches_query(task, request.query)
+            ]
         if request.filters.speaker_ids:
             speaker_set = set(request.filters.speaker_ids)
             task_results = [
@@ -112,8 +90,7 @@ class AdvancedSearchService:  # pragma: no cover
                 if self._get_word_count(task) <= cast(int, request.filters.max_word_count)
             ]
 
-        # 결과 변환
-        search_results = []
+        all_search_results = []
         for task in task_results:
             search_result = SearchResultItem(
                 id=str(task.id),
@@ -128,24 +105,37 @@ class AdvancedSearchService:  # pragma: no cover
                 relevance_score=self._calculate_relevance(task, request.query),
                 highlights=self._extract_highlights(task, request.query),
             )
-            search_results.append(search_result)
+            all_search_results.append(search_result)
+
+        reverse = request.sort_order == "desc"
+        if request.sort_by == "date":
+            all_search_results.sort(key=lambda item: item.created_at, reverse=reverse)
+        else:
+            all_search_results.sort(
+                key=lambda item: (item.relevance_score, item.created_at),
+                reverse=reverse,
+            )
+
+        # 페이징
+        offset = (request.page - 1) * request.page_size
+        search_results = all_search_results[offset : offset + request.page_size]
+        total_results = len(all_search_results)
+        search_time_ms = (time.time() - start_time) * 1000
 
         # 분석 데이터 생성
-        analytics = await self._generate_analytics(db, request, search_results)
+        analytics = await self._generate_analytics(all_search_results, search_time_ms)
 
         # 페이지네이션 정보
         pagination = {
             "page": request.page,
             "page_size": request.page_size,
-            "total_results": len(search_results),
-            "has_next": len(search_results) == request.page_size,
+            "total_results": total_results,
+            "has_next": offset + request.page_size < total_results,
         }
-
-        search_time_ms = (time.time() - start_time) * 1000
 
         # 검색 기록 저장 (Redis)
         if self.redis_client:
-            await self._save_search_history(request, search_time_ms)
+            await self._save_search_history(request, search_time_ms, total_results)
 
         return search_results, pagination, analytics
 
@@ -166,6 +156,36 @@ class AdvancedSearchService:  # pragma: no cover
     def _get_text(self, task: TaskResult, key: str) -> str:
         value = self._result_data(task).get(key)
         return value if isinstance(value, str) else ""
+
+    def _get_segments_text(self, task: TaskResult) -> str:
+        segments = self._result_data(task).get("segments", [])
+        if not isinstance(segments, list):
+            return ""
+        texts = []
+        for segment in segments:
+            if isinstance(segment, dict):
+                text = segment.get("text")
+                if isinstance(text, str):
+                    texts.append(text)
+        return " ".join(texts)
+
+    def _get_searchable_text(self, task: TaskResult) -> str:
+        parts = [
+            task.task_id,
+            task.task_type,
+            task.status,
+            task.error_message or "",
+            self._get_title(task),
+            self._get_text(task, "summary"),
+            self._get_text(task, "content"),
+            self._get_segments_text(task),
+            " ".join(self._get_tags(task)),
+            " ".join(self._get_speaker_ids(task)),
+        ]
+        return "\n".join(part for part in parts if part)
+
+    def _matches_query(self, task: TaskResult, query: str) -> bool:
+        return query.lower() in self._get_searchable_text(task).lower()
 
     def _get_speaker_ids(self, task: TaskResult) -> list[str]:
         speakers = self._result_data(task).get("speakers", [])
@@ -189,7 +209,11 @@ class AdvancedSearchService:  # pragma: no cover
         value = self._result_data(task).get("word_count")
         if isinstance(value, int):
             return value
-        text = self._get_text(task, "content") or self._get_text(task, "summary")
+        text = (
+            self._get_text(task, "content")
+            or self._get_text(task, "summary")
+            or self._get_segments_text(task)
+        )
         return len(text.split())
 
     def _extract_content_preview(self, task: TaskResult) -> str:
@@ -200,10 +224,13 @@ class AdvancedSearchService:  # pragma: no cover
             return summary[:200] + "..." if len(summary) > 200 else summary
         elif content:
             return content[:200] + "..." if len(content) > 200 else content
+        segments = self._get_segments_text(task)
+        if segments:
+            return segments[:200] + "..." if len(segments) > 200 else segments
         return "내용 없음"
 
     def _calculate_relevance(self, task: TaskResult, query: str) -> float:
-        """관련도 점수 계산 (간단한 구현)"""
+        """검색 대상 전체 텍스트를 기준으로 관련도 점수 계산"""
         score = 0.5  # 기본 점수
 
         query_lower = query.lower()
@@ -213,35 +240,37 @@ class AdvancedSearchService:  # pragma: no cover
         if query_lower in self._get_text(task, "summary").lower():
             score += 0.2
 
+        searchable = self._get_searchable_text(task).lower()
         if query_lower in self._get_text(task, "content").lower():
             score += 0.1
+        elif query_lower in searchable:
+            score += 0.05
 
         return min(score, 1.0)
 
     def _extract_highlights(self, task: TaskResult, query: str) -> list[str]:
-        """하이라이트 추출 (간단한 구현)"""
+        """검색어 주변 문맥 하이라이트 추출"""
         highlights: list[str] = []
         title = self._get_title(task)
         summary = self._get_text(task, "summary")
+        content = self._get_text(task, "content")
+        segments = self._get_segments_text(task)
 
         # 제목에서 하이라이트
         if query.lower() in title.lower():
             highlights.append(title)
 
-        # 요약에서 하이라이트
-        if summary and query.lower() in summary.lower():
-            # 쿼리를 중심으로 앞뒤 50자씩 추출
-            pos = summary.lower().find(query.lower())
-            if pos != -1:
+        for text in [summary, content, segments]:
+            if text and query.lower() in text.lower():
+                pos = text.lower().find(query.lower())
                 start = max(0, pos - 50)
-                end = min(len(summary), pos + len(query) + 50)
-                highlight = summary[start:end]
-                highlights.append(highlight)
+                end = min(len(text), pos + len(query) + 50)
+                highlights.append(text[start:end])
 
         return highlights[:3]  # 최대 3개
 
     async def _generate_analytics(
-        self, db: AsyncSession, request: AdvancedSearchRequest, results: list[SearchResultItem]
+        self, results: list[SearchResultItem], search_time_ms: float
     ) -> SearchAnalytics:
         """검색 분석 생성"""
 
@@ -274,16 +303,11 @@ class AdvancedSearchService:  # pragma: no cover
             sum(result.word_count for result in results) / len(results) if results else 0
         )
 
-        # 검색 트렌드 (간단한 구현)
-        search_trends = [
-            {"period": "last_week", "searches": 150},
-            {"period": "last_month", "searches": 450},
-            {"period": "last_year", "searches": 1200},
-        ]
+        search_trends = await self._get_search_trends()
 
         return SearchAnalytics(
             total_results=len(results),
-            search_time_ms=100.0,  # 실제로는 측정된 시간 사용
+            search_time_ms=search_time_ms,
             distribution_by_type=type_distribution,
             distribution_by_speaker=speaker_distribution,
             popular_tags=popular_tags,
@@ -291,7 +315,48 @@ class AdvancedSearchService:  # pragma: no cover
             search_trends=search_trends,
         )
 
-    async def _save_search_history(self, request: AdvancedSearchRequest, search_time_ms: float):
+    async def _get_search_trends(self) -> list[dict[str, Any]]:
+        if not self.redis_client:
+            return []
+        history = await self.get_search_history(limit=100)
+        now = datetime.now(UTC)
+        windows = [
+            ("last_week", 7),
+            ("last_month", 30),
+            ("last_year", 365),
+        ]
+        trends = []
+        for period, days in windows:
+            since = now.timestamp() - days * 24 * 60 * 60
+            count = 0
+            for item in history:
+                created_at = self._parse_datetime(item.get("created_at"))
+                if created_at and created_at.timestamp() >= since:
+                    count += 1
+            trends.append({"period": period, "searches": count})
+        return trends
+
+    def _parse_datetime(self, value: Any) -> datetime | None:
+        if isinstance(value, datetime):
+            return value if value.tzinfo else value.replace(tzinfo=UTC)
+        if not isinstance(value, str):
+            return None
+        try:
+            parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            return None
+        return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
+
+    def _parse_json_dict(self, data: Any) -> dict[str, Any] | None:
+        try:
+            parsed = json.loads(data)
+        except (TypeError, json.JSONDecodeError, UnicodeDecodeError):
+            return None
+        return parsed if isinstance(parsed, dict) else None
+
+    async def _save_search_history(
+        self, request: AdvancedSearchRequest, search_time_ms: float, result_count: int = 0
+    ):
         """검색 기록 저장"""
         if not self.redis_client:
             return
@@ -304,7 +369,7 @@ class AdvancedSearchService:  # pragma: no cover
             "id": history_id,
             "query": request.query,
             "filters": request.filters.model_dump(mode="json"),
-            "result_count": 0,  # 실제 결과 수는 이후에 업데이트
+            "result_count": result_count,
             "search_time_ms": search_time_ms,
             "created_at": datetime.now(UTC).isoformat(),
             "is_saved": False,
@@ -334,11 +399,74 @@ class AdvancedSearchService:  # pragma: no cover
         for history_id in history_ids:
             data = await self.redis_client.get(f"search_history:{history_id}")
             if data:
-                try:
-                    parsed = json.loads(data)
-                except (TypeError, json.JSONDecodeError, UnicodeDecodeError):
-                    continue
-                if isinstance(parsed, dict):
+                parsed = self._parse_json_dict(data)
+                if parsed:
                     history.append(parsed)
 
         return history
+
+    async def get_search_history_item(self, history_id: str) -> dict[str, Any] | None:
+        """단일 검색 기록 조회"""
+        if not self.redis_client:
+            return None
+        return self._parse_json_dict(await self.redis_client.get(f"search_history:{history_id}"))
+
+    async def get_saved_searches(self, limit: int = 50) -> list[dict[str, Any]]:
+        """저장된 검색 조회"""
+        if not self.redis_client:
+            return []
+        saved_ids = await self.redis_client.lrange("saved_search:recent", 0, limit - 1)
+        saved_searches = []
+        for saved_id in saved_ids:
+            data = await self.redis_client.get(f"saved_search:{saved_id}")
+            parsed = self._parse_json_dict(data)
+            if parsed:
+                saved_searches.append(parsed)
+        return saved_searches
+
+    async def save_search(self, search_id: str, name: str) -> dict[str, Any] | None:
+        """검색 기록을 저장된 검색으로 승격"""
+        if not self.redis_client:
+            return None
+
+        history = await self.get_search_history_item(search_id)
+        if not history:
+            return None
+
+        now = datetime.now(UTC).isoformat()
+        saved_id = f"saved_{uuid4()}"
+        saved_data = {
+            "id": saved_id,
+            "name": name,
+            "query": history.get("query", ""),
+            "filters": history.get("filters") or {},
+            "created_at": now,
+            "last_used_at": now,
+            "usage_count": 1,
+            "search_id": search_id,
+        }
+
+        await self.redis_client.setex(
+            f"saved_search:{saved_id}",
+            90 * 24 * 60 * 60,
+            json.dumps(saved_data, ensure_ascii=False),
+        )
+        await self.redis_client.lpush("saved_search:recent", saved_id)
+        await self.redis_client.ltrim("saved_search:recent", 0, 99)
+
+        history["is_saved"] = True
+        await self.redis_client.setex(
+            f"search_history:{search_id}",
+            30 * 24 * 60 * 60,
+            json.dumps(history, ensure_ascii=False),
+        )
+        return saved_data
+
+    async def delete_search_history(self, history_id: str) -> None:
+        """검색 기록 삭제 및 최근 목록 정리"""
+        if not self.redis_client:
+            return
+        await self.redis_client.delete(f"search_history:{history_id}")
+        lrem = getattr(self.redis_client, "lrem", None)
+        if lrem:
+            await lrem("search_history:recent", 0, history_id)
