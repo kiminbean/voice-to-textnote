@@ -22,6 +22,22 @@
           }
         },
         {
+          "client_id": "546416114080-qtp7j9hh67o6k2ia30ah5al0h7vn9ivl.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.voicetextnote.app",
+            "certificate_hash": "0aacd1bbb6e936763ed7e3d92b8759bd78d911d4"
+          }
+        },
+        {
+          "client_id": "546416114080-lfaelmnfc8elue7hp0saouc7uhf59emj.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.voicetextnote.app",
+            "certificate_hash": "1f84a604d618f517eeac5d6d5ad5ee62b0c0fc66"
+          }
+        },
+        {
           "client_id": "546416114080-rqu4hpn5rdes9dein5r2squenh17q646.apps.googleusercontent.com",
           "client_type": 3
         }
