@@ -487,6 +487,7 @@ final class RunnerUITests: XCTestCase {
         discardRecoveryDialogIfPresent(timeout: 3)
         try ensureGuestHome()
         try openRecordingScreen()
+        dismissPromiseBriefIfPresent()
         tapRecordStartButton()
 
         let alert = waitForSpringboardAlert(timeout: 3)
@@ -701,7 +702,7 @@ final class RunnerUITests: XCTestCase {
             timeout: 2
         ) != nil {
             let coordinate = app.coordinate(
-                withNormalizedOffset: CGVector(dx: 0.5, dy: 0.72)
+                withNormalizedOffset: CGVector(dx: 0.5, dy: 0.88)
             )
             coordinate.tap()
             return true
@@ -721,6 +722,18 @@ final class RunnerUITests: XCTestCase {
             labels: ["중단된 녹음이 있습니다", "이전 녹음 세션"],
             timeout: 1
         )
+    }
+
+    private func dismissPromiseBriefIfPresent() {
+        guard let button = waitForAnyVisibleElement(
+            labels: ["숨기기"],
+            timeout: 2,
+            requireHittable: true
+        ) else {
+            return
+        }
+        button.tap()
+        waitForSeconds(1)
     }
 
     private func waitForRecoveryDialog(timeout: TimeInterval) -> XCUIElement? {

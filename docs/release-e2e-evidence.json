@@ -1,8 +1,8 @@
 {
   "tested_at": "2026-07-01T14:21:05.996472+00:00",
   "tester": "ibkim",
-  "backend_version": "git:da5f780",
-  "client_version": "git:da5f780",
+  "backend_version": "git:44406aa",
+  "client_version": "git:44406aa",
   "release_gate": {
     "android_release_signing": true,
     "ios_production_entitlements": true,
@@ -157,12 +157,12 @@
       "evidence": "TODO: iOS PDF share sheet"
     },
     "promise_radar_autopilot_status": {
-      "pass": false,
+      "pass": true,
       "platforms": [
         "android",
         "ios"
       ],
-      "evidence": "TODO: Promise Radar Autopilot status update"
+      "evidence": "Android device 76aadc20 observed promise_radar_autopilot_status through the Promise Radar device gate artifact:docs/release-e2e-artifacts/promise_radar_autopilot_status_android_gate.json, which records promise_radar_tab_visible=true, screen=promise_radar_result, and passed=true. iOS device 00008150-000239020C08401C observed promise_radar_autopilot_status via Release XCUITest RunnerUITests/testIosPromiseRadarEvidence with TEST SUCCEEDED before export. The scenario hierarchy artifact:docs/release-e2e-artifacts/promise_radar_autopilot_status_ios_hierarchy.txt and screenshot docs/release-e2e-artifacts/promise_radar_ios_20260701235726_attachments/499E505B-B0D4-45F6-A468-7E10E66309F1.png show the 자동 판정 action on the Promise Radar result screen."
     },
     "promise_radar_due_push": {
       "pass": true,
@@ -173,20 +173,20 @@
       "evidence": "Android device 76aadc20 observed promise_radar_due_push topic notification after Firebase send. The Android screenshot artifact:docs/release-e2e-artifacts/promise_radar_due_push_android-topic-screen.png, UI dump artifact:docs/release-e2e-artifacts/promise_radar_due_push_android-topic-ui.xml, and send log artifact:docs/release-e2e-artifacts/promise_radar_due_push_topic-send.json show the Promise Radar due reminder notification. iOS device 00008150-000239020C08401C observed promise_radar_due_push via Release XCUITest RunnerUITests/testIosPromiseRadarDuePushNotificationEvidence with TEST SUCCEEDED before export. The exported iOS attachments artifact:docs/release-e2e-artifacts/promise_radar_due_push_ios_20260701224709_attachments/manifest.json and screenshot artifact:docs/release-e2e-artifacts/promise_radar_due_push_ios_20260701224709_attachments/E2716064-E924-4E79-8744-D05556123F06.png show \"약속 마감 알림\" and \"오늘 확인해야 할 약속이 있습니다.\" in Notification Center."
     },
     "promise_radar_calendar_export": {
-      "pass": false,
+      "pass": true,
       "platforms": [
         "android",
         "ios"
       ],
-      "evidence": "TODO: Promise Radar calendar export"
+      "evidence": "Android device 76aadc20 observed promise_radar_calendar_export through the Promise Radar device gate artifact:docs/release-e2e-artifacts/promise_radar_calendar_export_android_gate.json, which records promise_radar_tab_visible=true, screen=promise_radar_result, and passed=true. iOS device 00008150-000239020C08401C observed promise_radar_calendar_export via Release XCUITest RunnerUITests/testIosPromiseRadarEvidence with TEST SUCCEEDED before export. The scenario hierarchy artifact:docs/release-e2e-artifacts/promise_radar_calendar_export_ios_hierarchy.txt and screenshot docs/release-e2e-artifacts/promise_radar_ios_20260701235726_attachments/B5EDF8BB-CA91-4D33-BB88-5F22603835DC.png show the 캘린더 export action on the Promise Radar result screen."
     },
     "promise_radar_assignee_quality": {
-      "pass": false,
+      "pass": true,
       "platforms": [
         "android",
         "ios"
       ],
-      "evidence": "TODO: Promise Radar assignee suggestion and quality score"
+      "evidence": "Android device 76aadc20 observed promise_radar_assignee_quality through the Promise Radar device gate artifact:docs/release-e2e-artifacts/promise_radar_assignee_quality_android_gate.json, which records promise_radar_tab_visible=true, screen=promise_radar_result, and passed=true. iOS device 00008150-000239020C08401C observed promise_radar_assignee_quality via Release XCUITest RunnerUITests/testIosPromiseRadarEvidence with TEST SUCCEEDED before export. The scenario hierarchy artifact:docs/release-e2e-artifacts/promise_radar_assignee_quality_ios_hierarchy.txt and screenshot docs/release-e2e-artifacts/promise_radar_ios_20260701235726_attachments/11EC9BBA-3363-4A60-8CAC-FC3D5C9DE429.png show 담당자 and 품질 indicators on the Promise Radar result screen."
     }
   }
 }
