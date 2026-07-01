@@ -1,8 +1,8 @@
 {
   "tested_at": "2026-07-01T13:01:24.137182+00:00",
   "tester": "ibkim",
-  "backend_version": "git:51dc041",
-  "client_version": "git:51dc041",
+  "backend_version": "git:8751b33",
+  "client_version": "git:8751b33",
   "release_gate": {
     "android_release_signing": true,
     "ios_production_entitlements": true,
