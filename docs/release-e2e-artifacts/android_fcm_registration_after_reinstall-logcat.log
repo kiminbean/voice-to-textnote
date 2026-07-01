@@ -1,0 +1,917 @@
+--------- beginning of main
+07-01 22:20:17.655 13401 13686 W stagram.androi: JNI RegisterNativeMethods: attempt to register 0 native methods for com.facebook.traffic.nts.providers.background.BackgroundV2TaskSchedulerCommonImpl
+07-01 22:20:17.685  2064  2064 D CompatibilityInfo: mCompatibilityFlags - 0
+07-01 22:20:17.685  2064  2064 D CompatibilityInfo: applicationDensity - 440
+07-01 22:20:17.685  2064  2064 D CompatibilityInfo: applicationScale - 1.0
+--------- beginning of system
+07-01 22:20:17.711  2064  2731 D CompatibilityChangeReporter: Compat change id reported: 135634846; UID 10007; state: DISABLED
+07-01 22:20:17.711  2064  2731 D CompatibilityChangeReporter: Compat change id reported: 177438394; UID 10007; state: DISABLED
+07-01 22:20:17.711  2064  2731 D CompatibilityChangeReporter: Compat change id reported: 135772972; UID 10007; state: DISABLED
+07-01 22:20:17.711  2064  2731 D CompatibilityChangeReporter: Compat change id reported: 135754954; UID 10007; state: ENABLED
+07-01 22:20:17.711  2064  2364 D CompatibilityChangeReporter: Compat change id reported: 143937733; UID 10007; state: ENABLED
+07-01 22:20:17.721  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:17.737  1080  1080 D Zygote  : Forked child process 14399
+07-01 22:20:17.738  2064  2364 D Boost   : hostingType=service, hostingName={com.whatsapp/com.whatsapp.contact.ui.sync.ContactsSyncAdapterService}, callerPackage=android, isSystem=true, isBoostNeeded=false.
+07-01 22:20:17.740  2064  2364 I ActivityManager: Start proc 14399:com.whatsapp/u0a7 for service {com.whatsapp/com.whatsapp.contact.ui.sync.ContactsSyncAdapterService} caller=android
+07-01 22:20:17.753 14398 14398 D ProcessState: Binder ioctl to enable oneway spam detection failed: Invalid argument
+07-01 22:20:17.754  6046  6046 W ThreadPoolForeg: type=1400 audit(0.0:230491): avc: denied { write } for name="traced_producer" dev="tmpfs" ino=923 scontext=u:r:gmscore_app:s0:c512,c768 tcontext=u:object_r:traced_producer_socket:s0 tclass=sock_file permissive=0 app=com.google.android.gms
+07-01 22:20:17.764 14399 14399 I com.whatsapp: Using CollectorTypeCC GC.
+07-01 22:20:17.768  2064  8170 I ActivityManager: Force stopping com.voicetextnote.app appid=10432 user=0: from process:14398
+07-01 22:20:17.770 14399 14399 D ProcessState: Binder ioctl to enable oneway spam detection failed: Invalid argument
+07-01 22:20:17.772  2064  8170 D AutoStartManagerService: prepare force stop p:12186 s: 19
+07-01 22:20:17.772  2064  8170 I Process : Sending signal. PID: 12186 SIG: 19
+07-01 22:20:17.773 14399 14399 I MessageMonitor: Load libmiui_runtime
+07-01 22:20:17.775  2064  2581 I MiuiNetworkPolicy: removeUidState uid = 10432
+07-01 22:20:17.777  2064  8170 I ActivityManager: Killing 12186:com.voicetextnote.app/u0a432 (adj 501): stop com.voicetextnote.app due to from process:14398
+07-01 22:20:17.779  2064  8170 D ProcessRecordInjector: Finishing reporting clean up app record.
+07-01 22:20:17.780 13523 16848 D ProcessObserverV10: onProcessDied:pid = 12186,died-uid=10432
+07-01 22:20:17.783  2064  8170 W ActivityTaskManager: Force removing ActivityRecord{63ef76e u0 com.voicetextnote.app/.MainActivity t145 f}}: app died, no saved state
+07-01 22:20:17.790  2064  2357 W UsageStatsService: Unexpected activity event reported! (com.voicetextnote.app/com.voicetextnote.app.MainActivity event : 23 instanceId : 250055091)
+07-01 22:20:17.794  2064  8170 W InputManager-JNI: Input channel object '215a620 com.voicetextnote.app/com.voicetextnote.app.MainActivity (client)' was disposed without first being removed with the input manager!
+07-01 22:20:17.809  2064  2350 D CompatibilityChangeReporter: Compat change id reported: 158002302; UID 10195; state: ENABLED
+07-01 22:20:17.811  2064  2581 I MiuiNetworkPolicy: updateUidState uid = 10007, uidState = 19
+07-01 22:20:17.814  2064  2350 W ActivityTaskManager: Can't find TaskDisplayArea to determine support for multi window. Task id=145 attached=false
+07-01 22:20:17.814  2064  2350 W ActivityTaskManager: Can't find TaskDisplayArea to determine support for multi window. Task id=145 attached=false
+07-01 22:20:17.823  2064  2365 I libprocessgroup: Successfully killed process cgroup uid 10432 pid 12186 in 44ms
+07-01 22:20:17.827  2064  3400 D CompatibilityInfo: mCompatibilityFlags - 0
+07-01 22:20:17.827  2064  3400 D CompatibilityInfo: applicationDensity - 440
+07-01 22:20:17.827  2064  3400 D CompatibilityInfo: applicationScale - 1.0
+07-01 22:20:17.828  2064  2354 D HeapUsage Monitor: HeapAllocSize : 71MB; monitorSize : 500MB
+07-01 22:20:17.829  3177  3177 D CarrierSvcBindHelper: No carrier app for: 0
+07-01 22:20:17.830  3177  3177 E PhoneInterfaceManager: [PhoneIntfMgr] getCarrierPackageNamesForIntentAndPhone: No UICC
+07-01 22:20:17.830  3177  3177 D CarrierSvcBindHelper: No carrier app for: 1
+07-01 22:20:17.831  2064  2581 I MiuiNetworkPolicy: updateUidState uid = 10007, uidState = 8
+07-01 22:20:17.832  2064  3400 D CompatibilityInfo: mCompatibilityFlags - 0
+07-01 22:20:17.832  2064  3400 D CompatibilityInfo: applicationDensity - 440
+07-01 22:20:17.832  2064  3400 D CompatibilityInfo: applicationScale - 1.0
+07-01 22:20:17.839 14399 14399 D CompatibilityChangeReporter: Compat change id reported: 171979766; UID 10007; state: ENABLED
+07-01 22:20:17.840  6923 20102 W MQSService: CallerName:com.whatsapp,calling Uid:10007
+07-01 22:20:17.841  6923 20102 D MQSService: registerApplicationScoutThread pid = 14399, packageName = com.whatsapp
+07-01 22:20:17.847 14399 14399 D nativeloader: Configuring clns-4 for other apk /system/framework/org.apache.http.legacy.jar. target_sdk_version=36, uses_libraries=ALL, library_path=/data/app/~~U_7PQdmRwMNdS0n_noXDQg==/com.whatsapp-jtPQDAurWQaFvq0eO68oVw==/lib/arm64:/data/app/~~U_7PQdmRwMNdS0n_noXDQg==/com.whatsapp-jtPQDAurWQaFvq0eO68oVw==/base.apk!/lib/arm64-v8a:/data/app/~~U_7PQdmRwMNdS0n_noXDQg==/com.whatsapp-jtPQDAurWQaFvq0eO68oVw==/split_config.arm64_v8a.apk!/lib/arm64-v8a:/data/app/~~U_7PQdmRwMNdS0n_noXDQg==/com.whatsapp-jtPQDAurWQaFvq0eO68oVw==/split_config.xxhdpi.apk!/lib/arm64-v8a:/data/app/~~U_7PQdmRwMNdS0n_noXDQg==/com.whatsapp-jtPQDAurWQaFvq0eO68oVw==/split_i18n_ko.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/com.whatsapp
+07-01 22:20:17.847 14399 14399 D nativeloader: Extending system_exposed_libraries: libvraudio_client.qti.so:libbinauralrenderer_wrapper.qti.so:libhoaeffects.qti.so:libQOC.qti.so:libcamera_algoup_jni.xiaomi.so:libcamera_mianode_jni.xiaomi.so:libupdateprof.qti.so:libthermalclient.qti.so:libQOC.qti.so:libdiag_system.qti.so:libqape.qti.so:libqesdk_ndk_platform.qti.so:liblistenjni.qti.so
+07-01 22:20:17.865  6940  6940 D RegisteredServicesCache:  Reading service state data always from file
+07-01 22:20:17.870  6940  6940 D RegisteredServicesCache: ServiceStateFileVersion=1.0
+07-01 22:20:17.870  6940  6940 E RegisteredServicesCache: Next Tag=services
+07-01 22:20:17.870  6940  6940 D RegisteredServicesCache:  curr component com.google.android.gms/com.google.android.gms.nearby.mediums.nearfieldcommunication.NfcAdvertisingService
+07-01 22:20:17.870  6940  6940 D RegisteredServicesCache:  curr uid 10188
+07-01 22:20:17.870  6940  6940 D RegisteredServicesCache:  curr state 2
+07-01 22:20:17.870  6940  6940 E RegisteredServicesCache: installedServices no uidString
+07-01 22:20:17.870  6940  6940 D RegisteredServicesCache:  curr component com.google.android.gms/com.google.android.gms.fido.fido2.ui.hybrid.NfcEmulationService
+07-01 22:20:17.870  6940  6940 D RegisteredServicesCache:  curr uid 10188
+07-01 22:20:17.870  6940  6940 D RegisteredServicesCache:  curr state 2
+07-01 22:20:17.870  6940  6940 E RegisteredServicesCache: installedServices contains uidString : 10188
+07-01 22:20:17.871  6940  6940 D RegisteredServicesCache:  curr component com.google.android.gms/com.google.android.gms.pay.hce.service.PayHceService
+07-01 22:20:17.871  6940  6940 D RegisteredServicesCache:  curr uid 10188
+07-01 22:20:17.871  6940  6940 D RegisteredServicesCache:  curr state 2
+07-01 22:20:17.871  6940  6940 E RegisteredServicesCache: installedServices contains uidString : 10188
+07-01 22:20:17.871  6940  6940 D RegisteredServicesCache:  curr component com.google.android.gms/com.google.android.gms.dck.service.DckNfcApduService
+07-01 22:20:17.871  6940  6940 D RegisteredServicesCache:  curr uid 10188
+07-01 22:20:17.871  6940  6940 D RegisteredServicesCache:  curr state 2
+07-01 22:20:17.871  6940  6940 E RegisteredServicesCache: installedServices contains uidString : 10188
+07-01 22:20:17.872  6940  6940 E RegisteredServicesCache: 1invalidateCache:WriteServiceStateToFile
+07-01 22:20:17.872  6940  6940 E RegisteredServicesCache:  Writing service state Data Always
+07-01 22:20:17.873  6940  6940 E RegisteredServicesCache: component namecom.google.android.gms/com.google.android.gms.nearby.mediums.nearfieldcommunication.NfcAdvertisingService
+07-01 22:20:17.873  6940  6940 E RegisteredServicesCache: component namecom.google.android.gms/com.google.android.gms.fido.fido2.ui.hybrid.NfcEmulationService
+07-01 22:20:17.873  6940  6940 E RegisteredServicesCache: component namecom.google.android.gms/com.google.android.gms.pay.hce.service.PayHceService
+07-01 22:20:17.873  6940  6940 E RegisteredServicesCache: component namecom.google.android.gms/com.google.android.gms.dck.service.DckNfcApduService
+07-01 22:20:17.876  6940  6940 D RegisteredNfcFServicesCache: Service unchanged, not updating
+07-01 22:20:17.922  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:17.994 13945 13996 D nativeloader: Load /data/app/~~_nYeHfqKDEfWf1MbXMuWag==/com.google.android.googlequicksearchbox-TatK3Kz9eBTrWeYFPPGpiQ==/base.apk!/lib/arm64-v8a/libmappedcountercacheversionjni.so using class loader ns clns-6 (caller=/data/app/~~_nYeHfqKDEfWf1MbXMuWag==/com.google.android.googlequicksearchbox-TatK3Kz9eBTrWeYFPPGpiQ==/base.apk!classes2.dex): ok
+07-01 22:20:18.017  2064  6983 V ActivityManager: Got obituary of 12186:com.voicetextnote.app
+07-01 22:20:18.018  2064  2349 W ActivityManager: setHasOverlayUi called on unknown pid: 12186
+07-01 22:20:18.018  2064  2188 W WindowManager: Cannot find window which accessibility connection is added to
+07-01 22:20:18.019  1281  1281 E BpTransactionCompletedListener: Failed to transact (-32)
+07-01 22:20:18.020  1080  1080 I Zygote  : Process 12186 exited due to signal 9 (Killed)
+07-01 22:20:18.031  2064  2363 D CompatibilityInfo: mCompatibilityFlags - 0
+07-01 22:20:18.031  2064  2363 D CompatibilityInfo: applicationDensity - 440
+07-01 22:20:18.031  2064  2363 D CompatibilityInfo: applicationScale - 1.0
+07-01 22:20:18.071  1674  3067 D BufferPoolAccessor2.0: bufferpool2 0xb400007f1341d828 : 4(32768 size) total buffers - 4(32768 size) used buffers - 15/21 (recycle/alloc) - 6/21 (fetch/transfer)
+07-01 22:20:18.071  1674  3067 D BufferPoolAccessor2.0: evictor expired: 1, evicted: 1
+07-01 22:20:18.123 14399 14399 W com.whatsapp: Failed to find entry 'classes.dex': Entry not found
+07-01 22:20:18.123  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:18.124 14399 14399 W com.whatsapp: Failed to find entry 'classes.dex': Entry not found
+07-01 22:20:18.124 14399 14399 W com.whatsapp: Failed to find entry 'classes.dex': Entry not found
+07-01 22:20:18.125 14399 14399 D nativeloader: Configuring clns-5 for other apk /data/app/~~U_7PQdmRwMNdS0n_noXDQg==/com.whatsapp-jtPQDAurWQaFvq0eO68oVw==/base.apk:/data/app/~~U_7PQdmRwMNdS0n_noXDQg==/com.whatsapp-jtPQDAurWQaFvq0eO68oVw==/split_config.arm64_v8a.apk:/data/app/~~U_7PQdmRwMNdS0n_noXDQg==/com.whatsapp-jtPQDAurWQaFvq0eO68oVw==/split_config.xxhdpi.apk:/data/app/~~U_7PQdmRwMNdS0n_noXDQg==/com.whatsapp-jtPQDAurWQaFvq0eO68oVw==/split_i18n_ko.apk. target_sdk_version=36, uses_libraries=, library_path=/data/app/~~U_7PQdmRwMNdS0n_noXDQg==/com.whatsapp-jtPQDAurWQaFvq0eO68oVw==/lib/arm64:/data/app/~~U_7PQdmRwMNdS0n_noXDQg==/com.whatsapp-jtPQDAurWQaFvq0eO68oVw==/base.apk!/lib/arm64-v8a:/data/app/~~U_7PQdmRwMNdS0n_noXDQg==/com.whatsapp-jtPQDAurWQaFvq0eO68oVw==/split_config.arm64_v8a.apk!/lib/arm64-v8a:/data/app/~~U_7PQdmRwMNdS0n_noXDQg==/com.whatsapp-jtPQDAurWQaFvq0eO68oVw==/split_config.xxhdpi.apk!/lib/arm64-v8a:/data/app/~~U_7PQdmRwMNdS0n_noXDQg==/com.whatsapp-jtPQDAurWQaFvq0eO68oVw==/split_i18n_ko.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/
+07-01 22:20:18.134 14399 14399 I Perf    : Connecting to perf service.
+07-01 22:20:18.142 14399 14399 V GraphicsEnvironment: ANGLE Developer option for 'com.whatsapp' set to: 'default'
+07-01 22:20:18.142 14399 14399 V GraphicsEnvironment: Neither updatable production driver nor prerelease driver is supported.
+07-01 22:20:18.147  2064  3400 I UiModeManager: systemserver package:com.whatsapp null
+07-01 22:20:18.147 14399 14399 I ForceDarkHelperStubImpl: initialize for com.whatsapp , ForceDarkAppConfig: null
+07-01 22:20:18.151 14399 14399 D nativeloader: Load libforcedarkimpl.so using system ns (caller=/system/framework/miui-framework.jar): ok
+07-01 22:20:18.151 14399 14399 D OpenGLRenderer: JNI_OnLoad success
+07-01 22:20:18.151 14399 14399 I MiuiForceDarkConfig: setConfig density:2.750000, mainRule:0, secondaryRule:0, tertiaryRule:0
+07-01 22:20:18.153 14399 14399 D NetworkSecurityConfig: Using Network Security Config from resource (name removed) debugBuild: false
+07-01 22:20:18.155 14399 14399 D NetworkSecurityConfig: Using Network Security Config from resource (name removed) debugBuild: false
+07-01 22:20:18.166 14399 14399 I FirebaseApp: Device unlocked: initializing all Firebase APIs for app [DEFAULT]
+07-01 22:20:18.168 14399 14399 I FirebaseInitProvider: FirebaseApp initialization successful
+07-01 22:20:18.182 14399 14399 I ProcessNameUtil: getMyProcessName
+07-01 22:20:18.182 14399 14399 I ProcessNameUtil: isSecondaryProcess/process name: com.whatsapp/processing time: 0 ms
+07-01 22:20:18.210 14399 14399 W SoLoader: Initializing SoLoader: 0
+07-01 22:20:18.210 14399 14399 I SoLoader: Recording new base apk path: /data/app/~~U_7PQdmRwMNdS0n_noXDQg==/com.whatsapp-jtPQDAurWQaFvq0eO68oVw==/base.apk
+07-01 22:20:18.210 14399 14399 I SoLoader: Previously recorded 0 base apk paths.
+07-01 22:20:18.211 14399 14399 I SoLoader: Preparing SO source: DirectorySoSource[root = /vendor/lib64 flags = 2]
+07-01 22:20:18.211 14399 14399 I SoLoader: Preparing SO source: DirectorySoSource[root = /system_ext/lib64 flags = 2]
+07-01 22:20:18.211 14399 14399 I SoLoader: Preparing SO source: DirectorySoSource[root = /system/lib64 flags = 2]
+07-01 22:20:18.211 14399 14399 I SoLoader: Preparing SO source: DirectApkSoSource[root = [/data/app/~~U_7PQdmRwMNdS0n_noXDQg==/com.whatsapp-jtPQDAurWQaFvq0eO68oVw==/base.apk!/lib/arm64-v8a, /data/app/~~U_7PQdmRwMNdS0n_noXDQg==/com.whatsapp-jtPQDAurWQaFvq0eO68oVw==/split_config.arm64_v8a.apk!/lib/arm64-v8a, /data/app/~~U_7PQdmRwMNdS0n_noXDQg==/com.whatsapp-jtPQDAurWQaFvq0eO68oVw==/split_config.xxhdpi.apk!/lib/arm64-v8a, /data/app/~~U_7PQdmRwMNdS0n_noXDQg==/com.whatsapp-jtPQDAurWQaFvq0eO68oVw==/split_i18n_ko.apk!/lib/arm64-v8a]]
+07-01 22:20:18.221 14399 14399 I SoLoader: Preparing SO source: ApplicationSoSource[DirectorySoSource[root = /data/app/~~U_7PQdmRwMNdS0n_noXDQg==/com.whatsapp-jtPQDAurWQaFvq0eO68oVw==/lib/arm64 flags = 0]]
+07-01 22:20:18.221 14399 14399 W SoLoader: SoLoader initialized: 8
+07-01 22:20:18.230 14399 14399 D nativeloader: Load /data/app/~~U_7PQdmRwMNdS0n_noXDQg==/com.whatsapp-jtPQDAurWQaFvq0eO68oVw==/split_config.arm64_v8a.apk!/lib/arm64-v8a/libsuperpack.so using class loader ns clns-5 (caller=/data/app/~~U_7PQdmRwMNdS0n_noXDQg==/com.whatsapp-jtPQDAurWQaFvq0eO68oVw==/base.apk): ok
+07-01 22:20:18.235 14399 14399 W SoLoader: Loading wa_log on the main thread
+07-01 22:20:18.224 14399 14399 W com.whatsapp: type=1400 audit(0.0:230492): avc: granted { execute } for path="/data/data/com.whatsapp/files/decompressed/libs.spo/libwa_log.so" dev="sda18" ino=231595 scontext=u:r:untrusted_app:s0:c7,c256,c512,c768 tcontext=u:object_r:app_data_file:s0:c7,c256,c512,c768 tclass=file app=com.whatsapp
+07-01 22:20:18.238 14399 14399 D nativeloader: Load /data/data/com.whatsapp/files/decompressed/libs.spo/libwa_log.so using class loader ns clns-5 (caller=/data/app/~~U_7PQdmRwMNdS0n_noXDQg==/com.whatsapp-jtPQDAurWQaFvq0eO68oVw==/base.apk): ok
+07-01 22:20:18.238 14399 14399 W SoLoader: Loading essential on the main thread
+07-01 22:20:18.234 14399 14399 W com.whatsapp: type=1400 audit(0.0:230493): avc: granted { execute } for path="/data/data/com.whatsapp/files/decompressed/libs.spo/libc++_shared.so" dev="sda18" ino=231723 scontext=u:r:untrusted_app:s0:c7,c256,c512,c768 tcontext=u:object_r:app_data_file:s0:c7,c256,c512,c768 tclass=file app=com.whatsapp
+07-01 22:20:18.244 14399 14399 D nativeloader: Load /data/data/com.whatsapp/files/decompressed/libs.spo/libc++_shared.so using class loader ns clns-5 (caller=/data/app/~~U_7PQdmRwMNdS0n_noXDQg==/com.whatsapp-jtPQDAurWQaFvq0eO68oVw==/base.apk): ok
+07-01 22:20:18.234 14399 14399 W com.whatsapp: type=1400 audit(0.0:230494): avc: granted { execute } for path="/data/data/com.whatsapp/files/decompressed/libs.spo/libfbjni.so" dev="sda18" ino=231687 scontext=u:r:untrusted_app:s0:c7,c256,c512,c768 tcontext=u:object_r:app_data_file:s0:c7,c256,c512,c768 tclass=file app=com.whatsapp
+07-01 22:20:18.246 14399 14399 D nativeloader: Load /data/data/com.whatsapp/files/decompressed/libs.spo/libfbjni.so using class loader ns clns-5 (caller=/data/app/~~U_7PQdmRwMNdS0n_noXDQg==/com.whatsapp-jtPQDAurWQaFvq0eO68oVw==/base.apk): ok
+07-01 22:20:18.247 14399 14399 D nativeloader: Load /data/data/com.whatsapp/files/decompressed/libs.spo/libfbsofterror.so using class loader ns clns-5 (caller=/data/app/~~U_7PQdmRwMNdS0n_noXDQg==/com.whatsapp-jtPQDAurWQaFvq0eO68oVw==/base.apk): ok
+07-01 22:20:18.234 14399 14399 W com.whatsapp: type=1400 audit(0.0:230495): avc: granted { execute } for path="/data/data/com.whatsapp/files/decompressed/libs.spo/libfbsofterror.so" dev="sda18" ino=231684 scontext=u:r:untrusted_app:s0:c7,c256,c512,c768 tcontext=u:object_r:app_data_file:s0:c7,c256,c512,c768 tclass=file app=com.whatsapp
+07-01 22:20:18.234 14399 14399 W com.whatsapp: type=1400 audit(0.0:230496): avc: granted { execute } for path="/data/data/com.whatsapp/files/decompressed/libs.spo/libglog.so" dev="sda18" ino=231715 scontext=u:r:untrusted_app:s0:c7,c256,c512,c768 tcontext=u:object_r:app_data_file:s0:c7,c256,c512,c768 tclass=file app=com.whatsapp
+07-01 22:20:18.249 14399 14399 D nativeloader: Load /data/data/com.whatsapp/files/decompressed/libs.spo/libglog.so using class loader ns clns-5 (caller=/data/app/~~U_7PQdmRwMNdS0n_noXDQg==/com.whatsapp-jtPQDAurWQaFvq0eO68oVw==/base.apk): ok
+07-01 22:20:18.234 14399 14399 W com.whatsapp: type=1400 audit(0.0:230497): avc: granted { execute } for path="/data/data/com.whatsapp/files/decompressed/libs.spo/libfb.so" dev="sda18" ino=231683 scontext=u:r:untrusted_app:s0:c7,c256,c512,c768 tcontext=u:object_r:app_data_file:s0:c7,c256,c512,c768 tclass=file app=com.whatsapp
+07-01 22:20:18.251 14399 14399 D nativeloader: Load /data/data/com.whatsapp/files/decompressed/libs.spo/libfb.so using class loader ns clns-5 (caller=/data/app/~~U_7PQdmRwMNdS0n_noXDQg==/com.whatsapp-jtPQDAurWQaFvq0eO68oVw==/base.apk): ok
+07-01 22:20:18.251 14399 14399 W SoLoader: Loading fb on the main thread
+07-01 22:20:18.251 14399 14399 I com.whatsapp: Thread[1,tid=14399,Native,Thread*=0xb400007bf3b42c00,peer=0x732d88f8,"main"] recursive attempt to load library "/data/data/com.whatsapp/files/decompressed/libs.spo/libfb.so"
+07-01 22:20:18.254 14399 14399 D nativeloader: Load /data/data/com.whatsapp/files/decompressed/libs.spo/libessential.so using class loader ns clns-5 (caller=/data/app/~~U_7PQdmRwMNdS0n_noXDQg==/com.whatsapp-jtPQDAurWQaFvq0eO68oVw==/base.apk): ok
+07-01 22:20:18.254 14413 14413 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+07-01 22:20:18.254 14399 14399 I essential-jni: JNI_OnLoad start
+07-01 22:20:18.254 14399 14399 I essential-jni: fbjni lambda running
+07-01 22:20:18.254 14399 14399 I essential-jni: JNI_OnLoad lambda complete
+07-01 22:20:18.255 13945 13956 V ClearcutMetricXmitter: Transmission is done.
+07-01 22:20:18.258 13945 13956 V ClearcutMetricXmitter: Transmission is done.
+07-01 22:20:18.260 14399 14399 I SigquitBasedANRDetector: Function PaletteWriteCrashThreadStacks hooked with result=0
+07-01 22:20:18.261 14399 14399 W SoLoader: Loading rtvip on the main thread
+07-01 22:20:18.262 14399 14399 D nativeloader: Load /data/data/com.whatsapp/files/decompressed/libs.spo/librtvip.so using class loader ns clns-5 (caller=/data/app/~~U_7PQdmRwMNdS0n_noXDQg==/com.whatsapp-jtPQDAurWQaFvq0eO68oVw==/base.apk): ok
+07-01 22:20:18.263 14399 14399 W SoLoader: Loading rtvip on the main thread
+07-01 22:20:18.263 14399 14399 I rtvip   : done
+07-01 22:20:18.263 14399 14399 W SoLoader: Loading vlc on the main thread
+07-01 22:20:18.265 14413 14413 I AndroidRuntime: Using default boot image
+07-01 22:20:18.265 14413 14413 I AndroidRuntime: Leaving lock profiling enabled
+07-01 22:20:18.265 14413 14413 W libc    : Access denied finding property "odsign.verification.success"
+07-01 22:20:18.265 14399 14399 D nativeloader: Load /data/data/com.whatsapp/files/decompressed/libs.spo/libvlc.so using class loader ns clns-5 (caller=/data/app/~~U_7PQdmRwMNdS0n_noXDQg==/com.whatsapp-jtPQDAurWQaFvq0eO68oVw==/base.apk): ok
+07-01 22:20:18.265 14399 14399 W SoLoader: Loading native_utils on the main thread
+07-01 22:20:18.267 14399 14399 D nativeloader: Load /data/data/com.whatsapp/files/decompressed/libs.spo/libnative_utils.so using class loader ns clns-5 (caller=/data/app/~~U_7PQdmRwMNdS0n_noXDQg==/com.whatsapp-jtPQDAurWQaFvq0eO68oVw==/base.apk): ok
+07-01 22:20:18.267 14399 14399 W SoLoader: Loading curve25519 on the main thread
+07-01 22:20:18.268 14413 14413 W app_process: ART APEX data files are untrusted.
+07-01 22:20:18.268 14413 14413 I app_process: Using CollectorTypeCC GC.
+07-01 22:20:18.268 14413 14413 E app_process: Error reading named image component header for /system/framework/boot.art, error: Unable to open file "/system/framework/arm64/boot.art" for reading image header
+07-01 22:20:18.268 14413 14413 E app_process: Could not create image space with image file '/system/framework/boot.art!/apex/com.android.art/etc/boot-image.prof:/system/framework/boot-framework.art!/system/etc/boot-image.prof'. Attempting to fall back to imageless running. Error was: Unable to open file "/system/framework/arm64/boot.art" for reading image header
+07-01 22:20:18.269 14399 14399 D nativeloader: Load /data/data/com.whatsapp/files/decompressed/libs.spo/libcurve25519.so using class loader ns clns-5 (caller=/data/app/~~U_7PQdmRwMNdS0n_noXDQg==/com.whatsapp-jtPQDAurWQaFvq0eO68oVw==/base.apk): ok
+07-01 22:20:18.274  2064  2363 D AutoStartManagerService: prepare force stop p:12186 s: 18
+07-01 22:20:18.274  2064  2363 I Process : Sending signal. PID: 12186 SIG: 18
+07-01 22:20:18.274  2064  2363 W Process : Unable to open /proc/12186/status
+07-01 22:20:18.304  2064  6892 D CompatibilityChangeReporter: Compat change id reported: 135634846; UID 10075; state: DISABLED
+07-01 22:20:18.304  2064  6892 D CompatibilityChangeReporter: Compat change id reported: 177438394; UID 10075; state: DISABLED
+07-01 22:20:18.304  2064  6892 D CompatibilityChangeReporter: Compat change id reported: 135772972; UID 10075; state: DISABLED
+07-01 22:20:18.304  2064  6892 D CompatibilityChangeReporter: Compat change id reported: 135754954; UID 10075; state: ENABLED
+07-01 22:20:18.305  2064  2364 D CompatibilityChangeReporter: Compat change id reported: 143937733; UID 10075; state: ENABLED
+07-01 22:20:18.313 14399 14433 D nativeloader: Load /data/data/com.whatsapp/files/decompressed/libs.spo/libar-bundle3.so using class loader ns clns-5 (caller=/data/app/~~U_7PQdmRwMNdS0n_noXDQg==/com.whatsapp-jtPQDAurWQaFvq0eO68oVw==/base.apk): ok
+07-01 22:20:18.320 14399 14433 D nativeloader: Load /data/data/com.whatsapp/files/decompressed/libs.spo/libfortify.so using class loader ns clns-5 (caller=/data/app/~~U_7PQdmRwMNdS0n_noXDQg==/com.whatsapp-jtPQDAurWQaFvq0eO68oVw==/base.apk): ok
+07-01 22:20:18.323  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:18.326  1080  1080 D Zygote  : Forked child process 14443
+07-01 22:20:18.326  2064  2364 D Boost   : hostingType=content provider, hostingName={com.android.providers.contacts/com.android.providers.contacts.ContactsProvider2}, callerPackage=com.whatsapp, isSystem=false, isBoostNeeded=false.
+07-01 22:20:18.327  2064  2364 I ActivityManager: Start proc 14443:android.process.acore/u0a75 for content provider {com.android.providers.contacts/com.android.providers.contacts.ContactsProvider2} caller=com.whatsapp
+07-01 22:20:18.342 14399 14433 D nativeloader: Load /data/data/com.whatsapp/files/decompressed/libs.spo/libpytorch.so using class loader ns clns-5 (caller=/data/app/~~U_7PQdmRwMNdS0n_noXDQg==/com.whatsapp-jtPQDAurWQaFvq0eO68oVw==/base.apk): ok
+07-01 22:20:18.351 14399 14433 W libc    : Access denied finding property "ro.hardware.chipname"
+07-01 22:20:18.356 14399 14433 D nativeloader: Load /data/data/com.whatsapp/files/decompressed/libs.spo/libexecutorch.so using class loader ns clns-5 (caller=/data/app/~~U_7PQdmRwMNdS0n_noXDQg==/com.whatsapp-jtPQDAurWQaFvq0eO68oVw==/base.apk): ok
+07-01 22:20:18.359 14443 14443 I d.process.acor: Using CollectorTypeCC GC.
+07-01 22:20:18.363 14399 14433 D nativeloader: Load /data/data/com.whatsapp/files/decompressed/libs.spo/libpyspeech.so using class loader ns clns-5 (caller=/data/app/~~U_7PQdmRwMNdS0n_noXDQg==/com.whatsapp-jtPQDAurWQaFvq0eO68oVw==/base.apk): ok
+07-01 22:20:18.367 14443 14443 D ProcessState: Binder ioctl to enable oneway spam detection failed: Invalid argument
+07-01 22:20:18.369 14443 14443 I MessageMonitor: Load libmiui_runtime
+07-01 22:20:18.374 14399 14433 D nativeloader: Load /data/data/com.whatsapp/files/decompressed/libs.spo/libopus_mlow.so using class loader ns clns-5 (caller=/data/app/~~U_7PQdmRwMNdS0n_noXDQg==/com.whatsapp-jtPQDAurWQaFvq0eO68oVw==/base.apk): ok
+07-01 22:20:18.374  2064  6892 D CompatibilityChangeReporter: Compat change id reported: 168419799; UID 10075; state: DISABLED
+07-01 22:20:18.375  2064  6892 D CompatibilityInfo: mCompatibilityFlags - 0
+07-01 22:20:18.375  2064  6892 D CompatibilityInfo: applicationDensity - 440
+07-01 22:20:18.375  2064  6892 D CompatibilityInfo: applicationScale - 1.0
+07-01 22:20:18.378  2064  2581 I MiuiNetworkPolicy: updateUidState uid = 10075, uidState = 8
+07-01 22:20:18.383 14443 14443 D CompatibilityChangeReporter: Compat change id reported: 171979766; UID 10075; state: ENABLED
+07-01 22:20:18.384  6923 20102 W MQSService: CallerName:android.uid.shared:10075,calling Uid:10075
+07-01 22:20:18.384  6923 20102 D MQSService: registerApplicationScoutThread pid = 14443, packageName = android.uid.shared:10075
+07-01 22:20:18.394 14399 14433 D nativeloader: Load /data/data/com.whatsapp/files/decompressed/libs.spo/libar-bundle2.so using class loader ns clns-5 (caller=/data/app/~~U_7PQdmRwMNdS0n_noXDQg==/com.whatsapp-jtPQDAurWQaFvq0eO68oVw==/base.apk): ok
+07-01 22:20:18.400 12916 13015 W Settings: Setting wifi_sleep_policy has moved from android.provider.Settings.System to android.provider.Settings.Global, returning read-only value.
+07-01 22:20:18.401 12916 13015 W Settings: Setting wifi_sleep_policy has moved from android.provider.Settings.System to android.provider.Settings.Global, value is unchanged.
+07-01 22:20:18.402 14399 14433 D nativeloader: Load /data/data/com.whatsapp/files/decompressed/libs.spo/libsimplejni.so using class loader ns clns-5 (caller=/data/app/~~U_7PQdmRwMNdS0n_noXDQg==/com.whatsapp-jtPQDAurWQaFvq0eO68oVw==/base.apk): ok
+07-01 22:20:18.406 14443 14443 D nativeloader: Configuring clns-shared-4 for other apk /system/app/miui/miui.apk. target_sdk_version=31, uses_libraries=ALL, library_path=/system/priv-app/ContactsProvider/lib/arm64:/system/lib64:/system_ext/lib64, permitted_path=/data:/mnt/expand:/data/user/0/com.android.providers.contacts:/system/priv-app/ContactsProvider:/system/lib64:/system_ext/lib64
+07-01 22:20:18.406 14443 14443 D nativeloader: Extending system_exposed_libraries: libvraudio_client.qti.so:libbinauralrenderer_wrapper.qti.so:libhoaeffects.qti.so:libQOC.qti.so:libcamera_algoup_jni.xiaomi.so:libcamera_mianode_jni.xiaomi.so:libupdateprof.qti.so:libthermalclient.qti.so:libQOC.qti.so:libdiag_system.qti.so:libqape.qti.so:libqesdk_ndk_platform.qti.so:liblistenjni.qti.so
+07-01 22:20:18.413 14399 14433 D nativeloader: Load /data/data/com.whatsapp/files/decompressed/libs.spo/libgraphutil.so using class loader ns clns-5 (caller=/data/app/~~U_7PQdmRwMNdS0n_noXDQg==/com.whatsapp-jtPQDAurWQaFvq0eO68oVw==/base.apk): ok
+07-01 22:20:18.416 14443 14443 D nativeloader: Configuring clns-shared-5 for other apk /system/app/miuisystem/miuisystem.apk. target_sdk_version=31, uses_libraries=ALL, library_path=/system/priv-app/ContactsProvider/lib/arm64:/system/lib64:/system_ext/lib64, permitted_path=/data:/mnt/expand:/data/user/0/com.android.providers.contacts:/system/priv-app/ContactsProvider:/system/lib64:/system_ext/lib64
+07-01 22:20:18.416 14443 14443 D nativeloader: Extending system_exposed_libraries: libvraudio_client.qti.so:libbinauralrenderer_wrapper.qti.so:libhoaeffects.qti.so:libQOC.qti.so:libcamera_algoup_jni.xiaomi.so:libcamera_mianode_jni.xiaomi.so:libupdateprof.qti.so:libthermalclient.qti.so:libQOC.qti.so:libdiag_system.qti.so:libqape.qti.so:libqesdk_ndk_platform.qti.so:liblistenjni.qti.so
+07-01 22:20:18.417 14399 14433 D nativeloader: Load /data/data/com.whatsapp/files/decompressed/libs.spo/libgraphstorecerealutil.so using class loader ns clns-5 (caller=/data/app/~~U_7PQdmRwMNdS0n_noXDQg==/com.whatsapp-jtPQDAurWQaFvq0eO68oVw==/base.apk): ok
+07-01 22:20:18.423 14399 14433 D nativeloader: Load /data/data/com.whatsapp/files/decompressed/libs.spo/libxplat_third-party_zstd__zstd.so using class loader ns clns-5 (caller=/data/app/~~U_7PQdmRwMNdS0n_noXDQg==/com.whatsapp-jtPQDAurWQaFvq0eO68oVw==/base.apk): ok
+07-01 22:20:18.436 14443 14443 D nativeloader: Configuring clns-shared-6 for other apk /system/priv-app/RtMiCloudSDK/RtMiCloudSDK.apk. target_sdk_version=31, uses_libraries=ALL, library_path=/system/priv-app/ContactsProvider/lib/arm64:/system/lib64:/system_ext/lib64, permitted_path=/data:/mnt/expand:/data/user/0/com.android.providers.contacts:/system/priv-app/ContactsProvider:/system/lib64:/system_ext/lib64
+07-01 22:20:18.436 14443 14443 D nativeloader: Extending system_exposed_libraries: libvraudio_client.qti.so:libbinauralrenderer_wrapper.qti.so:libhoaeffects.qti.so:libQOC.qti.so:libcamera_algoup_jni.xiaomi.so:libcamera_mianode_jni.xiaomi.so:libupdateprof.qti.so:libthermalclient.qti.so:libQOC.qti.so:libdiag_system.qti.so:libqape.qti.so:libqesdk_ndk_platform.qti.so:liblistenjni.qti.so
+07-01 22:20:18.452 14443 14443 D nativeloader: Configuring clns-shared-7 for other apk /system/framework/javax.obex.jar. target_sdk_version=31, uses_libraries=ALL, library_path=/system/priv-app/ContactsProvider/lib/arm64:/system/lib64:/system_ext/lib64, permitted_path=/data:/mnt/expand:/data/user/0/com.android.providers.contacts:/system/priv-app/ContactsProvider:/system/lib64:/system_ext/lib64
+07-01 22:20:18.453 14443 14443 D nativeloader: Extending system_exposed_libraries: libvraudio_client.qti.so:libbinauralrenderer_wrapper.qti.so:libhoaeffects.qti.so:libQOC.qti.so:libcamera_algoup_jni.xiaomi.so:libcamera_mianode_jni.xiaomi.so:libupdateprof.qti.so:libthermalclient.qti.so:libQOC.qti.so:libdiag_system.qti.so:libqape.qti.so:libqesdk_ndk_platform.qti.so:liblistenjni.qti.so
+07-01 22:20:18.455 14399 14433 D nativeloader: Load /data/data/com.whatsapp/files/decompressed/libs.spo/libwhatsappmerged.so using class loader ns clns-5 (caller=/data/app/~~U_7PQdmRwMNdS0n_noXDQg==/com.whatsapp-jtPQDAurWQaFvq0eO68oVw==/base.apk): ok
+07-01 22:20:18.467 14443 14443 D nativeloader: Configuring clns-shared-8 for other apk /system/framework/org.apache.http.legacy.jar. target_sdk_version=31, uses_libraries=ALL, library_path=/system/priv-app/ContactsProvider/lib/arm64:/system/lib64:/system_ext/lib64, permitted_path=/data:/mnt/expand:/data/user/0/com.android.providers.contacts:/system/priv-app/ContactsProvider:/system/lib64:/system_ext/lib64
+07-01 22:20:18.467 14443 14443 D nativeloader: Extending system_exposed_libraries: libvraudio_client.qti.so:libbinauralrenderer_wrapper.qti.so:libhoaeffects.qti.so:libQOC.qti.so:libcamera_algoup_jni.xiaomi.so:libcamera_mianode_jni.xiaomi.so:libupdateprof.qti.so:libthermalclient.qti.so:libQOC.qti.so:libdiag_system.qti.so:libqape.qti.so:libqesdk_ndk_platform.qti.so:liblistenjni.qti.so
+07-01 22:20:18.492 14399 14433 D nativeloader: Load /data/data/com.whatsapp/files/decompressed/libs.spo/libwhatsapp.so using class loader ns clns-5 (caller=/data/app/~~U_7PQdmRwMNdS0n_noXDQg==/com.whatsapp-jtPQDAurWQaFvq0eO68oVw==/base.apk): ok
+07-01 22:20:18.519 14399 14456 I WhatsAppJni: EnsureThreadAttached: attached current thread to JVM
+07-01 22:20:18.523  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:18.525 14443 14443 D nativeloader: Configuring clns-shared-9 for other apk /system/priv-app/ContactsProvider/ContactsProvider.apk. target_sdk_version=31, uses_libraries=, library_path=/system/priv-app/ContactsProvider/lib/arm64:/system/lib64:/system_ext/lib64, permitted_path=/data:/mnt/expand:/data/user/0/com.android.providers.contacts:/system/priv-app/ContactsProvider:/system/lib64:/system_ext/lib64
+07-01 22:20:18.534 13401 13412 W JavaBinder: BinderProxy is being destroyed but the application did not call unlinkToDeath to unlink all of its death recipients beforehand.  Releasing leaked death recipient: X.0mt
+07-01 22:20:18.548 14399 14461 I WhatsAppJni: EnsureThreadAttached: attached current thread to JVM
+07-01 22:20:18.549 14399 14462 I WhatsAppJni: EnsureThreadAttached: attached current thread to JVM
+07-01 22:20:18.549 14443 14443 I Perf    : Connecting to perf service.
+07-01 22:20:18.556 14443 14443 V GraphicsEnvironment: ANGLE Developer option for 'com.android.providers.contacts' set to: 'default'
+07-01 22:20:18.556 14443 14443 V GraphicsEnvironment: Neither updatable production driver nor prerelease driver is supported.
+07-01 22:20:18.560 14443 14443 I ForceDarkHelperStubImpl: initialize for com.android.providers.contacts , ForceDarkOrigin
+07-01 22:20:18.562 14399 14441 I PlayCore: UID: [10007]  PID: [14399] SplitInstallListenerRegistry : registerListener
+07-01 22:20:18.562 14443 14443 D nativeloader: Load libforcedarkimpl.so using system ns (caller=/system/framework/miui-framework.jar): ok
+07-01 22:20:18.562 14443 14443 D OpenGLRenderer: JNI_OnLoad success
+07-01 22:20:18.563 14443 14443 I MiuiForceDarkConfig: setConfig density:2.750000, mainRule:0, secondaryRule:0, tertiaryRule:0
+07-01 22:20:18.566 14443 14443 D NetworkSecurityConfig: No Network Security Config specified, using platform default
+07-01 22:20:18.571 13401 13412 W JavaBinder: BinderProxy is being destroyed but the application did not call unlinkToDeath to unlink all of its death recipients beforehand.  Releasing leaked death recipient: miui.mqsas.sdk.MQSEventManagerDelegate$1
+07-01 22:20:18.572 13401 13412 I BpBinder: onLastStrongRef automatically unlinking death recipients: <uncached descriptor>
+07-01 22:20:18.572 14443 14443 D NetworkSecurityConfig: No Network Security Config specified, using platform default
+07-01 22:20:18.575 13401 13413 W System  : A resource failed to call ZipFile.close.
+07-01 22:20:18.577 13401 13413 W System  : A resource failed to call close.
+07-01 22:20:18.587 14443 14443 D loading : ContactsProvider2 onCreate uid: 10075 userId:1
+07-01 22:20:18.593 14443 14443 D CrashHandler: init
+07-01 22:20:18.603 14413 14413 D nativeloader: InitDefaultPublicLibraries for_preload=1: libandroid.so:libaaudio.so:libamidi.so:libbinder_ndk.so:libc.so:libcamera2ndk.so:libdl.so:libEGL.so:libGLESv1_CM.so:libGLESv2.so:libGLESv3.so:libicu.so:libicui18n.so:libicuuc.so:libjnigraphics.so:liblog.so:libmediandk.so:libm.so:libnativehelper.so:libnativewindow.so:libOpenMAXAL.so:libOpenSLES.so:libRS.so:libstdc++.so:libsync.so:libvulkan.so:libwebviewchromium_plat_support.so:libz.so
+07-01 22:20:18.605  2064  6892 D ConnectivityService: requestNetwork for uid/pid:10007/14399 activeRequest: null callbackRequest: 25432 [NetworkRequest [ REQUEST id=25433, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10007 RequestorUid: 10007 RequestorPkg: com.whatsapp UnderlyingNetworks: Null] ]] callback flags: 0 order: 2147483647 isUidTracked: false declaredMethods: AVAIL|LOST|UNAVAIL|BLK
+07-01 22:20:18.607  2064  2582 D WifiNetworkFactory: got request NetworkRequest [ REQUEST id=25433, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10007 RequestorUid: 10007 RequestorPkg: com.whatsapp UnderlyingNetworks: Null] ]
+07-01 22:20:18.607  2064  2582 D UntrustedWifiNetworkFactory: got request NetworkRequest [ REQUEST id=25433, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10007 RequestorUid: 10007 RequestorPkg: com.whatsapp UnderlyingNetworks: Null] ]
+07-01 22:20:18.608  2064  2582 D OemPaidWifiNetworkFactory: got request NetworkRequest [ REQUEST id=25433, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10007 RequestorUid: 10007 RequestorPkg: com.whatsapp UnderlyingNetworks: Null] ]
+07-01 22:20:18.609  2064  2594 D ConnectivityService: NetReassign [25433 : null → 122] [c 0] [a 1] [i 3]
+07-01 22:20:18.614 14443 14443 V ContactsTaskScheduler: [ContactsProvider2] Thread[Worker-1,5,main] started.
+07-01 22:20:18.617 14443 14443 I ContactsProvider: ContactsProvider2 is initialized: true
+07-01 22:20:18.619 14443 14473 V ContactsTaskScheduler: [ContactsProvider2] Thread[Worker-1,5,main] dispatching 0
+07-01 22:20:18.621 14399 14458 E msys    : E[ADNSUCTIMH WAJMNSRuntime]WAJContextInitMNSRuntime(446)=>[LogLevel:I] Secondary DNS resolver enabled
+07-01 22:20:18.622 14399 14458 E msys    : E[N WA]_WAJMNSStreamImplMNSTCPStreamCreate(368)=>[LogLevel:I] WAJMNSStream/impl/tcpStreamCreate/MNSStreamRaw/p=0xb400007ac40be500
+07-01 22:20:18.622 14399 14458 E msys    : E[N WA]WAJMNSStreamImplCreate(429)=>[LogLevel:I] WAJMNSStream/impl/create/p=0xb400007ac40be500 (mnsConn=0xb400007ac4115080)
+07-01 22:20:18.627 14399 14458 E msys    : E[N WA]_WAJMNSStreamCreateMnsIpsFromIpAddressStrings(87)=>[LogLevel:I] no ip addresses provided, using DNS resolution
+07-01 22:20:18.627 14399 14458 E msys    : E[N WA]WAJMNSStreamImplConnect(458)=>[LogLevel:I] WAJMNSStream/impl/connect/p=0xb400007ac40be500 (endpoint=g.whatsapp.net:5222)(ipAddressCount=0)
+07-01 22:20:18.627 14399 14458 E msys    : E[N WA]_WAJMNSStreamImplUpdateStreamState(230)=>[LogLevel:I] WAJMNSStream/impl/state-changed/p=0xb400007ac40be500 (initial=>connecting)
+07-01 22:20:18.647 14399 14472 D CompatibilityChangeReporter: Compat change id reported: 160794467; UID 10007; state: ENABLED
+07-01 22:20:18.654 14413 14413 D nativeloader: Load libicu_jni.so using APEX ns com_android_art for caller /apex/com.android.art/javalib/core-oj.jar: ok
+07-01 22:20:18.654 14413 14413 D app_process: Time zone APEX ICU file found: /apex/com.android.tzdata/etc/icu/icu_tzdata.dat
+07-01 22:20:18.654 14413 14413 D app_process: I18n APEX ICU file found: /apex/com.android.i18n/etc/icu/icudt68l.dat
+07-01 22:20:18.656 14413 14413 D nativeloader: Load libjavacore.so using APEX ns com_android_art for caller /apex/com.android.art/javalib/core-oj.jar: ok
+07-01 22:20:18.658 14413 14413 D nativeloader: Load libopenjdk.so using APEX ns com_android_art for caller /apex/com.android.art/javalib/core-oj.jar: ok
+07-01 22:20:18.658 14443 14443 D nativeloader: Configuring clns-shared-10 for other apk /system/priv-app/UserDictionaryProvider/UserDictionaryProvider.apk. target_sdk_version=31, uses_libraries=, library_path=/system/priv-app/UserDictionaryProvider/lib/arm64:/system/lib64:/system_ext/lib64, permitted_path=/data:/mnt/expand:/data/user/0/com.android.providers.userdictionary:/system/priv-app/UserDictionaryProvider:/system/lib64:/system_ext/lib64
+07-01 22:20:18.659 14399 14484 E msys    : E[N WA]_WAJMNSStreamImplOnMNSReady(259)=>[LogLevel:I] WAJMNSStream/impl/callback/onMNSReady/p=0xb400007ac40be500
+07-01 22:20:18.659 14399 14484 E msys    : E[N WA]_WAJMNSStreamImplCreateConnectionReport(194)=>[LogLevel:I] WAJMNSStream/impl/report port=5222, connectedIPVersion=4, resolvedIPAddressCount=1, dnsResolutionStartTimeMS=422235205, dnsResolutionEndTimeMS=422235206, dnsCacheHit=Yes, connectStartTimeMS=422235206, connectEndTimeMS=422235235, proxyConnectStartTimeMS=0, proxyConnectEndTimeMS=0
+07-01 22:20:18.659 14399 14484 E msys    : E[N WA]_WAJMNSStreamImplUpdateStreamState(230)=>[LogLevel:I] WAJMNSStream/impl/state-changed/p=0xb400007ac40be500 (connecting=>connected)
+07-01 22:20:18.661 14399 14484 E msys    : E[N mns]_OnResolverSuccess(359)=>Cache refresh succeeded with system DNS resolver. IP count: 1
+07-01 22:20:18.665 14399 14476 E com.whatsapp: No implementation found for void com.facebook.quicklog.QuickPerformanceLoggerNativeProvider.nativeUpdateQPLInstance() (tried Java_com_facebook_quicklog_QuickPerformanceLoggerNativeProvider_nativeUpdateQPLInstance and Java_com_facebook_quicklog_QuickPerformanceLoggerNativeProvider_nativeUpdateQPLInstance__) - is the library loaded, e.g. System.loadLibrary?
+07-01 22:20:18.669 14399 14476 W QPLProvider: QuickPerformanceLoggerProvider failed to update native QPL instance, native library. This is expected during early app initialization
+07-01 22:20:18.686 14443 14473 D ContactsDatabaseHelper: onOpen: WAL enabled for contacts2.db: true
+07-01 22:20:18.688 14443 14443 D nativeloader: Configuring clns-shared-11 for other apk /system/priv-app/BlockedNumberProvider/BlockedNumberProvider.apk. target_sdk_version=31, uses_libraries=, library_path=/system/priv-app/BlockedNumberProvider/lib/arm64:/system/lib64:/system_ext/lib64, permitted_path=/data:/mnt/expand:/data/user_de/0/com.android.providers.blockednumber:/system/priv-app/BlockedNumberProvider:/system/lib64:/system_ext/lib64
+07-01 22:20:18.690 14413 14413 W app_process: Using default priority map due to SDK version
+07-01 22:20:18.705 14443 14443 I ContactsPerf: VoicemailContentProvider.onCreate start
+07-01 22:20:18.708 14443 14473 D T9      : onContactDatabaseOpened
+07-01 22:20:18.708 14443 14473 D SyncAccountUtils: getSelectionWritableData(): readonly types: ('com.whatsapp','com.google.android.apps.tachyon','com.truecaller.account')
+07-01 22:20:18.708 14399 14476 D nativeloader: Load /data/data/com.whatsapp/files/decompressed/libs.spo/libtigon-ue-reporter.so using class loader ns clns-5 (caller=/data/app/~~U_7PQdmRwMNdS0n_noXDQg==/com.whatsapp-jtPQDAurWQaFvq0eO68oVw==/base.apk): ok
+07-01 22:20:18.709 14443 14443 V ContactsTaskScheduler: [VoicemailContentProvider] Thread[Worker-1,5,main] started.
+07-01 22:20:18.709 14443 14443 I ContactsPerf: VoicemailContentProvider.onCreate finish
+07-01 22:20:18.712 14443 14503 V ContactsTaskScheduler: [VoicemailContentProvider] Thread[Worker-1,5,main] dispatching 0
+07-01 22:20:18.713 14443 14443 V ContactsTaskScheduler: [CallLogProvider] Thread[Worker-1,5,main] started.
+07-01 22:20:18.716  2064  3111 I BatteryService: current mPlugType1current mHealthInfo.batteryLevel100current mHealthInfo.batteryTemperature331
+07-01 22:20:18.718  9629  9918 D ThermalIECHandler: storeDataStyle: thermal_iec_monitor_persistence_data_style_iec_state; startIECTime: -1; IECScreenOffOverPeriodTime: 1308740522
+07-01 22:20:18.718 14443 14505 V ContactsTaskScheduler: [CallLogProvider] Thread[Worker-1,5,main] dispatching 0
+07-01 22:20:18.719  3134  3134 D QtiCarrierConfigHelper: WARNING, no carrier configs on phone Id: 1
+07-01 22:20:18.720  7440  7440 E PowerUtils: getSurfaceTemprature error
+07-01 22:20:18.720  7440  7440 E PowerUtils: java.io.FileNotFoundException: /sys/class/thermal/thermal_message/board_sensor_temp: open failed: ENOENT (No such file or directory)
+07-01 22:20:18.720  7440  7440 E PowerUtils: 	at libcore.io.IoBridge.open(IoBridge.java:574)
+07-01 22:20:18.720  7440  7440 E PowerUtils: 	at java.io.FileInputStream.<init>(FileInputStream.java:179)
+07-01 22:20:18.720  7440  7440 E PowerUtils: 	at java.io.FileInputStream.<init>(FileInputStream.java:133)
+07-01 22:20:18.720  7440  7440 E PowerUtils: 	at java.io.FileReader.<init>(FileReader.java:60)
+07-01 22:20:18.720  7440  7440 E PowerUtils: 	at hd.w.A(Unknown Source:11)
+07-01 22:20:18.720  7440  7440 E PowerUtils: 	at yc.o.u(Unknown Source:32)
+07-01 22:20:18.720  7440  7440 E PowerUtils: 	at yc.o$b.onReceive(Unknown Source:14)
+07-01 22:20:18.720  7440  7440 E PowerUtils: 	at android.app.LoadedApk$ReceiverDispatcher$Args.lambda$getRunnable$0$LoadedApk$ReceiverDispatcher$Args(LoadedApk.java:1694)
+07-01 22:20:18.720  7440  7440 E PowerUtils: 	at android.app.LoadedApk$ReceiverDispatcher$Args$$ExternalSyntheticLambda0.run(Unknown Source:2)
+07-01 22:20:18.720  7440  7440 E PowerUtils: 	at android.os.Handler.handleCallback(Handler.java:938)
+07-01 22:20:18.720  7440  7440 E PowerUtils: 	at android.os.Handler.dispatchMessage(Handler.java:99)
+07-01 22:20:18.720  7440  7440 E PowerUtils: 	at android.os.Looper.loopOnce(Looper.java:210)
+07-01 22:20:18.720  7440  7440 E PowerUtils: 	at android.os.Looper.loop(Looper.java:299)
+07-01 22:20:18.720  7440  7440 E PowerUtils: 	at android.app.ActivityThread.main(ActivityThread.java:8319)
+07-01 22:20:18.720  7440  7440 E PowerUtils: 	at java.lang.reflect.Method.invoke(Native Method)
+07-01 22:20:18.720  7440  7440 E PowerUtils: 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:556)
+07-01 22:20:18.720  7440  7440 E PowerUtils: 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1038)
+07-01 22:20:18.720  7440  7440 E PowerUtils: Caused by: android.system.ErrnoException: open failed: ENOENT (No such file or directory)
+07-01 22:20:18.720  7440  7440 E PowerUtils: 	at libcore.io.Linux.open(Native Method)
+07-01 22:20:18.720  7440  7440 E PowerUtils: 	at libcore.io.ForwardingOs.open(ForwardingOs.java:574)
+07-01 22:20:18.720  7440  7440 E PowerUtils: 	at libcore.io.BlockGuardOs.open(BlockGuardOs.java:274)
+07-01 22:20:18.720  7440  7440 E PowerUtils: 	at libcore.io.ForwardingOs.open(ForwardingOs.java:574)
+07-01 22:20:18.720  7440  7440 E PowerUtils: 	at android.app.ActivityThread$AndroidOs.open(ActivityThread.java:8189)
+07-01 22:20:18.720  7440  7440 E PowerUtils: 	at libcore.io.IoBridge.open(IoBridge.java:560)
+07-01 22:20:18.720  7440  7440 E PowerUtils: 	... 16 more
+07-01 22:20:18.722  9629  9742 D PowerKeeper.Thermal: mBatteryTemperature: 33
+07-01 22:20:18.722  9629  9854 D PowerCheckerService: onBatteryChanged, mBatteryLevel = 100, status = 5, level = 100, plug = 1, scale = 100
+07-01 22:20:18.723  7440  7440 I PowerSaveService: onReceive: android.intent.action.BATTERY_CHANGED
+07-01 22:20:18.723  7440  7440 I PowerNoticeUI: handleBatteryChanged oldPlugType 1 mPlugType 1 oldBatteryLevel 100 mBatteryLevel 100 temperature 331
+07-01 22:20:18.723 14399 14476 W SoLoader: SoLoader already initialized
+07-01 22:20:18.723  3167  3167 V DeviceStatisticsService: chargerType=1 batteryLevel=100 totalBatteryCapacity=4975400
+07-01 22:20:18.723  7440  7440 I ChargerBatteryIntelligenceReceiver: onBatteryChanged temperature：33,plugType:1
+07-01 22:20:18.724  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:18.725 14443 14505 D FbeUtils: isFbeEnabled(): true
+07-01 22:20:18.726 14443 14443 V ContactsTaskScheduler: [ShadowCallLogProvider] Thread[Worker-1,5,main] started.
+07-01 22:20:18.726 14443 14506 V ContactsTaskScheduler: [ShadowCallLogProvider] Thread[Worker-1,5,main] dispatching 0
+07-01 22:20:18.726 14443 14506 V ContactsTaskScheduler: [ShadowCallLogProvider] Thread[Worker-1,5,main] dispatching end 0
+07-01 22:20:18.729 14443 14443 V ExtraCallsProvider: registerAccountListener
+07-01 22:20:18.732 14443 14503 D CallLogDatabaseHelper: onOpen: WAL enabled for calllog.db: true
+07-01 22:20:18.733 14443 14503 D T9      : onCallsDatabaseOpened
+07-01 22:20:18.756 14443 14503 V ContactsTaskScheduler: [VoicemailContentProvider] Thread[Worker-1,5,main] dispatching end 0
+07-01 22:20:18.757 14399 14476 D nativeloader: Load /data/data/com.whatsapp/files/decompressed/libs.spo/libfbsocketthreadlocalscope.so using class loader ns clns-5 (caller=/data/app/~~U_7PQdmRwMNdS0n_noXDQg==/com.whatsapp-jtPQDAurWQaFvq0eO68oVw==/base.apk): ok
+07-01 22:20:18.764 14399 14476 D nativeloader: Load /data/data/com.whatsapp/files/decompressed/libs.spo/libfb_sqlite_3500300.so using class loader ns clns-5 (caller=/data/app/~~U_7PQdmRwMNdS0n_noXDQg==/com.whatsapp-jtPQDAurWQaFvq0eO68oVw==/base.apk): ok
+07-01 22:20:18.769 14443 14443 D T9Provider: onCreate: pid=14443 thread=Thread[main,5,main] calls=null
+07-01 22:20:18.770 14443 14443 V ContactsTaskScheduler: [T9Provider] Thread[Worker-1,5,main] started.
+07-01 22:20:18.770 14443 14510 V ContactsTaskScheduler: [T9Provider] Thread[Worker-1,5,main] dispatching 0
+07-01 22:20:18.770 14443 14510 D T9Provider: initialize
+07-01 22:20:18.770 14443 14510 D T9Provider: initialize: wait for load from shadow...
+07-01 22:20:18.772 14399 14476 D nativeloader: Load /data/data/com.whatsapp/files/decompressed/libs.spo/libffsingletonmerged.so using class loader ns clns-5 (caller=/data/app/~~U_7PQdmRwMNdS0n_noXDQg==/com.whatsapp-jtPQDAurWQaFvq0eO68oVw==/base.apk): ok
+07-01 22:20:18.780 14443 14505 D CallLogDatabaseHelper: onOpen: WAL enabled for calllog_shadow.db: true
+07-01 22:20:18.785 14443 14505 D T9Provider: releaseLoadLatch: release load latch
+07-01 22:20:18.785 14443 14510 D T9Provider: start load
+07-01 22:20:18.786 14443 14510 D T9      : T9Depod load() size 0
+07-01 22:20:18.789 14443 14505 I CallLogProvider: CallLog delete: CPID=14443, CallingPackage = com.android.providers.contacts User=0
+07-01 22:20:18.792 14443 14505 I CallLogProvider: Syncing call composer pics -- source user=0, isShadow=true, forAllUser=false
+07-01 22:20:18.793 14443 14505 I CallLogProvider: Fetching list of Uris to sync
+07-01 22:20:18.794 14443 14505 I CallLogProvider: Will sync following Uris:[]
+07-01 22:20:18.794 14443 14505 I CallLogProvider: Syncing call composer pics -- got []
+07-01 22:20:18.794 14443 14505 V ContactsTaskScheduler: [CallLogProvider] Thread[Worker-1,5,main] dispatching end 0
+07-01 22:20:18.803 14443 14473 I ContactLocale: AddressBook Labels [[ko_KR]]: […, ㄱ, ㄴ, ㄷ, ㄹ, ㅁ, ㅂ, ㅅ, ㅇ, ㅈ, ㅊ, ㅋ, ㅌ, ㅍ, ㅎ, …, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z, Α, Β, Γ, Δ, Ε, Ζ, Η, Θ, Ι, Κ, Λ, Μ, Ν, Ξ, Ο, Π, Ρ, Σ, Τ, Υ, Φ, Χ, Ψ, Ω, …, А, Б, В, Г, Д, Ђ, Е, Є, Ж, З, И, І, Й, Ј, К, Л, Љ, М, Н, Њ, О, П, Р, С, Т, Ћ, У, Ф, Х, Ц, Ч, Џ, Ш, Щ, Ю, Я, …, א, ב, ג, ד, ה, ו, ז, ח, ט, י, כ, ל, מ, נ, ס, ע, פ, צ, ק, ר, ש, ת, …, ا, ب, ت, ث, ج, ح, خ, د, ذ, ر, ز, س, ش, ص, ض, ط, ظ, ع, غ, ف, ق, ك, ل, م, ن, ه, و, ي, …, ก, ข, ฃ, ค, ฅ, ฆ, ง, จ, ฉ, ช, ซ, ฌ, ญ, ฎ, ฏ, ฐ, ฑ, ฒ, ณ, ด, ต, ถ, ท, ธ, น, บ, ป, ผ, ฝ, พ, ฟ, ภ, ม, ย, ร, ฤ, ล, ฦ, ว, ศ, ษ, ส, ห, ฬ, อ, ฮ, …, あ, か, さ, た, な, は, ま, や, ら, わ, #, …]
+07-01 22:20:18.821 14443 14510 D T9CallLogDepot: updateFirewallItem()
+07-01 22:20:18.831 14443 14473 D ContactsDatabaseHelper: onOpen: WAL enabled for profile.db: false
+07-01 22:20:18.841  3177  3196 D TelephonyProvider: Using old permission behavior for telephony provider compat
+07-01 22:20:18.860  3177  3196 D TelephonyProvider: Using old permission behavior for telephony provider compat
+07-01 22:20:18.866 14443 14510 D T9Provider: [loadT9] load 81 ms
+07-01 22:20:18.866 14443 14510 V ContactsTaskScheduler: [T9Provider] Thread[Worker-1,5,main] dispatching end 0
+07-01 22:20:18.868 14443 14473 V ContactsTaskScheduler: [ContactsProvider2] Thread[Worker-1,5,main] dispatching end 0
+07-01 22:20:18.868 14443 14473 V ContactsTaskScheduler: [ContactsProvider2] Thread[Worker-1,5,main] dispatching 3
+07-01 22:20:18.868 14443 14473 D loading : addCurProviderIfNecessary return true: 1
+07-01 22:20:18.886 14443 14473 D ContactDirectoryManager: getDirectoryProviderPackages,pckageName:com.google.android.gm
+07-01 22:20:18.886 14443 14473 D ContactDirectoryManager: getDirectoryProviderPackages,pckageName:com.google.android.contacts
+07-01 22:20:18.886 14443 14473 D ContactDirectoryManager: getDirectoryProviderPackages,pckageName:com.google.android.gms
+07-01 22:20:18.886 14443 14473 D ContactDirectoryManager: getDirectoryProviderPackages,pckageName:com.google.android.contacts
+07-01 22:20:18.895 14443 14473 D SyncAccountUtils: queryReadonlyAccountTypes: checking package org.thoughtcrime.securesms, account type org.thoughtcrime.securesms, parser android.content.res.XmlBlock$Parser@230dbbe
+07-01 22:20:18.908 14399 14496 E msys    : E[N mns:TigonMNS]_OnResolverSuccess(359)=>Cache refresh succeeded with system DNS resolver. IP count: 1
+07-01 22:20:18.920 14413 14413 D ProcessState: Binder ioctl to enable oneway spam detection failed: Invalid argument
+07-01 22:20:18.920 14413 14413 D AndroidRuntime: Calling main entry com.android.commands.monkey.Monkey
+07-01 22:20:18.924  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:18.926 14413 14413 W Monkey  : args: [-p, com.voicetextnote.app, -c, android.intent.category.LAUNCHER, 1]
+07-01 22:20:18.930 14443 14473 D SyncAccountUtils: queryReadonlyAccountTypes: checking package com.google.android.gms, account type com.google, parser android.content.res.XmlBlock$Parser@852836c
+07-01 22:20:18.938 14413 14413 W Monkey  :  arg: "-p"
+07-01 22:20:18.938 14413 14413 W Monkey  :  arg: "com.voicetextnote.app"
+07-01 22:20:18.938 14413 14413 W Monkey  :  arg: "-c"
+07-01 22:20:18.938 14413 14413 W Monkey  :  arg: "android.intent.category.LAUNCHER"
+07-01 22:20:18.938 14413 14413 W Monkey  :  arg: "1"
+07-01 22:20:18.938 14413 14413 W Monkey  : data="com.voicetextnote.app"
+07-01 22:20:18.939 14413 14413 W Monkey  : data="android.intent.category.LAUNCHER"
+07-01 22:20:18.940 14443 14473 D SyncAccountUtils: queryReadonlyAccountTypes: checking package org.telegram.messenger, account type org.telegram.messenger, parser android.content.res.XmlBlock$Parser@31af5ca
+07-01 22:20:18.940  2064  2188 D CompatibilityInfo: mCompatibilityFlags - 0
+07-01 22:20:18.940  2064  2188 D CompatibilityInfo: applicationDensity - 440
+07-01 22:20:18.940  2064  2188 D CompatibilityInfo: applicationScale - 1.0
+07-01 22:20:18.945  2064  6892 D CompatibilityChangeReporter: Compat change id reported: 171306433; UID 10007; state: ENABLED
+07-01 22:20:18.948 14443 14473 D SyncAccountUtils: queryReadonlyAccountTypes: checking package com.whatsapp, account type com.whatsapp, parser android.content.res.XmlBlock$Parser@f9a6a58
+07-01 22:20:18.950 14443 14473 D SyncAccountUtils: queryReadonlyAccountTypes: checking package com.google.android.gm, account type com.google.android.gm.exchange, parser null
+07-01 22:20:18.951 14443 14473 D SyncAccountUtils: queryReadonlyAccountTypes: checking package com.xiaomi.account, account type com.xiaomi, parser null
+07-01 22:20:18.951 14443 14473 D SyncAccountUtils: queryReadonlyAccountTypes: [ALL] org.thoughtcrime.securesms, com.google, org.telegram.messenger, com.whatsapp
+07-01 22:20:18.951 14443 14473 D SyncAccountUtils: queryReadonlyAccountTypes: [FINAL] org.thoughtcrime.securesms, org.telegram.messenger, com.whatsapp
+07-01 22:20:18.951 14443 14473 V ContactsTaskScheduler: [ContactsProvider2] Thread[Worker-1,5,main] dispatching end 3
+07-01 22:20:18.951 14443 14473 V ContactsTaskScheduler: [ContactsProvider2] Thread[Worker-1,5,main] dispatching 4
+07-01 22:20:18.952 14443 14473 V ContactsTaskScheduler: [ContactsProvider2] Thread[Worker-1,5,main] dispatching end 4
+07-01 22:20:18.952 14443 14473 V ContactsTaskScheduler: [ContactsProvider2] Thread[Worker-1,5,main] dispatching 5
+07-01 22:20:18.953 14443 14473 V ContactsTaskScheduler: [ContactsProvider2] Thread[Worker-1,5,main] dispatching end 5
+07-01 22:20:18.953 14443 14473 V ContactsTaskScheduler: [ContactsProvider2] Thread[Worker-1,5,main] dispatching 6
+07-01 22:20:18.953 14443 14473 V ContactsTaskScheduler: [ContactsProvider2] Thread[Worker-1,5,main] dispatching end 6
+07-01 22:20:18.953 14443 14473 V ContactsTaskScheduler: [ContactsProvider2] Thread[Worker-1,5,main] dispatching 7
+07-01 22:20:18.953 14443 14473 V ContactsTaskScheduler: [ContactsProvider2] Thread[Worker-1,5,main] dispatching end 7
+07-01 22:20:18.953 14443 14473 V ContactsTaskScheduler: [ContactsProvider2] Thread[Worker-1,5,main] dispatching 1
+07-01 22:20:18.953 14443 14473 V ContactsTaskScheduler: [ContactsProvider2] Thread[Worker-1,5,main] dispatching end 1
+07-01 22:20:18.953 14443 14473 V ContactsTaskScheduler: [ContactsProvider2] Thread[Worker-1,5,main] dispatching 10
+07-01 22:20:18.960 14443 14473 V ContactsTaskScheduler: [ContactsProvider2] Thread[Worker-1,5,main] dispatching end 10
+07-01 22:20:18.960 14443 14473 V ContactsTaskScheduler: [ContactsProvider2] Thread[Worker-1,5,main] dispatching 11
+07-01 22:20:18.962 14443 14473 V ContactsTaskScheduler: [ContactsProvider2] Thread[Worker-1,5,main] dispatching end 11
+07-01 22:20:18.962 14443 14473 V ContactsTaskScheduler: [ContactsProvider2] Thread[Worker-1,5,main] dispatching 101
+07-01 22:20:18.962 14443 14473 D MiuiContactsProvider: rebuildPhoneLookupMinMatch: isMTK = false
+07-01 22:20:18.962 14443 14473 V ContactsTaskScheduler: [ContactsProvider2] Thread[Worker-1,5,main] dispatching end 101
+07-01 22:20:19.078  2064  2363 D CompatibilityInfo: mCompatibilityFlags - 0
+07-01 22:20:19.078  2064  2363 D CompatibilityInfo: applicationDensity - 440
+07-01 22:20:19.078  2064  2363 D CompatibilityInfo: applicationScale - 1.0
+07-01 22:20:19.088  2064  2363 W BroadcastQueue: Skipping deliver [background] BroadcastRecord{c143638 u-1 android.net.conn.CONNECTIVITY_CHANGE} to ReceiverList{4705611 14413 (unknown name)/2000/u-1 remote:c8226aa}: process gone or crashing
+07-01 22:20:19.114  2064  6892 I ActivityTaskManager: START u0 {act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] flg=0x10200000 cmp=com.voicetextnote.app/.MainActivity} from uid 2000 from pid 14413 callingPackage com.android.shell
+07-01 22:20:19.121 14443 14454 I ContactsProvider: Contacts query: CPID=14399, CallingPackage = com.whatsapp User=0
+07-01 22:20:19.121  1239  1327 E ANDR-PERF-LM: MetaMeter: handleAsync() 166: AdaptLaunch Invalid Async
+07-01 22:20:19.122  1239  4241 E ANDR-PERF-LM: ThreadHelper: thread_callback() 145: More than one pending updates!!! This should not happen. MeterMgr should avoid this case.
+07-01 22:20:19.122  1239  1327 E ANDR-PERF-LM: MetaMeter: handleAsync() 166: AdaptLaunch Invalid Async
+07-01 22:20:19.124  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:19.139  2064  6892 E ANDR-PERF-JNI: com_qualcomm_qtiperformance_native_perf_io_prefetch_start
+07-01 22:20:19.150  2064  6892 W ActivityTaskManager: Can't find TaskDisplayArea to determine support for multi window. Task id=146 attached=false
+07-01 22:20:19.151  2064  6892 V ActivityTaskManager: onConfigurationChanged overrideWindowingMode = 0 prevWindowingMode = 0 isEnterFreeformMode = false isEnterFreeformMode = false isOutFreeformMode = false alreadySetFreeformBounds = false
+07-01 22:20:19.152  1235  4225 E ANDR-IOP: io prefetch is disabled
+07-01 22:20:19.159  2064  6892 D CompatibilityChangeReporter: Compat change id reported: 174042980; UID 10432; state: DISABLED
+07-01 22:20:19.160  2064  6892 D CompatibilityChangeReporter: Compat change id reported: 184838306; UID 10432; state: DISABLED
+07-01 22:20:19.161  2064  6892 D CompatibilityChangeReporter: Compat change id reported: 185004937; UID 10432; state: DISABLED
+07-01 22:20:19.162  2064  2581 I MiuiNetworkPolicy: updateUidState uid = 10075, uidState = 10
+07-01 22:20:19.162  2064  2581 I MiuiNetworkPolicy: updateUidState uid = 10007, uidState = 10
+07-01 22:20:19.162  2064  6892 D CompatibilityChangeReporter: Compat change id reported: 181136395; UID 10432; state: DISABLED
+07-01 22:20:19.163  2064  6892 D CompatibilityChangeReporter: Compat change id reported: 174042936; UID 10432; state: DISABLED
+07-01 22:20:19.167  2064  6892 D CompatibilityChangeReporter: Compat change id reported: 168419799; UID 10432; state: DISABLED
+07-01 22:20:19.167  2064  6892 D CompatibilityInfo: mCompatibilityFlags - 0
+07-01 22:20:19.167  2064  6892 D CompatibilityInfo: applicationDensity - 440
+07-01 22:20:19.167  2064  6892 D CompatibilityInfo: applicationScale - 1.0
+07-01 22:20:19.169  2064  6892 D ActivityTrigger: ActivityTrigger activityPauseTrigger
+07-01 22:20:19.173 14413 14413 I Monkey  : Events injected: 1
+07-01 22:20:19.174  3215  3215 D OneHandedController: stopOneHanded state isTransitioning or STATE_NONE
+07-01 22:20:19.178  3215  3408 D TaskSnapshot_Helper: SYS is normal.
+07-01 22:20:19.190  3217  3259 D TaskStackChangeListeners: onTaskDisplayChanged =  taskId = 146 newDisplayId = 0
+07-01 22:20:19.191  3215  3215 D OneHandedController: stopOneHanded state isTransitioning or STATE_NONE
+07-01 22:20:19.193  2064  2581 I MiuiNetworkPolicy: updateUidState uid = 10007, uidState = 8
+07-01 22:20:19.197  2064  2188 D CompatibilityInfo: mCompatibilityFlags - 0
+07-01 22:20:19.197  2064  2188 D CompatibilityInfo: applicationDensity - 440
+07-01 22:20:19.197  2064  2188 D CompatibilityInfo: applicationScale - 1.0
+07-01 22:20:19.206 14413 14413 I Monkey  : ## Network stats: elapsed time=85ms (0ms mobile, 0ms wifi, 85ms not connected)
+07-01 22:20:19.207 14413 14413 I app_process: System.exit called, status: 0
+07-01 22:20:19.207 14413 14413 I AndroidRuntime: VM exiting with result code 0.
+07-01 22:20:19.209  2064  2581 I MiuiNetworkPolicy: updateUidState uid = 10075, uidState = 8
+07-01 22:20:19.209  2064  3400 I WindowManagerService: Physical orientation not applied, rotation=0
+07-01 22:20:19.213  2064  2349 D CompatibilityChangeReporter: Compat change id reported: 135634846; UID 10432; state: DISABLED
+07-01 22:20:19.213  2064  2349 D CompatibilityChangeReporter: Compat change id reported: 177438394; UID 10432; state: DISABLED
+07-01 22:20:19.213  2064  2349 D CompatibilityChangeReporter: Compat change id reported: 135772972; UID 10432; state: DISABLED
+07-01 22:20:19.213  2064  2349 D CompatibilityChangeReporter: Compat change id reported: 135754954; UID 10432; state: ENABLED
+07-01 22:20:19.219  3215  3215 D OneHandedController: stopOneHanded state isTransitioning or STATE_NONE
+07-01 22:20:19.224  2064  2364 D CompatibilityChangeReporter: Compat change id reported: 143937733; UID 10432; state: ENABLED
+07-01 22:20:19.244  1080  1080 D Zygote  : Forked child process 14540
+07-01 22:20:19.245  2064  2364 D Boost   : hostingType=pre-top-activity, hostingName={com.voicetextnote.app/com.voicetextnote.app.MainActivity}, callerPackage=others, isSystem=true, isBoostNeeded=false.
+07-01 22:20:19.245  2064  2364 I ActivityManager: Start proc 14540:com.voicetextnote.app/u0a432 for pre-top-activity {com.voicetextnote.app/com.voicetextnote.app.MainActivity} caller=others
+07-01 22:20:19.246  1239  1327 E ANDR-PERF-LM: MetaMeter: handleAsync() 166: AdaptLaunch Invalid Async
+07-01 22:20:19.246  1239  4241 E ANDR-PERF-LM: ThreadHelper: thread_callback() 145: More than one pending updates!!! This should not happen. MeterMgr should avoid this case.
+07-01 22:20:19.252  3217  3217 D Launcher.Lifecycle: onPause:UserHandle{0},2eecfe9,true
+07-01 22:20:19.252  3217  3217 D Launcher_UnlockAnimationStateMachine: onPause = IDLE
+07-01 22:20:19.257  2064  2581 I MiuiNetworkPolicy: updateUidState uid = 10075, uidState = 10
+07-01 22:20:19.257  2064  2581 I MiuiNetworkPolicy: updateUidState uid = 10007, uidState = 10
+07-01 22:20:19.259  3217  3217 D Launcher_UnlockAnimationStateMachine: setState:PAUSE_WAIT
+07-01 22:20:19.267 14540 14540 I icetextnote.ap: Using CollectorTypeCC GC.
+07-01 22:20:19.274 14540 14540 D ProcessState: Binder ioctl to enable oneway spam detection failed: Invalid argument
+07-01 22:20:19.277 14540 14540 I MessageMonitor: Load libmiui_runtime
+07-01 22:20:19.280  1239  1327 E ANDR-PERF-LM: MetaMeter: handleAsync() 166: AdaptLaunch Invalid Async
+07-01 22:20:19.281  2064  6892 D CompatibilityInfo: mCompatibilityFlags - 0
+07-01 22:20:19.282  2064  6892 D CompatibilityInfo: applicationDensity - 440
+07-01 22:20:19.282  2064  6892 D CompatibilityInfo: applicationScale - 1.0
+07-01 22:20:19.288  2064  6892 I ActivityTaskManager: The Process com.voicetextnote.app Already Exists in BG. So sending its PID: 14540
+07-01 22:20:19.288  3217  3217 W Activity: PerfMonitor: Slow Operation: Activity com.miui.home/.launcher.Launcher onPause took 87ms
+07-01 22:20:19.289  1239  1327 E ANDR-PERF-LM: MetaMeter: handleAsync() 166: AdaptLaunch Invalid Async
+07-01 22:20:19.294  2064  6892 D WindowManager: Input focus has changed to null display=0 updateInputWindows = false
+07-01 22:20:19.303  2064  2581 I MiuiNetworkPolicy: updateUidState uid = 10432, uidState = 19
+07-01 22:20:19.304  1239  1327 W ANDR-PERF-LM: MetaMeter: handlePrimaryAsync() 118: AdaptLaunch MetaMeter. No MeterMgr Available to handle this Primary Async. !!!!
+07-01 22:20:19.304  1239  1327 W ANDR-PERF-LM: MetaMeter: handlePrimaryAsync() 118: AdaptLaunch MetaMeter. No MeterMgr Available to handle this Primary Async. !!!!
+07-01 22:20:19.309  2064  3400 I ActivityTaskManager: The Process com.voicetextnote.app Already Exists in BG. So sending its PID: 14540
+07-01 22:20:19.310 14540 14540 D CompatibilityChangeReporter: Compat change id reported: 171979766; UID 10432; state: ENABLED
+07-01 22:20:19.312  1239  1327 E ANDR-PERF-LM: MetaMeter: handleAsync() 166: AdaptLaunch Invalid Async
+07-01 22:20:19.314  2064  2780 D PackageManager: set app  component=com.facebook.services/com.facebook.oxygen.services.fbns.RegisteredMqttSystemBroadcastReceiver enabled state: 1 from null,uid=10090,pid=9373
+07-01 22:20:19.315  2064  3400 D CompatibilityInfo: mCompatibilityFlags - 0
+07-01 22:20:19.315  2064  3400 D CompatibilityInfo: applicationDensity - 440
+07-01 22:20:19.315  2064  3400 D CompatibilityInfo: applicationScale - 1.0
+07-01 22:20:19.314  6923 20102 W MQSService: CallerName:com.voicetextnote.app,calling Uid:10432
+07-01 22:20:19.315  6923 20102 D MQSService: registerApplicationScoutThread pid = 14540, packageName = com.voicetextnote.app
+07-01 22:20:19.325  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:19.329  2064  2358 D ATMSInjector: Begin to report package foreground events...
+07-01 22:20:19.330  3217  3528 D AppObserver: ForegroundInfo{mForegroundPackageName='com.voicetextnote.app', mForegroundUid=10432, mForegroundPid=14540, mLastForegroundPackageName='com.miui.home', mLastForegroundUid=10102, mLastForegroundPid=3217, mMultiWindowForegroundPackageName='com.voicetextnote.app', mMultiWindowForegroundUid=10432, mFlags=0}
+07-01 22:20:19.331  2064  6892 I WindowManagerService: Physical orientation not applied, rotation=0
+07-01 22:20:19.331  9629  9906 D LS-ForegroundStatusManager: handleMessage ForegroundInfoChanged. pkg = com.voicetextnote.app, uid = 10432, mCurrentForegroundUid = 10102
+07-01 22:20:19.331  7440  8037 I ProcessMonitor: onForegroundInfoChanged: ForegroundInfo{mForegroundPackageName='com.voicetextnote.app', mForegroundUid=10432, mForegroundPid=14540, mLastForegroundPackageName='com.miui.home', mLastForegroundUid=10102, mLastForegroundPid=3217, mMultiWindowForegroundPackageName='com.voicetextnote.app', mMultiWindowForegroundUid=10432, mFlags=0}
+07-01 22:20:19.333  9629  9751 I ThermalInfoCollector: collectForgroundAppsInfo: com.miui.home
+07-01 22:20:19.333 17753 17753 I caqh    : (REDACTED) onApplyWindowInsets: systemWindowInsets=%s
+07-01 22:20:19.333 17753 17753 I caqh    : (REDACTED) onApplyWindowInsets: systemWindowInsets=%s
+07-01 22:20:19.338 22231 23810 I enyd    : (REDACTED) HDM. appOpsListener %s %s
+07-01 22:20:19.338 22231 23810 I enyd    : (REDACTED) HDM. Ignoring irrelevant audio permission changes for package %s
+07-01 22:20:19.338  2064  2581 I MiuiNetworkPolicy: updateUidState uid = 10432, uidState = 2
+07-01 22:20:19.339  9629  9906 D LS-ForegroundStatusManager: onForegroundChanged mCurrentForegroundUid = 10102, new uid = 10432
+07-01 22:20:19.340  2064  2347 D Aurogon :  uid = 10432 switch to FG
+07-01 22:20:19.340 13523 16848 D ProcessObserverV10: onForegroundActivitiesChanged:pid = 14540,activity-uid=10432,foregroundActivities=true
+07-01 22:20:19.340  2064  2347 D NetworkManagement: failed to update firewall rulle!
+07-01 22:20:19.341 14540 14554 D AppScoutStateMachine: 14540-ScoutStateMachinecreated
+07-01 22:20:19.344  2064  2349 W ProcessStats: Tracking association SourceState{6c3eb2d com.google.android.googlequicksearchbox:googleapp/10195 BTopFgs #1083508} whose proc state 2 is better than process ProcessState{f4f82ee com.google.android.gms.persistent/10188 pkg=com.google.android.gms} proc state 3 (13 skipped)
+07-01 22:20:19.345  2064  2581 I MiuiNetworkPolicy: updateUidState uid = 10195, uidState = 5
+07-01 22:20:19.346  2064  2581 I MiuiNetworkPolicy: updateUidState uid = 10188, uidState = 4
+07-01 22:20:19.346  2064  2581 I MiuiNetworkPolicy: updateUidState uid = 10185, uidState = 5
+07-01 22:20:19.346  2064  2581 I MiuiNetworkPolicy: updateUidState uid = 10150, uidState = 4
+07-01 22:20:19.346  2064  2581 I MiuiNetworkPolicy: updateUidState uid = 10102, uidState = 5
+07-01 22:20:19.361  9634  9984 I GST     : forePkg: com.voicetextnote.app, preForePkg: com.miui.home
+07-01 22:20:19.365  7440  8037 I GameBoosterService: onForegroundInfoChanged: Cur=com.voicetextnote.app	 last=com.miui.home
+07-01 22:20:19.368  9629  9918 D ThermalIECHandler: IECAll48Allowed: false; IECMonitorAllowed: false; IECTestState: false
+07-01 22:20:19.369  9629  9641 D PerfEngineController: ForegroundInfo{mForegroundPackageName='com.voicetextnote.app', mForegroundUid=10432, mForegroundPid=14540, mLastForegroundPackageName='com.miui.home', mLastForegroundUid=10102, mLastForegroundPid=3217, mMultiWindowForegroundPackageName='com.voicetextnote.app', mMultiWindowForegroundUid=10432, mFlags=0}
+07-01 22:20:19.369 14540 14540 D nativeloader: Configuring clns-4 for other apk /apex/com.android.extservices/javalib/android.ext.adservices.jar. target_sdk_version=35, uses_libraries=ALL, library_path=/data/app/~~kXzqWat4VbyahLf6L0GfVg==/com.voicetextnote.app-VhofbO5prNAeYe8yXUu5dg==/lib/arm64:/data/app/~~kXzqWat4VbyahLf6L0GfVg==/com.voicetextnote.app-VhofbO5prNAeYe8yXUu5dg==/base.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/com.voicetextnote.app
+07-01 22:20:19.369 14540 14540 D nativeloader: Extending system_exposed_libraries: libvraudio_client.qti.so:libbinauralrenderer_wrapper.qti.so:libhoaeffects.qti.so:libQOC.qti.so:libcamera_algoup_jni.xiaomi.so:libcamera_mianode_jni.xiaomi.so:libupdateprof.qti.so:libthermalclient.qti.so:libQOC.qti.so:libdiag_system.qti.so:libqape.qti.so:libqesdk_ndk_platform.qti.so:liblistenjni.qti.so
+07-01 22:20:19.370  7440  8037 I FreeformWindowUtils: has app list!
+07-01 22:20:19.370  7440  8037 D GameBoosterService: onGameStatusChange foreground:ForegroundInfo{mForegroundPackageName='com.voicetextnote.app', mForegroundUid=10432, mForegroundPid=14540, mLastForegroundPackageName='com.miui.home', mLastForegroundUid=10102, mLastForegroundPid=3217, mMultiWindowForegroundPackageName='com.voicetextnote.app', mMultiWindowForegroundUid=10432, mFlags=0}
+07-01 22:20:19.372 14540 14540 D nativeloader: InitApexLibraries:
+07-01 22:20:19.372 14540 14540 D nativeloader:   com_android_appsearch: libicing.so
+07-01 22:20:19.372 14540 14540 D nativeloader:   com_android_art: libartservice.so
+07-01 22:20:19.372 14540 14540 D nativeloader:   com_android_conscrypt: libjavacrypto.so
+07-01 22:20:19.372 14540 14540 D nativeloader:   com_android_extservices: libtflite_support_classifiers_native.so
+07-01 22:20:19.372 14540 14540 D nativeloader:   com_android_mediaprovider: libpdfclient.so
+07-01 22:20:19.372 14540 14540 D nativeloader:   com_android_os_statsd: libstats_jni.so
+07-01 22:20:19.372 14540 14540 D nativeloader:   com_android_tethering: libandroid_net_connectivity_com_android_net_module_util_jni.so:libandroid_net_connectivity_com_android_net_module_util_jni_CommonConnectivityJni.so:libframework-connectivity-jni.so:libframework-connectivity-tiramisu-jni.so:libmainlinecronet.141.0.7340.3.so:libservice-connectivity.so:libservice-thread-jni.so:stable_cronet_libcrypto.so:stable_cronet_libssl.so
+07-01 22:20:19.354  1239  1239 W /vendor/bin/hw/vendor.qti.hardware.perf@2.2-service: type=1400 audit(0.0:230521): avc: denied { search } for comm=41646170744C61756E636820566D name="2349" dev="proc" ino=8782065 scontext=u:r:vendor_hal_perf_default:s0 tcontext=u:r:system_server:s0 tclass=dir permissive=0
+07-01 22:20:19.364  1239  1239 W /vendor/bin/hw/vendor.qti.hardware.perf@2.2-service: type=1400 audit(0.0:230522): avc: denied { search } for comm=41646170744C61756E636820566D name="2350" dev="proc" ino=8782066 scontext=u:r:vendor_hal_perf_default:s0 tcontext=u:r:system_server:s0 tclass=dir permissive=0
+07-01 22:20:19.364  1239  1239 W /vendor/bin/hw/vendor.qti.hardware.perf@2.2-service: type=1400 audit(0.0:230523): avc: denied { search } for comm=41646170744C61756E636820566D name="2351" dev="proc" ino=8782067 scontext=u:r:vendor_hal_perf_default:s0 tcontext=u:r:system_server:s0 tclass=dir permissive=0
+07-01 22:20:19.364  1239  1239 W /vendor/bin/hw/vendor.qti.hardware.perf@2.2-service: type=1400 audit(0.0:230524): avc: denied { search } for comm=41646170744C61756E636820566D name="2555" dev="proc" ino=8782068 scontext=u:r:vendor_hal_perf_default:s0 tcontext=u:r:system_server:s0 tclass=dir permissive=0
+07-01 22:20:19.364  1239  1239 W /vendor/bin/hw/vendor.qti.hardware.perf@2.2-service: type=1400 audit(0.0:230525): avc: denied { search } for comm=41646170744C61756E636820566D name="2349" dev="proc" ino=8782065 scontext=u:r:vendor_hal_perf_default:s0 tcontext=u:r:system_server:s0 tclass=dir permissive=0
+07-01 22:20:19.382  7440  8037 I VideoBoxUtils: isSupportVideoBox: false
+07-01 22:20:19.383  9629  9918 D ThermalIECHandler: storeDataStyle: thermal_iec_monitor_persistence_data_style_iec_state; startIECTime: -1; IECScreenOffOverPeriodTime: 1308740522
+07-01 22:20:19.384  9629  9918 D ThermalIECHandler: storeDataStyle: thermal_iec_monitor_persistence_data_style_iec_state; startIECTime: -1; IECScreenOffOverPeriodTime: 1308740522
+07-01 22:20:19.385 17753 17753 I caww    : onPause
+07-01 22:20:19.395  7440  8037 I VideoToolBoxService: vtb is closed!!!
+07-01 22:20:19.405 14540 14540 D nativeloader: Configuring clns-5 for other apk /data/app/~~kXzqWat4VbyahLf6L0GfVg==/com.voicetextnote.app-VhofbO5prNAeYe8yXUu5dg==/base.apk. target_sdk_version=35, uses_libraries=, library_path=/data/app/~~kXzqWat4VbyahLf6L0GfVg==/com.voicetextnote.app-VhofbO5prNAeYe8yXUu5dg==/lib/arm64:/data/app/~~kXzqWat4VbyahLf6L0GfVg==/com.voicetextnote.app-VhofbO5prNAeYe8yXUu5dg==/base.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/com.voicetextnote.app
+07-01 22:20:19.405 17753 17753 W dqtc    : measuring already stopped.
+07-01 22:20:19.411  2064  6888 D ActivityManager: report kill process: killerPid is:14324, killedPid is:14324
+07-01 22:20:19.411 14324 14324 I Process : Sending signal. PID: 14324 SIG: 9
+07-01 22:20:19.411 14540 14540 I Perf    : Connecting to perf service.
+07-01 22:20:19.413  3217  3217 D Launcher.Lifecycle: onWindowFocusChanged:false,UserHandle{0},2eecfe9,true
+07-01 22:20:19.414  3217  3217 D DecorView[]: onWindowFocusChanged hasWindowFocus false
+07-01 22:20:19.415 14540 14540 V GraphicsEnvironment: ANGLE Developer option for 'com.voicetextnote.app' set to: 'default'
+07-01 22:20:19.415 14540 14540 V GraphicsEnvironment: Neither updatable production driver nor prerelease driver is supported.
+07-01 22:20:19.417 14540 14540 I ForceDarkHelperStubImpl: initialize for com.voicetextnote.app , ForceDarkOrigin
+07-01 22:20:19.418 14540 14540 D nativeloader: Load libforcedarkimpl.so using system ns (caller=/system/framework/miui-framework.jar): ok
+07-01 22:20:19.419 14540 14540 D OpenGLRenderer: JNI_OnLoad success
+07-01 22:20:19.419 14540 14540 I MiuiForceDarkConfig: setConfig density:2.750000, mainRule:0, secondaryRule:0, tertiaryRule:0
+07-01 22:20:19.419  3217  3528 D RecentsModel: onTaskStackChangedBackground
+07-01 22:20:19.419  3217  3546 D RecentsModel: onTaskStackChangedBackground    MSG_TASK_STACK_CHANGE
+07-01 22:20:19.419  3217  3546 D RecentsModel: preloadRecents
+07-01 22:20:19.419  3217  3546 W RecentsModel: getRunningTask
+07-01 22:20:19.419 14540 14540 D NetworkSecurityConfig: Using Network Security Config from resource network_security_config debugBuild: false
+07-01 22:20:19.419  7440  8037 I SCTaskStackListener: onTaskStackChanged! inSplit = false
+07-01 22:20:19.420  9629  9641 I MultiScreenObserver: onTaskStackChanged, splitScreenMode: false isCameraFloat: false isSmallScreen: false
+07-01 22:20:19.420 14540 14540 D NetworkSecurityConfig: Using Network Security Config from resource network_security_config debugBuild: false
+07-01 22:20:19.420  7440 12155 I SCTaskStackListener: onTaskStackChanged! inSplit = false
+07-01 22:20:19.426 14540 14540 I FirebaseApp: Device unlocked: initializing all Firebase APIs for app [DEFAULT]
+07-01 22:20:19.427  3217  3217 D Launcher.Lifecycle: onStop:UserHandle{0},2eecfe9,false
+07-01 22:20:19.427  3217  3217 D Launcher_UnlockAnimationStateMachine: onStop = PAUSE_WAIT
+07-01 22:20:19.430 17753 17753 I caww    : onStop
+07-01 22:20:19.433  3217  3546 W RecentsModel: getRunningTask   taskInfo=TaskInfo{userId=0 taskId=146 displayId=0 isRunning=true baseIntent=Intent { act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] flg=0x10200000 cmp=com.voicetextnote.app/.MainActivity } baseActivity=ComponentInfo{com.voicetextnote.app/com.voicetextnote.app.MainActivity} topActivity=ComponentInfo{com.voicetextnote.app/com.voicetextnote.app.MainActivity} origActivity=null realActivity=ComponentInfo{com.voicetextnote.app/com.voicetextnote.app.MainActivity} numActivities=1 lastActiveTime=1310290268 supportsSplitScreenMultiWindow=true supportsMultiWindow=true resizeMode=1 isResizeable=true token=WCT{android.window.IWindowContainerToken$Stub$Proxy@c61c3a8} topActivityType=1 pictureInPictureParams=PictureInPictureParams( aspectRatio=null sourceRectHint=null hasSetActions=false isAutoPipEnabled=false isSeamlessResizeEnabled=true) displayCutoutSafeInsets=null topActivityInfo=ActivityInfo{b2daec1 com.voicetextnote.app.MainActivity} launchCookies=[] positionInParent=Point(0, 0) parentTaskId=-1 isFocused=false isVisible=true topActivityInSizeCompat=false locusId= null windowMode=0}
+07-01 22:20:19.433  3217  3546 W RecentsModel: getTaskInfoIgnoreHomeAndFreeform   taskInfo=ComponentInfo{com.voicetextnote.app/com.voicetextnote.app.MainActivity}
+07-01 22:20:19.433  3217  3546 E ActivityManagerWrapper: get all recent tasks force including 146
+07-01 22:20:19.434  3217  3546 E ActivityManagerWrapper: getRecentTasks: size=2
+07-01 22:20:19.434  3217  3546 E ActivityManagerWrapper: getRecentTasks: taskId=146   userId=0   baseIntent=Intent { act=android.intent.action.MAIN flag=270532608 cmp=ComponentInfo{com.voicetextnote.app/com.voicetextnote.app.MainActivity} }
+07-01 22:20:19.434  3217  3546 E ActivityManagerWrapper: getRecentTasks: taskId=145   userId=0   baseIntent=Intent { act=android.intent.action.VIEW flag=268435456 cmp=ComponentInfo{com.voicetextnote.app/com.voicetextnote.app.MainActivity} }
+07-01 22:20:19.438 14540 14540 I FirebaseInitProvider: FirebaseApp initialization successful
+07-01 22:20:19.438 14540 14540 D FLTFireContextHolder: received application context.
+07-01 22:20:19.447  2064  6892 I WindowManagerService: Physical orientation not applied, rotation=0
+07-01 22:20:19.451  2064  2581 I MiuiNetworkPolicy: updateUidState uid = 10188, uidState = 3
+07-01 22:20:19.452  2064  2188 D CompatibilityInfo: mCompatibilityFlags - 0
+07-01 22:20:19.452  2064  2188 D CompatibilityInfo: applicationDensity - 440
+07-01 22:20:19.452  2064  2188 D CompatibilityInfo: applicationScale - 1.0
+07-01 22:20:19.455  2064  2347 D Aurogon :  uid = 10102 switch to BG
+07-01 22:20:19.456 13523 16848 D ProcessObserverV10: onForegroundActivitiesChanged:pid = 3217,activity-uid=10102,foregroundActivities=false
+07-01 22:20:19.469 14540 14560 W icetextnote.ap: ClassLoaderContext classpath size mismatch. expected=1, found=0 (DLC[];PCL[base.apk*591061798]{PCL[/system/framework/org.apache.http.legacy.jar*2058259661]#PCL[/apex/com.android.extservices/javalib/android.ext.adservices.jar*3839736497]#PCL[/system/framework/com.android.location.provider.jar*3633238672]#PCL[/system/framework/com.android.media.remotedisplay.jar*3472798123]#PCL[/apex/com.android.extservices/javalib/android.ext.adservices.jar*3839736497]} | DLC[];PCL[])
+07-01 22:20:19.475 14540 14560 I DynamiteModule: Considering local module com.google.android.gms.measurement.dynamite:152 and remote module com.google.android.gms.measurement.dynamite:197
+07-01 22:20:19.475 14540 14560 I DynamiteModule: Selected remote version of com.google.android.gms.measurement.dynamite, version >= 197
+07-01 22:20:19.475 14540 14560 V DynamiteModule: Dynamite loader version >= 2, using loadModule2NoCrashUtils
+07-01 22:20:19.476  2064  7770 I ActivityManager: Process com.xiaomi.smarthome:acp (pid 14324) has died: cch+5 CEM
+07-01 22:20:19.477  2064  2365 I libprocessgroup: Successfully killed process cgroup uid 10394 pid 14324 in 0ms
+07-01 22:20:19.477  2064  7770 D ActivityManagerServiceImpl: Service controller is not enabled.
+07-01 22:20:19.478  2064  7770 D ProcessRecordInjector: Finishing reporting clean up app record.
+07-01 22:20:19.479  1080  1080 I Zygote  : Process 14324 exited due to signal 9 (Killed)
+07-01 22:20:19.481  2064  2581 I MiuiNetworkPolicy: updateUidState uid = 10394, uidState = 10
+07-01 22:20:19.484 13523 16848 D ProcessObserverV10: onProcessDied:pid = 14324,died-uid=10394
+07-01 22:20:19.489 14540 14577 D nativeloader: Load /data/app/~~kXzqWat4VbyahLf6L0GfVg==/com.voicetextnote.app-VhofbO5prNAeYe8yXUu5dg==/base.apk!/lib/arm64-v8a/libflutter.so using class loader ns clns-5 (caller=/data/app/~~kXzqWat4VbyahLf6L0GfVg==/com.voicetextnote.app-VhofbO5prNAeYe8yXUu5dg==/base.apk!classes3.dex): ok
+07-01 22:20:19.494 14540 14578 D skia    : [SkFontMgr Android Parser] '/product/etc/fonts_customization.xml' could not be opened
+07-01 22:20:19.495  8803  8803 I GoogleTTSServiceImpl: Cache enabled: true
+07-01 22:20:19.495  8803  8803 I LocalSynthesizer: #onTrimMemory
+07-01 22:20:19.498 11869 11869 I Finsky  : [2] Memory trim requested to level 10
+07-01 22:20:19.499 11754 11754 I Finsky:background: [2] Memory trim requested to level 40
+07-01 22:20:19.502  2064  2581 I MiuiNetworkPolicy: updateUidState uid = 10394, uidState = 19
+07-01 22:20:19.505 14540 14560 W System  : ClassLoader referenced unknown path:
+07-01 22:20:19.505 14540 14560 D nativeloader: Configuring clns-6 for other apk . target_sdk_version=37, uses_libraries=, library_path=/data/app/~~mRL0eJhPk8k0b1ZhCdwU0g==/com.google.android.gms-8mPIRY2EjbzvAAsZmj7g4w==/lib/arm64:/data/app/~~mRL0eJhPk8k0b1ZhCdwU0g==/com.google.android.gms-8mPIRY2EjbzvAAsZmj7g4w==/base.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/com.google.android.gms
+07-01 22:20:19.507 28525 28525 I AppBase : AppBase.onTrimMemory():280 onTrimMemory(): 10
+07-01 22:20:19.507 28525 28525 I KeyboardDefCache: MemoryFileCache$1.onTrimMemory():124 clearMemory() for trim memory: 10
+07-01 22:20:19.507 28525 28525 I KeyboardDefCache: MemoryFileCache.clearMemory():408 evictAll()
+07-01 22:20:19.507 28525 28525 I GoogleInputMethodService: GoogleInputMethodService.onTrimMemory():3019 onTrimMemory(): 10
+07-01 22:20:19.513  3217  3284 D StatusBarController: handleMessage: flag 800000  disable false
+07-01 22:20:19.514  3217  3217 D Launcher_WallpaperUtils: changeStatusBarMode:false
+07-01 22:20:19.526  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:19.534 14540 14560 W icetextnote.ap: ClassLoaderContext classpath element checksum mismatch. expected=591061798, found=2529803145 (DLC[];PCL[base.apk*591061798]{PCL[/system/framework/org.apache.http.legacy.jar*2058259661]#PCL[/apex/com.android.extservices/javalib/android.ext.adservices.jar*3839736497]#PCL[/system/framework/com.android.location.provider.jar*3633238672]#PCL[/system/framework/com.android.media.remotedisplay.jar*3472798123]#PCL[/apex/com.android.extservices/javalib/android.ext.adservices.jar*3839736497]} | DLC[];PCL[/data/app/~~kXzqWat4VbyahLf6L0GfVg==/com.voicetextnote.app-VhofbO5prNAeYe8yXUu5dg==/base.apk*2529803145]{PCL[/apex/com.android.extservices/javalib/android.ext.adservices.jar*3839736497]})
+07-01 22:20:19.536 14540 14579 D vulkan  : searching for layers in '/data/app/~~kXzqWat4VbyahLf6L0GfVg==/com.voicetextnote.app-VhofbO5prNAeYe8yXUu5dg==/lib/arm64'
+07-01 22:20:19.536 14540 14579 D vulkan  : searching for layers in '/data/app/~~kXzqWat4VbyahLf6L0GfVg==/com.voicetextnote.app-VhofbO5prNAeYe8yXUu5dg==/base.apk!/lib/arm64-v8a'
+07-01 22:20:19.555 14540 14579 I AdrenoVK-0: ===== BEGIN DUMP OF OVERRIDDEN SETTINGS =====
+07-01 22:20:19.555 14540 14579 I AdrenoVK-0: ===== END DUMP OF OVERRIDDEN SETTINGS =====
+07-01 22:20:19.555 14540 14579 I AdrenoVK-0: QUALCOMM build          : 820d4a4028, I5580630f49
+07-01 22:20:19.555 14540 14579 I AdrenoVK-0: Build Date              : 11/04/21
+07-01 22:20:19.555 14540 14579 I AdrenoVK-0: Shader Compiler Version : EV031.32.02.16
+07-01 22:20:19.555 14540 14579 I AdrenoVK-0: Local Branch            :
+07-01 22:20:19.555 14540 14579 I AdrenoVK-0: Remote Branch           :
+07-01 22:20:19.555 14540 14579 I AdrenoVK-0: Remote Branch           :
+07-01 22:20:19.555 14540 14579 I AdrenoVK-0: Reconstruct Branch      :
+07-01 22:20:19.555 14540 14579 I AdrenoVK-0: Build Config            : S P 10.0.7 AArch64
+07-01 22:20:19.556 14540 14579 I AdrenoVK-0: Driver Path             : /vendor/lib64/hw/vulkan.adreno.so
+07-01 22:20:19.558  2064  2581 I MiuiNetworkPolicy: updateUidState uid = 10007, uidState = 10
+07-01 22:20:19.560 14540 14540 D FLTFireContextHolder: received application context.
+07-01 22:20:19.565 14540 14540 D ViewScrollStubImpl: the value of mScrollFrictionRes is: 0.015
+07-01 22:20:19.565 14540 14579 I flutter : [IMPORTANT:flutter/shell/platform/android/android_context_vk_impeller.cc(62)] Using the Impeller rendering backend (Vulkan).
+07-01 22:20:19.569 14540 14579 I AdrenoGLES-0: QUALCOMM build                   : 820d4a4028, I5580630f49
+07-01 22:20:19.569 14540 14579 I AdrenoGLES-0: Build Date                       : 11/04/21
+07-01 22:20:19.569 14540 14579 I AdrenoGLES-0: OpenGL ES Shader Compiler Version: EV031.32.02.16
+07-01 22:20:19.569 14540 14579 I AdrenoGLES-0: Local Branch                     :
+07-01 22:20:19.569 14540 14579 I AdrenoGLES-0: Remote Branch                    :
+07-01 22:20:19.569 14540 14579 I AdrenoGLES-0: Remote Branch                    :
+07-01 22:20:19.569 14540 14579 I AdrenoGLES-0: Reconstruct Branch               :
+07-01 22:20:19.569 14540 14579 I AdrenoGLES-0: Build Config                     : S P 10.0.7 AArch64
+07-01 22:20:19.569 14540 14579 I AdrenoGLES-0: Driver Path                      : /vendor/lib64/egl/libGLESv2_adreno.so
+07-01 22:20:19.572 14540 14579 I AdrenoGLES-0: PFP: 0x016ee190, ME: 0x00000000
+07-01 22:20:19.580 14540 14579 I flutter : [IMPORTANT:flutter/shell/platform/android/android_context_gl_impeller.cc(104)] Using the Impeller rendering backend (OpenGLES).
+07-01 22:20:19.587 14540 14540 D MiuiMultiWindowUtils: freeform resolution args raw data:{  "zizhan":{    "freeform_args": {      "inner":{        "vertical_portrait":{"aspect_ratio":0.626, "original_ratio":0.5643,"original_scale":0.74,"top_margin":0.168,"left_margin":0.484},        "horizontal_portrait":{"aspect_ratio":0.626, "original_ratio":0.5643,"original_scale":0.74,"top_margin":0.1222,"left_margin":0.59745},        "vertical_landscape":{"aspect_ratio":1.6, "original_ratio":1,"original_scale":0.604,"top_margin":0.2596,"left_margin":0.2624},        "horizontal_landscape":{"aspect_ratio":1.6, "original_ratio":1,"original_scale":0.604,"top_margin":0.213,"left_margin":0.3758}      },      "outer":{        "vertical_portrait":{"aspect_ratio":0.626, "original_ratio":1,"original_scale":0.74,"top_margin":0.0753,"left_margin":-1},        "horizontal_portrait":{"aspect_ratio":0.626, "original_ratio":1,"original_scale":0.5756,"top_margin":-1,"left_margin":0.0753},        "vertical_landscape":{"aspect_ratio":1.6, "original_ratio":0.6847,"original_scale":0.587,"top_margin":0.0753,"left_margin":-1},        "horizontal_landscape":{"aspect_ratio":1.6, "original_ratio":0.6847,"original_scale":0.587,"top_margin":-1,"left_margin":0.0753}}    },    "mini_freeform_args":{      "inner":{        "vertical_portrait":{"aspect_ratio":0.626, "original_ratio":0.147},        "horizontal_portrait":{"aspect_ratio":0.626, "original_ratio":0.147},        "vertical_landscape":{"aspect_ratio":1.6, "original_ratio":0.165},        "horizontal_landscape":{"aspect_ratio":1.6, "original_ratio":0.165}      },      "outer":{        "vertical_portrait":{"aspect_ratio":0.626, "original_ratio":0.26},        "horizontal_portrait":{"aspect_ratio":0.626, "original_ratio":0.26},        "vertical_landscape":{"aspect_ratio":1.6, "original_ratio":0.293},        "horizontal_landscape":{"aspect_ratio":1.6, "original_ratio":0.293}}    }  },  "wide_default":{    "freeform_args": {        "vertical_portrait":{"aspect_ratio":0.625, "original_ratio":0.58,"original_scale":0.7574,"top_margin":0.125,"left_margin":-1},        "horizontal_portrait":{"aspect_ratio":0.625, "original_ratio":0.58,"original_scale":0.7574,"top_margin":-1,"left_margin":0.0714},        "vertical_landscape":{"aspect_ratio":1.6, "original_ratio":1,"original_scale":0.5153,"top_margin":0.125,"left_margin":-1},        "horizontal_landscape":{"aspect_ratio":1.6, "original_ratio":1,"original_scale":0.5153,"top_margin":-1,"left_margin":0.0714}    },    "mini_freeform_args":{        "vertical_portrait":{"aspect_ratio":0.5625, "original_ratio":0.144},        "horizontal_portrait":{"aspect_ratio":0.5625, "original_ratio":0.144},        "vertical_landscape":{"aspect_ratio":-1, "original_ratio":0.144},        "horizontal_landscape":{"aspect_ratio":-1, "original_ratio":0.144}    }  },  "narrow_default": {    "freeform_args": {        "vertical_portrait":{"aspect_ratio":0.5625, "original_ratio":1,"original_scale":0.7182,"top_margin":0.142,"left_margin":-1},        "horizontal_portrait":{"aspect_ratio":0.8, "original_ratio":1,"original_scale":0.7182,"top_margin":-1,"left_margin":0.05},        "vertical_landscape":{"aspect_ratio":1.6, "original_ratio":0.6545,"original_scale":0.4473,"top_margin":0.142,"left_margin":-1},        "horizontal_landscape":{"aspect_ratio":1.6, "original_ratio":0.6545,"original_scale":0.4473,"top_margin":-1,"left_margin":0.05}    },    "mini_freeform_args":{        "vertical_portrait":{"aspect_ratio":0.5625, "original_ratio":0.3},        "horizontal_portrait":{"aspect_ratio":0.5625, "original_ratio":0.3},        "vertical_landscape":{"aspect_ratio":1.7778, "original_ratio":0.3},        "horizontal_landscape":{"aspect_ratio":1.7778, "original_ratio":0.3}    }  },  "regular_default": {    "freeform_args": {      "vertical_portrait":{"aspect_ratio":0.625, "original_ratio":1,"original_scale":0.7,"top_margin":0.109,"left_margin":-1},      "horizontal_portrait":{"aspect_ratio":0.6667, "original_ratio":1,"original_scale":0.6102,"top_margin":-1,"left_margin":0.026},      "vertical_landscape":{"aspect_ratio
+07-01 22:20:19.587 14540 14540 W System.err: org.json.JSONException: No value for joyeuse
+07-01 22:20:19.587 14540 14540 W System.err: 	at org.json.JSONObject.get(JSONObject.java:398)
+07-01 22:20:19.587 14540 14540 W System.err: 	at org.json.JSONObject.getJSONObject(JSONObject.java:618)
+07-01 22:20:19.587 14540 14540 W System.err: 	at android.util.MiuiMultiWindowUtils.initFreeFormResolutionArgsOfDevice(MiuiMultiWindowUtils.java:1433)
+07-01 22:20:19.587 14540 14540 W System.err: 	at android.util.MiuiMultiWindowUtils.initFreeFormResolutionArgs(MiuiMultiWindowUtils.java:1427)
+07-01 22:20:19.587 14540 14540 W System.err: 	at android.util.MiuiMultiWindowUtils.<clinit>(MiuiMultiWindowUtils.java:209)
+07-01 22:20:19.587 14540 14540 W System.err: 	at com.android.internal.policy.DecorViewMultiWinStubImpl.<init>(DecorViewMultiWinStubImpl.java:19)
+07-01 22:20:19.587 14540 14540 W System.err: 	at com.android.internal.policy.DecorViewMultiWinStubImpl$Provider$SINGLETON.<clinit>(DecorViewMultiWinStubImpl$Provider.java:21)
+07-01 22:20:19.587 14540 14540 W System.err: 	at com.android.internal.policy.DecorViewMultiWinStubImpl$Provider.provideSingleton(DecorViewMultiWinStubImpl$Provider.java:10)
+07-01 22:20:19.587 14540 14540 W System.err: 	at com.android.internal.policy.DecorViewMultiWinStubImpl$Provider.provideSingleton(DecorViewMultiWinStubImpl$Provider.java:8)
+07-01 22:20:19.587 14540 14540 W System.err: 	at com.miui.base.MiuiStubRegistry.get(MiuiStubRegistry.java:129)
+07-01 22:20:19.587 14540 14540 W System.err: 	at com.miui.base.MiuiStubRegistry.get(MiuiStubRegistry.java:123)
+07-01 22:20:19.587 14540 14540 W System.err: 	at com.miui.base.MiuiStubUtil.getInstance(MiuiStubUtil.java:46)
+07-01 22:20:19.587 14540 14540 W System.err: 	at com.miui.base.MiuiStubUtil.getImpl(MiuiStubUtil.java:30)
+07-01 22:20:19.587 14540 14540 W System.err: 	at com.android.internal.policy.DecorViewMultiWinStub$SingletonHolder.<clinit>(DecorViewMultiWinStub.java:11)
+07-01 22:20:19.587 14540 14540 W System.err: 	at com.android.internal.policy.DecorViewMultiWinStub.newInstance(DecorViewMultiWinStub.java:16)
+07-01 22:20:19.587 14540 14540 W System.err: 	at com.android.internal.policy.DecorView.<init>(DecorView.java:335)
+07-01 22:20:19.587 14540 14540 W System.err: 	at com.android.internal.policy.PhoneWindow.generateDecor(PhoneWindow.java:2380)
+07-01 22:20:19.587 14540 14540 W System.err: 	at com.android.internal.policy.PhoneWindow.installDecor(PhoneWindow.java:2760)
+07-01 22:20:19.587 14540 14540 W System.err: 	at com.android.internal.policy.PhoneWindow.setContentView(PhoneWindow.java:487)
+07-01 22:20:19.588 14540 14540 W System.err: 	at com.android.internal.policy.PhoneWindow.setContentView(PhoneWindow.java:478)
+07-01 22:20:19.588 14540 14540 W System.err: 	at android.app.Activity.setContentView(Activity.java:3618)
+07-01 22:20:19.588 14540 14540 W System.err: 	at io.flutter.embedding.android.FlutterActivity.onCreate(FlutterActivity.java:652)
+07-01 22:20:19.588 14540 14540 W System.err: 	at android.app.Activity.performCreate(Activity.java:8163)
+07-01 22:20:19.588 14540 14540 W System.err: 	at android.app.Activity.performCreate(Activity.java:8130)
+07-01 22:20:19.588 14540 14540 W System.err: 	at android.app.Instrumentation.callActivityOnCreate(Instrumentation.java:1330)
+07-01 22:20:19.588 14540 14540 W System.err: 	at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:3744)
+07-01 22:20:19.588 14540 14540 W System.err: 	at android.app.ActivityThread.handleLaunchActivity(ActivityThread.java:3938)
+07-01 22:20:19.588 14540 14540 W System.err: 	at android.app.servertransaction.LaunchActivityItem.execute(LaunchActivityItem.java:103)
+07-01 22:20:19.588 14540 14540 W System.err: 	at android.app.servertransaction.TransactionExecutor.executeCallbacks(TransactionExecutor.java:135)
+07-01 22:20:19.588 14540 14540 W System.err: 	at android.app.servertransaction.TransactionExecutor.execute(TransactionExecutor.java:95)
+07-01 22:20:19.588 14540 14540 W System.err: 	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:2291)
+07-01 22:20:19.588 14540 14540 W System.err: 	at android.os.Handler.dispatchMessage(Handler.java:106)
+07-01 22:20:19.588 14540 14540 W System.err: 	at android.os.Looper.loopOnce(Looper.java:210)
+07-01 22:20:19.588 14540 14540 W System.err: 	at android.os.Looper.loop(Looper.java:299)
+07-01 22:20:19.588 14540 14540 W System.err: 	at android.app.ActivityThread.main(ActivityThread.java:8319)
+07-01 22:20:19.588 14540 14540 W System.err: 	at java.lang.reflect.Method.invoke(Native Method)
+07-01 22:20:19.588 14540 14540 W System.err: 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:556)
+07-01 22:20:19.588 14540 14540 W System.err: 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1038)
+07-01 22:20:19.588 14540 14540 D IS_CTS_MODE: false
+07-01 22:20:19.588 14540 14540 D MULTI_WINDOW_SWITCH_ENABLED: false
+07-01 22:20:19.588 14540 14540 D IS_CTS_MODE: false
+07-01 22:20:19.588 14540 14540 D MULTI_WINDOW_SWITCH_ENABLED: false
+07-01 22:20:19.588 14540 14540 D IS_CTS_MODE: false
+07-01 22:20:19.588 14540 14540 D MULTI_WINDOW_SWITCH_ENABLED: false
+07-01 22:20:19.592 14540 14540 D DecorView[]: getWindowModeFromSystem  windowmode is 1
+07-01 22:20:19.596  6074 19305 I PhenotypeResourceReader: unable to find any Phenotype resource metadata for com.voicetextnote.app
+07-01 22:20:19.604 14540 14540 D DecorView[]: getWindowModeFromSystem  windowmode is 1
+07-01 22:20:19.604 14540 14540 D DecorView[]: updateDecorCaptionStatus displayWindowDecor is false
+07-01 22:20:19.608 14540 14598 E icetextnote.ap: No package ID 6a found for ID 0x6a0b0013.
+07-01 22:20:19.609 14540 14598 I FA      : App measurement initialized, version: 173000
+07-01 22:20:19.609 14540 14598 I FA      : To enable debug logging run: adb shell setprop log.tag.FA VERBOSE
+07-01 22:20:19.609 14540 14598 I FA      : To enable faster debug mode event logging run:
+07-01 22:20:19.609 14540 14598 I FA      :   adb shell setprop debug.firebase.analytics.app com.voicetextnote.app
+07-01 22:20:19.614  3217  3217 D RecentsImpl: mActivityStateObserver com.voicetextnote.app.MainActivity
+07-01 22:20:19.614  3217  3217 W RecentsImpl: onResumed className=com.voicetextnote.app.MainActivity   mIsInAnotherPro=false   isKeyguardLocked=false
+07-01 22:20:19.627  2064  6888 D WindowManager: Input focus has changed to Window{1e2f228 u0 com.voicetextnote.app/com.voicetextnote.app.MainActivity} display=0 updateInputWindows = true
+07-01 22:20:19.627  2064  6888 I WindowManagerService: Physical orientation not applied, rotation=0
+07-01 22:20:19.630  2064  2350 D CompatibilityChangeReporter: Compat change id reported: 158002302; UID 10432; state: ENABLED
+07-01 22:20:19.633  2064  2581 I MiuiNetworkPolicy: updateUidState uid = 10185, uidState = 3
+07-01 22:20:19.635 14540 14540 D SurfaceView: UPDATE null, mIsCastMode = false
+07-01 22:20:19.638 14540 14598 I FA      : Tag Manager is not found and thus will not be used
+07-01 22:20:19.658  1215  1375 I SDM     : HWCDisplay::GetColorModeCount: Supported color mode count = 1
+07-01 22:20:19.659  1215  1375 I SDM     : HWCDisplay::GetColorModes: Color mode = 0 is supported
+07-01 22:20:19.660 14540 14571 D hw-ProcessState: Binder ioctl to enable oneway spam detection failed: Invalid argument
+07-01 22:20:19.668  3217  3217 D Launcher_UnlockAnimationStateMachine: mResetIdleStateRunnable
+07-01 22:20:19.726  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:19.742 14540 14540 D SurfaceView: UPDATE Surface(name=SurfaceView[com.voicetextnote.app/com.voicetextnote.app.MainActivity])/@0xa19cd06, mIsProjectionMode = false
+07-01 22:20:19.746 14540 14540 I flutter : Firebase 초기화 성공
+07-01 22:20:19.821 14540 14540 D DecorView[]: getWindowModeFromSystem  windowmode is 1
+07-01 22:20:19.821 14540 14540 D DecorView[]: updateDecorCaptionStatus displayWindowDecor is false
+07-01 22:20:19.825  2064  6888 I WindowManagerService: Physical orientation not applied, rotation=0
+07-01 22:20:19.842 14540 14540 I FLTFireBGExecutor: Creating background FlutterEngine instance, with args: []
+07-01 22:20:19.849 14540 14540 D FLTFireContextHolder: received application context.
+07-01 22:20:19.851  6046 12837 D AdvertisingIdClient: AdvertisingIdClient already created.
+07-01 22:20:19.856 14540 14618 I AdrenoVK-0: QUALCOMM build          : 820d4a4028, I5580630f49
+07-01 22:20:19.856 14540 14618 I AdrenoVK-0: Build Date              : 11/04/21
+07-01 22:20:19.856 14540 14618 I AdrenoVK-0: Shader Compiler Version : EV031.32.02.16
+07-01 22:20:19.856 14540 14618 I AdrenoVK-0: Local Branch            :
+07-01 22:20:19.856 14540 14618 I AdrenoVK-0: Remote Branch           :
+07-01 22:20:19.856 14540 14618 I AdrenoVK-0: Remote Branch           :
+07-01 22:20:19.856 14540 14618 I AdrenoVK-0: Reconstruct Branch      :
+07-01 22:20:19.856 14540 14618 I AdrenoVK-0: Build Config            : S P 10.0.7 AArch64
+07-01 22:20:19.856 14540 14618 I AdrenoVK-0: Driver Path             : /vendor/lib64/hw/vulkan.adreno.so
+07-01 22:20:19.856  6046 12837 I AdvertisingIdClient: shouldSendLog 1310055722
+07-01 22:20:19.856  6046 12837 I AdvertisingIdClient: GetInfoInternal elapse 6ms
+07-01 22:20:19.857 14540 14579 E icetextnote.ap: open libmigui.so failed! dlopen - dlopen failed: library "libmigui.so" not found
+07-01 22:20:19.869 14540 14618 I flutter : [IMPORTANT:flutter/shell/platform/android/android_context_vk_impeller.cc(62)] Using the Impeller rendering backend (Vulkan).
+07-01 22:20:19.880 14540 14618 I flutter : [IMPORTANT:flutter/shell/platform/android/android_context_gl_impeller.cc(104)] Using the Impeller rendering backend (OpenGLES).
+07-01 22:20:19.887  6074  6074 D BoundBrokerSvc: onRebind: Intent { act=com.google.android.gms.common.telemetry.service.START dat=chimera-action: cmp=com.google.android.gms/.chimera.PersistentApiService }
+07-01 22:20:19.895  2064  6888 D WindowManager: finishDrawingLocked: mDrawState=COMMIT_DRAW_PENDING Window{1e2f228 u0 com.voicetextnote.app/com.voicetextnote.app.MainActivity} in Surface(name=com.voicetextnote.app/com.voicetextnote.app.MainActivity)/@0x686e722
+07-01 22:20:19.895 14540 14540 I FLTFireMsgService: FlutterFirebaseMessagingBackgroundService started!
+07-01 22:20:19.906  1239  4241 E ANDR-PERF-LM: ThreadHelper: thread_callback() 145: More than one pending updates!!! This should not happen. MeterMgr should avoid this case.
+07-01 22:20:19.908  2064  2346 I ActivityTaskManager: Displayed com.voicetextnote.app/.MainActivity: +788ms
+07-01 22:20:19.910 14540 14540 D DecorView[]: onWindowFocusChanged hasWindowFocus true
+07-01 22:20:19.913  2064  2346 I ActivityTaskManager: Fully drawn com.voicetextnote.app/.MainActivity: +788ms
+07-01 22:20:19.917 28525 28525 I GoogleInputMethodService: GoogleInputMethodService.onFinishInput():2274
+07-01 22:20:19.917  1239  4241 E ANDR-PERF-LM: ThreadHelper: thread_callback() 145: More than one pending updates!!! This should not happen. MeterMgr should avoid this case.
+07-01 22:20:19.919 28525 28525 I Module  : DeviceLockedStatusModuleProvider$Module.updateDeviceLockedStatusInternal():128 repeatCheckTimes = 0, locked = false
+07-01 22:20:19.919  2064  6955 W InputManager-JNI: Input channel object 'b36e05 Splash Screen com.voicetextnote.app (client)' was disposed without first being removed with the input manager!
+07-01 22:20:19.920 28525 28525 I GoogleInputMethodService: GoogleInputMethodService.onStartInput():1459 onStartInput(EditorInfo{EditorInfo{packageName=com.voicetextnote.app, inputType=0, inputTypeString=NULL, enableLearning=false, autoCorrection=false, autoComplete=false, imeOptions=0, privateImeOptions=null, actionName=UNSPECIFIED, actionLabel=null, initialSelStart=-1, initialSelEnd=-1, initialCapsMode=0, label=null, fieldId=-1, fieldName=null, extras=null, hintText=null, hintLocales=[]}}, false)
+07-01 22:20:19.920 28525 28525 I LatinIMEBase: LatinIMEBase.updateInputViewCoverNavigation():317 Update input view padding, isNavbarOverInputWindow=false, bottom inset=130
+07-01 22:20:19.921 28525 28525 I Module  : DeviceLockedStatusModuleProvider$Module.updateDeviceLockedStatusInternal():128 repeatCheckTimes = 1, locked = false
+07-01 22:20:19.926  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:20.117  2064  6955 D CompatibilityInfo: mCompatibilityFlags - 0
+07-01 22:20:20.117  2064  6955 D CompatibilityInfo: applicationDensity - 440
+07-01 22:20:20.117  2064  6955 D CompatibilityInfo: applicationScale - 1.0
+07-01 22:20:20.127  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:20.127 14399 14399 E WakeLockMetricsCollector: Unknown wakelock modified
+07-01 22:20:20.131  2064  6955 D CompatibilityInfo: mCompatibilityFlags - 0
+07-01 22:20:20.131  2064  6955 D CompatibilityInfo: applicationDensity - 440
+07-01 22:20:20.131  2064  6955 D CompatibilityInfo: applicationScale - 1.0
+07-01 22:20:20.132 14399 14634 E WakeLockMetricsCollector: Unknown wakelock modified
+07-01 22:20:20.134 14399 14399 E WakeLockMetricsCollector: Unknown wakelock modified
+07-01 22:20:20.135 14399 14634 E WakeLockMetricsCollector: Unknown wakelock modified
+07-01 22:20:20.137  2064  6955 D CompatibilityInfo: mCompatibilityFlags - 0
+07-01 22:20:20.137  2064  6955 D CompatibilityInfo: applicationDensity - 440
+07-01 22:20:20.137  2064  6955 D CompatibilityInfo: applicationScale - 1.0
+07-01 22:20:20.205  1239  4245 E ANDR-PERF-LM: VmRssMeter:: start() 447: Could not find pid, can not collect vmrss data
+07-01 22:20:20.205  1239  4244 E ANDR-PERF-LM: VmRssMeter:: start() 447: Could not find pid, can not collect vmrss data
+07-01 22:20:20.205  1239  4245 E ANDR-PERF-LM: AdaptiveLaunch: writeToDataBase() 64: Meter aborted or could not get meter data for this run
+07-01 22:20:20.316  2064  6888 D CompatibilityInfo: mCompatibilityFlags - 0
+07-01 22:20:20.316  2064  6888 D CompatibilityInfo: applicationDensity - 440
+07-01 22:20:20.316  2064  6888 D CompatibilityInfo: applicationScale - 1.0
+07-01 22:20:20.324  2064  2581 I MiuiNetworkPolicy: updateUidState uid = 10007, uidState = 8
+07-01 22:20:20.324  2064  2581 I MiuiNetworkPolicy: updateUidState uid = 10075, uidState = 8
+07-01 22:20:20.327  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:20.332 14399 14459 D WM-PackageManagerHelper: Skipping component enablement for androidx.work.impl.background.systemjob.SystemJobService
+07-01 22:20:20.332 14399 14459 D WM-Schedulers: Created SystemJobScheduler and enabled SystemJobService
+07-01 22:20:20.335 14399 14642 D WM-ForceStopRunnable: Is default app process = true
+07-01 22:20:20.335 14399 14642 D WM-ForceStopRunnable: Performing cleanup operations.
+07-01 22:20:20.361 14399 14642 D WM-SystemJobScheduler: Reconciling jobs
+07-01 22:20:20.373 14399 14484 E msys    : E[ADNSUCTIMH WAJMNSDNSResolver]_MNSDNSResolutionSuccess(35)=>[LogLevel:I] DNS Resolution Successful with 4 IPs, Persistent Cache Hit: 1, secondary resolver used: 0
+07-01 22:20:20.373 14399 14484 E msys    : E[ADNSUCTIMH WAJMNSDNSResolver]_MNSDNSResolutionSuccess(55)=>[LogLevel:I] Resolved IP Address: 216.239.35.4
+07-01 22:20:20.373 14399 14484 E msys    : E[ADNSUCTIMH WAJMNSDNSResolver]_MNSDNSResolutionSuccess(55)=>[LogLevel:I] Resolved IP Address: 216.239.35.0
+07-01 22:20:20.373 14399 14484 E msys    : E[ADNSUCTIMH WAJMNSDNSResolver]_MNSDNSResolutionSuccess(55)=>[LogLevel:I] Resolved IP Address: 216.239.35.12
+07-01 22:20:20.373 14399 14484 E msys    : E[ADNSUCTIMH WAJMNSDNSResolver]_MNSDNSResolutionSuccess(55)=>[LogLevel:I] Resolved IP Address: 216.239.35.8
+07-01 22:20:20.376 14399 14642 D WM-ForceStopRunnable: Found unfinished work, scheduling it.
+07-01 22:20:20.382 14399 14642 D WM-SystemJobScheduler: Scheduling work ID e1bb59ef-4ec8-4029-b1ba-90d412fe8e95Job ID 5618
+07-01 22:20:20.383 14540 14540 I flutter : FCM 권한 상태: AuthorizationStatus.authorized
+07-01 22:20:20.399  2064  2359 W ActivityManager: Unable to start service Intent { cmp=com.miui.powerkeeper/.perfshielder.PerfShielderStatisticsService } U=0: not found
+07-01 22:20:20.399  2064  2359 V PerfShielderService: Miui powerkeeper: can't bind to com.miui.powerkeeper.perfshielder.PerfShielderStatisticsService
+07-01 22:20:20.402  2064  6888 D CompatibilityInfo: mCompatibilityFlags - 0
+07-01 22:20:20.402  2064  6888 D CompatibilityInfo: applicationDensity - 440
+07-01 22:20:20.402  2064  6888 D CompatibilityInfo: applicationScale - 1.0
+07-01 22:20:20.402 14399 14484 E msys    : E[N mns]_OnResolverSuccess(359)=>Cache refresh succeeded with system DNS resolver. IP count: 4
+07-01 22:20:20.406 14399 14649 D WM-SystemJobScheduler: Scheduling work ID 6884170e-daa5-443e-ac59-820e891dec5dJob ID 5640
+07-01 22:20:20.426 14399 14649 D WM-PackageManagerHelper: Skipping component enablement for androidx.work.impl.background.systemalarm.RescheduleReceiver
+07-01 22:20:20.429  2064  6888 D CompatibilityInfo: mCompatibilityFlags - 0
+07-01 22:20:20.429  2064  6888 D CompatibilityInfo: applicationDensity - 440
+07-01 22:20:20.429  2064  6888 D CompatibilityInfo: applicationScale - 1.0
+07-01 22:20:20.464  2064  6872 D PackageManager: set app  component=com.whatsapp/com.whatsapp.contact.ui.picker.ExternalShareAlias enabled state: 1 from null,uid=10007,pid=14399
+07-01 22:20:20.464 14399 14399 W com.whatsapp: type=1400 audit(0.0:230572): avc: granted { execute } for comm=576861747341707020576F726B6572 path="/data/data/com.whatsapp/files/decompressed/libs.spo/libdav1d.so" dev="sda18" ino=219153 scontext=u:r:untrusted_app:s0:c7,c256,c512,c768 tcontext=u:object_r:app_data_file:s0:c7,c256,c512,c768 tclass=file app=com.whatsapp
+07-01 22:20:20.482 14399 14459 D nativeloader: Load /data/data/com.whatsapp/files/decompressed/libs.spo/libdav1d.so using class loader ns clns-5 (caller=/data/app/~~U_7PQdmRwMNdS0n_noXDQg==/com.whatsapp-jtPQDAurWQaFvq0eO68oVw==/base.apk): ok
+07-01 22:20:20.484  2064  2581 I MiuiNetworkPolicy: updateUidState uid = 10075, uidState = 10
+07-01 22:20:20.484  2064  2581 I MiuiNetworkPolicy: updateUidState uid = 10007, uidState = 10
+07-01 22:20:20.474 14399 14399 W com.whatsapp: type=1400 audit(0.0:230573): avc: granted { execute } for comm=576861747341707020576F726B6572 path="/data/data/com.whatsapp/files/decompressed/libs.spo/libwzav1.so" dev="sda18" ino=230952 scontext=u:r:untrusted_app:s0:c7,c256,c512,c768 tcontext=u:object_r:app_data_file:s0:c7,c256,c512,c768 tclass=file app=com.whatsapp
+07-01 22:20:20.490 14399 14459 D nativeloader: Load /data/data/com.whatsapp/files/decompressed/libs.spo/libwzav1.so using class loader ns clns-5 (caller=/data/app/~~U_7PQdmRwMNdS0n_noXDQg==/com.whatsapp-jtPQDAurWQaFvq0eO68oVw==/base.apk): ok
+07-01 22:20:20.484 14399 14399 W com.whatsapp: type=1400 audit(0.0:230574): avc: granted { execute } for comm=576861747341707020576F726B6572 path="/data/data/com.whatsapp/files/decompressed/libs.spo/libwzav1_v2.so" dev="sda18" ino=230171 scontext=u:r:untrusted_app:s0:c7,c256,c512,c768 tcontext=u:object_r:app_data_file:s0:c7,c256,c512,c768 tclass=file app=com.whatsapp
+07-01 22:20:20.497 14399 14459 D nativeloader: Load /data/data/com.whatsapp/files/decompressed/libs.spo/libwzav1_v2.so using class loader ns clns-5 (caller=/data/app/~~U_7PQdmRwMNdS0n_noXDQg==/com.whatsapp-jtPQDAurWQaFvq0eO68oVw==/base.apk): ok
+07-01 22:20:20.528  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:20.713 14399 14459 D BluetoothHeadset: Binding service...
+07-01 22:20:20.715  2064  6955 W BluetoothManagerService: psc is not null in bindBluetoothProfileService
+07-01 22:20:20.728  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:20.791 14399 14648 D WM-SystemJobScheduler: Scheduling work ID d41d0dda-f1f6-4dc0-88a8-91ba76e14f9bJob ID 5641
+07-01 22:20:20.804 13825 14031 I PAApplication: initMiAPMIfPrivacyAllowed: hasEverAgreedPrivacy=true, isDeviceProvisioned=true, currentNeedShowPrivacy=false
+07-01 22:20:20.804 13825 14031 I PAApplication: 初始化 MIAPM SDK...
+07-01 22:20:20.816 14399 14412 D BluetoothHeadset: Proxy object connected
+07-01 22:20:20.816 14540 14540 I flutter : 토픽 구독 완료: all
+07-01 22:20:20.851  2064  6955 D CompatibilityChangeReporter: Compat change id reported: 319212206; UID 10282; state: ENABLED
+07-01 22:20:20.855  2064  2594 D ConnectivityService: NetReassign [no changes] [c 0] [a 1] [i 2]
+07-01 22:20:20.858 13825 13825 I PAApplication: 初始化 MIAPM 容灾功能...
+07-01 22:20:20.860 13825 13825 I MiAPM.Disaster.Handler: [onAlive] vk.f
+07-01 22:20:20.905  6046  6046 D BoundBrokerSvc: onUnbind: Intent { act=com.google.android.gms.mdisync.service.START dat=chimera-action: cmp=com.google.android.gms/.chimera.GmsApiService }
+07-01 22:20:20.928  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:21.129  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:21.188  2064  2363 D CompatibilityInfo: mCompatibilityFlags - 0
+07-01 22:20:21.188  2064  2363 D CompatibilityInfo: applicationDensity - 440
+07-01 22:20:21.188  2064  2363 D CompatibilityInfo: applicationScale - 1.0
+07-01 22:20:21.273  2064  2175 W System  : A resource failed to call close.
+07-01 22:20:21.273  2064  2175 W System  : A resource failed to call release.
+07-01 22:20:21.274  3217 12838 I FA      : Application backgrounded at: timestamp_millis: 1782912019272
+07-01 22:20:21.329  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:21.529  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:21.730  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:21.931  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:21.999  6074  6074 D BoundBrokerSvc: onUnbind: Intent { act=com.google.android.gms.auth.aang.events.services.START dat=chimera-action: cmp=com.google.android.gms/.chimera.PersistentApiService }
+07-01 22:20:22.131  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:22.230  2064  2363 D CompatibilityInfo: mCompatibilityFlags - 0
+07-01 22:20:22.230  2064  2363 D CompatibilityInfo: applicationDensity - 440
+07-01 22:20:22.230  2064  2363 D CompatibilityInfo: applicationScale - 1.0
+07-01 22:20:22.332  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:22.528  3215  3215 D InterruptionStateProvider: No bubble up: not allowed to bubble: 0|com.miui.videoplayer|116|null|10142
+07-01 22:20:22.529  3215  3215 D InterruptionStateProvider: No bubble up: not allowed to bubble: -1|android|26|null|1000
+07-01 22:20:22.529  3215  3215 D InterruptionStateProvider: No bubble up: not allowed to bubble: -1|android|27|null|1000
+07-01 22:20:22.529  3215  3215 D InterruptionStateProvider: No alerting: suppressed due to group alert behavior
+07-01 22:20:22.532  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:22.733  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:22.933  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:23.134  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:23.272  2064  2363 D CompatibilityInfo: mCompatibilityFlags - 0
+07-01 22:20:23.272  2064  2363 D CompatibilityInfo: applicationDensity - 440
+07-01 22:20:23.272  2064  2363 D CompatibilityInfo: applicationScale - 1.0
+07-01 22:20:23.335  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:23.535  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:23.634  6074  6074 D BoundBrokerSvc: onUnbind: Intent { act=com.google.android.gms.libs.gmscorelogger.service.START dat=chimera-action: cmp=com.google.android.gms/.chimera.PersistentDirectBootAwareApiService }
+07-01 22:20:23.736  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:23.936  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:24.137  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:24.321  2064  2363 D CompatibilityInfo: mCompatibilityFlags - 0
+07-01 22:20:24.321  2064  2363 D CompatibilityInfo: applicationDensity - 440
+07-01 22:20:24.321  2064  2363 D CompatibilityInfo: applicationScale - 1.0
+07-01 22:20:24.337  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:24.538  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:24.738  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:24.908  6074  6074 D BoundBrokerSvc: onUnbind: Intent { act=com.google.android.gms.common.telemetry.service.START dat=chimera-action: cmp=com.google.android.gms/.chimera.PersistentApiService }
+07-01 22:20:24.938  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:25.081 13401 13669 E msys    : E[N mns:TigonMNS]_OnResolverSuccess(359)=>Cache refresh succeeded with system DNS resolver. IP count: 1
+07-01 22:20:25.092  2064  2363 I ActivityManager: Waited long enough for: ServiceRecord{e2ef0d u0 com.instagram.android/com.instagram.jobscheduler.bgfetch.scheduler.IgBgFetchTaskLifeService}
+07-01 22:20:25.139  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:25.151 14540 14676 D ProfileInstaller: Skipping profile installation for com.voicetextnote.app
+07-01 22:20:25.185  2064  2581 I MiuiNetworkPolicy: updateUidState uid = 10075, uidState = 15
+07-01 22:20:25.339  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:25.346  2064  2363 D CompatibilityInfo: mCompatibilityFlags - 0
+07-01 22:20:25.346  2064  2363 D CompatibilityInfo: applicationDensity - 440
+07-01 22:20:25.346  2064  2363 D CompatibilityInfo: applicationScale - 1.0
+07-01 22:20:25.540  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:25.740  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:25.941  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:26.141  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:26.342  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:26.366  2064  2363 D CompatibilityInfo: mCompatibilityFlags - 0
+07-01 22:20:26.366  2064  2363 D CompatibilityInfo: applicationDensity - 440
+07-01 22:20:26.366  2064  2363 D CompatibilityInfo: applicationScale - 1.0
+07-01 22:20:26.542  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:26.648  6046  6046 D BoundBrokerSvc: onUnbind: Intent { act=com.google.android.gms.appset.service.START dat=chimera-action: cmp=com.google.android.gms/.chimera.GmsApiService }
+07-01 22:20:26.665  6046  6046 D BoundBrokerSvc: onUnbind: Intent { act=com.google.android.gms.ads.identifier.service.EVENT_ATTESTATION dat=chimera-action: cmp=com.google.android.gms/.chimera.GmsBoundBrokerService }
+07-01 22:20:26.742  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:26.943  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:27.050  2064  2581 D MiuiNetworkPolicy: updateLimit mLimitEnabled=true,enabled=false,mNetworkPriorityMode=255
+07-01 22:20:27.144  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:27.278  6046  6046 D BoundBrokerSvc: onUnbind: Intent { act=com.google.android.gms.safebrowsing.SafeBrowsingService.START dat=chimera-action: cmp=com.google.android.gms/.chimera.GmsBoundBrokerService }
+07-01 22:20:27.286  6046  6046 D BoundBrokerSvc: onUnbind: Intent { act=com.google.android.gms.safetynet.service.START pkg=com.google.android.gms }
+07-01 22:20:27.344  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:27.384  2064  2363 D CompatibilityInfo: mCompatibilityFlags - 0
+07-01 22:20:27.385  2064  2363 D CompatibilityInfo: applicationDensity - 440
+07-01 22:20:27.385  2064  2363 D CompatibilityInfo: applicationScale - 1.0
+07-01 22:20:27.430 13825 14682 E FilePhenotypeFlags: Config package com.google.android.gms.clearcut_client#com.mi.globalminusscreen cannot use FILE backing without declarative registration. See go/phenotype-android-integration#phenotype for more information. This will lead to stale flags.
+07-01 22:20:27.454 13825 14682 E FilePhenotypeFlags: Config package com.google.android.gms.clearcut_client#com.mi.globalminusscreen cannot use FILE backing without declarative registration. See go/phenotype-android-integration#phenotype for more information. This will lead to stale flags.
+07-01 22:20:27.454 13825 14682 E FilePhenotypeFlags: Config package com.google.android.gms.clearcut_client#com.mi.globalminusscreen cannot use FILE backing without declarative registration. See go/phenotype-android-integration#phenotype for more information. This will lead to stale flags.
+07-01 22:20:27.544  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:27.745  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:27.946  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:28.147  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:28.347  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:28.402  2064  2363 D CompatibilityChangeReporter: Compat change id reported: 168419799; UID 10325; state: DISABLED
+07-01 22:20:28.402  2064  2363 D CompatibilityInfo: mCompatibilityFlags - 0
+07-01 22:20:28.402  2064  2363 D CompatibilityInfo: applicationDensity - 440
+07-01 22:20:28.402  2064  2363 D CompatibilityInfo: applicationScale - 1.0
+07-01 22:20:28.548  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:28.748  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:28.949  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:29.149  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:29.220 13401 13537 D CompatibilityChangeReporter: Compat change id reported: 150939131; UID 10325; state: ENABLED
+07-01 22:20:29.224  1202  2607 D audio_hw_primary: adev_set_parameters: enter: xlog.volume.music.speaker=15
+07-01 22:20:29.224  1202  2607 V msm8974_platform: platform_set_parameters: enter: xlog.volume.music.speaker=15
+07-01 22:20:29.224  1202  2607 D audio_hw_hfp: hfp_set_parameters: enter
+07-01 22:20:29.224  1202  2607 D audio_hw_hfp: hfp_set_parameters: enter
+07-01 22:20:29.224  1202  2607 D audio_hw_extn: audio_extn_fm_set_parameters: Enter
+07-01 22:20:29.224  1202  2607 D audio_hw_hfp: hfp_set_parameters: enter
+07-01 22:20:29.224  1202  2607 V audio_hw_primary: adev_set_parameters: exit with code(0)
+07-01 22:20:29.226  1202  2607 D audio_hw_primary: adev_set_parameters: enter: xlog.volume.music.speaker=15
+07-01 22:20:29.226  1202  2607 V msm8974_platform: platform_set_parameters: enter: xlog.volume.music.speaker=15
+07-01 22:20:29.226  1202  2607 D audio_hw_hfp: hfp_set_parameters: enter
+07-01 22:20:29.226  1202  2607 D audio_hw_hfp: hfp_set_parameters: enter
+07-01 22:20:29.226  1202  2607 D audio_hw_extn: audio_extn_fm_set_parameters: Enter
+07-01 22:20:29.227  1202  2607 D audio_hw_hfp: hfp_set_parameters: enter
+07-01 22:20:29.227  1202  2607 V audio_hw_primary: adev_set_parameters: exit with code(0)
+07-01 22:20:29.350  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:29.429  2064  6872 W ProcessStats: Tracking association SourceState{5ba0c6e com.miui.home/10102 BTopFgs #1083608} whose proc state 2 is better than process ProcessState{9448e6a com.miui.securitycenter.remote/1000 pkg=com.miui.securitycenter} proc state 3 (503 skipped)
+07-01 22:20:29.433 11954 11954 D SecurityCenter: ImageLoader clear memory info
+07-01 22:20:29.434  2064  2363 D CompatibilityInfo: mCompatibilityFlags - 0
+07-01 22:20:29.435  2064  2363 D CompatibilityInfo: applicationDensity - 440
+07-01 22:20:29.435  2064  2363 D CompatibilityInfo: applicationScale - 1.0
+07-01 22:20:29.550  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:29.751  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:29.929  2064  2581 I MiuiNetworkPolicy: updateUidState uid = 10185, uidState = 5
+07-01 22:20:29.951  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:30.152  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:30.352  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:30.460  2064  2363 D CompatibilityInfo: mCompatibilityFlags - 0
+07-01 22:20:30.461  2064  2363 D CompatibilityInfo: applicationDensity - 440
+07-01 22:20:30.461  2064  2363 D CompatibilityInfo: applicationScale - 1.0
+07-01 22:20:30.553  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:30.753  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:30.954  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:31.154  3177  9063 I SarService: Receiver polling >>>> Change receiver mode: off
+07-01 22:20:31.202   675 13226 I keystore2: keystore2::watchdog: Watchdog thread idle -> terminating. Have a great day.
+07-01 22:20:31.292  6046  6046 D BoundBrokerSvc: onUnbind: Intent { act=com.google.android.gms.measurement.START pkg=com.google.android.gms }
+07-01 22:20:31.300  2064  2581 I MiuiNetworkPolicy: updateUidState uid = 10185, uidState = 10
+07-01 22:20:31.307  2064  2581 I MiuiNetworkPolicy: updateUidState uid = 10185, uidState = 19

@@ -28,6 +28,25 @@ import 'package:voice_to_textnote/services/shared_import_service.dart';
 // 인증이 불필요한 공개 경로 목록
 const _publicPaths = ['/login', '/register'];
 
+String? externalDeepLinkRedirect(Uri uri) {
+  if (uri.scheme != 'voicetextnote') return null;
+
+  final host = uri.host.toLowerCase();
+  final segments = uri.pathSegments;
+  String? meetingId;
+
+  if (host == 'result' || host == 'summary') {
+    meetingId = segments.isNotEmpty ? segments.first : null;
+  } else if (segments.length >= 2 &&
+      (segments[0] == 'result' || segments[0] == 'summary')) {
+    meetingId = segments[1];
+  }
+
+  final normalizedId = meetingId?.trim();
+  if (normalizedId == null || normalizedId.isEmpty) return '/';
+  return '/result/$normalizedId';
+}
+
 String? authRedirect(AuthState authState, String currentPath) {
   final isAuthenticated = authState.isAuthenticated;
   // SPEC-GUEST-001: 게스트 모드도 홈 접근 허용
@@ -62,6 +81,9 @@ GoRouter createRouter(ProviderContainer container) {
     // 인증 상태 변화 감지를 위한 리프레시 리스너
     refreshListenable: _AuthStateNotifier(container),
     redirect: (context, state) {
+      final deepLinkPath = externalDeepLinkRedirect(state.uri);
+      if (deepLinkPath != null) return deepLinkPath;
+
       final authState = container.read(authStateProvider);
       final currentPath = state.uri.path;
       return authRedirect(authState, currentPath);

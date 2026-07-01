@@ -1,0 +1,8 @@
+......................                                                   [100%]
+=============================== warnings summary ===============================
+.venv/lib/python3.14/site-packages/prometheus_fastapi_instrumentator/instrumentation.py:327
+  /Users/ibkim/Projects/voice-to-textnote/.venv/lib/python3.14/site-packages/prometheus_fastapi_instrumentator/instrumentation.py:327: DeprecationWarning: 'asyncio.iscoroutinefunction' is deprecated and slated for removal in Python 3.16; use inspect.iscoroutinefunction() instead
+    if asyncio.iscoroutinefunction(func):
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+22 passed, 1 warning in 2.03s

@@ -51,6 +51,15 @@ class PushService:
         self._firebase_initialized = False
         self._is_local_fallback_mode = True
 
+    @property
+    def _is_mock_mode(self) -> bool:
+        """Backward-compatible alias for legacy tests and diagnostics."""
+        return self._is_local_fallback_mode
+
+    @_is_mock_mode.setter
+    def _is_mock_mode(self, value: bool) -> None:
+        self._is_local_fallback_mode = value
+
     def _ensure_firebase_initialized(self) -> None:
         """Firebase Admin SDK 초기화 (credentials 있으면 실제, 없으면 local fallback)"""
         if self._firebase_initialized:
