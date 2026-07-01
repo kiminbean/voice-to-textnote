@@ -1,5 +1,9 @@
 # Wiki Log
 
+## 2026-07-01
+
+- Added [[session-2026-07-01-promise-radar-v11]] after adding the Promise Radar fixture/source audit gate, confidence-bucket report, Evidence Lock v2, and Review Queue diff preview.
+
 ## 2026-06-30
 
 - Added [[session-2026-06-30-pyannote-voiceprint-access]] after recovering the valid `kiminbean` Hugging Face token, approving `pyannote/embedding`, adding `omegaconf`, verifying `SpeakerEmbeddingEngine` loads pyannote `Inference`, and restarting backend/Celery.

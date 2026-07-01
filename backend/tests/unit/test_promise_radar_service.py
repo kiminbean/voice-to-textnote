@@ -27,6 +27,7 @@ from backend.schemas.promise_radar import (
     PromiseLedgerSplitRequest,
     PromiseLedgerUpdateRequest,
 )
+from backend.scripts.audit_promise_radar_accuracy_set import audit_accuracy_set
 from backend.services.promise_radar_service import PromiseRadarService
 
 
@@ -528,9 +529,7 @@ async def test_ledger_merge_split_history_dashboard_and_due_push(session_factory
 
         event_types = {
             event.event_type
-            for event in (
-                await session.execute(select(PromiseLedgerEvent))
-            ).scalars()
+            for event in (await session.execute(select(PromiseLedgerEvent))).scalars()
         }
         assert {
             "merged",
@@ -806,6 +805,32 @@ async def test_promise_autopilot_calendar_assignee_and_quality(session_factory):
             )
             is True
         )
+        short_marker_only = autopilot.assessments[0].model_copy(
+            update={
+                "confidence": 0.95,
+                "explanation": autopilot.assessments[0].explanation.model_copy(
+                    update={
+                        "matched_text": "done",
+                        "similarity": 0.95,
+                    }
+                ),
+                "evidence_pack": autopilot.assessments[0].evidence_pack.model_copy(
+                    update={
+                        "matched_text": "done",
+                        "similarity": 0.95,
+                        "marker_hits": ["done"],
+                    }
+                ),
+            }
+        )
+        assert (
+            service._should_apply_autopilot(
+                short_marker_only,
+                threshold=0.1,
+                evidence_lock_enabled=True,
+            )
+            is False
+        )
 
         feedback = await service.record_learning_feedback(
             session,
@@ -940,9 +965,7 @@ async def test_promise_autopilot_calendar_assignee_and_quality(session_factory):
             action_items=[],
             next_steps=["릴리스 노트 검토 완료했습니다. 하지만 아직 못했습니다."],
         )
-        session.add(
-            MeetingOwnership(task_id="sum-conflict", owner_id=owner_id, team_id=team_id)
-        )
+        session.add(MeetingOwnership(task_id="sum-conflict", owner_id=owner_id, team_id=team_id))
         session.add(conflict_current)
         await session.commit()
         conflict = await service.run_autopilot(
@@ -1018,6 +1041,7 @@ async def test_promise_autopilot_calendar_assignee_and_quality(session_factory):
         )
         assert evaluation.case_count == 2
         assert evaluation.correct_count == 2
+        assert evaluation.confidence_buckets
         report = service.build_accuracy_report(
             [
                 PromiseAccuracyCase(
@@ -1034,13 +1058,14 @@ async def test_promise_autopilot_calendar_assignee_and_quality(session_factory):
         )
         assert report.real_meeting_case_count == 1
         assert report.source_counts["video1"] == 1
+        assert report.coverage["real_meeting_target"] == 1.0
+        assert report.evaluation.confidence_buckets
+        assert report.source_quality
         assert report.below_target is False
 
         event_types = {
             event.event_type
-            for event in (
-                await session.execute(select(PromiseLedgerEvent))
-            ).scalars()
+            for event in (await session.execute(select(PromiseLedgerEvent))).scalars()
         }
         assert {
             "autopilot_applied",
@@ -1253,10 +1278,15 @@ async def test_autopilot_review_rejection_removes_candidate(session_factory):
 
         event_types = {
             event.event_type
-            for event in (
-                await session.execute(select(PromiseLedgerEvent))
-            ).scalars()
+            for event in (await session.execute(select(PromiseLedgerEvent))).scalars()
         }
-        assert {"autopilot_review_rejected", "learning_feedback"}.issubset(
-            event_types
-        )
+        assert {"autopilot_review_rejected", "learning_feedback"}.issubset(event_types)
+
+
+def test_promise_radar_accuracy_fixture_audit_passes():
+    report = audit_accuracy_set(target_real_cases=100)
+
+    assert report["passed"] is True
+    assert report["case_count"] >= 172
+    assert report["real_case_count"] >= 100
+    assert report["errors"] == []

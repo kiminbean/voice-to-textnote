@@ -15,6 +15,7 @@ import re
 from collections import Counter
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 from uuid import UUID
@@ -168,6 +169,8 @@ _VALID_LEDGER_STATUSES = _OPEN_LEDGER_STATUSES | _CLOSED_LEDGER_STATUSES
 _AUTOPILOT_APPLY_THRESHOLD = 0.68
 _EVIDENCE_LOCK_MIN_SIMILARITY = 0.24
 _EVIDENCE_LOCK_MIN_FACTORS = 2
+_EVIDENCE_LOCK_MIN_TOKENS = 4
+_EVIDENCE_LOCK_MIN_CHARS = 18
 _AUTOMATION_POLICY_MODES = {"safe_auto", "preview_only", "completed_only", "manual_only"}
 _AUTOMATION_POLICY_DEFAULT_ALLOWED = {"completed", "delayed", "changed", "dismissed"}
 _AUTOPILOT_MARKERS = {
@@ -2439,6 +2442,8 @@ class PromiseRadarService:
         correct = 0
         predicted_by_status: dict[str, int] = {}
         correct_by_status: dict[str, int] = {}
+        bucket_totals: dict[str, int] = {}
+        bucket_correct: dict[str, int] = {}
         failures: list[dict[str, Any]] = []
         for case in cases:
             entry = PromiseLedgerEntry(
@@ -2482,10 +2487,13 @@ class PromiseRadarService:
             )
             predicted = assessment.suggested_status
             expected = case.expected_status
+            bucket = self._confidence_bucket(assessment.confidence)
+            bucket_totals[bucket] = bucket_totals.get(bucket, 0) + 1
             predicted_by_status[predicted] = predicted_by_status.get(predicted, 0) + 1
             if predicted == expected:
                 correct += 1
                 correct_by_status[predicted] = correct_by_status.get(predicted, 0) + 1
+                bucket_correct[bucket] = bucket_correct.get(bucket, 0) + 1
             else:
                 failures.append(
                     {
@@ -2501,11 +2509,21 @@ class PromiseRadarService:
             for status, count in predicted_by_status.items()
             if count
         }
+        confidence_buckets = {
+            bucket: {
+                "case_count": count,
+                "correct_count": bucket_correct.get(bucket, 0),
+                "accuracy": round(bucket_correct.get(bucket, 0) / count, 3),
+            }
+            for bucket, count in sorted(bucket_totals.items())
+            if count
+        }
         return PromiseAccuracyEvaluation(
             case_count=len(cases),
             correct_count=correct,
             accuracy=round(correct / len(cases), 3) if cases else 0.0,
             status_precision=precision,
+            confidence_buckets=confidence_buckets,
             failures=failures,
         )
 
@@ -2521,10 +2539,20 @@ class PromiseRadarService:
         evaluation = self.evaluate_accuracy_cases(cases)
         status_counts = Counter(case.expected_status for case in cases)
         source_counts: Counter[str] = Counter()
+        source_quality = self._accuracy_source_quality(source_manifest_path)
+        source_prefixes, source_case_ids = self._accuracy_source_lookup(source_manifest_path)
         real_meeting_case_count = 0
         for case in cases:
             if case.id.startswith("real-"):
                 real_meeting_case_count += 1
+                source_id = self._accuracy_case_source_id(
+                    case.id,
+                    source_prefixes=source_prefixes,
+                    source_case_ids=source_case_ids,
+                )
+                if source_id:
+                    source_counts[source_id] += 1
+                    continue
             parts = case.id.split("-")
             if case.id.startswith("real-v10-") and len(parts) >= 3:
                 source_counts[parts[2]] += 1
@@ -2532,6 +2560,57 @@ class PromiseRadarService:
                 source_counts[parts[1]] += 1
             else:
                 source_counts["synthetic"] += 1
+        manifest_label_count = sum(
+            int(item.get("golden_case_count") or 0)
+            for item in source_quality.values()
+            if isinstance(item, dict)
+        )
+        coverage = {
+            "owner": self._ratio(sum(1 for case in cases if case.owner), len(cases)),
+            "due_at": self._ratio(sum(1 for case in cases if case.due_at), len(cases)),
+            "source_metadata": self._ratio(
+                sum(1 for case in cases if case.source_id or case.id.startswith("real-")),
+                len(cases),
+            ),
+            "real_meeting_target": self._ratio(real_meeting_case_count, target_case_count),
+            "manifest_case_match": (
+                1.0
+                if manifest_label_count == real_meeting_case_count
+                else self._ratio(
+                    min(manifest_label_count, real_meeting_case_count),
+                    max(manifest_label_count, real_meeting_case_count, 1),
+                )
+            ),
+        }
+        quality_warnings: list[str] = []
+        if real_meeting_case_count < target_case_count:
+            quality_warnings.append(
+                f"실제 회의 label이 목표보다 부족합니다: {real_meeting_case_count}/{target_case_count}"
+            )
+        if manifest_label_count and manifest_label_count != real_meeting_case_count:
+            quality_warnings.append(
+                f"Manifest golden_case_count 합계({manifest_label_count})와 실제 fixture label 수({real_meeting_case_count})가 다릅니다."
+            )
+        for source_id, quality in source_quality.items():
+            if quality.get("candidate_only"):
+                continue
+            missing = [
+                key
+                for key in ("url", "license", "verified_with", "rebuild_commands")
+                if not quality.get(key)
+            ]
+            if missing:
+                quality_warnings.append(
+                    f"{source_id} source manifest 필수 항목 누락: {', '.join(missing)}"
+                )
+            if "creative commons" not in str(quality.get("license", "")).lower():
+                quality_warnings.append(
+                    f"{source_id} license가 Creative Commons로 확인되지 않았습니다."
+                )
+            if not quality.get("subtitle_cache"):
+                quality_warnings.append(f"{source_id} subtitle_cache 경로가 없습니다.")
+            if not quality.get("representative_audio_clip"):
+                quality_warnings.append(f"{source_id} 대표 음성 clip 경로가 없습니다.")
         return PromiseAccuracyReport(
             generated_at=datetime.now(UTC).replace(tzinfo=None),
             fixture_path=fixture_path,
@@ -2539,10 +2618,116 @@ class PromiseRadarService:
             evaluation=evaluation,
             status_counts=dict(status_counts),
             source_counts=dict(source_counts),
+            coverage=coverage,
+            source_quality=source_quality,
+            quality_warnings=quality_warnings,
             real_meeting_case_count=real_meeting_case_count,
             target_case_count=target_case_count,
             below_target=real_meeting_case_count < target_case_count,
         )
+
+    def _accuracy_source_quality(
+        self,
+        source_manifest_path: str | None,
+    ) -> dict[str, dict[str, Any]]:
+        if not source_manifest_path:
+            return {}
+        path = Path(source_manifest_path)
+        if not path.exists():
+            return {}
+        raw_sources = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(raw_sources, list):
+            return {}
+        quality: dict[str, dict[str, Any]] = {}
+        for item in raw_sources:
+            if not isinstance(item, dict):
+                continue
+            source_id = str(item.get("source_id") or "unknown")
+            rebuild_commands = item.get("rebuild_commands")
+            segments = item.get("segments")
+            segment_count = len(segments) if isinstance(segments, list) else 0
+            golden_case_count = int(item.get("golden_case_count") or 0)
+            if golden_case_count == 0 and isinstance(segments, list):
+                for segment in segments:
+                    if not isinstance(segment, dict):
+                        continue
+                    if "golden_case_count" in segment:
+                        golden_case_count += int(segment.get("golden_case_count") or 0)
+                    else:
+                        golden_ids = segment.get("golden_case_ids")
+                        if isinstance(golden_ids, list):
+                            golden_case_count += len(golden_ids)
+            quality[source_id] = {
+                "title": item.get("title"),
+                "url": item.get("url"),
+                "license": item.get("license"),
+                "verified_with": item.get("verified_with"),
+                "subtitle_cache": item.get("subtitle_cache"),
+                "representative_audio_clip": item.get("representative_audio_clip"),
+                "golden_case_count": golden_case_count,
+                "golden_case_id_prefix": item.get("golden_case_id_prefix"),
+                "candidate_only": bool(item.get("candidate_only")),
+                "rebuild_commands": rebuild_commands if isinstance(rebuild_commands, list) else [],
+                "segment_count": segment_count,
+            }
+        return quality
+
+    def _accuracy_source_lookup(
+        self,
+        source_manifest_path: str | None,
+    ) -> tuple[dict[str, str], dict[str, str]]:
+        if not source_manifest_path:
+            return {}, {}
+        path = Path(source_manifest_path)
+        if not path.exists():
+            return {}, {}
+        raw_sources = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(raw_sources, list):
+            return {}, {}
+        prefixes: dict[str, str] = {}
+        case_ids: dict[str, str] = {}
+        for item in raw_sources:
+            if not isinstance(item, dict):
+                continue
+            source_id = str(item.get("source_id") or "unknown")
+            prefix = item.get("golden_case_id_prefix")
+            if isinstance(prefix, str) and prefix:
+                prefixes[prefix] = source_id
+            segments = item.get("segments")
+            if not isinstance(segments, list):
+                continue
+            for segment in segments:
+                if not isinstance(segment, dict):
+                    continue
+                for case_id in segment.get("golden_case_ids") or []:
+                    if isinstance(case_id, str):
+                        case_ids[case_id] = source_id
+        return prefixes, case_ids
+
+    def _accuracy_case_source_id(
+        self,
+        case_id: str,
+        *,
+        source_prefixes: dict[str, str],
+        source_case_ids: dict[str, str],
+    ) -> str | None:
+        if case_id in source_case_ids:
+            return source_case_ids[case_id]
+        for prefix, source_id in source_prefixes.items():
+            if case_id.startswith(prefix):
+                return source_id
+        return None
+
+    def _confidence_bucket(self, confidence: float) -> str:
+        clipped = max(0.0, min(1.0, confidence))
+        start = min(0.9, int(clipped * 10) / 10)
+        end = 1.0 if start >= 0.9 else start + 0.09
+        return f"{start:.1f}-{end:.2f}"
+
+    def _ratio(self, numerator: int, denominator: int) -> float:
+        if denominator <= 0:
+            return 0.0
+        return round(max(0.0, min(1.0, numerator / denominator)), 3)
 
     def analyze_records(
         self,
@@ -3204,11 +3389,25 @@ class PromiseRadarService:
 
     def _has_locked_evidence(self, assessment: PromiseAutopilotAssessment) -> bool:
         explanation = assessment.explanation
+        matched_text = (explanation.matched_text or "").strip()
+        matched_tokens = self._tokens(matched_text)
+        evidence_pack = assessment.evidence_pack
+        marker_hits = evidence_pack.marker_hits if evidence_pack else []
+        status_change = assessment.suggested_status != assessment.previous_status
+        status_needs_marker = status_change and assessment.suggested_status in {
+            "completed",
+            "delayed",
+            "changed",
+            "dismissed",
+        }
         return (
-            bool(explanation.matched_text)
+            bool(matched_text)
+            and len(matched_text) >= _EVIDENCE_LOCK_MIN_CHARS
+            and len(matched_tokens) >= _EVIDENCE_LOCK_MIN_TOKENS
             and explanation.similarity >= _EVIDENCE_LOCK_MIN_SIMILARITY
             and bool(explanation.evidence)
             and len(explanation.confidence_factors) >= _EVIDENCE_LOCK_MIN_FACTORS
+            and (not status_needs_marker or bool(marker_hits))
         )
 
     def _explain_entry_against_candidates(

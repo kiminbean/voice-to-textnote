@@ -1231,6 +1231,7 @@ class PromiseAccuracyEvaluation {
   final int correctCount;
   final double accuracy;
   final Map<String, double> statusPrecision;
+  final Map<String, Map<String, dynamic>> confidenceBuckets;
   final List<Map<String, dynamic>> failures;
 
   const PromiseAccuracyEvaluation({
@@ -1238,6 +1239,7 @@ class PromiseAccuracyEvaluation {
     required this.correctCount,
     required this.accuracy,
     required this.statusPrecision,
+    required this.confidenceBuckets,
     required this.failures,
   });
 
@@ -1249,6 +1251,13 @@ class PromiseAccuracyEvaluation {
       statusPrecision:
           (json['status_precision'] as Map<String, dynamic>? ?? {}).map(
         (key, value) => MapEntry(key, (value as num?)?.toDouble() ?? 0),
+      ),
+      confidenceBuckets:
+          (json['confidence_buckets'] as Map<String, dynamic>? ?? {}).map(
+        (key, value) => MapEntry(
+          key,
+          value is Map<String, dynamic> ? value : <String, dynamic>{},
+        ),
       ),
       failures: (json['failures'] as List<dynamic>? ?? [])
           .whereType<Map<String, dynamic>>()
@@ -1264,6 +1273,9 @@ class PromiseAccuracyReport {
   final PromiseAccuracyEvaluation evaluation;
   final Map<String, int> statusCounts;
   final Map<String, int> sourceCounts;
+  final Map<String, double> coverage;
+  final Map<String, Map<String, dynamic>> sourceQuality;
+  final List<String> qualityWarnings;
   final int realMeetingCaseCount;
   final int targetCaseCount;
   final bool belowTarget;
@@ -1275,6 +1287,9 @@ class PromiseAccuracyReport {
     required this.evaluation,
     required this.statusCounts,
     required this.sourceCounts,
+    required this.coverage,
+    required this.sourceQuality,
+    required this.qualityWarnings,
     required this.realMeetingCaseCount,
     required this.targetCaseCount,
     required this.belowTarget,
@@ -1295,6 +1310,19 @@ class PromiseAccuracyReport {
       sourceCounts: (json['source_counts'] as Map<String, dynamic>? ?? {}).map(
         (key, value) => MapEntry(key, (value as num?)?.toInt() ?? 0),
       ),
+      coverage: (json['coverage'] as Map<String, dynamic>? ?? {}).map(
+        (key, value) => MapEntry(key, (value as num?)?.toDouble() ?? 0),
+      ),
+      sourceQuality:
+          (json['source_quality'] as Map<String, dynamic>? ?? {}).map(
+        (key, value) => MapEntry(
+          key,
+          value is Map<String, dynamic> ? value : <String, dynamic>{},
+        ),
+      ),
+      qualityWarnings: (json['quality_warnings'] as List<dynamic>? ?? [])
+          .whereType<String>()
+          .toList(),
       realMeetingCaseCount: json['real_meeting_case_count'] as int? ?? 0,
       targetCaseCount: json['target_case_count'] as int? ?? 100,
       belowTarget: json['below_target'] as bool? ?? false,

@@ -5849,6 +5849,8 @@ class _PromiseRadarTab extends ConsumerWidget {
     };
   }
 
+  String _percentageLabel(num value) => '${(value * 100).round()}%';
+
   String _automationPolicyLabel(String mode) {
     return switch (mode) {
       'preview_only' => '항상 미리보기',
@@ -6492,10 +6494,72 @@ class _PromiseRadarTab extends ConsumerWidget {
                     '정확도 ${(report.evaluation.accuracy * 100).round()}% · 실제 회의 label ${report.realMeetingCaseCount}/${report.targetCaseCount}',
                   ),
                 ),
+                Wrap(
+                  spacing: AppSpacing.xs,
+                  runSpacing: AppSpacing.xs,
+                  children: [
+                    _PromiseMetricPill(
+                      label: '정답',
+                      value:
+                          '${report.evaluation.correctCount}/${report.evaluation.caseCount}',
+                    ),
+                    if (report.coverage['real_meeting_target'] != null)
+                      _PromiseMetricPill(
+                        label: '실제 label',
+                        value: _percentageLabel(
+                            report.coverage['real_meeting_target']!),
+                      ),
+                    if (report.coverage['manifest_case_match'] != null)
+                      _PromiseMetricPill(
+                        label: 'manifest',
+                        value: _percentageLabel(
+                            report.coverage['manifest_case_match']!),
+                      ),
+                    if (report.qualityWarnings.isNotEmpty)
+                      _PromiseMetricPill(
+                        label: 'warning',
+                        value: '${report.qualityWarnings.length}',
+                      ),
+                  ],
+                ),
                 ListTile(
                   title: const Text('Fixture'),
                   subtitle: Text(report.fixturePath),
                 ),
+                if (report.qualityWarnings.isNotEmpty) ...[
+                  const Divider(),
+                  for (final warning in report.qualityWarnings.take(5))
+                    ListTile(
+                      dense: true,
+                      leading: const Icon(Icons.warning_amber_outlined),
+                      title: Text(warning),
+                    ),
+                ],
+                if (report.evaluation.confidenceBuckets.isNotEmpty) ...[
+                  const Divider(),
+                  ListTile(
+                    dense: true,
+                    title: const Text('Confidence bucket'),
+                    subtitle: Text(
+                      report.evaluation.confidenceBuckets.entries.map((entry) {
+                        final value = entry.value;
+                        final total = value['case_count'] as int? ?? 0;
+                        final accuracy =
+                            (value['accuracy'] as num?)?.toDouble() ?? 0;
+                        return '${entry.key}: ${_percentageLabel(accuracy)} ($total)';
+                      }).join(' · '),
+                    ),
+                  ),
+                ],
+                if (report.coverage.isNotEmpty) ...[
+                  const Divider(),
+                  for (final entry in report.coverage.entries)
+                    ListTile(
+                      dense: true,
+                      title: Text(entry.key),
+                      trailing: Text(_percentageLabel(entry.value)),
+                    ),
+                ],
                 const Divider(),
                 for (final entry in report.statusCounts.entries)
                   ListTile(
@@ -6508,7 +6572,12 @@ class _PromiseRadarTab extends ConsumerWidget {
                   ListTile(
                     dense: true,
                     title: Text(entry.key),
-                    trailing: Text('${entry.value}건'),
+                    trailing: Text(
+                      report.sourceQuality[entry.key]?['golden_case_count'] !=
+                              null
+                          ? '${entry.value}건 / golden ${report.sourceQuality[entry.key]?['golden_case_count']}'
+                          : '${entry.value}건',
+                    ),
                   ),
                 if (report.evaluation.failures.isNotEmpty) ...[
                   const Divider(),
@@ -6827,6 +6896,12 @@ class _PromiseRadarTab extends ConsumerWidget {
                       ],
                     ),
                     const SizedBox(height: AppSpacing.sm),
+                    if (filtered.isNotEmpty)
+                      _buildAutopilotQueueSummary(
+                        context,
+                        filtered,
+                        actionableFiltered,
+                      ),
                     if (filtered.isEmpty)
                       const ListTile(title: Text('확인할 약속 후보가 없습니다.')),
                     for (final item in filtered)
@@ -6844,6 +6919,74 @@ class _PromiseRadarTab extends ConsumerWidget {
           },
         );
       },
+    );
+  }
+
+  Widget _buildAutopilotQueueSummary(
+    BuildContext context,
+    List<PromiseAutopilotReviewItem> filtered,
+    List<PromiseAutopilotReviewItem> actionable,
+  ) {
+    final theme = Theme.of(context);
+    final statusCounts = <String, int>{};
+    for (final item in actionable) {
+      statusCounts.update(
+        item.assessment.suggestedStatus,
+        (value) => value + 1,
+        ifAbsent: () => 1,
+      );
+    }
+    final weakCount = filtered
+        .where((item) =>
+            !item.assessment.evidenceLocked ||
+            item.assessment.confidence < item.assessment.threshold)
+        .length;
+    final lockedCount =
+        filtered.where((item) => item.assessment.evidenceLocked).length;
+    final highRiskCount =
+        filtered.where((item) => item.ledgerEntry.riskLevel == 'high').length;
+    final dueCount = filtered
+        .where((item) =>
+            item.ledgerEntry.dueAt != null || item.ledgerEntry.dueDate != null)
+        .length;
+    final statusSummary = statusCounts.entries
+        .map((entry) => '${_statusLabel(entry.key)} ${entry.value}')
+        .join(' · ');
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.sm),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '일괄 확정 diff preview',
+              style: theme.textTheme.labelLarge,
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Wrap(
+              spacing: AppSpacing.xs,
+              runSpacing: AppSpacing.xs,
+              children: [
+                _PromiseMetricPill(label: '표시', value: '${filtered.length}'),
+                _PromiseMetricPill(
+                    label: '확정 가능', value: '${actionable.length}'),
+                _PromiseMetricPill(label: '근거 잠김', value: '$lockedCount'),
+                _PromiseMetricPill(label: '약한 근거', value: '$weakCount'),
+                _PromiseMetricPill(label: '고위험', value: '$highRiskCount'),
+                _PromiseMetricPill(label: '기한', value: '$dueCount'),
+              ],
+            ),
+            if (statusSummary.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                '상태 변경: $statusSummary',
+                style: theme.textTheme.bodySmall,
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 
@@ -6881,6 +7024,29 @@ class _PromiseRadarTab extends ConsumerWidget {
             Text(
               assessment.conflictReason ?? assessment.reason,
               style: Theme.of(parentContext).textTheme.bodySmall,
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Wrap(
+              spacing: AppSpacing.xs,
+              runSpacing: AppSpacing.xs,
+              children: [
+                _PromiseMetricPill(
+                  label: 'threshold',
+                  value: _percentageLabel(assessment.threshold),
+                ),
+                _PromiseMetricPill(
+                  label: 'similarity',
+                  value: _percentageLabel(assessment.explanation.similarity),
+                ),
+                _PromiseMetricPill(
+                  label: 'factors',
+                  value: '${assessment.explanation.confidenceFactors.length}',
+                ),
+                _PromiseMetricPill(
+                  label: 'markers',
+                  value: '${assessment.evidencePack?.markerHits.length ?? 0}',
+                ),
+              ],
             ),
             if (assessment.conflictDetected) ...[
               const SizedBox(height: AppSpacing.sm),

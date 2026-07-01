@@ -5,6 +5,7 @@ Cross-meeting promise radar schemas.
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -388,7 +389,9 @@ class PromiseExternalExportRequest(BaseModel):
 
     provider: str = Field(default="slack", description="slack or google_tasks")
     dry_run: bool = True
-    access_token: str | None = Field(default=None, description="OAuth access token for Google Tasks")
+    access_token: str | None = Field(
+        default=None, description="OAuth access token for Google Tasks"
+    )
     tasklist: str = Field(default="@default", description="Google Tasks task list id")
     parent_task_id: str | None = None
     previous_task_id: str | None = None
@@ -459,6 +462,11 @@ class PromiseAccuracyCase(BaseModel):
     expected_status: str
     owner: str | None = None
     due_at: datetime | None = None
+    source_id: str | None = None
+    source_url: str | None = None
+    evidence_start_seconds: float | None = Field(default=None, ge=0.0)
+    evidence_end_seconds: float | None = Field(default=None, ge=0.0)
+    label_notes: str | None = None
 
 
 class PromiseAccuracyEvaluation(BaseModel):
@@ -468,6 +476,7 @@ class PromiseAccuracyEvaluation(BaseModel):
     correct_count: int = Field(ge=0)
     accuracy: float = Field(ge=0.0, le=1.0)
     status_precision: dict[str, float] = Field(default_factory=dict)
+    confidence_buckets: dict[str, dict[str, Any]] = Field(default_factory=dict)
     failures: list[dict] = Field(default_factory=list)
 
 
@@ -480,6 +489,9 @@ class PromiseAccuracyReport(BaseModel):
     evaluation: PromiseAccuracyEvaluation
     status_counts: dict[str, int] = Field(default_factory=dict)
     source_counts: dict[str, int] = Field(default_factory=dict)
+    coverage: dict[str, float] = Field(default_factory=dict)
+    source_quality: dict[str, dict[str, Any]] = Field(default_factory=dict)
+    quality_warnings: list[str] = Field(default_factory=list)
     real_meeting_case_count: int = Field(ge=0)
     target_case_count: int = Field(default=100, ge=0)
     below_target: bool = False
