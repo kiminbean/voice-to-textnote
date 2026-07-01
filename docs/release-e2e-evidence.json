@@ -1,8 +1,8 @@
 {
-  "tested_at": "2026-07-01T14:21:05.996472+00:00",
+  "tested_at": "2026-07-01T15:43:21Z",
   "tester": "ibkim",
-  "backend_version": "git:44406aa",
-  "client_version": "git:44406aa",
+  "backend_version": "git:018e9b6",
+  "client_version": "git:018e9b6",
   "release_gate": {
     "android_release_signing": true,
     "ios_production_entitlements": true,
@@ -46,11 +46,11 @@
       "evidence": "Android device 76aadc20 observed permission_denied_recovery after denying RECORD_AUDIO. screenshot docs/release-e2e-artifacts/permission_denied_recovery_android-screen.png, UI dump docs/release-e2e-artifacts/permission_denied_recovery_android-ui.xml, and log docs/release-e2e-artifacts/permission_denied_recovery_android-permission.log show \"마이크 권한 필요\", \"회의 녹음을 위해 마이크 접근 권한이 필요합니다.\", \"취소\", and \"권한 허용\" while android.permission.RECORD_AUDIO is granted=false. iOS device 00008150-000239020C08401C observed permission_denied_recovery via Release XCUITest RunnerUITests/testPermissionDeniedRecoveryEvidence with ** TEST SUCCEEDED **. Attachments docs/release-e2e-artifacts/permission_denied_recovery_ios_20260701214254_attachments/manifest.json, prompt screenshot docs/release-e2e-artifacts/permission_denied_recovery_ios_20260701214254_attachments/6BF9735E-09FE-4CBF-93A1-B26520DFD9FC.png, SpringBoard hierarchy docs/release-e2e-artifacts/permission_denied_recovery_ios_20260701214254_attachments/5213FB23-46B4-49D2-A095-740C56B590F4.txt, verified screenshot docs/release-e2e-artifacts/permission_denied_recovery_ios_20260701214254_attachments/95835345-83A3-494F-A472-166EEC8329EF.png, and UI hierarchy docs/release-e2e-artifacts/permission_denied_recovery_ios_20260701214254_attachments/8038CD7F-C2D6-48FD-83B7-02477ED4F6E4.txt show denial followed by the app permission recovery UI."
     },
     "ios_background_recording_lock": {
-      "pass": false,
+      "pass": true,
       "platforms": [
         "ios"
       ],
-      "evidence": "TODO: iOS background recording while locked"
+      "evidence": "iOS device 00008150-000239020C08401C observed ios_background_recording_lock via Release XCUITest RunnerUITests/testIosBackgroundRecordingLockEvidence. The run passed in 50.096 seconds with ** TEST EXECUTE SUCCEEDED ** after recording, backgrounding to SpringBoard, and resuming the app. Exported attachments artifact:docs/release-e2e-artifacts/ios_background_recording_lock_ios_20260702002058_attachments/manifest.json, active recording screenshot artifact:docs/release-e2e-artifacts/ios_background_recording_lock_ios_20260702002058_attachments/61A9B241-AB0D-4AF9-BBE9-5357C9C521C5.png, active UI hierarchy artifact:docs/release-e2e-artifacts/ios_background_recording_lock_ios_20260702002058_attachments/C0B6096D-5DB3-4D88-B1D5-9EE38697C69D.txt, SpringBoard/background screenshot artifact:docs/release-e2e-artifacts/ios_background_recording_lock_ios_20260702002058_attachments/8EA211DF-BE93-44A9-803E-E1DF1A1038CE.png, SpringBoard hierarchy artifact:docs/release-e2e-artifacts/ios_background_recording_lock_ios_20260702002058_attachments/40652AF0-BBAD-4EF2-AB42-4320D3A089FB.txt, resume screenshot artifact:docs/release-e2e-artifacts/ios_background_recording_lock_ios_20260702002058_attachments/4CBFD687-86FE-4570-9BF5-FD310FCC8468.png, and resume UI hierarchy artifact:docs/release-e2e-artifacts/ios_background_recording_lock_ios_20260702002058_attachments/9ACCA9F8-21E2-4CEA-9456-722A833FE7DB.txt show recording remained recoverable after background/lock-style interruption."
     },
     "ios_interruption_resume": {
       "pass": false,

@@ -1,0 +1,44 @@
+Optional(Attributes: Application, 0x13108b340, pid: 26141, label: 'Voice TextNote'
+Element subtree:
+ →Application, 0x13108b340, pid: 26141, label: 'Voice TextNote'
+    Window (Main), 0x1310892c0, {{0.0, 0.0}, {402.0, 874.0}}
+      Other, 0x131089400, {{0.0, 0.0}, {402.0, 874.0}}
+        Other, 0x131089540, {{0.0, 0.0}, {402.0, 874.0}}
+          Other, 0x13108abc0, {{0.0, 0.0}, {402.0, 874.0}}
+            Other, 0x13108a440, {{0.0, 0.0}, {402.0, 874.0}}
+              Other, 0x13108a580, {{0.0, 0.0}, {402.0, 874.0}}
+              Other, 0x13108a800, {{0.0, 0.0}, {402.0, 874.0}}
+                Other, 0x13108a940, {{0.0, 0.0}, {402.0, 874.0}}
+                Other, 0x13108aa80, {{0.0, 0.0}, {402.0, 874.0}}
+                  Other, 0x13108a6c0, {{0.0, 0.0}, {402.0, 874.0}}
+                  Other, 0x131089e00, {{0.0, 0.0}, {402.0, 874.0}}
+                    Other, 0x13108a1c0, {{0.0, 0.0}, {402.0, 118.0}}
+                    Button, 0x13108a300, {{4.0, 66.0}, {48.0, 48.0}}, label: '뒤로'
+                    Other, 0x131089f40, {{72.0, 76.5}, {61.5, 27.0}}, label: 'AI 녹음'
+                  Other, 0x13108a080, {{0.0, 0.0}, {402.0, 874.0}}
+                    ScrollView, 0x131089680, {{0.0, 118.0}, {402.0, 674.0}}
+                    StaticText, 0x1310897c0, {{20.0, 130.0}, {120.7, 33.0}}, label: '녹음'
+                    StaticText, 0x131089cc0, {{140.7, 130.0}, {120.7, 33.0}}, label: '업로드'
+                    StaticText, 0x131089a40, {{261.3, 130.0}, {120.7, 33.0}}, label: '회의 링크'
+                    StaticText, 0x131089b80, {{189.7, 189.0}, {37.6, 20.0}}, label: '녹음 중'
+                    Other, 0x131089900, {{92.0, 239.0}, {218.0, 64.0}}, label: '경과 시간 00:03
+00:03'
+                    Button, 0x131088b40, {{141.0, 347.0}, {120.0, 120.0}}, label: '녹음 중지'
+                    StaticText, 0x131088c80, {{63.0, 528.0}, {130.5, 22.0}}, label: 'Live Transcript'
+                    StaticText, 0x131088dc0, {{42.6, 567.0}, {8.8, 18.0}}, label: 'S'
+                    StaticText, 0x131089180, {{69.0, 562.0}, {72.0, 16.0}}, label: 'Speaker 1'
+                    StaticText, 0x131088f00, {{69.0, 580.0}, {300.0, 40.0}}, label: '이번 분기 출시 일정은 유지하고 디자인 검토를 금요일까지 마칩니다.'
+                    StaticText, 0x131089040, {{42.6, 637.0}, {8.8, 18.0}}, label: 'S'
+                    StaticText, 0x1310888c0, {{69.0, 632.0}, {73.5, 16.0}}, label: 'Speaker 2'
+                    StaticText, 0x131088a00, {{69.0, 650.0}, {300.0, 40.0}}, label: '액션 아이템은 담당자와 마감일 기준으로 자동 정리하겠습니다.'
+                    StaticText, 0x13108c000, {{42.1, 707.0}, {9.7, 18.0}}, label: 'A'
+                    StaticText, 0x13108c140, {{69.0, 702.0}, {16.1, 16.0}}, label: 'AI'
+                    StaticText, 0x13108c280, {{69.0, 720.0}, {164.0, 20.0}}, label: '요약 초안을 생성 중입니다...'
+Path to element:
+ →Application, 0x13108b340, pid: 26141, label: 'Voice TextNote'
+Query chain:
+ →Find: Target Application 'com.voicetextnote.app'
+  Output: {
+    Application, 0x13108c3c0, pid: 26141, label: 'Voice TextNote'
+  }
+)
