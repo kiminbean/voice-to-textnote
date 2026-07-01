@@ -335,6 +335,15 @@ class PromiseRadarService:
             record_promise_radar_build("not_found", 0)
             raise ValueError("회의 요약을 찾을 수 없습니다")
 
+        if (
+            owner_id is None
+            and not guest_session_id
+            and team_id is None
+            and current.is_guest
+            and current.guest_session_id
+        ):
+            guest_session_id = current.guest_session_id
+
         previous = await self._load_previous_summaries(
             session=session,
             current=current,

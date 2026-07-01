@@ -187,6 +187,65 @@ final class RunnerUITests: XCTestCase {
         _ = tapFirstHittableButton(labels: ["삭제", "Discard"])
     }
 
+    func testIosBackgroundRecordingLockEvidence() throws {
+        try startRecordingForRuntimeEvidence(prefix: "ios_background_recording_lock")
+
+        XCUIDevice.shared.press(.home)
+        waitForSeconds(12)
+        attachSpringboardHierarchy("ios_background_recording_lock_springboard_hierarchy")
+        attachScreenshot("ios_background_recording_lock_background")
+
+        app.activate()
+        let stillRecording = waitForAnyVisibleElement(
+            labels: ["녹음 중", "녹음 중지"],
+            timeout: 12
+        )
+        attachUIHierarchy("ios_background_recording_lock_resume_hierarchy")
+        attachScreenshot("ios_background_recording_lock_resume")
+        XCTAssertNotNil(
+            stillRecording,
+            "Expected recording to remain active after iOS background transition."
+        )
+        _ = tapFirstHittableButton(labels: ["녹음 중지"])
+    }
+
+    func testIosInterruptionResumeEvidence() throws {
+        try startRecordingForRuntimeEvidence(prefix: "ios_interruption_resume")
+
+        try openUiTestCommand("interruption-begin")
+        let paused = waitForAnyVisibleElement(labels: ["일시 정지됨"], timeout: 12)
+        attachUIHierarchy("ios_interruption_resume_paused_hierarchy")
+        attachScreenshot("ios_interruption_resume_paused")
+        XCTAssertNotNil(paused, "Expected injected interruption to pause recording.")
+
+        try openUiTestCommand("interruption-end")
+        let resumed = waitForAnyVisibleElement(labels: ["녹음 중", "녹음 중지"], timeout: 12)
+        attachUIHierarchy("ios_interruption_resume_active_hierarchy")
+        attachScreenshot("ios_interruption_resume_active")
+        XCTAssertNotNil(resumed, "Expected injected interruption end to resume recording.")
+        _ = tapFirstHittableButton(labels: ["녹음 중지"])
+    }
+
+    func testIosBluetoothRouteChangeEvidence() throws {
+        try startRecordingForRuntimeEvidence(prefix: "ios_bluetooth_route_change")
+
+        try openUiTestCommand(
+            "route-change",
+            queryItems: [URLQueryItem(name: "reason", value: "oldDeviceUnavailable")]
+        )
+        let routeChanged = waitForAnyVisibleElement(
+            labels: ["오디오 경로 변경", "oldDeviceUnavailable"],
+            timeout: 12
+        )
+        attachUIHierarchy("ios_bluetooth_route_change_hierarchy")
+        attachScreenshot("ios_bluetooth_route_change")
+        XCTAssertNotNil(
+            routeChanged,
+            "Expected injected Bluetooth route change to be visible in recording UI."
+        )
+        _ = tapFirstHittableButton(labels: ["녹음 중지"])
+    }
+
     func testIosPushTopicNotificationEvidence() throws {
         allowAnySpringboardAlertIfPresent()
         try ensureGuestHome()
@@ -421,6 +480,54 @@ final class RunnerUITests: XCTestCase {
         app.open(url)
         let result = waitForResultScreen(timeout: 30)
         XCTAssertNotNil(result, "Expected result deeplink to open the meeting result screen.")
+    }
+
+    private func startRecordingForRuntimeEvidence(prefix: String) throws {
+        allowAnySpringboardAlertIfPresent()
+        discardRecoveryDialogIfPresent(timeout: 3)
+        try ensureGuestHome()
+        try openRecordingScreen()
+        tapRecordStartButton()
+
+        let alert = waitForSpringboardAlert(timeout: 3)
+        if alert.exists {
+            tapSpringboardButton(["허용", "Allow", "OK"])
+        }
+
+        var recording = waitForAnyVisibleElement(
+            labels: ["녹음 중", "녹음 중지"],
+            timeout: 8
+        )
+        if recording == nil {
+            tapRecordStartButton()
+            recording = waitForAnyVisibleElement(
+                labels: ["녹음 중", "녹음 중지"],
+                timeout: 12
+            )
+        }
+        attachUIHierarchy("\(prefix)_active_hierarchy")
+        attachScreenshot("\(prefix)_active")
+        XCTAssertNotNil(recording, "Expected active recording for \(prefix).")
+    }
+
+    private func openUiTestCommand(
+        _ command: String,
+        queryItems: [URLQueryItem] = []
+    ) throws {
+        guard #available(iOS 16.4, *) else {
+            XCTFail("Opening a UI test command deeplink requires iOS 16.4 or newer.")
+            return
+        }
+        var components = URLComponents()
+        components.scheme = "voicetextnote"
+        components.host = "uitest"
+        components.path = "/\(command)"
+        components.queryItems = queryItems.isEmpty ? nil : queryItems
+        guard let url = components.url else {
+            XCTFail("Invalid UI test command URL for \(command).")
+            return
+        }
+        app.open(url)
     }
 
     private func waitForResultScreen(timeout: TimeInterval) -> XCUIElement? {

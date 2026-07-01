@@ -313,6 +313,16 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
                     ],
                     const SizedBox(height: AppSpacing.lg),
                     _StatusPill(isRecording: isRecording, status: state.status),
+                    if (state.lastRouteChangeReason != null) ...[
+                      const SizedBox(height: AppSpacing.sm),
+                      Text(
+                        '오디오 경로 변경: ${state.lastRouteChangeReason}',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: AppColors.of(context).textSecondary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                      ),
+                    ],
                     const SizedBox(height: AppSpacing.xl),
                     Semantics(
                       label: '경과 시간 ${_formatTime(state.elapsedSeconds)}',

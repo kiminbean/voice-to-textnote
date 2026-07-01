@@ -25,12 +25,14 @@ class RecordingState {
   final int elapsedSeconds;
   final String? filePath;
   final InterruptionStatus interruptionStatus; // SPEC-MOBILE-005: 인터럽션 상태
+  final String? lastRouteChangeReason;
 
   const RecordingState({
     required this.status,
     required this.elapsedSeconds,
     this.filePath,
     this.interruptionStatus = InterruptionStatus.none,
+    this.lastRouteChangeReason,
   });
 
   RecordingState copyWith({
@@ -38,12 +40,15 @@ class RecordingState {
     int? elapsedSeconds,
     String? filePath,
     InterruptionStatus? interruptionStatus,
+    String? lastRouteChangeReason,
   }) {
     return RecordingState(
       status: status ?? this.status,
       elapsedSeconds: elapsedSeconds ?? this.elapsedSeconds,
       filePath: filePath ?? this.filePath,
       interruptionStatus: interruptionStatus ?? this.interruptionStatus,
+      lastRouteChangeReason:
+          lastRouteChangeReason ?? this.lastRouteChangeReason,
     );
   }
 }
@@ -58,6 +63,7 @@ class RecordingNotifier extends Notifier<RecordingState> {
   RecordingState build() {
     // SPEC-MOBILE-005 REQ-002: 인터럽션 콜백 등록
     _backgroundService.onInterruptionChanged = _onInterruptionChanged;
+    _backgroundService.onRouteChanged = _onRouteChanged;
 
     ref.onDispose(() {
       _backgroundService.dispose();
@@ -89,6 +95,10 @@ class RecordingNotifier extends Notifier<RecordingState> {
             );
       }
     }
+  }
+
+  void _onRouteChanged(String reason) {
+    state = state.copyWith(lastRouteChangeReason: reason);
   }
 
   Future<void> startRecording() async {

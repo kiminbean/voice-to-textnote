@@ -180,6 +180,10 @@ import UserNotifications
       return true
     }
 
+    if handleUiTestCommand(url) {
+      return true
+    }
+
     if let path = deepLinkPath(from: url) {
       queueDeepLink(path)
       return true
@@ -245,20 +249,111 @@ import UserNotifications
     pendingLatestSharedImport = payload
   }
 
+  private func handleUiTestCommand(_ url: URL) -> Bool {
+    guard ProcessInfo.processInfo.environment["VOICE_TEXTNOTE_UI_TEST"] == "1",
+          url.scheme == "voicetextnote",
+          url.host?.lowercased() == "uitest" else {
+      return false
+    }
+
+    let command = url.pathComponents.filter { $0 != "/" }.first?.lowercased()
+    switch command {
+    case "interruption-begin":
+      forwardToDart(method: "onInterruptionBegin", arguments: nil)
+      return true
+    case "interruption-end":
+      forwardToDart(method: "onInterruptionEnd", arguments: ["shouldResume": true])
+      return true
+    case "route-change":
+      let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+      let reason = components?.queryItems?.first(where: { $0.name == "reason" })?.value
+      forwardToDart(
+        method: "onRouteChange",
+        arguments: ["reason": reason?.isEmpty == false ? reason! : "oldDeviceUnavailable"]
+      )
+      return true
+    default:
+      return false
+    }
+  }
+
   private func queueNotificationDeepLink(from userInfo: [AnyHashable: Any]) {
-    if let deeplink = userInfo["deeplink"] as? String,
+    if let deeplink = notificationPayloadValue(
+      userInfo,
+      keys: ["deeplink", "deep_link", "gcm.notification.deeplink"]
+    ),
        let url = URL(string: deeplink),
        let path = deepLinkPath(from: url) {
       queueDeepLink(path)
       return
     }
 
-    guard let meetingId = userInfo["meeting_id"] as? String,
+    guard let meetingId = notificationPayloadValue(
+            userInfo,
+            keys: ["meeting_id", "meetingId", "gcm.notification.meeting_id"]
+          ),
           !meetingId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
       return
     }
 
     queueDeepLink("/result/\(meetingId)")
+  }
+
+  private func notificationPayloadValue(
+    _ userInfo: [AnyHashable: Any],
+    keys: [String]
+  ) -> String? {
+    if let value = stringValue(in: userInfo, keys: keys) {
+      return value
+    }
+
+    for nestedKey in ["data", "custom", "payload"] {
+      if let nested = userInfo[nestedKey] as? [AnyHashable: Any],
+         let value = stringValue(in: nested, keys: keys) {
+        return value
+      }
+      if let nested = userInfo[nestedKey] as? [String: Any],
+         let value = stringValue(
+           in: Dictionary(uniqueKeysWithValues: nested.map { (AnyHashable($0.key), $0.value) }),
+           keys: keys
+         ) {
+        return value
+      }
+      if let raw = userInfo[nestedKey] as? String,
+         let data = raw.data(using: .utf8),
+         let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+         let value = stringValue(
+           in: Dictionary(uniqueKeysWithValues: json.map { (AnyHashable($0.key), $0.value) }),
+           keys: keys
+         ) {
+        return value
+      }
+    }
+
+    return nil
+  }
+
+  private func stringValue(
+    in payload: [AnyHashable: Any],
+    keys: [String]
+  ) -> String? {
+    for key in keys {
+      guard let value = payload[key] else {
+        continue
+      }
+      if let string = value as? String {
+        let trimmed = string.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty {
+          return trimmed
+        }
+      } else if let convertible = value as? CustomStringConvertible {
+        let trimmed = convertible.description.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty {
+          return trimmed
+        }
+      }
+    }
+    return nil
   }
 
   private func queueDeepLink(_ path: String) {

@@ -258,6 +258,38 @@ async def test_build_radar_persists_ledger_with_evidence_and_user_corrections(se
 
 
 @pytest.mark.asyncio
+async def test_build_radar_uses_current_guest_scope_when_request_scope_is_absent(
+    session_factory,
+):
+    service = PromiseRadarService()
+    base = datetime(2026, 7, 1, 9, 0, 0)
+    current = _summary_record(
+        "guest-summary-current",
+        created_at=base,
+        action_items=[
+            {
+                "task": "Promise Radar 릴리스 evidence 확인",
+                "assignee": "김기수",
+                "deadline": "오늘",
+                "priority": "high",
+            }
+        ],
+    )
+    current.is_guest = True
+    current.guest_session_id = "guest-release-evidence"
+
+    async with session_factory() as session:
+        session.add(current)
+        await session.commit()
+
+        radar = await service.build_radar(session, "guest-summary-current")
+
+        assert radar.ledger_entries
+        assert radar.ledger_entries[0].owner == "김기수"
+        assert radar.next_meeting_briefing is not None
+
+
+@pytest.mark.asyncio
 async def test_create_action_item_from_ledger_entry_is_idempotent(session_factory):
     service = PromiseRadarService()
     owner_id = uuid.uuid4()
