@@ -1,8 +1,8 @@
 {
-  "tested_at": "2026-07-01T13:01:24.137182+00:00",
+  "tested_at": "2026-07-01T14:21:05.996472+00:00",
   "tester": "ibkim",
-  "backend_version": "git:8751b33",
-  "client_version": "git:8751b33",
+  "backend_version": "git:da5f780",
+  "client_version": "git:da5f780",
   "release_gate": {
     "android_release_signing": true,
     "ios_production_entitlements": true,
@@ -25,7 +25,7 @@
     "ios_runner_app": "client/build/ios/iphoneos/Runner.app"
   },
   "artifact_sha256": {
-    "android_apk": "d75e70b96a30e03988a292658ef51086fbe67f19b8c084d28ff6744c6432ec2a",
+    "android_apk": "1298a3a61ea802c168f34d84961efe7d363cd9576657725ef5dee9b2aa0078b2",
     "ios_runner_app": "47437a946556dd19a25431984b84249495eb76f47e2c1f37d1df67587eec5211"
   },
   "scenarios": {
@@ -75,28 +75,28 @@
       "evidence": "Android device 76aadc20 observed unfinished_recording_recovery after foreground recording, force-stop, relaunch, and opening the recording screen. active screenshot docs/release-e2e-artifacts/unfinished_recording_recovery_android-active-screen.png, UI dump docs/release-e2e-artifacts/unfinished_recording_recovery_android-active-ui.xml, and service log docs/release-e2e-artifacts/unfinished_recording_recovery_android-active-services.log show \"녹음 중\", \"경과 시간 00:12\", \"녹음 중지\", and RecordingService isForeground=true foregroundId=1. relaunch screenshot docs/release-e2e-artifacts/unfinished_recording_recovery_android-relaunch-screen.png, UI dump docs/release-e2e-artifacts/unfinished_recording_recovery_android-relaunch-ui.xml, and log docs/release-e2e-artifacts/unfinished_recording_recovery_android-recovery.log show \"중단된 녹음이 있습니다\", \"이전 녹음 세션이 정상적으로 종료되지 않았습니다.\", \"삭제\", and \"이어서 진행\". iOS device 00008150-000239020C08401C observed unfinished_recording_recovery via Release XCUITest RunnerUITests/testUnfinishedRecordingRecoveryEvidence with ** TEST SUCCEEDED ** in 80.429 seconds. Attachments docs/release-e2e-artifacts/unfinished_recording_recovery_ios_20260701215739_attachments/manifest.json, active recording screenshot docs/release-e2e-artifacts/unfinished_recording_recovery_ios_20260701215739_attachments/148F73F3-AE50-4B88-B645-BB31B9CAFCBC.png, active UI hierarchy docs/release-e2e-artifacts/unfinished_recording_recovery_ios_20260701215739_attachments/58B4141B-AB7F-4781-BEBF-8E0E8FDF46B4.txt, relaunch recovery screenshot docs/release-e2e-artifacts/unfinished_recording_recovery_ios_20260701215739_attachments/2B6A13B6-FC20-4166-8ED5-5669C668FF89.png, and relaunch recovery UI hierarchy docs/release-e2e-artifacts/unfinished_recording_recovery_ios_20260701215739_attachments/8BCC0B2A-0DA4-4776-A263-9E3B303D3822.txt show \"녹음 중\" before forced relaunch and \"중단된 녹음이 있습니다\" after relaunch."
     },
     "push_stt_complete": {
-      "pass": false,
+      "pass": true,
       "platforms": [
         "android",
         "ios"
       ],
-      "evidence": "TODO: Push received for STT completion"
+      "evidence": "Android device 76aadc20 observed push_stt_complete topic notification after Firebase send. The Android screenshot artifact:docs/release-e2e-artifacts/push_stt_complete_android-topic-screen.png, UI dump artifact:docs/release-e2e-artifacts/push_stt_complete_android-topic-ui.xml, and send log artifact:docs/release-e2e-artifacts/push_stt_complete_topic-send.json show the STT completion notification. iOS device 00008150-000239020C08401C observed push_stt_complete via Release XCUITest RunnerUITests/testIosPushSttCompleteNotificationEvidence with TEST SUCCEEDED before export. The exported iOS attachments artifact:docs/release-e2e-artifacts/push_stt_complete_ios_20260701224504_attachments/manifest.json and screenshot artifact:docs/release-e2e-artifacts/push_stt_complete_ios_20260701224504_attachments/815547EE-87A7-4689-9B99-C903B66333F4.png show \"STT 처리 완료\" and \"회의 전사가 완료되었습니다.\" in Notification Center."
     },
     "push_summary_complete": {
-      "pass": false,
+      "pass": true,
       "platforms": [
         "android",
         "ios"
       ],
-      "evidence": "TODO: Push received for summary completion"
+      "evidence": "Android device 76aadc20 observed push_summary_complete topic notification after Firebase send. The Android screenshot artifact:docs/release-e2e-artifacts/push_summary_complete_android-topic-screen.png, UI dump artifact:docs/release-e2e-artifacts/push_summary_complete_android-topic-ui.xml, and send log artifact:docs/release-e2e-artifacts/push_summary_complete_topic-send.json show the summary completion notification. iOS device 00008150-000239020C08401C observed push_summary_complete via Release XCUITest RunnerUITests/testIosPushSummaryCompleteNotificationEvidence with TEST SUCCEEDED before export. The exported iOS attachments artifact:docs/release-e2e-artifacts/push_summary_complete_ios_20260701224359_attachments/manifest.json and screenshot artifact:docs/release-e2e-artifacts/push_summary_complete_ios_20260701224359_attachments/2ACBF415-0DB1-4657-8517-8A46B61C7924.png show \"요약 생성 완료\" and \"회의 요약이 완료되었습니다.\" in Notification Center."
     },
     "push_failure": {
-      "pass": false,
+      "pass": true,
       "platforms": [
         "android",
         "ios"
       ],
-      "evidence": "TODO: Push received for processing failure"
+      "evidence": "Android device 76aadc20 observed push_failure topic notification after Firebase send. The Android screenshot artifact:docs/release-e2e-artifacts/push_failure_android-topic-screen.png, UI dump artifact:docs/release-e2e-artifacts/push_failure_android-topic-ui.xml, and send log artifact:docs/release-e2e-artifacts/push_failure_topic-send.json show the processing failure notification. iOS device 00008150-000239020C08401C observed push_failure via Release XCUITest RunnerUITests/testIosPushFailureNotificationEvidence with TEST SUCCEEDED before export. The exported iOS attachments artifact:docs/release-e2e-artifacts/push_failure_ios_20260701224600_attachments/manifest.json and screenshot artifact:docs/release-e2e-artifacts/push_failure_ios_20260701224600_attachments/239AC8A9-3934-49A0-8E58-272607BFC085.png show \"처리 실패\" and \"회의 처리 중 오류가 발생했습니다.\" in Notification Center."
     },
     "push_deeplink_background": {
       "pass": false,
@@ -165,12 +165,12 @@
       "evidence": "TODO: Promise Radar Autopilot status update"
     },
     "promise_radar_due_push": {
-      "pass": false,
+      "pass": true,
       "platforms": [
         "android",
         "ios"
       ],
-      "evidence": "TODO: Promise Radar due promise push notification"
+      "evidence": "Android device 76aadc20 observed promise_radar_due_push topic notification after Firebase send. The Android screenshot artifact:docs/release-e2e-artifacts/promise_radar_due_push_android-topic-screen.png, UI dump artifact:docs/release-e2e-artifacts/promise_radar_due_push_android-topic-ui.xml, and send log artifact:docs/release-e2e-artifacts/promise_radar_due_push_topic-send.json show the Promise Radar due reminder notification. iOS device 00008150-000239020C08401C observed promise_radar_due_push via Release XCUITest RunnerUITests/testIosPromiseRadarDuePushNotificationEvidence with TEST SUCCEEDED before export. The exported iOS attachments artifact:docs/release-e2e-artifacts/promise_radar_due_push_ios_20260701224709_attachments/manifest.json and screenshot artifact:docs/release-e2e-artifacts/promise_radar_due_push_ios_20260701224709_attachments/E2716064-E924-4E79-8744-D05556123F06.png show \"약속 마감 알림\" and \"오늘 확인해야 할 약속이 있습니다.\" in Notification Center."
     },
     "promise_radar_calendar_export": {
       "pass": false,
