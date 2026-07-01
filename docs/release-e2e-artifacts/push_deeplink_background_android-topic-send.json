@@ -1,0 +1,1 @@
+{"ok": true, "scenario": "push_deeplink_background", "meeting_id": "6ab36c5a-d1e7-460f-8393-34e7f25dbce9", "topic": "all", "title": "회의 결과 열기", "body": "알림을 눌러 회의 결과를 확인하세요.", "deeplink": "voicetextnote://result/6ab36c5a-d1e7-460f-8393-34e7f25dbce9", "sent_at": "2026-07-01T16:20:18.293861+00:00", "message_id": "projects/voice-to-textnote/messages/3417928620744810430"}

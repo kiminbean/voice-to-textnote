@@ -1,0 +1,609 @@
+Attributes: Application, 0x116907e80, pid: 35, label: ' '
+Element subtree:
+ →Application, 0x116907e80, pid: 35, label: ' '
+    Window, 0x1168f7200, {{0.0, 0.0}, {402.0, 874.0}}
+      Other, 0x1168f7980, {{0.0, 0.0}, {402.0, 874.0}}
+        Other, 0x1168f7340, {{0.0, 0.0}, {402.0, 874.0}}
+          Other, 0x1168f7840, {{0.0, 0.0}, {402.0, 100.0}}
+        Other, 0x1168f75c0, {{0.0, 0.0}, {402.0, 874.0}}, identifier: 'Home screen icons'
+          Other, 0x1168f70c0, {{0.0, 0.0}, {402.0, 874.0}}
+            Other, 0x1168f6f80, {{0.0, 0.0}, {402.0, 874.0}}
+              Other, 0x1168f7700, {{804.0, 0.0}, {402.0, 874.0}}
+              Icon, 0x1168f7ac0, {{0.0, 0.0}, {0.0, 0.0}}
+                Icon, 0x1168f7e80, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '캘린더', label: '캘린더'
+                Icon, 0x1168f7c00, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Skyscanner', label: 'Skyscanner'
+                Icon, 0x1168f7480, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '설정', label: '설정'
+                Icon, 0x1168f7d40, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '캘린더', label: '캘린더', value: 7월 02일 목요일
+                Icon, 0x116a31f40, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'FaceTime', label: 'FaceTime'
+                Icon, 0x116a32080, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '사진', label: '사진'
+                Icon, 0x116a32d00, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '배터리', label: '배터리'
+              Icon, 0x116a32e40, {{0.0, 0.0}, {0.0, 0.0}}
+                Icon, 0x116a32a80, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Mail', label: 'Mail', value: 읽지 않은 이메일 없음
+                Icon, 0x116a32bc0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '시계', label: '시계', value: 오전 1:14
+                Icon, 0x116a32800, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '날씨', label: '날씨'
+                Icon, 0x116a32940, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '미리 알림', label: '미리 알림'
+                Icon, 0x116a32300, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '자원순환보증금', label: '자원순환보증금'
+                Icon, 0x116a32440, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'AiCloud', label: 'AiCloud'
+                Icon, 0x116a30640, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Termius', label: 'Termius'
+                Icon, 0x116a30780, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Tasks', label: 'Tasks'
+                Icon, 0x116a321c0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'DAKboard Options', label: 'DAKboard Options'
+                Icon, 0x116a31cc0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Nextcloud', label: 'Nextcloud'
+                Icon, 0x116a31e00, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Hugging Face', label: 'Hugging Face'
+                Icon, 0x116a30000, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'DWG FastView', label: 'DWG FastView'
+                Icon, 0x116a30280, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Mobile ALOHA', label: 'Mobile ALOHA'
+                Icon, 0x116a303c0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'IoCare', label: 'IoCare'
+                Icon, 0x116a30500, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Aqara Home', label: 'Aqara Home'
+                Icon, 0x116a31040, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'GarageBand', label: 'GarageBand'
+                Icon, 0x116a30f00, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'kt M모바일', label: 'kt M모바일'
+                Icon, 0x116a30b40, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'U+one', label: 'U+one'
+                Icon, 0x116a312c0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '부산이즈굿 동백전', label: '부산이즈굿 동백전'
+                Icon, 0x116a31400, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'U+모바일tv', label: 'U+모바일tv'
+                Icon, 0x116a31540, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '녹음', label: '녹음'
+                Icon, 0x116a31a40, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'InDown', label: 'InDown'
+                Icon, 0x116a31b80, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Tailscale', label: 'Tailscale'
+                Icon, 0x116a31680, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'GeekNews', label: 'GeekNews'
+              Icon, 0x116a32580, {{0.0, 0.0}, {0.0, 0.0}}
+                Icon, 0x116a31900, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '메모', label: '메모'
+                Icon, 0x116a30c80, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '주식', label: '주식'
+                Icon, 0x116a30dc0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '도서', label: '도서'
+                Icon, 0x116a31180, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'App Store', label: 'App Store'
+                Icon, 0x116a30a00, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '피트니스', label: '피트니스'
+                Icon, 0x116a308c0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Watch', label: 'Watch'
+                Icon, 0x116a30140, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '건설근로자공제회', label: '건설근로자공제회'
+                Icon, 0x116a317c0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '문서', label: '문서'
+                Icon, 0x116a326c0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'MCP Servers Editor', label: 'MCP Servers Editor'
+                Icon, 0x116a24280, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Authenticator', label: 'Authenticator'
+                Icon, 0x116a24140, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Proton VPN', label: 'Proton VPN'
+                Icon, 0x116a24500, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '미리보기', label: '미리보기'
+                Icon, 0x116a248c0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '네이버 메모', label: '네이버 메모'
+                Icon, 0x116a25040, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '쿠팡이츠', label: '쿠팡이츠'
+                Icon, 0x116a24dc0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Pass2U Wallet', label: 'Pass2U Wallet'
+                Icon, 0x116a24a00, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Playground', label: 'Playground'
+                Icon, 0x116a24f00, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Reddit', label: 'Reddit'
+                Icon, 0x116a25180, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'TestFlight', label: 'TestFlight'
+                Icon, 0x116a243c0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'MoAI-ADK Documentation | MoAI-ADK', label: 'MoAI-ADK Documentation | MoAI-ADK'
+                Icon, 0x116a24640, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '스터디모아', label: '스터디모아'
+                Icon, 0x116a24c80, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Expo Go', label: 'Expo Go'
+                Icon, 0x116a25900, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '로봇팔 + 자율주행 44일 단기심화 과정', label: '로봇팔 + 자율주행 44일 단기심화 과정'
+                Icon, 0x116a257c0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '치지직', label: '치지직'
+                Icon, 0x116a25680, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '모바일티머니', label: '모바일티머니'
+              Icon, 0x116a25b80, {{0.0, 0.0}, {0.0, 0.0}}
+                Icon, 0x116a25a40, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Freeform', label: 'Freeform'
+                Icon, 0x116a25400, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '지갑', label: '지갑'
+                Icon, 0x116a252c0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '음악', label: '음악'
+                Icon, 0x116a24b40, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Filtertune', label: 'Filtertune'
+                Icon, 0x116a24780, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '팟캐스트', label: '팟캐스트'
+                Icon, 0x116a24000, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '파일', label: '파일'
+                Icon, 0x116a25e00, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '나의 찾기', label: '나의 찾기'
+                Icon, 0x116a25cc0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '단축어', label: '단축어'
+                Icon, 0x116a261c0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'iTunes Store', label: 'iTunes Store'
+                Icon, 0x116a26080, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '번역', label: '번역'
+                Icon, 0x116a26440, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '연락처', label: '연락처'
+                Icon, 0x116a26300, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '유틸리티', label: '유틸리티 폴더'
+                  Icon, 0x116a26940, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '나침반', label: '나침반'
+                  Icon, 0x116a26800, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '측정', label: '측정'
+                  Icon, 0x116a25f40, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '음성 메모', label: '음성 메모'
+                  Icon, 0x116a26bc0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '계산기', label: '계산기'
+                Icon, 0x116a26a80, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Apple Store', label: 'Apple Store'
+                Icon, 0x116a266c0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Clips', label: 'Clips'
+                Icon, 0x116a26580, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Keynote', label: 'Keynote'
+                Icon, 0x116a26e40, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Pages', label: 'Pages'
+                Icon, 0x116a26d00, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'iMovie', label: 'iMovie'
+                Icon, 0x116a25540, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '팁', label: '팁'
+                Icon, 0x10bbde440, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '지원', label: '지원'
+                Icon, 0x10bbdea80, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '카메라', label: '카메라'
+                Icon, 0x10bbdca00, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '일기', label: '일기'
+                Icon, 0x10bbdc780, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '네이버 카페', label: '네이버 카페'
+                Icon, 0x10bbdf340, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '고용24 직업훈련 출결관리', label: '고용24 직업훈련 출결관리'
+                Icon, 0x10bbdebc0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Slack', label: 'Slack'
+              Icon, 0x10bbde6c0, {{0.0, 0.0}, {0.0, 0.0}}
+                Icon, 0x10bbdf5c0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Games', label: 'Games'
+                Icon, 0x10bbdd040, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'NAVER', label: 'NAVER'
+                Icon, 0x10bbde580, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Notion', label: 'Notion'
+                Icon, 0x10bbde940, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Family Link', label: 'Family Link'
+                Icon, 0x10bbdf0c0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Google 번역', label: 'Google 번역'
+                Icon, 0x10bbde300, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Windy', label: 'Windy'
+                Icon, 0x10bbdde00, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '모바일 팩스', label: '모바일 팩스'
+                Icon, 0x10bbddf40, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Modular: Get started today', label: 'Modular: Get started today'
+                Icon, 0x10bbde080, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'iPrint&Label', label: 'iPrint&Label'
+                Icon, 0x10bbdda40, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'GitHub', label: 'GitHub'
+                Icon, 0x10bbddb80, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Mojo programming manual', label: 'Mojo programming manual'
+                Icon, 0x10bbddcc0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Roboflow Blog', label: 'Roboflow Blog'
+                Icon, 0x10bbdd680, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Ultralytics | Revolutionizing the World of Vision AI', label: 'Ultralytics | Revolutionizing the World of Vision AI'
+                Icon, 0x10bbded00, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Obsidian', label: 'Obsidian'
+                Icon, 0x10bbdc3c0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '정보처리기사', label: '정보처리기사'
+                Icon, 0x10bbdd7c0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '전기기사', label: '전기기사'
+                Icon, 0x10bbdc500, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '고용24', label: '고용24'
+                Icon, 0x10bbdf200, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'N+스토어', label: 'N+스토어'
+                Icon, 0x10bbdf480, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Confluence', label: 'Confluence'
+                Icon, 0x10bbde1c0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Bambu Handy', label: 'Bambu Handy'
+                Icon, 0x10bbdc000, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Canva', label: 'Canva'
+                Icon, 0x10bbdc280, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Jira', label: 'Jira'
+                Icon, 0x10bbdc140, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Figma', label: 'Figma'
+                Icon, 0x10bbdc640, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Voice TextNote', label: 'Voice TextNote'
+              Icon, 0x10bbde800, {{0.0, 0.0}, {0.0, 0.0}}
+                Icon, 0x10bbdd180, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '구글', label: '구글 폴더'
+                  Icon, 0x10bbdef80, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Google Maps', label: 'Google Maps'
+                  Icon, 0x10bbdee40, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Assistant', label: 'Assistant'
+                  Icon, 0x10bbdd900, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Chrome', label: 'Chrome'
+                  Icon, 0x10bbdcc80, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Google', label: 'Google'
+                  Icon, 0x10bbdcdc0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Meet', label: 'Meet'
+                  Icon, 0x10bbdcb40, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Google Home', label: 'Google Home'
+                  Icon, 0x10bbdc8c0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Google Calendar', label: 'Google Calendar'
+                  Icon, 0x10bba7700, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Drive', label: 'Drive'
+                  Icon, 0x10bba7980, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Gmail', label: 'Gmail'
+                  Icon, 0x10bba7e80, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Authenticator', label: 'Authenticator'
+                  Icon, 0x10bba7d40, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'YouTube Music', label: 'YouTube Music'
+                Icon, 0x10bba7ac0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '지도', label: '지도 폴더'
+                  Icon, 0x10bba7840, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '지도', label: '지도'
+                  Icon, 0x10bba7c00, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '카카오맵', label: '카카오맵'
+                  Icon, 0x10bbbdcc0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '네이버지도', label: '네이버지도'
+                  Icon, 0x10bbbdf40, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'TMAP', label: 'TMAP'
+                Icon, 0x10bbbe6c0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '메신져', label: '메신져 폴더'
+                  Icon, 0x10bbbfac0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '텔레그램', label: '텔레그램'
+                  Icon, 0x10bbbfd40, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '‎WhatsApp', label: '‎WhatsApp'
+                  Icon, 0x10bbbf980, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Messenger', label: 'Messenger'
+                  Icon, 0x10bbbf840, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'LINE', label: 'LINE'
+                  Icon, 0x10bbbf700, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '미프', label: '미프'
+                  Icon, 0x10bbbd7c0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'BAND', label: 'BAND'
+                  Icon, 0x10bbbf480, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Badoo', label: 'Badoo'
+                Icon, 0x10bbbe300, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '은행', label: '은행 폴더'
+                  Icon, 0x10bbbda40, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '부산은행 개인뱅킹', label: '부산은행 개인뱅킹'
+                  Icon, 0x10bbbd900, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '우리WON뱅킹', label: '우리WON뱅킹'
+                  Icon, 0x10bbbe080, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '하나은행', label: '하나은행'
+                  Icon, 0x10bbbde00, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '바이오인증공동앱', label: '바이오인증공동앱'
+                  Icon, 0x10bbbe940, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'i-ONE 알림', label: 'i-ONE 알림'
+                  Icon, 0x10bbbf340, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'SC제일은행', label: 'SC제일은행'
+                  Icon, 0x10bbbe580, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'IBK기업은행', label: 'IBK기업은행'
+                  Icon, 0x10bbbf0c0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '케이뱅크', label: '케이뱅크'
+                  Icon, 0x10bbbfe80, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'NH스마트뱅킹', label: 'NH스마트뱅킹'
+                  Icon, 0x10bbbfc00, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '토스', label: '토스'
+                  Icon, 0x10bbbea80, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'IBK BOX', label: 'IBK BOX'
+                  Icon, 0x10bbbf5c0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '카카오뱅크', label: '카카오뱅크'
+                Icon, 0x10bbbef80, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '숙소 예약 관리', label: '숙소 예약 관리 폴더'
+                  Icon, 0x10bbbf200, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Agoda', label: 'Agoda'
+                  Icon, 0x10bbbee40, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '파트너센터', label: '파트너센터'
+                  Icon, 0x10bbbed00, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '톡톡 파트너센터', label: '톡톡 파트너센터'
+                  Icon, 0x10bbbebc0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '스마트플레이스', label: '스마트플레이스'
+                  Icon, 0x10bbbe800, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '여기어때파트너센터', label: '여기어때파트너센터'
+                  Icon, 0x10bbbdb80, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'YCS App', label: 'YCS App'
+                  Icon, 0x10bbbe1c0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Vrbo Owner', label: 'Vrbo Owner'
+                  Icon, 0x10bbbe440, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Airbnb', label: 'Airbnb'
+                Icon, 0x1168b83c0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '숙소 관리 유틸', label: '숙소 관리 유틸 폴더'
+                  Icon, 0x1168b8000, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'eWeLink', label: 'eWeLink'
+                  Icon, 0x1168b8280, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'SmartLife ', label: 'SmartLife '
+                  Icon, 0x1168b8140, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Hik-Connect', label: 'Hik-Connect'
+                  Icon, 0x1168b8780, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'BroadLink', label: 'BroadLink'
+                  Icon, 0x1168b8640, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'IFTTT', label: 'IFTTT'
+                  Icon, 0x1168b8a00, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Imou Life', label: 'Imou Life'
+                  Icon, 0x1168b8500, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Xiaomi Home', label: 'Xiaomi Home'
+                  Icon, 0x1168b8c80, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Tuya', label: 'Tuya'
+                  Icon, 0x1168b88c0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Qingping Home', label: 'Qingping Home'
+                Icon, 0x1168b8b40, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'OTT 영상', label: 'OTT 영상 폴더'
+                  Icon, 0x1168ebd40, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Wavve', label: 'Wavve'
+                  Icon, 0x1168eb480, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'SPOTV NOW', label: 'SPOTV NOW'
+                  Icon, 0x1168ebc00, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'TV', label: 'TV'
+                  Icon, 0x1168ebe80, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '쿠팡플레이', label: '쿠팡플레이'
+                  Icon, 0x1168ebac0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'TVING', label: 'TVING'
+                  Icon, 0x1168eb700, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'YouTube', label: 'YouTube'
+                  Icon, 0x1168eaf80, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Disney+', label: 'Disney+'
+                  Icon, 0x1168eb0c0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Netflix', label: 'Netflix'
+                Icon, 0x1168eb200, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '주식', label: '주식 폴더'
+                  Icon, 0x1168eb5c0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '영웅문S#', label: '영웅문S#'
+                  Icon, 0x1168eb840, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '삼성증권', label: '삼성증권'
+                  Icon, 0x1168eb340, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '코인원PASS', label: '코인원PASS'
+                  Icon, 0x1168eb980, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '증권플러스', label: '증권플러스'
+                  Icon, 0x1169e0000, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '업비트', label: '업비트'
+                  Icon, 0x1169e0140, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '코인원', label: '코인원'
+                Icon, 0x1169e0280, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '쇼핑', label: '쇼핑 폴더'
+                  Icon, 0x1169e03c0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'AliExpress', label: 'AliExpress'
+                  Icon, 0x1169e0500, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Amazon', label: 'Amazon'
+                  Icon, 0x1169e0640, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '쿠팡', label: '쿠팡'
+                  Icon, 0x1169e0780, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '옥션', label: '옥션'
+                  Icon, 0x1169e08c0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '인터파크도서', label: '인터파크도서'
+                  Icon, 0x1169e0a00, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '淘宝', label: '淘宝'
+                  Icon, 0x1169e0b40, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '당근', label: '당근'
+                  Icon, 0x1169e0c80, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'G마켓', label: 'G마켓'
+                  Icon, 0x1169e0dc0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'SHEIN', label: 'SHEIN'
+                  Icon, 0x1169e0f00, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Alibaba.com', label: 'Alibaba.com'
+                  Icon, 0x1169e1040, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '11번가', label: '11번가'
+                Icon, 0x1169e1180, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '소셜 네트워킹', label: '소셜 네트워킹 폴더'
+                  Icon, 0x1169e12c0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Facebook', label: 'Facebook'
+                  Icon, 0x1169e1400, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'LinkedIn', label: 'LinkedIn'
+                  Icon, 0x1169e1540, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'VK', label: 'VK'
+                  Icon, 0x1169e1680, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'HelloTalk', label: 'HelloTalk'
+                  Icon, 0x1169e17c0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Threads', label: 'Threads'
+                  Icon, 0x1169e1900, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'X', label: 'X'
+                Icon, 0x1169e1a40, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '신용카드', label: '신용카드 폴더'
+                  Icon, 0x1169e1b80, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'NH pay', label: 'NH pay'
+                  Icon, 0x1169e1cc0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '현대카드', label: '현대카드'
+                  Icon, 0x1169e1e00, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '신한카드', label: '신한카드'
+                  Icon, 0x1169e1f40, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '삼성카드', label: '삼성카드'
+                Icon, 0x1169e2080, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'AI 생성', label: 'AI 생성 폴더'
+                  Icon, 0x1169e21c0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Claude', label: 'Claude'
+                  Icon, 0x1169e2300, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'ChatGPT', label: 'ChatGPT'
+                  Icon, 0x1169e2440, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Gemini', label: 'Gemini'
+                  Icon, 0x1169e2580, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Grok', label: 'Grok'
+                Icon, 0x1169e26c0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'AI 검색', label: 'AI 검색 폴더'
+                  Icon, 0x1169e2800, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Genspark', label: 'Genspark'
+                  Icon, 0x1169e2940, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Perplexity', label: 'Perplexity'
+                  Icon, 0x1169e2a80, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'NotebookLM', label: 'NotebookLM'
+                Icon, 0x1169e2bc0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '항공권 검색', label: '항공권 검색 폴더'
+                  Icon, 0x1169e2d00, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '제주항공', label: '제주항공'
+                  Icon, 0x1169e2e40, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Skyscanner', label: 'Skyscanner'
+                Icon, 0x1169e2f80, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '세금 및 관공서', label: '세금 및 관공서 폴더'
+                  Icon, 0x1169e30c0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '통관알리미', label: '통관알리미'
+                  Icon, 0x1169e3200, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '모바일지로', label: '모바일지로'
+                  Icon, 0x1169e3340, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '한전ON', label: '한전ON'
+                  Icon, 0x1169e3480, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '스마트 위택스', label: '스마트 위택스'
+                  Icon, 0x1169e35c0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '건강보험25시', label: '건강보험25시'
+                  Icon, 0x1169e3700, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '모바일 신분증', label: '모바일 신분증'
+                  Icon, 0x1169e3840, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '국세청 손택스', label: '국세청 손택스'
+                  Icon, 0x1169e3980, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '정부24', label: '정부24'
+                  Icon, 0x1169e3ac0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '교통민원24', label: '교통민원24'
+                Icon, 0x1169e3c00, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '웹 검색', label: '웹 검색 폴더'
+                  Icon, 0x1169e3d40, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Edge', label: 'Edge'
+                  Icon, 0x1169e3e80, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Opera', label: 'Opera'
+                  Icon, 0x1169e4000, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'DuckDuckGo', label: 'DuckDuckGo'
+                  Icon, 0x1169e4140, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Yandex Browser', label: 'Yandex Browser'
+                Icon, 0x1169e4280, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '카메라', label: '카메라 폴더'
+                  Icon, 0x1169e43c0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'YCamera', label: 'YCamera'
+                Icon, 0x1169e4500, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '보험', label: '보험 폴더'
+                  Icon, 0x1169e4640, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '한화손보', label: '한화손보'
+                  Icon, 0x1169e4780, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '현대해상', label: '현대해상'
+                  Icon, 0x1169e48c0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'KB손해보험', label: 'KB손해보험'
+                  Icon, 0x1169e4a00, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '삼성화재', label: '삼성화재'
+                  Icon, 0x1169e4b40, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '한화생명', label: '한화생명'
+                  Icon, 0x1169e4c80, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'monimo', label: 'monimo'
+                  Icon, 0x1169e4dc0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'KB손해보험 다이렉트', label: 'KB손해보험 다이렉트'
+                Icon, 0x1169e4f00, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '도서', label: '도서 폴더'
+                  Icon, 0x1169e5040, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '교보도서관', label: '교보도서관'
+                  Icon, 0x1169e5180, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '교보문고', label: '교보문고'
+                  Icon, 0x1169e52c0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '프드프', label: '프드프'
+                  Icon, 0x1169e5400, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'B PASS', label: 'B PASS'
+                  Icon, 0x1169e5540, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '교보eBook', label: '교보eBook'
+                  Icon, 0x1169e5680, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '제주특별자치도 공공도서관', label: '제주특별자치도 공공도서관'
+                  Icon, 0x1169e57c0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '알라딘', label: '알라딘'
+                Icon, 0x1169e5900, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '유틸리티', label: '유틸리티 폴더'
+                  Icon, 0x1169e5a40, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Zepp', label: 'Zepp'
+                  Icon, 0x1169e5b80, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '欣易联', label: '欣易联'
+                  Icon, 0x1169e5cc0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'RdPower', label: 'RdPower'
+                  Icon, 0x1169e5e00, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '후후', label: '후후'
+                  Icon, 0x1169e5f40, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Kindelf', label: 'Kindelf'
+                  Icon, 0x1169e6080, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Boomcare_iOS', label: 'Boomcare_iOS'
+                  Icon, 0x1169e61c0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'ASUS Router', label: 'ASUS Router'
+                  Icon, 0x1169e6300, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Neo Studio', label: 'Neo Studio'
+                Icon, 0x1169e6440, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Instagram', label: 'Instagram'
+                Icon, 0x1169e6580, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '스타트업플러스 - 서울시 통합 창업 플랫폼', label: '스타트업플러스 - 서울시 통합 창업 플랫폼'
+                Icon, 0x1169e66c0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'vFlat Scan', label: 'vFlat Scan'
+                Icon, 0x1169e6800, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '입문 Visual-SLAM 14강 번역 + 스터디 링크 | cv-learn', label: '입문 Visual-SLAM 14강 번역 + 스터디 링크 | cv-learn'
+              Icon, 0x1169e6940, {{0.0, 0.0}, {0.0, 0.0}}
+                Icon, 0x1169e6a80, {{17.7, 88.0}, {89.0, 90.7}}, identifier: '국내 숙박 예약', label: '국내 숙박 예약 폴더', value: 1개의 앱
+                  Icon, 0x1169e6bc0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '여기어때', label: '여기어때'
+                Icon, 0x1169e6d00, {{110.0, 88.0}, {89.0, 90.7}}, identifier: '국내 교통 예약', label: '국내 교통 예약 폴더', value: 3개의 앱
+                  Icon, 0x1169e6e40, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '코레일톡', label: '코레일톡'
+                  Icon, 0x1169e6f80, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'SRT', label: 'SRT'
+                  Icon, 0x1169e70c0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '카카오 T', label: '카카오 T'
+                Icon, 0x1169e7200, {{211.3, 88.0}, {72.3, 90.7}}, identifier: '갤럭시워치', label: '갤럭시워치 폴더', value: 1개의 앱
+                  Icon, 0x1169e7340, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Galaxy Watch', label: 'Galaxy Watch'
+                Icon, 0x1169e7480, {{306.0, 88.0}, {68.0, 90.7}}, identifier: '스포츠', label: '스포츠 폴더', value: 2개의 앱
+                  Icon, 0x1169e75c0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Phigolf', label: 'Phigolf'
+                  Icon, 0x1169e7700, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '골프존', label: '골프존'
+                Icon, 0x1169e7840, {{15.3, 188.3}, {93.3, 90.7}}, identifier: '모바일고객센터', label: '모바일고객센터 폴더', value: 2개의 앱
+                  Icon, 0x1169e7980, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '에이모바일 - 에넥스텔레콤', label: '에이모바일 - 에넥스텔레콤'
+                  Icon, 0x1169e7ac0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'SK 7mobile', label: 'SK 7mobile'
+                Icon, 0x1169e7c00, {{120.7, 188.3}, {68.0, 90.7}}, identifier: '문서 편집', label: '문서 편집 폴더', value: 3개의 앱
+                  Icon, 0x1169e7d40, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '스프레드시트', label: '스프레드시트'
+                  Icon, 0x1169e7e80, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Polaris Office', label: 'Polaris Office'
+                  Icon, 0x1169e8000, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Numbers', label: 'Numbers'
+                Icon, 0x1169e8140, {{213.7, 177.3}, {79.0, 101.7}}, identifier: '배달앱', label: '배달앱 폴더', value: 5개의 앱, 1개의 새로운 항목
+                  Icon, 0x1169e8280, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '컴포즈커피', label: '컴포즈커피'
+                  Icon, 0x1169e83c0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'McDonald's', label: 'McDonald's'
+                  Icon, 0x1169e8500, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '배달의민족', label: '배달의민족'
+                  Icon, 0x1169e8640, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '버거킹', label: '버거킹'
+                  Icon, 0x1169e8780, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '더벤티', label: '더벤티'
+                Icon, 0x1169e88c0, {{295.3, 188.3}, {89.0, 90.7}}, identifier: '사진 관리 편집', label: '사진 관리 편집 폴더', value: 1개의 앱
+                  Icon, 0x1169e8a00, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Imaging Edge', label: 'Imaging Edge'
+                Icon, 0x1169e8b40, {{28.3, 288.7}, {68.0, 90.7}}, identifier: '유럽여행', label: '유럽여행 폴더', value: 6개의 앱
+                  Icon, 0x1169e8c80, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'DNA Prepaid', label: 'DNA Prepaid'
+                  Icon, 0x1169e8dc0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Viator', label: 'Viator'
+                  Icon, 0x1169e8f00, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Booking.com', label: 'Booking.com'
+                  Icon, 0x1169e9040, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'WeWash', label: 'WeWash'
+                  Icon, 0x1169e9180, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'OneTwoTrip B2B', label: 'OneTwoTrip B2B'
+                  Icon, 0x1169e92c0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Aviasales', label: 'Aviasales'
+                Icon, 0x1169e9400, {{104.7, 288.7}, {99.3, 90.7}}, identifier: '북유럽 교통 예약', label: '북유럽 교통 예약 폴더', value: 13개의 앱
+                  Icon, 0x1169e9540, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'LuxExpress', label: 'LuxExpress'
+                  Icon, 0x1169e9680, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'VR Matkalla', label: 'VR Matkalla'
+                  Icon, 0x1169e97c0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Taksini', label: 'Taksini'
+                  Icon, 0x1169e9900, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Omio', label: 'Omio'
+                  Icon, 0x1169e9a40, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Bolt', label: 'Bolt'
+                  Icon, 0x1169e9b80, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Tickets', label: 'Tickets'
+                  Icon, 0x1169e9cc0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Yandex Go', label: 'Yandex Go'
+                  Icon, 0x1169e9e00, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'FlixBus', label: 'FlixBus'
+                  Icon, 0x1169e9f40, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'RZD', label: 'RZD'
+                  Icon, 0x1169ea080, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Uber', label: 'Uber'
+                  Icon, 0x1169ea1c0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Grab', label: 'Grab'
+                  Icon, 0x1169ea300, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'HSL', label: 'HSL'
+                  Icon, 0x1169ea440, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Waltti Mobiili', label: 'Waltti Mobiili'
+                Icon, 0x1169ea580, {{211.3, 288.7}, {72.3, 90.7}}, identifier: '판매자센터', label: '판매자센터 폴더', value: 1개의 앱
+                  Icon, 0x1169ea6c0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '11번가 셀러오피스', label: '11번가 셀러오피스'
+                Icon, 0x1169ea800, {{306.0, 288.7}, {68.0, 90.7}}, identifier: 'Q-Net', label: 'Q-Net'
+                  Other, 0x1169ea940, {{308.0, 290.7}, {64.0, 78.0}}
+                    Other, 0x1169eaa80, {{308.0, 290.7}, {64.0, 64.0}}
+                      Other, 0x1169eabc0, {{308.0, 290.7}, {64.0, 64.0}}
+                        Other, 0x1169ead00, {{308.0, 290.7}, {64.0, 64.0}}
+                    Other, 0x1169eae40, {{313.0, 357.7}, {53.3, 19.7}}, identifier: 'label-view'
+                      Other, 0x1169eaf80, {{313.0, 357.7}, {53.3, 19.7}}
+                        Image, 0x1169eb0c0, {{296.4, 339.0}, {87.3, 55.7}}
+                        Image, 0x1169eb200, {{313.0, 357.7}, {53.3, 19.7}}
+                Icon, 0x1169eb340, {{28.3, 389.0}, {68.0, 90.7}}, identifier: 'Rewind', label: 'Rewind'
+                  Other, 0x1169eb480, {{30.3, 391.0}, {64.0, 78.0}}
+                    Other, 0x1169eb5c0, {{30.3, 391.0}, {64.0, 64.0}}
+                      Other, 0x1169eb700, {{30.3, 391.0}, {64.0, 64.0}}
+                        Other, 0x1169eb840, {{30.3, 391.0}, {64.0, 64.0}}
+                    Other, 0x1169eb980, {{31.7, 458.0}, {60.7, 19.7}}, identifier: 'label-view'
+                      Other, 0x1169ebac0, {{31.7, 458.0}, {60.7, 19.7}}
+                        Image, 0x1169ebc00, {{15.0, 439.3}, {94.7, 55.7}}
+                        Image, 0x1169ebd40, {{31.7, 458.0}, {60.7, 19.7}}
+                Icon, 0x1169ebe80, {{120.7, 389.0}, {68.0, 90.7}}, identifier: '사전', label: '사전 폴더', value: 2개의 앱
+                  Icon, 0x1169ec000, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '나무뷰어', label: '나무뷰어'
+                  Icon, 0x1169ec140, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '위키백과', label: '위키백과'
+                Icon, 0x1169ec280, {{208.0, 389.0}, {78.7, 90.7}}, identifier: 'WonderPi', label: 'WonderPi'
+                  Other, 0x1169ec3c0, {{215.7, 391.0}, {64.0, 78.0}}
+                    Other, 0x1169ec500, {{215.7, 391.0}, {64.0, 64.0}}
+                      Other, 0x1169ec640, {{215.7, 391.0}, {64.0, 64.0}}
+                        Other, 0x1169ec780, {{215.7, 391.0}, {64.0, 64.0}}
+                    Other, 0x1169ec8c0, {{210.0, 458.0}, {74.7, 19.7}}, identifier: 'label-view'
+                      Other, 0x1169eca00, {{210.0, 458.0}, {74.7, 19.7}}
+                        Image, 0x1169ecb40, {{193.4, 439.3}, {108.7, 55.7}}
+                        Image, 0x1169ecc80, {{210.0, 458.0}, {74.7, 19.7}}
+                Icon, 0x1169ecdc0, {{306.0, 389.0}, {68.0, 90.7}}, identifier: 'Skillflo', label: 'Skillflo'
+                  Other, 0x1169ecf00, {{308.0, 391.0}, {64.0, 78.0}}
+                    Other, 0x1169ed040, {{308.0, 391.0}, {64.0, 64.0}}
+                      Other, 0x1169ed180, {{308.0, 391.0}, {64.0, 64.0}}
+                        Other, 0x1169ed2c0, {{308.0, 391.0}, {64.0, 64.0}}
+                    Other, 0x1169ed400, {{310.7, 458.0}, {58.3, 19.7}}, identifier: 'label-view'
+                      Other, 0x1169ed540, {{310.7, 458.0}, {58.3, 19.7}}
+                        Image, 0x1169ed680, {{294.0, 439.3}, {92.3, 55.7}}
+                        Image, 0x1169ed7c0, {{310.7, 458.0}, {58.3, 19.7}}
+                Icon, 0x1169ed900, {{22.3, 489.3}, {79.7, 90.7}}, identifier: 'StemSplit', label: 'StemSplit'
+                  Other, 0x1169eda40, {{30.3, 491.3}, {64.0, 78.0}}
+                    Other, 0x1169edb80, {{30.3, 491.3}, {64.0, 64.0}}
+                      Other, 0x1169edcc0, {{30.3, 491.3}, {64.0, 64.0}}
+                        Other, 0x1169ede00, {{30.3, 491.3}, {64.0, 64.0}}
+                    Other, 0x1169edf40, {{24.3, 558.3}, {75.7, 19.7}}, identifier: 'label-view'
+                      Other, 0x1169ee080, {{24.3, 558.3}, {75.7, 19.7}}
+                        Image, 0x1169ee1c0, {{7.7, 539.7}, {109.7, 55.7}}
+                        Image, 0x1169ee300, {{24.3, 558.3}, {75.7, 19.7}}
+                Icon, 0x1169ee440, {{116.7, 489.3}, {75.7, 90.7}}, identifier: '모두의 창업', label: '모두의 창업'
+                  Other, 0x1169ee580, {{122.7, 491.3}, {64.0, 78.0}}
+                    Other, 0x1169ee6c0, {{122.7, 491.3}, {64.0, 64.0}}
+                      Other, 0x1169ee800, {{122.7, 491.3}, {64.0, 64.0}}
+                        Other, 0x1169ee940, {{122.7, 491.3}, {64.0, 64.0}}
+                    Other, 0x1169eea80, {{118.7, 558.3}, {71.7, 19.7}}, identifier: 'label-view'
+                      Other, 0x1169eebc0, {{118.7, 558.3}, {71.7, 19.7}}
+                        Image, 0x1169eed00, {{102.0, 539.7}, {105.7, 55.7}}
+                        Image, 0x1169eee40, {{118.7, 558.3}, {71.7, 19.7}}
+                Icon, 0x1169eef80, {{199.3, 489.3}, {96.3, 90.7}}, identifier: '검색광고 모바일', label: '검색광고 모바일'
+                  Other, 0x1169ef0c0, {{215.7, 491.3}, {64.0, 78.0}}
+                    Other, 0x1169ef200, {{215.7, 491.3}, {64.0, 64.0}}
+                      Other, 0x1169ef340, {{215.7, 491.3}, {64.0, 64.0}}
+                        Other, 0x1169ef480, {{215.7, 491.3}, {64.0, 64.0}}
+                    Other, 0x1169ef5c0, {{201.3, 558.3}, {92.3, 19.7}}, identifier: 'label-view'
+                      Other, 0x1169ef700, {{201.3, 558.3}, {92.3, 19.7}}
+                        Image, 0x1169ef840, {{184.7, 539.7}, {126.3, 55.7}}
+                        Image, 0x1169ef980, {{201.3, 558.3}, {92.3, 19.7}}
+                Icon, 0x1169efac0, {{287.3, 489.3}, {105.0, 90.7}}, identifier: '태화강 센트럴 아이파크 | 관리자 모드', label: '태화강 센트럴 아이파크 | 관리자 모드'
+                  Other, 0x1169efc00, {{308.0, 491.3}, {64.0, 78.0}}
+                    Other, 0x1169efd40, {{308.0, 491.3}, {64.0, 64.0}}
+                      Other, 0x1169efe80, {{308.0, 491.3}, {64.0, 64.0}}
+                        Other, 0x1169f0000, {{308.0, 491.3}, {64.0, 64.0}}
+                    Other, 0x1169f0140, {{289.3, 558.3}, {101.0, 19.7}}, identifier: 'label-view'
+                      Other, 0x1169f0280, {{289.3, 558.3}, {101.0, 19.7}}
+                        Image, 0x1169f03c0, {{272.7, 539.7}, {135.0, 55.7}}
+                        Image, 0x1169f0500, {{289.3, 558.3}, {101.0, 19.7}}
+                Icon, 0x1169f0640, {{10.0, 589.7}, {105.0, 94.0}}, identifier: '위키독스(Hermes Agent)', label: '위키독스(Hermes Agent)'
+                  Other, 0x1169f0780, {{30.3, 591.7}, {64.0, 78.0}}
+                    Other, 0x1169f08c0, {{30.3, 591.7}, {64.0, 64.0}}
+                      Other, 0x1169f0a00, {{30.3, 591.7}, {64.0, 64.0}}
+                        Other, 0x1169f0b40, {{30.3, 591.7}, {64.0, 64.0}}
+                    Other, 0x1169f0c80, {{12.0, 655.7}, {101.0, 26.0}}, identifier: 'label-view'
+                      Other, 0x1169f0dc0, {{12.0, 655.7}, {101.0, 26.0}}
+                        Image, 0x1169f0f00, {{-5.1, 636.8}, {135.0, 62.0}}
+                        Image, 0x1169f1040, {{12.0, 655.7}, {101.0, 26.0}}
+                Icon, 0x1169f1180, {{102.0, 589.7}, {105.0, 94.0}}, identifier: 'RunnerUITests-Runner', label: 'RunnerUITests-Runner'
+                  Other, 0x1169f12c0, {{122.7, 591.7}, {64.0, 78.0}}
+                    Other, 0x1169f1400, {{122.7, 591.7}, {64.0, 64.0}}
+                      Other, 0x1169f1540, {{122.7, 591.7}, {64.0, 64.0}}
+                        Other, 0x1169f1680, {{122.7, 591.7}, {64.0, 64.0}}
+                    Other, 0x1169f17c0, {{104.0, 655.7}, {101.0, 26.0}}, identifier: 'label-view'
+                      Other, 0x1169f1900, {{104.0, 655.7}, {101.0, 26.0}}
+                        Image, 0x1169f1a40, {{87.2, 636.8}, {135.0, 62.0}}
+                        Image, 0x1169f1b80, {{104.0, 655.7}, {101.0, 26.0}}
+              Icon, 0x1169f1cc0, {{0.0, 0.0}, {0.0, 0.0}}
+                Icon, 0x1169f1e00, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'E_Test', label: 'E_Test'
+                Icon, 0x1169f1f40, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'TwiDown', label: 'TwiDown'
+                Icon, 0x1169f2080, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '동의 모바일', label: '동의 모바일'
+                Icon, 0x1169f21c0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Discord', label: 'Discord'
+                Icon, 0x1169f2300, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '암호', label: '암호'
+                Icon, 0x1169f2440, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'Acrobat', label: 'Acrobat'
+                Icon, 0x1169f2580, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '비즈니스', label: '비즈니스 폴더'
+                  Icon, 0x1169f26c0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '삼성통근버스', label: '삼성통근버스'
+                  Icon, 0x1169f2800, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'EMMClient', label: 'EMMClient'
+                  Icon, 0x1169f2940, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '전자평택QR승차권', label: '전자평택QR승차권'
+                  Icon, 0x1169f2a80, {{0.0, 0.0}, {0.0, 0.0}}, identifier: 'InO', label: 'InO'
+                  Icon, 0x1169f2bc0, {{0.0, 0.0}, {0.0, 0.0}}, identifier: '협력사 MDM', label: '협력사 MDM'
+              Other, 0x1169f2d00, {{171.7, 703.7}, {58.7, 30.0}}, identifier: 'spotlight-pill', label: '검색', value: 총 8페이지 중 7페이지
+                PageIndicator, 0x1169f2e40, {{171.7, 703.7}, {58.7, 35.0}}, identifier: 'Page control', value: 총 8페이지 중 7페이지
+                Other, 0x1169f2f80, {{171.7, 703.7}, {58.7, 30.0}}, identifier: 'spotlight-pill'
+                  Other, 0x1169f30c0, {{171.7, 703.7}, {58.7, 30.0}}
+                    Image, 0x1169f3200, {{183.3, 713.0}, {11.7, 11.0}}, identifier: 'magnifyingglass', label: '검색'
+                    StaticText, 0x1169f3340, {{198.0, 711.3}, {21.0, 14.3}}, label: '검색'
+              Other, 0x1169f3480, {{0.0, 753.7}, {402.0, 120.3}}
+                Other, 0x1169f35c0, {{17.0, 753.7}, {368.0, 103.3}}
+                  Other, 0x1169f3700, {{0.0, 753.7}, {402.0, 103.3}}, label: 'Dock'
+                    Other, 0x1169f3840, {{0.0, 753.7}, {402.0, 103.3}}
+                    Icon, 0x1169f3980, {{34.7, 771.3}, {68.0, 68.0}}, identifier: '전화', label: '전화'
+                      Other, 0x1169f3ac0, {{36.7, 773.3}, {64.0, 64.0}}
+                        Other, 0x1169f3c00, {{36.7, 773.3}, {64.0, 64.0}}
+                          Other, 0x1169f3d40, {{36.7, 773.3}, {64.0, 64.0}}
+                            Other, 0x1169f3e80, {{36.7, 773.3}, {64.0, 64.0}}
+                    Icon, 0x1169f4000, {{122.7, 771.3}, {68.0, 68.0}}, identifier: '메시지', label: '메시지'
+                      Other, 0x1169f4140, {{124.7, 773.3}, {64.0, 64.0}}
+                        Other, 0x1169f4280, {{124.7, 773.3}, {64.0, 64.0}}
+                          Other, 0x1169f43c0, {{124.7, 773.3}, {64.0, 64.0}}
+                            Other, 0x1169f4500, {{124.7, 773.3}, {64.0, 64.0}}
+                    Icon, 0x1169f4640, {{211.3, 771.3}, {68.0, 68.0}}, identifier: '익시오', label: '익시오'
+                      Other, 0x1169f4780, {{213.3, 773.3}, {64.0, 64.0}}
+                        Other, 0x1169f48c0, {{213.3, 773.3}, {64.0, 64.0}}
+                          Other, 0x1169f4a00, {{213.3, 773.3}, {64.0, 64.0}}
+                            Other, 0x1169f4b40, {{213.3, 773.3}, {64.0, 64.0}}
+                    Icon, 0x1169f4c80, {{299.3, 771.3}, {68.0, 68.0}}, identifier: '카카오톡', label: '카카오톡'
+                      Other, 0x1169f4dc0, {{301.3, 773.3}, {64.0, 64.0}}
+                        Other, 0x1169f4f00, {{301.3, 773.3}, {64.0, 64.0}}
+                          Other, 0x1169f5040, {{301.3, 773.3}, {64.0, 64.0}}
+                            Other, 0x1169f5180, {{301.3, 773.3}, {64.0, 64.0}}
+          Other, 0x1169f52c0, {{0.0, 0.0}, {402.0, 874.0}}
+            Other, 0x1169f5400, {{0.0, 0.0}, {402.0, 874.0}}
+              Other, 0x1169f5540, {{0.0, 0.0}, {402.0, 874.0}}
+                Other, 0x1169f5680, {{0.0, 0.0}, {402.0, 874.0}}
+                  Other, 0x1169f57c0, {{0.0, 0.0}, {402.0, 874.0}}
+                    Other, 0x1169f5900, {{0.0, 0.0}, {402.0, 874.0}}
+                Other, 0x1169f5a40, {{0.0, 0.0}, {402.0, 874.0}}
+                  Other, 0x1169f5b80, {{0.0, 0.0}, {402.0, 874.0}}
+            Other, 0x1169f5cc0, {{0.0, 0.0}, {402.0, 874.0}}
+              Other, 0x1169f5e00, {{0.0, 0.0}, {402.0, 874.0}}
+                Other, 0x1169f5f40, {{0.0, 0.0}, {402.0, 874.0}}
+                  Other, 0x1169f6080, {{0.0, 0.0}, {402.0, 874.0}}
+                    Other, 0x1169f61c0, {{0.0, 0.0}, {402.0, 874.0}}
+                Other, 0x1169f6300, {{0.0, 0.0}, {402.0, 874.0}}
+                  Other, 0x1169f6440, {{0.0, 0.0}, {402.0, 874.0}}
+            Other, 0x1169f6580, {{0.0, 0.0}, {402.0, 874.0}}
+              Other, 0x1169f66c0, {{0.0, 0.0}, {402.0, 874.0}}
+                Other, 0x1169f6800, {{0.0, 0.0}, {402.0, 874.0}}
+                  Other, 0x1169f6940, {{0.0, 0.0}, {402.0, 874.0}}
+                    Other, 0x1169f6a80, {{0.0, 0.0}, {402.0, 874.0}}
+                Other, 0x1169f6bc0, {{0.0, 0.0}, {402.0, 874.0}}
+                  Other, 0x1169f6d00, {{0.0, 0.0}, {402.0, 874.0}}
+        Other, 0x1169f6e40, {{0.0, 0.0}, {402.0, 874.0}}
+        Other, 0x1169f6f80, {{129.0, 863.0}, {144.0, 5.0}}
+          Other, 0x1169f70c0, {{129.0, 863.0}, {144.0, 5.0}}
+            Other, 0x1169f7200, {{129.0, 863.0}, {144.0, 5.0}}
+    Window, 0x1169f7340, {{0.0, 0.0}, {402.0, 874.0}}
+      Other, 0x1169f7480, {{0.0, 0.0}, {402.0, 874.0}}
+        Other, 0x1169f75c0, {{0.0, 0.0}, {402.0, 874.0}}
+          Other, 0x1169f7700, {{138.3, 14.0}, {125.3, 36.7}}
+            Other, 0x1169f7840, {{138.3, 14.0}, {125.3, 36.7}}
+    Window, 0x1169f7980, {{0.0, 0.0}, {402.0, 874.0}}
+      Other, 0x1169f7ac0, {{0.0, 0.0}, {402.0, 874.0}}
+        Other, 0x1169f7c00, {{0.0, 0.0}, {402.0, 874.0}}
+          Other, 0x1169f7d40, {{0.0, 0.0}, {402.0, 874.0}}
+            Other, 0x1169f7e80, {{138.3, 14.0}, {125.3, 36.7}}
+              Other, 0x1169f8000, {{138.3, 14.0}, {125.3, 36.7}}
+                Other, 0x1169f8140, {{138.3, 14.0}, {125.3, 36.7}}
+          Other, 0x1169f8280, {{0.0, 0.0}, {402.0, 874.0}}
+            Other, 0x1169f83c0, {{138.3, 14.0}, {125.3, 36.7}}
+              Other, 0x1169f8500, {{138.3, 14.0}, {125.3, 36.7}}
+            Other, 0x1169f8640, {{138.3, 14.0}, {125.3, 36.7}}
+          Other, 0x1169f8780, {{0.0, 0.0}, {402.0, 874.0}}
+            Other, 0x1169f88c0, {{138.3, 14.0}, {125.3, 36.7}}, identifier: 'jindo-container-view:1'
+              Other, 0x1169f8a00, {{128.3, 10.0}, {145.3, 52.0}}
+          Other, 0x1169f8b40, {{218.0, 28.0}, {9.0, 9.0}}
+    Window, 0x1169f8c80, {{0.0, 0.0}, {402.0, 874.0}}
+      Other, 0x1169f8dc0, {{0.0, 0.0}, {402.0, 874.0}}
+        Other, 0x1169f8f00, {{0.0, 0.0}, {402.0, 874.0}}
+          Other, 0x1169f9040, {{0.0, 0.0}, {402.0, 874.0}}
+            Other, 0x1169f9180, {{0.0, 0.0}, {402.0, 874.0}}
+              Other, 0x1169f92c0, {{0.0, 0.0}, {402.0, 874.0}}
+              Other, 0x1169f9400, {{0.0, 0.0}, {402.0, 874.0}}
+              Other, 0x1169f9540, {{0.0, 0.0}, {402.0, 874.0}}
+              Other, 0x1169f9680, {{0.0, 0.0}, {402.0, 874.0}}
+              Other, 0x1169f97c0, {{0.0, 0.0}, {402.0, 874.0}}
+              Other, 0x1169f9900, {{0.0, 0.0}, {402.0, 874.0}}
+              Other, 0x1169f9a40, {{0.0, 0.0}, {402.0, 874.0}}
+              Other, 0x1169f9b80, {{0.0, 0.0}, {402.0, 874.0}}
+              Other, 0x1169f9cc0, {{0.0, 0.0}, {402.0, 874.0}}
+        Other, 0x1169f9e00, {{0.0, 0.0}, {402.0, 874.0}}
+        Other, 0x1169f9f40, {{0.0, 0.0}, {402.0, 874.0}}
+          Other, 0x1169fa080, {{0.0, 0.0}, {402.0, 874.0}}
+            Other, 0x1169fa1c0, {{0.0, 0.0}, {402.0, 874.0}}
+        Other, 0x1169fa300, {{0.0, 0.0}, {402.0, 874.0}}
+          Other, 0x1169fa440, {{0.0, 0.0}, {402.0, 874.0}}
+            Other, 0x1169fa580, {{0.0, 0.0}, {402.0, 874.0}}
+              Other, 0x1169fa6c0, {{0.0, 0.0}, {402.0, 874.0}}
+              Other, 0x1169fa800, {{0.0, 0.0}, {402.0, 874.0}}
+        Other, 0x1169fa940, {{0.0, 0.0}, {402.0, 874.0}}
+          Other, 0x1169faa80, {{0.0, 0.0}, {402.0, 874.0}}
+            Other, 0x1169fabc0, {{0.0, 0.0}, {402.0, 874.0}}
+              Other, 0x1169fad00, {{0.0, 0.0}, {402.0, 874.0}}
+              Other, 0x1169fae40, {{0.0, 0.0}, {402.0, 874.0}}
+    Window, 0x1169faf80, {{0.0, 0.0}, {402.0, 874.0}}
+      Other, 0x1169fb0c0, {{0.0, 0.0}, {402.0, 874.0}}
+    Window, 0x1169fb200, {{0.0, 0.0}, {134.0, 291.3}}
+      Other, 0x1169fb340, {{0.0, 0.0}, {134.0, 291.3}}
+        Other, 0x1169fb480, {{0.0, 0.0}, {134.0, 291.3}}
+    Window, 0x1169fb5c0, {{0.0, 0.0}, {402.0, 874.0}}
+      Other, 0x1169fb700, {{0.0, 0.0}, {402.0, 874.0}}
+        Other, 0x1169fb840, {{0.0, 0.0}, {402.0, 874.0}}
+    Window, 0x1169fb980, {{0.0, 0.0}, {402.0, 874.0}}
+      Other, 0x1169fbac0, {{0.0, 0.0}, {402.0, 874.0}}
+        Other, 0x1169fbc00, {{0.0, 0.0}, {402.0, 874.0}}
+    Window, 0x1169fbd40, {{0.0, 0.0}, {134.0, 291.3}}
+      Other, 0x1169fbe80, {{0.0, 0.0}, {134.0, 291.3}}
+        Other, 0x116a00000, {{0.0, 0.0}, {134.0, 291.3}}
+    Window, 0x116a00140, {{0.0, 0.0}, {402.0, 874.0}}
+      StatusBar, 0x116a00280, {{0.0, 0.0}, {402.0, 54.0}}
+        Other, 0x116a003c0, {{0.0, 0.0}, {402.0, 54.0}}
+          Other, 0x116a00500, {{0.0, 0.0}, {402.0, 54.0}}
+            StaticText, 0x116a00640, {{56.7, 22.3}, {35.0, 20.3}}, label: '오전 1:14'
+            Other, 0x116a00780, {{288.3, 26.3}, {19.3, 12.3}}
+              Other, 0x116a008c0, {{288.3, 25.7}, {19.3, 8.3}}, label: 'LG U+', value: 총 4개의 막대 중 3, 신호 강도
+              Other, 0x116a00a00, {{288.3, 35.7}, {19.3, 3.7}}, label: 'SKT', value: 총 4개의 막대 중 3, 신호 강도
+            Other, 0x116a00b40, {{315.0, 26.3}, {17.0, 12.3}}, identifier: '총 3개의 Wi‑Fi 막대 중 3개', value: SSID, 총 3개의 Wi‑Fi ...
+            Other, 0x116a00c80, {{339.3, 25.7}, {27.3, 13.7}}, label: '배터리 전원 100%', value: 충전 중
+    Window (Main), 0x116a00dc0, {{0.0, 0.0}, {402.0, 874.0}}
+      Other, 0x116a00f00, {{0.0, 0.0}, {402.0, 874.0}}
+        Other, 0x116a01040, {{0.0, 0.0}, {402.0, 874.0}}
+        BannerNotification, 0x116a01180, {{8.0, 58.7}, {386.0, 66.0}}
+          Other, 0x116a012c0, {{8.0, 58.7}, {386.0, 66.0}}, label: '알림'
+            Other, 0x116a01400, {{8.0, 58.7}, {386.0, 66.0}}
+              BannerNotification, 0x116a01540, {{8.0, 58.7}, {386.0, 66.0}}, identifier: 'NotificationShortLookView', label: 'VOICE TEXTNOTE, 지금, 회의 결과 열기, 알림을 눌러 회의 결과를 확인하세요.'
+                Other, 0x116a01680, {{8.0, 58.7}, {386.0, 66.0}}, identifier: 'ShortLook.Platter'
+                  Other, 0x116a017c0, {{8.0, 58.7}, {386.0, 66.0}}
+                  Other, 0x116a01900, {{8.0, 58.7}, {386.0, 66.0}}
+                  Other, 0x116a01a40, {{8.0, 58.7}, {386.0, 66.0}}, identifier: 'ShortLook.Platter.Content'
+                    Button, 0x116a01b80, {{8.0, 58.7}, {386.0, 66.0}}, identifier: 'ShortLook.Platter.Content.Seamless', label: '지금, 회의 결과 열기, 알림을 눌러 회의 결과를 확인하세요.'
+                      Other, 0x116a01cc0, {{8.0, 58.7}, {386.0, 66.0}}, identifier: 'ShortLook.Platter.Content.Seamless.CrossFade'
+                        StaticText, 0x116a01e00, {{72.0, 72.7}, {272.3, 18.0}}, identifier: 'NotificationTitle', label: '회의 결과 열기'
+                        Other, 0x116a01f40, {{72.0, 90.7}, {305.0, 18.0}}, identifier: 'NotificationBody.TopAligned.originalMessage'
+                          StaticText, 0x116a02080, {{72.0, 90.7}, {305.0, 18.0}}, identifier: 'TextContent.Primary', label: '알림을 눌러 회의 결과를 확인하세요.'
+                    Other, 0x116a021c0, {{8.0, 58.7}, {386.0, 66.0}}
+                      Other, 0x116a02300, {{8.0, 58.7}, {386.0, 66.0}}
+                        Other, 0x116a02440, {{8.0, 58.7}, {386.0, 66.0}}
+                          Other, 0x116a02580, {{8.0, 58.7}, {386.0, 66.0}}
+                            Other, 0x116a026c0, {{8.0, 58.7}, {386.0, 66.0}}
+                              Other, 0x116a02800, {{8.0, 58.7}, {386.0, 66.0}}
+                          Other, 0x116a02940, {{8.0, 58.7}, {386.0, 66.0}}
+                            Other, 0x116a02a80, {{8.0, 58.7}, {386.0, 66.0}}
+    Window, 0x116a02bc0, {{0.0, 0.0}, {402.0, 874.0}}
+      Other, 0x116a02d00, {{0.0, 0.0}, {402.0, 874.0}}
+    Window, 0x116a02e40, {{0.0, 0.0}, {402.0, 874.0}}
+      Other, 0x116a02f80, {{0.0, 0.0}, {402.0, 874.0}}
+        Other, 0x116a030c0, {{0.0, 0.0}, {402.0, 874.0}}
+    Window, 0x116a03200, {{0.0, 0.0}, {402.0, 874.0}}
+      Other, 0x116a03340, {{0.0, 0.0}, {402.0, 874.0}}
+    Window, 0x116a03480, {{0.0, 0.0}, {402.0, 874.0}}
+      Other, 0x116a035c0, {{0.0, 0.0}, {402.0, 874.0}}
+        Other, 0x116a03700, {{496.3, -100.0}, {5.7, 5.7}}
+          Other, 0x116a03840, {{496.3, -100.0}, {5.7, 5.7}}
+        Other, 0x116a03980, {{496.3, -100.0}, {5.7, 5.7}}
+          Other, 0x116a03ac0, {{496.3, -100.0}, {5.7, 5.7}}
+    Window, 0x116a03c00, {{0.0, 0.0}, {402.0, 874.0}}
+      Other, 0x116a03d40, {{0.0, 0.0}, {402.0, 874.0}}
+Path to element:
+ →Application, 0x116907e80, pid: 35, label: ' '
+Query chain:
+ →Find: Application 'com.apple.springboard'
+  Output: {
+    Application, 0x116a03e80, pid: 35, label: ' '
+  }

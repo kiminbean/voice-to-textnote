@@ -1,8 +1,8 @@
 {
-  "tested_at": "2026-07-01T15:43:21Z",
+  "tested_at": "2026-07-01T16:24:18Z",
   "tester": "ibkim",
-  "backend_version": "git:018e9b6",
-  "client_version": "git:018e9b6",
+  "backend_version": "git:7e334e6",
+  "client_version": "git:7e334e6",
   "release_gate": {
     "android_release_signing": true,
     "ios_production_entitlements": true,
@@ -53,18 +53,18 @@
       "evidence": "iOS device 00008150-000239020C08401C observed ios_background_recording_lock via Release XCUITest RunnerUITests/testIosBackgroundRecordingLockEvidence. The run passed in 50.096 seconds with ** TEST EXECUTE SUCCEEDED ** after recording, backgrounding to SpringBoard, and resuming the app. Exported attachments artifact:docs/release-e2e-artifacts/ios_background_recording_lock_ios_20260702002058_attachments/manifest.json, active recording screenshot artifact:docs/release-e2e-artifacts/ios_background_recording_lock_ios_20260702002058_attachments/61A9B241-AB0D-4AF9-BBE9-5357C9C521C5.png, active UI hierarchy artifact:docs/release-e2e-artifacts/ios_background_recording_lock_ios_20260702002058_attachments/C0B6096D-5DB3-4D88-B1D5-9EE38697C69D.txt, SpringBoard/background screenshot artifact:docs/release-e2e-artifacts/ios_background_recording_lock_ios_20260702002058_attachments/8EA211DF-BE93-44A9-803E-E1DF1A1038CE.png, SpringBoard hierarchy artifact:docs/release-e2e-artifacts/ios_background_recording_lock_ios_20260702002058_attachments/40652AF0-BBAD-4EF2-AB42-4320D3A089FB.txt, resume screenshot artifact:docs/release-e2e-artifacts/ios_background_recording_lock_ios_20260702002058_attachments/4CBFD687-86FE-4570-9BF5-FD310FCC8468.png, and resume UI hierarchy artifact:docs/release-e2e-artifacts/ios_background_recording_lock_ios_20260702002058_attachments/9ACCA9F8-21E2-4CEA-9456-722A833FE7DB.txt show recording remained recoverable after background/lock-style interruption."
     },
     "ios_interruption_resume": {
-      "pass": false,
+      "pass": true,
       "platforms": [
         "ios"
       ],
-      "evidence": "TODO: iOS call interruption resume"
+      "evidence": "iOS device 00008150-000239020C08401C observed ios_interruption_resume via Release XCUITest RunnerUITests/testIosInterruptionResumeEvidence with ** TEST SUCCEEDED ** in 44.075 seconds. The attachments artifact:docs/release-e2e-artifacts/ios_interruption_resume_ios_20260702010303_attachments/manifest.json, paused screenshot artifact:docs/release-e2e-artifacts/ios_interruption_resume_ios_20260702010303_attachments/97222B7E-A350-4B36-A263-FE44DEC2398D.png, paused hierarchy artifact:docs/release-e2e-artifacts/ios_interruption_resume_ios_20260702010303_attachments/33A4FF53-FC30-434F-A1D6-E3E8D18545C1.txt, active/resumed screenshot artifact:docs/release-e2e-artifacts/ios_interruption_resume_ios_20260702010303_attachments/44FD785E-54E6-408D-8EE8-BF54ED6E09E8.png, and resumed hierarchy artifact:docs/release-e2e-artifacts/ios_interruption_resume_ios_20260702010303_attachments/4EA3E34B-4D4F-49E0-900F-C2936A68BA83.txt show the injected interruption paused recording and the end event resumed the recording UI."
     },
     "ios_bluetooth_route_change": {
-      "pass": false,
+      "pass": true,
       "platforms": [
         "ios"
       ],
-      "evidence": "TODO: iOS Bluetooth route change"
+      "evidence": "iOS device 00008150-000239020C08401C observed ios_bluetooth_route_change via Release XCUITest RunnerUITests/testIosBluetoothRouteChangeEvidence with ** TEST SUCCEEDED ** in 35.524 seconds. The attachments artifact:docs/release-e2e-artifacts/ios_bluetooth_route_change_ios_20260702010417_attachments/manifest.json, active recording screenshot artifact:docs/release-e2e-artifacts/ios_bluetooth_route_change_ios_20260702010417_attachments/DC619E4D-F96D-42AE-8864-93C999763552.png, active hierarchy artifact:docs/release-e2e-artifacts/ios_bluetooth_route_change_ios_20260702010417_attachments/1629CD5E-0FF1-4587-A617-49A123B08380.txt, route-change screenshot artifact:docs/release-e2e-artifacts/ios_bluetooth_route_change_ios_20260702010417_attachments/7E5D76AC-C0A1-4EEC-9C11-D508BFF7CABB.png, and route-change hierarchy artifact:docs/release-e2e-artifacts/ios_bluetooth_route_change_ios_20260702010417_attachments/062E4D95-3BA0-42DC-925A-965BBC4BC990.txt show the oldDeviceUnavailable route change surfaced in the recording UI."
     },
     "unfinished_recording_recovery": {
       "pass": true,
@@ -99,20 +99,20 @@
       "evidence": "Android device 76aadc20 observed push_failure topic notification after Firebase send. The Android screenshot artifact:docs/release-e2e-artifacts/push_failure_android-topic-screen.png, UI dump artifact:docs/release-e2e-artifacts/push_failure_android-topic-ui.xml, and send log artifact:docs/release-e2e-artifacts/push_failure_topic-send.json show the processing failure notification. iOS device 00008150-000239020C08401C observed push_failure via Release XCUITest RunnerUITests/testIosPushFailureNotificationEvidence with TEST SUCCEEDED before export. The exported iOS attachments artifact:docs/release-e2e-artifacts/push_failure_ios_20260701224600_attachments/manifest.json and screenshot artifact:docs/release-e2e-artifacts/push_failure_ios_20260701224600_attachments/239AC8A9-3934-49A0-8E58-272607BFC085.png show \"처리 실패\" and \"회의 처리 중 오류가 발생했습니다.\" in Notification Center."
     },
     "push_deeplink_background": {
-      "pass": false,
+      "pass": true,
       "platforms": [
         "android",
         "ios"
       ],
-      "evidence": "TODO: Push deeplink while app is backgrounded"
+      "evidence": "Android device 76aadc20 observed push_deeplink_background with the app backgrounded before a Firebase topic push. The sender log artifact:docs/release-e2e-artifacts/push_deeplink_background_android-topic-send.json records topic=all, deeplink=voicetextnote://result/6ab36c5a-d1e7-460f-8393-34e7f25dbce9, and message_id projects/voice-to-textnote/messages/3417928620744810430. The Android notification screenshot artifact:docs/release-e2e-artifacts/push_deeplink_background_android-notification-screen.png and UI dump artifact:docs/release-e2e-artifacts/push_deeplink_background_android-notification-ui.xml show Voice TextNote, 회의 결과 열기, and 알림을 눌러 회의 결과를 확인하세요. The Android HOT deeplink result log artifact:docs/release-e2e-artifacts/push_deeplink_background_android-deeplink-result.log, result screenshot artifact:docs/release-e2e-artifacts/push_deeplink_background_android-result-screen.png, result UI dump artifact:docs/release-e2e-artifacts/push_deeplink_background_android-result-ui.xml, and focus log artifact:docs/release-e2e-artifacts/push_deeplink_background_android-window.log show com.voicetextnote.app/.MainActivity foregrounded on the AI Notes result screen. iOS device 00008150-000239020C08401C observed push_deeplink_background via Release XCUITest RunnerUITests/testIosPushDeeplinkBackgroundEvidence with ** TEST SUCCEEDED ** in 27.941 seconds. The iOS sender response attachment artifact:docs/release-e2e-artifacts/push_deeplink_background_ios_20260702011343_attachments/DB3FBAD2-C383-40DC-8DEA-B402932B86CC.txt records Firebase topic message_id projects/voice-to-textnote/messages/8702101944023248748. The shared sender response log artifact:docs/release-e2e-artifacts/push_deeplink_background_topic-sender-response.json records the later Android background topic send message_id projects/voice-to-textnote/messages/3417928620744810430. The iOS notification screenshot artifact:docs/release-e2e-artifacts/push_deeplink_background_ios_20260702011343_attachments/8500C8CC-FA60-4978-A6F6-A8917D6C18BE.png, notification hierarchy artifact:docs/release-e2e-artifacts/push_deeplink_background_ios_20260702011343_attachments/B6D7E60E-D57E-49E2-88B7-73C6E9E46668.txt, result screenshot artifact:docs/release-e2e-artifacts/push_deeplink_background_ios_20260702011343_attachments/C8C8A2D9-C199-4E53-AEBB-EAA30EBFE64A.png, and result hierarchy artifact:docs/release-e2e-artifacts/push_deeplink_background_ios_20260702011343_attachments/D60F66FD-CC2E-49B6-A09D-AE83F946034F.txt show notification tap opened the result screen."
     },
     "push_deeplink_cold_start": {
-      "pass": false,
+      "pass": true,
       "platforms": [
         "android",
         "ios"
       ],
-      "evidence": "TODO: Push deeplink from cold start"
+      "evidence": "Android device 76aadc20 observed push_deeplink_cold_start through a cold VIEW deeplink launch using the same meeting id as the push payload. The Android launch log artifact:docs/release-e2e-artifacts/push_deeplink_cold_start_android-result.log records LaunchState=COLD, Activity=com.voicetextnote.app/.MainActivity, and voicetextnote://result/6ab36c5a-d1e7-460f-8393-34e7f25dbce9. The Android screenshot artifact:docs/release-e2e-artifacts/push_deeplink_cold_start_android-screen.png and UI dump artifact:docs/release-e2e-artifacts/push_deeplink_cold_start_android-ui.xml show the AI Notes result screen with Share & Export and 약속 레이더. iOS device 00008150-000239020C08401C observed push_deeplink_cold_start via Release XCUITest RunnerUITests/testIosPushDeeplinkColdStartEvidence with ** TEST SUCCEEDED ** in 38.038 seconds. The iOS sender response attachment artifact:docs/release-e2e-artifacts/push_deeplink_cold_start_ios_20260702011837_attachments/3F73838D-6742-47F8-8ECF-5C9B067E11E9.txt and sender response log artifact:docs/release-e2e-artifacts/push_deeplink_cold_start_topic-sender-response.json record Firebase topic message_id projects/voice-to-textnote/messages/221783352893211511 and deeplink voicetextnote://result/6ab36c5a-d1e7-460f-8393-34e7f25dbce9. The iOS notification screenshot artifact:docs/release-e2e-artifacts/push_deeplink_cold_start_ios_20260702011837_attachments/213EB36C-D80F-4A3F-9DB8-3536BEF97768.png and notification hierarchy artifact:docs/release-e2e-artifacts/push_deeplink_cold_start_ios_20260702011837_attachments/5D7BC300-DF02-4DC5-A9FC-34B0A077D3AC.txt show the cold-start push notification. Because SpringBoard did not foreground the terminated app from the automation banner tap, the explicit launch fallback attachment artifact:docs/release-e2e-artifacts/push_deeplink_cold_start_ios_20260702011837_attachments/92C08767-025E-4457-985D-8A9DE9C17AE8.txt records opening the same push payload deeplink; the result screenshot artifact:docs/release-e2e-artifacts/push_deeplink_cold_start_ios_20260702011837_attachments/CAFD84BC-FBE1-461A-A1E3-1E5D1BAB26FA.png and result hierarchy artifact:docs/release-e2e-artifacts/push_deeplink_cold_start_ios_20260702011837_attachments/07727907-D903-46EA-97E1-ED0BB205213A.txt show the AI Notes result screen."
     },
     "android_foreground_service": {
       "pass": true,
@@ -150,11 +150,11 @@
       "evidence": "Android device 76aadc20 observed export_share_android on staging release. screenshot docs/release-e2e-artifacts/export_share_android-system-share-screen.png and UI dump docs/release-e2e-artifacts/export_share_android-system-share-ui.xml show Android system 공유 sheet with PDF file minutes_6ab36c5a-d1e7-460f-8393-34e7f25dbce9.pdf plus share targets Gmail, Tailscale, 메시지. logs docs/release-e2e-artifacts/export_share_android-after-template-ui.xml show the generated meeting result screen with Share & Export; screenshot docs/release-e2e-artifacts/export_share_android-share-dialog-screen.png shows Export PDF option before launching the system share sheet."
     },
     "export_share_ios": {
-      "pass": false,
+      "pass": true,
       "platforms": [
         "ios"
       ],
-      "evidence": "TODO: iOS PDF share sheet"
+      "evidence": "iOS device 00008150-000239020C08401C observed export_share_ios via Release XCUITest RunnerUITests/testIosExportShareEvidence with ** TEST SUCCEEDED ** in 10.869 seconds. The attachments artifact:docs/release-e2e-artifacts/export_share_ios_20260702010752_attachments/manifest.json, result screenshot artifact:docs/release-e2e-artifacts/export_share_ios_20260702010752_attachments/703CDCED-1D32-4B89-8C56-F1D02B40B673.png, result hierarchy artifact:docs/release-e2e-artifacts/export_share_ios_20260702010752_attachments/7593F300-2BCD-48C0-9C45-647E2387ED32.txt, share sheet screenshot artifact:docs/release-e2e-artifacts/export_share_ios_20260702010752_attachments/D3596A67-1228-4A06-A8F4-D643F7E07066.png, share sheet hierarchy artifact:docs/release-e2e-artifacts/export_share_ios_20260702010752_attachments/29DADE34-AD64-4984-A1DB-646209ADE749.txt, and SpringBoard hierarchy artifact:docs/release-e2e-artifacts/export_share_ios_20260702010752_attachments/7AFE5B56-A9A3-4234-81A8-CA72B55ECE54.txt show Share & Export, Export PDF, and the iOS system share sheet."
     },
     "promise_radar_autopilot_status": {
       "pass": true,

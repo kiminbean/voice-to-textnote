@@ -1,0 +1,67 @@
+Optional(Attributes: Application, 0x1188df480, pid: 26291, label: 'Voice TextNote'
+Element subtree:
+ →Application, 0x1188df480, pid: 26291, label: 'Voice TextNote'
+    Window (Main), 0x1188df5c0, {{0.0, 0.0}, {402.0, 874.0}}
+      Other, 0x1188dfac0, {{0.0, 0.0}, {402.0, 874.0}}
+        Other, 0x11e45b840, {{0.0, 0.0}, {402.0, 874.0}}
+          Other, 0x11e45b980, {{0.0, 0.0}, {402.0, 874.0}}
+            Other, 0x11e45bac0, {{0.0, 0.0}, {402.0, 874.0}}
+              Other, 0x11e45be80, {{0.0, 0.0}, {402.0, 874.0}}
+              Other, 0x11e45bc00, {{0.0, 0.0}, {402.0, 874.0}}
+                Other, 0x11e45bd40, {{0.0, 0.0}, {402.0, 874.0}}
+                Other, 0x11e48c000, {{0.0, 0.0}, {402.0, 874.0}}
+                  Other, 0x11e48c140, {{0.0, 0.0}, {402.0, 874.0}}
+                  Other, 0x11e48c280, {{0.0, 0.0}, {402.0, 874.0}}
+                    Other, 0x11e48c3c0, {{0.0, 0.0}, {402.0, 166.0}}
+                    Button, 0x11e48c500, {{4.0, 66.0}, {48.0, 48.0}}
+                    Other, 0x11e48c640, {{72.0, 77.0}, {89.2, 26.0}}, label: 'AI Notes'
+                    Button, 0x11e48c780, {{258.0, 66.0}, {48.0, 48.0}}, label: '내보내기'
+                    Button, 0x11e48c8c0, {{306.0, 66.0}, {48.0, 48.0}}, label: '팀에 공유'
+                    Button, 0x11e48ca00, {{354.0, 66.0}, {48.0, 48.0}}, label: '설정'
+                    Other, 0x11e48cb40, {{0.0, 0.0}, {402.0, 874.0}}
+                      ScrollView, 0x11e48cc80, {{0.0, 118.0}, {402.0, 48.0}}
+                      Other, 0x11e48cdc0, {{0.0, 0.0}, {402.0, 874.0}}
+                        Other, 0x11e48cf00, {{52.0, 118.0}, {350.0, 48.0}}
+                        Other, 0x11e48d040, {{52.0, 118.0}, {73.1, 48.0}}, label: 'AI 요약
+탭 12개 중 1번째', Selected
+                        StaticText, 0x11e48d180, {{125.1, 118.0}, {80.5, 48.0}}, label: '회의 내용
+탭 12개 중 2번째'
+                        StaticText, 0x11e48d2c0, {{205.6, 118.0}, {91.9, 48.0}}, label: '액션 아이템
+탭 12개 중 3번째'
+                        StaticText, 0x11e48d400, {{297.5, 118.0}, {91.9, 48.0}}, label: '약속 레이더
+탭 12개 중 4번째'
+                        StaticText, 0x11e48d540, {{389.4, 118.0}, {12.6, 48.0}}, label: '회의록
+탭 12개 중 5번째'
+                        StaticText, 0x11e48d680, {{0.0, 0.0}, {0.0, 0.0}}, label: '마인드맵
+탭 12개 중 6번째'
+                        StaticText, 0x11e48d7c0, {{0.0, 0.0}, {0.0, 0.0}}, label: '영업
+탭 12개 중 7번째'
+                        StaticText, 0x11e48d900, {{0.0, 0.0}, {0.0, 0.0}}, label: '학습
+탭 12개 중 8번째'
+                        StaticText, 0x11e48da40, {{0.0, 0.0}, {0.0, 0.0}}, label: '번역
+탭 12개 중 9번째'
+                        StaticText, 0x11e48db80, {{0.0, 0.0}, {0.0, 0.0}}, label: 'Q&A
+탭 12개 중 10번째'
+                        StaticText, 0x11e48dcc0, {{0.0, 0.0}, {0.0, 0.0}}, label: '통계
+탭 12개 중 11번째'
+                        StaticText, 0x11e48de00, {{0.0, 0.0}, {0.0, 0.0}}, label: '감정 분석
+탭 12개 중 12번째'
+                  StaticText, 0x11e48df40, {{87.0, 195.0}, {145.2, 23.0}}, label: '미팅 (2026.07.01)'
+                  StaticText, 0x11e48e080, {{293.3, 199.0}, {67.7, 14.0}}, label: 'Processing'
+                  StaticText, 0x11e48e1c0, {{87.0, 220.0}, {198.3, 38.0}}, label: 'Summary, transcript, action items'
+                  StaticText, 0x11e48e300, {{105.0, 262.0}, {180.3, 20.0}}, label: '비공개 · 나만 볼 수 있음'
+                  Button, 0x11e48e440, {{33.0, 294.0}, {280.0, 50.0}}, label: 'Share & Export'
+                  Button, 0x11e48e580, {{321.0, 295.0}, {48.0, 48.0}}, label: '팀에 공유'
+                  Other, 0x11e48e6c0, {{0.0, 0.0}, {402.0, 874.0}}
+                    Other, 0x11e48e800, {{0.0, 369.0}, {402.0, 505.0}}
+                    Other, 0x11e48e940, {{0.0, 0.0}, {402.0, 874.0}}
+                      Other, 0x11e48ea80, {{0.0, 369.0}, {402.0, 505.0}}
+                      StaticText, 0x11e48ebc0, {{0.0, 369.0}, {402.0, 505.0}}, label: 'AI 요약이 없습니다'
+Path to element:
+ →Application, 0x1188df480, pid: 26291, label: 'Voice TextNote'
+Query chain:
+ →Find: Target Application 'com.voicetextnote.app'
+  Output: {
+    Application, 0x11e48ed00, pid: 26291, label: 'Voice TextNote'
+  }
+)

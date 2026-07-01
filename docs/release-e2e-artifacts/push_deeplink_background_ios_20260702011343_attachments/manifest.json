@@ -1,0 +1,53 @@
+[
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00008150-000239020C08401C",
+        "deviceName" : "Inbean의 iPhone",
+        "exportedFileName" : "C8C8A2D9-C199-4E53-AEBB-EAA30EBFE64A.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "push_deeplink_background_ios_result_0_414A4069-7C50-43FA-99A5-9652F0C99F8B.png",
+        "timestamp" : 1782922465.318
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00008150-000239020C08401C",
+        "deviceName" : "Inbean의 iPhone",
+        "exportedFileName" : "D60F66FD-CC2E-49B6-A09D-AE83F946034F.txt",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "push_deeplink_background_ios_result_hierarchy_0_7C526E79-D1BC-4A59-AC5E-C3D66258BDA0.txt",
+        "timestamp" : 1782922465.199
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00008150-000239020C08401C",
+        "deviceName" : "Inbean의 iPhone",
+        "exportedFileName" : "8500C8CC-FA60-4978-A6F6-A8917D6C18BE.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "push_deeplink_background_ios_notification_center_0_F42E3C88-697F-47C0-AC43-7430AF13DA14.png",
+        "timestamp" : 1782922463.054
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00008150-000239020C08401C",
+        "deviceName" : "Inbean의 iPhone",
+        "exportedFileName" : "B6D7E60E-D57E-49E2-88B7-73C6E9E46668.txt",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "push_deeplink_background_ios_notification_hierarchy_0_BCD5724D-1A0F-4ED7-BE08-08EBD38DD1F6.txt",
+        "timestamp" : 1782922462.955
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00008150-000239020C08401C",
+        "deviceName" : "Inbean의 iPhone",
+        "exportedFileName" : "DB3FBAD2-C383-40DC-8DEA-B402932B86CC.txt",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "push_deeplink_background_ios_push_sender_response_0_31C1C04E-2B79-49E8-8B0A-A0893AE394A1.txt",
+        "timestamp" : 1782922453.388
+      }
+    ],
+    "testIdentifier" : "RunnerUITests/testIosPushDeeplinkBackgroundEvidence()",
+    "testIdentifierURL" : "test://com.apple.xcode/Runner/RunnerUITests/RunnerUITests/testIosPushDeeplinkBackgroundEvidence"
+  }
+]

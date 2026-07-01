@@ -1,0 +1,1 @@
+XCUITest SpringBoard banner tap did not foreground the terminated app; opening the same push payload deeplink voicetextnote://result/6ab36c5a-d1e7-460f-8393-34e7f25dbce9 to verify cold-start routing.

@@ -1,0 +1,8 @@
+Starting: Intent { act=android.intent.action.VIEW dat=voicetextnote://result/6ab36c5a-d1e7-460f-8393-34e7f25dbce9 pkg=com.voicetextnote.app }
+Warning: Activity not started, its current task has been brought to the front
+Status: ok
+LaunchState: HOT
+Activity: com.voicetextnote.app/.MainActivity
+TotalTime: 125
+WaitTime: 130
+Complete

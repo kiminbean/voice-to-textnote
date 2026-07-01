@@ -1,0 +1,53 @@
+[
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00008150-000239020C08401C",
+        "deviceName" : "Inbean의 iPhone",
+        "exportedFileName" : "D3596A67-1228-4A06-A8F4-D643F7E07066.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "export_share_ios_share_sheet_0_9D68D358-C70F-48E8-ABE8-2C0E8EC0DC79.png",
+        "timestamp" : 1782922099.707
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00008150-000239020C08401C",
+        "deviceName" : "Inbean의 iPhone",
+        "exportedFileName" : "7AFE5B56-A9A3-4234-81A8-CA72B55ECE54.txt",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "export_share_ios_springboard_hierarchy_0_467B54F8-6B59-42C9-9965-7ECC57BFD99D.txt",
+        "timestamp" : 1782922099.64
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00008150-000239020C08401C",
+        "deviceName" : "Inbean의 iPhone",
+        "exportedFileName" : "29DADE34-AD64-4984-A1DB-646209ADE749.txt",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "export_share_ios_share_sheet_hierarchy_0_E49FCCFE-55F8-4E0A-8795-6B7B830FC075.txt",
+        "timestamp" : 1782922099.419
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00008150-000239020C08401C",
+        "deviceName" : "Inbean의 iPhone",
+        "exportedFileName" : "7593F300-2BCD-48C0-9C45-647E2387ED32.txt",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "export_share_ios_result_hierarchy_0_34FEBBAA-1EB4-4962-8730-B3166B1EEC24.txt",
+        "timestamp" : 1782922098.107
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00008150-000239020C08401C",
+        "deviceName" : "Inbean의 iPhone",
+        "exportedFileName" : "703CDCED-1D32-4B89-8C56-F1D02B40B673.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "export_share_ios_result_initial_0_C9CB321F-5FD1-4D10-AE71-FE05BD7E1A53.png",
+        "timestamp" : 1782922098.037
+      }
+    ],
+    "testIdentifier" : "RunnerUITests/testIosExportShareEvidence()",
+    "testIdentifierURL" : "test://com.apple.xcode/Runner/RunnerUITests/RunnerUITests/testIosExportShareEvidence"
+  }
+]
