@@ -1,0 +1,70 @@
+{
+  "generated_at": "2026-07-01T17:50:10.289077+00:00",
+  "summary_type": "sanitized_release_e2e_summary",
+  "source_cache_file": ".cache/promise-radar-e2e-v15-check-iphone-auto.json",
+  "source_contains_raw_device_output": true,
+  "raw_cache_commit_policy": "do_not_commit_raw_cache_or_device_identifiers",
+  "latest_physical_device_evidence": {
+    "source_generated_at": "2026-07-01T17:33:42.822492+00:00",
+    "target_base_url": "http://100.69.69.119:8000/api/v1",
+    "overall_pass": true,
+    "pass_checks": {
+      "ios_device_connected": true,
+      "android_device_connected": true,
+      "actual_recording_chain": true,
+      "radar_load": true,
+      "autopilot_preview": true,
+      "review_queue": true,
+      "calendar_export": true,
+      "assignee_quality": true,
+      "pre_meeting_brief": true,
+      "due_push_dispatch_contract": true,
+      "command_center": true,
+      "command_center_accuracy_baseline": true,
+      "command_center_v15_contract": true
+    },
+    "devices": {
+      "ios_connected": true,
+      "android_connected": true,
+      "android_model": "Redmi_Note_9_Pro"
+    },
+    "actual_recording_chain": true,
+    "actual_recording_duration_seconds": 60.973,
+    "command_center": {
+      "ok": true,
+      "accuracy_case_count": 369,
+      "accuracy_correct_count": 369,
+      "real_meeting_case_count": 302,
+      "target_case_count": 300,
+      "memory_graph_node_count": 18,
+      "memory_graph_edge_count": 20,
+      "team_risk_score": 100
+    },
+    "scope_note": "This physical-device evidence was collected before v16 extraction-recall fields; rerun the updated generator after deploying v16 backend to collect v16 physical evidence."
+  },
+  "v16_gate_contract": {
+    "command_center_target_real_cases": 500,
+    "accuracy_min_case_count": 500,
+    "accuracy_min_real_meeting_case_count": 500,
+    "extraction_min_case_count": 50,
+    "extraction_min_recall": 0.95,
+    "requires_command_center_actions": true,
+    "requires_google_tasks_oauth_readiness_field": true
+  },
+  "local_verification": {
+    "accuracy_report": {
+      "case_count": 569,
+      "correct_count": 569,
+      "accuracy": 1.0,
+      "real_meeting_case_count": 502,
+      "target_case_count": 500
+    },
+    "extraction_recall": {
+      "case_count": 50,
+      "expected_count": 50,
+      "matched_count": 50,
+      "recall": 1.0,
+      "target_case_count": 50
+    }
+  }
+}

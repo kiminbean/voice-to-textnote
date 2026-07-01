@@ -44,6 +44,8 @@ from backend.schemas.promise_radar import (
     PromiseExternalTaskSyncRequest,
     PromiseExternalTaskSyncResponse,
     PromiseExternalTaskUpdateRequest,
+    PromiseExtractionCase,
+    PromiseExtractionRecallReport,
     PromiseGoogleTaskListResponse,
     PromiseLearningFeedbackRequest,
     PromiseLearningFeedbackResponse,
@@ -370,6 +372,30 @@ async def get_promise_accuracy_report(
         not_found(str(e))
     except Exception as e:
         internal_error(f"Promise Radar 정확도 보고서 생성 중 오류가 발생했습니다: {e}")
+
+
+@router.get("/accuracy/extraction-report", response_model=PromiseExtractionRecallReport)
+async def get_promise_extraction_recall_report(
+    target_case_count: int = Query(default=50, ge=1, le=1000),
+    svc: PromiseRadarService = Depends(get_promise_radar_service),
+) -> PromiseExtractionRecallReport:
+    """약속 추출 false negative fixture recall을 반환합니다."""
+    try:
+        backend_root = Path(__file__).resolve().parents[4]
+        fixture = backend_root / "tests" / "fixtures" / "promise_radar_extraction_cases.json"
+        raw_cases = json.loads(fixture.read_text(encoding="utf-8"))
+        cases = [PromiseExtractionCase(**item) for item in raw_cases]
+        return svc.build_extraction_recall_report(
+            cases,
+            fixture_path=str(fixture),
+            target_case_count=target_case_count,
+        )
+    except FileNotFoundError as e:
+        not_found(f"Promise Radar extraction fixture 파일을 찾을 수 없습니다: {e}")
+    except ValueError as e:
+        not_found(str(e))
+    except Exception as e:
+        internal_error(f"Promise Radar extraction recall 보고서 생성 중 오류가 발생했습니다: {e}")
 
 
 @router.get("/dashboard", response_model=PromiseRadarDashboard)

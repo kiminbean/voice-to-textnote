@@ -864,6 +864,8 @@ void main() {
           'confirmed_count': 5,
           'assignee_correction_count': 1,
           'alias_graph_size': 3,
+          'scope_breakdown': {'feedback': 7, 'owner_aliases': 3},
+          'scope_recommendations': ['개인 데이터를 팀 정책으로 승격하세요.'],
           'evidence_lock_enabled': true,
           'status_attention': ['completed'],
           'recommended_policy': 'preview_only',
@@ -904,8 +906,8 @@ void main() {
           'source_manifest_path':
               'backend/tests/fixtures/promise_radar_real_meeting_sources.json',
           'evaluation': {
-            'case_count': 193,
-            'correct_count': 193,
+            'case_count': 569,
+            'correct_count': 569,
             'accuracy': 1.0,
             'status_precision': {'completed': 1.0},
             'failures': [],
@@ -915,8 +917,24 @@ void main() {
           'coverage': {'real_meeting_target': 1.0},
           'source_quality': {},
           'quality_warnings': [],
-          'real_meeting_case_count': 126,
-          'target_case_count': 100,
+          'real_meeting_case_count': 502,
+          'target_case_count': 500,
+          'below_target': false,
+        },
+        'extraction_recall': {
+          'generated_at': '2026-07-02T00:00:00Z',
+          'fixture_path':
+              'backend/tests/fixtures/promise_radar_extraction_cases.json',
+          'evaluation': {
+            'case_count': 50,
+            'expected_count': 50,
+            'extracted_count': 50,
+            'matched_count': 50,
+            'recall': 1.0,
+            'failures': [],
+          },
+          'real_meeting_case_count': 50,
+          'target_case_count': 50,
           'below_target': false,
         },
         'evidence_audit': {
@@ -928,15 +946,90 @@ void main() {
           'average_similarity': 0.84,
           'notes': ['근거 확인 필요'],
         },
+        'memory_graph': {
+          'node_count': 6,
+          'edge_count': 5,
+          'recurring_series_count': 1,
+          'changed_cluster_count': 1,
+          'delayed_cluster_count': 2,
+          'owner_alias_count': 3,
+          'nodes': [
+            {
+              'id': 'owner:SPEAKER_01',
+              'label': 'SPEAKER_01',
+              'kind': 'owner',
+              'weight': 81,
+              'risk_level': 'high',
+            }
+          ],
+          'edges': [
+            {
+              'source': 'owner:SPEAKER_01',
+              'target': 'promise:1',
+              'relationship': 'owns',
+              'weight': 1,
+            }
+          ],
+          'narrative': ['반복 회의 1개에서 미해결 약속 흐름을 추적합니다.'],
+        },
+        'shadow_mode': {
+          'candidate_count': 2,
+          'would_apply_count': 1,
+          'preview_only_count': 1,
+          'blocked_by_evidence_count': 1,
+          'conflict_count': 1,
+          'status_distribution': {'completed': 1, 'delayed': 1},
+          'average_confidence': 0.78,
+          'learning_value': '확정 결과를 threshold 학습에 반영합니다.',
+          'notes': ['Evidence Lock 미충족 후보는 보류합니다.'],
+        },
+        'evidence_permissions': {
+          'scope': 'owner:user-1',
+          'export_allowed': false,
+          'redaction_required': true,
+          'contains_speaker_data': true,
+          'contains_timestamp_data': true,
+          'allowed_evidence_count': 1,
+          'blocked_export_count': 2,
+          'policy_notes': ['외부 공유 전 speaker/timestamp 식별자를 마스킹하세요.'],
+        },
+        'team_scorecard': {
+          'risk_score': 76,
+          'owner_count': 2,
+          'open_count': 4,
+          'overdue_count': 2,
+          'high_risk_count': 1,
+          'recurring_series_count': 1,
+          'weakest_owner': 'SPEAKER_01',
+          'strongest_owner': '김기수',
+          'recommendations': ['기한 초과 약속은 다음 회의 첫 안건으로 올리세요.'],
+        },
         'google_tasks_oauth': {
           'provider': 'google_tasks',
           'scope': 'https://www.googleapis.com/auth/tasks',
           'auth_url_hint': 'https://accounts.google.com/o/oauth2/v2/auth',
           'redirect_uri_required': true,
+          'callback_path': '/api/v1/promise-radar/google-tasks/oauth/callback',
+          'production_ready': true,
+          'missing_setup': [],
+          'required_backend_env': ['GOOGLE_CLIENT_ID'],
+          'verification_steps': ['실기기 tasklist 조회 확인'],
           'steps': ['Google Tasks scope 승인'],
           'token_handling': '요청 시에만 access token 사용',
           'security_notes': ['state/nonce 검증'],
         },
+        'actions': [
+          {
+            'key': 'open_extraction_recall_report',
+            'label': '약속 추출 누락 보고서',
+            'method': 'GET',
+            'route': '/api/v1/promise-radar/accuracy/extraction-report',
+            'enabled': true,
+            'requires_confirmation': false,
+            'reason': 'Recall 100%',
+            'payload': {},
+          }
+        ],
         'focus_items': [
           {
             'key': 'google_tasks_oauth',
@@ -953,11 +1046,20 @@ void main() {
       expect(center.learningInsight.statusSampleCounts['completed'], 5);
       expect(center.learningInsight.statusFalsePositiveRate['completed'], 0.4);
       expect(center.learningInsight.aliasGraphSize, 3);
+      expect(center.learningInsight.scopeBreakdown['feedback'], 7);
       expect(center.evidenceAudit.weakEvidenceCount, 1);
+      expect(center.memoryGraph.nodeCount, 6);
+      expect(center.memoryGraph.ownerAliasCount, 3);
+      expect(center.shadowMode.blockedByEvidenceCount, 1);
+      expect(center.evidencePermissions.exportAllowed, isFalse);
+      expect(center.teamScorecard.riskScore, 76);
       expect(center.googleTasksOAuth.scope,
           'https://www.googleapis.com/auth/tasks');
-      expect(center.accuracyReport.evaluation.caseCount, 193);
-      expect(center.accuracyReport.realMeetingCaseCount, 126);
+      expect(center.googleTasksOAuth.productionReady, isTrue);
+      expect(center.accuracyReport.evaluation.caseCount, 569);
+      expect(center.accuracyReport.realMeetingCaseCount, 502);
+      expect(center.extractionRecall.evaluation.recall, 1.0);
+      expect(center.actions.single.key, 'open_extraction_recall_report');
       expect(center.focusItems.single.key, 'google_tasks_oauth');
     });
 

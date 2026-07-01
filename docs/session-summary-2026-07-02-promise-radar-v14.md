@@ -1,5 +1,7 @@
 # Promise Radar v14 Session Summary
 
+> Current baseline note: v14 counts are preserved as session history. The latest Promise Radar baseline is v16 in `docs/session-summary-2026-07-02-promise-radar-v16.md`: 569 total accuracy cases, 502 real-meeting/audio-derived labels, evaluator accuracy 1.0, extraction recall 50/50.
+
 ## Scope
 
 - Completed the next 1-7 Promise Radar hardening pass for operational reliability.
@@ -40,5 +42,5 @@
 
 - The v14 Command Center is a feature/readiness improvement, not a new strict release E2E scenario by itself.
 - Do not add Command Center or new Promise Radar checks to `REQUIRED_E2E_SCENARIOS` unless the strict readiness constants, scaffold/example evidence, and release-readiness tests are updated in the same change.
-- Historical v10/v11/v12/v13 session summaries keep their original counts for traceability. Current docs should use the v14 baseline: `193` total cases, `126` real-meeting/audio-derived labels, evaluator accuracy `1.0`.
+- Historical v10/v11/v12/v13/v14 session summaries keep their original counts for traceability. Current docs should use the v16 baseline: `569` total cases, `502` real-meeting/audio-derived labels, evaluator accuracy `1.0`, extraction recall `50/50`.
 - The next accuracy target is 300~500 real meeting/audio-derived labels.

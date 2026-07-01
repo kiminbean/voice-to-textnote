@@ -51,8 +51,10 @@ from backend.schemas.promise_radar import (
     PromiseAutopilotResponse,
     PromiseAutopilotReviewItem,
     PromiseAutopilotReviewQueue,
+    PromiseAutopilotShadowSummary,
     PromiseCalendarExportResponse,
     PromiseCommandCenter,
+    PromiseCommandCenterAction,
     PromiseCommandCenterFocusItem,
     PromiseConflictResolveRequest,
     PromiseDigest,
@@ -61,6 +63,7 @@ from backend.schemas.promise_radar import (
     PromiseEvidenceAuditSummary,
     PromiseEvidenceComparison,
     PromiseEvidencePack,
+    PromiseEvidencePermissionSummary,
     PromiseExternalExportRequest,
     PromiseExternalExportResponse,
     PromiseExternalTaskReconcileItem,
@@ -68,6 +71,9 @@ from backend.schemas.promise_radar import (
     PromiseExternalTaskSyncRequest,
     PromiseExternalTaskSyncResponse,
     PromiseExternalTaskUpdateRequest,
+    PromiseExtractionCase,
+    PromiseExtractionRecallEvaluation,
+    PromiseExtractionRecallReport,
     PromiseGoogleTaskList,
     PromiseGoogleTaskListResponse,
     PromiseGoogleTasksOAuthGuide,
@@ -86,6 +92,9 @@ from backend.schemas.promise_radar import (
     PromiseMeetingSeries,
     PromiseMeetingSeriesTimeline,
     PromiseMeetingSeriesTimelineItem,
+    PromiseMemoryGraph,
+    PromiseMemoryGraphEdge,
+    PromiseMemoryGraphNode,
     PromiseNextMeetingBriefing,
     PromiseNotificationDispatchResponse,
     PromiseOwnerAlias,
@@ -105,6 +114,7 @@ from backend.schemas.promise_radar import (
     PromiseResponsibilityTrend,
     PromiseResponsibilityTrendPoint,
     PromiseTaskLinkResponse,
+    PromiseTeamScorecard,
     PromiseTimelineItem,
     PromiseTimelineResponse,
 )
@@ -200,7 +210,8 @@ _AUTOPILOT_MARKERS = {
         "끝났",
         "처리",
         "해결",
-        "반영",
+        "반영했",
+        "반영 완료",
         "배포했",
         "done",
         "completed",
@@ -235,7 +246,8 @@ _AUTOPILOT_MARKERS = {
     "changed": (
         "변경",
         "바꾸",
-        "전환",
+        "로 전환",
+        "으로 전환",
         "대신",
         "재조정",
         "범위 조정",
@@ -245,7 +257,6 @@ _AUTOPILOT_MARKERS = {
         "add item",
         "new format",
         "accountable",
-        "explanation",
     ),
     "dismissed": (
         "취소",
@@ -1135,6 +1146,33 @@ class PromiseRadarService:
         if not next_actions:
             next_actions.append("현재 정책을 유지하고 확정/거절 피드백을 계속 누적하세요.")
 
+        scope_breakdown = {
+            "feedback": feedback_count,
+            "status_samples": sum(status_sample_counts.values()),
+            "owner_aliases": len(profile.owner_aliases),
+            "assignee_corrections": profile.assignee_correction_count,
+        }
+        scope_recommendations: list[str] = []
+        if team_id:
+            scope_breakdown["team_scope"] = 1
+            scope_recommendations.append("팀 alias graph와 상태별 threshold를 함께 고정하세요.")
+        elif owner_id:
+            scope_breakdown["owner_scope"] = 1
+            scope_recommendations.append(
+                "개인 확정/거절 데이터를 충분히 누적한 뒤 팀 정책으로 승격하세요."
+            )
+        elif guest_session_id:
+            scope_breakdown["guest_scope"] = 1
+            scope_recommendations.append(
+                "게스트 범위 학습은 자동 적용보다 preview-only로 유지하세요."
+            )
+        if sum(status_sample_counts.values()) < 10:
+            scope_recommendations.append(
+                "상태별 샘플이 10건 미만이면 자동 적용 기준을 낮추지 마세요."
+            )
+        if not scope_recommendations:
+            scope_recommendations.append("현재 scope의 상태별 학습 기준을 유지하세요.")
+
         return PromiseLearningInsight(
             scope=profile.scope,
             autopilot_threshold=profile.autopilot_threshold,
@@ -1146,6 +1184,8 @@ class PromiseRadarService:
             confirmed_count=profile.confirmed_count,
             assignee_correction_count=profile.assignee_correction_count,
             alias_graph_size=len(profile.owner_aliases),
+            scope_breakdown=scope_breakdown,
+            scope_recommendations=scope_recommendations[:4],
             evidence_lock_enabled=profile.evidence_lock_enabled,
             status_attention=status_attention[:6],
             recommended_policy=recommended_policy,
@@ -1240,7 +1280,9 @@ class PromiseRadarService:
                 direction = "stable"
             current = current_scores.get(key)
             current_score = current.score if current else points[-1].score
-            risk_level = current.risk_level if current else self._responsibility_risk_level(current_score)
+            risk_level = (
+                current.risk_level if current else self._responsibility_risk_level(current_score)
+            )
             trends.append(
                 PromiseResponsibilityTrend(
                     owner=owner,
@@ -1360,7 +1402,9 @@ class PromiseRadarService:
             limit=limit,
         )
         if not entries:
-            return PromiseMeetingSeriesTimeline(series_key=series_key, title=series_key, meeting_count=0)
+            return PromiseMeetingSeriesTimeline(
+                series_key=series_key, title=series_key, meeting_count=0
+            )
         titles = await self._meeting_titles_for_entries(session, entries)
         now = datetime.now(UTC).replace(tzinfo=None)
         buckets: dict[str, dict[str, Any]] = {}
@@ -1581,10 +1625,17 @@ class PromiseRadarService:
             team_id=team_id,
             limit=min(max(limit, 25), 100),
         )
-        accuracy_report = self._default_accuracy_report(
-            target_case_count=target_case_count
-        )
+        accuracy_report = self._default_accuracy_report(target_case_count=target_case_count)
+        extraction_recall = self._default_extraction_recall_report(target_case_count=50)
         evidence_audit = self._evidence_audit_summary(review_queue)
+        memory_graph = self._memory_graph_summary(dashboard, learning_insight)
+        shadow_mode = self._autopilot_shadow_summary(review_queue, learning_insight)
+        evidence_permissions = self._evidence_permission_summary(
+            review_queue,
+            evidence_audit,
+            scope=self._scope_label(owner_id, guest_session_id, team_id),
+        )
+        team_scorecard = self._team_scorecard_summary(dashboard)
         focus_items = self._command_center_focus_items(
             dashboard=dashboard,
             review_queue=review_queue,
@@ -1592,7 +1643,19 @@ class PromiseRadarService:
             digest=digest,
             external_reconcile=external_reconcile,
             accuracy_report=accuracy_report,
+            extraction_recall=extraction_recall,
             evidence_audit=evidence_audit,
+            memory_graph=memory_graph,
+            shadow_mode=shadow_mode,
+            evidence_permissions=evidence_permissions,
+            team_scorecard=team_scorecard,
+        )
+        actions = self._command_center_actions(
+            review_queue=review_queue,
+            external_reconcile=external_reconcile,
+            accuracy_report=accuracy_report,
+            extraction_recall=extraction_recall,
+            evidence_permissions=evidence_permissions,
         )
         return PromiseCommandCenter(
             generated_at=datetime.now(UTC).replace(tzinfo=None),
@@ -1603,8 +1666,14 @@ class PromiseRadarService:
             pre_meeting_brief=pre_meeting_brief,
             external_reconcile=external_reconcile,
             accuracy_report=accuracy_report,
+            extraction_recall=extraction_recall,
             evidence_audit=evidence_audit,
+            memory_graph=memory_graph,
+            shadow_mode=shadow_mode,
+            evidence_permissions=evidence_permissions,
+            team_scorecard=team_scorecard,
             google_tasks_oauth=self._google_tasks_oauth_guide(),
+            actions=actions,
             focus_items=focus_items,
         )
 
@@ -1633,14 +1702,14 @@ class PromiseRadarService:
                 continue
             ledger_status = "completed" if entry.status == "completed" else "needsAction"
             external_status = metadata.get("external_status")
-            needs_sync = external_status in {"completed", "needsAction"} and external_status != ledger_status
+            needs_sync = (
+                external_status in {"completed", "needsAction"} and external_status != ledger_status
+            )
             direction = "none"
             issue = None
             if needs_sync:
                 direction = (
-                    "pull_from_external"
-                    if external_status == "completed"
-                    else "push_to_external"
+                    "pull_from_external" if external_status == "completed" else "push_to_external"
                 )
                 issue = "Google Tasks 상태와 Promise Ledger 상태가 다릅니다."
             elif external_status is None:
@@ -3642,13 +3711,9 @@ class PromiseRadarService:
             below_target=real_meeting_case_count < target_case_count,
         )
 
-    def _default_accuracy_report(
-        self, *, target_case_count: int = 100
-    ) -> PromiseAccuracyReport:
+    def _default_accuracy_report(self, *, target_case_count: int = 100) -> PromiseAccuracyReport:
         backend_root = Path(__file__).resolve().parents[1]
-        fixture_path = (
-            backend_root / "tests" / "fixtures" / "promise_radar_accuracy_cases.json"
-        )
+        fixture_path = backend_root / "tests" / "fixtures" / "promise_radar_accuracy_cases.json"
         source_manifest_path = (
             backend_root / "tests" / "fixtures" / "promise_radar_real_meeting_sources.json"
         )
@@ -3659,9 +3724,89 @@ class PromiseRadarService:
         return self.build_accuracy_report(
             cases,
             fixture_path=str(fixture_path.relative_to(backend_root.parent)),
-            source_manifest_path=str(
-                source_manifest_path.relative_to(backend_root.parent)
-            ),
+            source_manifest_path=str(source_manifest_path.relative_to(backend_root.parent)),
+            target_case_count=target_case_count,
+        )
+
+    def evaluate_extraction_cases(
+        self,
+        cases: list[PromiseExtractionCase],
+    ) -> PromiseExtractionRecallEvaluation:
+        """Evaluate promise extraction recall before autopilot status scoring."""
+        expected_count = 0
+        extracted_count = 0
+        matched_count = 0
+        failures: list[dict[str, Any]] = []
+        for case in cases:
+            record = TaskResult(
+                task_id=f"{case.id}-summary",
+                task_type="summary",
+                status="completed",
+                created_at=datetime.now(UTC),
+                completed_at=datetime.now(UTC),
+                result_data=case.result_data,
+            )
+            extracted = self._extract_promises(record)
+            extracted_texts = [item.text for item in extracted]
+            extracted_count += len(extracted_texts)
+            unmatched: list[str] = []
+            for expected in case.expected_promises:
+                expected_count += 1
+                if any(
+                    self._extraction_text_matches(expected, actual) for actual in extracted_texts
+                ):
+                    matched_count += 1
+                else:
+                    unmatched.append(expected)
+            if unmatched:
+                failures.append(
+                    {
+                        "id": case.id,
+                        "source_id": case.source_id,
+                        "unmatched": unmatched,
+                        "extracted": extracted_texts,
+                    }
+                )
+        return PromiseExtractionRecallEvaluation(
+            case_count=len(cases),
+            expected_count=expected_count,
+            extracted_count=extracted_count,
+            matched_count=matched_count,
+            recall=round(matched_count / expected_count, 3) if expected_count else 0.0,
+            failures=failures,
+        )
+
+    def build_extraction_recall_report(
+        self,
+        cases: list[PromiseExtractionCase],
+        *,
+        fixture_path: str,
+        target_case_count: int = 50,
+    ) -> PromiseExtractionRecallReport:
+        """Build false-negative recall report from extraction fixture labels."""
+        evaluation = self.evaluate_extraction_cases(cases)
+        real_meeting_case_count = sum(1 for case in cases if case.id.startswith("extract-real-"))
+        return PromiseExtractionRecallReport(
+            generated_at=datetime.now(UTC).replace(tzinfo=None),
+            fixture_path=fixture_path,
+            evaluation=evaluation,
+            real_meeting_case_count=real_meeting_case_count,
+            target_case_count=target_case_count,
+            below_target=real_meeting_case_count < target_case_count,
+        )
+
+    def _default_extraction_recall_report(
+        self, *, target_case_count: int = 50
+    ) -> PromiseExtractionRecallReport:
+        backend_root = Path(__file__).resolve().parents[1]
+        fixture_path = backend_root / "tests" / "fixtures" / "promise_radar_extraction_cases.json"
+        cases = [
+            PromiseExtractionCase(**item)
+            for item in json.loads(fixture_path.read_text(encoding="utf-8"))
+        ]
+        return self.build_extraction_recall_report(
+            cases,
+            fixture_path=str(fixture_path.relative_to(backend_root.parent)),
             target_case_count=target_case_count,
         )
 
@@ -3726,13 +3871,318 @@ class PromiseRadarService:
             notes=notes,
         )
 
+    def _memory_graph_summary(
+        self,
+        dashboard: PromiseRadarDashboard,
+        learning_insight: PromiseLearningInsight,
+    ) -> PromiseMemoryGraph:
+        nodes: list[PromiseMemoryGraphNode] = []
+        edges: list[PromiseMemoryGraphEdge] = []
+        seen_nodes: set[str] = set()
+        seen_edges: set[tuple[str, str, str]] = set()
+
+        def add_node(
+            node_id: str,
+            *,
+            label: str,
+            kind: str,
+            weight: int = 1,
+            status: str | None = None,
+            risk_level: str | None = None,
+        ) -> None:
+            if node_id in seen_nodes:
+                return
+            seen_nodes.add(node_id)
+            nodes.append(
+                PromiseMemoryGraphNode(
+                    id=node_id,
+                    label=label,
+                    kind=kind,
+                    weight=max(0, weight),
+                    status=status,
+                    risk_level=risk_level,
+                )
+            )
+
+        def add_edge(
+            source: str,
+            target: str,
+            relationship: str,
+            *,
+            weight: int = 1,
+        ) -> None:
+            key = (source, target, relationship)
+            if key in seen_edges:
+                return
+            seen_edges.add(key)
+            edges.append(
+                PromiseMemoryGraphEdge(
+                    source=source,
+                    target=target,
+                    relationship=relationship,
+                    weight=max(0, weight),
+                )
+            )
+
+        for hotspot in dashboard.owner_hotspots[:8]:
+            owner_id = f"owner:{hotspot.owner or 'UNKNOWN'}"
+            add_node(
+                owner_id,
+                label=hotspot.owner or "UNKNOWN",
+                kind="owner",
+                weight=hotspot.risk_score,
+                risk_level="high" if hotspot.risk_score >= 70 else "medium",
+            )
+
+        changed_cluster_count = 0
+        delayed_cluster_count = 0
+        for promise in dashboard.urgent_promises[:10]:
+            promise_id = f"promise:{promise.id}"
+            add_node(
+                promise_id,
+                label=promise.text,
+                kind="promise",
+                weight=promise.occurrences,
+                status=promise.status,
+                risk_level=promise.risk_level,
+            )
+            status_id = f"status:{promise.status}"
+            add_node(
+                status_id,
+                label=promise.status,
+                kind="status",
+                weight=1,
+                status=promise.status,
+            )
+            add_edge(promise_id, status_id, "has_status")
+            if promise.owner:
+                owner_id = f"owner:{promise.owner}"
+                add_node(owner_id, label=promise.owner, kind="owner")
+                add_edge(owner_id, promise_id, "owns")
+            if promise.status == "changed":
+                changed_cluster_count += 1
+            if promise.status in {"blocked", "delayed"} or promise.due_at is not None:
+                delayed_cluster_count += int(promise.status in {"blocked", "delayed"})
+
+        for series in dashboard.meeting_series[:6]:
+            series_id = f"series:{series.series_key}"
+            add_node(
+                series_id,
+                label=series.title,
+                kind="series",
+                weight=series.meeting_count,
+                risk_level=(
+                    "high"
+                    if series.high_risk_count
+                    else "medium"
+                    if series.overdue_count
+                    else "low"
+                ),
+            )
+            if series.overdue_count:
+                delayed_cluster_count += 1
+            for owner in series.owners[:4]:
+                owner_id = f"owner:{owner}"
+                add_node(owner_id, label=owner, kind="owner")
+                add_edge(series_id, owner_id, "mentions_owner", weight=series.meeting_count)
+
+        narrative: list[str] = []
+        if dashboard.meeting_series:
+            narrative.append(
+                f"반복 회의 {len(dashboard.meeting_series)}개에서 미해결 약속 흐름을 추적합니다."
+            )
+        if delayed_cluster_count:
+            narrative.append(
+                f"지연/차단 cluster {delayed_cluster_count}개가 다음 회의 확인 대상입니다."
+            )
+        if changed_cluster_count:
+            narrative.append(
+                f"변경 cluster {changed_cluster_count}개는 분리/병합 확인이 필요합니다."
+            )
+        if learning_insight.alias_graph_size:
+            narrative.append(
+                f"화자/담당자 alias {learning_insight.alias_graph_size}개를 owner node에 연결했습니다."
+            )
+        if not narrative:
+            narrative.append("현재 표시할 고위험 promise memory cluster가 없습니다.")
+
+        return PromiseMemoryGraph(
+            node_count=len(nodes),
+            edge_count=len(edges),
+            recurring_series_count=len(dashboard.meeting_series),
+            changed_cluster_count=changed_cluster_count,
+            delayed_cluster_count=delayed_cluster_count,
+            owner_alias_count=learning_insight.alias_graph_size,
+            nodes=nodes,
+            edges=edges,
+            narrative=narrative,
+        )
+
+    def _autopilot_shadow_summary(
+        self,
+        review_queue: PromiseAutopilotReviewQueue,
+        learning_insight: PromiseLearningInsight,
+    ) -> PromiseAutopilotShadowSummary:
+        distribution: Counter[str] = Counter()
+        confidence_sum = 0.0
+        would_apply_count = 0
+        blocked_by_evidence_count = 0
+        for item in review_queue.items:
+            assessment = item.assessment
+            distribution[assessment.suggested_status] += 1
+            confidence_sum += assessment.confidence
+            status_changed = assessment.suggested_status != assessment.previous_status
+            threshold = learning_insight.status_thresholds.get(
+                assessment.suggested_status,
+                assessment.threshold,
+            )
+            if (
+                status_changed
+                and not assessment.conflict_detected
+                and assessment.evidence_locked
+                and assessment.confidence >= threshold
+            ):
+                would_apply_count += 1
+            elif (
+                status_changed
+                and not assessment.conflict_detected
+                and not assessment.evidence_locked
+            ):
+                blocked_by_evidence_count += 1
+
+        notes: list[str] = []
+        if review_queue.conflict_count:
+            notes.append("충돌 신호는 Shadow Mode에서만 보관하고 자동 적용하지 않습니다.")
+        if blocked_by_evidence_count:
+            notes.append("Evidence Lock 미충족 후보는 사용자 확정 전 상태 변경을 막았습니다.")
+        if learning_insight.status_attention:
+            notes.append(
+                "오판이 많은 상태는 status별 threshold를 분리해 보수적으로 시뮬레이션합니다."
+            )
+        if not notes:
+            notes.append("현재 Shadow Mode 후보는 보수 정책 안에서 안정적입니다.")
+
+        average_confidence = (
+            round(confidence_sum / review_queue.queue_count, 3) if review_queue.queue_count else 0.0
+        )
+        return PromiseAutopilotShadowSummary(
+            candidate_count=review_queue.queue_count,
+            would_apply_count=would_apply_count,
+            preview_only_count=max(0, review_queue.actionable_count - would_apply_count),
+            blocked_by_evidence_count=blocked_by_evidence_count,
+            conflict_count=review_queue.conflict_count,
+            status_distribution=dict(distribution),
+            average_confidence=average_confidence,
+            learning_value=(
+                "사용자 확정/거절 결과를 다음 status별 threshold와 담당자 alias 학습에 반영합니다."
+            ),
+            notes=notes,
+        )
+
+    def _evidence_permission_summary(
+        self,
+        review_queue: PromiseAutopilotReviewQueue,
+        evidence_audit: PromiseEvidenceAuditSummary,
+        *,
+        scope: str,
+    ) -> PromiseEvidencePermissionSummary:
+        contains_speaker_data = False
+        contains_timestamp_data = False
+        for item in review_queue.items:
+            pack = item.assessment.evidence_pack
+            evidence_items = (
+                pack.evidence if pack is not None else item.assessment.explanation.evidence
+            )
+            for evidence in evidence_items:
+                if evidence.speaker or evidence.speaker_label or evidence.speaker_profile_id:
+                    contains_speaker_data = True
+                if evidence.start_seconds is not None or evidence.end_seconds is not None:
+                    contains_timestamp_data = True
+
+        blocked_export_count = (
+            evidence_audit.weak_evidence_count
+            + evidence_audit.missing_timestamp_count
+            + evidence_audit.missing_speaker_count
+        )
+        redaction_required = contains_speaker_data or contains_timestamp_data
+        policy_notes: list[str] = []
+        if redaction_required:
+            policy_notes.append("외부 공유 전 speaker/timestamp 식별자는 최소화 또는 마스킹하세요.")
+        if blocked_export_count:
+            policy_notes.append(
+                "근거가 약하거나 위치 재현성이 낮은 후보는 Evidence Pack export를 막습니다."
+            )
+        if not policy_notes:
+            policy_notes.append("현재 Evidence Pack은 export 전 privacy gate를 통과했습니다.")
+
+        return PromiseEvidencePermissionSummary(
+            scope=scope,
+            export_allowed=blocked_export_count == 0,
+            redaction_required=redaction_required,
+            contains_speaker_data=contains_speaker_data,
+            contains_timestamp_data=contains_timestamp_data,
+            allowed_evidence_count=evidence_audit.locked_count,
+            blocked_export_count=blocked_export_count,
+            policy_notes=policy_notes,
+        )
+
+    def _team_scorecard_summary(
+        self,
+        dashboard: PromiseRadarDashboard,
+    ) -> PromiseTeamScorecard:
+        scores = dashboard.responsibility_scores
+        weakest = min(scores, key=lambda item: item.score, default=None)
+        strongest = max(scores, key=lambda item: item.score, default=None)
+        base_risk = (
+            dashboard.high_risk_count * 22
+            + dashboard.overdue_count * 18
+            + dashboard.blocked_count * 16
+            + dashboard.unconfirmed_count * 8
+            + min(dashboard.open_count * 3, 18)
+        )
+        if weakest is not None and weakest.score < 50:
+            base_risk += 10
+        risk_score = max(0, min(100, base_risk))
+
+        recommendations: list[str] = []
+        if dashboard.overdue_count:
+            recommendations.append("기한 초과 약속은 다음 회의 첫 안건으로 올리세요.")
+        if dashboard.high_risk_count:
+            recommendations.append("고위험 약속은 담당자와 기한을 사용자 확정 상태로 고정하세요.")
+        if weakest is not None and weakest.score < 70:
+            recommendations.append(f"{weakest.owner}의 지연/미확정 약속을 분리 검토하세요.")
+        if not recommendations:
+            recommendations.append("팀 약속 부하가 안정적입니다. 주간 digest로 유지 관리하세요.")
+
+        return PromiseTeamScorecard(
+            risk_score=risk_score,
+            owner_count=len(scores),
+            open_count=dashboard.open_count,
+            overdue_count=dashboard.overdue_count,
+            high_risk_count=dashboard.high_risk_count,
+            recurring_series_count=len(dashboard.meeting_series),
+            weakest_owner=weakest.owner if weakest is not None else None,
+            strongest_owner=strongest.owner if strongest is not None else None,
+            recommendations=recommendations,
+        )
+
     def _google_tasks_oauth_guide(self) -> PromiseGoogleTasksOAuthGuide:
+        required_env = ["GOOGLE_CLIENT_ID"]
+        missing_setup = [name for name in required_env if not getattr(settings, name.lower(), "")]
         return PromiseGoogleTasksOAuthGuide(
             auth_url_hint=(
                 "https://accounts.google.com/o/oauth2/v2/auth?"
                 "scope=https%3A//www.googleapis.com/auth/tasks&"
                 "response_type=code&access_type=offline&prompt=consent"
             ),
+            production_ready=not missing_setup,
+            missing_setup=missing_setup,
+            required_backend_env=required_env,
+            verification_steps=[
+                "Google Cloud OAuth consent screen에서 Tasks scope가 승인됐는지 확인합니다.",
+                "Android/iOS OAuth client id가 현재 release bundle id/package와 일치하는지 확인합니다.",
+                "실기기에서 계정 선택 후 tasklist 조회 API가 200을 반환하는지 확인합니다.",
+            ],
             steps=[
                 "앱에서 Google Tasks scope 승인을 시작합니다.",
                 "사용자가 Google 계정을 선택하고 Tasks 접근을 승인합니다.",
@@ -3751,6 +4201,77 @@ class PromiseRadarService:
             ],
         )
 
+    def _command_center_actions(
+        self,
+        *,
+        review_queue: PromiseAutopilotReviewQueue,
+        external_reconcile: PromiseExternalTaskReconcileResponse,
+        accuracy_report: PromiseAccuracyReport,
+        extraction_recall: PromiseExtractionRecallReport,
+        evidence_permissions: PromiseEvidencePermissionSummary,
+    ) -> list[PromiseCommandCenterAction]:
+        """Expose only existing review/report/sync routes as operator actions."""
+        actions = [
+            PromiseCommandCenterAction(
+                key="open_review_queue",
+                label="확정 대기 약속 검토",
+                method="GET",
+                route="/promise-review-inbox",
+                enabled=review_queue.queue_count > 0,
+                reason=(
+                    f"{review_queue.queue_count}개 후보가 대기 중입니다."
+                    if review_queue.queue_count
+                    else "현재 검토할 자동 판정 후보가 없습니다."
+                ),
+            ),
+            PromiseCommandCenterAction(
+                key="refresh_external_reconcile",
+                label="Google Tasks 동기화 점검",
+                method="GET",
+                route="/api/v1/promise-radar/external-task/reconcile",
+                enabled=external_reconcile.linked_count > 0,
+                reason=(
+                    f"{external_reconcile.needs_sync_count}개 항목 재확인이 필요합니다."
+                    if external_reconcile.needs_sync_count
+                    else "연결된 Google Tasks 항목이 없거나 최신 상태입니다."
+                ),
+            ),
+            PromiseCommandCenterAction(
+                key="open_accuracy_report",
+                label="상태 판정 정확도 보고서",
+                method="GET",
+                route="/api/v1/promise-radar/accuracy/report",
+                enabled=True,
+                reason=(f"실제 회의 label {accuracy_report.real_meeting_case_count}건 기준입니다."),
+            ),
+            PromiseCommandCenterAction(
+                key="open_extraction_recall_report",
+                label="약속 추출 누락 보고서",
+                method="GET",
+                route="/api/v1/promise-radar/accuracy/extraction-report",
+                enabled=True,
+                reason=(
+                    f"Recall {round(extraction_recall.evaluation.recall * 100)}%, "
+                    f"{extraction_recall.evaluation.matched_count}/"
+                    f"{extraction_recall.evaluation.expected_count} matched"
+                ),
+            ),
+            PromiseCommandCenterAction(
+                key="review_evidence_permissions",
+                label="Evidence 공유 권한 확인",
+                method="GET",
+                route="/promise-review-inbox",
+                enabled=evidence_permissions.blocked_export_count > 0,
+                requires_confirmation=True,
+                reason=(
+                    "speaker/timestamp redaction 확인이 필요합니다."
+                    if evidence_permissions.blocked_export_count
+                    else "현재 evidence export 차단 항목이 없습니다."
+                ),
+            ),
+        ]
+        return actions
+
     def _command_center_focus_items(
         self,
         *,
@@ -3760,7 +4281,12 @@ class PromiseRadarService:
         digest: PromiseDigest,
         external_reconcile: PromiseExternalTaskReconcileResponse,
         accuracy_report: PromiseAccuracyReport,
+        extraction_recall: PromiseExtractionRecallReport,
         evidence_audit: PromiseEvidenceAuditSummary,
+        memory_graph: PromiseMemoryGraph,
+        shadow_mode: PromiseAutopilotShadowSummary,
+        evidence_permissions: PromiseEvidencePermissionSummary,
+        team_scorecard: PromiseTeamScorecard,
     ) -> list[PromiseCommandCenterFocusItem]:
         items: list[PromiseCommandCenterFocusItem] = []
         if review_queue.conflict_count:
@@ -3845,6 +4371,47 @@ class PromiseRadarService:
                     action="자동 상태 변경 전에 발화/화자/timestamp 근거를 확인하세요.",
                 )
             )
+        if shadow_mode.blocked_by_evidence_count or shadow_mode.conflict_count:
+            items.append(
+                PromiseCommandCenterFocusItem(
+                    key="shadow_mode",
+                    label="Shadow Mode 보류",
+                    severity="warning",
+                    count=shadow_mode.blocked_by_evidence_count + shadow_mode.conflict_count,
+                    action="자동 적용 후보를 확정하기 전에 충돌/근거 잠금 상태를 확인하세요.",
+                    route="/promise-review-inbox",
+                )
+            )
+        if not evidence_permissions.export_allowed:
+            items.append(
+                PromiseCommandCenterFocusItem(
+                    key="evidence_permission",
+                    label="Evidence 공유 제한",
+                    severity="warning",
+                    count=evidence_permissions.blocked_export_count,
+                    action="근거 export 전 speaker/timestamp redaction과 Evidence Lock을 확인하세요.",
+                )
+            )
+        if team_scorecard.risk_score >= 70:
+            items.append(
+                PromiseCommandCenterFocusItem(
+                    key="team_scorecard",
+                    label="팀 약속 위험도 높음",
+                    severity="high",
+                    count=team_scorecard.risk_score,
+                    action="책임자별 지연/고위험 약속을 Command Center에서 재배정하세요.",
+                )
+            )
+        if memory_graph.delayed_cluster_count or memory_graph.changed_cluster_count:
+            items.append(
+                PromiseCommandCenterFocusItem(
+                    key="memory_graph",
+                    label="Promise Memory cluster",
+                    severity="info",
+                    count=memory_graph.delayed_cluster_count + memory_graph.changed_cluster_count,
+                    action="반복 회의와 owner node를 따라 지연/변경 흐름을 확인하세요.",
+                )
+            )
         if accuracy_report.below_target or accuracy_report.quality_warnings:
             items.append(
                 PromiseCommandCenterFocusItem(
@@ -3855,7 +4422,21 @@ class PromiseRadarService:
                     action="실제 회의 label과 source manifest 품질 경고를 확인하세요.",
                 )
             )
-        return items[:8]
+        if extraction_recall.below_target or extraction_recall.evaluation.recall < 0.95:
+            missed = (
+                extraction_recall.evaluation.expected_count
+                - extraction_recall.evaluation.matched_count
+            )
+            items.append(
+                PromiseCommandCenterFocusItem(
+                    key="extraction_recall",
+                    label="약속 추출 누락 점검",
+                    severity="warning" if missed else "info",
+                    count=max(missed, len(extraction_recall.evaluation.failures)),
+                    action="False negative fixture에서 빠진 약속을 확인하고 추출 규칙을 보강하세요.",
+                )
+            )
+        return items[:10]
 
     def _accuracy_source_quality(
         self,
@@ -5199,10 +5780,7 @@ class PromiseRadarService:
             .order_by(PromiseLedgerEvent.created_at.desc())
             .limit(50)
         )
-        return any(
-            self._event_matches_local_day(event, moment)
-            for event in result.scalars().all()
-        )
+        return any(self._event_matches_local_day(event, moment) for event in result.scalars().all())
 
     def _event_matches_local_day(
         self,
@@ -6152,17 +6730,15 @@ class PromiseRadarService:
 
         if isinstance(raw_items, list):
             for item in raw_items:
-                if not isinstance(item, dict):
-                    continue
-                text = str(item.get("task") or item.get("title") or "").strip()
+                text = self._promise_payload_text(item)
                 if not text:
                     continue
                 promises.append(
                     _ExtractedPromise(
                         text=text,
-                        owner=self._clean_optional(item.get("assignee") or item.get("owner")),
-                        due_date=self._clean_optional(item.get("deadline") or item.get("due_date")),
-                        priority=str(item.get("priority") or "medium"),
+                        owner=self._promise_payload_owner(item),
+                        due_date=self._promise_payload_due_date(item),
+                        priority=self._promise_payload_priority(item),
                         source_task_id=record.task_id,
                         source_created_at=created_at,
                         evidence=self._short_evidence(text),
@@ -6175,14 +6751,14 @@ class PromiseRadarService:
         next_steps = data.get("next_steps")
         if isinstance(next_steps, list):
             for step in next_steps:
-                text = str(step).strip()
+                text = self._promise_payload_text(step)
                 if text:
                     promises.append(
                         _ExtractedPromise(
                             text=text,
-                            owner=None,
-                            due_date=None,
-                            priority="medium",
+                            owner=self._promise_payload_owner(step),
+                            due_date=self._promise_payload_due_date(step),
+                            priority=self._promise_payload_priority(step),
                             source_task_id=record.task_id,
                             source_created_at=created_at,
                             evidence=self._short_evidence(text),
@@ -6190,6 +6766,37 @@ class PromiseRadarService:
                         )
                     )
         return promises
+
+    def _promise_payload_text(self, item: Any) -> str:
+        if isinstance(item, str):
+            return item.strip()
+        if not isinstance(item, dict):
+            return ""
+        return str(
+            item.get("task")
+            or item.get("title")
+            or item.get("text")
+            or item.get("description")
+            or item.get("summary")
+            or ""
+        ).strip()
+
+    def _promise_payload_owner(self, item: Any) -> str | None:
+        if not isinstance(item, dict):
+            return None
+        return self._clean_optional(
+            item.get("assignee") or item.get("owner") or item.get("responsible")
+        )
+
+    def _promise_payload_due_date(self, item: Any) -> str | None:
+        if not isinstance(item, dict):
+            return None
+        return self._clean_optional(item.get("deadline") or item.get("due_date") or item.get("due"))
+
+    def _promise_payload_priority(self, item: Any) -> str:
+        if not isinstance(item, dict):
+            return "medium"
+        return str(item.get("priority") or "medium")
 
     def _extract_decisions(self, record: TaskResult) -> list[str]:
         data = self._result_data(record)
@@ -6590,6 +7197,20 @@ class PromiseRadarService:
             return None
         text = str(value).strip()
         return text or None
+
+    def _extraction_text_matches(self, expected: str, actual: str) -> bool:
+        expected_norm = self._normalized_text(expected)
+        actual_norm = self._normalized_text(actual)
+        if not expected_norm or not actual_norm:
+            return False
+        if expected_norm in actual_norm or actual_norm in expected_norm:
+            return True
+        expected_tokens = set(self._tokens(expected))
+        actual_tokens = set(self._tokens(actual))
+        if not expected_tokens or not actual_tokens:
+            return False
+        overlap = len(expected_tokens & actual_tokens)
+        return (overlap / len(expected_tokens)) >= 0.72
 
     def _similarity(self, left: str, right: str) -> float:
         left_tokens = set(self._tokens(left))

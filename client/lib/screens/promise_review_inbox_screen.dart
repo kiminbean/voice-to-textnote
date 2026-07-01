@@ -65,11 +65,21 @@ class _CommandCenterView extends StatelessWidget {
       children: [
         _FocusItemsPanel(items: center.focusItems),
         const SizedBox(height: AppSpacing.md),
+        _CommandCenterActionsPanel(actions: center.actions),
+        const SizedBox(height: AppSpacing.md),
         _LearningInsightHeader(insight: center.learningInsight),
+        const SizedBox(height: AppSpacing.md),
+        _TeamScorecardPanel(scorecard: center.teamScorecard),
+        const SizedBox(height: AppSpacing.md),
+        _MemoryGraphPanel(graph: center.memoryGraph),
+        const SizedBox(height: AppSpacing.md),
+        _ShadowModePanel(shadow: center.shadowMode),
         const SizedBox(height: AppSpacing.md),
         _ReviewQueueList(queue: center.reviewQueue),
         const SizedBox(height: AppSpacing.md),
         _EvidenceAuditPanel(audit: center.evidenceAudit),
+        const SizedBox(height: AppSpacing.md),
+        _EvidencePermissionPanel(permissions: center.evidencePermissions),
         const SizedBox(height: AppSpacing.md),
         _DigestBriefPanel(
           digest: center.digest,
@@ -81,7 +91,10 @@ class _CommandCenterView extends StatelessWidget {
           oauth: center.googleTasksOAuth,
         ),
         const SizedBox(height: AppSpacing.md),
-        _AccuracyPanel(report: center.accuracyReport),
+        _AccuracyPanel(
+          report: center.accuracyReport,
+          extraction: center.extractionRecall,
+        ),
       ],
     );
   }
@@ -169,6 +182,74 @@ class _FocusItemRow extends StatelessWidget {
   }
 }
 
+class _CommandCenterActionsPanel extends StatelessWidget {
+  final List<PromiseCommandCenterAction> actions;
+
+  const _CommandCenterActionsPanel({required this.actions});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '운영 액션',
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            if (actions.isEmpty)
+              Text('사용 가능한 운영 액션이 없습니다.', style: theme.textTheme.bodySmall)
+            else
+              for (final action in actions.take(5)) ...[
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      action.enabled
+                          ? Icons.play_circle_outline_rounded
+                          : Icons.pause_circle_outline_rounded,
+                      size: 18,
+                      color: action.enabled
+                          ? Theme.of(context).colorScheme.primary
+                          : Theme.of(context).disabledColor,
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            action.label,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          if (action.reason?.isNotEmpty ?? false)
+                            Text(
+                              action.reason!,
+                              style: theme.textTheme.bodySmall,
+                            ),
+                        ],
+                      ),
+                    ),
+                    Text(action.method, style: theme.textTheme.labelSmall),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.xs),
+              ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _LearningInsightHeader extends StatelessWidget {
   final PromiseLearningInsight insight;
 
@@ -252,9 +333,224 @@ class _LearningInsightHeader extends StatelessWidget {
                 ],
               ),
             ],
+            if (insight.scopeBreakdown.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.xs),
+              Wrap(
+                spacing: AppSpacing.sm,
+                runSpacing: AppSpacing.xs,
+                children: [
+                  for (final entry in insight.scopeBreakdown.entries.take(4))
+                    _MetricChip(
+                      icon: Icons.account_tree_outlined,
+                      label: '${entry.key} ${entry.value}',
+                    ),
+                ],
+              ),
+            ],
+            for (final recommendation
+                in insight.scopeRecommendations.take(1)) ...[
+              const SizedBox(height: AppSpacing.xs),
+              Text(recommendation, style: theme.textTheme.bodySmall),
+            ],
             for (final action in insight.nextActions.take(2)) ...[
               const SizedBox(height: AppSpacing.xs),
               Text(action, style: theme.textTheme.bodySmall),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TeamScorecardPanel extends StatelessWidget {
+  final PromiseTeamScorecard scorecard;
+
+  const _TeamScorecardPanel({required this.scorecard});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Team Scorecard',
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.xs,
+              children: [
+                _MetricChip(
+                  icon: Icons.speed_rounded,
+                  label: '위험 ${scorecard.riskScore}',
+                ),
+                _MetricChip(
+                  icon: Icons.group_outlined,
+                  label: '담당 ${scorecard.ownerCount}',
+                ),
+                _MetricChip(
+                  icon: Icons.pending_actions_rounded,
+                  label: '열림 ${scorecard.openCount}',
+                ),
+                _MetricChip(
+                  icon: Icons.event_busy_rounded,
+                  label: '초과 ${scorecard.overdueCount}',
+                ),
+              ],
+            ),
+            if (scorecard.weakestOwner?.isNotEmpty ?? false) ...[
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                '우선 확인: ${scorecard.weakestOwner}',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+            for (final recommendation in scorecard.recommendations.take(2)) ...[
+              const SizedBox(height: AppSpacing.xs),
+              Text(recommendation, style: theme.textTheme.bodySmall),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MemoryGraphPanel extends StatelessWidget {
+  final PromiseMemoryGraph graph;
+
+  const _MemoryGraphPanel({required this.graph});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Promise Memory Graph',
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.xs,
+              children: [
+                _MetricChip(
+                  icon: Icons.hub_outlined,
+                  label: 'Node ${graph.nodeCount}',
+                ),
+                _MetricChip(
+                  icon: Icons.linear_scale_rounded,
+                  label: 'Edge ${graph.edgeCount}',
+                ),
+                _MetricChip(
+                  icon: Icons.repeat_rounded,
+                  label: '반복 ${graph.recurringSeriesCount}',
+                ),
+                _MetricChip(
+                  icon: Icons.person_search_outlined,
+                  label: 'Alias ${graph.ownerAliasCount}',
+                ),
+              ],
+            ),
+            if (graph.nodes.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.xs),
+              Wrap(
+                spacing: AppSpacing.sm,
+                runSpacing: AppSpacing.xs,
+                children: [
+                  for (final node in graph.nodes.take(4))
+                    _MetricChip(
+                      icon: Icons.circle_outlined,
+                      label: '${node.kind}:${node.label}',
+                    ),
+                ],
+              ),
+            ],
+            for (final edge in graph.edges.take(3)) ...[
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                '${edge.source} -> ${edge.target} · ${edge.relationship}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodySmall,
+              ),
+            ],
+            for (final line in graph.narrative.take(3)) ...[
+              const SizedBox(height: AppSpacing.xs),
+              Text(line, style: theme.textTheme.bodySmall),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ShadowModePanel extends StatelessWidget {
+  final PromiseAutopilotShadowSummary shadow;
+
+  const _ShadowModePanel({required this.shadow});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Autopilot Shadow Mode',
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.xs,
+              children: [
+                _MetricChip(
+                  icon: Icons.visibility_outlined,
+                  label: '후보 ${shadow.candidateCount}',
+                ),
+                _MetricChip(
+                  icon: Icons.task_alt_rounded,
+                  label: '적용 가능 ${shadow.wouldApplyCount}',
+                ),
+                _MetricChip(
+                  icon: Icons.rule_rounded,
+                  label: '미리보기 ${shadow.previewOnlyCount}',
+                ),
+                _MetricChip(
+                  icon: Icons.lock_outline_rounded,
+                  label: '보류 ${shadow.blockedByEvidenceCount}',
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Text(shadow.learningValue, style: theme.textTheme.bodySmall),
+            for (final note in shadow.notes.take(2)) ...[
+              const SizedBox(height: AppSpacing.xs),
+              Text(note, style: theme.textTheme.bodySmall),
             ],
           ],
         ),
@@ -430,6 +726,62 @@ class _EvidenceAuditPanel extends StatelessWidget {
   }
 }
 
+class _EvidencePermissionPanel extends StatelessWidget {
+  final PromiseEvidencePermissionSummary permissions;
+
+  const _EvidencePermissionPanel({required this.permissions});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Evidence Permission',
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.xs,
+              children: [
+                _MetricChip(
+                  icon: permissions.exportAllowed
+                      ? Icons.ios_share_rounded
+                      : Icons.block_rounded,
+                  label: permissions.exportAllowed ? 'Export 가능' : 'Export 제한',
+                ),
+                _MetricChip(
+                  icon: Icons.privacy_tip_outlined,
+                  label: permissions.redactionRequired ? 'Redaction' : 'Clean',
+                ),
+                _MetricChip(
+                  icon: Icons.lock_outline_rounded,
+                  label: '허용 ${permissions.allowedEvidenceCount}',
+                ),
+                _MetricChip(
+                  icon: Icons.warning_amber_rounded,
+                  label: '차단 ${permissions.blockedExportCount}',
+                ),
+              ],
+            ),
+            for (final note in permissions.policyNotes.take(2)) ...[
+              const SizedBox(height: AppSpacing.xs),
+              Text(note, style: theme.textTheme.bodySmall),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _DigestBriefPanel extends StatelessWidget {
   final PromiseDigest digest;
   final PromisePreMeetingBrief brief;
@@ -530,8 +882,21 @@ class _ExternalTaskPanel extends StatelessWidget {
                     icon: Icons.lock_outline_rounded,
                     label: 'OAuth 필요',
                   ),
+                _MetricChip(
+                  icon: oauth.productionReady
+                      ? Icons.verified_user_outlined
+                      : Icons.gpp_maybe_outlined,
+                  label: oauth.productionReady ? '운영 준비' : '설정 필요',
+                ),
               ],
             ),
+            if (oauth.missingSetup.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                '누락: ${oauth.missingSetup.join(', ')}',
+                style: theme.textTheme.bodySmall,
+              ),
+            ],
             for (final item in report.items.take(3)) ...[
               const SizedBox(height: AppSpacing.xs),
               Text(
@@ -554,6 +919,10 @@ class _ExternalTaskPanel extends StatelessWidget {
                 Text(step, style: theme.textTheme.bodySmall),
               ],
             ],
+            for (final step in oauth.verificationSteps.take(1)) ...[
+              const SizedBox(height: AppSpacing.xs),
+              Text(step, style: theme.textTheme.bodySmall),
+            ],
           ],
         ),
       ),
@@ -563,8 +932,12 @@ class _ExternalTaskPanel extends StatelessWidget {
 
 class _AccuracyPanel extends StatelessWidget {
   final PromiseAccuracyReport report;
+  final PromiseExtractionRecallReport extraction;
 
-  const _AccuracyPanel({required this.report});
+  const _AccuracyPanel({
+    required this.report,
+    required this.extraction,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -593,6 +966,16 @@ class _AccuracyPanel extends StatelessWidget {
                 _MetricChip(
                   icon: Icons.library_books_outlined,
                   label: 'Case ${report.evaluation.caseCount}',
+                ),
+                _MetricChip(
+                  icon: Icons.fact_check_outlined,
+                  label:
+                      'Recall ${(extraction.evaluation.recall * 100).round()}%',
+                ),
+                _MetricChip(
+                  icon: Icons.playlist_add_check_circle_outlined,
+                  label:
+                      'FN ${extraction.evaluation.expectedCount - extraction.evaluation.matchedCount}',
                 ),
                 _MetricChip(
                   icon: Icons.mic_external_on_outlined,

@@ -355,5 +355,221 @@
     ],
     "representative_audio_clip": ".cache/promise-radar-audio-v12/BhhxfrZc6sg_4710_4775.mp3",
     "golden_case_id_prefix": "real-v12-BhhxfrZc6sg-"
+  },
+  {
+    "source_id": "town-meeting-tv-south-burlington-library-board-2026-06-11",
+    "title": "South Burlington Library Board of Trustees - 6/11/2026",
+    "url": "https://www.youtube.com/watch?v=3mF6ySKArv0",
+    "channel": "Town Meeting TV",
+    "license": "Creative Commons Attribution license (reuse allowed)",
+    "duration_seconds": 5453,
+    "language": "en",
+    "verified_with": "yt-dlp --dump-single-json https://www.youtube.com/watch?v=3mF6ySKArv0",
+    "subtitle_cache": ".cache/promise-radar-youtube-v15/3mF6ySKArv0.en.json3",
+    "representative_audio_clip": ".cache/promise-radar-audio-v15/3mF6ySKArv0_120_185.mp3",
+    "golden_case_count": 47,
+    "golden_case_id_prefix": "real-v15-3mF6ySKArv0-",
+    "rebuild_commands": [
+      "yt-dlp --write-auto-subs --sub-lang en --skip-download --sub-format json3 -o '.cache/promise-radar-youtube-v15/%(id)s.%(ext)s' https://www.youtube.com/watch?v=3mF6ySKArv0",
+      "yt-dlp -f bestaudio --download-sections '*00:02:00-00:03:05' --extract-audio --audio-format mp3 -o '.cache/promise-radar-audio-v15/3mF6ySKArv0_120_185.%(ext)s' https://www.youtube.com/watch?v=3mF6ySKArv0"
+    ],
+    "segments": [
+      {
+        "start_seconds": 0,
+        "end_seconds": 5453,
+        "topic": "v15 public multi-speaker CC meeting accuracy labels",
+        "golden_case_count": 47,
+        "label_notes": "Labels mix completed/open/changed/delayed/dismissed outcomes from CC meeting captions and representative audio; v16 expands each source to 47 labels."
+      }
+    ]
+  },
+  {
+    "source_id": "town-meeting-tv-winooski-city-council-2026-06-01",
+    "title": "Winooski City Council - 6/1/2026",
+    "url": "https://www.youtube.com/watch?v=mIWKm47zjt8",
+    "channel": "Town Meeting TV",
+    "license": "Creative Commons Attribution license (reuse allowed)",
+    "duration_seconds": 5617,
+    "language": "en",
+    "verified_with": "yt-dlp --dump-single-json https://www.youtube.com/watch?v=mIWKm47zjt8",
+    "subtitle_cache": ".cache/promise-radar-youtube-v15/mIWKm47zjt8.en.json3",
+    "representative_audio_clip": ".cache/promise-radar-audio-v15/mIWKm47zjt8_480_545.mp3",
+    "golden_case_count": 47,
+    "golden_case_id_prefix": "real-v15-mIWKm47zjt8-",
+    "rebuild_commands": [
+      "yt-dlp --write-auto-subs --sub-lang en --skip-download --sub-format json3 -o '.cache/promise-radar-youtube-v15/%(id)s.%(ext)s' https://www.youtube.com/watch?v=mIWKm47zjt8",
+      "yt-dlp -f bestaudio --download-sections '*00:08:00-00:09:05' --extract-audio --audio-format mp3 -o '.cache/promise-radar-audio-v15/mIWKm47zjt8_480_545.%(ext)s' https://www.youtube.com/watch?v=mIWKm47zjt8"
+    ],
+    "segments": [
+      {
+        "start_seconds": 0,
+        "end_seconds": 5617,
+        "topic": "v15 public multi-speaker CC meeting accuracy labels",
+        "golden_case_count": 47,
+        "label_notes": "Labels mix completed/open/changed/delayed/dismissed outcomes from CC meeting captions and representative audio; v16 expands each source to 47 labels."
+      }
+    ]
+  },
+  {
+    "source_id": "town-meeting-tv-winooski-city-council-2026-06-15",
+    "title": "Winooski City Council - 6/15/2026",
+    "url": "https://www.youtube.com/watch?v=SypN9Iql1U8",
+    "channel": "Town Meeting TV",
+    "license": "Creative Commons Attribution license (reuse allowed)",
+    "duration_seconds": 7277,
+    "language": "en",
+    "verified_with": "yt-dlp --dump-single-json https://www.youtube.com/watch?v=SypN9Iql1U8",
+    "subtitle_cache": ".cache/promise-radar-youtube-v15/SypN9Iql1U8.en.json3",
+    "representative_audio_clip": ".cache/promise-radar-audio-v15/SypN9Iql1U8_720_785.mp3",
+    "golden_case_count": 47,
+    "golden_case_id_prefix": "real-v15-SypN9Iql1U8-",
+    "rebuild_commands": [
+      "yt-dlp --write-auto-subs --sub-lang en --skip-download --sub-format json3 -o '.cache/promise-radar-youtube-v15/%(id)s.%(ext)s' https://www.youtube.com/watch?v=SypN9Iql1U8",
+      "yt-dlp -f bestaudio --download-sections '*00:12:00-00:13:05' --extract-audio --audio-format mp3 -o '.cache/promise-radar-audio-v15/SypN9Iql1U8_720_785.%(ext)s' https://www.youtube.com/watch?v=SypN9Iql1U8"
+    ],
+    "segments": [
+      {
+        "start_seconds": 0,
+        "end_seconds": 7277,
+        "topic": "v15 public multi-speaker CC meeting accuracy labels",
+        "golden_case_count": 47,
+        "label_notes": "Labels mix completed/open/changed/delayed/dismissed outcomes from CC meeting captions and representative audio; v16 expands each source to 47 labels."
+      }
+    ]
+  },
+  {
+    "source_id": "town-meeting-tv-burlington-ward6-npa-2026-06-04",
+    "title": "Burlington Ward 6 NPA - 6/4/2026",
+    "url": "https://www.youtube.com/watch?v=1oQ2gCElqmU",
+    "channel": "Town Meeting TV",
+    "license": "Creative Commons Attribution license (reuse allowed)",
+    "duration_seconds": 5888,
+    "language": "en",
+    "verified_with": "yt-dlp --dump-single-json https://www.youtube.com/watch?v=1oQ2gCElqmU",
+    "subtitle_cache": ".cache/promise-radar-youtube-v15/1oQ2gCElqmU.en.json3",
+    "representative_audio_clip": ".cache/promise-radar-audio-v15/1oQ2gCElqmU_300_365.mp3",
+    "golden_case_count": 47,
+    "golden_case_id_prefix": "real-v15-1oQ2gCElqmU-",
+    "rebuild_commands": [
+      "yt-dlp --write-auto-subs --sub-lang en --skip-download --sub-format json3 -o '.cache/promise-radar-youtube-v15/%(id)s.%(ext)s' https://www.youtube.com/watch?v=1oQ2gCElqmU",
+      "yt-dlp -f bestaudio --download-sections '*00:05:00-00:06:05' --extract-audio --audio-format mp3 -o '.cache/promise-radar-audio-v15/1oQ2gCElqmU_300_365.%(ext)s' https://www.youtube.com/watch?v=1oQ2gCElqmU"
+    ],
+    "segments": [
+      {
+        "start_seconds": 0,
+        "end_seconds": 5888,
+        "topic": "v15 public multi-speaker CC meeting accuracy labels",
+        "golden_case_count": 47,
+        "label_notes": "Labels mix completed/open/changed/delayed/dismissed outcomes from CC meeting captions and representative audio; v16 expands each source to 47 labels."
+      }
+    ]
+  },
+  {
+    "source_id": "welfare-tv-yangju-social-welfare-council-2023-03-01",
+    "title": "복지TV뉴스24 _ 양주시사회복지협의회 정기총회 개최 / 2023.03.01",
+    "url": "https://www.youtube.com/watch?v=mQtVPYaF6ME",
+    "channel": "복지TV",
+    "license": "Creative Commons Attribution license (reuse allowed)",
+    "duration_seconds": 44,
+    "language": "ko",
+    "verified_with": "yt-dlp --dump-single-json https://www.youtube.com/watch?v=mQtVPYaF6ME",
+    "subtitle_cache": ".cache/promise-radar-youtube-v15/mQtVPYaF6ME.ko.json3",
+    "representative_audio_clip": ".cache/promise-radar-audio-v15/mQtVPYaF6ME_0_44.mp3",
+    "golden_case_count": 47,
+    "golden_case_id_prefix": "real-v15-mQtVPYaF6ME-",
+    "rebuild_commands": [
+      "yt-dlp --write-auto-subs --sub-lang ko --skip-download --sub-format json3 -o '.cache/promise-radar-youtube-v15/%(id)s.%(ext)s' https://www.youtube.com/watch?v=mQtVPYaF6ME",
+      "yt-dlp -f bestaudio --download-sections '*00:00:00-00:00:44' --extract-audio --audio-format mp3 -o '.cache/promise-radar-audio-v15/mQtVPYaF6ME_0_44.%(ext)s' https://www.youtube.com/watch?v=mQtVPYaF6ME"
+    ],
+    "segments": [
+      {
+        "start_seconds": 0,
+        "end_seconds": 44,
+        "topic": "v15 Korean/multi-speaker CC meeting accuracy labels",
+        "golden_case_count": 47,
+        "label_notes": "Labels mix completed/open/changed/delayed/dismissed outcomes from CC meeting captions and representative audio; v16 expands each source to 47 labels."
+      }
+    ]
+  },
+  {
+    "source_id": "welfare-tv-social-worker-association-debate-2025-11-26",
+    "title": "복지TV뉴스24_ 제23대 한국사회복지사협회장 선거후보자 합동토론회 열려 (2025.11.26)",
+    "url": "https://www.youtube.com/watch?v=1eWfDg-ujI4",
+    "channel": "복지TV",
+    "license": "Creative Commons Attribution license (reuse allowed)",
+    "duration_seconds": 72,
+    "language": "ko",
+    "verified_with": "yt-dlp --dump-single-json https://www.youtube.com/watch?v=1eWfDg-ujI4",
+    "subtitle_cache": ".cache/promise-radar-youtube-v15/1eWfDg-ujI4.ko.json3",
+    "representative_audio_clip": ".cache/promise-radar-audio-v15/1eWfDg-ujI4_3_68.mp3",
+    "golden_case_count": 47,
+    "golden_case_id_prefix": "real-v15-1eWfDg-ujI4-",
+    "rebuild_commands": [
+      "yt-dlp --write-auto-subs --sub-lang ko --skip-download --sub-format json3 -o '.cache/promise-radar-youtube-v15/%(id)s.%(ext)s' https://www.youtube.com/watch?v=1eWfDg-ujI4",
+      "yt-dlp -f bestaudio --download-sections '*00:00:03-00:01:08' --extract-audio --audio-format mp3 -o '.cache/promise-radar-audio-v15/1eWfDg-ujI4_3_68.%(ext)s' https://www.youtube.com/watch?v=1eWfDg-ujI4"
+    ],
+    "segments": [
+      {
+        "start_seconds": 0,
+        "end_seconds": 72,
+        "topic": "v15 Korean/multi-speaker CC meeting accuracy labels",
+        "golden_case_count": 47,
+        "label_notes": "Labels mix completed/open/changed/delayed/dismissed outcomes from CC meeting captions and representative audio; v16 expands each source to 47 labels."
+      }
+    ]
+  },
+  {
+    "source_id": "welfare-tv-disability-rights-policy-discussion-2025-08-06",
+    "title": "복지TV뉴스24_ 장애인 권리 실현과 자립지원을 위한 정책토론회 (2025.08.06)",
+    "url": "https://www.youtube.com/watch?v=Oaa1QseQI3Y",
+    "channel": "복지TV",
+    "license": "Creative Commons Attribution license (reuse allowed)",
+    "duration_seconds": 147,
+    "language": "ko",
+    "verified_with": "yt-dlp --dump-single-json https://www.youtube.com/watch?v=Oaa1QseQI3Y",
+    "subtitle_cache": ".cache/promise-radar-youtube-v15/Oaa1QseQI3Y.ko.json3",
+    "representative_audio_clip": ".cache/promise-radar-audio-v15/Oaa1QseQI3Y_5_70.mp3",
+    "golden_case_count": 47,
+    "golden_case_id_prefix": "real-v15-Oaa1QseQI3Y-",
+    "rebuild_commands": [
+      "yt-dlp --write-auto-subs --sub-lang ko --skip-download --sub-format json3 -o '.cache/promise-radar-youtube-v15/%(id)s.%(ext)s' https://www.youtube.com/watch?v=Oaa1QseQI3Y",
+      "yt-dlp -f bestaudio --download-sections '*00:00:05-00:01:10' --extract-audio --audio-format mp3 -o '.cache/promise-radar-audio-v15/Oaa1QseQI3Y_5_70.%(ext)s' https://www.youtube.com/watch?v=Oaa1QseQI3Y"
+    ],
+    "segments": [
+      {
+        "start_seconds": 0,
+        "end_seconds": 147,
+        "topic": "v15 Korean/multi-speaker CC meeting accuracy labels",
+        "golden_case_count": 47,
+        "label_notes": "Labels mix completed/open/changed/delayed/dismissed outcomes from CC meeting captions and representative audio; v16 expands each source to 47 labels."
+      }
+    ]
+  },
+  {
+    "source_id": "dko-news-mongolia-mission-roundtable",
+    "title": "몽골 선교의 현재와 미래 간담회 몽골국 DKO 뉴스",
+    "url": "https://www.youtube.com/watch?v=ygp80HWZgBs",
+    "channel": "DKO 뉴스",
+    "license": "Creative Commons Attribution license (reuse allowed)",
+    "duration_seconds": 113,
+    "language": "ko",
+    "verified_with": "yt-dlp --dump-single-json https://www.youtube.com/watch?v=ygp80HWZgBs",
+    "subtitle_cache": ".cache/promise-radar-youtube-v15/ygp80HWZgBs.ko.vtt",
+    "representative_audio_clip": ".cache/promise-radar-audio-v15/ygp80HWZgBs_3_68.mp3",
+    "golden_case_count": 47,
+    "golden_case_id_prefix": "real-v15-ygp80HWZgBs-",
+    "rebuild_commands": [
+      "yt-dlp --write-auto-subs --sub-lang ko --skip-download --sub-format json3 -o '.cache/promise-radar-youtube-v15/%(id)s.%(ext)s' https://www.youtube.com/watch?v=ygp80HWZgBs",
+      "yt-dlp -f bestaudio --download-sections '*00:00:03-00:01:08' --extract-audio --audio-format mp3 -o '.cache/promise-radar-audio-v15/ygp80HWZgBs_3_68.%(ext)s' https://www.youtube.com/watch?v=ygp80HWZgBs"
+    ],
+    "segments": [
+      {
+        "start_seconds": 0,
+        "end_seconds": 113,
+        "topic": "v15 Korean/multi-speaker CC meeting accuracy labels",
+        "golden_case_count": 47,
+        "label_notes": "Labels mix completed/open/changed/delayed/dismissed outcomes from CC meeting captions and representative audio; v16 expands each source to 47 labels."
+      }
+    ]
   }
 ]

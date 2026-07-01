@@ -809,6 +809,8 @@ class PromiseLearningInsight {
   final int confirmedCount;
   final int assigneeCorrectionCount;
   final int aliasGraphSize;
+  final Map<String, int> scopeBreakdown;
+  final List<String> scopeRecommendations;
   final bool evidenceLockEnabled;
   final List<String> statusAttention;
   final String recommendedPolicy;
@@ -826,6 +828,8 @@ class PromiseLearningInsight {
     required this.confirmedCount,
     required this.assigneeCorrectionCount,
     this.aliasGraphSize = 0,
+    this.scopeBreakdown = const {},
+    this.scopeRecommendations = const [],
     this.evidenceLockEnabled = true,
     required this.statusAttention,
     required this.recommendedPolicy,
@@ -856,6 +860,14 @@ class PromiseLearningInsight {
       confirmedCount: json['confirmed_count'] as int? ?? 0,
       assigneeCorrectionCount: json['assignee_correction_count'] as int? ?? 0,
       aliasGraphSize: json['alias_graph_size'] as int? ?? 0,
+      scopeBreakdown:
+          (json['scope_breakdown'] as Map<String, dynamic>? ?? {}).map(
+        (key, value) => MapEntry(key, (value as num?)?.toInt() ?? 0),
+      ),
+      scopeRecommendations:
+          (json['scope_recommendations'] as List<dynamic>? ?? [])
+              .whereType<String>()
+              .toList(),
       evidenceLockEnabled: json['evidence_lock_enabled'] as bool? ?? true,
       statusAttention: (json['status_attention'] as List<dynamic>? ?? [])
           .whereType<String>()
@@ -1495,6 +1507,71 @@ class PromiseAccuracyReport {
           .toList(),
       realMeetingCaseCount: json['real_meeting_case_count'] as int? ?? 0,
       targetCaseCount: json['target_case_count'] as int? ?? 100,
+      belowTarget: json['below_target'] as bool? ?? false,
+    );
+  }
+}
+
+class PromiseExtractionRecallEvaluation {
+  final int caseCount;
+  final int expectedCount;
+  final int extractedCount;
+  final int matchedCount;
+  final double recall;
+  final List<Map<String, dynamic>> failures;
+
+  const PromiseExtractionRecallEvaluation({
+    required this.caseCount,
+    required this.expectedCount,
+    required this.extractedCount,
+    required this.matchedCount,
+    required this.recall,
+    required this.failures,
+  });
+
+  factory PromiseExtractionRecallEvaluation.fromJson(
+    Map<String, dynamic> json,
+  ) {
+    return PromiseExtractionRecallEvaluation(
+      caseCount: json['case_count'] as int? ?? 0,
+      expectedCount: json['expected_count'] as int? ?? 0,
+      extractedCount: json['extracted_count'] as int? ?? 0,
+      matchedCount: json['matched_count'] as int? ?? 0,
+      recall: (json['recall'] as num?)?.toDouble() ?? 0,
+      failures: (json['failures'] as List<dynamic>? ?? [])
+          .whereType<Map<String, dynamic>>()
+          .toList(),
+    );
+  }
+}
+
+class PromiseExtractionRecallReport {
+  final String generatedAt;
+  final String fixturePath;
+  final PromiseExtractionRecallEvaluation evaluation;
+  final int realMeetingCaseCount;
+  final int targetCaseCount;
+  final bool belowTarget;
+
+  const PromiseExtractionRecallReport({
+    required this.generatedAt,
+    required this.fixturePath,
+    required this.evaluation,
+    required this.realMeetingCaseCount,
+    required this.targetCaseCount,
+    required this.belowTarget,
+  });
+
+  factory PromiseExtractionRecallReport.fromJson(Map<String, dynamic> json) {
+    return PromiseExtractionRecallReport(
+      generatedAt: json['generated_at'] as String? ?? '',
+      fixturePath: json['fixture_path'] as String? ?? '',
+      evaluation: PromiseExtractionRecallEvaluation.fromJson(
+        json['evaluation'] as Map<String, dynamic>? ??
+            const <String, dynamic>{},
+      ),
+      realMeetingCaseCount: json['real_meeting_case_count'] as int? ?? 0,
+      targetCaseCount: json['target_case_count'] as int? ?? 50,
       belowTarget: json['below_target'] as bool? ?? false,
     );
   }
@@ -2206,11 +2283,233 @@ class PromiseEvidenceAuditSummary {
   }
 }
 
+class PromiseMemoryGraphNode {
+  final String id;
+  final String label;
+  final String kind;
+  final int weight;
+  final String? status;
+  final String? riskLevel;
+
+  const PromiseMemoryGraphNode({
+    required this.id,
+    required this.label,
+    required this.kind,
+    required this.weight,
+    this.status,
+    this.riskLevel,
+  });
+
+  factory PromiseMemoryGraphNode.fromJson(Map<String, dynamic> json) {
+    return PromiseMemoryGraphNode(
+      id: json['id'] as String? ?? '',
+      label: json['label'] as String? ?? '',
+      kind: json['kind'] as String? ?? '',
+      weight: json['weight'] as int? ?? 0,
+      status: json['status'] as String?,
+      riskLevel: json['risk_level'] as String?,
+    );
+  }
+}
+
+class PromiseMemoryGraphEdge {
+  final String source;
+  final String target;
+  final String relationship;
+  final int weight;
+
+  const PromiseMemoryGraphEdge({
+    required this.source,
+    required this.target,
+    required this.relationship,
+    required this.weight,
+  });
+
+  factory PromiseMemoryGraphEdge.fromJson(Map<String, dynamic> json) {
+    return PromiseMemoryGraphEdge(
+      source: json['source'] as String? ?? '',
+      target: json['target'] as String? ?? '',
+      relationship: json['relationship'] as String? ?? '',
+      weight: json['weight'] as int? ?? 0,
+    );
+  }
+}
+
+class PromiseMemoryGraph {
+  final int nodeCount;
+  final int edgeCount;
+  final int recurringSeriesCount;
+  final int changedClusterCount;
+  final int delayedClusterCount;
+  final int ownerAliasCount;
+  final List<PromiseMemoryGraphNode> nodes;
+  final List<PromiseMemoryGraphEdge> edges;
+  final List<String> narrative;
+
+  const PromiseMemoryGraph({
+    required this.nodeCount,
+    required this.edgeCount,
+    required this.recurringSeriesCount,
+    required this.changedClusterCount,
+    required this.delayedClusterCount,
+    required this.ownerAliasCount,
+    required this.nodes,
+    required this.edges,
+    required this.narrative,
+  });
+
+  factory PromiseMemoryGraph.fromJson(Map<String, dynamic> json) {
+    return PromiseMemoryGraph(
+      nodeCount: json['node_count'] as int? ?? 0,
+      edgeCount: json['edge_count'] as int? ?? 0,
+      recurringSeriesCount: json['recurring_series_count'] as int? ?? 0,
+      changedClusterCount: json['changed_cluster_count'] as int? ?? 0,
+      delayedClusterCount: json['delayed_cluster_count'] as int? ?? 0,
+      ownerAliasCount: json['owner_alias_count'] as int? ?? 0,
+      nodes: (json['nodes'] as List<dynamic>? ?? [])
+          .whereType<Map<String, dynamic>>()
+          .map(PromiseMemoryGraphNode.fromJson)
+          .toList(),
+      edges: (json['edges'] as List<dynamic>? ?? [])
+          .whereType<Map<String, dynamic>>()
+          .map(PromiseMemoryGraphEdge.fromJson)
+          .toList(),
+      narrative: (json['narrative'] as List<dynamic>? ?? [])
+          .whereType<String>()
+          .toList(),
+    );
+  }
+}
+
+class PromiseAutopilotShadowSummary {
+  final int candidateCount;
+  final int wouldApplyCount;
+  final int previewOnlyCount;
+  final int blockedByEvidenceCount;
+  final int conflictCount;
+  final Map<String, int> statusDistribution;
+  final double averageConfidence;
+  final String learningValue;
+  final List<String> notes;
+
+  const PromiseAutopilotShadowSummary({
+    required this.candidateCount,
+    required this.wouldApplyCount,
+    required this.previewOnlyCount,
+    required this.blockedByEvidenceCount,
+    required this.conflictCount,
+    required this.statusDistribution,
+    required this.averageConfidence,
+    required this.learningValue,
+    required this.notes,
+  });
+
+  factory PromiseAutopilotShadowSummary.fromJson(Map<String, dynamic> json) {
+    return PromiseAutopilotShadowSummary(
+      candidateCount: json['candidate_count'] as int? ?? 0,
+      wouldApplyCount: json['would_apply_count'] as int? ?? 0,
+      previewOnlyCount: json['preview_only_count'] as int? ?? 0,
+      blockedByEvidenceCount: json['blocked_by_evidence_count'] as int? ?? 0,
+      conflictCount: json['conflict_count'] as int? ?? 0,
+      statusDistribution: (json['status_distribution']
+                  as Map<String, dynamic>? ??
+              const <String, dynamic>{})
+          .map((key, value) => MapEntry(key, (value as num?)?.toInt() ?? 0)),
+      averageConfidence: (json['average_confidence'] as num?)?.toDouble() ?? 0,
+      learningValue: json['learning_value'] as String? ?? '',
+      notes:
+          (json['notes'] as List<dynamic>? ?? []).whereType<String>().toList(),
+    );
+  }
+}
+
+class PromiseEvidencePermissionSummary {
+  final String scope;
+  final bool exportAllowed;
+  final bool redactionRequired;
+  final bool containsSpeakerData;
+  final bool containsTimestampData;
+  final int allowedEvidenceCount;
+  final int blockedExportCount;
+  final List<String> policyNotes;
+
+  const PromiseEvidencePermissionSummary({
+    required this.scope,
+    required this.exportAllowed,
+    required this.redactionRequired,
+    required this.containsSpeakerData,
+    required this.containsTimestampData,
+    required this.allowedEvidenceCount,
+    required this.blockedExportCount,
+    required this.policyNotes,
+  });
+
+  factory PromiseEvidencePermissionSummary.fromJson(Map<String, dynamic> json) {
+    return PromiseEvidencePermissionSummary(
+      scope: json['scope'] as String? ?? '',
+      exportAllowed: json['export_allowed'] as bool? ?? false,
+      redactionRequired: json['redaction_required'] as bool? ?? false,
+      containsSpeakerData: json['contains_speaker_data'] as bool? ?? false,
+      containsTimestampData: json['contains_timestamp_data'] as bool? ?? false,
+      allowedEvidenceCount: json['allowed_evidence_count'] as int? ?? 0,
+      blockedExportCount: json['blocked_export_count'] as int? ?? 0,
+      policyNotes: (json['policy_notes'] as List<dynamic>? ?? [])
+          .whereType<String>()
+          .toList(),
+    );
+  }
+}
+
+class PromiseTeamScorecard {
+  final int riskScore;
+  final int ownerCount;
+  final int openCount;
+  final int overdueCount;
+  final int highRiskCount;
+  final int recurringSeriesCount;
+  final String? weakestOwner;
+  final String? strongestOwner;
+  final List<String> recommendations;
+
+  const PromiseTeamScorecard({
+    required this.riskScore,
+    required this.ownerCount,
+    required this.openCount,
+    required this.overdueCount,
+    required this.highRiskCount,
+    required this.recurringSeriesCount,
+    this.weakestOwner,
+    this.strongestOwner,
+    required this.recommendations,
+  });
+
+  factory PromiseTeamScorecard.fromJson(Map<String, dynamic> json) {
+    return PromiseTeamScorecard(
+      riskScore: json['risk_score'] as int? ?? 0,
+      ownerCount: json['owner_count'] as int? ?? 0,
+      openCount: json['open_count'] as int? ?? 0,
+      overdueCount: json['overdue_count'] as int? ?? 0,
+      highRiskCount: json['high_risk_count'] as int? ?? 0,
+      recurringSeriesCount: json['recurring_series_count'] as int? ?? 0,
+      weakestOwner: json['weakest_owner'] as String?,
+      strongestOwner: json['strongest_owner'] as String?,
+      recommendations: (json['recommendations'] as List<dynamic>? ?? [])
+          .whereType<String>()
+          .toList(),
+    );
+  }
+}
+
 class PromiseGoogleTasksOAuthGuide {
   final String provider;
   final String scope;
   final String authUrlHint;
   final bool redirectUriRequired;
+  final String callbackPath;
+  final bool productionReady;
+  final List<String> missingSetup;
+  final List<String> requiredBackendEnv;
+  final List<String> verificationSteps;
   final List<String> steps;
   final String tokenHandling;
   final List<String> securityNotes;
@@ -2220,6 +2519,11 @@ class PromiseGoogleTasksOAuthGuide {
     required this.scope,
     required this.authUrlHint,
     required this.redirectUriRequired,
+    required this.callbackPath,
+    required this.productionReady,
+    required this.missingSetup,
+    required this.requiredBackendEnv,
+    required this.verificationSteps,
     required this.steps,
     required this.tokenHandling,
     required this.securityNotes,
@@ -2232,12 +2536,61 @@ class PromiseGoogleTasksOAuthGuide {
           json['scope'] as String? ?? 'https://www.googleapis.com/auth/tasks',
       authUrlHint: json['auth_url_hint'] as String? ?? '',
       redirectUriRequired: json['redirect_uri_required'] as bool? ?? true,
+      callbackPath: json['callback_path'] as String? ??
+          '/api/v1/promise-radar/google-tasks/oauth/callback',
+      productionReady: json['production_ready'] as bool? ?? false,
+      missingSetup: (json['missing_setup'] as List<dynamic>? ?? [])
+          .whereType<String>()
+          .toList(),
+      requiredBackendEnv: (json['required_backend_env'] as List<dynamic>? ?? [])
+          .whereType<String>()
+          .toList(),
+      verificationSteps: (json['verification_steps'] as List<dynamic>? ?? [])
+          .whereType<String>()
+          .toList(),
       steps:
           (json['steps'] as List<dynamic>? ?? []).whereType<String>().toList(),
       tokenHandling: json['token_handling'] as String? ?? '',
       securityNotes: (json['security_notes'] as List<dynamic>? ?? [])
           .whereType<String>()
           .toList(),
+    );
+  }
+}
+
+class PromiseCommandCenterAction {
+  final String key;
+  final String label;
+  final String method;
+  final String route;
+  final bool enabled;
+  final bool requiresConfirmation;
+  final String? reason;
+  final Map<String, dynamic> payload;
+
+  const PromiseCommandCenterAction({
+    required this.key,
+    required this.label,
+    required this.method,
+    required this.route,
+    required this.enabled,
+    required this.requiresConfirmation,
+    this.reason,
+    required this.payload,
+  });
+
+  factory PromiseCommandCenterAction.fromJson(Map<String, dynamic> json) {
+    return PromiseCommandCenterAction(
+      key: json['key'] as String? ?? '',
+      label: json['label'] as String? ?? '',
+      method: json['method'] as String? ?? 'GET',
+      route: json['route'] as String? ?? '',
+      enabled: json['enabled'] as bool? ?? true,
+      requiresConfirmation: json['requires_confirmation'] as bool? ?? false,
+      reason: json['reason'] as String?,
+      payload: (json['payload'] as Map? ?? {}).map(
+        (key, value) => MapEntry(key.toString(), value),
+      ),
     );
   }
 }
@@ -2252,7 +2605,13 @@ class PromiseCommandCenter {
   final PromiseExternalTaskReconcileResponse externalReconcile;
   final PromiseAccuracyReport accuracyReport;
   final PromiseEvidenceAuditSummary evidenceAudit;
+  final PromiseMemoryGraph memoryGraph;
+  final PromiseAutopilotShadowSummary shadowMode;
+  final PromiseEvidencePermissionSummary evidencePermissions;
+  final PromiseTeamScorecard teamScorecard;
   final PromiseGoogleTasksOAuthGuide googleTasksOAuth;
+  final PromiseExtractionRecallReport extractionRecall;
+  final List<PromiseCommandCenterAction> actions;
   final List<PromiseCommandCenterFocusItem> focusItems;
 
   const PromiseCommandCenter({
@@ -2265,7 +2624,13 @@ class PromiseCommandCenter {
     required this.externalReconcile,
     required this.accuracyReport,
     required this.evidenceAudit,
+    required this.memoryGraph,
+    required this.shadowMode,
+    required this.evidencePermissions,
+    required this.teamScorecard,
     required this.googleTasksOAuth,
+    required this.extractionRecall,
+    required this.actions,
     required this.focusItems,
   });
 
@@ -2298,14 +2663,38 @@ class PromiseCommandCenter {
         json['accuracy_report'] as Map<String, dynamic>? ??
             const <String, dynamic>{},
       ),
+      extractionRecall: PromiseExtractionRecallReport.fromJson(
+        json['extraction_recall'] as Map<String, dynamic>? ??
+            const <String, dynamic>{},
+      ),
       evidenceAudit: PromiseEvidenceAuditSummary.fromJson(
         json['evidence_audit'] as Map<String, dynamic>? ??
+            const <String, dynamic>{},
+      ),
+      memoryGraph: PromiseMemoryGraph.fromJson(
+        json['memory_graph'] as Map<String, dynamic>? ??
+            const <String, dynamic>{},
+      ),
+      shadowMode: PromiseAutopilotShadowSummary.fromJson(
+        json['shadow_mode'] as Map<String, dynamic>? ??
+            const <String, dynamic>{},
+      ),
+      evidencePermissions: PromiseEvidencePermissionSummary.fromJson(
+        json['evidence_permissions'] as Map<String, dynamic>? ??
+            const <String, dynamic>{},
+      ),
+      teamScorecard: PromiseTeamScorecard.fromJson(
+        json['team_scorecard'] as Map<String, dynamic>? ??
             const <String, dynamic>{},
       ),
       googleTasksOAuth: PromiseGoogleTasksOAuthGuide.fromJson(
         json['google_tasks_oauth'] as Map<String, dynamic>? ??
             const <String, dynamic>{},
       ),
+      actions: (json['actions'] as List<dynamic>? ?? [])
+          .whereType<Map<String, dynamic>>()
+          .map(PromiseCommandCenterAction.fromJson)
+          .toList(),
       focusItems: (json['focus_items'] as List<dynamic>? ?? [])
           .whereType<Map<String, dynamic>>()
           .map(PromiseCommandCenterFocusItem.fromJson)

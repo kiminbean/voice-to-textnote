@@ -1,5 +1,7 @@
+import json
 import uuid
 from datetime import datetime, timedelta
+from pathlib import Path
 
 import pytest
 import pytest_asyncio
@@ -22,6 +24,7 @@ from backend.schemas.promise_radar import (
     PromiseDigestPreferenceUpdateRequest,
     PromiseExternalExportRequest,
     PromiseExternalTaskUpdateRequest,
+    PromiseExtractionCase,
     PromiseLearningFeedbackRequest,
     PromiseLedgerMergeRequest,
     PromiseLedgerSplitRequest,
@@ -1666,8 +1669,21 @@ async def test_command_center_aggregates_learning_accuracy_and_oauth(session_fac
         assert center.learning_insight.alias_graph_size >= 1
         assert center.external_reconcile.requires_oauth is True
         assert center.google_tasks_oauth.scope == "https://www.googleapis.com/auth/tasks"
-        assert center.accuracy_report.evaluation.case_count >= 193
-        assert center.accuracy_report.real_meeting_case_count >= 126
+        assert center.google_tasks_oauth.required_backend_env == ["GOOGLE_CLIENT_ID"]
+        assert center.accuracy_report.evaluation.case_count >= 569
+        assert center.accuracy_report.real_meeting_case_count >= 500
+        assert center.extraction_recall.evaluation.case_count >= 50
+        assert center.extraction_recall.evaluation.recall >= 0.95
+        assert center.memory_graph.node_count >= 2
+        assert center.memory_graph.owner_alias_count >= 1
+        assert center.shadow_mode.candidate_count == center.review_queue.queue_count
+        assert center.evidence_permissions.scope.startswith("owner:")
+        assert center.team_scorecard.risk_score > 0
+        assert {action.key for action in center.actions} >= {
+            "open_review_queue",
+            "open_accuracy_report",
+            "open_extraction_recall_report",
+        }
         assert {item.key for item in center.focus_items} >= {
             "overdue",
             "high_risk",
@@ -1677,9 +1693,25 @@ async def test_command_center_aggregates_learning_accuracy_and_oauth(session_fac
 
 
 def test_promise_radar_accuracy_fixture_audit_passes():
-    report = audit_accuracy_set(target_real_cases=100)
+    report = audit_accuracy_set(target_real_cases=500)
 
     assert report["passed"] is True
-    assert report["case_count"] >= 193
-    assert report["real_case_count"] >= 126
+    assert report["case_count"] >= 569
+    assert report["real_case_count"] >= 500
     assert report["errors"] == []
+
+
+def test_promise_radar_extraction_fixture_recall_passes():
+    fixture = Path("backend/tests/fixtures/promise_radar_extraction_cases.json")
+    cases = [
+        PromiseExtractionCase(**item) for item in json.loads(fixture.read_text(encoding="utf-8"))
+    ]
+    report = PromiseRadarService().build_extraction_recall_report(
+        cases,
+        fixture_path=str(fixture),
+        target_case_count=50,
+    )
+
+    assert report.real_meeting_case_count >= 50
+    assert report.evaluation.matched_count == report.evaluation.expected_count
+    assert report.evaluation.recall >= 0.95

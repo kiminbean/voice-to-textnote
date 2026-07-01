@@ -81,7 +81,7 @@ def _collect_devices() -> dict[str, Any]:
     ios_list = _run(["xcrun", "devicectl", "list", "devices"])
     ios_identifier = None
     for line in ios_list.get("stdout", "").splitlines():
-        if "iPhone" in line and "available (paired)" in line:
+        if "iPhone" in line and ("available (paired)" in line or "connected" in line):
             parts = [part for part in line.split(" ") if part]
             ios_identifier = next(
                 (part for part in parts if part.count("-") == 4),
@@ -121,19 +121,44 @@ def _collect_devices() -> dict[str, Any]:
     }
 
 
-def _latest_summary(conn: sqlite3.Connection, task_id: str | None) -> dict[str, Any]:
+def _latest_summary(
+    conn: sqlite3.Connection,
+    task_id: str | None,
+    *,
+    owner_email: str | None = None,
+) -> dict[str, Any]:
     conn.row_factory = sqlite3.Row
     if task_id:
         rows = conn.execute(
             "select * from task_results where task_id=? and task_type='summary'",
             (task_id,),
         ).fetchall()
+    elif owner_email:
+        rows = conn.execute(
+            """
+            select task_results.*
+            from task_results
+            join meeting_ownership on meeting_ownership.task_id = task_results.task_id
+            join users on users.id = meeting_ownership.owner_id
+            where task_results.task_type='summary'
+              and task_results.status='completed'
+              and users.email=?
+              and users.is_active = 1
+            order by task_results.created_at desc
+            """,
+            (owner_email,),
+        ).fetchall()
     else:
         rows = conn.execute(
             """
-            select * from task_results
-            where task_type='summary' and status='completed'
-            order by created_at desc
+            select task_results.*
+            from task_results
+            join meeting_ownership on meeting_ownership.task_id = task_results.task_id
+            join users on users.id = meeting_ownership.owner_id
+            where task_results.task_type='summary'
+              and task_results.status='completed'
+              and users.is_active = 1
+            order by task_results.created_at desc
             """
         ).fetchall()
     for row in rows:
@@ -388,6 +413,42 @@ def _summarize_api_check(name: str, result: dict[str, Any]) -> dict[str, Any]:
                 "failure_count": body.get("failure_count"),
             }
         )
+    elif name == "command_center":
+        accuracy = body.get("accuracy_report") or {}
+        evaluation = accuracy.get("evaluation") or {}
+        extraction = body.get("extraction_recall") or {}
+        extraction_eval = extraction.get("evaluation") or {}
+        memory_graph = body.get("memory_graph") or {}
+        shadow_mode = body.get("shadow_mode") or {}
+        evidence_permissions = body.get("evidence_permissions") or {}
+        team_scorecard = body.get("team_scorecard") or {}
+        google_tasks_oauth = body.get("google_tasks_oauth") or {}
+        summary.update(
+            {
+                "focus_count": len(body.get("focus_items") or []),
+                "action_count": len(body.get("actions") or []),
+                "accuracy_case_count": evaluation.get("case_count"),
+                "accuracy_correct_count": evaluation.get("correct_count"),
+                "real_meeting_case_count": accuracy.get("real_meeting_case_count"),
+                "target_case_count": accuracy.get("target_case_count"),
+                "extraction_case_count": extraction_eval.get("case_count"),
+                "extraction_expected_count": extraction_eval.get("expected_count"),
+                "extraction_matched_count": extraction_eval.get("matched_count"),
+                "extraction_recall": extraction_eval.get("recall"),
+                "extraction_real_meeting_case_count": extraction.get("real_meeting_case_count"),
+                "memory_graph_node_count": memory_graph.get("node_count"),
+                "memory_graph_edge_count": memory_graph.get("edge_count"),
+                "shadow_candidate_count": shadow_mode.get("candidate_count"),
+                "shadow_blocked_by_evidence_count": shadow_mode.get("blocked_by_evidence_count"),
+                "evidence_export_allowed": evidence_permissions.get("export_allowed"),
+                "evidence_blocked_export_count": evidence_permissions.get("blocked_export_count"),
+                "team_risk_score": team_scorecard.get("risk_score"),
+                "google_tasks_oauth_production_ready": google_tasks_oauth.get("production_ready"),
+                "google_tasks_oauth_missing_setup_count": len(
+                    google_tasks_oauth.get("missing_setup") or []
+                ),
+            }
+        )
     if not result.get("ok") and result.get("error"):
         summary["error"] = str(result["error"])[:500]
     return summary
@@ -410,7 +471,7 @@ def main() -> int:
 
     conn = sqlite3.connect(args.db)
     conn.row_factory = sqlite3.Row
-    summary = _latest_summary(conn, args.task_id)
+    summary = _latest_summary(conn, args.task_id, owner_email=args.email)
     chain = _recording_chain(conn, summary)
     auth = _user_token(conn, args.email or _owner_email_for_task(conn, summary["task_id"]))
     devices = _collect_devices()
@@ -441,6 +502,12 @@ def main() -> int:
         args.base_url,
         "GET",
         "promise-radar/briefing/pre-meeting?limit=5",
+        token=token,
+    )
+    checks["command_center"] = _api(
+        args.base_url,
+        "GET",
+        "promise-radar/command-center?limit=10&target_case_count=500",
         token=token,
     )
 
@@ -474,8 +541,7 @@ def main() -> int:
     )
 
     summarized_checks = {
-        name: _summarize_api_check(name, result)
-        for name, result in checks.items()
+        name: _summarize_api_check(name, result) for name, result in checks.items()
     }
 
     pass_checks = {
@@ -493,6 +559,35 @@ def main() -> int:
         "assignee_quality": bool(checks["assignee_quality"].get("ok")),
         "pre_meeting_brief": bool(checks["pre_meeting_brief"].get("ok")),
         "due_push_dispatch_contract": bool(checks["due_push_dispatch_contract"].get("ok")),
+        "command_center": bool(checks["command_center"].get("ok")),
+        "command_center_accuracy_baseline": bool(
+            (summarized_checks["command_center"].get("accuracy_case_count") or 0) >= 500
+            and (summarized_checks["command_center"].get("real_meeting_case_count") or 0) >= 500
+        ),
+        "command_center_v15_contract": bool(
+            isinstance(
+                summarized_checks["command_center"].get("memory_graph_node_count"),
+                int,
+            )
+            and isinstance(
+                summarized_checks["command_center"].get("shadow_candidate_count"),
+                int,
+            )
+            and isinstance(
+                summarized_checks["command_center"].get("evidence_export_allowed"),
+                bool,
+            )
+            and isinstance(summarized_checks["command_center"].get("team_risk_score"), int)
+        ),
+        "command_center_v16_contract": bool(
+            (summarized_checks["command_center"].get("extraction_case_count") or 0) >= 50
+            and (summarized_checks["command_center"].get("extraction_recall") or 0) >= 0.95
+            and isinstance(summarized_checks["command_center"].get("action_count"), int)
+            and isinstance(
+                summarized_checks["command_center"].get("google_tasks_oauth_production_ready"),
+                bool,
+            )
+        ),
     }
 
     payload = {

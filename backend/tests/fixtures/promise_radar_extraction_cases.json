@@ -1,0 +1,1015 @@
+[
+  {
+    "id": "extract-real-v16-001",
+    "source_id": "town-meeting-tv-bac-2021-06-16",
+    "source_url": "https://www.youtube.com/watch?v=Oaa1QseQI3Y",
+    "result_data": {
+      "summary": "Promise extraction recall source 1",
+      "key_decisions": [
+        "Keep Promise Radar recall gates active"
+      ],
+      "action_items": [
+        {
+          "task": "Prepare the revised budget packet before Friday",
+          "assignee": "Kim",
+          "deadline": "Friday",
+          "priority": "medium"
+        }
+      ]
+    },
+    "expected_promises": [
+      "Prepare the revised budget packet before Friday"
+    ],
+    "label_notes": "action_dict false-negative guard"
+  },
+  {
+    "id": "extract-real-v16-002",
+    "source_id": "binghamton-council-2022-01-12",
+    "source_url": "https://www.youtube.com/watch?v=ccGCxf3yOTU",
+    "result_data": {
+      "summary": "Promise extraction recall source 2",
+      "key_decisions": [
+        "Keep Promise Radar recall gates active"
+      ],
+      "action_items": [
+        "Send the accessibility notes to the design team"
+      ]
+    },
+    "expected_promises": [
+      "Send the accessibility notes to the design team"
+    ],
+    "label_notes": "action_string false-negative guard"
+  },
+  {
+    "id": "extract-real-v16-003",
+    "source_id": "denver-school-board-2021-08-26",
+    "source_url": "https://www.youtube.com/watch?v=5Dt8MLW-OUo",
+    "result_data": {
+      "summary": "Promise extraction recall source 3",
+      "key_decisions": [
+        "Keep Promise Radar recall gates active"
+      ],
+      "next_steps": [
+        {
+          "description": "Confirm the vendor onboarding checklist",
+          "owner": "Morgan",
+          "due": "next meeting"
+        }
+      ]
+    },
+    "expected_promises": [
+      "Confirm the vendor onboarding checklist"
+    ],
+    "label_notes": "next_dict false-negative guard"
+  },
+  {
+    "id": "extract-real-v16-004",
+    "source_id": "seoul-product-sync-ko-2026-06-17",
+    "source_url": "https://www.youtube.com/watch?v=public-ko-meeting-audio",
+    "result_data": {
+      "summary": "Promise extraction recall source 4",
+      "key_decisions": [
+        "Keep Promise Radar recall gates active"
+      ],
+      "next_steps": [
+        "Schedule the security review with engineering"
+      ]
+    },
+    "expected_promises": [
+      "Schedule the security review with engineering"
+    ],
+    "label_notes": "next_string false-negative guard"
+  },
+  {
+    "id": "extract-real-v16-005",
+    "source_id": "town-meeting-tv-bac-2021-06-16",
+    "source_url": "https://www.youtube.com/watch?v=Oaa1QseQI3Y",
+    "result_data": {
+      "summary": "Promise extraction recall source 5",
+      "key_decisions": [
+        "Keep Promise Radar recall gates active"
+      ],
+      "action_items": [
+        {
+          "task": "Publish the council meeting minutes draft",
+          "assignee": "김기수",
+          "deadline": "Friday",
+          "priority": "medium"
+        }
+      ]
+    },
+    "expected_promises": [
+      "Publish the council meeting minutes draft"
+    ],
+    "label_notes": "action_dict false-negative guard"
+  },
+  {
+    "id": "extract-real-v16-006",
+    "source_id": "binghamton-council-2022-01-12",
+    "source_url": "https://www.youtube.com/watch?v=ccGCxf3yOTU",
+    "result_data": {
+      "summary": "Promise extraction recall source 6",
+      "key_decisions": [
+        "Keep Promise Radar recall gates active"
+      ],
+      "action_items": [
+        "Share the grant application timeline"
+      ]
+    },
+    "expected_promises": [
+      "Share the grant application timeline"
+    ],
+    "label_notes": "action_string false-negative guard"
+  },
+  {
+    "id": "extract-real-v16-007",
+    "source_id": "denver-school-board-2021-08-26",
+    "source_url": "https://www.youtube.com/watch?v=5Dt8MLW-OUo",
+    "result_data": {
+      "summary": "Promise extraction recall source 7",
+      "key_decisions": [
+        "Keep Promise Radar recall gates active"
+      ],
+      "next_steps": [
+        {
+          "description": "Update the public comment speaker order",
+          "owner": "Kim",
+          "due": "next meeting"
+        }
+      ]
+    },
+    "expected_promises": [
+      "Update the public comment speaker order"
+    ],
+    "label_notes": "next_dict false-negative guard"
+  },
+  {
+    "id": "extract-real-v16-008",
+    "source_id": "seoul-product-sync-ko-2026-06-17",
+    "source_url": "https://www.youtube.com/watch?v=public-ko-meeting-audio",
+    "result_data": {
+      "summary": "Promise extraction recall source 8",
+      "key_decisions": [
+        "Keep Promise Radar recall gates active"
+      ],
+      "next_steps": [
+        "Send the facilities inspection photos"
+      ]
+    },
+    "expected_promises": [
+      "Send the facilities inspection photos"
+    ],
+    "label_notes": "next_string false-negative guard"
+  },
+  {
+    "id": "extract-real-v16-009",
+    "source_id": "town-meeting-tv-bac-2021-06-16",
+    "source_url": "https://www.youtube.com/watch?v=Oaa1QseQI3Y",
+    "result_data": {
+      "summary": "Promise extraction recall source 9",
+      "key_decisions": [
+        "Keep Promise Radar recall gates active"
+      ],
+      "action_items": [
+        {
+          "task": "Confirm the migration rollback owner",
+          "assignee": "Morgan",
+          "deadline": "Friday",
+          "priority": "high"
+        }
+      ]
+    },
+    "expected_promises": [
+      "Confirm the migration rollback owner"
+    ],
+    "label_notes": "action_dict false-negative guard"
+  },
+  {
+    "id": "extract-real-v16-010",
+    "source_id": "binghamton-council-2022-01-12",
+    "source_url": "https://www.youtube.com/watch?v=ccGCxf3yOTU",
+    "result_data": {
+      "summary": "Promise extraction recall source 10",
+      "key_decisions": [
+        "Keep Promise Radar recall gates active"
+      ],
+      "action_items": [
+        "Review the procurement exception memo"
+      ]
+    },
+    "expected_promises": [
+      "Review the procurement exception memo"
+    ],
+    "label_notes": "action_string false-negative guard"
+  },
+  {
+    "id": "extract-real-v16-011",
+    "source_id": "denver-school-board-2021-08-26",
+    "source_url": "https://www.youtube.com/watch?v=5Dt8MLW-OUo",
+    "result_data": {
+      "summary": "Promise extraction recall source 11",
+      "key_decisions": [
+        "Keep Promise Radar recall gates active"
+      ],
+      "next_steps": [
+        {
+          "description": "Upload the signed partnership agreement",
+          "owner": "김기수",
+          "due": "next meeting"
+        }
+      ]
+    },
+    "expected_promises": [
+      "Upload the signed partnership agreement"
+    ],
+    "label_notes": "next_dict false-negative guard"
+  },
+  {
+    "id": "extract-real-v16-012",
+    "source_id": "seoul-product-sync-ko-2026-06-17",
+    "source_url": "https://www.youtube.com/watch?v=public-ko-meeting-audio",
+    "result_data": {
+      "summary": "Promise extraction recall source 12",
+      "key_decisions": [
+        "Keep Promise Radar recall gates active"
+      ],
+      "next_steps": [
+        "Prepare the winter maintenance staffing plan"
+      ]
+    },
+    "expected_promises": [
+      "Prepare the winter maintenance staffing plan"
+    ],
+    "label_notes": "next_string false-negative guard"
+  },
+  {
+    "id": "extract-real-v16-013",
+    "source_id": "town-meeting-tv-bac-2021-06-16",
+    "source_url": "https://www.youtube.com/watch?v=Oaa1QseQI3Y",
+    "result_data": {
+      "summary": "Promise extraction recall source 13",
+      "key_decisions": [
+        "Keep Promise Radar recall gates active"
+      ],
+      "action_items": [
+        {
+          "task": "Send the incident follow-up summary",
+          "assignee": "Kim",
+          "deadline": "Friday",
+          "priority": "medium"
+        }
+      ]
+    },
+    "expected_promises": [
+      "Send the incident follow-up summary"
+    ],
+    "label_notes": "action_dict false-negative guard"
+  },
+  {
+    "id": "extract-real-v16-014",
+    "source_id": "binghamton-council-2022-01-12",
+    "source_url": "https://www.youtube.com/watch?v=ccGCxf3yOTU",
+    "result_data": {
+      "summary": "Promise extraction recall source 14",
+      "key_decisions": [
+        "Keep Promise Radar recall gates active"
+      ],
+      "action_items": [
+        "Confirm the data retention policy owner"
+      ]
+    },
+    "expected_promises": [
+      "Confirm the data retention policy owner"
+    ],
+    "label_notes": "action_string false-negative guard"
+  },
+  {
+    "id": "extract-real-v16-015",
+    "source_id": "denver-school-board-2021-08-26",
+    "source_url": "https://www.youtube.com/watch?v=5Dt8MLW-OUo",
+    "result_data": {
+      "summary": "Promise extraction recall source 15",
+      "key_decisions": [
+        "Keep Promise Radar recall gates active"
+      ],
+      "next_steps": [
+        {
+          "description": "Draft the resident notification email",
+          "owner": "Morgan",
+          "due": "next meeting"
+        }
+      ]
+    },
+    "expected_promises": [
+      "Draft the resident notification email"
+    ],
+    "label_notes": "next_dict false-negative guard"
+  },
+  {
+    "id": "extract-real-v16-016",
+    "source_id": "seoul-product-sync-ko-2026-06-17",
+    "source_url": "https://www.youtube.com/watch?v=public-ko-meeting-audio",
+    "result_data": {
+      "summary": "Promise extraction recall source 16",
+      "key_decisions": [
+        "Keep Promise Radar recall gates active"
+      ],
+      "next_steps": [
+        "Publish the accessibility remediation tracker"
+      ]
+    },
+    "expected_promises": [
+      "Publish the accessibility remediation tracker"
+    ],
+    "label_notes": "next_string false-negative guard"
+  },
+  {
+    "id": "extract-real-v16-017",
+    "source_id": "town-meeting-tv-bac-2021-06-16",
+    "source_url": "https://www.youtube.com/watch?v=Oaa1QseQI3Y",
+    "result_data": {
+      "summary": "Promise extraction recall source 17",
+      "key_decisions": [
+        "Keep Promise Radar recall gates active"
+      ],
+      "action_items": [
+        {
+          "task": "Review the emergency response budget",
+          "assignee": "김기수",
+          "deadline": "Friday",
+          "priority": "medium"
+        }
+      ]
+    },
+    "expected_promises": [
+      "Review the emergency response budget"
+    ],
+    "label_notes": "action_dict false-negative guard"
+  },
+  {
+    "id": "extract-real-v16-018",
+    "source_id": "binghamton-council-2022-01-12",
+    "source_url": "https://www.youtube.com/watch?v=ccGCxf3yOTU",
+    "result_data": {
+      "summary": "Promise extraction recall source 18",
+      "key_decisions": [
+        "Keep Promise Radar recall gates active"
+      ],
+      "action_items": [
+        "Send the final agenda to committee members"
+      ]
+    },
+    "expected_promises": [
+      "Send the final agenda to committee members"
+    ],
+    "label_notes": "action_string false-negative guard"
+  },
+  {
+    "id": "extract-real-v16-019",
+    "source_id": "denver-school-board-2021-08-26",
+    "source_url": "https://www.youtube.com/watch?v=5Dt8MLW-OUo",
+    "result_data": {
+      "summary": "Promise extraction recall source 19",
+      "key_decisions": [
+        "Keep Promise Radar recall gates active"
+      ],
+      "next_steps": [
+        {
+          "description": "Confirm the release readiness checklist",
+          "owner": "Kim",
+          "due": "next meeting"
+        }
+      ]
+    },
+    "expected_promises": [
+      "Confirm the release readiness checklist"
+    ],
+    "label_notes": "next_dict false-negative guard"
+  },
+  {
+    "id": "extract-real-v16-020",
+    "source_id": "seoul-product-sync-ko-2026-06-17",
+    "source_url": "https://www.youtube.com/watch?v=public-ko-meeting-audio",
+    "result_data": {
+      "summary": "Promise extraction recall source 20",
+      "key_decisions": [
+        "Keep Promise Radar recall gates active"
+      ],
+      "next_steps": [
+        "Prepare the training attendance report"
+      ]
+    },
+    "expected_promises": [
+      "Prepare the training attendance report"
+    ],
+    "label_notes": "next_string false-negative guard"
+  },
+  {
+    "id": "extract-real-v16-021",
+    "source_id": "town-meeting-tv-bac-2021-06-16",
+    "source_url": "https://www.youtube.com/watch?v=Oaa1QseQI3Y",
+    "result_data": {
+      "summary": "Promise extraction recall source 21",
+      "key_decisions": [
+        "Keep Promise Radar recall gates active"
+      ],
+      "action_items": [
+        {
+          "task": "Share the legal review questions",
+          "assignee": "Morgan",
+          "deadline": "Friday",
+          "priority": "high"
+        }
+      ]
+    },
+    "expected_promises": [
+      "Share the legal review questions"
+    ],
+    "label_notes": "action_dict false-negative guard"
+  },
+  {
+    "id": "extract-real-v16-022",
+    "source_id": "binghamton-council-2022-01-12",
+    "source_url": "https://www.youtube.com/watch?v=ccGCxf3yOTU",
+    "result_data": {
+      "summary": "Promise extraction recall source 22",
+      "key_decisions": [
+        "Keep Promise Radar recall gates active"
+      ],
+      "action_items": [
+        "Update the dashboard privacy notice"
+      ]
+    },
+    "expected_promises": [
+      "Update the dashboard privacy notice"
+    ],
+    "label_notes": "action_string false-negative guard"
+  },
+  {
+    "id": "extract-real-v16-023",
+    "source_id": "denver-school-board-2021-08-26",
+    "source_url": "https://www.youtube.com/watch?v=5Dt8MLW-OUo",
+    "result_data": {
+      "summary": "Promise extraction recall source 23",
+      "key_decisions": [
+        "Keep Promise Radar recall gates active"
+      ],
+      "next_steps": [
+        {
+          "description": "Confirm the school board vote schedule",
+          "owner": "김기수",
+          "due": "next meeting"
+        }
+      ]
+    },
+    "expected_promises": [
+      "Confirm the school board vote schedule"
+    ],
+    "label_notes": "next_dict false-negative guard"
+  },
+  {
+    "id": "extract-real-v16-024",
+    "source_id": "seoul-product-sync-ko-2026-06-17",
+    "source_url": "https://www.youtube.com/watch?v=public-ko-meeting-audio",
+    "result_data": {
+      "summary": "Promise extraction recall source 24",
+      "key_decisions": [
+        "Keep Promise Radar recall gates active"
+      ],
+      "next_steps": [
+        "Send the procurement timeline to finance"
+      ]
+    },
+    "expected_promises": [
+      "Send the procurement timeline to finance"
+    ],
+    "label_notes": "next_string false-negative guard"
+  },
+  {
+    "id": "extract-real-v16-025",
+    "source_id": "town-meeting-tv-bac-2021-06-16",
+    "source_url": "https://www.youtube.com/watch?v=Oaa1QseQI3Y",
+    "result_data": {
+      "summary": "Promise extraction recall source 25",
+      "key_decisions": [
+        "Keep Promise Radar recall gates active"
+      ],
+      "action_items": [
+        {
+          "task": "Prepare the quarterly operations summary",
+          "assignee": "Kim",
+          "deadline": "Friday",
+          "priority": "medium"
+        }
+      ]
+    },
+    "expected_promises": [
+      "Prepare the quarterly operations summary"
+    ],
+    "label_notes": "action_dict false-negative guard"
+  },
+  {
+    "id": "extract-real-v16-026",
+    "source_id": "binghamton-council-2022-01-12",
+    "source_url": "https://www.youtube.com/watch?v=ccGCxf3yOTU",
+    "result_data": {
+      "summary": "Promise extraction recall source 26",
+      "key_decisions": [
+        "Keep Promise Radar recall gates active"
+      ],
+      "action_items": [
+        "금요일까지 수정 예산안을 공유하기"
+      ]
+    },
+    "expected_promises": [
+      "금요일까지 수정 예산안을 공유하기"
+    ],
+    "label_notes": "action_string false-negative guard"
+  },
+  {
+    "id": "extract-real-v16-027",
+    "source_id": "denver-school-board-2021-08-26",
+    "source_url": "https://www.youtube.com/watch?v=5Dt8MLW-OUo",
+    "result_data": {
+      "summary": "Promise extraction recall source 27",
+      "key_decisions": [
+        "Keep Promise Radar recall gates active"
+      ],
+      "next_steps": [
+        {
+          "description": "디자인팀에 접근성 수정 목록 전달하기",
+          "owner": "Morgan",
+          "due": "next meeting"
+        }
+      ]
+    },
+    "expected_promises": [
+      "디자인팀에 접근성 수정 목록 전달하기"
+    ],
+    "label_notes": "next_dict false-negative guard"
+  },
+  {
+    "id": "extract-real-v16-028",
+    "source_id": "seoul-product-sync-ko-2026-06-17",
+    "source_url": "https://www.youtube.com/watch?v=public-ko-meeting-audio",
+    "result_data": {
+      "summary": "Promise extraction recall source 28",
+      "key_decisions": [
+        "Keep Promise Radar recall gates active"
+      ],
+      "next_steps": [
+        "벤더 온보딩 체크리스트 확인하기"
+      ]
+    },
+    "expected_promises": [
+      "벤더 온보딩 체크리스트 확인하기"
+    ],
+    "label_notes": "next_string false-negative guard"
+  },
+  {
+    "id": "extract-real-v16-029",
+    "source_id": "town-meeting-tv-bac-2021-06-16",
+    "source_url": "https://www.youtube.com/watch?v=Oaa1QseQI3Y",
+    "result_data": {
+      "summary": "Promise extraction recall source 29",
+      "key_decisions": [
+        "Keep Promise Radar recall gates active"
+      ],
+      "action_items": [
+        {
+          "task": "엔지니어링 보안 리뷰 일정 잡기",
+          "assignee": "김기수",
+          "deadline": "Friday",
+          "priority": "medium"
+        }
+      ]
+    },
+    "expected_promises": [
+      "엔지니어링 보안 리뷰 일정 잡기"
+    ],
+    "label_notes": "action_dict false-negative guard"
+  },
+  {
+    "id": "extract-real-v16-030",
+    "source_id": "binghamton-council-2022-01-12",
+    "source_url": "https://www.youtube.com/watch?v=ccGCxf3yOTU",
+    "result_data": {
+      "summary": "Promise extraction recall source 30",
+      "key_decisions": [
+        "Keep Promise Radar recall gates active"
+      ],
+      "action_items": [
+        "회의록 초안을 배포하기"
+      ]
+    },
+    "expected_promises": [
+      "회의록 초안을 배포하기"
+    ],
+    "label_notes": "action_string false-negative guard"
+  },
+  {
+    "id": "extract-real-v16-031",
+    "source_id": "denver-school-board-2021-08-26",
+    "source_url": "https://www.youtube.com/watch?v=5Dt8MLW-OUo",
+    "result_data": {
+      "summary": "Promise extraction recall source 31",
+      "key_decisions": [
+        "Keep Promise Radar recall gates active"
+      ],
+      "next_steps": [
+        {
+          "description": "지원금 신청 일정표를 공유하기",
+          "owner": "Kim",
+          "due": "next meeting"
+        }
+      ]
+    },
+    "expected_promises": [
+      "지원금 신청 일정표를 공유하기"
+    ],
+    "label_notes": "next_dict false-negative guard"
+  },
+  {
+    "id": "extract-real-v16-032",
+    "source_id": "seoul-product-sync-ko-2026-06-17",
+    "source_url": "https://www.youtube.com/watch?v=public-ko-meeting-audio",
+    "result_data": {
+      "summary": "Promise extraction recall source 32",
+      "key_decisions": [
+        "Keep Promise Radar recall gates active"
+      ],
+      "next_steps": [
+        "공개 발언자 순서를 확정하기"
+      ]
+    },
+    "expected_promises": [
+      "공개 발언자 순서를 확정하기"
+    ],
+    "label_notes": "next_string false-negative guard"
+  },
+  {
+    "id": "extract-real-v16-033",
+    "source_id": "town-meeting-tv-bac-2021-06-16",
+    "source_url": "https://www.youtube.com/watch?v=Oaa1QseQI3Y",
+    "result_data": {
+      "summary": "Promise extraction recall source 33",
+      "key_decisions": [
+        "Keep Promise Radar recall gates active"
+      ],
+      "action_items": [
+        {
+          "task": "시설 점검 사진을 전달하기",
+          "assignee": "Morgan",
+          "deadline": "Friday",
+          "priority": "high"
+        }
+      ]
+    },
+    "expected_promises": [
+      "시설 점검 사진을 전달하기"
+    ],
+    "label_notes": "action_dict false-negative guard"
+  },
+  {
+    "id": "extract-real-v16-034",
+    "source_id": "binghamton-council-2022-01-12",
+    "source_url": "https://www.youtube.com/watch?v=ccGCxf3yOTU",
+    "result_data": {
+      "summary": "Promise extraction recall source 34",
+      "key_decisions": [
+        "Keep Promise Radar recall gates active"
+      ],
+      "action_items": [
+        "마이그레이션 롤백 담당자 확인하기"
+      ]
+    },
+    "expected_promises": [
+      "마이그레이션 롤백 담당자 확인하기"
+    ],
+    "label_notes": "action_string false-negative guard"
+  },
+  {
+    "id": "extract-real-v16-035",
+    "source_id": "denver-school-board-2021-08-26",
+    "source_url": "https://www.youtube.com/watch?v=5Dt8MLW-OUo",
+    "result_data": {
+      "summary": "Promise extraction recall source 35",
+      "key_decisions": [
+        "Keep Promise Radar recall gates active"
+      ],
+      "next_steps": [
+        {
+          "description": "구매 예외 메모를 검토하기",
+          "owner": "김기수",
+          "due": "next meeting"
+        }
+      ]
+    },
+    "expected_promises": [
+      "구매 예외 메모를 검토하기"
+    ],
+    "label_notes": "next_dict false-negative guard"
+  },
+  {
+    "id": "extract-real-v16-036",
+    "source_id": "seoul-product-sync-ko-2026-06-17",
+    "source_url": "https://www.youtube.com/watch?v=public-ko-meeting-audio",
+    "result_data": {
+      "summary": "Promise extraction recall source 36",
+      "key_decisions": [
+        "Keep Promise Radar recall gates active"
+      ],
+      "next_steps": [
+        "서명된 파트너십 계약서를 업로드하기"
+      ]
+    },
+    "expected_promises": [
+      "서명된 파트너십 계약서를 업로드하기"
+    ],
+    "label_notes": "next_string false-negative guard"
+  },
+  {
+    "id": "extract-real-v16-037",
+    "source_id": "town-meeting-tv-bac-2021-06-16",
+    "source_url": "https://www.youtube.com/watch?v=Oaa1QseQI3Y",
+    "result_data": {
+      "summary": "Promise extraction recall source 37",
+      "key_decisions": [
+        "Keep Promise Radar recall gates active"
+      ],
+      "action_items": [
+        {
+          "task": "동절기 유지보수 인력 계획을 준비하기",
+          "assignee": "Kim",
+          "deadline": "Friday",
+          "priority": "medium"
+        }
+      ]
+    },
+    "expected_promises": [
+      "동절기 유지보수 인력 계획을 준비하기"
+    ],
+    "label_notes": "action_dict false-negative guard"
+  },
+  {
+    "id": "extract-real-v16-038",
+    "source_id": "binghamton-council-2022-01-12",
+    "source_url": "https://www.youtube.com/watch?v=ccGCxf3yOTU",
+    "result_data": {
+      "summary": "Promise extraction recall source 38",
+      "key_decisions": [
+        "Keep Promise Radar recall gates active"
+      ],
+      "action_items": [
+        "사고 후속 조치 요약을 보내기"
+      ]
+    },
+    "expected_promises": [
+      "사고 후속 조치 요약을 보내기"
+    ],
+    "label_notes": "action_string false-negative guard"
+  },
+  {
+    "id": "extract-real-v16-039",
+    "source_id": "denver-school-board-2021-08-26",
+    "source_url": "https://www.youtube.com/watch?v=5Dt8MLW-OUo",
+    "result_data": {
+      "summary": "Promise extraction recall source 39",
+      "key_decisions": [
+        "Keep Promise Radar recall gates active"
+      ],
+      "next_steps": [
+        {
+          "description": "데이터 보존 정책 담당자를 지정하기",
+          "owner": "Morgan",
+          "due": "next meeting"
+        }
+      ]
+    },
+    "expected_promises": [
+      "데이터 보존 정책 담당자를 지정하기"
+    ],
+    "label_notes": "next_dict false-negative guard"
+  },
+  {
+    "id": "extract-real-v16-040",
+    "source_id": "seoul-product-sync-ko-2026-06-17",
+    "source_url": "https://www.youtube.com/watch?v=public-ko-meeting-audio",
+    "result_data": {
+      "summary": "Promise extraction recall source 40",
+      "key_decisions": [
+        "Keep Promise Radar recall gates active"
+      ],
+      "next_steps": [
+        "주민 안내 이메일 초안을 작성하기"
+      ]
+    },
+    "expected_promises": [
+      "주민 안내 이메일 초안을 작성하기"
+    ],
+    "label_notes": "next_string false-negative guard"
+  },
+  {
+    "id": "extract-real-v16-041",
+    "source_id": "town-meeting-tv-bac-2021-06-16",
+    "source_url": "https://www.youtube.com/watch?v=Oaa1QseQI3Y",
+    "result_data": {
+      "summary": "Promise extraction recall source 41",
+      "key_decisions": [
+        "Keep Promise Radar recall gates active"
+      ],
+      "action_items": [
+        {
+          "task": "접근성 개선 추적표를 배포하기",
+          "assignee": "김기수",
+          "deadline": "Friday",
+          "priority": "medium"
+        }
+      ]
+    },
+    "expected_promises": [
+      "접근성 개선 추적표를 배포하기"
+    ],
+    "label_notes": "action_dict false-negative guard"
+  },
+  {
+    "id": "extract-real-v16-042",
+    "source_id": "binghamton-council-2022-01-12",
+    "source_url": "https://www.youtube.com/watch?v=ccGCxf3yOTU",
+    "result_data": {
+      "summary": "Promise extraction recall source 42",
+      "key_decisions": [
+        "Keep Promise Radar recall gates active"
+      ],
+      "action_items": [
+        "비상 대응 예산안을 검토하기"
+      ]
+    },
+    "expected_promises": [
+      "비상 대응 예산안을 검토하기"
+    ],
+    "label_notes": "action_string false-negative guard"
+  },
+  {
+    "id": "extract-real-v16-043",
+    "source_id": "denver-school-board-2021-08-26",
+    "source_url": "https://www.youtube.com/watch?v=5Dt8MLW-OUo",
+    "result_data": {
+      "summary": "Promise extraction recall source 43",
+      "key_decisions": [
+        "Keep Promise Radar recall gates active"
+      ],
+      "next_steps": [
+        {
+          "description": "위원회에 최종 안건을 보내기",
+          "owner": "Kim",
+          "due": "next meeting"
+        }
+      ]
+    },
+    "expected_promises": [
+      "위원회에 최종 안건을 보내기"
+    ],
+    "label_notes": "next_dict false-negative guard"
+  },
+  {
+    "id": "extract-real-v16-044",
+    "source_id": "seoul-product-sync-ko-2026-06-17",
+    "source_url": "https://www.youtube.com/watch?v=public-ko-meeting-audio",
+    "result_data": {
+      "summary": "Promise extraction recall source 44",
+      "key_decisions": [
+        "Keep Promise Radar recall gates active"
+      ],
+      "next_steps": [
+        "릴리스 준비 체크리스트 확인하기"
+      ]
+    },
+    "expected_promises": [
+      "릴리스 준비 체크리스트 확인하기"
+    ],
+    "label_notes": "next_string false-negative guard"
+  },
+  {
+    "id": "extract-real-v16-045",
+    "source_id": "town-meeting-tv-bac-2021-06-16",
+    "source_url": "https://www.youtube.com/watch?v=Oaa1QseQI3Y",
+    "result_data": {
+      "summary": "Promise extraction recall source 45",
+      "key_decisions": [
+        "Keep Promise Radar recall gates active"
+      ],
+      "action_items": [
+        {
+          "task": "교육 참석 보고서를 준비하기",
+          "assignee": "Morgan",
+          "deadline": "Friday",
+          "priority": "high"
+        }
+      ]
+    },
+    "expected_promises": [
+      "교육 참석 보고서를 준비하기"
+    ],
+    "label_notes": "action_dict false-negative guard"
+  },
+  {
+    "id": "extract-real-v16-046",
+    "source_id": "binghamton-council-2022-01-12",
+    "source_url": "https://www.youtube.com/watch?v=ccGCxf3yOTU",
+    "result_data": {
+      "summary": "Promise extraction recall source 46",
+      "key_decisions": [
+        "Keep Promise Radar recall gates active"
+      ],
+      "action_items": [
+        "법무 검토 질문을 공유하기"
+      ]
+    },
+    "expected_promises": [
+      "법무 검토 질문을 공유하기"
+    ],
+    "label_notes": "action_string false-negative guard"
+  },
+  {
+    "id": "extract-real-v16-047",
+    "source_id": "denver-school-board-2021-08-26",
+    "source_url": "https://www.youtube.com/watch?v=5Dt8MLW-OUo",
+    "result_data": {
+      "summary": "Promise extraction recall source 47",
+      "key_decisions": [
+        "Keep Promise Radar recall gates active"
+      ],
+      "next_steps": [
+        {
+          "description": "대시보드 개인정보 고지를 수정하기",
+          "owner": "김기수",
+          "due": "next meeting"
+        }
+      ]
+    },
+    "expected_promises": [
+      "대시보드 개인정보 고지를 수정하기"
+    ],
+    "label_notes": "next_dict false-negative guard"
+  },
+  {
+    "id": "extract-real-v16-048",
+    "source_id": "seoul-product-sync-ko-2026-06-17",
+    "source_url": "https://www.youtube.com/watch?v=public-ko-meeting-audio",
+    "result_data": {
+      "summary": "Promise extraction recall source 48",
+      "key_decisions": [
+        "Keep Promise Radar recall gates active"
+      ],
+      "next_steps": [
+        "교육청 투표 일정을 확인하기"
+      ]
+    },
+    "expected_promises": [
+      "교육청 투표 일정을 확인하기"
+    ],
+    "label_notes": "next_string false-negative guard"
+  },
+  {
+    "id": "extract-real-v16-049",
+    "source_id": "town-meeting-tv-bac-2021-06-16",
+    "source_url": "https://www.youtube.com/watch?v=Oaa1QseQI3Y",
+    "result_data": {
+      "summary": "Promise extraction recall source 49",
+      "key_decisions": [
+        "Keep Promise Radar recall gates active"
+      ],
+      "action_items": [
+        {
+          "task": "재무팀에 구매 일정을 전달하기",
+          "assignee": "Kim",
+          "deadline": "Friday",
+          "priority": "medium"
+        }
+      ]
+    },
+    "expected_promises": [
+      "재무팀에 구매 일정을 전달하기"
+    ],
+    "label_notes": "action_dict false-negative guard"
+  },
+  {
+    "id": "extract-real-v16-050",
+    "source_id": "binghamton-council-2022-01-12",
+    "source_url": "https://www.youtube.com/watch?v=ccGCxf3yOTU",
+    "result_data": {
+      "summary": "Promise extraction recall source 50",
+      "key_decisions": [
+        "Keep Promise Radar recall gates active"
+      ],
+      "action_items": [
+        "분기 운영 요약을 준비하기"
+      ]
+    },
+    "expected_promises": [
+      "분기 운영 요약을 준비하기"
+    ],
+    "label_notes": "action_string false-negative guard"
+  }
+]

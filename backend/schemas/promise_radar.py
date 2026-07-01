@@ -318,6 +318,8 @@ class PromiseLearningInsight(BaseModel):
     confirmed_count: int = Field(ge=0)
     assignee_correction_count: int = Field(ge=0)
     alias_graph_size: int = Field(default=0, ge=0)
+    scope_breakdown: dict[str, int] = Field(default_factory=dict)
+    scope_recommendations: list[str] = Field(default_factory=list)
     evidence_lock_enabled: bool = True
     status_attention: list[str] = Field(default_factory=list)
     recommended_policy: str = Field(
@@ -524,6 +526,39 @@ class PromiseAccuracyReport(BaseModel):
     quality_warnings: list[str] = Field(default_factory=list)
     real_meeting_case_count: int = Field(ge=0)
     target_case_count: int = Field(default=100, ge=0)
+    below_target: bool = False
+
+
+class PromiseExtractionCase(BaseModel):
+    """One expected promise-extraction recall fixture case."""
+
+    id: str
+    result_data: dict[str, Any]
+    expected_promises: list[str] = Field(default_factory=list)
+    source_id: str | None = None
+    source_url: str | None = None
+    label_notes: str | None = None
+
+
+class PromiseExtractionRecallEvaluation(BaseModel):
+    """False-negative oriented promise extraction recall summary."""
+
+    case_count: int = Field(ge=0)
+    expected_count: int = Field(ge=0)
+    extracted_count: int = Field(ge=0)
+    matched_count: int = Field(ge=0)
+    recall: float = Field(ge=0.0, le=1.0)
+    failures: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class PromiseExtractionRecallReport(BaseModel):
+    """Fixture-level report that catches promises omitted before status scoring."""
+
+    generated_at: datetime
+    fixture_path: str
+    evaluation: PromiseExtractionRecallEvaluation
+    real_meeting_case_count: int = Field(ge=0)
+    target_case_count: int = Field(default=50, ge=0)
     below_target: bool = False
 
 
@@ -798,6 +833,19 @@ class PromiseCommandCenterFocusItem(BaseModel):
     route: str | None = None
 
 
+class PromiseCommandCenterAction(BaseModel):
+    """Executable or navigable operator action exposed by Command Center."""
+
+    key: str
+    label: str
+    method: str = Field(default="GET")
+    route: str
+    enabled: bool = True
+    requires_confirmation: bool = False
+    reason: str | None = None
+    payload: dict[str, Any] = Field(default_factory=dict)
+
+
 class PromiseEvidenceAuditSummary(BaseModel):
     """Aggregate evidence quality for queued Promise Radar decisions."""
 
@@ -810,6 +858,81 @@ class PromiseEvidenceAuditSummary(BaseModel):
     notes: list[str] = Field(default_factory=list)
 
 
+class PromiseMemoryGraphNode(BaseModel):
+    """One node in the operator-facing Promise Memory Graph."""
+
+    id: str
+    label: str
+    kind: str = Field(description="promise, owner, series, or status")
+    weight: int = Field(default=1, ge=0)
+    status: str | None = None
+    risk_level: str | None = None
+
+
+class PromiseMemoryGraphEdge(BaseModel):
+    """One relationship in the Promise Memory Graph."""
+
+    source: str
+    target: str
+    relationship: str
+    weight: int = Field(default=1, ge=0)
+
+
+class PromiseMemoryGraph(BaseModel):
+    """Compact graph of owners, recurring meetings, and unresolved promises."""
+
+    node_count: int = Field(ge=0)
+    edge_count: int = Field(ge=0)
+    recurring_series_count: int = Field(ge=0)
+    changed_cluster_count: int = Field(ge=0)
+    delayed_cluster_count: int = Field(ge=0)
+    owner_alias_count: int = Field(ge=0)
+    nodes: list[PromiseMemoryGraphNode] = Field(default_factory=list)
+    edges: list[PromiseMemoryGraphEdge] = Field(default_factory=list)
+    narrative: list[str] = Field(default_factory=list)
+
+
+class PromiseAutopilotShadowSummary(BaseModel):
+    """Preview-only simulation of what Autopilot would apply."""
+
+    candidate_count: int = Field(ge=0)
+    would_apply_count: int = Field(ge=0)
+    preview_only_count: int = Field(ge=0)
+    blocked_by_evidence_count: int = Field(ge=0)
+    conflict_count: int = Field(ge=0)
+    status_distribution: dict[str, int] = Field(default_factory=dict)
+    average_confidence: float = Field(ge=0.0, le=1.0)
+    learning_value: str
+    notes: list[str] = Field(default_factory=list)
+
+
+class PromiseEvidencePermissionSummary(BaseModel):
+    """Evidence export/privacy gate for review queue and audit material."""
+
+    scope: str
+    export_allowed: bool
+    redaction_required: bool
+    contains_speaker_data: bool
+    contains_timestamp_data: bool
+    allowed_evidence_count: int = Field(ge=0)
+    blocked_export_count: int = Field(ge=0)
+    policy_notes: list[str] = Field(default_factory=list)
+
+
+class PromiseTeamScorecard(BaseModel):
+    """Team-level Promise Radar operating score."""
+
+    risk_score: int = Field(ge=0, le=100)
+    owner_count: int = Field(ge=0)
+    open_count: int = Field(ge=0)
+    overdue_count: int = Field(ge=0)
+    high_risk_count: int = Field(ge=0)
+    recurring_series_count: int = Field(ge=0)
+    weakest_owner: str | None = None
+    strongest_owner: str | None = None
+    recommendations: list[str] = Field(default_factory=list)
+
+
 class PromiseGoogleTasksOAuthGuide(BaseModel):
     """App-facing Google Tasks OAuth guidance for the integration screen."""
 
@@ -817,6 +940,11 @@ class PromiseGoogleTasksOAuthGuide(BaseModel):
     scope: str = "https://www.googleapis.com/auth/tasks"
     auth_url_hint: str
     redirect_uri_required: bool = True
+    callback_path: str = "/api/v1/promise-radar/google-tasks/oauth/callback"
+    production_ready: bool = False
+    missing_setup: list[str] = Field(default_factory=list)
+    required_backend_env: list[str] = Field(default_factory=list)
+    verification_steps: list[str] = Field(default_factory=list)
     steps: list[str] = Field(default_factory=list)
     token_handling: str
     security_notes: list[str] = Field(default_factory=list)
@@ -833,8 +961,14 @@ class PromiseCommandCenter(BaseModel):
     pre_meeting_brief: PromisePreMeetingBrief
     external_reconcile: PromiseExternalTaskReconcileResponse
     accuracy_report: PromiseAccuracyReport
+    extraction_recall: PromiseExtractionRecallReport
     evidence_audit: PromiseEvidenceAuditSummary
+    memory_graph: PromiseMemoryGraph
+    shadow_mode: PromiseAutopilotShadowSummary
+    evidence_permissions: PromiseEvidencePermissionSummary
+    team_scorecard: PromiseTeamScorecard
     google_tasks_oauth: PromiseGoogleTasksOAuthGuide
+    actions: list[PromiseCommandCenterAction] = Field(default_factory=list)
     focus_items: list[PromiseCommandCenterFocusItem] = Field(default_factory=list)
 
 

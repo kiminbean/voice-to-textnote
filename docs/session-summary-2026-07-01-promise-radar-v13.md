@@ -1,6 +1,6 @@
 # Promise Radar v13 Session Summary
 
-> Current baseline note: v13 is preserved as session history. The latest Promise Radar baseline is v14 in `docs/session-summary-2026-07-02-promise-radar-v14.md`: 193 total accuracy cases, 126 real-meeting/audio-derived labels, evaluator accuracy 1.0.
+> Current baseline note: v13 is preserved as session history. The latest Promise Radar baseline is v16 in `docs/session-summary-2026-07-02-promise-radar-v16.md`: 569 total accuracy cases, 502 real-meeting/audio-derived labels, evaluator accuracy 1.0, extraction recall 50/50.
 
 Date: 2026-07-01
 

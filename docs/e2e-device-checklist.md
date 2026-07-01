@@ -291,9 +291,11 @@ Firebase message id: projects/voice-to-textnote/messages/1782749586143713
 | `promise_radar_calendar_export` | Promise Radar 캘린더 버튼으로 Google Calendar 열기 또는 ICS 복사 |
 | `promise_radar_assignee_quality` | Promise Radar 담당자 추천과 품질 점수/보강 이슈 표시 |
 
-### Promise Radar v14 추가 수동 확인
+### Promise Radar v16 추가 수동 확인
 
-아래 항목은 2026-07-02 기준 구현된 v6~v14 기능이다. 현재 strict release evidence required key에는 추가하지 않는다. strict key를 늘리려면 `REQUIRED_E2E_SCENARIOS`, example/scaffold evidence, release-readiness 테스트를 같은 커밋에서 함께 갱신해야 한다.
+아래 항목은 2026-07-02 기준 구현된 v6~v16 기능이다. 현재 strict release evidence required key에는 추가하지 않는다. strict key를 늘리려면 `REQUIRED_E2E_SCENARIOS`, example/scaffold evidence, release-readiness 테스트를 같은 커밋에서 함께 갱신해야 한다.
+
+`backend/scripts/generate_promise_radar_e2e_evidence.py`는 v16부터 `GET /api/v1/promise-radar/command-center?target_case_count=500`을 호출해 Command Center 응답이 Promise Memory Graph, Autopilot Shadow Mode, Evidence Permission, Team Scorecard, operator actions, Google Tasks OAuth readiness, extraction recall 필드를 포함하고 실제 회의 label 500건 이상 및 extraction recall 0.95 이상을 반환하는지 확인한다. 이 스크립트가 실패하면 evidence JSON을 수동으로 조작하지 말고 서버/DB/기기 연결 원인을 먼저 해결한다.
 
 - `promise_radar_learning_loop`: Result 화면 `오판` 버튼으로 `learning_feedback` 저장 후 learning profile threshold가 갱신되는지 확인한다.
 - `promise_radar_timeline`: Result 화면 `타임라인` 버튼에서 감지/자동 판정/사용자 피드백/병합/분리 이벤트가 시간순으로 표시되는지 확인한다.
@@ -316,12 +318,18 @@ Firebase message id: projects/voice-to-textnote/messages/1782749586143713
 - `promise_radar_review_queue_filters`: Autopilot Review Queue에서 전체/충돌/약한 근거/고위험/기한 있음 필터가 동작하고 `현재 모두 맞음`은 표시된 후보에만 적용되는지 확인한다.
 - `promise_radar_review_queue_diff_preview`: Autopilot Review Queue 상단에서 표시/확정 가능/근거 잠김/약한 근거/고위험/기한 수와 상태 변경 분포가 일괄 확정 전에 표시되는지 확인한다.
 - `promise_radar_evidence_comparison`: 원장 행의 `근거 비교` 버튼이 기존 원장 근거와 최신 Evidence Pack의 유사도, 공유 핵심어, marker hit를 표시하는지 확인한다.
-- `promise_radar_command_center`: `약속 레이더 Command Center` 화면이 dashboard, focus item, Autopilot Review Queue, Learning Loop v3, Evidence Audit, Daily Digest, Google Tasks OAuth guide, accuracy report를 한 화면에서 표시하는지 확인한다.
-- `promise_radar_learning_loop_v3`: Command Center 또는 learning profile에서 status별 sample count/false-positive rate, alias graph size, Evidence Lock 상태가 표시되고 완료 오판 피드백은 completed rate/threshold에만 영향을 주는지 확인한다.
+- `promise_radar_command_center`: `약속 레이더 Command Center` 화면이 dashboard, focus item, operator actions, Autopilot Review Queue, Learning Loop v3, Evidence Audit, Daily Digest, Google Tasks OAuth guide/readiness, accuracy report, extraction recall report, Promise Memory Graph, Autopilot Shadow Mode, Evidence Permission, Team Scorecard를 한 화면에서 표시하는지 확인한다.
+- `promise_radar_memory_graph`: Command Center의 Promise Memory Graph가 owner/promise/series/status node 수, edge 수, 반복 회의 수, 지연/변경 cluster, owner alias 수, 상위 node/edge 관계와 narrative를 표시하는지 확인한다.
+- `promise_radar_shadow_mode`: Command Center의 Autopilot Shadow Mode가 후보 수, 자동 적용 가능 수, preview-only 수, Evidence Lock 보류 수, 충돌 수, status 분포와 학습 반영 안내를 표시하는지 확인한다.
+- `promise_radar_evidence_permission`: Command Center의 Evidence Permission이 export 가능 여부, redaction 필요 여부, speaker/timestamp 포함 여부, 허용/차단 evidence 수와 policy note를 표시하는지 확인한다.
+- `promise_radar_team_scorecard`: Command Center의 Team Scorecard가 팀 위험 점수, 담당자 수, 열린/초과/고위험 약속 수, 우선 확인 owner와 추천 조치를 표시하는지 확인한다.
+- `promise_radar_learning_loop_v3`: Command Center 또는 learning profile에서 status별 sample count/false-positive rate, alias graph size, learning scope breakdown/recommendation, Evidence Lock 상태가 표시되고 완료 오판 피드백은 completed rate/threshold에만 영향을 주는지 확인한다.
 - `promise_radar_evidence_audit`: Command Center Evidence Audit이 locked/weak evidence, missing timestamp/speaker, marker hit, average similarity를 표시하고 약한 근거가 있으면 focus item으로 승격되는지 확인한다.
-- `promise_radar_google_tasks_oauth_guide`: Command Center의 Google Tasks 영역이 `https://www.googleapis.com/auth/tasks` scope, OAuth 승인 순서, token one-request 처리, 저장 금지 보안 안내를 표시하는지 확인한다.
-- `promise_radar_accuracy_report`: 원장 헤더 또는 Command Center 정확도 패널에서 193건 fixture, 실제 회의 label 126건, accuracy 1.0, confidence bucket, coverage, source quality warning이 표시되는지 확인한다.
-- `promise_radar_accuracy_audit_gate`: `python backend/scripts/audit_promise_radar_accuracy_set.py --target-real-cases 100`가 오류 없이 통과하고 fixture/manifest mismatch가 없음을 확인한다.
+- `promise_radar_google_tasks_oauth_guide`: Command Center의 Google Tasks 영역이 `https://www.googleapis.com/auth/tasks` scope, OAuth 승인 순서, production readiness, missing setup, token one-request 처리, 저장 금지 보안 안내를 표시하는지 확인한다.
+- `promise_radar_accuracy_report`: 원장 헤더 또는 Command Center 정확도 패널에서 569건 fixture, 실제 회의 label 502건, accuracy 1.0, confidence bucket, coverage, source quality warning이 표시되는지 확인한다.
+- `promise_radar_extraction_recall_report`: Command Center 정확도 패널 또는 `GET /api/v1/promise-radar/accuracy/extraction-report`에서 50건 extraction fixture, expected 50건, matched 50건, recall 1.0이 표시되는지 확인한다.
+- `promise_radar_accuracy_audit_gate`: `python backend/scripts/audit_promise_radar_accuracy_set.py --target-real-cases 500`가 오류 없이 통과하고 fixture/manifest mismatch가 없음을 확인한다.
+- `promise_radar_extraction_recall_gate`: `python backend/scripts/evaluate_promise_radar_extraction.py --target-cases 50 --min-recall 0.95`가 오류 없이 통과하고 false negative failures가 없음을 확인한다.
 - `promise_radar_identity_confidence`: 원장 행에서 화자/담당자 신뢰도 pill이 표시되고, speaker/owner/assigned user가 없는 항목은 표시되지 않거나 낮은 값으로 표시되는지 확인한다.
 - `promise_radar_responsibility_scores`: Result 화면 `담당자 책임 점수` 섹션에서 owner별 open/completed/overdue/completion rate와 risk chip이 표시되는지 확인한다.
 - `promise_radar_meeting_series`: Result 화면 `반복회의 연결` 섹션에서 같은 회의 제목/시리즈의 열린 약속, 기한 초과, 고위험 수와 확인 질문이 표시되는지 확인한다.
