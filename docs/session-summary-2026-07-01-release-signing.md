@@ -18,6 +18,10 @@ Date: 2026-07-01
 - Installed the Android staging release on `76aadc20` and verified the login/home/result/share flows on the physical Redmi Note 9 Pro.
 - Filled real Android E2E evidence for four strict scenarios: `android_foreground_service`, `android_debug_tailscale_cleartext_allowed`, `android_release_cleartext_blocked`, and `export_share_android`.
 - Re-ran the Android Promise Radar device gate on the same installed staging release. The first run failed because Android was still focused on the MIUI system share sheet, not the app result screen. After returning home and relaunching `com.voicetextnote.app`, the result screen restored `약속 레이더` as `탭 12개 중 4번째`, and `verify_promise_radar_device_gate.py` passed.
+- Added an iOS `RunnerUITests` target for physical-device launch evidence.
+- Fixed the Mac mini user keychain search list so `xcodebuild test` can see both the dedicated release signing keychain and `login.keychain-db`; the previous keychain list contained a malformed `login.keychain-db -db` entry.
+- Verified the iOS Debug/XCUITest crash as a Flutter 3.44.1 engine debug-path issue on iPhone 17 Pro iOS 26.5.1, with crash frames in `VSyncClient` and `createTouchRateCorrectionVSyncClientIfNeeded` before Dart code runs.
+- Verified iOS Release/XCUITest launch smoke on the same physical iPhone and exported screenshot/UI hierarchy attachments for future strict evidence work.
 
 ## Current private values to configure locally
 
@@ -60,9 +64,15 @@ ios_entitlements_sha256: e44b8d040b5abe77085420d347e186850201db6111dd89c8819b39c
 - `flutter screenshot -d 00008150-000239020C08401C` -> `Screenshot not supported for Inbean의 iPhone`.
 - `uvx --from pymobiledevice3 pymobiledevice3 usbmux list` -> `[]`.
 - `uvx --from pymobiledevice3 pymobiledevice3 remote browse --timeout 5` -> `ERROR This command requires root privileges. Consider retrying with "sudo".`
+- `security find-identity -v -p codesigning` after keychain search-list repair -> 4 valid code-signing identities including Apple Distribution and Apple Development identities.
+- `xcodebuild test -workspace ios/Runner.xcworkspace -scheme Runner -configuration Debug -destination 'id=00008150-000239020C08401C' -only-testing:RunnerUITests/RunnerUITests/testReleaseLaunchEvidence` -> app crash before Dart code in Flutter engine `VSyncClient`; reproduced in `docs/release-e2e-artifacts/ios_release_launch_xcuitest_20260701205638.xcresult`.
+- `xcodebuild test -workspace ios/Runner.xcworkspace -scheme Runner -configuration Release -destination 'id=00008150-000239020C08401C' -only-testing:RunnerUITests/RunnerUITests/testReleaseLaunchEvidence` -> `Test Case '-[RunnerUITests.RunnerUITests testReleaseLaunchEvidence]' passed (5.901 seconds)`, `Executed 1 test, with 0 failures (0 unexpected)`, `** TEST SUCCEEDED **`.
+- Final iOS Release launch evidence bundle: `docs/release-e2e-artifacts/ios_release_launch_xcuitest_release_20260701205837.xcresult`.
+- Final iOS Release launch exported attachments: `docs/release-e2e-artifacts/ios_release_launch_xcuitest_release_20260701205837_attachments/`.
 
 ## Remaining blockers
 
 - 17 strict release E2E scenarios remain. They are iOS-only or Android+iOS common scenarios: permission recovery, unfinished recording recovery, push/deeplink, iOS background/interruption/Bluetooth/HTTP/share, and Promise Radar status/push/calendar/assignee quality.
-- iOS physical UI evidence is currently blocked from CLI automation: `devicectl` can launch/query the wired device and exposes `screenViewingURL`, but does not provide noninteractive screenshot/tap commands; `pymobiledevice3 remote start-tunnel` requires root privileges, and usbmux discovery is unavailable in the current session.
+- iOS physical launch evidence is no longer blocked: use Release configuration `RunnerUITests` attachments. `devicectl`/`flutter screenshot` still cannot provide noninteractive physical iPhone screenshots, so scenario-specific iOS evidence should be collected by extending `RunnerUITests`.
+- Debug/XCUITest Flutter engine `VSyncClient` crashes should not be treated as release blockers while Release/XCUITest passes on the same device. Re-check this only after Flutter upgrade or iOS engine changes.
 - Do not fabricate scenario evidence just to pass strict readiness.

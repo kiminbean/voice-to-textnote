@@ -1,0 +1,38 @@
+Optional(Attributes: Application, 0x10bb23c00, pid: 25486, label: 'Voice TextNote'
+Element subtree:
+ →Application, 0x10bb23c00, pid: 25486, label: 'Voice TextNote'
+    Window (Main), 0x10bb23d40, {{0.0, 0.0}, {402.0, 874.0}}
+      Other, 0x10bb23e80, {{0.0, 0.0}, {402.0, 874.0}}
+        Other, 0x10bb74000, {{0.0, 0.0}, {402.0, 874.0}}
+          Other, 0x10bb74140, {{0.0, 0.0}, {402.0, 874.0}}
+            Other, 0x10bb74280, {{0.0, 0.0}, {402.0, 874.0}}
+              Other, 0x10bb743c0, {{0.0, 0.0}, {402.0, 874.0}}
+              Other, 0x10bb74500, {{0.0, 0.0}, {402.0, 874.0}}
+                Other, 0x10bb74640, {{0.0, 0.0}, {402.0, 874.0}}
+                Other, 0x10bb74780, {{0.0, 0.0}, {402.0, 874.0}}
+                  Other, 0x10bb748c0, {{0.0, 0.0}, {402.0, 874.0}}
+                  Other, 0x10bb74a00, {{0.0, 0.0}, {402.0, 874.0}}
+                    ScrollView, 0x10bb74b40, {{0.0, 78.5}, {402.0, 745.0}}
+                    Other, 0x10bb74c80, {{0.0, 0.0}, {402.0, 874.0}}
+                      Other, 0x10bb74dc0, {{24.0, 78.5}, {354.0, 745.0}}
+                      StaticText, 0x10bb74f00, {{24.0, 222.5}, {354.0, 34.0}}, label: 'Voice TextNote'
+                      StaticText, 0x10bb75040, {{24.0, 264.5}, {354.0, 22.0}}, label: '프라이버시 우선 회의 자동 기록'
+                      TextField, 0x10bb75180, {{24.0, 318.5}, {354.0, 48.0}}, label: '이메일'
+                      Other, 0x10bb752c0, {{0.0, 0.0}, {402.0, 874.0}}
+                        TextField, 0x10bb75400, {{24.0, 378.5}, {354.0, 48.0}}, label: '비밀번호'
+                        Button, 0x10bb75540, {{330.0, 378.5}, {48.0, 48.0}}
+                      Button, 0x10bb75680, {{24.0, 450.5}, {354.0, 50.0}}, label: '로그인'
+                      StaticText, 0x10bb757c0, {{189.4, 524.5}, {23.3, 19.0}}, label: '또는'
+                      Button, 0x10bb75900, {{24.0, 555.5}, {354.0, 50.0}}, label: 'Google로 계속하기'
+                      Button, 0x10bb75a40, {{24.0, 613.5}, {354.0, 50.0}}, label: 'Apple로 계속하기'
+                      StaticText, 0x10bb75b80, {{111.3, 708.5}, {111.1, 22.0}}, label: '계정이 없으신가요?'
+                      Button, 0x10bb75cc0, {{222.3, 695.5}, {68.4, 48.0}}, label: '회원가입'
+                      Button, 0x10bb75e00, {{24.0, 743.5}, {354.0, 48.0}}, label: '게스트로 시작 (24시간 저장)'
+Path to element:
+ →Application, 0x10bb23c00, pid: 25486, label: 'Voice TextNote'
+Query chain:
+ →Find: Target Application 'com.voicetextnote.app'
+  Output: {
+    Application, 0x10bb75f40, pid: 25486, label: 'Voice TextNote'
+  }
+)

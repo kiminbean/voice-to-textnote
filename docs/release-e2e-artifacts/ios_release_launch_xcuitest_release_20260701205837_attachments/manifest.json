@@ -1,0 +1,35 @@
+[
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00008150-000239020C08401C",
+        "deviceName" : "Inbean의 iPhone",
+        "exportedFileName" : "52074994-A149-4B87-B877-9825C2D0B46E.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "ios_release_launch_verified_0_F382E930-0103-47AD-B458-442F0D2985D1.png",
+        "timestamp" : 1782907137.606
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00008150-000239020C08401C",
+        "deviceName" : "Inbean의 iPhone",
+        "exportedFileName" : "7C4FB2A6-C9D3-47D3-BA46-6707D4C5C0D9.txt",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "ios_release_launch_ui_hierarchy_0_0A4E36C5-60F0-4B94-97E8-B30A7B095584.txt",
+        "timestamp" : 1782907137.537
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00008150-000239020C08401C",
+        "deviceName" : "Inbean의 iPhone",
+        "exportedFileName" : "3DC02C3F-505B-4CF2-80F9-8C76125086C5.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "ios_release_launch_initial_0_DF18AEC3-BB9D-409D-9C52-C8ECABB7746E.png",
+        "timestamp" : 1782907137.477
+      }
+    ],
+    "testIdentifier" : "RunnerUITests/testReleaseLaunchEvidence()",
+    "testIdentifierURL" : "test://com.apple.xcode/Runner/RunnerUITests/RunnerUITests/testReleaseLaunchEvidence"
+  }
+]

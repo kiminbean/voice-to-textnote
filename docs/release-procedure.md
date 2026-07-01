@@ -394,4 +394,4 @@ gh release create v1.7.0 \
 | 3.1 Runner | (GitHub Actions) | `verify_github_mobile_release_env.py` PASS |
 | 4.1 Release | (README + tag) | `git tag` + GitHub Release 확인 |
 
-2026-07-01 Mac mini strict 상태: Android-only scenario 4개는 실제 evidence로 `pass:true`이며, strict 결과는 `release_readiness: 17 errors, 1 warnings`이다. 남은 17개는 iOS-only 또는 Android+iOS 공통 scenario이므로 iOS UI/스크린샷/푸시/딥링크 관측 경로가 준비되기 전에는 통과시키지 않는다.
+2026-07-01 Mac mini strict 상태: Android-only scenario 4개는 실제 evidence로 `pass:true`이며, strict 결과는 `release_readiness: 17 errors, 1 warnings`이다. iOS Release XCUITest launch smoke는 iPhone 17 Pro에서 PASS했고 screenshot/UI hierarchy attachment 경로가 확보됐다. 남은 17개는 iOS-only 또는 Android+iOS 공통 scenario이므로 각 scenario별 실제 조작/스크린샷/푸시/딥링크 관측 증거가 채워지기 전에는 통과시키지 않는다.

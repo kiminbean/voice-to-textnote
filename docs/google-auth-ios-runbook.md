@@ -318,6 +318,51 @@ xcrun devicectl device process launch \
 | Android Google 계정 선택 후 `not registered to use OAuth2.0` | 실제 설치 APK의 package/SHA-1 조합이 Google Cloud Console Android OAuth client에 등록되어 있지 않음 | 설치 APK SHA-1을 확인하고 `com.voicetextnote.app` Android OAuth client에 등록한다. |
 | Android Google 로그인에서 `You must use a Web client as the server client ID` | `serverClientId`에 Android OAuth client ID를 넣음 | Web OAuth client ID를 사용한다. |
 | Flutter iOS install이 Developer Mode 오류를 내지만 기기는 available | Flutter device detection과 CoreDevice 상태 불일치 | `xcrun devicectl device info details`로 `developerModeStatus: enabled` 확인 후 `devicectl device install app` 사용 |
+| iOS XCUITest Debug 실행 직후 `VSyncClient` / `createTouchRateCorrectionVSyncClientIfNeeded` 크래시 | Flutter 3.44.1 Debug/XCUITest 경로가 iPhone 17 Pro iOS 26.5.1 ProMotion 환경에서 Dart 코드 실행 전 Flutter engine `VSyncClient` 초기화 중 SIGSEGV | 실기기 release evidence는 `xcodebuild test -configuration Release ... RunnerUITests/testReleaseLaunchEvidence`로 수집한다. 같은 기기에서 Release XCUITest는 PASS했으므로 Debug/XCUITest 크래시를 release blocker로 판정하지 않는다. |
+
+## 2026-07-01 iPhone Release XCUITest launch evidence
+
+Xcode에서 `RunnerUITests` target을 추가한 뒤 Mac mini keychain search list를 정리했다. 기존 user keychain list에는 `login.keychain-db -db` 형태의 잘못된 항목이 들어 있어 `xcodebuild test`가 Apple Development identity를 찾지 못했다. 아래처럼 release keychain과 login keychain을 명시한 뒤 `security find-identity -v -p codesigning`에서 Apple Distribution 및 Apple Development identity가 모두 확인되었다.
+
+```bash
+security list-keychains -d user -s \
+  /Users/ibkim/secure/voice-to-textnote/apple-signing/voice-release.keychain-db \
+  /Users/ibkim/Library/Keychains/login.keychain-db
+```
+
+최종 검증은 Debug가 아니라 Release configuration으로 실행한다. Debug/XCUITest는 Flutter engine `VSyncClient` crash를 재현하지만, Release configuration은 같은 iPhone에서 정상 실행되고 screenshot/UI hierarchy attachment를 남긴다.
+
+```bash
+cd client
+xcodebuild test \
+  -workspace ios/Runner.xcworkspace \
+  -scheme Runner \
+  -configuration Release \
+  -destination 'id=00008150-000239020C08401C' \
+  -only-testing:RunnerUITests/RunnerUITests/testReleaseLaunchEvidence \
+  -skip-testing:RunnerTests \
+  -resultBundlePath ../docs/release-e2e-artifacts/ios_release_launch_xcuitest_release_20260701205837.xcresult \
+  -collect-test-diagnostics never \
+  -allowProvisioningUpdates \
+  -allowProvisioningDeviceRegistration \
+  -authenticationKeyPath /Users/ibkim/secure/voice-to-textnote/AuthKey_5WDG3L7L32.p8 \
+  -authenticationKeyID 5WDG3L7L32 \
+  -authenticationKeyIssuerID 3af9f2b0-aefc-4670-a821-1606fb19e086
+```
+
+검증 결과:
+
+```text
+Test Case '-[RunnerUITests.RunnerUITests testReleaseLaunchEvidence]' passed (5.901 seconds).
+Executed 1 test, with 0 failures (0 unexpected)
+** TEST SUCCEEDED **
+```
+
+보존 증거:
+
+- Result bundle: `docs/release-e2e-artifacts/ios_release_launch_xcuitest_release_20260701205837.xcresult`
+- Exported attachments: `docs/release-e2e-artifacts/ios_release_launch_xcuitest_release_20260701205837_attachments/`
+- UI hierarchy labels: `Voice TextNote`, `Google로 계속하기`, `Apple로 계속하기`, `게스트로 시작 (24시간 저장)`
 
 ## STT 20% 멈춤 진단 규칙
 

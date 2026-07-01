@@ -35,8 +35,16 @@
 - [x] Android staging release APK 재빌드/설치 완료: `ENV=staging`, `API_BASE_URL=http://100.69.69.119:8000/api/v1`, SHA-256 `d75e70b96a30e03988a292658ef51086fbe67f19b8c084d28ff6744c6432ec2a`.
 - [x] Android strict scenario 4개 실제 증거 PASS: `android_foreground_service`, `android_debug_tailscale_cleartext_allowed`, `android_release_cleartext_blocked`, `export_share_android`.
 - [x] Android Promise Radar 메뉴/탭 gate 재확인: `python3 client/scripts/verify_promise_radar_device_gate.py --serial 76aadc20 --evidence-out docs/promise-radar-android-device-gate-2026-07-01-current.json` -> `PASS Promise Radar Android device gate`.
+- [x] iOS Release XCUITest launch smoke PASS: `xcodebuild test -configuration Release -only-testing:RunnerUITests/RunnerUITests/testReleaseLaunchEvidence` on iPhone `00008150-000239020C08401C` -> `** TEST SUCCEEDED **`.
+- [x] iOS Release launch screenshot/UI hierarchy attachments exported: `docs/release-e2e-artifacts/ios_release_launch_xcuitest_release_20260701205837_attachments/`.
 - [ ] `docs/release-e2e-evidence.json`의 남은 17개 required scenario는 아직 실제 iOS 또는 Android+iOS screenshot/log/video/trace evidence와 `pass: true`가 필요.
-- [ ] iOS 물리 UI 자동화 blocker 해소 필요: 현재 `devicectl`은 wired/available/tunnel connected 상태와 display info는 확인하지만 CLI screenshot/tap 명령을 제공하지 않는다. `flutter screenshot -d 00008150-000239020C08401C`는 `Screenshot not supported for Inbean의 iPhone`으로 실패했고, `pymobiledevice3 remote browse`는 root 권한을 요구하며, `pymobiledevice3 usbmux list`는 `[]`를 반환한다. iOS 시나리오 증거는 Xcode/Runner UI test, WebDriverAgent, 또는 root tunnel 기반 캡처 경로를 준비해야 한다.
+- [ ] iOS 시나리오별 UI 증거는 `RunnerUITests`를 확장해서 수집한다. `devicectl`은 wired/available/tunnel connected 상태와 display info는 확인하지만 CLI screenshot/tap 명령을 제공하지 않고, `flutter screenshot -d 00008150-000239020C08401C`는 `Screenshot not supported for Inbean의 iPhone`으로 실패하며, `pymobiledevice3 remote browse`는 root 권한을 요구한다. 따라서 iOS 증거 수집의 기본 경로는 Xcode UI Test attachment다.
+
+2026-07-01 iOS XCUITest 주의사항:
+
+- Debug configuration XCUITest는 iPhone 17 Pro iOS 26.5.1에서 Flutter engine `VSyncClient` / `createTouchRateCorrectionVSyncClientIfNeeded` SIGSEGV를 재현한다.
+- 같은 기기, 같은 앱에서 Release configuration XCUITest는 PASS했다.
+- Strict release evidence에는 Debug crash를 blocker로 넣지 말고, Release configuration으로 실행한 `RunnerUITests` screenshot/UI hierarchy attachment를 사용한다.
 
 ### 네이티브 빌드 기준선
 
