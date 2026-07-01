@@ -421,6 +421,11 @@ def _summarize_api_check(name: str, result: dict[str, Any]) -> dict[str, Any]:
         memory_graph = body.get("memory_graph") or {}
         shadow_mode = body.get("shadow_mode") or {}
         evidence_permissions = body.get("evidence_permissions") or {}
+        evidence_room = body.get("evidence_room") or {}
+        learning_telemetry = body.get("learning_telemetry") or {}
+        live_coach = body.get("live_coach") or {}
+        autopilot_quarantine = body.get("autopilot_quarantine") or {}
+        meeting_recipe = body.get("meeting_recipe") or {}
         team_scorecard = body.get("team_scorecard") or {}
         google_tasks_oauth = body.get("google_tasks_oauth") or {}
         summary.update(
@@ -442,6 +447,15 @@ def _summarize_api_check(name: str, result: dict[str, Any]) -> dict[str, Any]:
                 "shadow_blocked_by_evidence_count": shadow_mode.get("blocked_by_evidence_count"),
                 "evidence_export_allowed": evidence_permissions.get("export_allowed"),
                 "evidence_blocked_export_count": evidence_permissions.get("blocked_export_count"),
+                "evidence_room_share_ready_count": evidence_room.get("share_ready_count"),
+                "evidence_room_blocked_count": evidence_room.get("blocked_count"),
+                "learning_telemetry_event_count": learning_telemetry.get("event_count"),
+                "learning_telemetry_status_segment_count": len(
+                    learning_telemetry.get("status_segments") or []
+                ),
+                "live_coach_prompt_count": live_coach.get("prompt_count"),
+                "autopilot_quarantine_count": autopilot_quarantine.get("quarantined_count"),
+                "meeting_recipe_key": meeting_recipe.get("recipe_key"),
                 "team_risk_score": team_scorecard.get("risk_score"),
                 "google_tasks_oauth_production_ready": google_tasks_oauth.get("production_ready"),
                 "google_tasks_oauth_missing_setup_count": len(
@@ -507,7 +521,7 @@ def main() -> int:
     checks["command_center"] = _api(
         args.base_url,
         "GET",
-        "promise-radar/command-center?limit=10&target_case_count=500",
+        "promise-radar/command-center?limit=10&target_case_count=560",
         token=token,
     )
 
@@ -561,8 +575,8 @@ def main() -> int:
         "due_push_dispatch_contract": bool(checks["due_push_dispatch_contract"].get("ok")),
         "command_center": bool(checks["command_center"].get("ok")),
         "command_center_accuracy_baseline": bool(
-            (summarized_checks["command_center"].get("accuracy_case_count") or 0) >= 500
-            and (summarized_checks["command_center"].get("real_meeting_case_count") or 0) >= 500
+            (summarized_checks["command_center"].get("accuracy_case_count") or 0) >= 629
+            and (summarized_checks["command_center"].get("real_meeting_case_count") or 0) >= 560
         ),
         "command_center_v15_contract": bool(
             isinstance(
@@ -587,6 +601,25 @@ def main() -> int:
                 summarized_checks["command_center"].get("google_tasks_oauth_production_ready"),
                 bool,
             )
+        ),
+        "command_center_v17_contract": bool(
+            isinstance(
+                summarized_checks["command_center"].get("learning_telemetry_event_count"),
+                int,
+            )
+            and isinstance(
+                summarized_checks["command_center"].get("live_coach_prompt_count"),
+                int,
+            )
+            and isinstance(
+                summarized_checks["command_center"].get("evidence_room_share_ready_count"),
+                int,
+            )
+            and isinstance(
+                summarized_checks["command_center"].get("autopilot_quarantine_count"),
+                int,
+            )
+            and bool(summarized_checks["command_center"].get("meeting_recipe_key"))
         ),
     }
 

@@ -69,6 +69,12 @@ class _CommandCenterView extends StatelessWidget {
         const SizedBox(height: AppSpacing.md),
         _LearningInsightHeader(insight: center.learningInsight),
         const SizedBox(height: AppSpacing.md),
+        _LearningTelemetryPanel(report: center.learningTelemetry),
+        const SizedBox(height: AppSpacing.md),
+        _LiveCoachPanel(coach: center.liveCoach),
+        const SizedBox(height: AppSpacing.md),
+        _AutopilotQuarantinePanel(summary: center.autopilotQuarantine),
+        const SizedBox(height: AppSpacing.md),
         _TeamScorecardPanel(scorecard: center.teamScorecard),
         const SizedBox(height: AppSpacing.md),
         _MemoryGraphPanel(graph: center.memoryGraph),
@@ -80,6 +86,10 @@ class _CommandCenterView extends StatelessWidget {
         _EvidenceAuditPanel(audit: center.evidenceAudit),
         const SizedBox(height: AppSpacing.md),
         _EvidencePermissionPanel(permissions: center.evidencePermissions),
+        const SizedBox(height: AppSpacing.md),
+        _EvidenceRoomPanel(summary: center.evidenceRoom),
+        const SizedBox(height: AppSpacing.md),
+        _MeetingRecipePanel(policy: center.meetingRecipe),
         const SizedBox(height: AppSpacing.md),
         _DigestBriefPanel(
           digest: center.digest,
@@ -355,6 +365,173 @@ class _LearningInsightHeader extends StatelessWidget {
             for (final action in insight.nextActions.take(2)) ...[
               const SizedBox(height: AppSpacing.xs),
               Text(action, style: theme.textTheme.bodySmall),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LearningTelemetryPanel extends StatelessWidget {
+  final PromiseLearningTelemetryReport report;
+
+  const _LearningTelemetryPanel({required this.report});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Production Learning Telemetry',
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.xs,
+              children: [
+                _MetricChip(
+                  icon: Icons.insights_outlined,
+                  label: 'Event ${report.eventCount}',
+                ),
+                _MetricChip(
+                  icon: Icons.feedback_outlined,
+                  label: 'Feedback ${report.feedbackEventCount}',
+                ),
+                _MetricChip(
+                  icon: Icons.rule_folder_outlined,
+                  label: '상태 ${report.statusSegments.length}',
+                ),
+                _MetricChip(
+                  icon: Icons.translate_rounded,
+                  label: '언어 ${report.localeSegments.length}',
+                ),
+              ],
+            ),
+            for (final segment in report.statusSegments.take(3)) ...[
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                '${segment.value} · 오판 ${(segment.falsePositiveRate * 100).round()}% · 표본 ${segment.sampleCount}',
+                style: theme.textTheme.bodySmall,
+              ),
+            ],
+            for (final recommendation in report.recommendations.take(2)) ...[
+              const SizedBox(height: AppSpacing.xs),
+              Text(recommendation, style: theme.textTheme.bodySmall),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LiveCoachPanel extends StatelessWidget {
+  final PromiseLiveCoachSummary coach;
+
+  const _LiveCoachPanel({required this.coach});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Live Promise Coach',
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.xs,
+              children: [
+                _MetricChip(
+                  icon: Icons.fact_check_outlined,
+                  label: '준비 ${coach.readinessScore}',
+                ),
+                _MetricChip(
+                  icon: Icons.assistant_direction_outlined,
+                  label: 'Prompt ${coach.promptCount}',
+                ),
+              ],
+            ),
+            for (final prompt in coach.prompts.take(3)) ...[
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                '${prompt.label} · ${prompt.prompt}',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodySmall,
+              ),
+            ],
+            for (final note in coach.notes.take(1)) ...[
+              const SizedBox(height: AppSpacing.xs),
+              Text(note, style: theme.textTheme.bodySmall),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AutopilotQuarantinePanel extends StatelessWidget {
+  final PromiseAutopilotQuarantineSummary summary;
+
+  const _AutopilotQuarantinePanel({required this.summary});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Autopilot Undo / Quarantine',
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.xs,
+              children: [
+                _MetricChip(
+                  icon: Icons.undo_rounded,
+                  label: '격리 ${summary.quarantinedCount}',
+                ),
+                _MetricChip(
+                  icon: Icons.block_rounded,
+                  label: '거절 ${summary.rejectedCount}',
+                ),
+                for (final entry in summary.affectedStatuses.entries.take(2))
+                  _MetricChip(
+                    icon: Icons.label_important_outline_rounded,
+                    label: '${entry.key} ${entry.value}',
+                  ),
+              ],
+            ),
+            for (final note in summary.notes.take(2)) ...[
+              const SizedBox(height: AppSpacing.xs),
+              Text(note, style: theme.textTheme.bodySmall),
             ],
           ],
         ),
@@ -774,6 +951,118 @@ class _EvidencePermissionPanel extends StatelessWidget {
             for (final note in permissions.policyNotes.take(2)) ...[
               const SizedBox(height: AppSpacing.xs),
               Text(note, style: theme.textTheme.bodySmall),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EvidenceRoomPanel extends StatelessWidget {
+  final PromiseEvidenceRoomSummary summary;
+
+  const _EvidenceRoomPanel({required this.summary});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Privacy-Safe Evidence Room',
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.xs,
+              children: [
+                _MetricChip(
+                  icon: Icons.ios_share_rounded,
+                  label: '공유 ${summary.shareReadyCount}',
+                ),
+                _MetricChip(
+                  icon: Icons.privacy_tip_outlined,
+                  label: 'Redact ${summary.redactionRequiredCount}',
+                ),
+                _MetricChip(
+                  icon: Icons.block_rounded,
+                  label: '차단 ${summary.blockedCount}',
+                ),
+                _MetricChip(
+                  icon: Icons.timer_outlined,
+                  label: '${summary.defaultTtlHours}h',
+                ),
+              ],
+            ),
+            for (final note in summary.policyNotes.take(2)) ...[
+              const SizedBox(height: AppSpacing.xs),
+              Text(note, style: theme.textTheme.bodySmall),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MeetingRecipePanel extends StatelessWidget {
+  final PromiseMeetingRecipePolicy policy;
+
+  const _MeetingRecipePanel({required this.policy});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Meeting Recipe',
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.xs,
+              children: [
+                _MetricChip(
+                  icon: Icons.restaurant_menu_rounded,
+                  label: policy.label,
+                ),
+                _MetricChip(
+                  icon: policy.ownerRequired
+                      ? Icons.person_search_outlined
+                      : Icons.person_off_outlined,
+                  label: policy.ownerRequired ? 'Owner 필수' : 'Owner 선택',
+                ),
+                _MetricChip(
+                  icon: policy.dueDateRequired
+                      ? Icons.event_available_outlined
+                      : Icons.event_busy_outlined,
+                  label: policy.dueDateRequired ? '기한 필수' : '기한 선택',
+                ),
+                _MetricChip(
+                  icon: Icons.rule_rounded,
+                  label: policy.defaultAutopilotMode,
+                ),
+              ],
+            ),
+            for (final template in policy.promptTemplates.take(2)) ...[
+              const SizedBox(height: AppSpacing.xs),
+              Text(template, style: theme.textTheme.bodySmall),
             ],
           ],
         ),

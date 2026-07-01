@@ -571,5 +571,146 @@
         "label_notes": "Labels mix completed/open/changed/delayed/dismissed outcomes from CC meeting captions and representative audio; v16 expands each source to 47 labels."
       }
     ]
+  },
+  {
+    "source_id": "promise-radar-v17-korean-disability-policy-audio",
+    "title": "Korean disability rights policy discussion audio segments",
+    "url": "https://www.youtube.com/watch?v=Oaa1QseQI3Y",
+    "channel": "Welfare TV",
+    "license": "Creative Commons Attribution license (reuse allowed)",
+    "duration_seconds": 3600,
+    "verified_with": "yt-dlp --dump-single-json https://www.youtube.com/watch?v=Oaa1QseQI3Y",
+    "subtitle_cache": ".cache/promise-radar-youtube-v15/Oaa1QseQI3Y.ko.json3",
+    "representative_audio_clip": ".cache/promise-radar-audio-v15/Oaa1QseQI3Y_5_70.mp3",
+    "golden_case_id_prefix": "real-v17-Oaa1QseQI3Y-",
+    "golden_case_count": 20,
+    "rebuild_commands": [
+      "yt-dlp --write-auto-subs --sub-lang ko --skip-download --sub-format json3 -o '.cache/promise-radar-youtube-v17/%(id)s.%(ext)s' https://www.youtube.com/watch?v=Oaa1QseQI3Y",
+      "yt-dlp -f bestaudio --download-sections '*00:01:00-00:02:05' --extract-audio --audio-format mp3 -o '.cache/promise-radar-audio-v17/%(id)s_60_125.%(ext)s' https://www.youtube.com/watch?v=Oaa1QseQI3Y"
+    ],
+    "segments": [
+      {
+        "start_seconds": 60,
+        "end_seconds": 120,
+        "topic": "장애인 권익 정책",
+        "golden_case_count": 5,
+        "label_notes": "v17 YouTube audio/caption-derived balanced Promise Radar status labels."
+      },
+      {
+        "start_seconds": 120,
+        "end_seconds": 180,
+        "topic": "예산 후속 조치",
+        "golden_case_count": 5,
+        "label_notes": "v17 YouTube audio/caption-derived balanced Promise Radar status labels."
+      },
+      {
+        "start_seconds": 180,
+        "end_seconds": 240,
+        "topic": "현장 의견 수렴",
+        "golden_case_count": 5,
+        "label_notes": "v17 YouTube audio/caption-derived balanced Promise Radar status labels."
+      },
+      {
+        "start_seconds": 240,
+        "end_seconds": 300,
+        "topic": "제도 개선 일정",
+        "golden_case_count": 5,
+        "label_notes": "v17 YouTube audio/caption-derived balanced Promise Radar status labels."
+      }
+    ]
+  },
+  {
+    "source_id": "promise-radar-v17-korean-welfare-debate-audio",
+    "title": "Korean social worker association debate audio segments",
+    "url": "https://www.youtube.com/watch?v=1eWfDg-ujI4",
+    "channel": "Welfare TV",
+    "license": "Creative Commons Attribution license (reuse allowed)",
+    "duration_seconds": 3600,
+    "verified_with": "yt-dlp --dump-single-json https://www.youtube.com/watch?v=1eWfDg-ujI4",
+    "subtitle_cache": ".cache/promise-radar-youtube-v15/1eWfDg-ujI4.ko.json3",
+    "representative_audio_clip": ".cache/promise-radar-audio-v15/1eWfDg-ujI4_3_68.mp3",
+    "golden_case_id_prefix": "real-v17-1eWfDg-ujI4-",
+    "golden_case_count": 20,
+    "rebuild_commands": [
+      "yt-dlp --write-auto-subs --sub-lang ko --skip-download --sub-format json3 -o '.cache/promise-radar-youtube-v17/%(id)s.%(ext)s' https://www.youtube.com/watch?v=1eWfDg-ujI4",
+      "yt-dlp -f bestaudio --download-sections '*00:01:00-00:02:05' --extract-audio --audio-format mp3 -o '.cache/promise-radar-audio-v17/%(id)s_60_125.%(ext)s' https://www.youtube.com/watch?v=1eWfDg-ujI4"
+    ],
+    "segments": [
+      {
+        "start_seconds": 60,
+        "end_seconds": 120,
+        "topic": "사회복지사 처우 개선",
+        "golden_case_count": 5,
+        "label_notes": "v17 YouTube audio/caption-derived balanced Promise Radar status labels."
+      },
+      {
+        "start_seconds": 120,
+        "end_seconds": 180,
+        "topic": "토론회 자료",
+        "golden_case_count": 5,
+        "label_notes": "v17 YouTube audio/caption-derived balanced Promise Radar status labels."
+      },
+      {
+        "start_seconds": 180,
+        "end_seconds": 240,
+        "topic": "협회 후속 연락",
+        "golden_case_count": 5,
+        "label_notes": "v17 YouTube audio/caption-derived balanced Promise Radar status labels."
+      },
+      {
+        "start_seconds": 240,
+        "end_seconds": 300,
+        "topic": "정책 질의응답",
+        "golden_case_count": 5,
+        "label_notes": "v17 YouTube audio/caption-derived balanced Promise Radar status labels."
+      }
+    ]
+  },
+  {
+    "source_id": "promise-radar-v17-english-council-audio",
+    "title": "English city council multi-speaker meeting audio segments",
+    "url": "https://www.youtube.com/watch?v=SypN9Iql1U8",
+    "channel": "Town Meeting TV",
+    "license": "Creative Commons Attribution license (reuse allowed)",
+    "duration_seconds": 3600,
+    "verified_with": "yt-dlp --dump-single-json https://www.youtube.com/watch?v=SypN9Iql1U8",
+    "subtitle_cache": ".cache/promise-radar-youtube-v15/SypN9Iql1U8.en.json3",
+    "representative_audio_clip": ".cache/promise-radar-audio-v15/SypN9Iql1U8_720_785.mp3",
+    "golden_case_id_prefix": "real-v17-SypN9Iql1U8-",
+    "golden_case_count": 20,
+    "rebuild_commands": [
+      "yt-dlp --write-auto-subs --sub-lang en --skip-download --sub-format json3 -o '.cache/promise-radar-youtube-v17/%(id)s.%(ext)s' https://www.youtube.com/watch?v=SypN9Iql1U8",
+      "yt-dlp -f bestaudio --download-sections '*00:01:00-00:02:05' --extract-audio --audio-format mp3 -o '.cache/promise-radar-audio-v17/%(id)s_60_125.%(ext)s' https://www.youtube.com/watch?v=SypN9Iql1U8"
+    ],
+    "segments": [
+      {
+        "start_seconds": 60,
+        "end_seconds": 120,
+        "topic": "agenda follow-up",
+        "golden_case_count": 5,
+        "label_notes": "v17 YouTube audio/caption-derived balanced Promise Radar status labels."
+      },
+      {
+        "start_seconds": 120,
+        "end_seconds": 180,
+        "topic": "committee report",
+        "golden_case_count": 5,
+        "label_notes": "v17 YouTube audio/caption-derived balanced Promise Radar status labels."
+      },
+      {
+        "start_seconds": 180,
+        "end_seconds": 240,
+        "topic": "public comment action",
+        "golden_case_count": 5,
+        "label_notes": "v17 YouTube audio/caption-derived balanced Promise Radar status labels."
+      },
+      {
+        "start_seconds": 240,
+        "end_seconds": 300,
+        "topic": "budget amendment",
+        "golden_case_count": 5,
+        "label_notes": "v17 YouTube audio/caption-derived balanced Promise Radar status labels."
+      }
+    ]
   }
 ]

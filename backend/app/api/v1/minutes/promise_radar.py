@@ -27,9 +27,12 @@ from backend.schemas.promise_radar import (
     PromiseAutomationPolicyUpdateRequest,
     PromiseAutopilotAssessment,
     PromiseAutopilotConfirmRequest,
+    PromiseAutopilotQuarantineSummary,
     PromiseAutopilotRejectRequest,
     PromiseAutopilotResponse,
     PromiseAutopilotReviewQueue,
+    PromiseAutopilotUndoRequest,
+    PromiseAutopilotUndoResponse,
     PromiseCalendarExportResponse,
     PromiseCommandCenter,
     PromiseConflictResolveRequest,
@@ -38,6 +41,9 @@ from backend.schemas.promise_radar import (
     PromiseDigestPreferenceUpdateRequest,
     PromiseEvidenceComparison,
     PromiseEvidencePack,
+    PromiseEvidenceRoomLinkRequest,
+    PromiseEvidenceRoomLinkResponse,
+    PromiseEvidenceRoomSummary,
     PromiseExternalExportRequest,
     PromiseExternalExportResponse,
     PromiseExternalTaskReconcileResponse,
@@ -47,10 +53,13 @@ from backend.schemas.promise_radar import (
     PromiseExtractionCase,
     PromiseExtractionRecallReport,
     PromiseGoogleTaskListResponse,
+    PromiseGoogleTasksOAuthStartRequest,
+    PromiseGoogleTasksOAuthStartResponse,
     PromiseLearningFeedbackRequest,
     PromiseLearningFeedbackResponse,
     PromiseLearningInsight,
     PromiseLearningProfile,
+    PromiseLearningTelemetryReport,
     PromiseLedgerEntryResponse,
     PromiseLedgerHistoryEntry,
     PromiseLedgerMergeRequest,
@@ -58,7 +67,9 @@ from backend.schemas.promise_radar import (
     PromiseLedgerSplitRequest,
     PromiseLedgerSplitResponse,
     PromiseLedgerUpdateRequest,
+    PromiseLiveCoachSummary,
     PromiseMatchExplanation,
+    PromiseMeetingRecipePolicy,
     PromiseMeetingSeries,
     PromiseMeetingSeriesTimeline,
     PromiseNextMeetingBriefing,
@@ -348,7 +359,7 @@ async def evaluate_promise_accuracy(
 
 @router.get("/accuracy/report", response_model=PromiseAccuracyReport)
 async def get_promise_accuracy_report(
-    target_case_count: int = Query(default=100, ge=1, le=1000),
+    target_case_count: int = Query(default=560, ge=1, le=1000),
     svc: PromiseRadarService = Depends(get_promise_radar_service),
 ) -> PromiseAccuracyReport:
     """서버에 고정된 Promise Radar fixture 정확도와 실제 회의 label 수를 반환합니다."""
@@ -428,7 +439,7 @@ async def get_promise_command_center(
     request: Request,
     team_id: str | None = Query(default=None, description="팀 약속 운영 범위"),
     limit: int = Query(default=50, ge=1, le=200),
-    target_case_count: int = Query(default=100, ge=1, le=1000),
+    target_case_count: int = Query(default=560, ge=1, le=1000),
     db: AsyncSession = Depends(get_db_session),
     current_user=Depends(get_optional_current_user),
     svc: PromiseRadarService = Depends(get_promise_radar_service),
@@ -448,6 +459,104 @@ async def get_promise_command_center(
         raise
     except Exception as e:
         internal_error(f"약속 Command Center 생성 중 오류가 발생했습니다: {e}")
+
+
+@router.get("/telemetry/learning", response_model=PromiseLearningTelemetryReport)
+async def get_promise_learning_telemetry(
+    request: Request,
+    team_id: str | None = Query(default=None, description="팀 학습 telemetry 범위"),
+    limit: int = Query(default=500, ge=1, le=1000),
+    db: AsyncSession = Depends(get_db_session),
+    current_user=Depends(get_optional_current_user),
+    svc: PromiseRadarService = Depends(get_promise_radar_service),
+) -> PromiseLearningTelemetryReport:
+    """사용자 확정/거절/undo 이벤트 기반 privacy-safe 학습 telemetry를 반환합니다."""
+    try:
+        scoped_team_id = await _accessible_team_id(db, current_user, team_id)
+        return await svc.build_learning_telemetry_report(
+            db,
+            owner_id=getattr(current_user, "id", None),
+            guest_session_id=_guest_session_id(request),
+            team_id=scoped_team_id,
+            limit=limit,
+        )
+    except VoiceNoteError:
+        raise
+    except Exception as e:
+        internal_error(f"학습 telemetry 생성 중 오류가 발생했습니다: {e}")
+
+
+@router.get("/live-coach", response_model=PromiseLiveCoachSummary)
+async def get_promise_live_coach(
+    request: Request,
+    team_id: str | None = Query(default=None, description="팀 Live Coach 범위"),
+    limit: int = Query(default=8, ge=1, le=30),
+    db: AsyncSession = Depends(get_db_session),
+    current_user=Depends(get_optional_current_user),
+    svc: PromiseRadarService = Depends(get_promise_radar_service),
+) -> PromiseLiveCoachSummary:
+    """회의 중 바로 확인할 약속 prompt를 반환합니다."""
+    try:
+        scoped_team_id = await _accessible_team_id(db, current_user, team_id)
+        return await svc.build_live_coach_summary(
+            db,
+            owner_id=getattr(current_user, "id", None),
+            guest_session_id=_guest_session_id(request),
+            team_id=scoped_team_id,
+            limit=limit,
+        )
+    except VoiceNoteError:
+        raise
+    except Exception as e:
+        internal_error(f"Live Promise Coach 생성 중 오류가 발생했습니다: {e}")
+
+
+@router.get("/evidence-room", response_model=PromiseEvidenceRoomSummary)
+async def get_promise_evidence_room(
+    request: Request,
+    team_id: str | None = Query(default=None, description="팀 Evidence Room 범위"),
+    limit: int = Query(default=50, ge=1, le=200),
+    db: AsyncSession = Depends(get_db_session),
+    current_user=Depends(get_optional_current_user),
+    svc: PromiseRadarService = Depends(get_promise_radar_service),
+) -> PromiseEvidenceRoomSummary:
+    """Evidence Room 공유 가능/차단/redaction 상태를 반환합니다."""
+    try:
+        scoped_team_id = await _accessible_team_id(db, current_user, team_id)
+        return await svc.build_evidence_room_summary(
+            db,
+            owner_id=getattr(current_user, "id", None),
+            guest_session_id=_guest_session_id(request),
+            team_id=scoped_team_id,
+            limit=limit,
+        )
+    except VoiceNoteError:
+        raise
+    except Exception as e:
+        internal_error(f"Evidence Room 요약 생성 중 오류가 발생했습니다: {e}")
+
+
+@router.get("/meeting-recipe", response_model=PromiseMeetingRecipePolicy)
+async def get_promise_meeting_recipe(
+    request: Request,
+    team_id: str | None = Query(default=None, description="팀 회의 레시피 범위"),
+    db: AsyncSession = Depends(get_db_session),
+    current_user=Depends(get_optional_current_user),
+    svc: PromiseRadarService = Depends(get_promise_radar_service),
+) -> PromiseMeetingRecipePolicy:
+    """현재 약속 위험/학습/evidence 상태에서 회의 레시피 정책을 반환합니다."""
+    try:
+        scoped_team_id = await _accessible_team_id(db, current_user, team_id)
+        return await svc.build_meeting_recipe_policy(
+            db,
+            owner_id=getattr(current_user, "id", None),
+            guest_session_id=_guest_session_id(request),
+            team_id=scoped_team_id,
+        )
+    except VoiceNoteError:
+        raise
+    except Exception as e:
+        internal_error(f"회의 레시피 정책 생성 중 오류가 발생했습니다: {e}")
 
 
 @router.get("/responsibility-scores", response_model=list[PromiseResponsibilityScore])
@@ -655,6 +764,31 @@ async def get_promise_autopilot_review_inbox(
         raise
     except Exception as e:
         internal_error(f"약속 자동 판정 Review Inbox 조회 중 오류가 발생했습니다: {e}")
+
+
+@router.get("/autopilot/quarantine", response_model=PromiseAutopilotQuarantineSummary)
+async def get_promise_autopilot_quarantine(
+    request: Request,
+    team_id: str | None = Query(default=None, description="팀 Autopilot quarantine 범위"),
+    limit: int = Query(default=200, ge=1, le=500),
+    db: AsyncSession = Depends(get_db_session),
+    current_user=Depends(get_optional_current_user),
+    svc: PromiseRadarService = Depends(get_promise_radar_service),
+) -> PromiseAutopilotQuarantineSummary:
+    """되돌림/거절된 Autopilot 패턴의 격리 상태를 반환합니다."""
+    try:
+        scoped_team_id = await _accessible_team_id(db, current_user, team_id)
+        return await svc.build_autopilot_quarantine_summary(
+            db,
+            owner_id=getattr(current_user, "id", None),
+            guest_session_id=_guest_session_id(request),
+            team_id=scoped_team_id,
+            limit=limit,
+        )
+    except VoiceNoteError:
+        raise
+    except Exception as e:
+        internal_error(f"Autopilot quarantine 요약 생성 중 오류가 발생했습니다: {e}")
 
 
 @router.post("/autopilot/{task_id}", response_model=PromiseAutopilotResponse)
@@ -1019,6 +1153,70 @@ async def reject_promise_autopilot_review_item(
         internal_error(f"약속 자동 판정 거절 중 오류가 발생했습니다: {e}")
 
 
+@router.post(
+    "/ledger/{entry_id}/autopilot-undo",
+    response_model=PromiseAutopilotUndoResponse,
+)
+async def undo_promise_autopilot_decision(
+    entry_id: str,
+    payload: PromiseAutopilotUndoRequest,
+    request: Request,
+    team_id: str | None = Query(default=None, description="팀 약속 원장 범위"),
+    db: AsyncSession = Depends(get_db_session),
+    current_user=Depends(get_optional_current_user),
+    svc: PromiseRadarService = Depends(get_promise_radar_service),
+) -> PromiseAutopilotUndoResponse:
+    """최근 자동 적용/확정 판정을 이전 원장 상태로 되돌리고 필요 시 격리합니다."""
+    try:
+        scoped_team_id = await _accessible_team_id(db, current_user, team_id)
+        return await svc.undo_autopilot_decision(
+            db,
+            entry_id,
+            payload,
+            owner_id=getattr(current_user, "id", None),
+            guest_session_id=_guest_session_id(request),
+            team_id=scoped_team_id,
+        )
+    except ValueError as e:
+        not_found(str(e))
+    except VoiceNoteError:
+        raise
+    except Exception as e:
+        internal_error(f"약속 자동 판정 되돌리기 중 오류가 발생했습니다: {e}")
+
+
+@router.post(
+    "/ledger/{entry_id}/evidence-room/share-link",
+    response_model=PromiseEvidenceRoomLinkResponse,
+)
+async def create_promise_evidence_room_link(
+    entry_id: str,
+    payload: PromiseEvidenceRoomLinkRequest,
+    request: Request,
+    team_id: str | None = Query(default=None, description="팀 약속 원장 범위"),
+    db: AsyncSession = Depends(get_db_session),
+    current_user=Depends(get_optional_current_user),
+    svc: PromiseRadarService = Depends(get_promise_radar_service),
+) -> PromiseEvidenceRoomLinkResponse:
+    """짧은 TTL의 redacted Evidence Room payload를 생성합니다."""
+    try:
+        scoped_team_id = await _accessible_team_id(db, current_user, team_id)
+        return await svc.create_evidence_room_link(
+            db,
+            entry_id,
+            payload,
+            owner_id=getattr(current_user, "id", None),
+            guest_session_id=_guest_session_id(request),
+            team_id=scoped_team_id,
+        )
+    except ValueError as e:
+        not_found(str(e))
+    except VoiceNoteError:
+        raise
+    except Exception as e:
+        internal_error(f"Evidence Room 공유 링크 생성 중 오류가 발생했습니다: {e}")
+
+
 @router.post("/ledger/{entry_id}/resolve-conflict", response_model=PromiseLedgerEntryResponse)
 async def resolve_promise_autopilot_conflict(
     entry_id: str,
@@ -1133,6 +1331,23 @@ async def export_promise_external_task(
         raise
     except Exception as e:
         internal_error(f"약속 외부 업무도구 연동 중 오류가 발생했습니다: {e}")
+
+
+@router.post(
+    "/external-task/google-oauth/start",
+    response_model=PromiseGoogleTasksOAuthStartResponse,
+)
+async def start_google_tasks_oauth(
+    payload: PromiseGoogleTasksOAuthStartRequest,
+    svc: PromiseRadarService = Depends(get_promise_radar_service),
+) -> PromiseGoogleTasksOAuthStartResponse:
+    """앱에서 Google Tasks OAuth 승인 화면을 열 수 있는 authorization URL을 생성합니다."""
+    try:
+        return svc.build_google_tasks_oauth_start(payload)
+    except ValueError as e:
+        not_found(str(e))
+    except Exception as e:
+        internal_error(f"Google Tasks OAuth 시작 URL 생성 중 오류가 발생했습니다: {e}")
 
 
 @router.post("/external-task/google-tasklists", response_model=PromiseGoogleTaskListResponse)

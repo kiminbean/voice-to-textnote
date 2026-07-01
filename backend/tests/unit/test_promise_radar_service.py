@@ -20,11 +20,14 @@ from backend.schemas.promise_radar import (
     PromiseAutomationPolicyUpdateRequest,
     PromiseAutopilotConfirmRequest,
     PromiseAutopilotRejectRequest,
+    PromiseAutopilotUndoRequest,
     PromiseConflictResolveRequest,
     PromiseDigestPreferenceUpdateRequest,
+    PromiseEvidenceRoomLinkRequest,
     PromiseExternalExportRequest,
     PromiseExternalTaskUpdateRequest,
     PromiseExtractionCase,
+    PromiseGoogleTasksOAuthStartRequest,
     PromiseLearningFeedbackRequest,
     PromiseLedgerMergeRequest,
     PromiseLedgerSplitRequest,
@@ -1667,22 +1670,36 @@ async def test_command_center_aggregates_learning_accuracy_and_oauth(session_fac
         assert center.digest.overdue_count == 1
         assert center.learning_insight.status_false_positive_rate["completed"] == 1.0
         assert center.learning_insight.alias_graph_size >= 1
+        assert center.learning_telemetry.event_count >= 1
+        assert center.learning_telemetry.status_segments
+        assert center.live_coach.prompt_count >= 1
         assert center.external_reconcile.requires_oauth is True
         assert center.google_tasks_oauth.scope == "https://www.googleapis.com/auth/tasks"
         assert center.google_tasks_oauth.required_backend_env == ["GOOGLE_CLIENT_ID"]
-        assert center.accuracy_report.evaluation.case_count >= 569
-        assert center.accuracy_report.real_meeting_case_count >= 500
+        assert center.accuracy_report.evaluation.case_count >= 629
+        assert center.accuracy_report.real_meeting_case_count >= 560
         assert center.extraction_recall.evaluation.case_count >= 50
         assert center.extraction_recall.evaluation.recall >= 0.95
         assert center.memory_graph.node_count >= 2
         assert center.memory_graph.owner_alias_count >= 1
         assert center.shadow_mode.candidate_count == center.review_queue.queue_count
         assert center.evidence_permissions.scope.startswith("owner:")
+        assert center.evidence_room.scope.startswith("owner:")
         assert center.team_scorecard.risk_score > 0
+        assert center.autopilot_quarantine.quarantined_count == 0
+        assert (
+            center.meeting_recipe.default_autopilot_mode
+            == center.learning_insight.recommended_policy
+        )
         assert {action.key for action in center.actions} >= {
             "open_review_queue",
             "open_accuracy_report",
             "open_extraction_recall_report",
+            "open_learning_telemetry",
+            "open_live_coach",
+            "open_evidence_room",
+            "open_meeting_recipe",
+            "start_google_tasks_oauth",
         }
         assert {item.key for item in center.focus_items} >= {
             "overdue",
@@ -1692,12 +1709,127 @@ async def test_command_center_aggregates_learning_accuracy_and_oauth(session_fac
         }
 
 
+@pytest.mark.asyncio
+async def test_autopilot_undo_restores_snapshot_and_quarantines_pattern(session_factory):
+    service = PromiseRadarService()
+    now = datetime(2026, 7, 1, 11, 0, 0)
+    owner_id = uuid.uuid4()
+
+    async with session_factory() as session:
+        entry = PromiseLedgerEntry(
+            owner_id=owner_id,
+            source_task_id="sum-undo",
+            last_source_task_id="sum-undo",
+            canonical_key="qa release checklist",
+            canonical_text="QA release checklist",
+            text="QA release checklist",
+            owner_name="SPEAKER_01",
+            status="open",
+            priority="medium",
+            risk_level="medium",
+            confidence=0.82,
+            due_date_text="today",
+            due_at=now,
+            occurrences=1,
+            first_seen_at=now - timedelta(days=3),
+            last_seen_at=now,
+            user_confirmed=False,
+            evidence=[
+                {
+                    "source_task_id": "sum-undo",
+                    "meeting_link": "/results/sum-undo",
+                    "transcript": "QA release checklist is completed.",
+                    "speaker_label": "SPEAKER_01",
+                    "start_seconds": 12.0,
+                    "end_seconds": 18.0,
+                }
+            ],
+        )
+        session.add(entry)
+        await session.flush()
+
+        old_value = service._ledger_snapshot(entry)
+        entry.status = "completed"
+        entry.completed_at = now
+        entry.user_confirmed = True
+        service._record_ledger_event(
+            session,
+            entry,
+            "autopilot_confirmed",
+            old_value=old_value,
+            new_value={
+                **service._ledger_snapshot(entry),
+                "autopilot": {"suggested_status": "completed"},
+            },
+            actor_user_id=owner_id,
+        )
+        await session.commit()
+
+        response = await service.undo_autopilot_decision(
+            session,
+            entry.id,
+            PromiseAutopilotUndoRequest(reason="완료 아님", quarantine=True),
+            owner_id=owner_id,
+        )
+
+        assert response.ledger_entry.status == "open"
+        assert response.ledger_entry.user_confirmed is False
+        assert response.quarantined is True
+
+        summary = await service.build_autopilot_quarantine_summary(
+            session,
+            owner_id=owner_id,
+        )
+        assert summary.quarantined_count >= 1
+        assert summary.affected_statuses["completed"] >= 1
+
+        link = await service.create_evidence_room_link(
+            session,
+            entry.id,
+            PromiseEvidenceRoomLinkRequest(ttl_hours=24),
+            owner_id=owner_id,
+        )
+        assert link.redaction_applied is True
+        assert link.redacted_evidence[0]["transcript"] == "[redacted]"
+        assert link.redacted_evidence[0]["speaker_label"] == "[redacted]"
+        assert link.expires_at > now
+
+        events = {
+            event.event_type
+            for event in (await session.execute(select(PromiseLedgerEvent))).scalars()
+        }
+        assert {
+            "autopilot_undone",
+            "autopilot_quarantined",
+            "evidence_room_link_created",
+        }.issubset(events)
+
+
+def test_google_tasks_oauth_start_builds_authorization_url():
+    service = PromiseRadarService()
+
+    response = service.build_google_tasks_oauth_start(
+        PromiseGoogleTasksOAuthStartRequest(
+            redirect_uri="com.voicetextnote.app:/oauth2redirect/google-tasks",
+            state="state-123",
+            code_challenge="challenge-123",
+        )
+    )
+
+    assert response.provider == "google_tasks"
+    assert response.state == "state-123"
+    assert response.scopes == ["https://www.googleapis.com/auth/tasks"]
+    assert "state=state-123" in response.auth_url
+    assert "code_challenge=challenge-123" in response.auth_url
+    assert "https://www.googleapis.com/auth/tasks" in response.auth_url
+
+
 def test_promise_radar_accuracy_fixture_audit_passes():
-    report = audit_accuracy_set(target_real_cases=500)
+    report = audit_accuracy_set(target_real_cases=560)
 
     assert report["passed"] is True
-    assert report["case_count"] >= 569
-    assert report["real_case_count"] >= 500
+    assert report["case_count"] >= 629
+    assert report["real_case_count"] >= 560
     assert report["errors"] == []
 
 

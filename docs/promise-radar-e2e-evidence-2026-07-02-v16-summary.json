@@ -40,7 +40,14 @@
       "memory_graph_edge_count": 20,
       "team_risk_score": 100
     },
-    "scope_note": "This physical-device evidence was collected before v16 extraction-recall fields; rerun the updated generator after deploying v16 backend to collect v16 physical evidence."
+    "scope_note": "Historical v16 summary. Current Promise Radar baseline and physical-device generator evidence are in docs/promise-radar-e2e-evidence-2026-07-02-v17-summary.json."
+  },
+  "superseded_by": {
+    "summary_file": "docs/promise-radar-e2e-evidence-2026-07-02-v17-summary.json",
+    "session_file": "docs/session-summary-2026-07-02-promise-radar-v17.md",
+    "current_total_cases": 629,
+    "current_real_meeting_cases": 562,
+    "current_physical_device_overall_pass": true
   },
   "v16_gate_contract": {
     "command_center_target_real_cases": 500,

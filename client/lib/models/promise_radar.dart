@@ -883,6 +883,261 @@ class PromiseLearningInsight {
   }
 }
 
+class PromiseLearningTelemetrySegment {
+  final String dimension;
+  final String value;
+  final int sampleCount;
+  final int confirmedCount;
+  final int falsePositiveCount;
+  final int correctionCount;
+  final double precision;
+  final double falsePositiveRate;
+  final List<String> notes;
+
+  const PromiseLearningTelemetrySegment({
+    required this.dimension,
+    required this.value,
+    required this.sampleCount,
+    required this.confirmedCount,
+    required this.falsePositiveCount,
+    required this.correctionCount,
+    required this.precision,
+    required this.falsePositiveRate,
+    required this.notes,
+  });
+
+  factory PromiseLearningTelemetrySegment.fromJson(Map<String, dynamic> json) {
+    return PromiseLearningTelemetrySegment(
+      dimension: json['dimension'] as String? ?? '',
+      value: json['value'] as String? ?? '',
+      sampleCount: json['sample_count'] as int? ?? 0,
+      confirmedCount: json['confirmed_count'] as int? ?? 0,
+      falsePositiveCount: json['false_positive_count'] as int? ?? 0,
+      correctionCount: json['correction_count'] as int? ?? 0,
+      precision: (json['precision'] as num?)?.toDouble() ?? 0,
+      falsePositiveRate: (json['false_positive_rate'] as num?)?.toDouble() ?? 0,
+      notes:
+          (json['notes'] as List<dynamic>? ?? []).whereType<String>().toList(),
+    );
+  }
+}
+
+class PromiseLearningTelemetryReport {
+  final String generatedAt;
+  final String scope;
+  final int eventCount;
+  final int feedbackEventCount;
+  final List<PromiseLearningTelemetrySegment> statusSegments;
+  final List<PromiseLearningTelemetrySegment> ownerSegments;
+  final List<PromiseLearningTelemetrySegment> localeSegments;
+  final List<PromiseLearningTelemetrySegment> payloadShapeSegments;
+  final List<String> recommendations;
+
+  const PromiseLearningTelemetryReport({
+    required this.generatedAt,
+    required this.scope,
+    required this.eventCount,
+    required this.feedbackEventCount,
+    required this.statusSegments,
+    required this.ownerSegments,
+    required this.localeSegments,
+    required this.payloadShapeSegments,
+    required this.recommendations,
+  });
+
+  factory PromiseLearningTelemetryReport.fromJson(Map<String, dynamic> json) {
+    List<PromiseLearningTelemetrySegment> parseSegments(String key) {
+      return (json[key] as List<dynamic>? ?? [])
+          .whereType<Map<String, dynamic>>()
+          .map(PromiseLearningTelemetrySegment.fromJson)
+          .toList();
+    }
+
+    return PromiseLearningTelemetryReport(
+      generatedAt: json['generated_at'] as String? ?? '',
+      scope: json['scope'] as String? ?? 'none',
+      eventCount: json['event_count'] as int? ?? 0,
+      feedbackEventCount: json['feedback_event_count'] as int? ?? 0,
+      statusSegments: parseSegments('status_segments'),
+      ownerSegments: parseSegments('owner_segments'),
+      localeSegments: parseSegments('locale_segments'),
+      payloadShapeSegments: parseSegments('payload_shape_segments'),
+      recommendations: (json['recommendations'] as List<dynamic>? ?? [])
+          .whereType<String>()
+          .toList(),
+    );
+  }
+}
+
+class PromiseAutopilotQuarantineSummary {
+  final int quarantinedCount;
+  final int rejectedCount;
+  final Map<String, int> affectedStatuses;
+  final List<String> affectedEntries;
+  final List<String> notes;
+
+  const PromiseAutopilotQuarantineSummary({
+    required this.quarantinedCount,
+    required this.rejectedCount,
+    required this.affectedStatuses,
+    required this.affectedEntries,
+    required this.notes,
+  });
+
+  factory PromiseAutopilotQuarantineSummary.fromJson(
+      Map<String, dynamic> json) {
+    return PromiseAutopilotQuarantineSummary(
+      quarantinedCount: json['quarantined_count'] as int? ?? 0,
+      rejectedCount: json['rejected_count'] as int? ?? 0,
+      affectedStatuses:
+          (json['affected_statuses'] as Map<String, dynamic>? ?? {}).map(
+        (key, value) => MapEntry(key, (value as num?)?.toInt() ?? 0),
+      ),
+      affectedEntries: (json['affected_entries'] as List<dynamic>? ?? [])
+          .whereType<String>()
+          .toList(),
+      notes:
+          (json['notes'] as List<dynamic>? ?? []).whereType<String>().toList(),
+    );
+  }
+}
+
+class PromiseLiveCoachPrompt {
+  final String key;
+  final String label;
+  final String prompt;
+  final String severity;
+  final String? owner;
+  final String? dueAt;
+  final String? ledgerEntryId;
+
+  const PromiseLiveCoachPrompt({
+    required this.key,
+    required this.label,
+    required this.prompt,
+    required this.severity,
+    this.owner,
+    this.dueAt,
+    this.ledgerEntryId,
+  });
+
+  factory PromiseLiveCoachPrompt.fromJson(Map<String, dynamic> json) {
+    return PromiseLiveCoachPrompt(
+      key: json['key'] as String? ?? '',
+      label: json['label'] as String? ?? '',
+      prompt: json['prompt'] as String? ?? '',
+      severity: json['severity'] as String? ?? 'info',
+      owner: json['owner'] as String?,
+      dueAt: json['due_at'] as String?,
+      ledgerEntryId: json['ledger_entry_id'] as String?,
+    );
+  }
+}
+
+class PromiseLiveCoachSummary {
+  final String generatedAt;
+  final int readinessScore;
+  final int promptCount;
+  final List<PromiseLiveCoachPrompt> prompts;
+  final List<String> notes;
+
+  const PromiseLiveCoachSummary({
+    required this.generatedAt,
+    required this.readinessScore,
+    required this.promptCount,
+    required this.prompts,
+    required this.notes,
+  });
+
+  factory PromiseLiveCoachSummary.fromJson(Map<String, dynamic> json) {
+    return PromiseLiveCoachSummary(
+      generatedAt: json['generated_at'] as String? ?? '',
+      readinessScore: json['readiness_score'] as int? ?? 0,
+      promptCount: json['prompt_count'] as int? ?? 0,
+      prompts: (json['prompts'] as List<dynamic>? ?? [])
+          .whereType<Map<String, dynamic>>()
+          .map(PromiseLiveCoachPrompt.fromJson)
+          .toList(),
+      notes:
+          (json['notes'] as List<dynamic>? ?? []).whereType<String>().toList(),
+    );
+  }
+}
+
+class PromiseEvidenceRoomSummary {
+  final String scope;
+  final int shareReadyCount;
+  final int redactionRequiredCount;
+  final int blockedCount;
+  final int defaultTtlHours;
+  final List<String> policyNotes;
+
+  const PromiseEvidenceRoomSummary({
+    required this.scope,
+    required this.shareReadyCount,
+    required this.redactionRequiredCount,
+    required this.blockedCount,
+    required this.defaultTtlHours,
+    required this.policyNotes,
+  });
+
+  factory PromiseEvidenceRoomSummary.fromJson(Map<String, dynamic> json) {
+    return PromiseEvidenceRoomSummary(
+      scope: json['scope'] as String? ?? 'none',
+      shareReadyCount: json['share_ready_count'] as int? ?? 0,
+      redactionRequiredCount: json['redaction_required_count'] as int? ?? 0,
+      blockedCount: json['blocked_count'] as int? ?? 0,
+      defaultTtlHours: json['default_ttl_hours'] as int? ?? 72,
+      policyNotes: (json['policy_notes'] as List<dynamic>? ?? [])
+          .whereType<String>()
+          .toList(),
+    );
+  }
+}
+
+class PromiseMeetingRecipePolicy {
+  final String recipeKey;
+  final String label;
+  final bool ownerRequired;
+  final bool dueDateRequired;
+  final String defaultAutopilotMode;
+  final List<String> highRiskKeywords;
+  final List<String> promptTemplates;
+  final List<String> recommendedIntegrations;
+
+  const PromiseMeetingRecipePolicy({
+    required this.recipeKey,
+    required this.label,
+    required this.ownerRequired,
+    required this.dueDateRequired,
+    required this.defaultAutopilotMode,
+    required this.highRiskKeywords,
+    required this.promptTemplates,
+    required this.recommendedIntegrations,
+  });
+
+  factory PromiseMeetingRecipePolicy.fromJson(Map<String, dynamic> json) {
+    return PromiseMeetingRecipePolicy(
+      recipeKey: json['recipe_key'] as String? ?? 'team_sync',
+      label: json['label'] as String? ?? 'Team Sync',
+      ownerRequired: json['owner_required'] as bool? ?? true,
+      dueDateRequired: json['due_date_required'] as bool? ?? true,
+      defaultAutopilotMode:
+          json['default_autopilot_mode'] as String? ?? 'preview_only',
+      highRiskKeywords: (json['high_risk_keywords'] as List<dynamic>? ?? [])
+          .whereType<String>()
+          .toList(),
+      promptTemplates: (json['prompt_templates'] as List<dynamic>? ?? [])
+          .whereType<String>()
+          .toList(),
+      recommendedIntegrations:
+          (json['recommended_integrations'] as List<dynamic>? ?? [])
+              .whereType<String>()
+              .toList(),
+    );
+  }
+}
+
 class PromiseLearningFeedbackResponse {
   final String ledgerEntryId;
   final bool recorded;
@@ -2600,15 +2855,20 @@ class PromiseCommandCenter {
   final PromiseRadarDashboard dashboard;
   final PromiseAutopilotReviewQueue reviewQueue;
   final PromiseLearningInsight learningInsight;
+  final PromiseLearningTelemetryReport learningTelemetry;
   final PromiseDigest digest;
   final PromisePreMeetingBrief preMeetingBrief;
+  final PromiseLiveCoachSummary liveCoach;
   final PromiseExternalTaskReconcileResponse externalReconcile;
   final PromiseAccuracyReport accuracyReport;
   final PromiseEvidenceAuditSummary evidenceAudit;
   final PromiseMemoryGraph memoryGraph;
   final PromiseAutopilotShadowSummary shadowMode;
   final PromiseEvidencePermissionSummary evidencePermissions;
+  final PromiseEvidenceRoomSummary evidenceRoom;
   final PromiseTeamScorecard teamScorecard;
+  final PromiseAutopilotQuarantineSummary autopilotQuarantine;
+  final PromiseMeetingRecipePolicy meetingRecipe;
   final PromiseGoogleTasksOAuthGuide googleTasksOAuth;
   final PromiseExtractionRecallReport extractionRecall;
   final List<PromiseCommandCenterAction> actions;
@@ -2619,15 +2879,20 @@ class PromiseCommandCenter {
     required this.dashboard,
     required this.reviewQueue,
     required this.learningInsight,
+    required this.learningTelemetry,
     required this.digest,
     required this.preMeetingBrief,
+    required this.liveCoach,
     required this.externalReconcile,
     required this.accuracyReport,
     required this.evidenceAudit,
     required this.memoryGraph,
     required this.shadowMode,
     required this.evidencePermissions,
+    required this.evidenceRoom,
     required this.teamScorecard,
+    required this.autopilotQuarantine,
+    required this.meetingRecipe,
     required this.googleTasksOAuth,
     required this.extractionRecall,
     required this.actions,
@@ -2648,11 +2913,19 @@ class PromiseCommandCenter {
         json['learning_insight'] as Map<String, dynamic>? ??
             const <String, dynamic>{},
       ),
+      learningTelemetry: PromiseLearningTelemetryReport.fromJson(
+        json['learning_telemetry'] as Map<String, dynamic>? ??
+            const <String, dynamic>{},
+      ),
       digest: PromiseDigest.fromJson(
         json['digest'] as Map<String, dynamic>? ?? const <String, dynamic>{},
       ),
       preMeetingBrief: PromisePreMeetingBrief.fromJson(
         json['pre_meeting_brief'] as Map<String, dynamic>? ??
+            const <String, dynamic>{},
+      ),
+      liveCoach: PromiseLiveCoachSummary.fromJson(
+        json['live_coach'] as Map<String, dynamic>? ??
             const <String, dynamic>{},
       ),
       externalReconcile: PromiseExternalTaskReconcileResponse.fromJson(
@@ -2683,8 +2956,20 @@ class PromiseCommandCenter {
         json['evidence_permissions'] as Map<String, dynamic>? ??
             const <String, dynamic>{},
       ),
+      evidenceRoom: PromiseEvidenceRoomSummary.fromJson(
+        json['evidence_room'] as Map<String, dynamic>? ??
+            const <String, dynamic>{},
+      ),
       teamScorecard: PromiseTeamScorecard.fromJson(
         json['team_scorecard'] as Map<String, dynamic>? ??
+            const <String, dynamic>{},
+      ),
+      autopilotQuarantine: PromiseAutopilotQuarantineSummary.fromJson(
+        json['autopilot_quarantine'] as Map<String, dynamic>? ??
+            const <String, dynamic>{},
+      ),
+      meetingRecipe: PromiseMeetingRecipePolicy.fromJson(
+        json['meeting_recipe'] as Map<String, dynamic>? ??
             const <String, dynamic>{},
       ),
       googleTasksOAuth: PromiseGoogleTasksOAuthGuide.fromJson(

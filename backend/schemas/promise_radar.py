@@ -337,6 +337,142 @@ class PromiseLearningFeedbackResponse(BaseModel):
     learning_profile: PromiseLearningProfile
 
 
+class PromiseLearningTelemetrySegment(BaseModel):
+    """Aggregated production learning telemetry for one dimension/value."""
+
+    dimension: str
+    value: str
+    sample_count: int = Field(ge=0)
+    confirmed_count: int = Field(ge=0)
+    false_positive_count: int = Field(ge=0)
+    correction_count: int = Field(ge=0)
+    precision: float = Field(default=0.0, ge=0.0, le=1.0)
+    false_positive_rate: float = Field(default=0.0, ge=0.0, le=1.0)
+    notes: list[str] = Field(default_factory=list)
+
+
+class PromiseLearningTelemetryReport(BaseModel):
+    """Privacy-safe telemetry derived from user corrections and confirmations."""
+
+    generated_at: datetime
+    scope: str
+    event_count: int = Field(ge=0)
+    feedback_event_count: int = Field(ge=0)
+    status_segments: list[PromiseLearningTelemetrySegment] = Field(default_factory=list)
+    owner_segments: list[PromiseLearningTelemetrySegment] = Field(default_factory=list)
+    locale_segments: list[PromiseLearningTelemetrySegment] = Field(default_factory=list)
+    payload_shape_segments: list[PromiseLearningTelemetrySegment] = Field(default_factory=list)
+    recommendations: list[str] = Field(default_factory=list)
+
+
+class PromiseAutopilotUndoRequest(BaseModel):
+    """Undo a previously applied/confirmed Autopilot decision."""
+
+    reason: str | None = None
+    quarantine: bool = True
+
+
+class PromiseAutopilotQuarantineSummary(BaseModel):
+    """Autopilot patterns that should stay in review until more evidence exists."""
+
+    quarantined_count: int = Field(ge=0)
+    rejected_count: int = Field(ge=0)
+    affected_statuses: dict[str, int] = Field(default_factory=dict)
+    affected_entries: list[str] = Field(default_factory=list)
+    notes: list[str] = Field(default_factory=list)
+
+
+class PromiseLiveCoachPrompt(BaseModel):
+    """One in-meeting nudge that helps the operator close a promise loop."""
+
+    key: str
+    label: str
+    prompt: str
+    severity: str = Field(default="info")
+    owner: str | None = None
+    due_at: datetime | None = None
+    ledger_entry_id: str | None = None
+
+
+class PromiseLiveCoachSummary(BaseModel):
+    """Pre/live meeting coaching prompts from unresolved Promise Ledger state."""
+
+    generated_at: datetime
+    readiness_score: int = Field(ge=0, le=100)
+    prompt_count: int = Field(ge=0)
+    prompts: list[PromiseLiveCoachPrompt] = Field(default_factory=list)
+    notes: list[str] = Field(default_factory=list)
+
+
+class PromiseEvidenceRoomSummary(BaseModel):
+    """Privacy-safe evidence sharing readiness summary."""
+
+    scope: str
+    share_ready_count: int = Field(ge=0)
+    redaction_required_count: int = Field(ge=0)
+    blocked_count: int = Field(ge=0)
+    default_ttl_hours: int = Field(default=72, ge=1)
+    policy_notes: list[str] = Field(default_factory=list)
+
+
+class PromiseEvidenceRoomLinkRequest(BaseModel):
+    """Create a short-lived redacted Evidence Room payload."""
+
+    ttl_hours: int = Field(default=72, ge=1, le=720)
+    include_transcript_quotes: bool = False
+    include_timestamps: bool = True
+    include_speaker_labels: bool = False
+    reason: str | None = None
+
+
+class PromiseEvidenceRoomLinkResponse(BaseModel):
+    """Redacted Evidence Room handoff payload without raw public device evidence."""
+
+    ledger_entry_id: str
+    share_token_preview: str
+    expires_at: datetime
+    redaction_applied: bool
+    evidence_count: int = Field(ge=0)
+    redacted_evidence: list[dict[str, Any]] = Field(default_factory=list)
+    policy_notes: list[str] = Field(default_factory=list)
+
+
+class PromiseMeetingRecipePolicy(BaseModel):
+    """Meeting-type policy that tunes Promise Radar prompts and risk treatment."""
+
+    recipe_key: str
+    label: str
+    owner_required: bool = True
+    due_date_required: bool = True
+    default_autopilot_mode: str = "preview_only"
+    high_risk_keywords: list[str] = Field(default_factory=list)
+    prompt_templates: list[str] = Field(default_factory=list)
+    recommended_integrations: list[str] = Field(default_factory=list)
+
+
+class PromiseGoogleTasksOAuthStartRequest(BaseModel):
+    """Build a Google Tasks OAuth authorization URL for app-driven OAuth."""
+
+    redirect_uri: str | None = None
+    state: str | None = None
+    code_challenge: str | None = None
+    code_challenge_method: str = "S256"
+    prompt: str = "consent"
+
+
+class PromiseGoogleTasksOAuthStartResponse(BaseModel):
+    """OAuth start contract that the app can use without storing access tokens."""
+
+    provider: str = "google_tasks"
+    ready: bool
+    auth_url: str
+    state: str
+    redirect_uri: str
+    scopes: list[str] = Field(default_factory=list)
+    missing_setup: list[str] = Field(default_factory=list)
+    token_handling: str
+
+
 class PromiseTimelineItem(BaseModel):
     """Readable timeline event for one promise."""
 
@@ -597,6 +733,15 @@ class PromiseLedgerEntryResponse(BaseModel):
     assignee_suggestions: list[PromiseAssigneeSuggestion] = Field(default_factory=list)
     identity_confidence: float | None = Field(default=None, ge=0.0, le=1.0)
     identity_confidence_factors: list[str] = Field(default_factory=list)
+
+
+class PromiseAutopilotUndoResponse(BaseModel):
+    """Result of reverting one Autopilot decision."""
+
+    ledger_entry: PromiseLedgerEntryResponse
+    reverted_event_id: str | None = None
+    quarantined: bool = False
+    message: str
 
 
 class PromiseExternalTaskReconcileItem(BaseModel):
@@ -957,8 +1102,10 @@ class PromiseCommandCenter(BaseModel):
     dashboard: PromiseRadarDashboard
     review_queue: PromiseAutopilotReviewQueue
     learning_insight: PromiseLearningInsight
+    learning_telemetry: PromiseLearningTelemetryReport
     digest: PromiseDigest
     pre_meeting_brief: PromisePreMeetingBrief
+    live_coach: PromiseLiveCoachSummary
     external_reconcile: PromiseExternalTaskReconcileResponse
     accuracy_report: PromiseAccuracyReport
     extraction_recall: PromiseExtractionRecallReport
@@ -966,7 +1113,10 @@ class PromiseCommandCenter(BaseModel):
     memory_graph: PromiseMemoryGraph
     shadow_mode: PromiseAutopilotShadowSummary
     evidence_permissions: PromiseEvidencePermissionSummary
+    evidence_room: PromiseEvidenceRoomSummary
     team_scorecard: PromiseTeamScorecard
+    autopilot_quarantine: PromiseAutopilotQuarantineSummary
+    meeting_recipe: PromiseMeetingRecipePolicy
     google_tasks_oauth: PromiseGoogleTasksOAuthGuide
     actions: list[PromiseCommandCenterAction] = Field(default_factory=list)
     focus_items: list[PromiseCommandCenterFocusItem] = Field(default_factory=list)

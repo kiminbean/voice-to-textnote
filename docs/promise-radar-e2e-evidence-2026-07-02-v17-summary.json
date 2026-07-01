@@ -1,0 +1,64 @@
+{
+  "generated_at": "2026-07-02T00:00:00+09:00",
+  "scope": "Promise Radar v17 local verification summary",
+  "accuracy": {
+    "case_count": 629,
+    "correct_count": 629,
+    "accuracy": 1.0,
+    "real_meeting_case_count": 562,
+    "target_real_cases": 560,
+    "failure_count": 0,
+    "below_target": false
+  },
+  "accuracy_audit": {
+    "passed": true,
+    "case_count": 629,
+    "real_case_count": 562,
+    "target_real_cases": 560,
+    "error_count": 0,
+    "warning_count": 4,
+    "warning_note": "Historical v1 source-cache metadata warnings remain; v17 sources include subtitle and audio cache paths."
+  },
+  "extraction_recall": {
+    "case_count": 50,
+    "expected_count": 50,
+    "matched_count": 50,
+    "recall": 1.0,
+    "failure_count": 0
+  },
+  "command_center_v17_contract": {
+    "requires_learning_telemetry": true,
+    "requires_live_coach": true,
+    "requires_evidence_room": true,
+    "requires_autopilot_quarantine": true,
+    "requires_meeting_recipe": true,
+    "requires_google_tasks_oauth_start_route": true,
+    "target_case_count": 560
+  },
+  "physical_device_e2e": {
+    "output": ".cache/promise-radar-e2e-v17-check.json",
+    "overall_pass": true,
+    "target_base_url": "http://100.69.69.119:8000/api/v1",
+    "ios_connected": true,
+    "android_connected": true,
+    "failed_checks": [],
+    "command_center": {
+      "ok": true,
+      "accuracy_case_count": 629,
+      "real_meeting_case_count": 562,
+      "learning_telemetry_event_count": 38,
+      "learning_telemetry_status_segment_count": 5,
+      "live_coach_prompt_count": 10,
+      "evidence_room_share_ready_count": 0,
+      "autopilot_quarantine_count": 0,
+      "meeting_recipe_key": "team_sync"
+    }
+  },
+  "verification": {
+    "ruff": "All checks passed!",
+    "pytest": "20 passed",
+    "flutter_analyze": "No issues found!",
+    "flutter_test": "All tests passed!"
+  },
+  "raw_device_evidence_policy": "Raw .cache evidence and device command output remain uncommitted."
+}

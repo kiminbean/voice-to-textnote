@@ -1,6 +1,6 @@
 # Promise Radar v12 Session Summary
 
-> Current baseline note: v12 counts are preserved as session history. The latest Promise Radar baseline is v16 in `docs/session-summary-2026-07-02-promise-radar-v16.md`: 569 total accuracy cases, 502 real-meeting/audio-derived labels, evaluator accuracy 1.0, extraction recall 50/50.
+> Current baseline note: v12 counts are preserved as session history. The latest Promise Radar baseline is v17 in `docs/session-summary-2026-07-02-promise-radar-v17.md`: 629 total accuracy cases, 562 real-meeting/audio-derived labels, evaluator accuracy 1.0, extraction recall 50/50, and physical-device E2E generator `overall_pass=true`.
 
 ## Scope
 

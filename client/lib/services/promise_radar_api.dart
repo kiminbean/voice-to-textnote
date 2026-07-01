@@ -205,7 +205,7 @@ class PromiseRadarApi {
   Future<PromiseCommandCenter> getCommandCenter({
     String? teamId,
     int limit = 50,
-    int targetCaseCount = 100,
+    int targetCaseCount = 560,
   }) async {
     final response = await _dio.get(
       '/promise-radar/command-center',

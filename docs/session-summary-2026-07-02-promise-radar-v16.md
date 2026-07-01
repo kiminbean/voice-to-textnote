@@ -1,5 +1,7 @@
 # Promise Radar v16 Session Summary
 
+> Current baseline note: v16 counts are preserved as session history. The latest Promise Radar baseline is v17 in `docs/session-summary-2026-07-02-promise-radar-v17.md`: 629 total accuracy cases, 562 real-meeting/audio-derived labels, evaluator accuracy 1.0, extraction recall 50/50, and physical-device E2E generator `overall_pass=true`.
+
 ## Scope
 
 - Completed the next autonomous 1-7 Promise Radar hardening pass after v15 Command Center.
@@ -63,5 +65,5 @@
 
 - v16 is a feature/readiness improvement and does not add strict release required keys by itself.
 - If v16 Command Center checks become strict release evidence, update `REQUIRED_E2E_SCENARIOS`, scaffold/example evidence, release-readiness tests, and `docs/e2e-device-checklist.md` in the same change.
-- Historical v10-v15 session summaries keep their original counts for traceability. Current docs should use the v16 baseline: `569` total cases, `502` real-meeting/audio-derived labels, evaluator accuracy `1.0`, extraction recall `50/50`.
-- The physical-device E2E cache collected before v16 passed the v15 Command Center contract. Rerun the updated generator after deploying/restarting the v16 backend to collect v16 physical-device evidence.
+- Historical v10-v16 session summaries keep their original counts for traceability. Current docs should use the v17 baseline: `629` total cases, `562` real-meeting/audio-derived labels, evaluator accuracy `1.0`, extraction recall `50/50`, and physical-device E2E generator `overall_pass=true`.
+- The physical-device E2E cache collected before v16 passed the v15 Command Center contract. Current physical-device evidence is the v17 generator output in `docs/promise-radar-e2e-evidence-2026-07-02-v17-summary.json`; do not use this v16 cache as the current release baseline.

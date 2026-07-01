@@ -12,12 +12,13 @@ from __future__ import annotations
 import json
 import os
 import re
+import secrets
 from collections import Counter
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
-from urllib.parse import quote
+from urllib.parse import quote, urlencode
 from uuid import UUID
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -47,11 +48,14 @@ from backend.schemas.promise_radar import (
     PromiseAutomationPolicyUpdateRequest,
     PromiseAutopilotAssessment,
     PromiseAutopilotConfirmRequest,
+    PromiseAutopilotQuarantineSummary,
     PromiseAutopilotRejectRequest,
     PromiseAutopilotResponse,
     PromiseAutopilotReviewItem,
     PromiseAutopilotReviewQueue,
     PromiseAutopilotShadowSummary,
+    PromiseAutopilotUndoRequest,
+    PromiseAutopilotUndoResponse,
     PromiseCalendarExportResponse,
     PromiseCommandCenter,
     PromiseCommandCenterAction,
@@ -64,6 +68,9 @@ from backend.schemas.promise_radar import (
     PromiseEvidenceComparison,
     PromiseEvidencePack,
     PromiseEvidencePermissionSummary,
+    PromiseEvidenceRoomLinkRequest,
+    PromiseEvidenceRoomLinkResponse,
+    PromiseEvidenceRoomSummary,
     PromiseExternalExportRequest,
     PromiseExternalExportResponse,
     PromiseExternalTaskReconcileItem,
@@ -77,10 +84,14 @@ from backend.schemas.promise_radar import (
     PromiseGoogleTaskList,
     PromiseGoogleTaskListResponse,
     PromiseGoogleTasksOAuthGuide,
+    PromiseGoogleTasksOAuthStartRequest,
+    PromiseGoogleTasksOAuthStartResponse,
     PromiseLearningFeedbackRequest,
     PromiseLearningFeedbackResponse,
     PromiseLearningInsight,
     PromiseLearningProfile,
+    PromiseLearningTelemetryReport,
+    PromiseLearningTelemetrySegment,
     PromiseLedgerEntryResponse,
     PromiseLedgerHistoryEntry,
     PromiseLedgerMergeRequest,
@@ -88,7 +99,10 @@ from backend.schemas.promise_radar import (
     PromiseLedgerSplitRequest,
     PromiseLedgerSplitResponse,
     PromiseLedgerUpdateRequest,
+    PromiseLiveCoachPrompt,
+    PromiseLiveCoachSummary,
     PromiseMatchExplanation,
+    PromiseMeetingRecipePolicy,
     PromiseMeetingSeries,
     PromiseMeetingSeriesTimeline,
     PromiseMeetingSeriesTimelineItem,
@@ -1193,6 +1207,93 @@ class PromiseRadarService:
             next_actions=next_actions[:5],
         )
 
+    async def build_learning_telemetry_report(
+        self,
+        session: AsyncSession,
+        *,
+        owner_id: UUID | str | None = None,
+        guest_session_id: str | None = None,
+        team_id: UUID | str | None = None,
+        limit: int = 500,
+    ) -> PromiseLearningTelemetryReport:
+        """Aggregate privacy-safe production learning telemetry from ledger events."""
+        events = await self._scoped_events(
+            session,
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
+            team_id=team_id,
+            limit=limit,
+        )
+        status_buckets: dict[str, Counter[str]] = {}
+        owner_buckets: dict[str, Counter[str]] = {}
+        locale_buckets: dict[str, Counter[str]] = {}
+        shape_buckets: dict[str, Counter[str]] = {}
+        feedback_count = 0
+
+        for event in events:
+            value = event.new_value if isinstance(event.new_value, dict) else {}
+            event_type = event.event_type or "unknown"
+            if event_type in {
+                "learning_feedback",
+                "autopilot_review_rejected",
+                "autopilot_confirmed",
+                "autopilot_applied",
+                "autopilot_undone",
+            }:
+                feedback_count += 1
+
+            status = self._telemetry_status(value, event_type)
+            self._telemetry_mark(status_buckets, status, event_type, value)
+
+            owner_key = self._telemetry_owner_key(value)
+            if owner_key:
+                self._telemetry_mark(owner_buckets, owner_key, event_type, value)
+
+            locale = self._telemetry_locale(value)
+            self._telemetry_mark(locale_buckets, locale, event_type, value)
+
+            payload_shape = str(value.get("payload_shape") or event_type or "unknown")
+            self._telemetry_mark(shape_buckets, payload_shape, event_type, value)
+
+        status_segments = self._telemetry_segments("status", status_buckets)
+        owner_segments = self._telemetry_segments("owner", owner_buckets)
+        locale_segments = self._telemetry_segments("locale", locale_buckets)
+        payload_shape_segments = self._telemetry_segments("payload_shape", shape_buckets)
+        recommendations: list[str] = []
+        weak_statuses = [
+            item.value
+            for item in status_segments
+            if item.sample_count >= 2 and item.false_positive_rate >= 0.34
+        ]
+        if weak_statuses:
+            recommendations.append(
+                f"오판율이 높은 상태({', '.join(weak_statuses[:4])})는 preview-only로 유지하세요."
+            )
+        if not owner_segments:
+            recommendations.append(
+                "담당자 보정 telemetry가 부족합니다. Review Queue에서 owner 수정 데이터를 누적하세요."
+            )
+        if any(item.value == "ko" and item.false_positive_count for item in locale_segments):
+            recommendations.append(
+                "한국어 회의 오판 샘플을 별도 accuracy/extraction fixture로 승격하세요."
+            )
+        if not recommendations:
+            recommendations.append(
+                "현재 production telemetry 기준으로 즉시 격리할 고위험 패턴은 없습니다."
+            )
+
+        return PromiseLearningTelemetryReport(
+            generated_at=datetime.now(UTC).replace(tzinfo=None),
+            scope=self._scope_label(owner_id, guest_session_id, team_id),
+            event_count=len(events),
+            feedback_event_count=feedback_count,
+            status_segments=status_segments,
+            owner_segments=owner_segments,
+            locale_segments=locale_segments,
+            payload_shape_segments=payload_shape_segments,
+            recommendations=recommendations[:5],
+        )
+
     async def build_responsibility_trends(
         self,
         session: AsyncSession,
@@ -1579,7 +1680,7 @@ class PromiseRadarService:
         guest_session_id: str | None = None,
         team_id: UUID | str | None = None,
         limit: int = 50,
-        target_case_count: int = 100,
+        target_case_count: int = 560,
     ) -> PromiseCommandCenter:
         """Build one operational Promise Radar view for review, learning, and sync."""
         dashboard = await self.build_dashboard(
@@ -1603,6 +1704,13 @@ class PromiseRadarService:
             team_id=team_id,
             limit=max(limit, 200),
         )
+        learning_telemetry = await self.build_learning_telemetry_report(
+            session,
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
+            team_id=team_id,
+            limit=max(limit, 500),
+        )
         digest = await self.build_digest(
             session,
             cadence="daily",
@@ -1618,6 +1726,7 @@ class PromiseRadarService:
             team_id=team_id,
             limit=8,
         )
+        live_coach = self._build_live_coach_summary(pre_meeting_brief)
         external_reconcile = await self.build_external_task_reconcile_report(
             session,
             owner_id=owner_id,
@@ -1635,11 +1744,29 @@ class PromiseRadarService:
             evidence_audit,
             scope=self._scope_label(owner_id, guest_session_id, team_id),
         )
+        evidence_room = self._evidence_room_summary(
+            review_queue,
+            evidence_permissions,
+            scope=self._scope_label(owner_id, guest_session_id, team_id),
+        )
         team_scorecard = self._team_scorecard_summary(dashboard)
+        autopilot_quarantine = await self.build_autopilot_quarantine_summary(
+            session,
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
+            team_id=team_id,
+            limit=max(limit, 200),
+        )
+        meeting_recipe = self._meeting_recipe_policy(
+            dashboard=dashboard,
+            learning_insight=learning_insight,
+            evidence_permissions=evidence_permissions,
+        )
         focus_items = self._command_center_focus_items(
             dashboard=dashboard,
             review_queue=review_queue,
             learning_insight=learning_insight,
+            learning_telemetry=learning_telemetry,
             digest=digest,
             external_reconcile=external_reconcile,
             accuracy_report=accuracy_report,
@@ -1648,7 +1775,10 @@ class PromiseRadarService:
             memory_graph=memory_graph,
             shadow_mode=shadow_mode,
             evidence_permissions=evidence_permissions,
+            evidence_room=evidence_room,
             team_scorecard=team_scorecard,
+            autopilot_quarantine=autopilot_quarantine,
+            live_coach=live_coach,
         )
         actions = self._command_center_actions(
             review_queue=review_queue,
@@ -1656,14 +1786,19 @@ class PromiseRadarService:
             accuracy_report=accuracy_report,
             extraction_recall=extraction_recall,
             evidence_permissions=evidence_permissions,
+            evidence_room=evidence_room,
+            autopilot_quarantine=autopilot_quarantine,
+            live_coach=live_coach,
         )
         return PromiseCommandCenter(
             generated_at=datetime.now(UTC).replace(tzinfo=None),
             dashboard=dashboard,
             review_queue=review_queue,
             learning_insight=learning_insight,
+            learning_telemetry=learning_telemetry,
             digest=digest,
             pre_meeting_brief=pre_meeting_brief,
+            live_coach=live_coach,
             external_reconcile=external_reconcile,
             accuracy_report=accuracy_report,
             extraction_recall=extraction_recall,
@@ -1671,7 +1806,10 @@ class PromiseRadarService:
             memory_graph=memory_graph,
             shadow_mode=shadow_mode,
             evidence_permissions=evidence_permissions,
+            evidence_room=evidence_room,
             team_scorecard=team_scorecard,
+            autopilot_quarantine=autopilot_quarantine,
+            meeting_recipe=meeting_recipe,
             google_tasks_oauth=self._google_tasks_oauth_guide(),
             actions=actions,
             focus_items=focus_items,
@@ -2443,6 +2581,347 @@ class PromiseRadarService:
         )
         await session.commit()
         return assessment
+
+    async def undo_autopilot_decision(
+        self,
+        session: AsyncSession,
+        entry_id: UUID | str,
+        payload: PromiseAutopilotUndoRequest,
+        *,
+        owner_id: UUID | str | None = None,
+        guest_session_id: str | None = None,
+        team_id: UUID | str | None = None,
+    ) -> PromiseAutopilotUndoResponse:
+        """Revert the latest applied/confirmed Autopilot decision and optionally quarantine it."""
+        entry = await self._get_scoped_ledger_entry(
+            session,
+            entry_id,
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
+            team_id=team_id,
+        )
+        if entry is None:
+            raise ValueError("약속 원장 항목을 찾을 수 없습니다")
+        result = await session.execute(
+            select(PromiseLedgerEvent)
+            .where(
+                PromiseLedgerEvent.ledger_entry_id == entry.id,
+                PromiseLedgerEvent.event_type.in_(["autopilot_applied", "autopilot_confirmed"]),
+            )
+            .order_by(PromiseLedgerEvent.created_at.desc())
+            .limit(1)
+        )
+        event = result.scalar_one_or_none()
+        if event is None or not isinstance(event.old_value, dict):
+            raise ValueError("되돌릴 자동 판정 이력이 없습니다")
+
+        current_snapshot = self._ledger_snapshot(entry)
+        suggested_status = (
+            event.new_value.get("autopilot", {}).get("suggested_status")
+            if isinstance(event.new_value, dict)
+            and isinstance(event.new_value.get("autopilot"), dict)
+            else current_snapshot.get("status")
+        )
+        self._apply_ledger_snapshot(entry, event.old_value)
+        entry.updated_at = datetime.now(UTC).replace(tzinfo=None)
+        self._record_ledger_event(
+            session,
+            entry,
+            "autopilot_undone",
+            old_value=current_snapshot,
+            new_value={
+                **self._ledger_snapshot(entry),
+                "reverted_event_id": str(event.id),
+                "suggested_status": suggested_status,
+                "quarantined": payload.quarantine,
+            },
+            note=payload.reason or "사용자가 자동 판정을 되돌렸습니다.",
+            actor_user_id=owner_id,
+        )
+        await session.flush()
+        if payload.quarantine:
+            self._record_ledger_event(
+                session,
+                entry,
+                "autopilot_quarantined",
+                new_value={
+                    "reverted_event_id": str(event.id),
+                    "suggested_status": suggested_status,
+                    "previous_status": current_snapshot.get("status"),
+                },
+                note=payload.reason or "Undo 후 같은 자동 판정 패턴을 격리했습니다.",
+                actor_user_id=owner_id,
+            )
+        await session.commit()
+        await session.refresh(entry)
+        return PromiseAutopilotUndoResponse(
+            ledger_entry=self._entry_to_response(entry),
+            reverted_event_id=str(event.id),
+            quarantined=payload.quarantine,
+            message="자동 판정을 이전 상태로 되돌렸습니다.",
+        )
+
+    async def build_autopilot_quarantine_summary(
+        self,
+        session: AsyncSession,
+        *,
+        owner_id: UUID | str | None = None,
+        guest_session_id: str | None = None,
+        team_id: UUID | str | None = None,
+        limit: int = 200,
+    ) -> PromiseAutopilotQuarantineSummary:
+        """Summarize rejected/undone Autopilot patterns that should remain in review."""
+        result = await session.execute(
+            select(PromiseLedgerEvent)
+            .where(
+                self._event_scope_condition(owner_id, guest_session_id, team_id=team_id),
+                PromiseLedgerEvent.event_type.in_(
+                    [
+                        "autopilot_review_rejected",
+                        "autopilot_undone",
+                        "autopilot_quarantined",
+                    ]
+                ),
+            )
+            .order_by(PromiseLedgerEvent.created_at.desc())
+            .limit(max(1, min(limit, 500)))
+        )
+        statuses: Counter[str] = Counter()
+        affected_entries: list[str] = []
+        rejected_count = 0
+        quarantined_count = 0
+        for event in result.scalars().all():
+            value = event.new_value if isinstance(event.new_value, dict) else {}
+            status = str(value.get("suggested_status") or value.get("predicted_status") or "")
+            if status:
+                statuses[status] += 1
+            entry_id_text = str(event.ledger_entry_id)
+            if entry_id_text not in affected_entries:
+                affected_entries.append(entry_id_text)
+            if event.event_type == "autopilot_review_rejected":
+                rejected_count += 1
+            else:
+                quarantined_count += 1
+        notes = ["격리된 자동 판정은 같은 회의/entry/status 후보로 즉시 재등장하지 않습니다."]
+        if statuses:
+            notes.append(f"주의 상태: {', '.join(status for status, _ in statuses.most_common(4))}")
+        return PromiseAutopilotQuarantineSummary(
+            quarantined_count=quarantined_count,
+            rejected_count=rejected_count,
+            affected_statuses=dict(statuses),
+            affected_entries=affected_entries[:20],
+            notes=notes,
+        )
+
+    async def build_live_coach_summary(
+        self,
+        session: AsyncSession,
+        *,
+        owner_id: UUID | str | None = None,
+        guest_session_id: str | None = None,
+        team_id: UUID | str | None = None,
+        limit: int = 8,
+    ) -> PromiseLiveCoachSummary:
+        """Build live meeting prompts from unresolved promises."""
+        brief = await self.build_pre_meeting_brief(
+            session,
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
+            team_id=team_id,
+            limit=limit,
+        )
+        return self._build_live_coach_summary(brief)
+
+    async def build_evidence_room_summary(
+        self,
+        session: AsyncSession,
+        *,
+        owner_id: UUID | str | None = None,
+        guest_session_id: str | None = None,
+        team_id: UUID | str | None = None,
+        limit: int = 50,
+    ) -> PromiseEvidenceRoomSummary:
+        """Summarize privacy-safe evidence sharing readiness."""
+        review_queue = await self.build_autopilot_review_inbox(
+            session,
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
+            team_id=team_id,
+            limit=limit,
+        )
+        evidence_audit = self._evidence_audit_summary(review_queue)
+        evidence_permissions = self._evidence_permission_summary(
+            review_queue,
+            evidence_audit,
+            scope=self._scope_label(owner_id, guest_session_id, team_id),
+        )
+        return self._evidence_room_summary(
+            review_queue,
+            evidence_permissions,
+            scope=self._scope_label(owner_id, guest_session_id, team_id),
+        )
+
+    async def create_evidence_room_link(
+        self,
+        session: AsyncSession,
+        entry_id: UUID | str,
+        payload: PromiseEvidenceRoomLinkRequest,
+        *,
+        owner_id: UUID | str | None = None,
+        guest_session_id: str | None = None,
+        team_id: UUID | str | None = None,
+    ) -> PromiseEvidenceRoomLinkResponse:
+        """Create a short-lived redacted evidence payload for external review."""
+        entry = await self._get_scoped_ledger_entry(
+            session,
+            entry_id,
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
+            team_id=team_id,
+        )
+        if entry is None:
+            raise ValueError("약속 원장 항목을 찾을 수 없습니다")
+
+        redacted: list[dict[str, Any]] = []
+        redaction_applied = False
+        for raw in entry.evidence or []:
+            if not isinstance(raw, dict):
+                continue
+            item = dict(raw)
+            if not payload.include_transcript_quotes and "transcript" in item:
+                item["transcript"] = "[redacted]"
+                redaction_applied = True
+            if not payload.include_speaker_labels and "speaker_label" in item:
+                item["speaker_label"] = "[redacted]"
+                redaction_applied = True
+            if not payload.include_timestamps:
+                for key in ("start_seconds", "end_seconds"):
+                    if key in item:
+                        item.pop(key, None)
+                        redaction_applied = True
+            redacted.append(item)
+            if len(redacted) >= 5:
+                break
+
+        expires_at = datetime.now(UTC).replace(tzinfo=None) + timedelta(hours=payload.ttl_hours)
+        token_preview = secrets.token_urlsafe(18)[:16]
+        self._record_ledger_event(
+            session,
+            entry,
+            "evidence_room_link_created",
+            new_value={
+                "ttl_hours": payload.ttl_hours,
+                "expires_at": expires_at.isoformat(),
+                "evidence_count": len(redacted),
+                "redaction_applied": redaction_applied,
+                "include_transcript_quotes": payload.include_transcript_quotes,
+                "include_timestamps": payload.include_timestamps,
+                "include_speaker_labels": payload.include_speaker_labels,
+            },
+            note=payload.reason or "Evidence Room redacted link created.",
+            actor_user_id=owner_id,
+        )
+        await session.commit()
+        return PromiseEvidenceRoomLinkResponse(
+            ledger_entry_id=str(entry.id),
+            share_token_preview=token_preview,
+            expires_at=expires_at,
+            redaction_applied=redaction_applied,
+            evidence_count=len(redacted),
+            redacted_evidence=redacted,
+            policy_notes=[
+                "원본 transcript/speaker label은 기본적으로 redaction됩니다.",
+                "공유 링크는 짧은 TTL로만 사용하고 토큰 원문은 서버 로그에 남기지 않습니다.",
+            ],
+        )
+
+    async def build_meeting_recipe_policy(
+        self,
+        session: AsyncSession,
+        *,
+        owner_id: UUID | str | None = None,
+        guest_session_id: str | None = None,
+        team_id: UUID | str | None = None,
+    ) -> PromiseMeetingRecipePolicy:
+        """Infer the active meeting recipe policy from current Promise Radar state."""
+        dashboard = await self.build_dashboard(
+            session,
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
+            team_id=team_id,
+            limit=50,
+        )
+        learning_insight = await self.build_learning_insights(
+            session,
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
+            team_id=team_id,
+            limit=200,
+        )
+        evidence_room = await self.build_evidence_room_summary(
+            session,
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
+            team_id=team_id,
+            limit=50,
+        )
+        evidence_permissions = PromiseEvidencePermissionSummary(
+            scope=evidence_room.scope,
+            export_allowed=evidence_room.blocked_count == 0,
+            redaction_required=evidence_room.redaction_required_count > 0,
+            contains_speaker_data=evidence_room.redaction_required_count > 0,
+            contains_timestamp_data=evidence_room.redaction_required_count > 0,
+            allowed_evidence_count=evidence_room.share_ready_count,
+            blocked_export_count=evidence_room.blocked_count,
+            policy_notes=evidence_room.policy_notes,
+        )
+        return self._meeting_recipe_policy(
+            dashboard=dashboard,
+            learning_insight=learning_insight,
+            evidence_permissions=evidence_permissions,
+        )
+
+    def build_google_tasks_oauth_start(
+        self,
+        payload: PromiseGoogleTasksOAuthStartRequest,
+    ) -> PromiseGoogleTasksOAuthStartResponse:
+        """Build a Google Tasks OAuth URL for native app handoff."""
+        client_ids = [
+            item.strip() for item in str(settings.google_client_id or "").split(",") if item.strip()
+        ]
+        client_id = client_ids[0] if client_ids else ""
+        redirect_uri = payload.redirect_uri or "com.voicetextnote.app:/oauth2redirect/google-tasks"
+        state = payload.state or secrets.token_urlsafe(24)
+        scopes = ["https://www.googleapis.com/auth/tasks"]
+        missing_setup: list[str] = []
+        if not client_id:
+            missing_setup.append("GOOGLE_CLIENT_ID")
+        params: dict[str, str] = {
+            "client_id": client_id,
+            "redirect_uri": redirect_uri,
+            "response_type": "code",
+            "scope": " ".join(scopes),
+            "access_type": "offline",
+            "include_granted_scopes": "true",
+            "state": state,
+            "prompt": payload.prompt,
+        }
+        if payload.code_challenge:
+            params["code_challenge"] = payload.code_challenge
+            params["code_challenge_method"] = payload.code_challenge_method
+        auth_url = "https://accounts.google.com/o/oauth2/v2/auth?" + urlencode(params, safe=":/")
+        return PromiseGoogleTasksOAuthStartResponse(
+            ready=not missing_setup,
+            auth_url=auth_url,
+            state=state,
+            redirect_uri=redirect_uri,
+            scopes=scopes,
+            missing_setup=missing_setup,
+            token_handling=(
+                "authorization code만 앱에서 백엔드로 전달하고 access token은 "
+                "요청 처리 중에만 사용합니다."
+            ),
+        )
 
     async def resolve_autopilot_conflict(
         self,
@@ -3618,7 +4097,7 @@ class PromiseRadarService:
         *,
         fixture_path: str,
         source_manifest_path: str | None = None,
-        target_case_count: int = 100,
+        target_case_count: int = 560,
     ) -> PromiseAccuracyReport:
         """Build an operator-facing accuracy report from fixture labels."""
         evaluation = self.evaluate_accuracy_cases(cases)
@@ -3711,7 +4190,7 @@ class PromiseRadarService:
             below_target=real_meeting_case_count < target_case_count,
         )
 
-    def _default_accuracy_report(self, *, target_case_count: int = 100) -> PromiseAccuracyReport:
+    def _default_accuracy_report(self, *, target_case_count: int = 560) -> PromiseAccuracyReport:
         backend_root = Path(__file__).resolve().parents[1]
         fixture_path = backend_root / "tests" / "fixtures" / "promise_radar_accuracy_cases.json"
         source_manifest_path = (
@@ -4201,6 +4680,126 @@ class PromiseRadarService:
             ],
         )
 
+    def _build_live_coach_summary(
+        self,
+        brief: PromisePreMeetingBrief,
+    ) -> PromiseLiveCoachSummary:
+        prompts: list[PromiseLiveCoachPrompt] = []
+        moment = datetime.now(UTC).replace(tzinfo=None)
+        for entry in brief.promises[:5]:
+            severity = "high" if entry.risk_level == "high" else "warning"
+            if entry.due_at and entry.due_at > moment:
+                severity = "info" if entry.risk_level != "high" else "warning"
+            owner = entry.owner or "담당자 미정"
+            prompts.append(
+                PromiseLiveCoachPrompt(
+                    key=f"promise:{entry.id}",
+                    label="약속 확인",
+                    prompt=f"{owner}에게 '{entry.text}' 상태와 다음 기한을 확인하세요.",
+                    severity=severity,
+                    owner=entry.owner,
+                    due_at=entry.due_at,
+                    ledger_entry_id=entry.id,
+                )
+            )
+        for index, checkpoint in enumerate(brief.checkpoints[:3]):
+            prompts.append(
+                PromiseLiveCoachPrompt(
+                    key=f"checkpoint:{index}",
+                    label="체크포인트",
+                    prompt=checkpoint,
+                    severity="warning",
+                )
+            )
+        for index, question in enumerate(brief.questions[:2]):
+            prompts.append(
+                PromiseLiveCoachPrompt(
+                    key=f"question:{index}",
+                    label="질문",
+                    prompt=question,
+                    severity="info",
+                )
+            )
+        notes = [
+            "녹음 시작 전과 회의 중간에 Live Coach prompt를 확인하면 약속 누락을 줄일 수 있습니다."
+        ]
+        if not prompts:
+            notes.append("현재 회의 중 확인할 미해결 약속 prompt가 없습니다.")
+        return PromiseLiveCoachSummary(
+            generated_at=moment,
+            readiness_score=brief.readiness_score,
+            prompt_count=len(prompts),
+            prompts=prompts[:8],
+            notes=notes,
+        )
+
+    def _evidence_room_summary(
+        self,
+        review_queue: PromiseAutopilotReviewQueue,
+        evidence_permissions: PromiseEvidencePermissionSummary,
+        *,
+        scope: str,
+    ) -> PromiseEvidenceRoomSummary:
+        share_ready = evidence_permissions.allowed_evidence_count
+        redaction_required = (
+            evidence_permissions.allowed_evidence_count
+            if evidence_permissions.redaction_required
+            else 0
+        )
+        blocked = evidence_permissions.blocked_export_count
+        policy_notes = list(evidence_permissions.policy_notes)
+        if review_queue.conflict_count:
+            policy_notes.append(
+                "충돌 후보는 Evidence Room 공유 전 사용자가 상태를 먼저 확정해야 합니다."
+            )
+        if not policy_notes:
+            policy_notes.append(
+                "공유 가능한 Evidence Pack은 짧은 TTL과 redaction 정책으로 생성됩니다."
+            )
+        return PromiseEvidenceRoomSummary(
+            scope=scope,
+            share_ready_count=share_ready,
+            redaction_required_count=redaction_required,
+            blocked_count=blocked,
+            default_ttl_hours=72,
+            policy_notes=policy_notes[:4],
+        )
+
+    def _meeting_recipe_policy(
+        self,
+        *,
+        dashboard: PromiseRadarDashboard,
+        learning_insight: PromiseLearningInsight,
+        evidence_permissions: PromiseEvidencePermissionSummary,
+    ) -> PromiseMeetingRecipePolicy:
+        recipe_key = "team_sync"
+        label = "Team Sync"
+        high_risk_keywords = ["blocker", "blocked", "지연", "리스크", "결정 필요"]
+        recommended_integrations = ["Google Tasks"]
+        if dashboard.high_risk_count >= 3 or not evidence_permissions.export_allowed:
+            recipe_key = "risk_review"
+            label = "Risk Review"
+            high_risk_keywords.extend(["법무", "비용", "계약", "보안", "품질"])
+            recommended_integrations = ["Google Tasks", "Calendar"]
+        elif learning_insight.recommended_policy == "manual_only":
+            recipe_key = "strict_review"
+            label = "Strict Review"
+            high_risk_keywords.extend(["승인", "확정", "취소"])
+        return PromiseMeetingRecipePolicy(
+            recipe_key=recipe_key,
+            label=label,
+            owner_required=True,
+            due_date_required=True,
+            default_autopilot_mode=learning_insight.recommended_policy,
+            high_risk_keywords=high_risk_keywords,
+            prompt_templates=[
+                "담당자, 기한, 완료 기준을 한 문장으로 다시 확인하세요.",
+                "이 약속이 다음 회의 전까지 완료되지 않으면 어떤 위험이 생기는지 확인하세요.",
+                "자동 판정이 근거를 충분히 갖췄는지 Evidence Pack을 확인하세요.",
+            ],
+            recommended_integrations=recommended_integrations,
+        )
+
     def _command_center_actions(
         self,
         *,
@@ -4209,6 +4808,9 @@ class PromiseRadarService:
         accuracy_report: PromiseAccuracyReport,
         extraction_recall: PromiseExtractionRecallReport,
         evidence_permissions: PromiseEvidencePermissionSummary,
+        evidence_room: PromiseEvidenceRoomSummary,
+        autopilot_quarantine: PromiseAutopilotQuarantineSummary,
+        live_coach: PromiseLiveCoachSummary,
     ) -> list[PromiseCommandCenterAction]:
         """Expose only existing review/report/sync routes as operator actions."""
         actions = [
@@ -4269,6 +4871,66 @@ class PromiseRadarService:
                     else "현재 evidence export 차단 항목이 없습니다."
                 ),
             ),
+            PromiseCommandCenterAction(
+                key="open_learning_telemetry",
+                label="학습 telemetry 점검",
+                method="GET",
+                route="/api/v1/promise-radar/telemetry/learning",
+                enabled=True,
+                reason="상태/담당자/언어별 오판율을 확인합니다.",
+            ),
+            PromiseCommandCenterAction(
+                key="open_live_coach",
+                label="Live Promise Coach",
+                method="GET",
+                route="/api/v1/promise-radar/live-coach",
+                enabled=live_coach.prompt_count > 0,
+                reason=(
+                    f"회의 중 확인 prompt {live_coach.prompt_count}개가 준비됐습니다."
+                    if live_coach.prompt_count
+                    else "현재 회의 중 확인할 prompt가 없습니다."
+                ),
+            ),
+            PromiseCommandCenterAction(
+                key="open_evidence_room",
+                label="Evidence Room 공유",
+                method="GET",
+                route="/api/v1/promise-radar/evidence-room",
+                enabled=evidence_room.share_ready_count > 0,
+                requires_confirmation=True,
+                reason=(
+                    f"공유 가능 {evidence_room.share_ready_count}개, 차단 {evidence_room.blocked_count}개"
+                ),
+            ),
+            PromiseCommandCenterAction(
+                key="open_meeting_recipe",
+                label="회의 레시피 정책",
+                method="GET",
+                route="/api/v1/promise-radar/meeting-recipe",
+                enabled=True,
+                reason="회의 유형별 owner/due/evidence 정책을 적용합니다.",
+            ),
+            PromiseCommandCenterAction(
+                key="review_autopilot_quarantine",
+                label="Autopilot 격리 패턴",
+                method="GET",
+                route="/api/v1/promise-radar/autopilot/quarantine",
+                enabled=autopilot_quarantine.quarantined_count > 0,
+                reason=(
+                    f"격리/되돌림 패턴 {autopilot_quarantine.quarantined_count}개"
+                    if autopilot_quarantine.quarantined_count
+                    else "현재 격리된 Autopilot 패턴이 없습니다."
+                ),
+            ),
+            PromiseCommandCenterAction(
+                key="start_google_tasks_oauth",
+                label="Google Tasks OAuth 시작",
+                method="POST",
+                route="/api/v1/promise-radar/external-task/google-oauth/start",
+                enabled=bool(str(settings.google_client_id or "").strip()),
+                requires_confirmation=True,
+                reason="앱에서 Tasks scope 승인 URL을 생성합니다.",
+            ),
         ]
         return actions
 
@@ -4278,6 +4940,7 @@ class PromiseRadarService:
         dashboard: PromiseRadarDashboard,
         review_queue: PromiseAutopilotReviewQueue,
         learning_insight: PromiseLearningInsight,
+        learning_telemetry: PromiseLearningTelemetryReport,
         digest: PromiseDigest,
         external_reconcile: PromiseExternalTaskReconcileResponse,
         accuracy_report: PromiseAccuracyReport,
@@ -4286,7 +4949,10 @@ class PromiseRadarService:
         memory_graph: PromiseMemoryGraph,
         shadow_mode: PromiseAutopilotShadowSummary,
         evidence_permissions: PromiseEvidencePermissionSummary,
+        evidence_room: PromiseEvidenceRoomSummary,
         team_scorecard: PromiseTeamScorecard,
+        autopilot_quarantine: PromiseAutopilotQuarantineSummary,
+        live_coach: PromiseLiveCoachSummary,
     ) -> list[PromiseCommandCenterFocusItem]:
         items: list[PromiseCommandCenterFocusItem] = []
         if review_queue.conflict_count:
@@ -4361,6 +5027,33 @@ class PromiseRadarService:
                     action="주의 상태의 threshold를 낮추지 말고 확정/거절 데이터를 누적하세요.",
                 )
             )
+        high_false_positive_segments = [
+            segment
+            for segment in learning_telemetry.status_segments
+            if segment.sample_count >= 2 and segment.false_positive_rate >= 0.34
+        ]
+        if high_false_positive_segments:
+            items.append(
+                PromiseCommandCenterFocusItem(
+                    key="learning_telemetry",
+                    label="Telemetry 오판 패턴",
+                    severity="warning",
+                    count=len(high_false_positive_segments),
+                    action="오판율이 높은 상태는 preview-only로 유지하고 fixture로 승격하세요.",
+                    route="/api/v1/promise-radar/telemetry/learning",
+                )
+            )
+        if autopilot_quarantine.quarantined_count:
+            items.append(
+                PromiseCommandCenterFocusItem(
+                    key="autopilot_quarantine",
+                    label="Autopilot 격리",
+                    severity="warning",
+                    count=autopilot_quarantine.quarantined_count,
+                    action="되돌린 자동 판정 패턴은 근거가 보강될 때까지 검토함에 유지하세요.",
+                    route="/api/v1/promise-radar/autopilot/quarantine",
+                )
+            )
         if evidence_audit.weak_evidence_count:
             items.append(
                 PromiseCommandCenterFocusItem(
@@ -4390,6 +5083,28 @@ class PromiseRadarService:
                     severity="warning",
                     count=evidence_permissions.blocked_export_count,
                     action="근거 export 전 speaker/timestamp redaction과 Evidence Lock을 확인하세요.",
+                )
+            )
+        if evidence_room.blocked_count:
+            items.append(
+                PromiseCommandCenterFocusItem(
+                    key="evidence_room",
+                    label="Evidence Room 차단",
+                    severity="warning",
+                    count=evidence_room.blocked_count,
+                    action="외부 공유 전 transcript/speaker/timestamp redaction과 근거 강도를 확인하세요.",
+                    route="/api/v1/promise-radar/evidence-room",
+                )
+            )
+        if live_coach.prompt_count:
+            items.append(
+                PromiseCommandCenterFocusItem(
+                    key="live_coach",
+                    label="회의 중 확인 prompt",
+                    severity="info",
+                    count=live_coach.prompt_count,
+                    action="녹음 중 담당자/기한/완료 기준을 바로 확인하세요.",
+                    route="/api/v1/promise-radar/live-coach",
                 )
             )
         if team_scorecard.risk_score >= 70:
@@ -5428,6 +6143,105 @@ class PromiseRadarService:
             identity_confidence_factors=identity_factors,
         )
 
+    def _telemetry_status(self, value: dict[str, Any], event_type: str) -> str:
+        autopilot = value.get("autopilot") if isinstance(value.get("autopilot"), dict) else {}
+        return str(
+            value.get("predicted_status")
+            or value.get("suggested_status")
+            or value.get("current_status")
+            or autopilot.get("suggested_status")
+            or event_type
+            or "unknown"
+        ).strip()
+
+    def _telemetry_owner_key(self, value: dict[str, Any]) -> str | None:
+        expected = self._clean_optional(value.get("expected_owner"))
+        current = self._clean_optional(value.get("current_owner") or value.get("owner"))
+        if expected and current and self._owner_key(expected) != self._owner_key(current):
+            return "owner_corrected"
+        if expected or current:
+            return "owner_confirmed"
+        expected_user = self._clean_optional(value.get("expected_assigned_user_id"))
+        current_user = self._clean_optional(value.get("assigned_user_id"))
+        if expected_user and current_user and expected_user != current_user:
+            return "assigned_user_corrected"
+        return None
+
+    def _telemetry_locale(self, value: dict[str, Any]) -> str:
+        text = " ".join(
+            str(value.get(key) or "")
+            for key in (
+                "note",
+                "reason",
+                "current_text",
+                "matched_text",
+                "expected_owner",
+                "current_owner",
+            )
+        )
+        autopilot = value.get("autopilot") if isinstance(value.get("autopilot"), dict) else {}
+        if autopilot:
+            text = f"{text} {autopilot.get('reason') or ''}"
+        if re.search(r"[가-힣]", text):
+            return "ko"
+        if re.search(r"[A-Za-z]", text):
+            return "en"
+        return "unknown"
+
+    def _telemetry_mark(
+        self,
+        buckets: dict[str, Counter[str]],
+        key: str,
+        event_type: str,
+        value: dict[str, Any],
+    ) -> None:
+        normalized = key or "unknown"
+        bucket = buckets.setdefault(normalized, Counter())
+        bucket["sample"] += 1
+        if event_type in {"autopilot_confirmed", "autopilot_applied"}:
+            bucket["confirmed"] += 1
+        if event_type in {"learning_feedback", "autopilot_review_rejected", "autopilot_undone"}:
+            bucket["false_positive"] += 1
+        if value.get("expected_owner") or value.get("expected_assigned_user_id"):
+            bucket["correction"] += 1
+
+    def _telemetry_segments(
+        self,
+        dimension: str,
+        buckets: dict[str, Counter[str]],
+    ) -> list[PromiseLearningTelemetrySegment]:
+        segments: list[PromiseLearningTelemetrySegment] = []
+        for value, counts in sorted(
+            buckets.items(),
+            key=lambda item: (item[1]["false_positive"], item[1]["sample"]),
+            reverse=True,
+        ):
+            sample_count = int(counts["sample"])
+            confirmed_count = int(counts["confirmed"])
+            false_positive_count = int(counts["false_positive"])
+            correction_count = int(counts["correction"])
+            notes: list[str] = []
+            if sample_count and false_positive_count / sample_count >= 0.34:
+                notes.append("preview-only 권장")
+            if correction_count:
+                notes.append("사용자 보정 반영됨")
+            segments.append(
+                PromiseLearningTelemetrySegment(
+                    dimension=dimension,
+                    value=value,
+                    sample_count=sample_count,
+                    confirmed_count=confirmed_count,
+                    false_positive_count=false_positive_count,
+                    correction_count=correction_count,
+                    precision=round(confirmed_count / sample_count, 3) if sample_count else 0.0,
+                    false_positive_rate=round(false_positive_count / sample_count, 3)
+                    if sample_count
+                    else 0.0,
+                    notes=notes,
+                )
+            )
+        return segments[:12]
+
     def _event_to_response(self, event: PromiseLedgerEvent) -> PromiseLedgerHistoryEntry:
         return PromiseLedgerHistoryEntry(
             id=str(event.id),
@@ -5882,7 +6696,13 @@ class PromiseRadarService:
             select(PromiseLedgerEvent)
             .where(
                 self._event_scope_condition(owner_id, guest_session_id, team_id=team_id),
-                PromiseLedgerEvent.event_type == "autopilot_review_rejected",
+                PromiseLedgerEvent.event_type.in_(
+                    [
+                        "autopilot_review_rejected",
+                        "autopilot_undone",
+                        "autopilot_quarantined",
+                    ]
+                ),
             )
             .order_by(PromiseLedgerEvent.created_at.desc())
             .limit(500)
@@ -5890,7 +6710,7 @@ class PromiseRadarService:
         rejected: set[tuple[str, str]] = set()
         for event in result.scalars().all():
             value = event.new_value if isinstance(event.new_value, dict) else {}
-            if value.get("task_id") != task_id:
+            if value.get("task_id") and value.get("task_id") != task_id:
                 continue
             status = str(value.get("suggested_status") or "").strip()
             if status:
@@ -5927,7 +6747,9 @@ class PromiseRadarService:
             "id": str(entry.id),
             "text": entry.text,
             "canonical_key": entry.canonical_key,
+            "canonical_text": entry.canonical_text,
             "owner": entry.owner_name,
+            "owner_name": entry.owner_name,
             "team_id": str(entry.team_id) if entry.team_id else None,
             "assigned_user_id": str(entry.assigned_user_id) if entry.assigned_user_id else None,
             "status": entry.status,
@@ -5937,6 +6759,7 @@ class PromiseRadarService:
             "due_date": entry.due_date_text,
             "due_at": entry.due_at.isoformat() if entry.due_at else None,
             "reminder_at": entry.reminder_at.isoformat() if entry.reminder_at else None,
+            "completed_at": entry.completed_at.isoformat() if entry.completed_at else None,
             "notification_sent_at": (
                 entry.notification_sent_at.isoformat() if entry.notification_sent_at else None
             ),
@@ -5945,6 +6768,52 @@ class PromiseRadarService:
             "dismissed_reason": entry.dismissed_reason,
             "action_item_id": str(entry.action_item_id) if entry.action_item_id else None,
         }
+
+    def _apply_ledger_snapshot(
+        self,
+        entry: PromiseLedgerEntry,
+        snapshot: dict[str, Any],
+    ) -> None:
+        text = self._clean_optional(snapshot.get("text"))
+        if text:
+            entry.text = text
+        canonical_key = self._clean_optional(snapshot.get("canonical_key"))
+        if canonical_key:
+            entry.canonical_key = canonical_key
+        canonical_text = self._clean_optional(snapshot.get("canonical_text")) or text
+        if canonical_text:
+            entry.canonical_text = canonical_text
+        entry.owner_name = self._clean_optional(snapshot.get("owner_name") or snapshot.get("owner"))
+        entry.team_id = self._coerce_uuid(snapshot.get("team_id"))
+        entry.assigned_user_id = self._coerce_uuid(snapshot.get("assigned_user_id"))
+        status = self._clean_optional(snapshot.get("status"))
+        if status in _VALID_LEDGER_STATUSES:
+            entry.status = status
+        priority = self._clean_optional(snapshot.get("priority"))
+        if priority:
+            entry.priority = priority
+        risk_level = self._clean_optional(snapshot.get("risk_level"))
+        if risk_level:
+            entry.risk_level = risk_level
+        try:
+            entry.confidence = float(snapshot.get("confidence") or entry.confidence or 0.0)
+        except (TypeError, ValueError):
+            pass
+        entry.due_date_text = self._clean_optional(
+            snapshot.get("due_date_text") or snapshot.get("due_date")
+        )
+        entry.due_at = self._parse_datetime(snapshot.get("due_at"))
+        entry.reminder_at = self._parse_datetime(snapshot.get("reminder_at"))
+        entry.completed_at = self._parse_datetime(snapshot.get("completed_at"))
+        entry.notification_sent_at = self._parse_datetime(snapshot.get("notification_sent_at"))
+        try:
+            entry.occurrences = max(1, int(snapshot.get("occurrences") or entry.occurrences or 1))
+        except (TypeError, ValueError):
+            pass
+        if "user_confirmed" in snapshot:
+            entry.user_confirmed = bool(snapshot.get("user_confirmed"))
+        entry.dismissed_reason = self._clean_optional(snapshot.get("dismissed_reason"))
+        entry.action_item_id = self._coerce_uuid(snapshot.get("action_item_id"))
 
     def _split_evidence(
         self,

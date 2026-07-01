@@ -872,6 +872,29 @@ void main() {
           'insights': ['완료 오판이 감지됐습니다.'],
           'next_actions': ['검토함 확정을 우선하세요.'],
         },
+        'learning_telemetry': {
+          'generated_at': '2026-07-02T00:00:00Z',
+          'scope': 'owner:user-1',
+          'event_count': 9,
+          'feedback_event_count': 7,
+          'status_segments': [
+            {
+              'dimension': 'status',
+              'value': 'completed',
+              'sample_count': 5,
+              'confirmed_count': 3,
+              'false_positive_count': 2,
+              'correction_count': 1,
+              'precision': 0.6,
+              'false_positive_rate': 0.4,
+              'notes': ['preview-only 권장'],
+            }
+          ],
+          'owner_segments': [],
+          'locale_segments': [],
+          'payload_shape_segments': [],
+          'recommendations': ['completed는 preview-only로 유지하세요.'],
+        },
         'digest': {
           'cadence': 'daily',
           'title': '오늘의 약속 레이더',
@@ -891,6 +914,20 @@ void main() {
           'questions': ['기한 초과 약속을 확인했습니까?'],
           'checkpoints': ['우선 확인: 김기수'],
         },
+        'live_coach': {
+          'generated_at': '2026-07-02T00:00:00Z',
+          'readiness_score': 64,
+          'prompt_count': 1,
+          'prompts': [
+            {
+              'key': 'checkpoint:0',
+              'label': '체크포인트',
+              'prompt': '우선 확인: 김기수',
+              'severity': 'warning',
+            }
+          ],
+          'notes': ['회의 중 확인 prompt를 표시합니다.'],
+        },
         'external_reconcile': {
           'provider': 'google_tasks',
           'checked_count': 3,
@@ -906,8 +943,8 @@ void main() {
           'source_manifest_path':
               'backend/tests/fixtures/promise_radar_real_meeting_sources.json',
           'evaluation': {
-            'case_count': 569,
-            'correct_count': 569,
+            'case_count': 629,
+            'correct_count': 629,
             'accuracy': 1.0,
             'status_precision': {'completed': 1.0},
             'failures': [],
@@ -917,8 +954,8 @@ void main() {
           'coverage': {'real_meeting_target': 1.0},
           'source_quality': {},
           'quality_warnings': [],
-          'real_meeting_case_count': 502,
-          'target_case_count': 500,
+          'real_meeting_case_count': 562,
+          'target_case_count': 560,
           'below_target': false,
         },
         'extraction_recall': {
@@ -993,6 +1030,14 @@ void main() {
           'blocked_export_count': 2,
           'policy_notes': ['외부 공유 전 speaker/timestamp 식별자를 마스킹하세요.'],
         },
+        'evidence_room': {
+          'scope': 'owner:user-1',
+          'share_ready_count': 1,
+          'redaction_required_count': 1,
+          'blocked_count': 2,
+          'default_ttl_hours': 72,
+          'policy_notes': ['원문 transcript는 기본 redaction됩니다.'],
+        },
         'team_scorecard': {
           'risk_score': 76,
           'owner_count': 2,
@@ -1003,6 +1048,23 @@ void main() {
           'weakest_owner': 'SPEAKER_01',
           'strongest_owner': '김기수',
           'recommendations': ['기한 초과 약속은 다음 회의 첫 안건으로 올리세요.'],
+        },
+        'autopilot_quarantine': {
+          'quarantined_count': 1,
+          'rejected_count': 1,
+          'affected_statuses': {'completed': 2},
+          'affected_entries': ['ledger-1'],
+          'notes': ['격리된 자동 판정은 검토함에 유지합니다.'],
+        },
+        'meeting_recipe': {
+          'recipe_key': 'risk_review',
+          'label': 'Risk Review',
+          'owner_required': true,
+          'due_date_required': true,
+          'default_autopilot_mode': 'preview_only',
+          'high_risk_keywords': ['지연', '계약'],
+          'prompt_templates': ['담당자와 기한을 확인하세요.'],
+          'recommended_integrations': ['Google Tasks'],
         },
         'google_tasks_oauth': {
           'provider': 'google_tasks',
@@ -1047,17 +1109,24 @@ void main() {
       expect(center.learningInsight.statusFalsePositiveRate['completed'], 0.4);
       expect(center.learningInsight.aliasGraphSize, 3);
       expect(center.learningInsight.scopeBreakdown['feedback'], 7);
+      expect(center.learningTelemetry.eventCount, 9);
+      expect(center.learningTelemetry.statusSegments.single.falsePositiveRate,
+          0.4);
+      expect(center.liveCoach.promptCount, 1);
       expect(center.evidenceAudit.weakEvidenceCount, 1);
       expect(center.memoryGraph.nodeCount, 6);
       expect(center.memoryGraph.ownerAliasCount, 3);
       expect(center.shadowMode.blockedByEvidenceCount, 1);
       expect(center.evidencePermissions.exportAllowed, isFalse);
+      expect(center.evidenceRoom.blockedCount, 2);
       expect(center.teamScorecard.riskScore, 76);
+      expect(center.autopilotQuarantine.affectedStatuses['completed'], 2);
+      expect(center.meetingRecipe.recipeKey, 'risk_review');
       expect(center.googleTasksOAuth.scope,
           'https://www.googleapis.com/auth/tasks');
       expect(center.googleTasksOAuth.productionReady, isTrue);
-      expect(center.accuracyReport.evaluation.caseCount, 569);
-      expect(center.accuracyReport.realMeetingCaseCount, 502);
+      expect(center.accuracyReport.evaluation.caseCount, 629);
+      expect(center.accuracyReport.realMeetingCaseCount, 562);
       expect(center.extractionRecall.evaluation.recall, 1.0);
       expect(center.actions.single.key, 'open_extraction_recall_report');
       expect(center.focusItems.single.key, 'google_tasks_oauth');
