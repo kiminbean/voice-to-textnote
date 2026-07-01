@@ -1,0 +1,44 @@
+[
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00008150-000239020C08401C",
+        "deviceName" : "Inbean의 iPhone",
+        "exportedFileName" : "E2716064-E924-4E79-8744-D05556123F06.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "promise_radar_due_push_ios_notification_center_0_E41EF1C6-A9C3-4447-855A-D52F5395090B.png",
+        "timestamp" : 1782913697.715
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00008150-000239020C08401C",
+        "deviceName" : "Inbean의 iPhone",
+        "exportedFileName" : "D22F17B8-4052-45BB-A5EA-4C71B4217ABE.txt",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "promise_radar_due_push_ios_notification_center_hierarchy_0_EF86ADB6-0029-4A04-A548-C0A944C0F45E.txt",
+        "timestamp" : 1782913697.592
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00008150-000239020C08401C",
+        "deviceName" : "Inbean의 iPhone",
+        "exportedFileName" : "ECF87920-9893-46B6-9C0A-318A70BE3CCF.txt",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "promise_radar_due_push_ios_external_sender_fallback_0_63372F3F-0752-4066-A2F0-42B7DAF4E947.txt",
+        "timestamp" : 1782913680.364
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00008150-000239020C08401C",
+        "deviceName" : "Inbean의 iPhone",
+        "exportedFileName" : "CB5E3B64-26C3-4A56-ACC2-49BD2BA3D7CF.txt",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "promise_radar_due_push_ios_push_sender_response_0_D51E34C5-CCE8-4F7E-A900-B3FEA5EACF56.txt",
+        "timestamp" : 1782913680.363
+      }
+    ],
+    "testIdentifier" : "RunnerUITests/testIosPromiseRadarDuePushNotificationEvidence()",
+    "testIdentifierURL" : "test://com.apple.xcode/Runner/RunnerUITests/RunnerUITests/testIosPromiseRadarDuePushNotificationEvidence"
+  }
+]

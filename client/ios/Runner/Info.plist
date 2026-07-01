@@ -102,9 +102,9 @@
 				</array>
 			</dict>
 		</array>
-		<!-- Firebase 수동 메시지 핸들링 (Flutter plugin 호환성) -->
+		<!-- Firebase Messaging must observe notification opens for FlutterFire deeplinks. -->
 		<key>FirebaseAppDelegateProxyEnabled</key>
-		<false/>
+		<true/>
 		<key>UIApplicationSceneManifest</key>
 		<dict>
 			<key>UIApplicationSupportsMultipleScenes</key>

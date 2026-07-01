@@ -1,0 +1,44 @@
+[
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00008150-000239020C08401C",
+        "deviceName" : "Inbean의 iPhone",
+        "exportedFileName" : "815547EE-87A7-4689-9B99-C903B66333F4.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "push_stt_complete_ios_notification_center_0_25A226B6-DA17-4B2D-A828-9B19C3617428.png",
+        "timestamp" : 1782913559.71
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00008150-000239020C08401C",
+        "deviceName" : "Inbean의 iPhone",
+        "exportedFileName" : "9F55DF1E-1DDB-47CF-8C18-14E07CF2C9AA.txt",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "push_stt_complete_ios_notification_center_hierarchy_0_15D747D0-D2B9-4329-86D3-C47A099480BA.txt",
+        "timestamp" : 1782913559.584
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00008150-000239020C08401C",
+        "deviceName" : "Inbean의 iPhone",
+        "exportedFileName" : "CE446176-728C-45D1-B784-167427838AC7.txt",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "push_stt_complete_ios_external_sender_fallback_0_8378B459-710B-42D2-82BE-EDD9666DB871.txt",
+        "timestamp" : 1782913542.251
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00008150-000239020C08401C",
+        "deviceName" : "Inbean의 iPhone",
+        "exportedFileName" : "443D288D-6885-41A0-A7DE-02FB57F15454.txt",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "push_stt_complete_ios_push_sender_response_0_6C842063-3F14-4E75-BF9F-C7C7EBB763F4.txt",
+        "timestamp" : 1782913542.25
+      }
+    ],
+    "testIdentifier" : "RunnerUITests/testIosPushSttCompleteNotificationEvidence()",
+    "testIdentifierURL" : "test://com.apple.xcode/Runner/RunnerUITests/RunnerUITests/testIosPushSttCompleteNotificationEvidence"
+  }
+]

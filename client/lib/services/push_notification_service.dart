@@ -8,6 +8,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 
 /// FCM 토큰 요청 결과
 class FcmTokenResult {
@@ -21,6 +22,9 @@ class FcmTokenResult {
 
 /// 푸시 알림 서비스
 class PushNotificationService {
+  static const MethodChannel _deepLinkChannel =
+      MethodChannel('com.voicetextnote.app/deep_link');
+
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
 
@@ -37,6 +41,7 @@ class PushNotificationService {
 
       // 로컬 알림 초기화
       await _setupLocalNotifications();
+      await _activateNativeNotificationDelegate();
 
       // iOS는 APNs token이 늦게 준비될 수 있어 FCM token 요청 전에 짧게 대기한다.
       await _waitForApnsToken();
@@ -82,7 +87,8 @@ class PushNotificationService {
 
   /// 로컬 알림 설정 (Android 포그라운드 지원)
   Future<void> _setupLocalNotifications() async {
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidSettings =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
 
     const iosSettings = DarwinInitializationSettings(
       requestAlertPermission: true,
@@ -96,6 +102,16 @@ class PushNotificationService {
     );
 
     await _localNotifications.initialize(initSettings);
+  }
+
+  Future<void> _activateNativeNotificationDelegate() async {
+    if (!Platform.isIOS && !Platform.isMacOS) return;
+
+    try {
+      await _deepLinkChannel.invokeMethod<bool>('activateNotificationDelegate');
+    } catch (e) {
+      debugPrint('iOS 알림 delegate 활성화 실패: $e');
+    }
   }
 
   /// 토픽 구독 (옵션)

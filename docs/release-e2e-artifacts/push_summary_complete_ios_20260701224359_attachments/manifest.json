@@ -1,0 +1,44 @@
+[
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00008150-000239020C08401C",
+        "deviceName" : "Inbean의 iPhone",
+        "exportedFileName" : "2ACBF415-0DB1-4657-8517-8A46B61C7924.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "push_summary_complete_ios_notification_center_0_E85E07B3-1C97-4066-91DE-3569E89B3AAE.png",
+        "timestamp" : 1782913490.93
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00008150-000239020C08401C",
+        "deviceName" : "Inbean의 iPhone",
+        "exportedFileName" : "0EFDA891-189C-416D-B882-AAD889CDF7CF.txt",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "push_summary_complete_ios_notification_center_hierarchy_0_0F87AECD-3AD7-47F3-A023-899FA0116F27.txt",
+        "timestamp" : 1782913490.817
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00008150-000239020C08401C",
+        "deviceName" : "Inbean의 iPhone",
+        "exportedFileName" : "C6F912C8-E7D2-4182-B152-CBD26F5CAF07.txt",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "push_summary_complete_ios_external_sender_fallback_0_04996EAE-E9BD-4898-B406-58CBC6591C00.txt",
+        "timestamp" : 1782913476.942
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00008150-000239020C08401C",
+        "deviceName" : "Inbean의 iPhone",
+        "exportedFileName" : "E517F2B2-131B-487E-8737-9B033D97D585.txt",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "push_summary_complete_ios_push_sender_response_0_A590AA1F-C4C7-49FA-A86B-F2C129AE783F.txt",
+        "timestamp" : 1782913476.941
+      }
+    ],
+    "testIdentifier" : "RunnerUITests/testIosPushSummaryCompleteNotificationEvidence()",
+    "testIdentifierURL" : "test://com.apple.xcode/Runner/RunnerUITests/RunnerUITests/testIosPushSummaryCompleteNotificationEvidence"
+  }
+]

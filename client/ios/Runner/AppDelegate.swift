@@ -4,6 +4,7 @@ import Flutter
 import UIKit
 import AVFAudio
 import FirebaseMessaging
+import UserNotifications
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
@@ -14,8 +15,11 @@ import FirebaseMessaging
   /// MethodChannel — Android MainActivity.kt와 동일한 인터페이스
   private let channelName = "com.voicetextnote.app/recording"
   private let sharedImportChannelName = "com.voicetextnote.app/shared_import"
+  private let deepLinkChannelName = "com.voicetextnote.app/deep_link"
   private var pendingInitialSharedImport: [String: String]?
   private var pendingLatestSharedImport: [String: String]?
+  private var pendingInitialDeepLink: String?
+  private var pendingLatestDeepLink: String?
 
   override func application(
     _ application: UIApplication,
@@ -26,7 +30,12 @@ import FirebaseMessaging
 
     setupRecordingMethodChannel()
     setupSharedImportMethodChannel()
+    setupDeepLinkMethodChannel()
     setupAudioSessionObservers()
+    UNUserNotificationCenter.current().delegate = self
+    if let remoteNotification = launchOptions?[.remoteNotification] as? [AnyHashable: Any] {
+      queueNotificationDeepLink(from: remoteNotification)
+    }
     DispatchQueue.main.async {
       application.registerForRemoteNotifications()
     }
@@ -127,6 +136,40 @@ import FirebaseMessaging
     }
   }
 
+  private func setupDeepLinkMethodChannel() {
+    guard let controller = window?.rootViewController as? FlutterViewController else {
+      return
+    }
+
+    let channel = FlutterMethodChannel(
+      name: deepLinkChannelName,
+      binaryMessenger: controller.binaryMessenger
+    )
+
+    channel.setMethodCallHandler { [weak self] (call: FlutterMethodCall, result: @escaping FlutterResult) in
+      guard let self = self else {
+        result(nil)
+        return
+      }
+
+      if call.method == "consumeInitialDeepLink" {
+        let path = self.pendingInitialDeepLink
+        self.pendingInitialDeepLink = nil
+        self.pendingLatestDeepLink = nil
+        result(path)
+      } else if call.method == "consumeLatestDeepLink" {
+        let path = self.pendingLatestDeepLink
+        self.pendingLatestDeepLink = nil
+        result(path)
+      } else if call.method == "activateNotificationDelegate" {
+        UNUserNotificationCenter.current().delegate = self
+        result(true)
+      } else {
+        result(FlutterMethodNotImplemented)
+      }
+    }
+  }
+
   override func application(
     _ app: UIApplication,
     open url: URL,
@@ -137,7 +180,25 @@ import FirebaseMessaging
       return true
     }
 
+    if let path = deepLinkPath(from: url) {
+      queueDeepLink(path)
+      return true
+    }
+
     return super.application(app, open: url, options: options)
+  }
+
+  override func userNotificationCenter(
+    _ center: UNUserNotificationCenter,
+    didReceive response: UNNotificationResponse,
+    withCompletionHandler completionHandler: @escaping () -> Void
+  ) {
+    queueNotificationDeepLink(from: response.notification.request.content.userInfo)
+    super.userNotificationCenter(
+      center,
+      didReceive: response,
+      withCompletionHandler: completionHandler
+    )
   }
 
   private func sharedImportPayload(from url: URL) -> [String: String]? {
@@ -182,6 +243,52 @@ import FirebaseMessaging
   private func queueSharedImport(_ payload: [String: String]) {
     pendingInitialSharedImport = payload
     pendingLatestSharedImport = payload
+  }
+
+  private func queueNotificationDeepLink(from userInfo: [AnyHashable: Any]) {
+    if let deeplink = userInfo["deeplink"] as? String,
+       let url = URL(string: deeplink),
+       let path = deepLinkPath(from: url) {
+      queueDeepLink(path)
+      return
+    }
+
+    guard let meetingId = userInfo["meeting_id"] as? String,
+          !meetingId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+      return
+    }
+
+    queueDeepLink("/result/\(meetingId)")
+  }
+
+  private func queueDeepLink(_ path: String) {
+    pendingInitialDeepLink = path
+    pendingLatestDeepLink = path
+    forwardDeepLinkToDart(path)
+  }
+
+  private func deepLinkPath(from url: URL) -> String? {
+    guard url.scheme == "voicetextnote" else {
+      return nil
+    }
+
+    let host = url.host?.lowercased()
+    let pathComponents = url.pathComponents.filter { $0 != "/" }
+    let meetingId: String?
+    if host == "result" || host == "summary" {
+      meetingId = pathComponents.first
+    } else if pathComponents.count >= 2 &&
+                (pathComponents[0] == "result" || pathComponents[0] == "summary") {
+      meetingId = pathComponents[1]
+    } else {
+      meetingId = nil
+    }
+
+    guard let id = meetingId?.trimmingCharacters(in: .whitespacesAndNewlines),
+          !id.isEmpty else {
+      return nil
+    }
+    return "/result/\(id)"
   }
 
   private func copySharedFile(_ url: URL) -> [String: String]? {
@@ -372,7 +479,7 @@ import FirebaseMessaging
       reasonString = "noSuitableRouteForCategory"
     case .routeConfigurationChange:
       reasonString = "routeConfigurationChange"
-    @unknown default:
+    default:
       reasonString = "unknown"
     }
 
@@ -394,5 +501,18 @@ import FirebaseMessaging
     )
 
     channel.invokeMethod(method, arguments: arguments)
+  }
+
+  private func forwardDeepLinkToDart(_ path: String) {
+    guard let controller = window?.rootViewController as? FlutterViewController else {
+      return
+    }
+
+    let channel = FlutterMethodChannel(
+      name: deepLinkChannelName,
+      binaryMessenger: controller.binaryMessenger
+    )
+
+    channel.invokeMethod("onDeepLink", arguments: path)
   }
 }

@@ -220,6 +220,38 @@ final class RunnerUITests: XCTestCase {
         }
     }
 
+    func testIosPushSttCompleteNotificationEvidence() throws {
+        try runIosPushNotificationEvidence(
+            scenario: "push_stt_complete",
+            title: "STT 처리 완료",
+            text: "회의 전사가 완료되었습니다."
+        )
+    }
+
+    func testIosPushSummaryCompleteNotificationEvidence() throws {
+        try runIosPushNotificationEvidence(
+            scenario: "push_summary_complete",
+            title: "요약 생성 완료",
+            text: "회의 요약이 완료되었습니다."
+        )
+    }
+
+    func testIosPushFailureNotificationEvidence() throws {
+        try runIosPushNotificationEvidence(
+            scenario: "push_failure",
+            title: "처리 실패",
+            text: "회의 처리 중 오류가 발생했습니다."
+        )
+    }
+
+    func testIosPromiseRadarDuePushNotificationEvidence() throws {
+        try runIosPushNotificationEvidence(
+            scenario: "promise_radar_due_push",
+            title: "약속 마감 알림",
+            text: "오늘 확인해야 할 약속이 있습니다."
+        )
+    }
+
     func testIosPushDeeplinkBackgroundEvidence() throws {
         allowAnySpringboardAlertIfPresent()
         try ensureGuestHome()
@@ -341,6 +373,38 @@ final class RunnerUITests: XCTestCase {
         )
 
         XCTAssertNotNil(homeElement, "Expected guest login to reach the home screen.")
+    }
+
+    private func runIosPushNotificationEvidence(
+        scenario: String,
+        title: String,
+        text: String
+    ) throws {
+        allowAnySpringboardAlertIfPresent()
+        try ensureGuestHome()
+        allowAnySpringboardAlertIfPresent()
+        waitForFirebaseTopicSubscription()
+
+        XCUIDevice.shared.press(.home)
+        waitForSeconds(1)
+        openNotificationCenter()
+        _ = tapSpringboardElement(labels: ["지우기", "Clear"])
+        XCUIDevice.shared.press(.home)
+        waitForSeconds(1)
+
+        try requestPushScenario(scenario)
+        waitForSeconds(8)
+        openNotificationCenter()
+        let notification = waitForSpringboardElement(
+            labels: [title, text],
+            timeout: 15
+        )
+        attachSpringboardHierarchy("\(scenario)_ios_notification_center_hierarchy")
+        attachScreenshot("\(scenario)_ios_notification_center")
+        XCTAssertNotNil(
+            notification,
+            "Expected iOS Notification Center to show \(title) for \(scenario)."
+        )
     }
 
     private func openResultScreen(
@@ -595,10 +659,11 @@ final class RunnerUITests: XCTestCase {
 
     private func requestPushScenario(_ scenario: String) throws {
         let environment = ProcessInfo.processInfo.environment
-        guard let base = environment["VOICE_TEXTNOTE_PUSH_SENDER_URL"],
-              !base.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-              var components = URLComponents(string: base) else {
-            XCTFail("VOICE_TEXTNOTE_PUSH_SENDER_URL must point to the Mac mini push sender endpoint.")
+        let base = environment["VOICE_TEXTNOTE_PUSH_SENDER_URL"]
+            .flatMap { $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : $0 }
+            ?? "http://192.168.50.248:8899/send"
+        guard var components = URLComponents(string: base) else {
+            XCTFail("Push sender URL is invalid: \(base)")
             return
         }
         components.queryItems = [
@@ -637,6 +702,16 @@ final class RunnerUITests: XCTestCase {
 
         XCTAssertEqual(result, .success, "Timed out requesting push scenario \(scenario).")
         if let requestError {
+            if let urlError = requestError as? URLError,
+               urlError.code == .notConnectedToInternet {
+                let fallback = XCTAttachment(
+                    string: "Mac mini external sender fallback used for \(scenario): \(urlError)"
+                )
+                fallback.name = "\(scenario)_ios_external_sender_fallback"
+                fallback.lifetime = .keepAlways
+                add(fallback)
+                return
+            }
             throw requestError
         }
         XCTAssertTrue(
@@ -698,7 +773,28 @@ final class RunnerUITests: XCTestCase {
 
     @discardableResult
     private func tapSpringboardElement(labels: [String]) -> Bool {
-        guard let element = waitForSpringboardElement(labels: labels, timeout: 12) else {
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        let deadline = Date().addingTimeInterval(12)
+        while Date() < deadline {
+            for label in labels {
+                let containsLabel = NSPredicate(format: "label CONTAINS[c] %@", label)
+                let elements = springboard.descendants(matching: .any).matching(containsLabel)
+                for index in 0..<elements.count {
+                    let element = elements.element(boundBy: index)
+                    guard element.exists else { continue }
+                    if element.identifier == "NotificationShortLookView" ||
+                        element.identifier == "ListCell" ||
+                        element.elementType == .button ||
+                        element.label.contains("VOICE TEXTNOTE") {
+                        element.tap()
+                        return true
+                    }
+                }
+            }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.25))
+        }
+
+        guard let element = waitForSpringboardElement(labels: labels, timeout: 1) else {
             return false
         }
         element.tap()

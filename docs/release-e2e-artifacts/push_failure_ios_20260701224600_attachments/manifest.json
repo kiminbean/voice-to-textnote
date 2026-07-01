@@ -1,0 +1,44 @@
+[
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00008150-000239020C08401C",
+        "deviceName" : "Inbean의 iPhone",
+        "exportedFileName" : "239AC8A9-3934-49A0-8E58-272607BFC085.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "push_failure_ios_notification_center_0_B469DEE3-FB8C-485E-BD7F-9E03D3A98280.png",
+        "timestamp" : 1782913628.694
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00008150-000239020C08401C",
+        "deviceName" : "Inbean의 iPhone",
+        "exportedFileName" : "A038A4A8-6724-4FC1-BF70-2E4DC49FEE3A.txt",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "push_failure_ios_notification_center_hierarchy_0_A4E643FE-35F1-480A-AE12-B10E73117437.txt",
+        "timestamp" : 1782913628.566
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00008150-000239020C08401C",
+        "deviceName" : "Inbean의 iPhone",
+        "exportedFileName" : "69D54664-8238-4340-B49E-8E248F3E5DD0.txt",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "push_failure_ios_external_sender_fallback_0_35F68F34-9C8E-47D2-B95D-A697AEC0FDF9.txt",
+        "timestamp" : 1782913611.289
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00008150-000239020C08401C",
+        "deviceName" : "Inbean의 iPhone",
+        "exportedFileName" : "F7BBEC95-AC3B-49DD-9865-4D2C2E775227.txt",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "push_failure_ios_push_sender_response_0_F8EDDCD7-C4F8-466B-BC3A-2081DC478C84.txt",
+        "timestamp" : 1782913611.287
+      }
+    ],
+    "testIdentifier" : "RunnerUITests/testIosPushFailureNotificationEvidence()",
+    "testIdentifierURL" : "test://com.apple.xcode/Runner/RunnerUITests/RunnerUITests/testIosPushFailureNotificationEvidence"
+  }
+]

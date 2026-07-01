@@ -62,6 +62,7 @@ class _VoiceToTextNoteAppState extends State<VoiceToTextNoteApp>
     // SPEC-MOBILE-004 T-005: 딥링크 핸들러 연동
     DeepLinkService.instance.handleBackgroundResume();
     _checkColdStartDeepLink();
+    _checkInitialNativeDeepLink();
     _checkInitialSharedImport();
   }
 
@@ -83,6 +84,22 @@ class _VoiceToTextNoteAppState extends State<VoiceToTextNoteApp>
       }
     } catch (e) {
       debugPrint('딥링크 확인 실패: $e');
+    }
+  }
+
+  Future<void> _checkInitialNativeDeepLink() async {
+    try {
+      final path =
+          await DeepLinkService.instance.consumeInitialNativeDeepLink();
+      if (path == null) return;
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          router.go(path);
+        }
+      });
+    } catch (e) {
+      debugPrint('네이티브 초기 딥링크 확인 실패: $e');
     }
   }
 
@@ -133,6 +150,12 @@ class _VoiceToTextNoteAppState extends State<VoiceToTextNoteApp>
 
   Future<void> _checkLatestSharedImport() async {
     try {
+      final path = await DeepLinkService.instance.consumeLatestNativeDeepLink();
+      if (path != null) {
+        router.go(path);
+        return;
+      }
+
       final payload = await SharedImportService().consumeLatestSharedImport();
       if (payload == null || !payload.hasContent) return;
       final uri = Uri(path: '/', queryParameters: payload.toQueryParameters());

@@ -9,6 +9,7 @@
 
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 /// 딥링크 대상 화면 경로 상수
@@ -20,11 +21,15 @@ class DeepLinkRoutes {
 /// 딥링크 서비스
 /// Push 알림 payload와 URL Scheme을 파싱하여 go_router로 네비게이션합니다.
 class DeepLinkService {
-  DeepLinkService._();
+  DeepLinkService._() {
+    _nativeChannel.setMethodCallHandler(_handleNativeMethodCall);
+  }
   static final DeepLinkService instance = DeepLinkService._();
 
   /// URL Scheme 접두사
   static const _scheme = 'voicetextnote://';
+  static const MethodChannel _nativeChannel =
+      MethodChannel('com.voicetextnote.app/deep_link');
 
   /// 보류 중인 딥링크 (라우터 초기화 전 수신된 경우)
   String? _pendingDeeplink;
@@ -93,6 +98,14 @@ class DeepLinkService {
       debugPrint('DeepLink: URL scheme → $path');
       navigateToPath(path);
     }
+  }
+
+  Future<String?> consumeInitialNativeDeepLink() {
+    return _consumeNativeDeepLink('consumeInitialDeepLink');
+  }
+
+  Future<String?> consumeLatestNativeDeepLink() {
+    return _consumeNativeDeepLink('consumeLatestDeepLink');
   }
 
   /// 경로로 네비게이션
@@ -176,5 +189,29 @@ class DeepLinkService {
 
     final path = url.substring(_scheme.length);
     return path.startsWith('summary/') || path.startsWith('result/');
+  }
+
+  Future<String?> _consumeNativeDeepLink(String method) async {
+    try {
+      final path = await _nativeChannel.invokeMethod<String>(method);
+      final trimmed = path?.trim();
+      if (trimmed == null || trimmed.isEmpty || !trimmed.startsWith('/')) {
+        return null;
+      }
+      return trimmed;
+    } catch (e) {
+      debugPrint('Native deep link 소비 실패: $e');
+      return null;
+    }
+  }
+
+  Future<void> _handleNativeMethodCall(MethodCall call) async {
+    if (call.method != 'onDeepLink') return;
+
+    final path = (call.arguments as String?)?.trim();
+    if (path == null || path.isEmpty || !path.startsWith('/')) return;
+
+    debugPrint('DeepLink: native notification → $path');
+    navigateToPath(path);
   }
 }
