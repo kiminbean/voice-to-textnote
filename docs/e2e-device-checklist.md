@@ -229,6 +229,14 @@ Firebase message id: projects/voice-to-textnote/messages/1782749586143713
 | 6.2 | 10초 주기 알림 갱신 | flushRecording 동작 | ☐ |
 | 6.3 | 녹음 중지 후 알림 제거 | Foreground Service 종료 | ☐ |
 
+### 7. Android Staging Release Menu Visibility
+
+| # | 시나리오 | 예상 결과 | Pass/Fail |
+|---|---------|----------|-----------|
+| 7.1 | 최신 Android staging release 설치 | `lastUpdateTime`이 현재 검증 시각으로 갱신 | ☐ |
+| 7.2 | 결과 화면 탭 목록 확인 | `약속 레이더`가 `탭 12개 중 4번째`로 표시 | ☐ |
+| 7.3 | APK URL guard | `libapp.so`에 `http://100.69.69.119:8000/api/v1` 포함, production host 미사용 | ☐ |
+
 ---
 
 ## Release E2E Evidence JSON 매핑
@@ -296,6 +304,15 @@ Firebase message id: projects/voice-to-textnote/messages/1782749586143713
 - Install: `xcrun devicectl device install app --device 00008150-000239020C08401C build/ios/iphoneos/Runner.app` -> bundleID `com.voicetextnote.app`
 - Launch: `xcrun devicectl device process launch --device 00008150-000239020C08401C com.voicetextnote.app` -> launched
 - URL guard: built App.framework strings contained `http://100.69.69.119:8000/api/v1` and did not emit the production host in the same check.
+
+### 2026-07-01 Android 실기기 staging release evidence
+
+- 기기: `Redmi Note 9 Pro`, ADB serial `76aadc20`, Android 12 API 31
+- Build/install: `flutter run --release --no-pub --no-resident -d 76aadc20 --dart-define=ENV=staging --dart-define=API_BASE_URL=http://100.69.69.119:8000/api/v1`
+- Install evidence: `adb shell dumpsys package com.voicetextnote.app` -> `versionName=1.0.0`, `lastUpdateTime=2026-07-01 15:39:18`
+- UI evidence: UIAutomator dump after reinstall showed `약속 레이더\n탭 12개 중 4번째`
+- URL guard: APK `lib/arm64-v8a/libapp.so` strings contained `http://100.69.69.119:8000/api/v1`
+- Root cause for missing menu: stale Android release APK. The stale install showed `탭 11개` and no `약속 레이더` tab.
 
 ## 결과 기록
 

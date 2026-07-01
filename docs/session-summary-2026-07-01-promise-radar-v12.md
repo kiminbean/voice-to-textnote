@@ -26,6 +26,7 @@
 - Added Promise Radar Prometheus metrics for build, Autopilot, review queue, notifications, and external sync.
 - Expanded the accuracy fixture to `179` cases while preserving `112` real-meeting labels.
 - Updated release/benchmark/privacy docs to reflect ZAI and the current Promise Radar state.
+- Follow-up: Android `Redmi Note 9 Pro` was running a stale release APK, so the result screen showed 11 tabs and no `약속 레이더` menu. Reinstalling the latest staging release with `API_BASE_URL=http://100.69.69.119:8000/api/v1` restored the 12-tab result screen and placed `약속 레이더` at tab 4.
 
 ## Verification
 
@@ -37,6 +38,7 @@
 - `flutter test test/models/promise_radar_test.dart` -> `All tests passed`.
 - `backend/scripts/generate_promise_radar_e2e_evidence.py` -> `overall_pass: true`; Android ADB device connected with model `Redmi_Note_9_Pro`, ADB serial redacted.
 - `client/scripts/verify_release_readiness.py --strict` with current Android/iOS device env -> staging cleartext allow-list, Android device, iOS device, and Firebase service account checks pass; remaining failures are 9 external production-release inputs.
+- `flutter run --release --no-pub --no-resident -d 76aadc20 --dart-define=ENV=staging --dart-define=API_BASE_URL=http://100.69.69.119:8000/api/v1` -> Android release APK installed; `lastUpdateTime=2026-07-01 15:39:18`; UIAutomator showed `약속 레이더\n탭 12개 중 4번째`.
 
 ## Remaining Release Notes
 

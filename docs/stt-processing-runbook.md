@@ -129,6 +129,31 @@ STT가 20%에서 멈추면 순서대로 확인한다.
 6. STT/DIA 병렬 대기 중 SSE client가 서로 닫히지 않는지 확인한다.
 7. 서버 재시작 직전 생성된 오래된 task를 앱이 기다리는 상황이면 앱을 완전히 종료하고 새 녹음을 시작한다.
 
+## Android staging release 재설치 기준
+
+Android 실기기에서 새 기능 메뉴가 보이지 않으면 먼저 오래된 APK 설치 여부를 확인한다.
+2026-07-01 `Redmi Note 9 Pro`에서는 결과 화면 탭이 11개로 표시되며 `약속 레이더`가
+빠진 원인이 stale release APK였다. 최신 staging release 재설치 후 탭이 12개로 바뀌고
+`약속 레이더`가 4번째 탭으로 표시됐다.
+
+```bash
+cd /Users/ibkim/Projects/voice-to-textnote/client
+flutter run --release --no-pub --no-resident \
+  -d 76aadc20 \
+  --dart-define=ENV=staging \
+  --dart-define=API_BASE_URL=http://100.69.69.119:8000/api/v1
+```
+
+검증:
+
+```bash
+adb shell dumpsys package com.voicetextnote.app | rg 'lastUpdateTime|versionName|versionCode'
+adb shell uiautomator dump /sdcard/window.xml >/dev/null
+adb shell cat /sdcard/window.xml | tr '<' '\n' | rg '약속 레이더|탭 12개'
+unzip -p build/app/outputs/flutter-apk/app-release.apk lib/arm64-v8a/libapp.so \
+  | strings | rg '100\.69\.69\.119|api\.voicetextnote\.com'
+```
+
 ## 검증 명령
 
 클라이언트 수정 후 최소 검증:

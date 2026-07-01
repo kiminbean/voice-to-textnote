@@ -162,7 +162,7 @@
         "android",
         "ios"
       ],
-      "evidence": "See docs/promise-radar-e2e-evidence-2026-07-01.json. iPhone actual-recording API contract verified; Android ADB device not connected in this run."
+      "evidence": "See docs/promise-radar-e2e-evidence-2026-07-01.json. Actual-recording API contract verified with Android ADB connected; full Android/iOS release UI observation still requires scenario-specific artifact evidence."
     },
     "promise_radar_due_push": {
       "pass": false,
@@ -178,7 +178,7 @@
         "android",
         "ios"
       ],
-      "evidence": "See docs/promise-radar-e2e-evidence-2026-07-01.json. iPhone actual-recording calendar export verified with ICS output; Android ADB device not connected in this run."
+      "evidence": "See docs/promise-radar-e2e-evidence-2026-07-01.json. Actual-recording calendar export verified with ICS output and Android ADB connected; full Android/iOS release UI observation still requires scenario-specific artifact evidence."
     },
     "promise_radar_assignee_quality": {
       "pass": false,
@@ -186,7 +186,7 @@
         "android",
         "ios"
       ],
-      "evidence": "See docs/promise-radar-e2e-evidence-2026-07-01.json. iPhone actual-recording assignee/quality endpoint verified; Android ADB device not connected in this run."
+      "evidence": "See docs/promise-radar-e2e-evidence-2026-07-01.json. Actual-recording assignee/quality endpoint verified and Android ADB connected; full Android/iOS release UI observation still requires scenario-specific artifact evidence."
     }
   }
 }

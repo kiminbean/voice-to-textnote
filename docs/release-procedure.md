@@ -141,7 +141,7 @@ REQUIRE_ANDROID_RELEASE_SIGNING=true ./scripts/verify_mobile.sh --native
 
 # Private staging release validation against the Tailscale backend
 flutter build ios --release --dart-define=ENV=staging --dart-define=API_BASE_URL=http://100.69.69.119:8000/api/v1
-flutter build apk --release --dart-define=ENV=staging
+flutter build apk --release --dart-define=ENV=staging --dart-define=API_BASE_URL=http://100.69.69.119:8000/api/v1
 
 # App Store IPA / archive
 flutter build ipa --release
@@ -158,17 +158,17 @@ Health: http://100.69.69.119:8000/api/v1/health
 
 - 기본 release 환경은 production이며 `https://api.voicetextnote.com/api/v1`을 사용한다.
 - `api.voicetextnote.com` DNS/HTTPS 백엔드가 준비되지 않은 상태에서 기본 release 빌드를 실기기에 설치하면 Google 계정 선택 후 `/auth/google` 호출 단계에서 "서버에 연결할 수 없습니다"가 발생한다.
-- 현재 private staging 실기기 검증은 반드시 `--dart-define=ENV=staging`으로 빌드한다.
+- 현재 private staging 실기기 검증은 반드시 `--dart-define=ENV=staging`과 `--dart-define=API_BASE_URL=http://100.69.69.119:8000/api/v1`을 함께 지정해 빌드한다.
 - iOS ATS와 Android release/profile network security의 HTTP 예외는 `100.69.69.119`에만 좁게 허용한다. 새 HTTP staging host를 쓰려면 플랫폼 보안 설정과 테스트를 함께 갱신한다.
 
-2026-06-30 실기기 릴리스 설치 기준:
+2026-07-01 실기기 릴리스 설치 기준:
 
 ```bash
 cd client
 ./scripts/run_ios_staging_release.sh
 ```
 
-동일한 명령을 직접 실행해야 할 때:
+iOS에서 동일한 명령을 직접 실행해야 할 때:
 
 ```bash
 cd client
@@ -177,6 +177,18 @@ flutter run --release --no-pub --no-resident \
   --dart-define=ENV=staging \
   --dart-define=API_BASE_URL=http://100.69.69.119:8000/api/v1
 ```
+
+Android에서 동일한 명령을 직접 실행해야 할 때:
+
+```bash
+cd client
+flutter run --release --no-pub --no-resident \
+  -d 76aadc20 \
+  --dart-define=ENV=staging \
+  --dart-define=API_BASE_URL=http://100.69.69.119:8000/api/v1
+```
+
+2026-07-01 Android `Redmi Note 9 Pro` 검증에서 오래된 설치본은 결과 화면 탭이 11개였고 `약속 레이더` 탭이 없었다. 최신 staging release 재설치 후 `adb shell dumpsys package com.voicetextnote.app`의 `lastUpdateTime=2026-07-01 15:39:18`, UIAutomator dump의 `약속 레이더\n탭 12개 중 4번째`, release APK 문자열의 `http://100.69.69.119:8000/api/v1`을 확인했다. Promise Radar 메뉴가 보이지 않으면 먼저 stale APK 설치 여부를 의심하고 위 명령으로 재설치한다.
 
 Archive 설치 경로를 써야 할 때:
 

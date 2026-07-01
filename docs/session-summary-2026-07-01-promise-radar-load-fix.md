@@ -41,3 +41,24 @@ curl -sS http://100.69.69.119:8000/openapi.json \
 ```
 
 The Promise Radar path count must be greater than zero.
+
+## Android Menu Visibility Follow-up
+
+If Android does not show the `약속 레이더` menu, verify the installed APK before
+debugging the backend. On 2026-07-01 the `Redmi Note 9 Pro` was running a stale
+release APK: UIAutomator showed `탭 11개` and no `약속 레이더` tab. Reinstalling the
+current staging release fixed the menu:
+
+```bash
+cd client
+flutter run --release --no-pub --no-resident \
+  -d 76aadc20 \
+  --dart-define=ENV=staging \
+  --dart-define=API_BASE_URL=http://100.69.69.119:8000/api/v1
+```
+
+Expected evidence after reinstall:
+
+- `adb shell dumpsys package com.voicetextnote.app` shows a current `lastUpdateTime`.
+- UIAutomator shows `약속 레이더\n탭 12개 중 4번째`.
+- APK strings include `http://100.69.69.119:8000/api/v1`.
