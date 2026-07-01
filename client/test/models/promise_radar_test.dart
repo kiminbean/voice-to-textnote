@@ -370,6 +370,7 @@ void main() {
         'title': '회의 시작 전 약속 브리프',
         'readiness_score': 76,
         'summary': '회의 전 확인할 약속 1개가 있습니다.',
+        'checkpoints': ['우선 확인: 김기수 · QA 체크리스트'],
         'promises': [
           {
             'id': 'ledger-1',
@@ -388,6 +389,7 @@ void main() {
         ],
         'questions': ['QA 체크리스트 상태는 확인됐습니까?'],
       });
+      expect(preMeeting.checkpoints.single, contains('김기수'));
       expect(preMeeting.promises.single.text, 'QA 체크리스트');
 
       final digest = PromiseDigest.fromJson({
@@ -628,8 +630,13 @@ void main() {
         'synced': true,
         'status': 'completed',
         'message': '동기화했습니다.',
+        'sync_contract': {
+          'idempotency_key': 'promise:google_tasks:ledger-1',
+        },
       });
       expect(syncResponse.status, 'completed');
+      expect(syncResponse.syncContract?['idempotency_key'],
+          'promise:google_tasks:ledger-1');
 
       const taskUpdate = PromiseExternalTaskUpdateRequest(
         accessToken: 'token',

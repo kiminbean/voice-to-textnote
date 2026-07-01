@@ -846,7 +846,9 @@ class _PreMeetingPromiseBrief extends StatelessWidget {
   Widget build(BuildContext context) {
     return brief.maybeWhen(
       data: (value) {
-        if (value.promises.isEmpty && value.questions.isEmpty) {
+        if (value.promises.isEmpty &&
+            value.questions.isEmpty &&
+            value.checkpoints.isEmpty) {
           return const SizedBox.shrink();
         }
         final theme = Theme.of(context);
@@ -882,6 +884,30 @@ class _PreMeetingPromiseBrief extends StatelessWidget {
                 ),
                 const SizedBox(height: AppSpacing.xs),
                 Text(value.summary, style: theme.textTheme.bodySmall),
+                for (final checkpoint in value.checkpoints.take(3)) ...[
+                  const SizedBox(height: AppSpacing.xs),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        Icons.flag_outlined,
+                        size: 16,
+                        color: scheme.primary,
+                      ),
+                      const SizedBox(width: AppSpacing.xs),
+                      Expanded(
+                        child: Text(
+                          checkpoint,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
                 for (final promise in value.promises.take(3)) ...[
                   const SizedBox(height: AppSpacing.xs),
                   Row(

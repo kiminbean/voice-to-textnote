@@ -26,6 +26,13 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.config import settings
+from backend.app.metrics import (
+    record_promise_radar_autopilot,
+    record_promise_radar_build,
+    record_promise_radar_external_sync,
+    record_promise_radar_notification,
+    record_promise_radar_review_queue,
+)
 from backend.db.auth_models import MeetingOwnership, TeamMember, User
 from backend.db.device_token_models import DeviceToken
 from backend.db.models import ActionItem, TaskResult
@@ -191,6 +198,9 @@ _AUTOPILOT_MARKERS = {
         "adopted",
         "adopt",
         "accepted",
+        "확인했",
+        "확인 완료",
+        "pass",
         "so ordered",
         "all in favor",
         "place it on file",
@@ -313,6 +323,7 @@ class PromiseRadarService:
     ) -> PromiseRadarResponse:
         current = await self._get_record(session, task_id)
         if current is None:
+            record_promise_radar_build("not_found", 0)
             raise ValueError("회의 요약을 찾을 수 없습니다")
 
         previous = await self._load_previous_summaries(
@@ -341,6 +352,10 @@ class PromiseRadarService:
             response.next_meeting_briefing = self._build_next_meeting_briefing(ledger_entries)
             await session.commit()
 
+        record_promise_radar_build(
+            "success",
+            len(response.ledger_entries or response.current_promises),
+        )
         return response
 
     async def list_ledger_entries(
@@ -925,6 +940,11 @@ class PromiseRadarService:
                     actor_user_id=owner_uuid,
                 )
         await session.commit()
+        record_promise_radar_notification(
+            "due",
+            sent=sent_count,
+            failed=failure_count,
+        )
         return PromiseNotificationDispatchResponse(
             considered_count=len(entries),
             sent_count=sent_count,
@@ -1062,6 +1082,11 @@ class PromiseRadarService:
                     actor_user_id=target_user_id,
                 )
         await session.commit()
+        record_promise_radar_notification(
+            "digest",
+            sent=sent_count,
+            failed=failure_count,
+        )
         return PromiseNotificationDispatchResponse(
             considered_count=len(entries),
             sent_count=sent_count,
@@ -1174,6 +1199,13 @@ class PromiseRadarService:
 
         if apply:
             await session.commit()
+        mode = "apply" if apply else "preview"
+        for assessment in assessments:
+            record_promise_radar_autopilot(
+                mode=mode,
+                suggested_status=assessment.suggested_status,
+                applied=assessment.applied,
+            )
         return PromiseAutopilotResponse(
             task_id=task_id,
             autopilot_threshold=learning_profile.autopilot_threshold,
@@ -1229,6 +1261,7 @@ class PromiseRadarService:
             not in rejected_keys
         ]
         if not candidate_assessments:
+            record_promise_radar_review_queue(0)
             return PromiseAutopilotReviewQueue(
                 task_id=task_id,
                 queue_count=0,
@@ -1264,6 +1297,7 @@ class PromiseRadarService:
                     decision_required=decision_required,
                 )
             )
+        record_promise_radar_review_queue(len(items))
         return PromiseAutopilotReviewQueue(
             task_id=task_id,
             queue_count=len(items),
@@ -1656,6 +1690,7 @@ class PromiseRadarService:
             description=description,
             start=start,
             end=end,
+            promise_id=response.id,
         )
         google_url = self._google_calendar_url(title, description, start, end)
         entry.calendar_event = {
@@ -2059,6 +2094,10 @@ class PromiseRadarService:
             summary=summary,
             promises=briefing.promises[:limit],
             questions=briefing.questions[:limit],
+            checkpoints=[
+                self._briefing_checkpoint(entry)
+                for entry in briefing.promises[:limit]
+            ],
         )
 
     async def build_digest(
@@ -2167,6 +2206,9 @@ class PromiseRadarService:
                 actor_user_id=owner_id,
             )
             await session.commit()
+            record_promise_radar_external_sync("slack", "export", outcome="sent")
+        elif provider == "slack":
+            record_promise_radar_external_sync("slack", "export", outcome="dry_run")
         return PromiseExternalExportResponse(
             ledger_entry_id=str(entry.id),
             provider=provider,
@@ -2266,12 +2308,19 @@ class PromiseRadarService:
             actor_user_id=owner_id,
         )
         await session.commit()
+        record_promise_radar_external_sync("google_tasks", "sync", outcome="synced")
         return PromiseExternalTaskSyncResponse(
             ledger_entry_id=str(entry.id),
             provider="google_tasks",
             synced=True,
             status=google_status,
             message="Google Tasks 상태를 동기화했습니다.",
+            sync_contract=self._external_sync_contract(
+                entry,
+                provider="google_tasks",
+                tasklist=tasklist,
+                external_id=external_id,
+            ),
         )
 
     async def update_external_task(
@@ -2335,6 +2384,12 @@ class PromiseRadarService:
                     "tasklist": tasklist,
                     "external_url": metadata.get("external_url") or task.get("selfLink"),
                     "external_status": str(task.get("status") or status),
+                    "source_task_id": entry.last_source_task_id or entry.source_task_id,
+                    "canonical_key": entry.canonical_key,
+                    "idempotency_key": self._external_idempotency_key(
+                        entry,
+                        provider="google_tasks",
+                    ),
                     "synced_at": datetime.now(UTC).replace(tzinfo=None).isoformat(),
                 },
             },
@@ -2352,12 +2407,19 @@ class PromiseRadarService:
             actor_user_id=owner_id,
         )
         await session.commit()
+        record_promise_radar_external_sync("google_tasks", "update", outcome="synced")
         return PromiseExternalTaskSyncResponse(
             ledger_entry_id=str(entry.id),
             provider="google_tasks",
             synced=True,
             status=str(task.get("status") or status),
             message="Promise Ledger 상태를 Google Tasks에 반영했습니다.",
+            sync_contract=self._external_sync_contract(
+                entry,
+                provider="google_tasks",
+                tasklist=tasklist,
+                external_id=external_id,
+            ),
         )
 
     async def _export_google_task(
@@ -2406,6 +2468,12 @@ class PromiseRadarService:
                         "external_id": external_id,
                         "tasklist": tasklist,
                         "external_url": external_url,
+                        "source_task_id": entry.last_source_task_id or entry.source_task_id,
+                        "canonical_key": entry.canonical_key,
+                        "idempotency_key": self._external_idempotency_key(
+                            entry,
+                            provider="google_tasks",
+                        ),
                         "synced_at": datetime.now(UTC).replace(tzinfo=None).isoformat(),
                     },
                 },
@@ -2423,11 +2491,24 @@ class PromiseRadarService:
                 actor_user_id=actor_user_id,
             )
             await session.commit()
+            record_promise_radar_external_sync("google_tasks", "export", outcome="sent")
+        else:
+            record_promise_radar_external_sync("google_tasks", "export", outcome="dry_run")
         return PromiseExternalExportResponse(
             ledger_entry_id=str(entry.id),
             provider="google_tasks",
             sent=sent,
-            payload={"endpoint": endpoint, "query": query, "task": task_payload},
+            payload={
+                "endpoint": endpoint,
+                "query": query,
+                "task": task_payload,
+                "sync_contract": self._external_sync_contract(
+                    entry,
+                    provider="google_tasks",
+                    tasklist=tasklist,
+                    external_id=external_id,
+                ),
+            },
             message=message,
             external_id=external_id,
             external_url=external_url,
@@ -3258,7 +3339,10 @@ class PromiseRadarService:
 
         if conflict is not None:
             reason = conflict
-        elif explanation.similarity >= 0.18:
+        elif explanation.similarity >= 0.18 or (
+            explanation.similarity >= 0.15
+            and any(self._marker_hits(matched_text, status) for status in _AUTOPILOT_MARKERS)
+        ):
             for candidate_status in ("dismissed", "completed", "changed", "delayed"):
                 marker_hits = self._marker_hits(matched_text, candidate_status)
                 if not marker_hits:
@@ -4298,6 +4382,18 @@ class PromiseRadarService:
             return f"{owner}'{entry.text}' 약속의 기한이 지났습니다. 완료 또는 재조정됐습니까?"
         return f"{owner}'{entry.text}' 진행 상태를 확인했습니까?"
 
+    def _briefing_checkpoint(self, entry: PromiseLedgerEntryResponse) -> str:
+        owner = entry.owner or entry.speaker_label or "담당자 미지정"
+        due = entry.due_at.strftime("%m/%d %H:%M") if entry.due_at else entry.due_date
+        due_text = f" · 기한 {due}" if due else ""
+        if entry.risk_level == "high" or entry.status in {"blocked", "delayed"}:
+            prefix = "우선 확인"
+        elif entry.occurrences >= 2:
+            prefix = "반복 확인"
+        else:
+            prefix = "상태 확인"
+        return f"{prefix}: {owner} · {entry.text}{due_text}"
+
     def _reminder_candidate(self, entry: PromiseLedgerEntryResponse) -> PromiseReminderCandidate:
         due_at = entry.due_at
         reminder_at = entry.reminder_at
@@ -4389,16 +4485,24 @@ class PromiseRadarService:
         owner = (entry.owner_name or "").strip().lower()
         display = user.display_name.strip().lower()
         email = user.email.strip().lower()
+        email_local = email.split("@", 1)[0]
         normalized_owner = self._normalized_person_alias(owner)
         normalized_display = self._normalized_person_alias(display)
+        normalized_email_local = self._normalized_person_alias(email_local)
         if owner and (owner == display or owner in display or owner in email):
             return 0.92, "회의에서 추출된 담당자 이름이 사용자 이름/이메일과 일치합니다."
         if normalized_owner and normalized_display and (
             normalized_owner == normalized_display
             or normalized_owner in normalized_display
             or normalized_display.endswith(normalized_owner)
+            or self._same_korean_given_name(normalized_owner, normalized_display)
         ):
             return 0.9, "화자/담당자 별칭이 사용자 이름과 일치합니다."
+        if normalized_owner and normalized_email_local and (
+            normalized_owner in normalized_email_local
+            or normalized_email_local.endswith(normalized_owner)
+        ):
+            return 0.88, "화자/담당자 별칭이 사용자 이메일 ID와 일치합니다."
         if normalized_owner and normalized_owner in email:
             return 0.86, "화자/담당자 별칭이 사용자 이메일과 일치합니다."
         history_count = history_counts.get(user.id, 0)
@@ -4411,11 +4515,54 @@ class PromiseRadarService:
         return 0.35, "팀 멤버 후보입니다. 이름 매칭 또는 과거 지정 이력은 아직 약합니다."
 
     def _normalized_person_alias(self, value: str) -> str:
-        cleaned = re.sub(r"[\s._@+-]+", "", value.lower())
-        for suffix in ("님께서", "님", "씨", "께서", "님이", "님은", "님은요"):
-            if cleaned.endswith(suffix):
-                cleaned = cleaned[: -len(suffix)]
+        base = value.lower().split("@", 1)[0]
+        cleaned = re.sub(r"[\s._+-]+", "", base)
+        suffixes = (
+            "님께서",
+            "팀장님",
+            "대표님",
+            "매니저님",
+            "선생님",
+            "대리님",
+            "과장님",
+            "부장님",
+            "팀장",
+            "대표",
+            "매니저",
+            "선생",
+            "대리",
+            "과장",
+            "부장",
+            "님이",
+            "님은",
+            "님은요",
+            "님께",
+            "님도",
+            "님",
+            "씨",
+            "께서",
+        )
+        changed = True
+        while changed and cleaned:
+            changed = False
+            for suffix in suffixes:
+                if cleaned.endswith(suffix):
+                    cleaned = cleaned[: -len(suffix)]
+                    changed = True
+                    break
         return cleaned
+
+    def _same_korean_given_name(self, left: str, right: str) -> bool:
+        if len(left) < 2 or len(right) < 2:
+            return False
+        if len(left) > 2 and len(right) > 2 and left != right:
+            return False
+        left_tail = left[-2:] if self._looks_korean_name(left) else left
+        right_tail = right[-2:] if self._looks_korean_name(right) else right
+        return left_tail == right_tail
+
+    def _looks_korean_name(self, value: str) -> bool:
+        return bool(re.fullmatch(r"[가-힣]{2,5}", value))
 
     def _quality_score(self, entry: PromiseLedgerEntry) -> PromiseQualityScore:
         score = 0
@@ -4517,26 +4664,32 @@ class PromiseRadarService:
         description: str,
         start: datetime,
         end: datetime,
+        promise_id: str | None = None,
     ) -> str:
-        return "\r\n".join(
+        lines = [
+            "BEGIN:VCALENDAR",
+            "VERSION:2.0",
+            "PRODID:-//Voice to TextNote//Promise Radar//KO",
+            "CALSCALE:GREGORIAN",
+            "BEGIN:VEVENT",
+            f"UID:{self._ics_escape(uid)}",
+            f"DTSTAMP:{self._calendar_utc(datetime.now(UTC).replace(tzinfo=None))}",
+            f"DTSTART:{self._calendar_utc(start)}",
+            f"DTEND:{self._calendar_utc(end)}",
+            f"SUMMARY:{self._ics_escape(title)}",
+            f"DESCRIPTION:{self._ics_escape(description)}",
+        ]
+        if promise_id:
+            lines.append(f"X-VOICE-TEXTNOTE-PROMISE-ID:{self._ics_escape(promise_id)}")
+        lines.extend(
             [
-                "BEGIN:VCALENDAR",
-                "VERSION:2.0",
-                "PRODID:-//Voice to TextNote//Promise Radar//KO",
-                "CALSCALE:GREGORIAN",
-                "BEGIN:VEVENT",
-                f"UID:{self._ics_escape(uid)}",
-                f"DTSTAMP:{self._calendar_utc(datetime.now(UTC).replace(tzinfo=None))}",
-                f"DTSTART:{self._calendar_utc(start)}",
-                f"DTEND:{self._calendar_utc(end)}",
-                f"SUMMARY:{self._ics_escape(title)}",
-                f"DESCRIPTION:{self._ics_escape(description)}",
                 "STATUS:TENTATIVE",
                 "END:VEVENT",
                 "END:VCALENDAR",
                 "",
             ]
         )
+        return "\r\n".join(lines)
 
     def _google_calendar_url(
         self,
@@ -4635,7 +4788,37 @@ class PromiseRadarService:
         return {
             key: str(value)
             for key, value in google_tasks.items()
-            if key in {"external_id", "tasklist", "external_url"} and value
+            if key
+            in {
+                "external_id",
+                "tasklist",
+                "external_url",
+                "source_task_id",
+                "canonical_key",
+                "idempotency_key",
+            }
+            and value
+        }
+
+    def _external_idempotency_key(self, entry: PromiseLedgerEntry, *, provider: str) -> str:
+        return f"promise:{provider}:{entry.id}"
+
+    def _external_sync_contract(
+        self,
+        entry: PromiseLedgerEntry,
+        *,
+        provider: str,
+        tasklist: str | None = None,
+        external_id: str | None = None,
+    ) -> dict[str, str | None]:
+        return {
+            "provider": provider,
+            "ledger_entry_id": str(entry.id),
+            "canonical_key": entry.canonical_key,
+            "source_task_id": entry.last_source_task_id or entry.source_task_id,
+            "tasklist": tasklist,
+            "external_id": external_id,
+            "idempotency_key": self._external_idempotency_key(entry, provider=provider),
         }
 
     def _action_item_priority(self, priority: str, risk_level: str) -> str:

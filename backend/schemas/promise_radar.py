@@ -344,6 +344,10 @@ class PromisePreMeetingBrief(BaseModel):
     summary: str
     promises: list[PromiseLedgerEntryResponse] = Field(default_factory=list)
     questions: list[str] = Field(default_factory=list)
+    checkpoints: list[str] = Field(
+        default_factory=list,
+        description="Concrete owner/status prompts to check during the meeting",
+    )
 
 
 class PromiseDigest(BaseModel):
@@ -451,6 +455,10 @@ class PromiseExternalTaskSyncResponse(BaseModel):
     synced: bool
     status: str | None = None
     message: str
+    sync_contract: dict[str, Any] | None = Field(
+        default=None,
+        description="Stable idempotency/source metadata for external-task reconciliation",
+    )
 
 
 class PromiseAccuracyCase(BaseModel):

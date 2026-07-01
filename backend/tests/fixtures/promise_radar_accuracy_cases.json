@@ -100,8 +100,8 @@
   },
   {
     "id": "dismissed-old-api",
-    "entry_text": "OpenAI API 문서 정리",
-    "current_text": "OpenAI API 문서 정리는 필요 없어서 폐기했습니다.",
+    "entry_text": "기존 AI API 문서 정리",
+    "current_text": "기존 AI API 문서 정리는 필요 없어서 폐기했습니다.",
     "expected_status": "dismissed",
     "owner": "김기수"
   },
@@ -259,7 +259,7 @@
   {
     "id": "changed-model-provider",
     "entry_text": "AI 모델 공급자 설정",
-    "current_text": "AI 모델 공급자 설정은 OpenAI 대신 ZAI GLM-5.2로 변경했습니다.",
+    "current_text": "AI 모델 공급자 설정은 기존 API 대신 ZAI GLM-5.2로 변경했습니다.",
     "expected_status": "changed",
     "owner": "김기수"
   },
@@ -306,9 +306,9 @@
     "owner": "김기수"
   },
   {
-    "id": "dismissed-openai-cleanup",
-    "entry_text": "OpenAI API 키 재사용",
-    "current_text": "OpenAI API 키 재사용은 필요 없어서 폐기했습니다.",
+    "id": "dismissed-obsolete-ai-key-cleanup",
+    "entry_text": "기존 AI API 키 재사용",
+    "current_text": "기존 AI API 키 재사용은 필요 없어서 폐기했습니다.",
     "expected_status": "dismissed",
     "owner": "김기수"
   },
@@ -1281,5 +1281,54 @@
     "current_text": "The commission moved to approve the Aerodyme Lease item; all in favor and the motion carried.",
     "expected_status": "completed",
     "owner": "Burlington Airport Commission"
+  },
+  {
+    "id": "honorific-completed-release-notes",
+    "entry_text": "릴리스 노트 검토",
+    "current_text": "기수님이 릴리스 노트 검토를 완료했고 배포 전 확인까지 끝냈습니다.",
+    "expected_status": "completed",
+    "owner": "김기수"
+  },
+  {
+    "id": "honorific-delayed-token-access",
+    "entry_text": "pyannote 접근 권한 확인",
+    "current_text": "기수님 pyannote 접근 권한 확인은 아직 못 했고 Hugging Face 승인 이후로 연기했습니다.",
+    "expected_status": "delayed",
+    "owner": "김기수"
+  },
+  {
+    "id": "changed-owner-handoff",
+    "entry_text": "QA 체크리스트 작성",
+    "current_text": "QA 체크리스트 담당자를 김기수 대신 이영희로 변경해서 다음 회의부터 추적합니다.",
+    "expected_status": "changed",
+    "owner": "김기수"
+  },
+  {
+    "id": "dismissed-small-app-backend",
+    "entry_text": "Vercel 백엔드 전환",
+    "current_text": "Vercel 백엔드 전환은 개인 앱 규모에서 필요 없어서 취소했습니다.",
+    "expected_status": "dismissed",
+    "owner": "김기수"
+  },
+  {
+    "id": "delayed-device-e2e-android-missing",
+    "entry_text": "Android 실기기 Promise Radar E2E",
+    "current_text": "Android 실기기 Promise Radar E2E는 기기가 연결되지 않아 다음 주로 미뤘습니다.",
+    "expected_status": "delayed",
+    "owner": "김기수"
+  },
+  {
+    "id": "completed-ios-device-e2e",
+    "entry_text": "iPhone 실기기 Promise Radar E2E",
+    "current_text": "iPhone 실기기 Promise Radar E2E는 실제 녹음 task로 확인했고 PASS 증거를 남겼습니다.",
+    "expected_status": "completed",
+    "owner": "김기수"
+  },
+  {
+    "id": "changed-calendar-reminder-policy",
+    "entry_text": "약속 캘린더 알림 정책",
+    "current_text": "약속 캘린더 알림 정책은 3시간 전 대신 회의 30분 전으로 재조정했습니다.",
+    "expected_status": "changed",
+    "owner": "김기수"
   }
 ]

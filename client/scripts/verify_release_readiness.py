@@ -972,7 +972,7 @@ def check_docs(root: Path, reporter: Reporter) -> None:
         [
             f"**{EXPECTED_STRICT_MISSING_INPUT_ERRORS} errors",
             "client/scripts/create_release_e2e_evidence.py",
-            "17개 required scenario",
+            f"{len(REQUIRED_E2E_SCENARIOS)}개 required scenario",
             "python3 client/scripts/verify_mobile_release_runner.py",
             "python3 client/scripts/verify_github_mobile_release_env.py",
             "python3 client/scripts/verify_release_readiness.py --strict",
@@ -995,7 +995,10 @@ def check_docs(root: Path, reporter: Reporter) -> None:
     if "evidence JSON 6개" in procedure_doc or "6개 시나리오" in procedure_doc:
         reporter.fail("Release procedure references obsolete 6-scenario evidence schema")
     else:
-        reporter.ok("Release procedure uses current 17-scenario evidence schema")
+        reporter.ok(
+            f"Release procedure uses current {len(REQUIRED_E2E_SCENARIOS)}-scenario "
+            "evidence schema"
+        )
     expected_spec_text = f"{completed_spec_count}개 SPEC 전부 완료"
     expected_tag_text = f"{completed_spec_count} SPECs completed"
     if expected_spec_text in procedure_doc and expected_tag_text in procedure_doc:
@@ -1115,7 +1118,7 @@ def check_owll_benchmark_doc(root: Path, reporter: Reporter) -> None:
         reporter,
         content,
         [
-            "**Last verified**: 2026-06-30",
+            "**Last verified**: 2026-07-01",
             "https://apps.apple.com/us/app/owll-ai-note-taker-assistant/id6450300197",
             "https://play.google.com/store/apps/details?id=com.hmd.quickrecorder",
             "https://owll.ai/blog/ai-note-taker-for-teams",

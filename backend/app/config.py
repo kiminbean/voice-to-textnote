@@ -5,7 +5,7 @@
 from pathlib import Path
 from urllib.parse import urlparse
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import AliasChoices, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _ALLOWED_ENVIRONMENTS = {"development", "staging", "production"}
@@ -39,6 +39,10 @@ class Settings(BaseSettings):
     whisper_model: str = "mlx-community/whisper-small-mlx"
     whisper_language: str = "ko"
     stt_backend: str = ""  # "mlx", "faster_whisper", "" (auto-detect)
+    preload_models_enabled: bool = Field(
+        default=True,
+        validation_alias=AliasChoices("PRELOAD_MODELS_ENABLED", "MODEL_PRELOAD_ENABLED"),
+    )
 
     # 처리 제한
     # REQ-ERR-007: 범위 유효성 검사 (1-10)

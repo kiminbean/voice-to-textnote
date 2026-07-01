@@ -761,9 +761,10 @@ celery -A backend.workers.celery_app worker --loglevel=info --concurrency=3
 brew services start redis
 
 # 백엔드 서버 시작
-uvicorn backend.app.main:app --host 0.0.0.0 --port 8000
+MODEL_PRELOAD_ENABLED=false python -m uvicorn backend.app.main:app \
+  --host 0.0.0.0 --port 8000 --loop asyncio --http h11
 
-# Celery 워커 시작 (별도 터미널)
+# Celery 워커 시작 (별도 터미널, 실제 STT/화자분리 모델은 워커가 작업 시 로드)
 celery -A backend.workers.celery_app:celery_app worker --loglevel=info --concurrency=3
 ```
 

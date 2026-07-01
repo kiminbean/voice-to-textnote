@@ -765,6 +765,7 @@ async def test_promise_autopilot_calendar_assignee_and_quality(session_factory):
             team_id=team_id,
         )
         assert "BEGIN:VCALENDAR" in calendar.ics_content
+        assert f"X-VOICE-TEXTNOTE-PROMISE-ID:{entry.id}" in calendar.ics_content
         assert calendar.google_calendar_url.startswith("https://calendar.google.com/")
 
         suggestions = await service.suggest_assignees(
@@ -775,6 +776,16 @@ async def test_promise_autopilot_calendar_assignee_and_quality(session_factory):
         )
         assert suggestions[0].user_id == str(teammate_id)
         assert suggestions[0].confidence >= 0.9
+        entry.owner_name = "기수님"
+        nickname_suggestions = await service.suggest_assignees(
+            session,
+            entry.id,
+            owner_id=owner_id,
+            team_id=team_id,
+        )
+        assert nickname_suggestions[0].user_id == str(teammate_id)
+        assert nickname_suggestions[0].confidence >= 0.9
+        entry.owner_name = "김기수"
 
         response = service._entry_to_response(stored)
         assert response.quality is not None
@@ -907,6 +918,8 @@ async def test_promise_autopilot_calendar_assignee_and_quality(session_factory):
         assert pre_meeting.readiness_score < 100
         assert pre_meeting.promises[0].id == str(open_entry.id)
         assert pre_meeting.questions
+        assert pre_meeting.checkpoints
+        assert "김기수" in pre_meeting.checkpoints[0]
 
         digest = await service.build_digest(
             session,
@@ -1179,6 +1192,8 @@ async def test_update_external_google_task_pushes_ledger_state(session_factory, 
 
         assert response.synced is True
         assert response.status == "completed"
+        assert response.sync_contract is not None
+        assert response.sync_contract["idempotency_key"] == f"promise:google_tasks:{entry.id}"
         assert calls[0]["endpoint"].endswith("/lists/@default/tasks/task-1")
         assert calls[0]["endpoint"].count("/tasks/task-1") == 1
         assert calls[0]["json"]["status"] == "completed"

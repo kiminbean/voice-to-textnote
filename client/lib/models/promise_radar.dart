@@ -891,6 +891,7 @@ class PromisePreMeetingBrief {
   final String summary;
   final List<PromiseLedgerEntry> promises;
   final List<String> questions;
+  final List<String> checkpoints;
 
   const PromisePreMeetingBrief({
     required this.title,
@@ -898,6 +899,7 @@ class PromisePreMeetingBrief {
     required this.summary,
     required this.promises,
     required this.questions,
+    this.checkpoints = const [],
   });
 
   factory PromisePreMeetingBrief.fromJson(Map<String, dynamic> json) {
@@ -910,6 +912,9 @@ class PromisePreMeetingBrief {
           .map(PromiseLedgerEntry.fromJson)
           .toList(),
       questions: (json['questions'] as List<dynamic>? ?? [])
+          .whereType<String>()
+          .toList(),
+      checkpoints: (json['checkpoints'] as List<dynamic>? ?? [])
           .whereType<String>()
           .toList(),
     );
@@ -1177,6 +1182,7 @@ class PromiseExternalTaskSyncResponse {
   final bool synced;
   final String? status;
   final String message;
+  final Map<String, dynamic>? syncContract;
 
   const PromiseExternalTaskSyncResponse({
     required this.ledgerEntryId,
@@ -1184,6 +1190,7 @@ class PromiseExternalTaskSyncResponse {
     required this.synced,
     this.status,
     required this.message,
+    this.syncContract,
   });
 
   factory PromiseExternalTaskSyncResponse.fromJson(Map<String, dynamic> json) {
@@ -1193,6 +1200,9 @@ class PromiseExternalTaskSyncResponse {
       synced: json['synced'] as bool? ?? false,
       status: json['status'] as String?,
       message: json['message'] as String? ?? '',
+      syncContract: json['sync_contract'] is Map<String, dynamic>
+          ? json['sync_contract'] as Map<String, dynamic>
+          : null,
     );
   }
 }

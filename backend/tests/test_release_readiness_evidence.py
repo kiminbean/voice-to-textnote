@@ -2320,7 +2320,7 @@ def test_release_procedure_rejects_version_drift(tmp_path):
     (tmp_path / "docs/release-procedure.md").write_text(
         (
             "client/scripts/create_release_e2e_evidence.py\n"
-            "17개 required scenario\n"
+            "21개 required scenario\n"
             "`platforms`\n"
             '["android", "ios"]\n'
             '["android"]\n'

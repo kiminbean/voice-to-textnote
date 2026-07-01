@@ -226,10 +226,12 @@ tmux new-session -d -s voice-to-textnote-redis \
 
 tmux new-session -d -s voice-to-textnote-server \
   -c /Users/ibkim/Projects/voice-to-textnote \
-  'PYTEST_CURRENT_TEST=server_startup HUGGINGFACE_TOKEN= python -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 2>&1 | tee -a logs/backend.log'
+  'MODEL_PRELOAD_ENABLED=false STT_BACKEND=faster_whisper python -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --loop asyncio --http h11 2>&1 | tee -a logs/backend.log'
 ```
 
-`PYTEST_CURRENT_TEST=server_startup`는 로컬 로그인 검증 중 STT 모델 프리로드를 건너뛰기 위한 개발용 설정이다. 로그인 검증에는 필요 없는 모델 로딩 실패로 서버가 죽지 않게 한다.
+`MODEL_PRELOAD_ENABLED=false`는 로컬/모바일 검증 중 FastAPI 라우터 기동을 STT/pyannote/tone 모델 웜업과 분리하기 위한 설정이다. 실제 STT/화자분리 처리는 Celery 워커가 작업 시 모델을 로드하므로, 로그인/기존 회의 조회/Promise Radar API 검증에서는 서버 라우터가 먼저 안정적으로 떠야 한다.
+
+macOS/Python 3.14 로컬 검증에서는 `--loop asyncio --http h11`을 함께 사용한다. `uvicorn[standard]`의 자동 이벤트 루프 선택보다 명시적인 asyncio/h11 경로가 device E2E 검증용 백엔드에서 더 안정적으로 재현된다.
 
 검증:
 

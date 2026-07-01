@@ -184,6 +184,39 @@ async def test_main_lifecycle_tone_preload_failure_logs_and_continues():
     assert any("톤 분석 엔진 사전 로드 실패" in str(call) for call in mock_logger.error.call_args_list)
 
 
+@pytest.mark.asyncio
+async def test_main_lifecycle_model_preload_disabled_skips_warmup():
+    """MODEL_PRELOAD_ENABLED=false면 API 라우터 기동을 모델 웜업과 분리한다."""
+    from fastapi import FastAPI
+
+    from backend.app.config import Settings
+    from backend.app.main import lifespan
+
+    mock_settings = MagicMock(spec=Settings)
+    mock_settings.preload_models_enabled = False
+    mock_settings.whisper_model = "test-whisper"
+    mock_settings.huggingface_token = "hf_test"
+    mock_settings.diarization_model = "test-diarization"
+    mock_settings.tone_model = "local-tone"
+
+    with (
+        patch("backend.app.main.settings", mock_settings),
+        patch("backend.app.main.validate_startup", new_callable=AsyncMock),
+        patch("backend.app.main.cleanup_shutdown", new_callable=AsyncMock),
+        patch("backend.app.main.WhisperEngine.get_instance") as mock_stt_get,
+        patch("backend.app.main.DiarizationEngine.get_instance") as mock_dia_get,
+        patch("backend.app.main.ToneEngine.get_instance") as mock_tone_get,
+        patch("backend.app.main.logger") as mock_logger,
+    ):
+        async with lifespan(FastAPI()):
+            pass
+
+    mock_stt_get.assert_not_called()
+    mock_dia_get.assert_not_called()
+    mock_tone_get.assert_not_called()
+    assert any("MODEL_PRELOAD_ENABLED=false" in str(call) for call in mock_logger.info.call_args_list)
+
+
 # =============================================================================
 # Test lifecycle.py - lines 108-109, 116-117 (4 lines)
 # =============================================================================

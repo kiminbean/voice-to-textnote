@@ -85,6 +85,48 @@ TASK_PROCESSING_TIME_BY_TYPE: Histogram = _get_or_create_metric(
     buckets=[0.5, 1.0, 2.5, 5.0, 10.0, 30.0, 60.0, 120.0, 300.0],
 )
 
+# Promise Radar 운영 메트릭스
+PROMISE_RADAR_BUILDS: Counter = _get_or_create_metric(
+    Counter,
+    "voicenote_promise_radar_builds_total",
+    "Promise Radar 분석 요청 수",
+    labelnames=["outcome"],
+)
+
+PROMISE_RADAR_LEDGER_ENTRIES: Histogram = _get_or_create_metric(
+    Histogram,
+    "voicenote_promise_radar_ledger_entries",
+    "Promise Radar 응답에 포함된 원장 항목 수",
+    buckets=[0, 1, 2, 5, 10, 20, 50, 100],
+)
+
+PROMISE_RADAR_AUTOPILOT: Counter = _get_or_create_metric(
+    Counter,
+    "voicenote_promise_radar_autopilot_total",
+    "Promise Radar Autopilot 판정/적용 수",
+    labelnames=["mode", "suggested_status", "applied"],
+)
+
+PROMISE_RADAR_REVIEW_QUEUE: Gauge = _get_or_create_metric(
+    Gauge,
+    "voicenote_promise_radar_review_queue_items",
+    "Promise Radar Autopilot 검토 대기 항목 수",
+)
+
+PROMISE_RADAR_NOTIFICATIONS: Counter = _get_or_create_metric(
+    Counter,
+    "voicenote_promise_radar_notifications_total",
+    "Promise Radar 알림 발송 결과",
+    labelnames=["kind", "outcome"],
+)
+
+PROMISE_RADAR_EXTERNAL_SYNC: Counter = _get_or_create_metric(
+    Counter,
+    "voicenote_promise_radar_external_sync_total",
+    "Promise Radar 외부 업무도구 동기화 결과",
+    labelnames=["provider", "operation", "outcome"],
+)
+
 # 프로세스 리소스 게이지
 PROCESS_MEMORY_RSS_BYTES: Gauge = _get_or_create_metric(
     Gauge,
@@ -157,6 +199,53 @@ def record_task_failed(task_type: str) -> None:
     """작업 실패 카운터 갱신"""
     TASKS_FAILED.labels(task_type=task_type).inc()
     TASK_FAILURES.inc()
+
+
+def record_promise_radar_build(outcome: str, ledger_entry_count: int) -> None:
+    """Promise Radar 분석 요청과 원장 규모를 기록"""
+    PROMISE_RADAR_BUILDS.labels(outcome=outcome).inc()
+    PROMISE_RADAR_LEDGER_ENTRIES.observe(max(0, ledger_entry_count))
+
+
+def record_promise_radar_autopilot(
+    *,
+    mode: str,
+    suggested_status: str,
+    applied: bool,
+) -> None:
+    """Autopilot 후보 판정과 실제 적용 여부를 기록"""
+    PROMISE_RADAR_AUTOPILOT.labels(
+        mode=mode,
+        suggested_status=suggested_status,
+        applied="true" if applied else "false",
+    ).inc()
+
+
+def record_promise_radar_review_queue(item_count: int) -> None:
+    """Autopilot review queue 크기를 기록"""
+    PROMISE_RADAR_REVIEW_QUEUE.set(max(0, item_count))
+
+
+def record_promise_radar_notification(kind: str, *, sent: int, failed: int) -> None:
+    """Promise Radar 알림 발송 성공/실패 개수를 기록"""
+    if sent:
+        PROMISE_RADAR_NOTIFICATIONS.labels(kind=kind, outcome="sent").inc(sent)
+    if failed:
+        PROMISE_RADAR_NOTIFICATIONS.labels(kind=kind, outcome="failed").inc(failed)
+
+
+def record_promise_radar_external_sync(
+    provider: str,
+    operation: str,
+    *,
+    outcome: str,
+) -> None:
+    """외부 업무도구 export/sync/update 결과를 기록"""
+    PROMISE_RADAR_EXTERNAL_SYNC.labels(
+        provider=provider,
+        operation=operation,
+        outcome=outcome,
+    ).inc()
 
 
 def _record_system_metrics(_info) -> None:

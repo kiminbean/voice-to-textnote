@@ -99,42 +99,45 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     await validate_startup()
     promise_scheduler_task = start_promise_radar_notification_scheduler()
 
-    # STT 모델 사전 로드 (REQ-STT-021)
-    if os.environ.get("PYTEST_CURRENT_TEST"):
-        logger.info("테스트 실행 중: STT 모델 사전 로드 건너뜀")
+    if not getattr(settings, "preload_models_enabled", True):
+        logger.info("MODEL_PRELOAD_ENABLED=false - 모델 사전 로드 건너뜀")
     else:
-        try:
-            stt_engine = WhisperEngine.get_instance()
-            stt_engine.load(settings.whisper_model)
-            logger.info("STT 모델 사전 로드 완료", model=settings.whisper_model)
-        except Exception as e:
-            logger.error("STT 모델 사전 로드 실패 (서버는 계속 실행)", error=str(e))
+        # STT 모델 사전 로드 (REQ-STT-021)
+        if os.environ.get("PYTEST_CURRENT_TEST"):
+            logger.info("테스트 실행 중: STT 모델 사전 로드 건너뜀")
+        else:
+            try:
+                stt_engine = WhisperEngine.get_instance()
+                stt_engine.load(settings.whisper_model)
+                logger.info("STT 모델 사전 로드 완료", model=settings.whisper_model)
+            except Exception as e:
+                logger.error("STT 모델 사전 로드 실패 (서버는 계속 실행)", error=str(e))
 
-    # 화자 분리 모델 사전 로드 (REQ-DIA-011)
-    if settings.huggingface_token:
-        try:
-            dia_engine = DiarizationEngine.get_instance()
-            dia_engine.load(
-                hf_token=settings.huggingface_token,
-                model_name=settings.diarization_model,
-            )
-            logger.info("화자 분리 모델 사전 로드 완료", model=settings.diarization_model)
-        except Exception as e:
-            logger.error("화자 분리 모델 사전 로드 실패 (서버는 계속 실행)", error=str(e))
-    else:
-        logger.warning("HUGGINGFACE_TOKEN 미설정 - 화자 분리 모델 로드 건너뜀")
+        # 화자 분리 모델 사전 로드 (REQ-DIA-011)
+        if settings.huggingface_token:
+            try:
+                dia_engine = DiarizationEngine.get_instance()
+                dia_engine.load(
+                    hf_token=settings.huggingface_token,
+                    model_name=settings.diarization_model,
+                )
+                logger.info("화자 분리 모델 사전 로드 완료", model=settings.diarization_model)
+            except Exception as e:
+                logger.error("화자 분리 모델 사전 로드 실패 (서버는 계속 실행)", error=str(e))
+        else:
+            logger.warning("HUGGINGFACE_TOKEN 미설정 - 화자 분리 모델 로드 건너뜀")
 
-    # SPEC-TONE-001: 톤 분석 엔진 사전 로드 (REQ-TONE-001)
-    # REQ-TONE-011: tone_model이 빈 문자열이면 기능 비활성화 — 웜업도 건너뜀
-    if settings.tone_model:
-        try:
-            tone_engine = ToneEngine.get_instance()
-            tone_engine._initialize()
-            logger.info("톤 분석 엔진 사전 로드 완료")
-        except Exception as e:
-            logger.error("톤 분석 엔진 사전 로드 실패 (서버는 계속 실행)", error=str(e))
-    else:
-        logger.info("tone_model 미설정 - 톤 분석 기능 비활성화")
+        # SPEC-TONE-001: 톤 분석 엔진 사전 로드 (REQ-TONE-001)
+        # REQ-TONE-011: tone_model이 빈 문자열이면 기능 비활성화 — 웜업도 건너뜀
+        if settings.tone_model:
+            try:
+                tone_engine = ToneEngine.get_instance()
+                tone_engine._initialize()
+                logger.info("톤 분석 엔진 사전 로드 완료")
+            except Exception as e:
+                logger.error("톤 분석 엔진 사전 로드 실패 (서버는 계속 실행)", error=str(e))
+        else:
+            logger.info("tone_model 미설정 - 톤 분석 기능 비활성화")
 
     try:
         yield
