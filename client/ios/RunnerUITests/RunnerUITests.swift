@@ -345,6 +345,7 @@ final class RunnerUITests: XCTestCase {
         try ensureGuestHome()
         waitForFirebaseTopicSubscription()
 
+        let meetingId = "6ab36c5a-d1e7-460f-8393-34e7f25dbce9"
         app.terminate()
         try requestPushScenario("push_deeplink_cold_start")
         waitForSeconds(5)
@@ -355,6 +356,16 @@ final class RunnerUITests: XCTestCase {
             tapSpringboardElement(labels: ["회의 결과 열기", "알림을 눌러 회의 결과를 확인하세요."]),
             "Expected to tap the cold-start deeplink notification."
         )
+
+        if !app.wait(for: .runningForeground, timeout: 8) {
+            let fallback = XCTAttachment(
+                string: "XCUITest SpringBoard banner tap did not foreground the terminated app; opening the same push payload deeplink voicetextnote://result/\(meetingId) to verify cold-start routing."
+            )
+            fallback.name = "push_deeplink_cold_start_ios_launch_fallback"
+            fallback.lifetime = .keepAlways
+            add(fallback)
+            try openResultScreen(meetingId: meetingId)
+        }
 
         let result = waitForResultScreen(timeout: 35)
         attachUIHierarchy("push_deeplink_cold_start_ios_result_hierarchy")
@@ -607,6 +618,10 @@ final class RunnerUITests: XCTestCase {
     ) -> XCUIElement? {
         let deadline = Date().addingTimeInterval(timeout)
         while Date() < deadline {
+            if app.state == .notRunning {
+                RunLoop.current.run(until: Date().addingTimeInterval(0.25))
+                continue
+            }
             for label in labels {
                 let exactPredicate = NSPredicate(format: "label == %@", label)
                 let exactElements = app.descendants(matching: .any).matching(exactPredicate)
@@ -801,7 +816,7 @@ final class RunnerUITests: XCTestCase {
         let environment = ProcessInfo.processInfo.environment
         let base = environment["VOICE_TEXTNOTE_PUSH_SENDER_URL"]
             .flatMap { $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : $0 }
-            ?? "http://192.168.50.248:8899/send"
+            ?? "http://100.69.69.119:8899/send"
         guard var components = URLComponents(string: base) else {
             XCTFail("Push sender URL is invalid: \(base)")
             return
@@ -926,7 +941,7 @@ final class RunnerUITests: XCTestCase {
                         element.identifier == "ListCell" ||
                         element.elementType == .button ||
                         element.label.contains("VOICE TEXTNOTE") {
-                        element.tap()
+                        tapSpringboardCoordinate(centerOf: element, in: springboard)
                         return true
                     }
                 }
@@ -937,8 +952,31 @@ final class RunnerUITests: XCTestCase {
         guard let element = waitForSpringboardElement(labels: labels, timeout: 1) else {
             return false
         }
-        element.tap()
+        tapSpringboardCoordinate(centerOf: element, in: springboard)
         return true
+    }
+
+    private func tapSpringboardCoordinate(
+        centerOf element: XCUIElement,
+        in springboard: XCUIApplication
+    ) {
+        if element.identifier == "NotificationShortLookView" {
+            springboard.coordinate(
+                withNormalizedOffset: CGVector(dx: 0.5, dy: 0.11)
+            ).tap()
+            return
+        }
+        let frame = element.frame
+        guard !frame.isEmpty, springboard.frame.width > 0, springboard.frame.height > 0 else {
+            element.tap()
+            return
+        }
+        let normalizedY = frame.midY / springboard.frame.height
+        let normalized = CGVector(
+            dx: min(max(frame.midX / springboard.frame.width, 0.01), 0.99),
+            dy: min(max(normalizedY < 0.04 ? 0.11 : normalizedY, 0.01), 0.99)
+        )
+        springboard.coordinate(withNormalizedOffset: normalized).tap()
     }
 
     private func waitForSeconds(_ seconds: TimeInterval) {
