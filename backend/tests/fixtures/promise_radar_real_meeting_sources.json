@@ -16,14 +16,18 @@
         "start_seconds": 196,
         "end_seconds": 299,
         "topic": "Pike Airfield Mill and Overlay contract",
-        "golden_case_ids": ["real-oq1-pike-contract-approved"],
+        "golden_case_ids": [
+          "real-oq1-pike-contract-approved"
+        ],
         "label_notes": "Motion language, unanimous approval, and ordered status indicate completed."
       },
       {
         "start_seconds": 299,
         "end_seconds": 541,
         "topic": "Airfield lease agreement",
-        "golden_case_ids": ["real-oq1-airfield-lease-approved"],
+        "golden_case_ids": [
+          "real-oq1-airfield-lease-approved"
+        ],
         "label_notes": "The agreement is approved as presented and extended for one year."
       },
       {
@@ -50,7 +54,9 @@
         "start_seconds": 1743,
         "end_seconds": 1850,
         "topic": "Sound data",
-        "golden_case_ids": ["real-oq1-sound-overlay-next-month"],
+        "golden_case_ids": [
+          "real-oq1-sound-overlay-next-month"
+        ],
         "label_notes": "Flight path overlay is a possible next-month follow-up, not completed."
       }
     ]
@@ -71,21 +77,27 @@
         "start_seconds": 650,
         "end_seconds": 840,
         "topic": "Meeting format discussion",
-        "golden_case_ids": ["real-mo7-format-airport-fyi-added"],
+        "golden_case_ids": [
+          "real-mo7-format-airport-fyi-added"
+        ],
         "label_notes": "The meeting format is changed by adding an Airport FYI item."
       },
       {
         "start_seconds": 840,
         "end_seconds": 1050,
         "topic": "Accountable item format",
-        "golden_case_ids": ["real-mo7-accountable-owner-format"],
+        "golden_case_ids": [
+          "real-mo7-accountable-owner-format"
+        ],
         "label_notes": "The process changes so each item includes an accountable person and explanation."
       },
       {
         "start_seconds": 1050,
         "end_seconds": 1200,
         "topic": "Procedures and rules",
-        "golden_case_ids": ["real-mo7-procedures-rules-adopted"],
+        "golden_case_ids": [
+          "real-mo7-procedures-rules-adopted"
+        ],
         "label_notes": "Procedure/rule adoption is approved by motion and ordered."
       },
       {
@@ -229,12 +241,58 @@
     "duration_seconds": 7089,
     "verified_with": "yt-dlp --dump-single-json https://www.youtube.com/watch?v=tU_US5LxsXk",
     "subtitle_cache": ".cache/promise-radar-youtube-v10/tU_US5LxsXk.en.json3",
-    "golden_case_count": 0,
-    "candidate_only": true,
+    "golden_case_count": 7,
+    "candidate_only": false,
     "rebuild_commands": [
-      "yt-dlp --write-auto-subs --sub-lang en --skip-download --sub-format json3 -o '.cache/promise-radar-youtube-v10/%(id)s.%(ext)s' https://www.youtube.com/watch?v=tU_US5LxsXk"
+      "yt-dlp --write-auto-subs --sub-lang en --skip-download --sub-format json3 -o '.cache/promise-radar-youtube-v10/%(id)s.%(ext)s' https://www.youtube.com/watch?v=tU_US5LxsXk",
+      "yt-dlp -f bestaudio --download-sections '*00:00:22-00:01:30' --extract-audio --audio-format mp3 -o '.cache/promise-radar-audio-v12/tU_US5LxsXk_22_90.%(ext)s' https://www.youtube.com/watch?v=tU_US5LxsXk"
     ],
-    "segments": []
+    "segments": [
+      {
+        "start_seconds": 22.4,
+        "end_seconds": 36.9,
+        "label": "agenda approval",
+        "golden_case_ids": [
+          "real-v12-tU_US5LxsXk-agenda-approval-1"
+        ]
+      },
+      {
+        "start_seconds": 56.4,
+        "end_seconds": 88.6,
+        "label": "consent and reclassification motions",
+        "golden_case_ids": [
+          "real-v12-tU_US5LxsXk-consent-agenda-1",
+          "real-v12-tU_US5LxsXk-ambassador-reclassification-1"
+        ]
+      },
+      {
+        "start_seconds": 3028.6,
+        "end_seconds": 3238.0,
+        "label": "project completion updates",
+        "golden_case_ids": [
+          "real-v12-tU_US5LxsXk-beta-first-phase-1",
+          "real-v12-tU_US5LxsXk-rsip-phase-three-1"
+        ]
+      },
+      {
+        "start_seconds": 3383.0,
+        "end_seconds": 3458.7,
+        "label": "PFC application open work",
+        "golden_case_ids": [
+          "real-v12-tU_US5LxsXk-pfc-application-1"
+        ]
+      },
+      {
+        "start_seconds": 5090.5,
+        "end_seconds": 5146.8,
+        "label": "terminal readiness future deadline",
+        "golden_case_ids": [
+          "real-v12-tU_US5LxsXk-terminal-four-weeks-1"
+        ]
+      }
+    ],
+    "representative_audio_clip": ".cache/promise-radar-audio-v12/tU_US5LxsXk_22_90.mp3",
+    "golden_case_id_prefix": "real-v12-tU_US5LxsXk-"
   },
   {
     "source_id": "town-meeting-tv-bac-2023-08-02",
@@ -245,11 +303,57 @@
     "duration_seconds": 8322,
     "verified_with": "yt-dlp --dump-single-json https://www.youtube.com/watch?v=BhhxfrZc6sg",
     "subtitle_cache": ".cache/promise-radar-youtube-v10/BhhxfrZc6sg.en.json3",
-    "golden_case_count": 0,
-    "candidate_only": true,
+    "golden_case_count": 7,
+    "candidate_only": false,
     "rebuild_commands": [
-      "yt-dlp --write-auto-subs --sub-lang en --skip-download --sub-format json3 -o '.cache/promise-radar-youtube-v10/%(id)s.%(ext)s' https://www.youtube.com/watch?v=BhhxfrZc6sg"
+      "yt-dlp --write-auto-subs --sub-lang en --skip-download --sub-format json3 -o '.cache/promise-radar-youtube-v10/%(id)s.%(ext)s' https://www.youtube.com/watch?v=BhhxfrZc6sg",
+      "yt-dlp -f bestaudio --download-sections '*01:18:30-01:19:35' --extract-audio --audio-format mp3 -o '.cache/promise-radar-audio-v12/BhhxfrZc6sg_4710_4775.%(ext)s' https://www.youtube.com/watch?v=BhhxfrZc6sg"
     ],
-    "segments": []
+    "segments": [
+      {
+        "start_seconds": 29.2,
+        "end_seconds": 49.6,
+        "label": "agenda adoption",
+        "golden_case_ids": [
+          "real-v12-BhhxfrZc6sg-agenda-adoption-1"
+        ]
+      },
+      {
+        "start_seconds": 402.2,
+        "end_seconds": 484.5,
+        "label": "consent agenda and fiscal cleanup",
+        "golden_case_ids": [
+          "real-v12-BhhxfrZc6sg-consent-agenda-1",
+          "real-v12-BhhxfrZc6sg-fiscal-report-cleanup-1"
+        ]
+      },
+      {
+        "start_seconds": 4714.0,
+        "end_seconds": 4737.7,
+        "label": "contractor selection future milestone",
+        "golden_case_ids": [
+          "real-v12-BhhxfrZc6sg-contractor-selection-1"
+        ]
+      },
+      {
+        "start_seconds": 5400.5,
+        "end_seconds": 5433.0,
+        "label": "budget approval",
+        "golden_case_ids": [
+          "real-v12-BhhxfrZc6sg-budget-approval-1"
+        ]
+      },
+      {
+        "start_seconds": 5808.4,
+        "end_seconds": 5878.1,
+        "label": "terminal planning and maintenance open work",
+        "golden_case_ids": [
+          "real-v12-BhhxfrZc6sg-terminal-integration-plan-1",
+          "real-v12-BhhxfrZc6sg-maintenance-catchup-1"
+        ]
+      }
+    ],
+    "representative_audio_clip": ".cache/promise-radar-audio-v12/BhhxfrZc6sg_4710_4775.mp3",
+    "golden_case_id_prefix": "real-v12-BhhxfrZc6sg-"
   }
 ]

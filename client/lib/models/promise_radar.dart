@@ -802,10 +802,14 @@ class PromiseLearningInsight {
   final String scope;
   final double autopilotThreshold;
   final Map<String, double> statusThresholds;
+  final Map<String, int> statusSampleCounts;
+  final Map<String, double> statusFalsePositiveRate;
   final int feedbackCount;
   final int falsePositiveCount;
   final int confirmedCount;
   final int assigneeCorrectionCount;
+  final int aliasGraphSize;
+  final bool evidenceLockEnabled;
   final List<String> statusAttention;
   final String recommendedPolicy;
   final List<String> insights;
@@ -815,10 +819,14 @@ class PromiseLearningInsight {
     required this.scope,
     required this.autopilotThreshold,
     required this.statusThresholds,
+    this.statusSampleCounts = const {},
+    this.statusFalsePositiveRate = const {},
     required this.feedbackCount,
     required this.falsePositiveCount,
     required this.confirmedCount,
     required this.assigneeCorrectionCount,
+    this.aliasGraphSize = 0,
+    this.evidenceLockEnabled = true,
     required this.statusAttention,
     required this.recommendedPolicy,
     required this.insights,
@@ -834,10 +842,21 @@ class PromiseLearningInsight {
           (json['status_thresholds'] as Map<String, dynamic>? ?? {}).map(
         (key, value) => MapEntry(key, (value as num?)?.toDouble() ?? 0.68),
       ),
+      statusSampleCounts:
+          (json['status_sample_counts'] as Map<String, dynamic>? ?? {}).map(
+        (key, value) => MapEntry(key, (value as num?)?.toInt() ?? 0),
+      ),
+      statusFalsePositiveRate:
+          (json['status_false_positive_rate'] as Map<String, dynamic>? ?? {})
+              .map(
+        (key, value) => MapEntry(key, (value as num?)?.toDouble() ?? 0),
+      ),
       feedbackCount: json['feedback_count'] as int? ?? 0,
       falsePositiveCount: json['false_positive_count'] as int? ?? 0,
       confirmedCount: json['confirmed_count'] as int? ?? 0,
       assigneeCorrectionCount: json['assignee_correction_count'] as int? ?? 0,
+      aliasGraphSize: json['alias_graph_size'] as int? ?? 0,
+      evidenceLockEnabled: json['evidence_lock_enabled'] as bool? ?? true,
       statusAttention: (json['status_attention'] as List<dynamic>? ?? [])
           .whereType<String>()
           .toList(),
@@ -1460,11 +1479,15 @@ class PromiseAccuracyReport {
       coverage: (json['coverage'] as Map<String, dynamic>? ?? {}).map(
         (key, value) => MapEntry(key, (value as num?)?.toDouble() ?? 0),
       ),
-      sourceQuality:
-          (json['source_quality'] as Map<String, dynamic>? ?? {}).map(
+      sourceQuality: (json['source_quality'] as Map? ?? {}).map(
         (key, value) => MapEntry(
-          key,
-          value is Map<String, dynamic> ? value : <String, dynamic>{},
+          key.toString(),
+          value is Map
+              ? value.map(
+                  (nestedKey, nestedValue) =>
+                      MapEntry(nestedKey.toString(), nestedValue),
+                )
+              : <String, dynamic>{},
         ),
       ),
       qualityWarnings: (json['quality_warnings'] as List<dynamic>? ?? [])
@@ -2116,6 +2139,176 @@ class PromiseRadarDashboard {
       meetingSeries: (json['meeting_series'] as List<dynamic>? ?? [])
           .whereType<Map<String, dynamic>>()
           .map(PromiseMeetingSeries.fromJson)
+          .toList(),
+    );
+  }
+}
+
+class PromiseCommandCenterFocusItem {
+  final String key;
+  final String label;
+  final String severity;
+  final int count;
+  final String action;
+  final String? route;
+
+  const PromiseCommandCenterFocusItem({
+    required this.key,
+    required this.label,
+    required this.severity,
+    required this.count,
+    required this.action,
+    this.route,
+  });
+
+  factory PromiseCommandCenterFocusItem.fromJson(Map<String, dynamic> json) {
+    return PromiseCommandCenterFocusItem(
+      key: json['key'] as String? ?? '',
+      label: json['label'] as String? ?? '',
+      severity: json['severity'] as String? ?? 'info',
+      count: json['count'] as int? ?? 0,
+      action: json['action'] as String? ?? '',
+      route: json['route'] as String?,
+    );
+  }
+}
+
+class PromiseEvidenceAuditSummary {
+  final int lockedCount;
+  final int weakEvidenceCount;
+  final int missingTimestampCount;
+  final int missingSpeakerCount;
+  final int markerHitCount;
+  final double averageSimilarity;
+  final List<String> notes;
+
+  const PromiseEvidenceAuditSummary({
+    required this.lockedCount,
+    required this.weakEvidenceCount,
+    required this.missingTimestampCount,
+    required this.missingSpeakerCount,
+    required this.markerHitCount,
+    required this.averageSimilarity,
+    required this.notes,
+  });
+
+  factory PromiseEvidenceAuditSummary.fromJson(Map<String, dynamic> json) {
+    return PromiseEvidenceAuditSummary(
+      lockedCount: json['locked_count'] as int? ?? 0,
+      weakEvidenceCount: json['weak_evidence_count'] as int? ?? 0,
+      missingTimestampCount: json['missing_timestamp_count'] as int? ?? 0,
+      missingSpeakerCount: json['missing_speaker_count'] as int? ?? 0,
+      markerHitCount: json['marker_hit_count'] as int? ?? 0,
+      averageSimilarity: (json['average_similarity'] as num?)?.toDouble() ?? 0,
+      notes:
+          (json['notes'] as List<dynamic>? ?? []).whereType<String>().toList(),
+    );
+  }
+}
+
+class PromiseGoogleTasksOAuthGuide {
+  final String provider;
+  final String scope;
+  final String authUrlHint;
+  final bool redirectUriRequired;
+  final List<String> steps;
+  final String tokenHandling;
+  final List<String> securityNotes;
+
+  const PromiseGoogleTasksOAuthGuide({
+    required this.provider,
+    required this.scope,
+    required this.authUrlHint,
+    required this.redirectUriRequired,
+    required this.steps,
+    required this.tokenHandling,
+    required this.securityNotes,
+  });
+
+  factory PromiseGoogleTasksOAuthGuide.fromJson(Map<String, dynamic> json) {
+    return PromiseGoogleTasksOAuthGuide(
+      provider: json['provider'] as String? ?? 'google_tasks',
+      scope:
+          json['scope'] as String? ?? 'https://www.googleapis.com/auth/tasks',
+      authUrlHint: json['auth_url_hint'] as String? ?? '',
+      redirectUriRequired: json['redirect_uri_required'] as bool? ?? true,
+      steps:
+          (json['steps'] as List<dynamic>? ?? []).whereType<String>().toList(),
+      tokenHandling: json['token_handling'] as String? ?? '',
+      securityNotes: (json['security_notes'] as List<dynamic>? ?? [])
+          .whereType<String>()
+          .toList(),
+    );
+  }
+}
+
+class PromiseCommandCenter {
+  final String generatedAt;
+  final PromiseRadarDashboard dashboard;
+  final PromiseAutopilotReviewQueue reviewQueue;
+  final PromiseLearningInsight learningInsight;
+  final PromiseDigest digest;
+  final PromisePreMeetingBrief preMeetingBrief;
+  final PromiseExternalTaskReconcileResponse externalReconcile;
+  final PromiseAccuracyReport accuracyReport;
+  final PromiseEvidenceAuditSummary evidenceAudit;
+  final PromiseGoogleTasksOAuthGuide googleTasksOAuth;
+  final List<PromiseCommandCenterFocusItem> focusItems;
+
+  const PromiseCommandCenter({
+    required this.generatedAt,
+    required this.dashboard,
+    required this.reviewQueue,
+    required this.learningInsight,
+    required this.digest,
+    required this.preMeetingBrief,
+    required this.externalReconcile,
+    required this.accuracyReport,
+    required this.evidenceAudit,
+    required this.googleTasksOAuth,
+    required this.focusItems,
+  });
+
+  factory PromiseCommandCenter.fromJson(Map<String, dynamic> json) {
+    return PromiseCommandCenter(
+      generatedAt: json['generated_at'] as String? ?? '',
+      dashboard: PromiseRadarDashboard.fromJson(
+        json['dashboard'] as Map<String, dynamic>? ?? const <String, dynamic>{},
+      ),
+      reviewQueue: PromiseAutopilotReviewQueue.fromJson(
+        json['review_queue'] as Map<String, dynamic>? ??
+            const <String, dynamic>{},
+      ),
+      learningInsight: PromiseLearningInsight.fromJson(
+        json['learning_insight'] as Map<String, dynamic>? ??
+            const <String, dynamic>{},
+      ),
+      digest: PromiseDigest.fromJson(
+        json['digest'] as Map<String, dynamic>? ?? const <String, dynamic>{},
+      ),
+      preMeetingBrief: PromisePreMeetingBrief.fromJson(
+        json['pre_meeting_brief'] as Map<String, dynamic>? ??
+            const <String, dynamic>{},
+      ),
+      externalReconcile: PromiseExternalTaskReconcileResponse.fromJson(
+        json['external_reconcile'] as Map<String, dynamic>? ??
+            const <String, dynamic>{},
+      ),
+      accuracyReport: PromiseAccuracyReport.fromJson(
+        json['accuracy_report'] as Map<String, dynamic>? ??
+            const <String, dynamic>{},
+      ),
+      evidenceAudit: PromiseEvidenceAuditSummary.fromJson(
+        json['evidence_audit'] as Map<String, dynamic>? ??
+            const <String, dynamic>{},
+      ),
+      googleTasksOAuth: PromiseGoogleTasksOAuthGuide.fromJson(
+        json['google_tasks_oauth'] as Map<String, dynamic>? ??
+            const <String, dynamic>{},
+      ),
+      focusItems: (json['focus_items'] as List<dynamic>? ?? [])
+          .whereType<Map<String, dynamic>>()
+          .map(PromiseCommandCenterFocusItem.fromJson)
           .toList(),
     );
   }

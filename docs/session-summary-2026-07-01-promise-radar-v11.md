@@ -1,5 +1,7 @@
 # Promise Radar v11 Session Summary
 
+> Current baseline note: v11 counts are preserved as session history. The latest Promise Radar baseline is v14 in `docs/session-summary-2026-07-02-promise-radar-v14.md`: 193 total accuracy cases, 126 real-meeting/audio-derived labels, evaluator accuracy 1.0.
+
 ## Scope
 
 - Added an offline accuracy-set audit gate for Promise Radar fixture labels and YouTube source provenance.

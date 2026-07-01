@@ -830,6 +830,137 @@ void main() {
       expect(reconcile.items.single.externalId, 'task-1');
     });
 
+    test('parses command center aggregate response', () {
+      final center = PromiseCommandCenter.fromJson({
+        'generated_at': '2026-07-02T00:00:00Z',
+        'dashboard': {
+          'open_count': 4,
+          'high_risk_count': 1,
+          'overdue_count': 2,
+          'due_soon_count': 1,
+          'blocked_count': 0,
+          'unconfirmed_count': 1,
+          'owner_hotspots': [],
+          'urgent_promises': [],
+          'recent_changes': [],
+          'responsibility_scores': [],
+          'meeting_series': [],
+        },
+        'review_queue': {
+          'task_id': 'all',
+          'queue_count': 2,
+          'actionable_count': 1,
+          'conflict_count': 1,
+          'items': [],
+        },
+        'learning_insight': {
+          'scope': 'owner:user-1',
+          'autopilot_threshold': 0.78,
+          'status_thresholds': {'completed': 0.84},
+          'status_sample_counts': {'completed': 5},
+          'status_false_positive_rate': {'completed': 0.4},
+          'feedback_count': 7,
+          'false_positive_count': 2,
+          'confirmed_count': 5,
+          'assignee_correction_count': 1,
+          'alias_graph_size': 3,
+          'evidence_lock_enabled': true,
+          'status_attention': ['completed'],
+          'recommended_policy': 'preview_only',
+          'insights': ['완료 오판이 감지됐습니다.'],
+          'next_actions': ['검토함 확정을 우선하세요.'],
+        },
+        'digest': {
+          'cadence': 'daily',
+          'title': '오늘의 약속 레이더',
+          'generated_at': '2026-07-02T00:00:00Z',
+          'open_count': 4,
+          'overdue_count': 2,
+          'due_soon_count': 1,
+          'high_risk_count': 1,
+          'lines': ['기한 초과 2개'],
+          'promises': [],
+        },
+        'pre_meeting_brief': {
+          'title': '회의 시작 전 약속 브리프',
+          'readiness_score': 64,
+          'summary': '확인할 약속이 있습니다.',
+          'promises': [],
+          'questions': ['기한 초과 약속을 확인했습니까?'],
+          'checkpoints': ['우선 확인: 김기수'],
+        },
+        'external_reconcile': {
+          'provider': 'google_tasks',
+          'checked_count': 3,
+          'linked_count': 1,
+          'needs_sync_count': 1,
+          'requires_oauth': true,
+          'items': [],
+        },
+        'accuracy_report': {
+          'generated_at': '2026-07-02T00:00:00Z',
+          'fixture_path':
+              'backend/tests/fixtures/promise_radar_accuracy_cases.json',
+          'source_manifest_path':
+              'backend/tests/fixtures/promise_radar_real_meeting_sources.json',
+          'evaluation': {
+            'case_count': 193,
+            'correct_count': 193,
+            'accuracy': 1.0,
+            'status_precision': {'completed': 1.0},
+            'failures': [],
+          },
+          'status_counts': {'completed': 58, 'open': 87},
+          'source_counts': {'synthetic': 67},
+          'coverage': {'real_meeting_target': 1.0},
+          'source_quality': {},
+          'quality_warnings': [],
+          'real_meeting_case_count': 126,
+          'target_case_count': 100,
+          'below_target': false,
+        },
+        'evidence_audit': {
+          'locked_count': 1,
+          'weak_evidence_count': 1,
+          'missing_timestamp_count': 1,
+          'missing_speaker_count': 0,
+          'marker_hit_count': 3,
+          'average_similarity': 0.84,
+          'notes': ['근거 확인 필요'],
+        },
+        'google_tasks_oauth': {
+          'provider': 'google_tasks',
+          'scope': 'https://www.googleapis.com/auth/tasks',
+          'auth_url_hint': 'https://accounts.google.com/o/oauth2/v2/auth',
+          'redirect_uri_required': true,
+          'steps': ['Google Tasks scope 승인'],
+          'token_handling': '요청 시에만 access token 사용',
+          'security_notes': ['state/nonce 검증'],
+        },
+        'focus_items': [
+          {
+            'key': 'google_tasks_oauth',
+            'label': 'Google Tasks OAuth 필요',
+            'severity': 'warning',
+            'count': 1,
+            'action': 'Tasks scope 승인을 완료하세요.',
+          }
+        ],
+      });
+
+      expect(center.dashboard.openCount, 4);
+      expect(center.reviewQueue.conflictCount, 1);
+      expect(center.learningInsight.statusSampleCounts['completed'], 5);
+      expect(center.learningInsight.statusFalsePositiveRate['completed'], 0.4);
+      expect(center.learningInsight.aliasGraphSize, 3);
+      expect(center.evidenceAudit.weakEvidenceCount, 1);
+      expect(center.googleTasksOAuth.scope,
+          'https://www.googleapis.com/auth/tasks');
+      expect(center.accuracyReport.evaluation.caseCount, 193);
+      expect(center.accuracyReport.realMeetingCaseCount, 126);
+      expect(center.focusItems.single.key, 'google_tasks_oauth');
+    });
+
     test('parses accuracy report, evidence comparison, and identity confidence',
         () {
       final report = PromiseAccuracyReport.fromJson({

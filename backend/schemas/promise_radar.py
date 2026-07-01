@@ -311,10 +311,14 @@ class PromiseLearningInsight(BaseModel):
     scope: str
     autopilot_threshold: float = Field(ge=0.0, le=1.0)
     status_thresholds: dict[str, float] = Field(default_factory=dict)
+    status_sample_counts: dict[str, int] = Field(default_factory=dict)
+    status_false_positive_rate: dict[str, float] = Field(default_factory=dict)
     feedback_count: int = Field(ge=0)
     false_positive_count: int = Field(ge=0)
     confirmed_count: int = Field(ge=0)
     assignee_correction_count: int = Field(ge=0)
+    alias_graph_size: int = Field(default=0, ge=0)
+    evidence_lock_enabled: bool = True
     status_attention: list[str] = Field(default_factory=list)
     recommended_policy: str = Field(
         description="safe_auto, preview_only, completed_only, or manual_only"
@@ -781,6 +785,57 @@ class PromiseRadarDashboard(BaseModel):
     recent_changes: list[PromiseLedgerHistoryEntry] = Field(default_factory=list)
     responsibility_scores: list[PromiseResponsibilityScore] = Field(default_factory=list)
     meeting_series: list[PromiseMeetingSeries] = Field(default_factory=list)
+
+
+class PromiseCommandCenterFocusItem(BaseModel):
+    """One prioritized operator action surfaced in Promise Command Center."""
+
+    key: str
+    label: str
+    severity: str = Field(description="info, warning, high, or critical")
+    count: int = Field(default=0, ge=0)
+    action: str
+    route: str | None = None
+
+
+class PromiseEvidenceAuditSummary(BaseModel):
+    """Aggregate evidence quality for queued Promise Radar decisions."""
+
+    locked_count: int = Field(ge=0)
+    weak_evidence_count: int = Field(ge=0)
+    missing_timestamp_count: int = Field(ge=0)
+    missing_speaker_count: int = Field(ge=0)
+    marker_hit_count: int = Field(ge=0)
+    average_similarity: float = Field(ge=0.0, le=1.0)
+    notes: list[str] = Field(default_factory=list)
+
+
+class PromiseGoogleTasksOAuthGuide(BaseModel):
+    """App-facing Google Tasks OAuth guidance for the integration screen."""
+
+    provider: str = "google_tasks"
+    scope: str = "https://www.googleapis.com/auth/tasks"
+    auth_url_hint: str
+    redirect_uri_required: bool = True
+    steps: list[str] = Field(default_factory=list)
+    token_handling: str
+    security_notes: list[str] = Field(default_factory=list)
+
+
+class PromiseCommandCenter(BaseModel):
+    """Single-screen Promise Radar operations aggregate."""
+
+    generated_at: datetime
+    dashboard: PromiseRadarDashboard
+    review_queue: PromiseAutopilotReviewQueue
+    learning_insight: PromiseLearningInsight
+    digest: PromiseDigest
+    pre_meeting_brief: PromisePreMeetingBrief
+    external_reconcile: PromiseExternalTaskReconcileResponse
+    accuracy_report: PromiseAccuracyReport
+    evidence_audit: PromiseEvidenceAuditSummary
+    google_tasks_oauth: PromiseGoogleTasksOAuthGuide
+    focus_items: list[PromiseCommandCenterFocusItem] = Field(default_factory=list)
 
 
 class PromiseNextMeetingBriefing(BaseModel):

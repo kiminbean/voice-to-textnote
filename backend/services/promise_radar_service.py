@@ -52,10 +52,13 @@ from backend.schemas.promise_radar import (
     PromiseAutopilotReviewItem,
     PromiseAutopilotReviewQueue,
     PromiseCalendarExportResponse,
+    PromiseCommandCenter,
+    PromiseCommandCenterFocusItem,
     PromiseConflictResolveRequest,
     PromiseDigest,
     PromiseDigestPreference,
     PromiseDigestPreferenceUpdateRequest,
+    PromiseEvidenceAuditSummary,
     PromiseEvidenceComparison,
     PromiseEvidencePack,
     PromiseExternalExportRequest,
@@ -67,6 +70,7 @@ from backend.schemas.promise_radar import (
     PromiseExternalTaskUpdateRequest,
     PromiseGoogleTaskList,
     PromiseGoogleTaskListResponse,
+    PromiseGoogleTasksOAuthGuide,
     PromiseLearningFeedbackRequest,
     PromiseLearningFeedbackResponse,
     PromiseLearningInsight,
@@ -1083,6 +1087,23 @@ class PromiseRadarService:
             )
             if count > 0
         ]
+        status_sample_counts = {
+            status: profile.status_false_positive_count.get(status, 0)
+            + profile.status_confirmed_count.get(status, 0)
+            for status in sorted(
+                set(profile.status_false_positive_count)
+                | set(profile.status_confirmed_count)
+                | {"completed", "delayed", "changed", "dismissed"}
+            )
+        }
+        status_false_positive_rate = {
+            status: round(
+                profile.status_false_positive_count.get(status, 0) / sample_count,
+                3,
+            )
+            for status, sample_count in status_sample_counts.items()
+            if sample_count > 0
+        }
         recommended_policy = "safe_auto"
         if profile.false_positive_count >= max(3, profile.confirmed_count + 1):
             recommended_policy = "preview_only"
@@ -1101,6 +1122,8 @@ class PromiseRadarService:
             insights.append(f"주의 상태: {', '.join(status_attention[:4])}")
         if not profile.owner_aliases:
             insights.append("아직 충분한 담당자 alias graph가 없습니다.")
+        else:
+            insights.append(f"담당자 alias graph {len(profile.owner_aliases)}개가 활성화됐습니다.")
 
         next_actions: list[str] = []
         if recommended_policy == "preview_only":
@@ -1116,10 +1139,14 @@ class PromiseRadarService:
             scope=profile.scope,
             autopilot_threshold=profile.autopilot_threshold,
             status_thresholds=profile.status_thresholds,
+            status_sample_counts=status_sample_counts,
+            status_false_positive_rate=status_false_positive_rate,
             feedback_count=feedback_count,
             false_positive_count=profile.false_positive_count,
             confirmed_count=profile.confirmed_count,
             assignee_correction_count=profile.assignee_correction_count,
+            alias_graph_size=len(profile.owner_aliases),
+            evidence_lock_enabled=profile.evidence_lock_enabled,
             status_attention=status_attention[:6],
             recommended_policy=recommended_policy,
             insights=insights[:6],
@@ -1498,6 +1525,87 @@ class PromiseRadarService:
             ),
             conflict_count=sum(1 for item in items if item.assessment.conflict_detected),
             items=items,
+        )
+
+    async def build_command_center(
+        self,
+        session: AsyncSession,
+        *,
+        owner_id: UUID | str | None = None,
+        guest_session_id: str | None = None,
+        team_id: UUID | str | None = None,
+        limit: int = 50,
+        target_case_count: int = 100,
+    ) -> PromiseCommandCenter:
+        """Build one operational Promise Radar view for review, learning, and sync."""
+        dashboard = await self.build_dashboard(
+            session,
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
+            team_id=team_id,
+            limit=limit,
+        )
+        review_queue = await self.build_autopilot_review_inbox(
+            session,
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
+            team_id=team_id,
+            limit=limit,
+        )
+        learning_insight = await self.build_learning_insights(
+            session,
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
+            team_id=team_id,
+            limit=max(limit, 200),
+        )
+        digest = await self.build_digest(
+            session,
+            cadence="daily",
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
+            team_id=team_id,
+            limit=min(max(limit, 12), 50),
+        )
+        pre_meeting_brief = await self.build_pre_meeting_brief(
+            session,
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
+            team_id=team_id,
+            limit=8,
+        )
+        external_reconcile = await self.build_external_task_reconcile_report(
+            session,
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
+            team_id=team_id,
+            limit=min(max(limit, 25), 100),
+        )
+        accuracy_report = self._default_accuracy_report(
+            target_case_count=target_case_count
+        )
+        evidence_audit = self._evidence_audit_summary(review_queue)
+        focus_items = self._command_center_focus_items(
+            dashboard=dashboard,
+            review_queue=review_queue,
+            learning_insight=learning_insight,
+            digest=digest,
+            external_reconcile=external_reconcile,
+            accuracy_report=accuracy_report,
+            evidence_audit=evidence_audit,
+        )
+        return PromiseCommandCenter(
+            generated_at=datetime.now(UTC).replace(tzinfo=None),
+            dashboard=dashboard,
+            review_queue=review_queue,
+            learning_insight=learning_insight,
+            digest=digest,
+            pre_meeting_brief=pre_meeting_brief,
+            external_reconcile=external_reconcile,
+            accuracy_report=accuracy_report,
+            evidence_audit=evidence_audit,
+            google_tasks_oauth=self._google_tasks_oauth_guide(),
+            focus_items=focus_items,
         )
 
     async def build_external_task_reconcile_report(
@@ -3534,6 +3642,221 @@ class PromiseRadarService:
             below_target=real_meeting_case_count < target_case_count,
         )
 
+    def _default_accuracy_report(
+        self, *, target_case_count: int = 100
+    ) -> PromiseAccuracyReport:
+        backend_root = Path(__file__).resolve().parents[1]
+        fixture_path = (
+            backend_root / "tests" / "fixtures" / "promise_radar_accuracy_cases.json"
+        )
+        source_manifest_path = (
+            backend_root / "tests" / "fixtures" / "promise_radar_real_meeting_sources.json"
+        )
+        cases = [
+            PromiseAccuracyCase(**item)
+            for item in json.loads(fixture_path.read_text(encoding="utf-8"))
+        ]
+        return self.build_accuracy_report(
+            cases,
+            fixture_path=str(fixture_path.relative_to(backend_root.parent)),
+            source_manifest_path=str(
+                source_manifest_path.relative_to(backend_root.parent)
+            ),
+            target_case_count=target_case_count,
+        )
+
+    def _evidence_audit_summary(
+        self,
+        review_queue: PromiseAutopilotReviewQueue,
+    ) -> PromiseEvidenceAuditSummary:
+        locked_count = 0
+        weak_evidence_count = 0
+        missing_timestamp_count = 0
+        missing_speaker_count = 0
+        marker_hit_count = 0
+        similarities: list[float] = []
+        for item in review_queue.items:
+            assessment = item.assessment
+            pack = assessment.evidence_pack
+            if assessment.evidence_locked:
+                locked_count += 1
+            else:
+                weak_evidence_count += 1
+            if pack is not None:
+                similarities.append(pack.similarity)
+                marker_hit_count += len(pack.marker_hits)
+                evidence_items = pack.evidence
+            else:
+                similarities.append(assessment.explanation.similarity)
+                evidence_items = assessment.explanation.evidence
+            if not evidence_items:
+                missing_timestamp_count += 1
+                missing_speaker_count += 1
+                continue
+            if not any(
+                evidence.start_seconds is not None and evidence.end_seconds is not None
+                for evidence in evidence_items
+            ):
+                missing_timestamp_count += 1
+            if not any(
+                evidence.speaker or evidence.speaker_label or evidence.speaker_profile_id
+                for evidence in evidence_items
+            ):
+                missing_speaker_count += 1
+
+        notes: list[str] = []
+        if weak_evidence_count:
+            notes.append("Evidence Lock이 약한 자동 판정은 일괄 확정 전에 근거를 확인하세요.")
+        if missing_timestamp_count:
+            notes.append("일부 근거에 timestamp가 없어 회의 원문 위치 재현성이 낮습니다.")
+        if missing_speaker_count:
+            notes.append("일부 근거에 화자 정보가 없어 담당자 자동 지정 신뢰도가 낮습니다.")
+        if not notes:
+            notes.append("검토 대기 항목의 evidence 품질이 안정적입니다.")
+        average_similarity = (
+            round(sum(similarities) / len(similarities), 3) if similarities else 0.0
+        )
+        return PromiseEvidenceAuditSummary(
+            locked_count=locked_count,
+            weak_evidence_count=weak_evidence_count,
+            missing_timestamp_count=missing_timestamp_count,
+            missing_speaker_count=missing_speaker_count,
+            marker_hit_count=marker_hit_count,
+            average_similarity=average_similarity,
+            notes=notes,
+        )
+
+    def _google_tasks_oauth_guide(self) -> PromiseGoogleTasksOAuthGuide:
+        return PromiseGoogleTasksOAuthGuide(
+            auth_url_hint=(
+                "https://accounts.google.com/o/oauth2/v2/auth?"
+                "scope=https%3A//www.googleapis.com/auth/tasks&"
+                "response_type=code&access_type=offline&prompt=consent"
+            ),
+            steps=[
+                "앱에서 Google Tasks scope 승인을 시작합니다.",
+                "사용자가 Google 계정을 선택하고 Tasks 접근을 승인합니다.",
+                "앱은 authorization code를 백엔드로 전달하고 access token을 교환합니다.",
+                "tasklist를 선택한 뒤 Promise Ledger 항목을 Google Tasks로 전송합니다.",
+                "이후 reconcile/sync/update API로 외부 상태와 원장 상태를 맞춥니다.",
+            ],
+            token_handling=(
+                "access token은 요청 시에만 사용하고 로그/evidence에 저장하지 않습니다. "
+                "장기 동기화가 필요하면 refresh token은 암호화 저장소에만 보관해야 합니다."
+            ),
+            security_notes=[
+                "요청 scope는 Google Tasks 단일 scope로 제한합니다.",
+                "state/nonce 검증으로 OAuth callback 위조를 막아야 합니다.",
+                "팀 공유 task 전송은 담당자/팀 권한 확인 후 수행합니다.",
+            ],
+        )
+
+    def _command_center_focus_items(
+        self,
+        *,
+        dashboard: PromiseRadarDashboard,
+        review_queue: PromiseAutopilotReviewQueue,
+        learning_insight: PromiseLearningInsight,
+        digest: PromiseDigest,
+        external_reconcile: PromiseExternalTaskReconcileResponse,
+        accuracy_report: PromiseAccuracyReport,
+        evidence_audit: PromiseEvidenceAuditSummary,
+    ) -> list[PromiseCommandCenterFocusItem]:
+        items: list[PromiseCommandCenterFocusItem] = []
+        if review_queue.conflict_count:
+            items.append(
+                PromiseCommandCenterFocusItem(
+                    key="conflicts",
+                    label="충돌 약속 해결",
+                    severity="critical",
+                    count=review_queue.conflict_count,
+                    action="완료/지연/변경/분리 중 하나로 명시적으로 결정하세요.",
+                    route="/promise-review-inbox",
+                )
+            )
+        if review_queue.actionable_count:
+            items.append(
+                PromiseCommandCenterFocusItem(
+                    key="review_queue",
+                    label="자동 판정 확정 대기",
+                    severity="high",
+                    count=review_queue.actionable_count,
+                    action="Evidence Pack을 확인하고 맞음/아님을 확정하세요.",
+                    route="/promise-review-inbox",
+                )
+            )
+        if digest.overdue_count:
+            items.append(
+                PromiseCommandCenterFocusItem(
+                    key="overdue",
+                    label="기한 초과 약속",
+                    severity="high",
+                    count=digest.overdue_count,
+                    action="오늘 회의 전 담당자와 상태를 확인하세요.",
+                )
+            )
+        if dashboard.high_risk_count:
+            items.append(
+                PromiseCommandCenterFocusItem(
+                    key="high_risk",
+                    label="고위험 약속",
+                    severity="warning",
+                    count=dashboard.high_risk_count,
+                    action="회의 전 Promise Brief에 포함해 진행상황을 확인하세요.",
+                )
+            )
+        if external_reconcile.requires_oauth:
+            items.append(
+                PromiseCommandCenterFocusItem(
+                    key="google_tasks_oauth",
+                    label="Google Tasks OAuth 필요",
+                    severity="warning",
+                    count=max(1, external_reconcile.linked_count),
+                    action="Tasks scope 승인을 완료해야 실제 tasklist 조회/전송이 가능합니다.",
+                )
+            )
+        elif external_reconcile.needs_sync_count:
+            items.append(
+                PromiseCommandCenterFocusItem(
+                    key="external_sync",
+                    label="외부 업무도구 동기화 필요",
+                    severity="warning",
+                    count=external_reconcile.needs_sync_count,
+                    action="Google Tasks 상태와 Promise Ledger 상태를 재동기화하세요.",
+                )
+            )
+        if learning_insight.status_attention:
+            items.append(
+                PromiseCommandCenterFocusItem(
+                    key="learning_attention",
+                    label="학습 루프 주의 상태",
+                    severity="warning",
+                    count=len(learning_insight.status_attention),
+                    action="주의 상태의 threshold를 낮추지 말고 확정/거절 데이터를 누적하세요.",
+                )
+            )
+        if evidence_audit.weak_evidence_count:
+            items.append(
+                PromiseCommandCenterFocusItem(
+                    key="weak_evidence",
+                    label="약한 근거",
+                    severity="warning",
+                    count=evidence_audit.weak_evidence_count,
+                    action="자동 상태 변경 전에 발화/화자/timestamp 근거를 확인하세요.",
+                )
+            )
+        if accuracy_report.below_target or accuracy_report.quality_warnings:
+            items.append(
+                PromiseCommandCenterFocusItem(
+                    key="accuracy_quality",
+                    label="정확도 세트 품질 점검",
+                    severity="info",
+                    count=len(accuracy_report.quality_warnings),
+                    action="실제 회의 label과 source manifest 품질 경고를 확인하세요.",
+                )
+            )
+        return items[:8]
+
     def _accuracy_source_quality(
         self,
         source_manifest_path: str | None,
@@ -4842,19 +5165,21 @@ class PromiseRadarService:
         cadence: str,
         moment: datetime,
     ) -> bool:
-        day_start = moment.replace(hour=0, minute=0, second=0, microsecond=0)
         result = await session.execute(
             select(PromiseLedgerEvent)
             .where(
                 PromiseLedgerEvent.actor_user_id == target_user_id,
                 PromiseLedgerEvent.event_type == "digest_notification_sent",
-                PromiseLedgerEvent.created_at >= day_start,
             )
             .order_by(PromiseLedgerEvent.created_at.desc())
-            .limit(10)
+            .limit(50)
         )
         for event in result.scalars().all():
-            if isinstance(event.new_value, dict) and event.new_value.get("cadence") == cadence:
+            if not isinstance(event.new_value, dict):
+                continue
+            if event.new_value.get("cadence") != cadence:
+                continue
+            if self._event_matches_local_day(event, moment):
                 return True
         return False
 
@@ -4865,17 +5190,33 @@ class PromiseRadarService:
         *,
         moment: datetime,
     ) -> bool:
-        day_start = moment.replace(hour=0, minute=0, second=0, microsecond=0)
         result = await session.execute(
-            select(PromiseLedgerEvent.id)
+            select(PromiseLedgerEvent)
             .where(
                 PromiseLedgerEvent.actor_user_id == target_user_id,
                 PromiseLedgerEvent.event_type == "pre_meeting_brief_sent",
-                PromiseLedgerEvent.created_at >= day_start,
             )
-            .limit(1)
+            .order_by(PromiseLedgerEvent.created_at.desc())
+            .limit(50)
         )
-        return result.scalar_one_or_none() is not None
+        return any(
+            self._event_matches_local_day(event, moment)
+            for event in result.scalars().all()
+        )
+
+    def _event_matches_local_day(
+        self,
+        event: PromiseLedgerEvent,
+        moment: datetime,
+    ) -> bool:
+        value = event.new_value if isinstance(event.new_value, dict) else {}
+        sent_at = value.get("sent_at")
+        if isinstance(sent_at, str):
+            try:
+                return datetime.fromisoformat(sent_at).date() == moment.date()
+            except ValueError:
+                pass
+        return event.created_at.date() == moment.date()
 
     async def _digest_preference_enabled_for_target(
         self,

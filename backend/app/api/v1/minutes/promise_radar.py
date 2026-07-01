@@ -31,6 +31,7 @@ from backend.schemas.promise_radar import (
     PromiseAutopilotResponse,
     PromiseAutopilotReviewQueue,
     PromiseCalendarExportResponse,
+    PromiseCommandCenter,
     PromiseConflictResolveRequest,
     PromiseDigest,
     PromiseDigestPreference,
@@ -394,6 +395,33 @@ async def get_promise_dashboard(
         raise
     except Exception as e:
         internal_error(f"약속 대시보드 조회 중 오류가 발생했습니다: {e}")
+
+
+@router.get("/command-center", response_model=PromiseCommandCenter)
+async def get_promise_command_center(
+    request: Request,
+    team_id: str | None = Query(default=None, description="팀 약속 운영 범위"),
+    limit: int = Query(default=50, ge=1, le=200),
+    target_case_count: int = Query(default=100, ge=1, le=1000),
+    db: AsyncSession = Depends(get_db_session),
+    current_user=Depends(get_optional_current_user),
+    svc: PromiseRadarService = Depends(get_promise_radar_service),
+) -> PromiseCommandCenter:
+    """Promise Radar 운영자 화면에 필요한 review/learning/sync/evidence 상태를 모읍니다."""
+    try:
+        scoped_team_id = await _accessible_team_id(db, current_user, team_id)
+        return await svc.build_command_center(
+            db,
+            owner_id=getattr(current_user, "id", None),
+            guest_session_id=_guest_session_id(request),
+            team_id=scoped_team_id,
+            limit=limit,
+            target_case_count=target_case_count,
+        )
+    except VoiceNoteError:
+        raise
+    except Exception as e:
+        internal_error(f"약속 Command Center 생성 중 오류가 발생했습니다: {e}")
 
 
 @router.get("/responsibility-scores", response_model=list[PromiseResponsibilityScore])

@@ -16,6 +16,7 @@ def test_promise_radar_routes_are_registered_in_app_openapi():
     assert "/api/v1/promise-radar/learning-insights" in paths
     assert "/api/v1/promise-radar/autopilot/review-inbox" in paths
     assert "/api/v1/promise-radar/external-task/reconcile" in paths
+    assert "/api/v1/promise-radar/command-center" in paths
 
     openapi_paths = set(app.openapi()["paths"].keys())
     assert "/api/v1/promise-radar/{task_id}" in openapi_paths
@@ -28,3 +29,4 @@ def test_promise_radar_routes_are_registered_in_app_openapi():
     assert "/api/v1/promise-radar/learning-insights" in openapi_paths
     assert "/api/v1/promise-radar/autopilot/review-inbox" in openapi_paths
     assert "/api/v1/promise-radar/external-task/reconcile" in openapi_paths
+    assert "/api/v1/promise-radar/command-center" in openapi_paths

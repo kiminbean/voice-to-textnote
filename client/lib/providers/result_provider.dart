@@ -311,6 +311,12 @@ final promiseRadarDashboardProvider =
   return api.getDashboard();
 });
 
+final promiseCommandCenterProvider =
+    FutureProvider<PromiseCommandCenter>((ref) {
+  final api = ref.watch(promiseRadarApiProvider);
+  return api.getCommandCenter();
+});
+
 final promiseResponsibilityScoresProvider =
     FutureProvider<List<PromiseResponsibilityScore>>((ref) {
   final api = ref.watch(promiseRadarApiProvider);

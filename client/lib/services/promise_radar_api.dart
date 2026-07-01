@@ -202,6 +202,24 @@ class PromiseRadarApi {
     );
   }
 
+  Future<PromiseCommandCenter> getCommandCenter({
+    String? teamId,
+    int limit = 50,
+    int targetCaseCount = 100,
+  }) async {
+    final response = await _dio.get(
+      '/promise-radar/command-center',
+      queryParameters: {
+        'limit': limit,
+        'target_case_count': targetCaseCount,
+        if (teamId != null) 'team_id': teamId,
+      },
+    );
+    return PromiseCommandCenter.fromJson(
+      response.data as Map<String, dynamic>,
+    );
+  }
+
   Future<List<PromiseResponsibilityScore>> getResponsibilityScores({
     String? teamId,
     int limit = 100,

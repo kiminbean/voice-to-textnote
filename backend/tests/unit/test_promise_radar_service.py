@@ -1600,10 +1600,86 @@ async def test_autopilot_review_rejection_removes_candidate(session_factory):
         assert {"autopilot_review_rejected", "learning_feedback"}.issubset(event_types)
 
 
+@pytest.mark.asyncio
+async def test_command_center_aggregates_learning_accuracy_and_oauth(session_factory):
+    service = PromiseRadarService()
+    now = datetime(2026, 7, 1, 9, 0, 0)
+    owner_id = uuid.uuid4()
+
+    async with session_factory() as session:
+        entry = PromiseLedgerEntry(
+            owner_id=owner_id,
+            source_task_id="sum-command",
+            last_source_task_id="sum-command",
+            canonical_key="contractor selection",
+            canonical_text="General contractor selection",
+            text="General contractor selection",
+            owner_name="SPEAKER_01",
+            status="open",
+            priority="high",
+            risk_level="high",
+            confidence=0.86,
+            due_date_text="yesterday",
+            due_at=now - timedelta(days=1),
+            occurrences=1,
+            first_seen_at=now - timedelta(days=7),
+            last_seen_at=now,
+            evidence=[
+                {
+                    "source_task_id": "sum-command",
+                    "meeting_link": "/results/sum-command",
+                    "transcript": "The contractor selection remains open.",
+                    "speaker_label": "SPEAKER_01",
+                    "start_seconds": 4714.0,
+                    "end_seconds": 4737.7,
+                }
+            ],
+        )
+        session.add(entry)
+        await session.flush()
+        session.add(
+            PromiseLedgerEvent(
+                ledger_entry_id=entry.id,
+                owner_id=owner_id,
+                actor_user_id=owner_id,
+                event_type="learning_feedback",
+                new_value={
+                    "expected_status": "open",
+                    "predicted_status": "completed",
+                    "current_status": "completed",
+                    "current_owner": "SPEAKER_01",
+                    "expected_owner": "김기수",
+                },
+            )
+        )
+        await session.commit()
+
+        center = await service.build_command_center(
+            session,
+            owner_id=owner_id,
+            limit=25,
+        )
+
+        assert center.dashboard.open_count == 1
+        assert center.digest.overdue_count == 1
+        assert center.learning_insight.status_false_positive_rate["completed"] == 1.0
+        assert center.learning_insight.alias_graph_size >= 1
+        assert center.external_reconcile.requires_oauth is True
+        assert center.google_tasks_oauth.scope == "https://www.googleapis.com/auth/tasks"
+        assert center.accuracy_report.evaluation.case_count >= 193
+        assert center.accuracy_report.real_meeting_case_count >= 126
+        assert {item.key for item in center.focus_items} >= {
+            "overdue",
+            "high_risk",
+            "google_tasks_oauth",
+            "learning_attention",
+        }
+
+
 def test_promise_radar_accuracy_fixture_audit_passes():
     report = audit_accuracy_set(target_real_cases=100)
 
     assert report["passed"] is True
-    assert report["case_count"] >= 172
-    assert report["real_case_count"] >= 100
+    assert report["case_count"] >= 193
+    assert report["real_case_count"] >= 126
     assert report["errors"] == []
