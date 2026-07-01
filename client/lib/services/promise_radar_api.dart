@@ -160,6 +160,46 @@ class PromiseRadarApi {
     );
   }
 
+  Future<PromiseAutopilotResponse> previewAutopilot(
+    String taskId, {
+    String? teamId,
+    int limit = 50,
+  }) async {
+    final response = await _dio.post(
+      '/promise-radar/autopilot/$taskId/preview',
+      queryParameters: {
+        'limit': limit,
+        if (teamId != null) 'team_id': teamId,
+      },
+    );
+    return PromiseAutopilotResponse.fromJson(
+      response.data as Map<String, dynamic>,
+    );
+  }
+
+  Future<PromiseAutopilotAssessment> confirmAutopilotAssessment(
+    String entryId, {
+    required String taskId,
+    String? suggestedStatus,
+    String? note,
+    String? teamId,
+  }) async {
+    final response = await _dio.post(
+      '/promise-radar/ledger/$entryId/autopilot-confirm',
+      queryParameters: {
+        if (teamId != null) 'team_id': teamId,
+      },
+      data: {
+        'task_id': taskId,
+        if (suggestedStatus != null) 'suggested_status': suggestedStatus,
+        if (note != null) 'note': note,
+      },
+    );
+    return PromiseAutopilotAssessment.fromJson(
+      response.data as Map<String, dynamic>,
+    );
+  }
+
   Future<PromiseMatchExplanation> explainLedgerEntry(
     String entryId, {
     String? taskId,

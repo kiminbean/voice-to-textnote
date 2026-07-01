@@ -231,13 +231,50 @@ void main() {
       final autopilot = PromiseAutopilotResponse.fromJson({
         'task_id': 'sum-1',
         'autopilot_threshold': 0.72,
+        'status_thresholds': {'completed': 0.8},
         'evidence_lock_enforced': true,
+        'preview_mode': true,
         'assessed_count': 2,
         'applied_count': 1,
-        'assessments': [],
+        'assessments': [
+          {
+            'ledger_entry_id': 'ledger-1',
+            'previous_status': 'open',
+            'suggested_status': 'completed',
+            'applied': false,
+            'requires_confirmation': true,
+            'evidence_locked': true,
+            'conflict_detected': false,
+            'threshold': 0.8,
+            'confidence': 0.84,
+            'reason': '완료 신호가 확인됐습니다.',
+            'explanation': {
+              'ledger_entry_id': 'ledger-1',
+              'similarity': 0.7,
+              'overlap_terms': [],
+              'confidence_factors': [],
+              'rationale': '일치합니다.',
+              'evidence': [],
+            },
+            'evidence_pack': {
+              'ledger_entry_id': 'ledger-1',
+              'source_task_id': 'sum-1',
+              'matched_text': '완료했습니다.',
+              'similarity': 0.7,
+              'marker_hits': ['완료'],
+              'confidence_factors': ['근거 있음'],
+              'evidence': [],
+              'captured_at': '2026-07-01T01:00:00Z',
+            },
+          }
+        ],
       });
       expect(autopilot.autopilotThreshold, 0.72);
+      expect(autopilot.statusThresholds['completed'], 0.8);
       expect(autopilot.evidenceLockEnforced, isTrue);
+      expect(autopilot.previewMode, isTrue);
+      expect(
+          autopilot.assessments.single.evidencePack!.markerHits.single, '완료');
 
       final feedback = PromiseLearningFeedbackResponse.fromJson({
         'ledger_entry_id': 'ledger-1',
@@ -245,15 +282,29 @@ void main() {
         'learning_profile': {
           'scope': 'owner:user-1',
           'autopilot_threshold': 0.75,
+          'status_thresholds': {'completed': 0.81},
           'false_positive_count': 2,
           'confirmed_count': 1,
+          'status_false_positive_count': {'completed': 2},
+          'status_confirmed_count': {'delayed': 1},
           'assignee_correction_count': 1,
           'evidence_lock_enabled': true,
           'learned_owner_aliases': {'SPEAKER_01': '김기수'},
+          'owner_aliases': [
+            {
+              'alias': 'SPEAKER_01',
+              'canonical_owner': '김기수',
+              'speaker_label': 'SPEAKER_01',
+              'confidence': 0.9,
+              'source_count': 3,
+            }
+          ],
         },
       });
       expect(feedback.learningProfile.falsePositiveCount, 2);
       expect(feedback.learningProfile.learnedOwnerAliases['SPEAKER_01'], '김기수');
+      expect(feedback.learningProfile.statusThresholds['completed'], 0.81);
+      expect(feedback.learningProfile.ownerAliases.single.alias, 'SPEAKER_01');
 
       final timeline = PromiseTimelineResponse.fromJson({
         'ledger_entry_id': 'ledger-1',
@@ -311,15 +362,23 @@ void main() {
 
       final external = PromiseExternalExportResponse.fromJson({
         'ledger_entry_id': 'ledger-1',
-        'provider': 'slack',
+        'provider': 'google_tasks',
         'sent': false,
-        'payload': {'text': 'Promise Radar: QA 체크리스트'},
-        'message': 'Slack payload가 생성됐습니다.',
+        'payload': {
+          'task': {'title': 'Promise Radar: QA 체크리스트'}
+        },
+        'message': 'Google Tasks payload가 생성됐습니다.',
       });
-      expect(external.payload['text'], contains('Promise Radar'));
+      expect((external.payload['task'] as Map<String, dynamic>)['title'],
+          contains('Promise Radar'));
 
-      const exportRequest = PromiseExternalExportRequest(provider: 'slack');
-      expect(exportRequest.toJson(), {'provider': 'slack', 'dry_run': true});
+      const exportRequest =
+          PromiseExternalExportRequest(provider: 'google_tasks');
+      expect(exportRequest.toJson(), {
+        'provider': 'google_tasks',
+        'dry_run': true,
+        'tasklist': '@default',
+      });
 
       final evaluation = PromiseAccuracyEvaluation.fromJson({
         'case_count': 6,

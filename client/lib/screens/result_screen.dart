@@ -5443,6 +5443,16 @@ class _PromiseRadarTab extends ConsumerWidget {
                               icon: const Icon(Icons.send_outlined, size: 18),
                               label: const Text('Slack'),
                             ),
+                            TextButton.icon(
+                              onPressed: () => _exportGoogleTaskPreview(
+                                context,
+                                ref,
+                                entry.id,
+                              ),
+                              icon:
+                                  const Icon(Icons.task_alt_outlined, size: 18),
+                              label: const Text('Tasks'),
+                            ),
                           ],
                         ),
                       ],
@@ -5753,6 +5763,18 @@ class _PromiseRadarTab extends ConsumerWidget {
     };
   }
 
+  String _statusLabel(String status) {
+    return switch (status) {
+      'completed' => '완료',
+      'dismissed' => '제외',
+      'delegated' => '위임',
+      'blocked' => '차단',
+      'delayed' => '지연',
+      'changed' => '변경',
+      _ => '진행',
+    };
+  }
+
   String _evidenceLabel(PromiseRadarEvidence evidence) {
     final speaker = evidence.speaker ?? evidence.speakerLabel;
     final time = evidence.startSeconds != null
@@ -6057,6 +6079,7 @@ class _PromiseRadarTab extends ConsumerWidget {
                 entry.id,
                 PromiseLearningFeedbackRequest(
                   expectedStatus: 'open',
+                  predictedStatus: entry.status,
                   expectedOwner: entry.owner,
                   correctionType: 'autopilot',
                   note: '완료 아님 또는 자동 판정 오판',
@@ -6111,6 +6134,34 @@ class _PromiseRadarTab extends ConsumerWidget {
     }
   }
 
+  Future<void> _exportGoogleTaskPreview(
+    BuildContext context,
+    WidgetRef ref,
+    String entryId,
+  ) async {
+    try {
+      final exported =
+          await ref.read(promiseRadarApiProvider).exportExternalTask(
+                entryId,
+                const PromiseExternalExportRequest(provider: 'google_tasks'),
+              );
+      await Clipboard.setData(
+        ClipboardData(text: jsonEncode(exported.payload)),
+      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Google Tasks payload를 복사했습니다.')),
+        );
+      }
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Google Tasks payload 생성에 실패했습니다.')),
+        );
+      }
+    }
+  }
+
   Future<void> _createReminderCandidate(
     BuildContext context,
     WidgetRef ref,
@@ -6143,25 +6194,109 @@ class _PromiseRadarTab extends ConsumerWidget {
     String summaryTaskId,
   ) async {
     try {
-      final result =
-          await ref.read(promiseRadarApiProvider).runAutopilot(summaryTaskId);
-      ref.invalidate(promiseRadarProvider(summaryTaskId));
-      ref.invalidate(promiseLedgerProvider);
-      ref.invalidate(promiseNextMeetingBriefingProvider);
-      ref.invalidate(promiseRadarDashboardProvider);
+      final result = await ref
+          .read(promiseRadarApiProvider)
+          .previewAutopilot(summaryTaskId);
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '자동 판정 ${result.assessedCount}개 확인 · ${result.appliedCount}개 적용 · 기준 ${(result.autopilotThreshold * 100).round()}%',
-            ),
-          ),
+        await _showAutopilotPreviewSheet(
+          context,
+          ref,
+          summaryTaskId,
+          result,
         );
       }
     } catch (_) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('약속 자동 판정에 실패했습니다.')),
+          const SnackBar(content: Text('약속 자동 판정 미리보기에 실패했습니다.')),
+        );
+      }
+    }
+  }
+
+  Future<void> _showAutopilotPreviewSheet(
+    BuildContext context,
+    WidgetRef ref,
+    String summaryTaskId,
+    PromiseAutopilotResponse result,
+  ) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          padding: const EdgeInsets.all(AppSpacing.md),
+          children: [
+            ListTile(
+              leading: const Icon(Icons.auto_fix_high_outlined),
+              title: const Text('자동 판정 미리보기'),
+              subtitle: Text(
+                '${result.assessedCount}개 확인 · 기본 기준 ${(result.autopilotThreshold * 100).round()}%',
+              ),
+            ),
+            if (result.assessments.isEmpty)
+              const ListTile(title: Text('확인할 약속 후보가 없습니다.')),
+            for (final assessment in result.assessments)
+              ListTile(
+                title: Text(
+                  '${_statusLabel(assessment.previousStatus)} → ${_statusLabel(assessment.suggestedStatus)}'
+                  ' · ${(assessment.confidence * 100).round()}%',
+                ),
+                subtitle: Text(
+                  [
+                    assessment.reason,
+                    '기준 ${(assessment.threshold * 100).round()}%',
+                    if (assessment.evidenceLocked) '근거 잠김',
+                    if (assessment.conflictDetected) '충돌 감지',
+                  ].join(' · '),
+                ),
+                trailing: assessment.conflictDetected ||
+                        assessment.suggestedStatus == assessment.previousStatus
+                    ? null
+                    : TextButton(
+                        onPressed: () => _confirmAutopilotAssessment(
+                          sheetContext,
+                          ref,
+                          summaryTaskId,
+                          assessment,
+                        ),
+                        child: const Text('맞음'),
+                      ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _confirmAutopilotAssessment(
+    BuildContext context,
+    WidgetRef ref,
+    String summaryTaskId,
+    PromiseAutopilotAssessment assessment,
+  ) async {
+    try {
+      await ref.read(promiseRadarApiProvider).confirmAutopilotAssessment(
+            assessment.ledgerEntryId,
+            taskId: summaryTaskId,
+            suggestedStatus: assessment.suggestedStatus,
+            note: '사용자가 Autopilot 미리보기를 확인했습니다.',
+          );
+      ref.invalidate(promiseRadarProvider(summaryTaskId));
+      ref.invalidate(promiseLedgerProvider);
+      ref.invalidate(promiseNextMeetingBriefingProvider);
+      ref.invalidate(promiseRadarDashboardProvider);
+      ref.invalidate(promiseLearningProfileProvider);
+      if (context.mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('자동 판정을 확정했습니다.')),
+        );
+      }
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('자동 판정 확정에 실패했습니다.')),
         );
       }
     }

@@ -15,6 +15,7 @@ from backend.db.models import ActionItem, TaskResult
 from backend.db.promise_ledger_models import PromiseLedgerEntry, PromiseLedgerEvent
 from backend.schemas.promise_radar import (
     PromiseAccuracyCase,
+    PromiseAutopilotConfirmRequest,
     PromiseExternalExportRequest,
     PromiseLearningFeedbackRequest,
     PromiseLedgerMergeRequest,
@@ -574,6 +575,33 @@ async def test_promise_autopilot_calendar_assignee_and_quality(session_factory):
                 }
             ],
         )
+        confirm_entry = PromiseLedgerEntry(
+            owner_id=owner_id,
+            team_id=team_id,
+            source_task_id="sum-source-confirm",
+            last_source_task_id="sum-source-confirm",
+            canonical_key="qa 체크리스트 작성 confirm",
+            canonical_text="QA 체크리스트 작성",
+            text="QA 체크리스트 작성",
+            owner_name="김기수",
+            status="open",
+            priority="high",
+            risk_level="medium",
+            confidence=0.86,
+            due_date_text="오늘",
+            due_at=now + timedelta(hours=3),
+            occurrences=2,
+            first_seen_at=now - timedelta(days=7),
+            last_seen_at=now - timedelta(days=7),
+            evidence=[
+                {
+                    "source_task_id": "sum-source-confirm",
+                    "meeting_link": "/results/sum-source-confirm",
+                    "transcript": "QA 체크리스트를 작성하겠습니다.",
+                    "speaker_label": "SPEAKER_01",
+                }
+            ],
+        )
         session.add_all(
             [
                 User(
@@ -604,10 +632,47 @@ async def test_promise_autopilot_calendar_assignee_and_quality(session_factory):
                 MeetingOwnership(task_id="sum-autopilot", owner_id=owner_id, team_id=team_id),
                 MeetingOwnership(task_id="min-autopilot", owner_id=owner_id, team_id=team_id),
                 entry,
+                confirm_entry,
             ]
         )
         await session.commit()
         await session.refresh(entry)
+        await session.refresh(confirm_entry)
+
+        preview = await service.run_autopilot(
+            session,
+            "sum-autopilot",
+            owner_id=owner_id,
+            team_id=team_id,
+            apply=False,
+        )
+        assert preview.preview_mode is True
+        assert preview.applied_count == 0
+        assert preview.status_thresholds["completed"] >= 0.62
+        assert preview.assessments[0].requires_confirmation is True
+        assert preview.assessments[0].evidence_pack is not None
+        assert preview.assessments[0].evidence_pack.marker_hits
+
+        confirmed = await service.confirm_autopilot_assessment(
+            session,
+            confirm_entry.id,
+            PromiseAutopilotConfirmRequest(
+                task_id="sum-autopilot",
+                suggested_status="completed",
+                note="미리보기 확인",
+            ),
+            owner_id=owner_id,
+            team_id=team_id,
+        )
+        assert confirmed.applied is True
+        assert confirmed.requires_confirmation is False
+        confirmed_stored = (
+            await session.execute(
+                select(PromiseLedgerEntry).where(PromiseLedgerEntry.id == confirm_entry.id)
+            )
+        ).scalar_one()
+        assert confirmed_stored.status == "completed"
+        assert confirmed_stored.user_confirmed is True
 
         autopilot = await service.run_autopilot(
             session,
@@ -692,6 +757,7 @@ async def test_promise_autopilot_calendar_assignee_and_quality(session_factory):
             entry.id,
             PromiseLearningFeedbackRequest(
                 expected_status="open",
+                predicted_status="completed",
                 correction_type="autopilot",
                 note="완료 아님",
             ),
@@ -701,6 +767,15 @@ async def test_promise_autopilot_calendar_assignee_and_quality(session_factory):
         assert feedback.recorded is True
         assert feedback.learning_profile.false_positive_count == 1
         assert feedback.learning_profile.autopilot_threshold > autopilot.autopilot_threshold
+        assert feedback.learning_profile.status_false_positive_count["completed"] == 1
+        assert (
+            feedback.learning_profile.status_thresholds["completed"]
+            > feedback.learning_profile.status_thresholds["delayed"]
+        )
+        assert any(
+            alias.alias == "SPEAKER_01" and alias.canonical_owner == "김기수"
+            for alias in feedback.learning_profile.owner_aliases
+        )
 
         timeline = await service.build_ledger_timeline(
             session,
@@ -772,6 +847,41 @@ async def test_promise_autopilot_calendar_assignee_and_quality(session_factory):
         assert slack.sent is False
         assert slack.payload["text"].startswith("Promise Radar:")
         assert slack.payload["blocks"]
+
+        google_task = await service.export_external_task(
+            session,
+            open_entry.id,
+            PromiseExternalExportRequest(provider="google_tasks", dry_run=True),
+            owner_id=owner_id,
+            team_id=team_id,
+        )
+        assert google_task.sent is False
+        assert google_task.payload["endpoint"].endswith("/lists/@default/tasks")
+        assert google_task.payload["task"]["title"] == "릴리스 노트 검토"
+        assert google_task.payload["task"]["due"].endswith("Z")
+
+        conflict_current = _summary_record(
+            "sum-conflict",
+            created_at=now,
+            action_items=[],
+            next_steps=["릴리스 노트 검토 완료했습니다. 하지만 아직 못했습니다."],
+        )
+        session.add(
+            MeetingOwnership(task_id="sum-conflict", owner_id=owner_id, team_id=team_id)
+        )
+        session.add(conflict_current)
+        await session.commit()
+        conflict = await service.run_autopilot(
+            session,
+            "sum-conflict",
+            owner_id=owner_id,
+            team_id=team_id,
+        )
+        conflict_assessment = next(
+            item for item in conflict.assessments if item.ledger_entry_id == str(open_entry.id)
+        )
+        assert conflict_assessment.conflict_detected is True
+        assert conflict_assessment.applied is False
 
         evaluation = service.evaluate_accuracy_cases(
             [

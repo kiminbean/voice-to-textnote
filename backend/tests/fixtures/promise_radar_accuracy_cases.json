@@ -7,11 +7,54 @@
     "owner": "김기수"
   },
   {
+    "id": "completed-release-build",
+    "entry_text": "iPhone 릴리스 빌드",
+    "current_text": "iPhone 릴리스 빌드는 처리했고 설치 확인까지 끝냈습니다.",
+    "expected_status": "completed",
+    "owner": "김기수"
+  },
+  {
+    "id": "completed-google-login",
+    "entry_text": "Android 구글 로그인 오류 수정",
+    "current_text": "Android 구글 로그인 오류는 해결됐고 실제 기기에서 확인했습니다.",
+    "expected_status": "completed",
+    "owner": "김기수"
+  },
+  {
+    "id": "completed-speaker-name",
+    "entry_text": "화자 이름 저장 오류 수정",
+    "current_text": "화자 이름 저장 오류를 반영하고 테스트 완료했습니다.",
+    "expected_status": "completed",
+    "owner": "김기수"
+  },
+  {
     "id": "delayed-release-note",
     "entry_text": "릴리스 노트 검토",
     "current_text": "릴리스 노트 검토 아직 못했습니다. 다음 회의에서 확인하겠습니다.",
     "expected_status": "delayed",
     "owner": "김기수"
+  },
+  {
+    "id": "delayed-pyannote-token",
+    "entry_text": "pyannote 접근 권한 확인",
+    "current_text": "pyannote 접근 권한 확인은 Hugging Face 승인 대기라 지연됐습니다.",
+    "expected_status": "delayed",
+    "owner": "김기수"
+  },
+  {
+    "id": "delayed-ios-build",
+    "entry_text": "iOS 릴리스 빌드 검증",
+    "current_text": "iOS 릴리스 빌드 검증은 아직 못 했고 내일 다시 진행합니다.",
+    "expected_status": "delayed",
+    "owner": "김기수"
+  },
+  {
+    "id": "delayed-by-due-date",
+    "entry_text": "스피커 라벨 QA",
+    "current_text": "이번 회의에서는 로그인 이슈만 논의했습니다.",
+    "expected_status": "delayed",
+    "owner": "김기수",
+    "due_at": "2026-06-30T09:00:00"
   },
   {
     "id": "changed-android-release",
@@ -21,9 +64,51 @@
     "owner": "김기수"
   },
   {
+    "id": "changed-backend-url",
+    "entry_text": "백엔드 프로덕션 URL 연결",
+    "current_text": "백엔드 연결은 프로덕션 URL 대신 100.69.69.119 IP로 바꾸기로 했습니다.",
+    "expected_status": "changed",
+    "owner": "김기수"
+  },
+  {
+    "id": "changed-summary-mode",
+    "entry_text": "기본 요약 모드 적용",
+    "current_text": "기본 요약 모드는 회의록 중심 대신 액션 중심으로 전환했습니다.",
+    "expected_status": "changed",
+    "owner": "김기수"
+  },
+  {
+    "id": "changed-calendar-reminder",
+    "entry_text": "캘린더 알림 시간 설정",
+    "current_text": "캘린더 알림 시간은 1시간 전으로 재조정했습니다.",
+    "expected_status": "changed",
+    "owner": "김기수"
+  },
+  {
     "id": "dismissed-vercel-backend",
     "entry_text": "Vercel 백엔드 전환",
     "current_text": "Vercel 백엔드 전환은 취소하고 진행하지 않기로 했습니다.",
+    "expected_status": "dismissed",
+    "owner": "김기수"
+  },
+  {
+    "id": "dismissed-teams-integration",
+    "entry_text": "Teams 연동 구현",
+    "current_text": "Teams 연동은 이번 릴리스에서 중단하고 Google Tasks만 진행합니다.",
+    "expected_status": "dismissed",
+    "owner": "김기수"
+  },
+  {
+    "id": "dismissed-old-api",
+    "entry_text": "OpenAI API 문서 정리",
+    "current_text": "OpenAI API 문서 정리는 필요 없어서 폐기했습니다.",
+    "expected_status": "dismissed",
+    "owner": "김기수"
+  },
+  {
+    "id": "dismissed-watch-app",
+    "entry_text": "Apple Watch 앱 검토",
+    "current_text": "Apple Watch 앱 검토는 보류 해제하고 이번 버전에서는 안 하기로 했습니다.",
     "expected_status": "dismissed",
     "owner": "김기수"
   },
@@ -36,11 +121,55 @@
     "due_at": "2026-07-07T09:00:00"
   },
   {
-    "id": "delayed-by-due-date",
-    "entry_text": "스피커 라벨 QA",
-    "current_text": "이번 회의에서는 로그인 이슈만 논의했습니다.",
-    "expected_status": "delayed",
+    "id": "open-future-intent",
+    "entry_text": "QA 체크리스트 작성",
+    "current_text": "QA 체크리스트 작성은 다음 회의 전에 하겠습니다.",
+    "expected_status": "open",
     "owner": "김기수",
-    "due_at": "2026-06-30T09:00:00"
+    "due_at": "2026-07-07T09:00:00"
+  },
+  {
+    "id": "open-owner-only",
+    "entry_text": "번역 오류 확인",
+    "current_text": "번역 오류 확인은 김기수님 담당입니다.",
+    "expected_status": "open",
+    "owner": "김기수",
+    "due_at": "2026-07-05T09:00:00"
+  },
+  {
+    "id": "open-unrelated",
+    "entry_text": "릴리스 체크리스트 공유",
+    "current_text": "오늘은 신규 녹음 UX만 논의했습니다.",
+    "expected_status": "open",
+    "owner": "김기수",
+    "due_at": "2026-07-07T09:00:00"
+  },
+  {
+    "id": "conflict-completed-delayed",
+    "entry_text": "릴리스 노트 검토",
+    "current_text": "릴리스 노트 검토 완료했습니다. 하지만 아직 못했습니다.",
+    "expected_status": "open",
+    "owner": "김기수"
+  },
+  {
+    "id": "completed-english",
+    "entry_text": "release QA checklist",
+    "current_text": "The release QA checklist is done and verified.",
+    "expected_status": "completed",
+    "owner": "Kim"
+  },
+  {
+    "id": "delayed-english",
+    "entry_text": "backend restart validation",
+    "current_text": "backend restart validation is delayed and will happen later.",
+    "expected_status": "delayed",
+    "owner": "Kim"
+  },
+  {
+    "id": "changed-english",
+    "entry_text": "Slack integration",
+    "current_text": "Slack integration changed to Google Tasks for this release.",
+    "expected_status": "changed",
+    "owner": "Kim"
   }
 ]

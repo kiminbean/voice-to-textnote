@@ -37,7 +37,7 @@
 - Promise Radar Accuracy Set
   - `backend/tests/fixtures/promise_radar_accuracy_cases.json`
   - `backend/scripts/evaluate_promise_radar_accuracy.py`
-  - 현재 fixture 6건 기준 accuracy 1.0
+  - 2026-07-01 v7 이후 fixture 24건 기준 accuracy 1.0
 
 ## Regression Prevention
 

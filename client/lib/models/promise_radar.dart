@@ -274,6 +274,38 @@ class PromiseAssigneeSuggestion {
   }
 }
 
+class PromiseOwnerAlias {
+  final String alias;
+  final String canonicalOwner;
+  final String? speakerLabel;
+  final String? speakerProfileId;
+  final String? assignedUserId;
+  final double confidence;
+  final int sourceCount;
+
+  const PromiseOwnerAlias({
+    required this.alias,
+    required this.canonicalOwner,
+    this.speakerLabel,
+    this.speakerProfileId,
+    this.assignedUserId,
+    required this.confidence,
+    required this.sourceCount,
+  });
+
+  factory PromiseOwnerAlias.fromJson(Map<String, dynamic> json) {
+    return PromiseOwnerAlias(
+      alias: json['alias'] as String? ?? '',
+      canonicalOwner: json['canonical_owner'] as String? ?? '',
+      speakerLabel: json['speaker_label'] as String?,
+      speakerProfileId: json['speaker_profile_id'] as String?,
+      assignedUserId: json['assigned_user_id'] as String?,
+      confidence: (json['confidence'] as num?)?.toDouble() ?? 0,
+      sourceCount: json['source_count'] as int? ?? 1,
+    );
+  }
+}
+
 class PromiseMatchExplanation {
   final String ledgerEntryId;
   final String? matchedTaskId;
@@ -316,23 +348,77 @@ class PromiseMatchExplanation {
   }
 }
 
+class PromiseEvidencePack {
+  final String ledgerEntryId;
+  final String? sourceTaskId;
+  final String? matchedText;
+  final double similarity;
+  final List<String> markerHits;
+  final List<String> confidenceFactors;
+  final List<PromiseRadarEvidence> evidence;
+  final String capturedAt;
+
+  const PromiseEvidencePack({
+    required this.ledgerEntryId,
+    this.sourceTaskId,
+    this.matchedText,
+    required this.similarity,
+    required this.markerHits,
+    required this.confidenceFactors,
+    required this.evidence,
+    required this.capturedAt,
+  });
+
+  factory PromiseEvidencePack.fromJson(Map<String, dynamic> json) {
+    return PromiseEvidencePack(
+      ledgerEntryId: json['ledger_entry_id'] as String? ?? '',
+      sourceTaskId: json['source_task_id'] as String?,
+      matchedText: json['matched_text'] as String?,
+      similarity: (json['similarity'] as num?)?.toDouble() ?? 0,
+      markerHits: (json['marker_hits'] as List<dynamic>? ?? [])
+          .whereType<String>()
+          .toList(),
+      confidenceFactors: (json['confidence_factors'] as List<dynamic>? ?? [])
+          .whereType<String>()
+          .toList(),
+      evidence: (json['evidence'] as List<dynamic>? ?? [])
+          .whereType<Map<String, dynamic>>()
+          .map(PromiseRadarEvidence.fromJson)
+          .toList(),
+      capturedAt: json['captured_at'] as String? ?? '',
+    );
+  }
+}
+
 class PromiseAutopilotAssessment {
   final String ledgerEntryId;
   final String previousStatus;
   final String suggestedStatus;
   final bool applied;
+  final bool requiresConfirmation;
+  final bool evidenceLocked;
+  final bool conflictDetected;
+  final String? conflictReason;
+  final double threshold;
   final double confidence;
   final String reason;
   final PromiseMatchExplanation explanation;
+  final PromiseEvidencePack? evidencePack;
 
   const PromiseAutopilotAssessment({
     required this.ledgerEntryId,
     required this.previousStatus,
     required this.suggestedStatus,
     required this.applied,
+    this.requiresConfirmation = true,
+    this.evidenceLocked = false,
+    this.conflictDetected = false,
+    this.conflictReason,
+    this.threshold = 0.68,
     required this.confidence,
     required this.reason,
     required this.explanation,
+    this.evidencePack,
   });
 
   factory PromiseAutopilotAssessment.fromJson(Map<String, dynamic> json) {
@@ -341,12 +427,22 @@ class PromiseAutopilotAssessment {
       previousStatus: json['previous_status'] as String? ?? '',
       suggestedStatus: json['suggested_status'] as String? ?? '',
       applied: json['applied'] as bool? ?? false,
+      requiresConfirmation: json['requires_confirmation'] as bool? ?? true,
+      evidenceLocked: json['evidence_locked'] as bool? ?? false,
+      conflictDetected: json['conflict_detected'] as bool? ?? false,
+      conflictReason: json['conflict_reason'] as String?,
+      threshold: (json['threshold'] as num?)?.toDouble() ?? 0.68,
       confidence: (json['confidence'] as num?)?.toDouble() ?? 0,
       reason: json['reason'] as String? ?? '',
       explanation: PromiseMatchExplanation.fromJson(
         json['explanation'] as Map<String, dynamic>? ??
             const <String, dynamic>{},
       ),
+      evidencePack: json['evidence_pack'] is Map<String, dynamic>
+          ? PromiseEvidencePack.fromJson(
+              json['evidence_pack'] as Map<String, dynamic>,
+            )
+          : null,
     );
   }
 }
@@ -354,7 +450,9 @@ class PromiseAutopilotAssessment {
 class PromiseAutopilotResponse {
   final String taskId;
   final double autopilotThreshold;
+  final Map<String, double> statusThresholds;
   final bool evidenceLockEnforced;
+  final bool previewMode;
   final int assessedCount;
   final int appliedCount;
   final List<PromiseAutopilotAssessment> assessments;
@@ -362,7 +460,9 @@ class PromiseAutopilotResponse {
   const PromiseAutopilotResponse({
     required this.taskId,
     this.autopilotThreshold = 0.68,
+    this.statusThresholds = const {},
     this.evidenceLockEnforced = true,
+    this.previewMode = false,
     required this.assessedCount,
     required this.appliedCount,
     required this.assessments,
@@ -373,7 +473,12 @@ class PromiseAutopilotResponse {
       taskId: json['task_id'] as String? ?? '',
       autopilotThreshold:
           (json['autopilot_threshold'] as num?)?.toDouble() ?? 0.68,
+      statusThresholds:
+          (json['status_thresholds'] as Map<String, dynamic>? ?? {}).map(
+        (key, value) => MapEntry(key, (value as num?)?.toDouble() ?? 0.68),
+      ),
       evidenceLockEnforced: json['evidence_lock_enforced'] as bool? ?? true,
+      previewMode: json['preview_mode'] as bool? ?? false,
       assessedCount: json['assessed_count'] as int? ?? 0,
       appliedCount: json['applied_count'] as int? ?? 0,
       assessments: (json['assessments'] as List<dynamic>? ?? [])
@@ -418,6 +523,7 @@ class PromiseCalendarExportResponse {
 
 class PromiseLearningFeedbackRequest {
   final String? expectedStatus;
+  final String? predictedStatus;
   final String? expectedAssignedUserId;
   final String? expectedOwner;
   final String correctionType;
@@ -425,6 +531,7 @@ class PromiseLearningFeedbackRequest {
 
   const PromiseLearningFeedbackRequest({
     this.expectedStatus,
+    this.predictedStatus,
     this.expectedAssignedUserId,
     this.expectedOwner,
     this.correctionType = 'status',
@@ -434,6 +541,7 @@ class PromiseLearningFeedbackRequest {
   Map<String, dynamic> toJson() {
     return {
       if (expectedStatus != null) 'expected_status': expectedStatus,
+      if (predictedStatus != null) 'predicted_status': predictedStatus,
       if (expectedAssignedUserId != null)
         'expected_assigned_user_id': expectedAssignedUserId,
       if (expectedOwner != null) 'expected_owner': expectedOwner,
@@ -446,20 +554,28 @@ class PromiseLearningFeedbackRequest {
 class PromiseLearningProfile {
   final String scope;
   final double autopilotThreshold;
+  final Map<String, double> statusThresholds;
   final int falsePositiveCount;
   final int confirmedCount;
+  final Map<String, int> statusFalsePositiveCount;
+  final Map<String, int> statusConfirmedCount;
   final int assigneeCorrectionCount;
   final bool evidenceLockEnabled;
   final Map<String, String> learnedOwnerAliases;
+  final List<PromiseOwnerAlias> ownerAliases;
 
   const PromiseLearningProfile({
     required this.scope,
     required this.autopilotThreshold,
+    this.statusThresholds = const {},
     required this.falsePositiveCount,
     required this.confirmedCount,
+    this.statusFalsePositiveCount = const {},
+    this.statusConfirmedCount = const {},
     required this.assigneeCorrectionCount,
     required this.evidenceLockEnabled,
     required this.learnedOwnerAliases,
+    this.ownerAliases = const [],
   });
 
   factory PromiseLearningProfile.fromJson(Map<String, dynamic> json) {
@@ -467,13 +583,29 @@ class PromiseLearningProfile {
       scope: json['scope'] as String? ?? 'none',
       autopilotThreshold:
           (json['autopilot_threshold'] as num?)?.toDouble() ?? 0.68,
+      statusThresholds:
+          (json['status_thresholds'] as Map<String, dynamic>? ?? {}).map(
+        (key, value) => MapEntry(key, (value as num?)?.toDouble() ?? 0.68),
+      ),
       falsePositiveCount: json['false_positive_count'] as int? ?? 0,
       confirmedCount: json['confirmed_count'] as int? ?? 0,
+      statusFalsePositiveCount: (json['status_false_positive_count']
+                  as Map<String, dynamic>? ??
+              {})
+          .map((key, value) => MapEntry(key, (value as num?)?.toInt() ?? 0)),
+      statusConfirmedCount:
+          (json['status_confirmed_count'] as Map<String, dynamic>? ?? {}).map(
+        (key, value) => MapEntry(key, (value as num?)?.toInt() ?? 0),
+      ),
       assigneeCorrectionCount: json['assignee_correction_count'] as int? ?? 0,
       evidenceLockEnabled: json['evidence_lock_enabled'] as bool? ?? true,
       learnedOwnerAliases:
           (json['learned_owner_aliases'] as Map<String, dynamic>? ?? {})
               .map((key, value) => MapEntry(key, value.toString())),
+      ownerAliases: (json['owner_aliases'] as List<dynamic>? ?? [])
+          .whereType<Map<String, dynamic>>()
+          .map(PromiseOwnerAlias.fromJson)
+          .toList(),
     );
   }
 }
@@ -641,16 +773,28 @@ class PromiseDigest {
 class PromiseExternalExportRequest {
   final String provider;
   final bool dryRun;
+  final String? accessToken;
+  final String tasklist;
+  final String? parentTaskId;
+  final String? previousTaskId;
 
   const PromiseExternalExportRequest({
     this.provider = 'slack',
     this.dryRun = true,
+    this.accessToken,
+    this.tasklist = '@default',
+    this.parentTaskId,
+    this.previousTaskId,
   });
 
   Map<String, dynamic> toJson() {
     return {
       'provider': provider,
       'dry_run': dryRun,
+      if (accessToken != null) 'access_token': accessToken,
+      'tasklist': tasklist,
+      if (parentTaskId != null) 'parent_task_id': parentTaskId,
+      if (previousTaskId != null) 'previous_task_id': previousTaskId,
     };
   }
 }
@@ -661,6 +805,8 @@ class PromiseExternalExportResponse {
   final bool sent;
   final Map<String, dynamic> payload;
   final String message;
+  final String? externalId;
+  final String? externalUrl;
 
   const PromiseExternalExportResponse({
     required this.ledgerEntryId,
@@ -668,6 +814,8 @@ class PromiseExternalExportResponse {
     required this.sent,
     required this.payload,
     required this.message,
+    this.externalId,
+    this.externalUrl,
   });
 
   factory PromiseExternalExportResponse.fromJson(Map<String, dynamic> json) {
@@ -678,6 +826,8 @@ class PromiseExternalExportResponse {
       payload:
           json['payload'] as Map<String, dynamic>? ?? const <String, dynamic>{},
       message: json['message'] as String? ?? '',
+      externalId: json['external_id'] as String?,
+      externalUrl: json['external_url'] as String?,
     );
   }
 }

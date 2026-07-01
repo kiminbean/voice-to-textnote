@@ -33,9 +33,11 @@ from backend.schemas.promise_radar import (
     PromiseAccuracyEvaluation,
     PromiseAssigneeSuggestion,
     PromiseAutopilotAssessment,
+    PromiseAutopilotConfirmRequest,
     PromiseAutopilotResponse,
     PromiseCalendarExportResponse,
     PromiseDigest,
+    PromiseEvidencePack,
     PromiseExternalExportRequest,
     PromiseExternalExportResponse,
     PromiseLearningFeedbackRequest,
@@ -51,6 +53,7 @@ from backend.schemas.promise_radar import (
     PromiseMatchExplanation,
     PromiseNextMeetingBriefing,
     PromiseNotificationDispatchResponse,
+    PromiseOwnerAlias,
     PromisePreMeetingBrief,
     PromiseQualityScore,
     PromiseRadarCarryOver,
@@ -936,9 +939,12 @@ class PromiseRadarService:
 
         for entry in entries:
             assessment = self._autopilot_assessment(entry, current, candidates, now)
+            threshold = self._status_threshold(learning_profile, assessment.suggested_status)
+            assessment.threshold = threshold
+            assessment.evidence_locked = self._has_locked_evidence(assessment)
             if apply and self._should_apply_autopilot(
                 assessment,
-                threshold=learning_profile.autopilot_threshold,
+                threshold=threshold,
                 evidence_lock_enabled=learning_profile.evidence_lock_enabled,
             ):
                 old_value = self._ledger_snapshot(entry)
@@ -969,6 +975,11 @@ class PromiseRadarService:
                     new_value={
                         **self._ledger_snapshot(entry),
                         "autopilot": assessment.model_dump(mode="json"),
+                        "evidence_pack": (
+                            assessment.evidence_pack.model_dump(mode="json")
+                            if assessment.evidence_pack
+                            else None
+                        ),
                     },
                     actor_user_id=owner_id,
                 )
@@ -987,11 +998,96 @@ class PromiseRadarService:
         return PromiseAutopilotResponse(
             task_id=task_id,
             autopilot_threshold=learning_profile.autopilot_threshold,
+            status_thresholds=learning_profile.status_thresholds,
             evidence_lock_enforced=learning_profile.evidence_lock_enabled,
+            preview_mode=not apply,
             assessed_count=len(assessments),
             applied_count=applied_count,
             assessments=assessments,
         )
+
+    async def confirm_autopilot_assessment(
+        self,
+        session: AsyncSession,
+        entry_id: UUID | str,
+        payload: PromiseAutopilotConfirmRequest,
+        *,
+        owner_id: UUID | str | None = None,
+        guest_session_id: str | None = None,
+        team_id: UUID | str | None = None,
+    ) -> PromiseAutopilotAssessment:
+        """Apply a previewed Autopilot assessment only after user confirmation."""
+        entry = await self._get_scoped_ledger_entry(
+            session,
+            entry_id,
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
+            team_id=team_id,
+        )
+        if entry is None:
+            raise ValueError("약속 원장 항목을 찾을 수 없습니다")
+        current = await self._get_record(session, payload.task_id)
+        if current is None:
+            raise ValueError("회의 요약을 찾을 수 없습니다")
+        records = await self._load_evidence_records(session, current)
+        candidates = self._current_evidence_candidates(current, records)
+        now = datetime.now(UTC).replace(tzinfo=None)
+        learning_profile = await self.learning_profile(
+            session,
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
+            team_id=team_id,
+        )
+        assessment = self._autopilot_assessment(entry, current, candidates, now)
+        assessment.threshold = self._status_threshold(learning_profile, assessment.suggested_status)
+        assessment.evidence_locked = self._has_locked_evidence(assessment)
+        if payload.suggested_status and payload.suggested_status != assessment.suggested_status:
+            raise ValueError("현재 회의 근거와 요청한 자동 판정 상태가 일치하지 않습니다")
+        if assessment.conflict_detected:
+            raise ValueError(assessment.conflict_reason or "충돌하는 약속 상태 신호가 있습니다")
+        if assessment.suggested_status == assessment.previous_status:
+            raise ValueError("확정할 상태 변경이 없습니다")
+
+        old_value = self._ledger_snapshot(entry)
+        entry.status = assessment.suggested_status
+        entry.user_confirmed = True
+        if assessment.suggested_status == "completed":
+            entry.completed_at = now
+        elif assessment.suggested_status == "dismissed":
+            entry.completed_at = None
+            entry.dismissed_reason = "autopilot_confirmed"
+        else:
+            entry.completed_at = None
+        if assessment.suggested_status in {"blocked", "delayed"}:
+            entry.risk_level = "high"
+        else:
+            entry.risk_level = self._ledger_risk_level(
+                entry.priority,
+                entry.due_at,
+                entry.occurrences,
+            )
+        entry.updated_at = now
+        assessment.applied = True
+        assessment.requires_confirmation = False
+        self._record_ledger_event(
+            session,
+            entry,
+            "autopilot_confirmed",
+            old_value=old_value,
+            new_value={
+                **self._ledger_snapshot(entry),
+                "autopilot": assessment.model_dump(mode="json"),
+                "evidence_pack": (
+                    assessment.evidence_pack.model_dump(mode="json")
+                    if assessment.evidence_pack
+                    else None
+                ),
+            },
+            note=payload.note,
+            actor_user_id=owner_id,
+        )
+        await session.commit()
+        return assessment
 
     async def explain_ledger_entry_match(
         self,
@@ -1147,6 +1243,7 @@ class PromiseRadarService:
         value = {
             "correction_type": payload.correction_type,
             "expected_status": payload.expected_status,
+            "predicted_status": payload.predicted_status,
             "expected_assigned_user_id": payload.expected_assigned_user_id,
             "expected_owner": payload.expected_owner,
             "current_status": entry.status,
@@ -1195,6 +1292,8 @@ class PromiseRadarService:
         )
         false_positive = 0
         confirmed = 0
+        status_false_positive: dict[str, int] = {}
+        status_confirmed: dict[str, int] = {}
         assignee_corrections = 0
         aliases: dict[str, str] = {}
         for event in events:
@@ -1204,8 +1303,12 @@ class PromiseRadarService:
             if event_type == "learning_feedback":
                 expected_status = self._clean_optional(new.get("expected_status"))
                 current_status = self._clean_optional(new.get("current_status"))
-                if expected_status and current_status and expected_status != current_status:
+                predicted_status = self._clean_optional(new.get("predicted_status")) or current_status
+                if expected_status and predicted_status and expected_status != predicted_status:
                     false_positive += 1
+                    status_false_positive[predicted_status] = (
+                        status_false_positive.get(predicted_status, 0) + 1
+                    )
                 if new.get("expected_assigned_user_id") or new.get("expected_owner"):
                     assignee_corrections += 1
                 if new.get("expected_owner") and new.get("current_owner"):
@@ -1220,25 +1323,52 @@ class PromiseRadarService:
                     "changed",
                 }:
                     false_positive += 1
+                    if old_status:
+                        status_false_positive[old_status] = status_false_positive.get(old_status, 0) + 1
                 elif new.get("user_confirmed") is True:
                     confirmed += 1
+                    if new_status:
+                        status_confirmed[new_status] = status_confirmed.get(new_status, 0) + 1
                 if old.get("assigned_user_id") != new.get("assigned_user_id"):
                     assignee_corrections += 1
                 if old.get("owner") and new.get("owner") and old.get("owner") != new.get("owner"):
                     aliases[str(old["owner"])] = str(new["owner"])
-            elif event_type == "autopilot_applied":
+            elif event_type in {"autopilot_applied", "autopilot_confirmed"}:
                 confirmed += 1
+                suggested = None
+                if isinstance(new.get("autopilot"), dict):
+                    suggested = self._clean_optional(new["autopilot"].get("suggested_status"))
+                if suggested:
+                    status_confirmed[suggested] = status_confirmed.get(suggested, 0) + 1
 
         adjustment = min(0.15, false_positive * 0.03) - min(0.06, confirmed * 0.01)
         threshold = max(0.62, min(0.86, _AUTOPILOT_APPLY_THRESHOLD + adjustment))
+        status_thresholds = {
+            status: self._status_specific_threshold(
+                status_false_positive.get(status, 0),
+                status_confirmed.get(status, 0),
+            )
+            for status in ("completed", "delayed", "changed", "dismissed")
+        }
+        owner_aliases = await self._owner_alias_graph(
+            session,
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
+            team_id=team_id,
+            event_aliases=aliases,
+        )
         return PromiseLearningProfile(
             scope=self._scope_label(owner_id, guest_session_id, team_id),
             autopilot_threshold=round(threshold, 3),
+            status_thresholds=status_thresholds,
             false_positive_count=false_positive,
             confirmed_count=confirmed,
+            status_false_positive_count=status_false_positive,
+            status_confirmed_count=status_confirmed,
             assignee_correction_count=assignee_corrections,
             evidence_lock_enabled=True,
             learned_owner_aliases=aliases,
+            owner_aliases=owner_aliases,
         )
 
     async def build_ledger_timeline(
@@ -1387,7 +1517,7 @@ class PromiseRadarService:
         guest_session_id: str | None = None,
         team_id: UUID | str | None = None,
     ) -> PromiseExternalExportResponse:
-        """Export one promise to a first external work-tool integration: Slack."""
+        """Export one promise to an external work tool."""
         entry = await self._get_scoped_ledger_entry(
             session,
             entry_id,
@@ -1398,9 +1528,18 @@ class PromiseRadarService:
         if entry is None:
             raise ValueError("약속 원장 항목을 찾을 수 없습니다")
         provider = payload.provider.strip().lower()
+        response_entry = self._entry_to_response(entry)
+        if provider == "google_tasks":
+            return await self._export_google_task(
+                session,
+                entry,
+                response_entry,
+                payload,
+                actor_user_id=owner_id,
+            )
         if provider != "slack":
-            raise ValueError("현재 외부 업무도구 1차 연동은 Slack만 지원합니다")
-        slack_payload = self._slack_payload(self._entry_to_response(entry))
+            raise ValueError("현재 외부 업무도구 연동은 Slack 또는 Google Tasks만 지원합니다")
+        slack_payload = self._slack_payload(response_entry)
         webhook_url = os.environ.get("PROMISE_RADAR_SLACK_WEBHOOK_URL", "").strip()
         sent = False
         message = "Slack payload가 생성됐습니다."
@@ -1426,6 +1565,67 @@ class PromiseRadarService:
             sent=sent,
             payload=slack_payload,
             message=message,
+        )
+
+    async def _export_google_task(
+        self,
+        session: AsyncSession,
+        entry: PromiseLedgerEntry,
+        response_entry: PromiseLedgerEntryResponse,
+        payload: PromiseExternalExportRequest,
+        *,
+        actor_user_id: UUID | str | None,
+    ) -> PromiseExternalExportResponse:
+        task_payload = self._google_tasks_payload(response_entry)
+        tasklist = payload.tasklist.strip() or "@default"
+        endpoint = f"https://tasks.googleapis.com/tasks/v1/lists/{quote(tasklist, safe='@')}/tasks"
+        query: dict[str, str] = {}
+        if payload.parent_task_id:
+            query["parent"] = payload.parent_task_id
+        if payload.previous_task_id:
+            query["previous"] = payload.previous_task_id
+        sent = False
+        message = "Google Tasks payload가 생성됐습니다."
+        external_id = None
+        external_url = None
+        if not payload.dry_run:
+            token = (payload.access_token or "").strip()
+            if not token:
+                raise ValueError("Google Tasks 전송에는 OAuth access token이 필요합니다")
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.post(
+                    endpoint,
+                    params=query or None,
+                    headers={"Authorization": f"Bearer {token}"},
+                    json=task_payload,
+                )
+                response.raise_for_status()
+            result = response.json()
+            sent = True
+            external_id = str(result.get("id")) if result.get("id") else None
+            external_url = result.get("selfLink")
+            message = "Google Tasks로 약속을 전송했습니다."
+            self._record_ledger_event(
+                session,
+                entry,
+                "external_exported",
+                new_value={
+                    "provider": "google_tasks",
+                    "sent": True,
+                    "external_id": external_id,
+                    "tasklist": tasklist,
+                },
+                actor_user_id=actor_user_id,
+            )
+            await session.commit()
+        return PromiseExternalExportResponse(
+            ledger_entry_id=str(entry.id),
+            provider="google_tasks",
+            sent=sent,
+            payload={"endpoint": endpoint, "query": query, "task": task_payload},
+            message=message,
+            external_id=external_id,
+            external_url=external_url,
         )
 
     def evaluate_accuracy_cases(
@@ -2014,20 +2214,31 @@ class PromiseRadarService:
         status = entry.status
         reason = "현재 회의에서 상태 변경을 확정할 근거가 부족합니다."
         marker_confidence = 0.0
+        selected_marker_hits: list[str] = []
+        conflict = self._status_conflict(matched_text)
 
-        if explanation.similarity >= 0.18:
+        if conflict is not None:
+            reason = conflict
+        elif explanation.similarity >= 0.18:
             for candidate_status in ("dismissed", "completed", "changed", "delayed"):
                 marker_hits = self._marker_hits(matched_text, candidate_status)
                 if not marker_hits:
                     continue
                 if candidate_status == "completed" and self._looks_future_intent(matched_text):
                     continue
+                if candidate_status == "delayed" and self._looks_future_intent(matched_text):
+                    if not any(
+                        marker in " ".join(marker_hits)
+                        for marker in ("못", "지연", "미뤘", "연기", "delayed", "later", "postpone")
+                    ):
+                        continue
                 status = candidate_status
+                selected_marker_hits = marker_hits
                 marker_confidence = min(0.28, 0.14 + len(marker_hits) * 0.04)
                 reason = self._autopilot_reason(candidate_status, marker_hits, matched_text)
                 break
 
-        if status == entry.status and entry.due_at is not None and entry.due_at < now:
+        if conflict is None and status == entry.status and entry.due_at is not None and entry.due_at < now:
             status = "delayed"
             marker_confidence = max(marker_confidence, 0.2)
             reason = "기한이 지났지만 완료 또는 취소 근거가 없어 지연 약속으로 판정했습니다."
@@ -2043,14 +2254,24 @@ class PromiseRadarService:
         if status == entry.status and marker_confidence == 0:
             confidence = min(confidence, 0.54)
 
-        return PromiseAutopilotAssessment(
+        assessment = PromiseAutopilotAssessment(
             ledger_entry_id=str(entry.id),
             previous_status=entry.status,
             suggested_status=status,
             confidence=round(confidence, 3),
             reason=reason,
             explanation=explanation,
+            conflict_detected=conflict is not None,
+            conflict_reason=conflict,
         )
+        assessment.evidence_pack = self._evidence_pack(
+            entry,
+            current,
+            assessment,
+            marker_hits=selected_marker_hits,
+            captured_at=now,
+        )
+        return assessment
 
     def _should_apply_autopilot(
         self,
@@ -2059,11 +2280,58 @@ class PromiseRadarService:
         threshold: float = _AUTOPILOT_APPLY_THRESHOLD,
         evidence_lock_enabled: bool = True,
     ) -> bool:
+        if assessment.conflict_detected:
+            return False
         if evidence_lock_enabled and not self._has_locked_evidence(assessment):
             return False
         return (
             assessment.suggested_status != assessment.previous_status
             and assessment.confidence >= threshold
+        )
+
+    def _status_threshold(
+        self,
+        profile: PromiseLearningProfile,
+        status: str,
+    ) -> float:
+        return profile.status_thresholds.get(status, profile.autopilot_threshold)
+
+    def _status_specific_threshold(self, false_positive: int, confirmed: int) -> float:
+        adjustment = min(0.18, false_positive * 0.045) - min(0.05, confirmed * 0.008)
+        return round(max(0.62, min(0.9, _AUTOPILOT_APPLY_THRESHOLD + adjustment)), 3)
+
+    def _status_conflict(self, text: str) -> str | None:
+        if not text:
+            return None
+        hits = {
+            status: self._marker_hits(text, status)
+            for status in ("completed", "delayed", "changed", "dismissed")
+        }
+        active = {status: markers for status, markers in hits.items() if markers}
+        if "completed" in active and ("delayed" in active or "dismissed" in active):
+            labels = ", ".join(f"{status}:{'/'.join(markers[:2])}" for status, markers in active.items())
+            return f"상태 신호가 충돌합니다. 자동 적용하지 않습니다: {labels}"
+        return None
+
+    def _evidence_pack(
+        self,
+        entry: PromiseLedgerEntry,
+        current: TaskResult,
+        assessment: PromiseAutopilotAssessment,
+        *,
+        marker_hits: list[str],
+        captured_at: datetime,
+    ) -> PromiseEvidencePack:
+        explanation = assessment.explanation
+        return PromiseEvidencePack(
+            ledger_entry_id=str(entry.id),
+            source_task_id=explanation.matched_task_id or current.task_id,
+            matched_text=explanation.matched_text,
+            similarity=explanation.similarity,
+            marker_hits=marker_hits,
+            confidence_factors=explanation.confidence_factors,
+            evidence=explanation.evidence,
+            captured_at=captured_at,
         )
 
     def _has_locked_evidence(self, assessment: PromiseAutopilotAssessment) -> bool:
@@ -2339,6 +2607,91 @@ class PromiseRadarService:
         stmt = stmt.order_by(PromiseLedgerEvent.created_at.desc()).limit(max(1, min(limit, 500)))
         result = await session.execute(stmt)
         return list(result.scalars().all())
+
+    async def _owner_alias_graph(
+        self,
+        session: AsyncSession,
+        *,
+        owner_id: UUID | str | None,
+        guest_session_id: str | None,
+        team_id: UUID | str | None,
+        event_aliases: dict[str, str],
+        limit: int = 200,
+    ) -> list[PromiseOwnerAlias]:
+        scoped = self._ledger_scope_condition(owner_id, guest_session_id, team_id=team_id)
+        result = await session.execute(
+            select(PromiseLedgerEntry)
+            .where(scoped)
+            .order_by(PromiseLedgerEntry.last_seen_at.desc())
+            .limit(max(1, min(limit, 300)))
+        )
+        grouped: dict[tuple[str, str, str | None, str | None, str | None], int] = {}
+
+        def add_alias(
+            alias: str | None,
+            canonical_owner: str | None,
+            *,
+            speaker_label: str | None = None,
+            speaker_profile_id: str | None = None,
+            assigned_user_id: UUID | str | None = None,
+        ) -> None:
+            clean_alias = self._clean_optional(alias)
+            clean_owner = self._clean_optional(canonical_owner)
+            if not clean_alias or not clean_owner:
+                return
+            key = (
+                clean_alias,
+                clean_owner,
+                speaker_label,
+                speaker_profile_id,
+                str(assigned_user_id) if assigned_user_id else None,
+            )
+            grouped[key] = grouped.get(key, 0) + 1
+
+        for entry in result.scalars().all():
+            add_alias(entry.owner_name, entry.owner_name, assigned_user_id=entry.assigned_user_id)
+            add_alias(
+                entry.speaker_label,
+                entry.owner_name,
+                speaker_label=entry.speaker_label,
+                speaker_profile_id=str(entry.speaker_profile_id) if entry.speaker_profile_id else None,
+                assigned_user_id=entry.assigned_user_id,
+            )
+            add_alias(
+                str(entry.speaker_profile_id) if entry.speaker_profile_id else None,
+                entry.owner_name,
+                speaker_label=entry.speaker_label,
+                speaker_profile_id=str(entry.speaker_profile_id) if entry.speaker_profile_id else None,
+                assigned_user_id=entry.assigned_user_id,
+            )
+            for item in entry.evidence or []:
+                if isinstance(item, dict):
+                    add_alias(item.get("speaker"), entry.owner_name, assigned_user_id=entry.assigned_user_id)
+                    add_alias(
+                        item.get("speaker_label"),
+                        entry.owner_name,
+                        speaker_label=item.get("speaker_label"),
+                        speaker_profile_id=item.get("speaker_profile_id"),
+                        assigned_user_id=entry.assigned_user_id,
+                    )
+
+        for alias, canonical in event_aliases.items():
+            add_alias(alias, canonical)
+
+        aliases = [
+            PromiseOwnerAlias(
+                alias=alias,
+                canonical_owner=canonical,
+                speaker_label=speaker_label,
+                speaker_profile_id=speaker_profile_id,
+                assigned_user_id=assigned_user_id,
+                confidence=min(0.97, 0.65 + count * 0.08),
+                source_count=count,
+            )
+            for (alias, canonical, speaker_label, speaker_profile_id, assigned_user_id), count in grouped.items()
+        ]
+        aliases.sort(key=lambda item: (item.confidence, item.source_count), reverse=True)
+        return aliases[:50]
 
     def _scope_label(
         self,
@@ -2772,8 +3125,18 @@ class PromiseRadarService:
         owner = (entry.owner_name or "").strip().lower()
         display = user.display_name.strip().lower()
         email = user.email.strip().lower()
+        normalized_owner = self._normalized_person_alias(owner)
+        normalized_display = self._normalized_person_alias(display)
         if owner and (owner == display or owner in display or owner in email):
             return 0.92, "회의에서 추출된 담당자 이름이 사용자 이름/이메일과 일치합니다."
+        if normalized_owner and normalized_display and (
+            normalized_owner == normalized_display
+            or normalized_owner in normalized_display
+            or normalized_display.endswith(normalized_owner)
+        ):
+            return 0.9, "화자/담당자 별칭이 사용자 이름과 일치합니다."
+        if normalized_owner and normalized_owner in email:
+            return 0.86, "화자/담당자 별칭이 사용자 이메일과 일치합니다."
         history_count = history_counts.get(user.id, 0)
         if history_count >= 3:
             return 0.84, f"같은 담당자 이름으로 과거 {history_count}회 지정됐습니다."
@@ -2782,6 +3145,13 @@ class PromiseRadarService:
         if entry.owner_id == user.id:
             return 0.48, "개인 원장의 소유자입니다."
         return 0.35, "팀 멤버 후보입니다. 이름 매칭 또는 과거 지정 이력은 아직 약합니다."
+
+    def _normalized_person_alias(self, value: str) -> str:
+        cleaned = re.sub(r"[\s._@+-]+", "", value.lower())
+        for suffix in ("님께서", "님", "씨", "께서", "님이", "님은", "님은요"):
+            if cleaned.endswith(suffix):
+                cleaned = cleaned[: -len(suffix)]
+        return cleaned
 
     def _quality_score(self, entry: PromiseLedgerEntry) -> PromiseQualityScore:
         score = 0
@@ -2931,6 +3301,23 @@ class PromiseRadarService:
                 },
             ],
         }
+
+    def _google_tasks_payload(self, entry: PromiseLedgerEntryResponse) -> dict[str, Any]:
+        notes = self._calendar_description(entry)
+        payload: dict[str, Any] = {
+            "title": entry.text[:1024],
+            "notes": notes[:8192],
+            "status": "needsAction",
+        }
+        if entry.due_at is not None:
+            due = entry.due_at
+            if due.tzinfo is None:
+                due = due.replace(tzinfo=UTC)
+            payload["due"] = due.astimezone(UTC).isoformat(timespec="milliseconds").replace(
+                "+00:00",
+                "Z",
+            )
+        return payload
 
     def _action_item_priority(self, priority: str, risk_level: str) -> str:
         if risk_level == "high":

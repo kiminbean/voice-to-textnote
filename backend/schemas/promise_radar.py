@@ -109,6 +109,18 @@ class PromiseAssigneeSuggestion(BaseModel):
     rationale: str
 
 
+class PromiseOwnerAlias(BaseModel):
+    """Learned alias connecting extracted owner/speaker/user identity."""
+
+    alias: str
+    canonical_owner: str
+    speaker_label: str | None = None
+    speaker_profile_id: str | None = None
+    assigned_user_id: str | None = None
+    confidence: float = Field(ge=0.0, le=1.0)
+    source_count: int = Field(ge=1)
+
+
 class PromiseMatchExplanation(BaseModel):
     """Human-readable explanation for a Promise Radar match or status guess."""
 
@@ -122,6 +134,19 @@ class PromiseMatchExplanation(BaseModel):
     evidence: list[PromiseRadarEvidence] = Field(default_factory=list)
 
 
+class PromiseEvidencePack(BaseModel):
+    """Immutable evidence snapshot for an Autopilot status decision."""
+
+    ledger_entry_id: str
+    source_task_id: str | None = None
+    matched_text: str | None = None
+    similarity: float = Field(ge=0.0, le=1.0)
+    marker_hits: list[str] = Field(default_factory=list)
+    confidence_factors: list[str] = Field(default_factory=list)
+    evidence: list[PromiseRadarEvidence] = Field(default_factory=list)
+    captured_at: datetime
+
+
 class PromiseAutopilotAssessment(BaseModel):
     """Autopilot status assessment for one unresolved promise."""
 
@@ -129,9 +154,15 @@ class PromiseAutopilotAssessment(BaseModel):
     previous_status: str
     suggested_status: str
     applied: bool = False
+    requires_confirmation: bool = True
+    evidence_locked: bool = False
+    conflict_detected: bool = False
+    conflict_reason: str | None = None
+    threshold: float = Field(default=0.68, ge=0.0, le=1.0)
     confidence: float = Field(ge=0.0, le=1.0)
     reason: str
     explanation: PromiseMatchExplanation
+    evidence_pack: PromiseEvidencePack | None = None
 
 
 class PromiseAutopilotResponse(BaseModel):
@@ -139,10 +170,20 @@ class PromiseAutopilotResponse(BaseModel):
 
     task_id: str
     autopilot_threshold: float = Field(default=0.68, ge=0.0, le=1.0)
+    status_thresholds: dict[str, float] = Field(default_factory=dict)
     evidence_lock_enforced: bool = True
+    preview_mode: bool = False
     assessed_count: int = Field(ge=0)
     applied_count: int = Field(ge=0)
     assessments: list[PromiseAutopilotAssessment] = Field(default_factory=list)
+
+
+class PromiseAutopilotConfirmRequest(BaseModel):
+    """User confirmation request for a previewed Autopilot assessment."""
+
+    task_id: str
+    suggested_status: str | None = None
+    note: str | None = None
 
 
 class PromiseCalendarExportResponse(BaseModel):
@@ -161,6 +202,7 @@ class PromiseLearningFeedbackRequest(BaseModel):
     """User feedback used by the Promise Radar learning loop."""
 
     expected_status: str | None = None
+    predicted_status: str | None = None
     expected_assigned_user_id: str | None = None
     expected_owner: str | None = None
     correction_type: str = Field(
@@ -175,11 +217,15 @@ class PromiseLearningProfile(BaseModel):
 
     scope: str
     autopilot_threshold: float = Field(ge=0.0, le=1.0)
+    status_thresholds: dict[str, float] = Field(default_factory=dict)
     false_positive_count: int = Field(ge=0)
     confirmed_count: int = Field(ge=0)
+    status_false_positive_count: dict[str, int] = Field(default_factory=dict)
+    status_confirmed_count: dict[str, int] = Field(default_factory=dict)
     assignee_correction_count: int = Field(ge=0)
     evidence_lock_enabled: bool = True
     learned_owner_aliases: dict[str, str] = Field(default_factory=dict)
+    owner_aliases: list[PromiseOwnerAlias] = Field(default_factory=list)
 
 
 class PromiseLearningFeedbackResponse(BaseModel):
@@ -240,8 +286,12 @@ class PromiseDigest(BaseModel):
 class PromiseExternalExportRequest(BaseModel):
     """Request to create or send a first-party external work-tool handoff."""
 
-    provider: str = Field(default="slack", description="slack")
+    provider: str = Field(default="slack", description="slack or google_tasks")
     dry_run: bool = True
+    access_token: str | None = Field(default=None, description="OAuth access token for Google Tasks")
+    tasklist: str = Field(default="@default", description="Google Tasks task list id")
+    parent_task_id: str | None = None
+    previous_task_id: str | None = None
 
 
 class PromiseExternalExportResponse(BaseModel):
@@ -252,6 +302,8 @@ class PromiseExternalExportResponse(BaseModel):
     sent: bool
     payload: dict
     message: str
+    external_id: str | None = None
+    external_url: str | None = None
 
 
 class PromiseAccuracyCase(BaseModel):

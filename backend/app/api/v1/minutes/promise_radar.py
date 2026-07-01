@@ -20,6 +20,8 @@ from backend.schemas.promise_radar import (
     PromiseAccuracyCase,
     PromiseAccuracyEvaluation,
     PromiseAssigneeSuggestion,
+    PromiseAutopilotAssessment,
+    PromiseAutopilotConfirmRequest,
     PromiseAutopilotResponse,
     PromiseCalendarExportResponse,
     PromiseDigest,
@@ -275,6 +277,37 @@ async def run_promise_autopilot(
         internal_error(f"약속 자동 판정 중 오류가 발생했습니다: {e}")
 
 
+@router.post("/autopilot/{task_id}/preview", response_model=PromiseAutopilotResponse)
+async def preview_promise_autopilot(
+    task_id: str,
+    request: Request,
+    team_id: str | None = Query(default=None, description="팀 약속 원장 범위"),
+    limit: int = Query(default=50, ge=1, le=100),
+    db: AsyncSession = Depends(get_db_session),
+    current_user=Depends(get_optional_current_user),
+    svc: PromiseRadarService = Depends(get_promise_radar_service),
+) -> PromiseAutopilotResponse:
+    """상태를 바꾸지 않고 자동 판정 후보와 근거를 미리보기로 반환합니다."""
+    try:
+        await require_task_access(request, db, task_id)
+        scoped_team_id = await _accessible_team_id(db, current_user, team_id)
+        return await svc.run_autopilot(
+            db,
+            task_id,
+            owner_id=getattr(current_user, "id", None),
+            guest_session_id=_guest_session_id(request),
+            team_id=scoped_team_id,
+            apply=False,
+            limit=limit,
+        )
+    except ValueError as e:
+        not_found(str(e))
+    except VoiceNoteError:
+        raise
+    except Exception as e:
+        internal_error(f"약속 자동 판정 미리보기 중 오류가 발생했습니다: {e}")
+
+
 @router.patch("/ledger/{entry_id}", response_model=PromiseLedgerEntryResponse)
 async def update_promise_ledger_entry(
     entry_id: str,
@@ -425,6 +458,36 @@ async def suggest_promise_assignees(
         raise
     except Exception as e:
         internal_error(f"약속 담당자 추천 중 오류가 발생했습니다: {e}")
+
+
+@router.post("/ledger/{entry_id}/autopilot-confirm", response_model=PromiseAutopilotAssessment)
+async def confirm_promise_autopilot_assessment(
+    entry_id: str,
+    payload: PromiseAutopilotConfirmRequest,
+    request: Request,
+    team_id: str | None = Query(default=None, description="팀 약속 원장 범위"),
+    db: AsyncSession = Depends(get_db_session),
+    current_user=Depends(get_optional_current_user),
+    svc: PromiseRadarService = Depends(get_promise_radar_service),
+) -> PromiseAutopilotAssessment:
+    """미리보기로 제안된 자동 판정을 사용자가 확인한 뒤 원장에 적용합니다."""
+    try:
+        await require_task_access(request, db, payload.task_id)
+        scoped_team_id = await _accessible_team_id(db, current_user, team_id)
+        return await svc.confirm_autopilot_assessment(
+            db,
+            entry_id,
+            payload,
+            owner_id=getattr(current_user, "id", None),
+            guest_session_id=_guest_session_id(request),
+            team_id=scoped_team_id,
+        )
+    except ValueError as e:
+        not_found(str(e))
+    except VoiceNoteError:
+        raise
+    except Exception as e:
+        internal_error(f"약속 자동 판정 확정 중 오류가 발생했습니다: {e}")
 
 
 @router.post("/ledger/{entry_id}/learning-feedback", response_model=PromiseLearningFeedbackResponse)

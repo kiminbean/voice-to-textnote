@@ -1,6 +1,6 @@
 # Owll Benchmark PRD
 
-**Status**: Study Pack core implemented; Cross-Meeting Q&A evidence search and synthesis exposed in search; sales follow-up briefs are searchable and listable; 2026-06-30 benchmark refreshed; Promise Radar v6 learning/briefing/evidence loop implemented
+**Status**: Study Pack core implemented; Cross-Meeting Q&A evidence search and synthesis exposed in search; sales follow-up briefs are searchable and listable; 2026-06-30 benchmark refreshed; Promise Radar v7 confirmation/learning/accuracy loop implemented
 **Created**: 2026-06-21  
 **Last verified**: 2026-07-01
 **Owner**: Voice to TextNote  
@@ -93,7 +93,7 @@ The first implementation should be a Study Pack feature because it is high-impac
 
 ## 4.1 Killer Feature: Promise Radar
 
-**Implementation status (2026-07-01)**: Backend schema/service/API, route registration, Flutter API/model/provider, Result-screen `약속 레이더` tab, Home promise dashboard, and focused backend/Flutter tests are implemented. v2 added promise chains, owner-level risk, high-risk counts, and recurring promise follow-up questions. v3 added a persistent Promise Ledger, transcript/speaker/timestamp evidence, user confirmation/status correction, next-meeting briefing, internal reminder/calendar candidates, internal ActionItem conversion, and ZAI GLM-5.2 semantic normalization with deterministic fallback. v4 adds operational schema repair, merge/split UI and API, auditable ledger history, stronger semantic matching, expanded Korean due-date parsing, FCM due-promise dispatch, Home dashboard exposure, team-scoped ledger access, and release-gate regression coverage. v5 adds Promise Autopilot status assessment, per-promise confidence explanations, Google Calendar/ICS export, optional due-notification scheduler, team assignee suggestions, promise quality scores, and strict release E2E scenario coverage for these flows. v6 adds a Promise Learning Loop, operator-friendly timeline, pre-meeting Promise Brief, Daily/Weekly Digest, Evidence Lock enforcement, first external work-tool integration through Slack, and a labeled accuracy fixture/evaluator.
+**Implementation status (2026-07-01)**: Backend schema/service/API, route registration, Flutter API/model/provider, Result-screen `약속 레이더` tab, Home promise dashboard, and focused backend/Flutter tests are implemented. v2 added promise chains, owner-level risk, high-risk counts, and recurring promise follow-up questions. v3 added a persistent Promise Ledger, transcript/speaker/timestamp evidence, user confirmation/status correction, next-meeting briefing, internal reminder/calendar candidates, internal ActionItem conversion, and ZAI GLM-5.2 semantic normalization with deterministic fallback. v4 adds operational schema repair, merge/split UI and API, auditable ledger history, stronger semantic matching, expanded Korean due-date parsing, FCM due-promise dispatch, Home dashboard exposure, team-scoped ledger access, and release-gate regression coverage. v5 adds Promise Autopilot status assessment, per-promise confidence explanations, Google Calendar/ICS export, optional due-notification scheduler, team assignee suggestions, promise quality scores, and strict release E2E scenario coverage for these flows. v6 adds a Promise Learning Loop, operator-friendly timeline, pre-meeting Promise Brief, Daily/Weekly Digest, Evidence Lock enforcement, first external work-tool integration through Slack, and a labeled accuracy fixture/evaluator. v7 adds status-specific Learning Loop thresholds, Autopilot preview-before-confirm UX, 24-case golden accuracy set, speaker/owner alias graph, immutable Evidence Pack snapshots in ledger events, promise conflict detection, and Google Tasks dry-run/OAuth-token export.
 
 ### Problem
 
@@ -122,7 +122,7 @@ Voice to TextNote should become the app that remembers meeting obligations over 
   - repeated/carried-over promises
   - possible decision changes
   - current meeting promises
-  - v6 controls for timeline, learning feedback (`오판`), and Slack dry-run export
+  - v7 controls for timeline, learning feedback (`오판`), Slack dry-run export, Google Tasks dry-run export, and Autopilot preview confirmation
 
 ### Backend Contract
 
@@ -139,6 +139,8 @@ Voice to TextNote should become the app that remembers meeting obligations over 
   - `GET /api/v1/promise-radar/ledger/{entry_id}/history`
   - `POST /api/v1/promise-radar/ledger/notifications/due`
   - `POST /api/v1/promise-radar/autopilot/{task_id}`
+  - `POST /api/v1/promise-radar/autopilot/{task_id}/preview`
+  - `POST /api/v1/promise-radar/ledger/{entry_id}/autopilot-confirm`
   - `GET /api/v1/promise-radar/ledger/{entry_id}/explain`
   - `POST /api/v1/promise-radar/ledger/{entry_id}/calendar/export`
   - `GET /api/v1/promise-radar/ledger/{entry_id}/assignee-suggestions`
@@ -186,6 +188,12 @@ Voice to TextNote should become the app that remembers meeting obligations over 
   - `PromiseDigest`: daily/weekly open, overdue, due-soon, high-risk counts plus briefing lines.
   - `PromiseExternalExportResponse`: Slack payload dry-run or webhook send result.
   - `PromiseAccuracyEvaluation`: fixture-based status accuracy and per-status precision.
+- v7 response additions:
+  - `PromiseLearningProfile.status_thresholds`, `status_false_positive_count`, `status_confirmed_count`, and `owner_aliases`: status-specific learning plus speaker/owner/user alias graph.
+  - `PromiseAutopilotAssessment.requires_confirmation`, `threshold`, `evidence_locked`, `conflict_detected`, `conflict_reason`, and `evidence_pack`: preview/confirmation safety metadata.
+  - `PromiseAutopilotConfirmRequest`: applies one previewed assessment only after user confirmation.
+  - `PromiseEvidencePack`: immutable snapshot of matched text, marker hits, source evidence, confidence factors, and capture time stored in ledger events.
+  - `PromiseExternalExportRequest`/`Response`: Google Tasks tasklist/OAuth-token export fields, external id/url fields, and dry-run payload support.
 
 ### Acceptance Criteria
 
@@ -217,8 +225,13 @@ Voice to TextNote should become the app that remembers meeting obligations over 
 - Given the user is about to record, the recording screen can show the top unresolved promises/questions from the pre-meeting brief.
 - Given the user opens Home, the app can show a daily digest summary of open, overdue, due-soon, and high-risk promises.
 - Given Autopilot suggests a state change, Evidence Lock prevents automatic mutation unless matched text, source evidence, sufficient similarity, and confidence factors exist. Weak cases remain visible as assessments only.
-- Given a promise should move to an external work tool, Slack dry-run generates a payload without sending; non-dry-run requires `PROMISE_RADAR_SLACK_WEBHOOK_URL`.
-- Given Promise Radar rules change, `backend/tests/fixtures/promise_radar_accuracy_cases.json` and `backend/scripts/evaluate_promise_radar_accuracy.py` measure labeled status accuracy before release.
+- Given Autopilot suggests a state change in the Flutter Result screen, the app shows a preview first; only a user `맞음` confirmation calls `autopilot-confirm` and mutates the ledger.
+- Given users correct completed/delayed/changed/dismissed outcomes, Learning Loop v2 adjusts only the affected status threshold instead of moving all Autopilot thresholds together.
+- Given a promise has speaker labels/profiles, owner names, and assigned users, the learning profile exposes an alias graph and assignee suggestions normalize Korean honorific aliases such as `기수님`.
+- Given source text contains conflicting state signals such as completed and delayed markers together, Promise Radar marks a conflict and does not auto-apply the state.
+- Given an Autopilot decision is applied or confirmed, the ledger event stores an immutable Evidence Pack so the decision can be audited later.
+- Given a promise should move to an external work tool, Slack dry-run generates a payload without sending; non-dry-run requires `PROMISE_RADAR_SLACK_WEBHOOK_URL`. Google Tasks dry-run generates the `tasks.googleapis.com` payload; non-dry-run requires an OAuth access token with `https://www.googleapis.com/auth/tasks`.
+- Given Promise Radar rules change, `backend/tests/fixtures/promise_radar_accuracy_cases.json` and `backend/scripts/evaluate_promise_radar_accuracy.py` measure labeled status accuracy before release. The current golden set has 24 cases.
 - Given strict release evidence is collected, Promise Radar Autopilot, due push, calendar export, and assignee/quality display must each have Android/iOS physical-device observations.
 - Given release-gate checks are run, `ruff`, targeted Promise Radar backend tests, accuracy evaluator, compile/route loading, Flutter analyze, and Flutter model/result-screen tests pass.
 
