@@ -5029,6 +5029,22 @@ class _PromiseRadarTab extends ConsumerWidget {
               const SizedBox(height: AppSpacing.md),
               _buildNextBriefingSection(context, radar.nextMeetingBriefing!),
             ],
+            if (radar.nextMeetingBriefing?.responsibilityScores.isNotEmpty ??
+                false) ...[
+              const SizedBox(height: AppSpacing.md),
+              _buildResponsibilityScoreSection(
+                context,
+                radar.nextMeetingBriefing!.responsibilityScores,
+              ),
+            ],
+            if (radar.nextMeetingBriefing?.meetingSeries.isNotEmpty ??
+                false) ...[
+              const SizedBox(height: AppSpacing.md),
+              _buildMeetingSeriesSection(
+                context,
+                radar.nextMeetingBriefing!.meetingSeries,
+              ),
+            ],
             if (radar.ledgerEntries.isNotEmpty) ...[
               const SizedBox(height: AppSpacing.md),
               _buildLedgerSection(context, ref, radar.ledgerEntries, taskId!),
@@ -5181,6 +5197,140 @@ class _PromiseRadarTab extends ConsumerWidget {
     );
   }
 
+  Widget _buildResponsibilityScoreSection(
+    BuildContext context,
+    List<PromiseResponsibilityScore> scores,
+  ) {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _sectionTitle(context, Icons.speed_outlined, '담당자 책임 점수'),
+            const SizedBox(height: AppSpacing.sm),
+            for (final score in scores.take(5))
+              Padding(
+                padding: const EdgeInsets.only(top: AppSpacing.sm),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            score.owner,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        _RiskChip(level: score.riskLevel),
+                        const SizedBox(width: AppSpacing.xs),
+                        Text(
+                          '${score.score}%',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: _riskColor(score.score, theme.colorScheme),
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      '열림 ${score.openCount} · 완료 ${score.completedCount} · 기한 초과 ${score.overdueCount} · 완료율 ${_percentageLabel(score.completionRate)}',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    if (score.reasons.isNotEmpty) ...[
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        score.reasons.take(3).join(' / '),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMeetingSeriesSection(
+    BuildContext context,
+    List<PromiseMeetingSeries> series,
+  ) {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _sectionTitle(context, Icons.hub_outlined, '반복회의 연결'),
+            const SizedBox(height: AppSpacing.sm),
+            for (final item in series.take(4))
+              Padding(
+                padding: const EdgeInsets.only(top: AppSpacing.sm),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            item.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        _PromiseMetricPill(
+                          label: '회의',
+                          value: '${item.meetingCount}',
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      '열린 약속 ${item.openCount}개 · 기한 초과 ${item.overdueCount}개 · 고위험 ${item.highRiskCount}개',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    if (item.owners.isNotEmpty) ...[
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        '담당자 ${item.owners.take(3).join(', ')}',
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ],
+                    if (item.nextQuestions.isNotEmpty) ...[
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        item.nextQuestions.first,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildLedgerSection(
     BuildContext context,
     WidgetRef ref,
@@ -5209,6 +5359,15 @@ class _PromiseRadarTab extends ConsumerWidget {
                   tooltip: 'Digest 설정',
                   onPressed: () => _showDigestPreferenceSheet(context, ref),
                   icon: const Icon(Icons.notifications_outlined),
+                ),
+                IconButton(
+                  tooltip: '회의 전 브리프 푸시',
+                  onPressed: () => _dispatchPreMeetingBrief(
+                    context,
+                    ref,
+                    summaryTaskId,
+                  ),
+                  icon: const Icon(Icons.campaign_outlined),
                 ),
                 IconButton(
                   tooltip: 'Promise Radar 정확도',
@@ -5304,6 +5463,18 @@ class _PromiseRadarTab extends ConsumerWidget {
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: theme.textTheme.bodySmall,
+                          ),
+                        ],
+                        if (_hasGoogleTaskLink(entry)) ...[
+                          const SizedBox(height: AppSpacing.xs),
+                          Text(
+                            _googleTaskLinkLabel(entry),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.primary,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ],
                         const SizedBox(height: AppSpacing.xs),
@@ -5823,6 +5994,7 @@ class _PromiseRadarTab extends ConsumerWidget {
 
   Color _riskLevelColor(String level, ColorScheme scheme) {
     return switch (level) {
+      'critical' => scheme.error,
       'high' => scheme.error,
       'medium' => AppColors.warning,
       _ => AppColors.success,
@@ -5879,6 +6051,43 @@ class _PromiseRadarTab extends ConsumerWidget {
     return googleTasks.map(
       (key, value) => MapEntry(key, value?.toString() ?? ''),
     );
+  }
+
+  String _googleTaskLinkLabel(PromiseLedgerEntry entry) {
+    final metadata = _googleTaskMetadata(entry);
+    final status = metadata['status']?.isNotEmpty == true
+        ? _statusLabel(metadata['status']!)
+        : '연결됨';
+    final tasklist = metadata['tasklist']?.isNotEmpty == true
+        ? metadata['tasklist']!
+        : '@default';
+    final externalId = metadata['external_id'] ?? '';
+    final shortId = externalId.length > 12
+        ? '${externalId.substring(0, 12)}...'
+        : externalId;
+    return [
+      'Google Tasks $status',
+      tasklist,
+      if (shortId.isNotEmpty) shortId,
+    ].join(' · ');
+  }
+
+  String _evidencePackAuditSummary(
+    PromiseEvidencePack? pack,
+    PromiseMatchExplanation? explanation,
+  ) {
+    final sourceTaskId = pack?.sourceTaskId ?? explanation?.matchedTaskId;
+    final markerCount = pack?.markerHits.length ?? 0;
+    final evidenceCount =
+        pack?.evidence.length ?? explanation?.evidence.length ?? 0;
+    final capturedAt = pack?.capturedAt;
+    return [
+      if (sourceTaskId != null && sourceTaskId.isNotEmpty)
+        'source $sourceTaskId',
+      'marker $markerCount',
+      'evidence $evidenceCount',
+      if (capturedAt != null && capturedAt.isNotEmpty) capturedAt,
+    ].join(' · ');
   }
 
   String _evidenceLabel(PromiseRadarEvidence evidence) {
@@ -6795,6 +7004,34 @@ class _PromiseRadarTab extends ConsumerWidget {
     }
   }
 
+  Future<void> _dispatchPreMeetingBrief(
+    BuildContext context,
+    WidgetRef ref,
+    String summaryTaskId,
+  ) async {
+    try {
+      final response = await ref
+          .read(promiseRadarApiProvider)
+          .dispatchPreMeetingBriefNotifications();
+      ref.invalidate(promiseRadarProvider(summaryTaskId));
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '회의 전 브리프 발송 ${response.sentCount}건 · 검토 ${response.consideredCount}건 · 실패 ${response.failureCount}건',
+            ),
+          ),
+        );
+      }
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('회의 전 브리프 푸시 발송에 실패했습니다.')),
+        );
+      }
+    }
+  }
+
   Future<void> _runAutopilot(
     BuildContext context,
     WidgetRef ref,
@@ -7462,6 +7699,12 @@ class _PromiseRadarTab extends ConsumerWidget {
                 ),
               ),
               ListTile(
+                dense: true,
+                leading: const Icon(Icons.inventory_2_outlined),
+                title: const Text('감사 요약'),
+                subtitle: Text(_evidencePackAuditSummary(pack, explanation)),
+              ),
+              ListTile(
                 title: const Text('매칭 발화'),
                 subtitle: Text(
                   pack?.matchedText ?? explanation?.matchedText ?? '연결된 발화 없음',
@@ -7760,6 +8003,7 @@ class _RiskChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final (label, color) = switch (level) {
+      'critical' => ('긴급', theme.colorScheme.error),
       'high' => ('높음', theme.colorScheme.error),
       'medium' => ('중간', AppColors.warning),
       _ => ('낮음', AppColors.success),

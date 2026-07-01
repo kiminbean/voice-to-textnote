@@ -154,6 +154,16 @@ unzip -p build/app/outputs/flutter-apk/app-release.apk lib/arm64-v8a/libapp.so \
   | strings | rg '100\.69\.69\.119|api\.voicetextnote\.com'
 ```
 
+자동 gate:
+
+```bash
+cd /Users/ibkim/Projects/voice-to-textnote
+python3 client/scripts/verify_promise_radar_device_gate.py --serial 76aadc20
+```
+
+이 스크립트는 `dumpsys package` 설치 metadata, UIAutomator의 `약속 레이더`/`탭 12개`,
+APK 내부 staging API URL과 production host 미사용을 함께 검증한다.
+
 ## 검증 명령
 
 클라이언트 수정 후 최소 검증:

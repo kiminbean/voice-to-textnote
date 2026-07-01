@@ -637,6 +637,40 @@ class PromiseNotificationDispatchResponse(BaseModel):
     notified_entry_ids: list[str] = Field(default_factory=list)
 
 
+class PromiseResponsibilityScore(BaseModel):
+    """Owner accountability score assembled from durable ledger state."""
+
+    owner: str
+    assigned_user_id: str | None = None
+    score: int = Field(ge=0, le=100)
+    risk_level: str = Field(description="low, medium, high, or critical")
+    open_count: int = Field(ge=0)
+    completed_count: int = Field(ge=0)
+    delayed_count: int = Field(ge=0)
+    blocked_count: int = Field(ge=0)
+    overdue_count: int = Field(ge=0)
+    unconfirmed_count: int = Field(ge=0)
+    recurring_count: int = Field(ge=0)
+    completion_rate: float = Field(ge=0.0, le=1.0)
+    reasons: list[str] = Field(default_factory=list)
+
+
+class PromiseMeetingSeries(BaseModel):
+    """Recurring meeting continuity group inferred from ledger source meetings."""
+
+    series_key: str
+    title: str
+    meeting_count: int = Field(ge=1)
+    first_seen_at: datetime
+    last_seen_at: datetime
+    latest_task_id: str
+    open_count: int = Field(ge=0)
+    overdue_count: int = Field(ge=0)
+    high_risk_count: int = Field(ge=0)
+    owners: list[str] = Field(default_factory=list)
+    next_questions: list[str] = Field(default_factory=list)
+
+
 class PromiseRadarDashboard(BaseModel):
     """Home/dashboard summary for active promise obligations."""
 
@@ -649,6 +683,8 @@ class PromiseRadarDashboard(BaseModel):
     owner_hotspots: list[PromiseRadarOwnerRisk] = Field(default_factory=list)
     urgent_promises: list[PromiseLedgerEntryResponse] = Field(default_factory=list)
     recent_changes: list[PromiseLedgerHistoryEntry] = Field(default_factory=list)
+    responsibility_scores: list[PromiseResponsibilityScore] = Field(default_factory=list)
+    meeting_series: list[PromiseMeetingSeries] = Field(default_factory=list)
 
 
 class PromiseNextMeetingBriefing(BaseModel):
@@ -662,6 +698,8 @@ class PromiseNextMeetingBriefing(BaseModel):
     promises: list[PromiseLedgerEntryResponse] = Field(default_factory=list)
     questions: list[str] = Field(default_factory=list)
     reminder_candidates: list[PromiseReminderCandidate] = Field(default_factory=list)
+    responsibility_scores: list[PromiseResponsibilityScore] = Field(default_factory=list)
+    meeting_series: list[PromiseMeetingSeries] = Field(default_factory=list)
 
 
 class PromiseRadarResponse(BaseModel):

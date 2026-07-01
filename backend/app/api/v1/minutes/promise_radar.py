@@ -54,12 +54,14 @@ from backend.schemas.promise_radar import (
     PromiseLedgerSplitResponse,
     PromiseLedgerUpdateRequest,
     PromiseMatchExplanation,
+    PromiseMeetingSeries,
     PromiseNextMeetingBriefing,
     PromiseNotificationDispatchResponse,
     PromisePreMeetingBrief,
     PromiseRadarDashboard,
     PromiseRadarResponse,
     PromiseReminderCandidate,
+    PromiseResponsibilityScore,
     PromiseTaskLinkResponse,
     PromiseTimelineResponse,
 )
@@ -365,6 +367,56 @@ async def get_promise_dashboard(
         internal_error(f"약속 대시보드 조회 중 오류가 발생했습니다: {e}")
 
 
+@router.get("/responsibility-scores", response_model=list[PromiseResponsibilityScore])
+async def get_promise_responsibility_scores(
+    request: Request,
+    team_id: str | None = Query(default=None, description="팀 책임 점수 조회 범위"),
+    limit: int = Query(default=100, ge=1, le=250),
+    db: AsyncSession = Depends(get_db_session),
+    current_user=Depends(get_optional_current_user),
+    svc: PromiseRadarService = Depends(get_promise_radar_service),
+) -> list[PromiseResponsibilityScore]:
+    """담당자별 미해결/지연/기한초과 약속 책임 점수를 반환합니다."""
+    try:
+        scoped_team_id = await _accessible_team_id(db, current_user, team_id)
+        return await svc.build_responsibility_scores(
+            db,
+            owner_id=getattr(current_user, "id", None),
+            guest_session_id=_guest_session_id(request),
+            team_id=scoped_team_id,
+            limit=limit,
+        )
+    except VoiceNoteError:
+        raise
+    except Exception as e:
+        internal_error(f"약속 책임 점수 조회 중 오류가 발생했습니다: {e}")
+
+
+@router.get("/meeting-series", response_model=list[PromiseMeetingSeries])
+async def get_promise_meeting_series(
+    request: Request,
+    team_id: str | None = Query(default=None, description="팀 반복회의 조회 범위"),
+    limit: int = Query(default=100, ge=1, le=250),
+    db: AsyncSession = Depends(get_db_session),
+    current_user=Depends(get_optional_current_user),
+    svc: PromiseRadarService = Depends(get_promise_radar_service),
+) -> list[PromiseMeetingSeries]:
+    """기존 약속 원장을 기반으로 반복회의 묶음과 확인 질문을 반환합니다."""
+    try:
+        scoped_team_id = await _accessible_team_id(db, current_user, team_id)
+        return await svc.build_meeting_series(
+            db,
+            owner_id=getattr(current_user, "id", None),
+            guest_session_id=_guest_session_id(request),
+            team_id=scoped_team_id,
+            limit=limit,
+        )
+    except VoiceNoteError:
+        raise
+    except Exception as e:
+        internal_error(f"반복회의 약속 묶음 조회 중 오류가 발생했습니다: {e}")
+
+
 @router.post("/ledger/notifications/due", response_model=PromiseNotificationDispatchResponse)
 async def dispatch_due_promise_notifications(
     team_id: str | None = Query(default=None, description="팀 약속 알림 발송 범위"),
@@ -415,6 +467,34 @@ async def dispatch_digest_promise_notifications(
         raise
     except Exception as e:
         internal_error(f"약속 digest 푸시 알림 발송 중 오류가 발생했습니다: {e}")
+
+
+@router.post(
+    "/briefing/pre-meeting/notifications",
+    response_model=PromiseNotificationDispatchResponse,
+)
+async def dispatch_pre_meeting_brief_notifications(
+    team_id: str | None = Query(default=None, description="팀 회의 전 브리프 발송 범위"),
+    limit: int = Query(default=8, ge=1, le=30),
+    db: AsyncSession = Depends(get_db_session),
+    current_user=Depends(get_optional_current_user),
+    svc: PromiseRadarService = Depends(get_promise_radar_service),
+) -> PromiseNotificationDispatchResponse:
+    """회의 전 확인할 약속 브리프를 실제 FCM 푸시로 발송합니다."""
+    try:
+        scoped_team_id = await _accessible_team_id(db, current_user, team_id)
+        return await svc.dispatch_pre_meeting_brief_notifications(
+            db,
+            owner_id=getattr(current_user, "id", None),
+            team_id=scoped_team_id,
+            limit=limit,
+        )
+    except ValueError as e:
+        not_found(str(e))
+    except VoiceNoteError:
+        raise
+    except Exception as e:
+        internal_error(f"회의 전 약속 브리프 푸시 발송 중 오류가 발생했습니다: {e}")
 
 
 @router.post("/autopilot/{task_id}", response_model=PromiseAutopilotResponse)
@@ -1187,7 +1267,9 @@ async def _validate_assigned_user_scope(
     requester_id = getattr(current_user, "id", None)
     if requester_id is None:
         not_found("약속 담당자 배정은 로그인 사용자만 사용할 수 있습니다")
-    requester_uuid = requester_id if isinstance(requester_id, uuid.UUID) else uuid.UUID(str(requester_id))
+    requester_uuid = (
+        requester_id if isinstance(requester_id, uuid.UUID) else uuid.UUID(str(requester_id))
+    )
     try:
         assigned_uuid = uuid.UUID(assigned_user_id)
     except ValueError:

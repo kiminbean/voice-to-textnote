@@ -164,6 +164,38 @@ void main() {
               'calendar_event': {'source': 'promise_radar'},
             }
           ],
+          'responsibility_scores': [
+            {
+              'owner': '김기수',
+              'assigned_user_id': 'user-1',
+              'score': 68,
+              'risk_level': 'high',
+              'open_count': 2,
+              'completed_count': 1,
+              'delayed_count': 0,
+              'blocked_count': 1,
+              'overdue_count': 1,
+              'unconfirmed_count': 1,
+              'recurring_count': 1,
+              'completion_rate': 0.333,
+              'reasons': ['기한 초과 1개', '차단 1개'],
+            }
+          ],
+          'meeting_series': [
+            {
+              'series_key': '릴리스 주간 회의',
+              'title': '릴리스 주간 회의',
+              'meeting_count': 2,
+              'first_seen_at': '2026-06-24T00:00:00Z',
+              'last_seen_at': '2026-07-01T00:00:00Z',
+              'latest_task_id': 'sum-1',
+              'open_count': 2,
+              'overdue_count': 1,
+              'high_risk_count': 1,
+              'owners': ['김기수'],
+              'next_questions': ['QA 체크리스트 상태는 확인됐습니까?'],
+            }
+          ],
         },
         'autopilot_assessments': [
           {
@@ -209,6 +241,8 @@ void main() {
             .calendarEvent!['source'],
         'promise_radar',
       );
+      expect(result.nextMeetingBriefing!.responsibilityScores.single.score, 68);
+      expect(result.nextMeetingBriefing!.meetingSeries.single.meetingCount, 2);
       expect(result.semanticEnrichmentStatus, 'zai_applied');
       expect(result.autopilotAssessments.single.applied, isTrue);
       expect(result.followUpQuestions.single, contains('QA 체크리스트'));
@@ -496,12 +530,45 @@ void main() {
             },
           }
         ],
+        'responsibility_scores': [
+          {
+            'owner': '김기수',
+            'score': 72,
+            'risk_level': 'high',
+            'open_count': 3,
+            'completed_count': 1,
+            'delayed_count': 1,
+            'blocked_count': 0,
+            'overdue_count': 1,
+            'unconfirmed_count': 1,
+            'recurring_count': 2,
+            'completion_rate': 0.25,
+            'reasons': ['반복 약속 2개'],
+          }
+        ],
+        'meeting_series': [
+          {
+            'series_key': 'release weekly',
+            'title': 'Release Weekly',
+            'meeting_count': 3,
+            'first_seen_at': '2026-06-17T00:00:00Z',
+            'last_seen_at': '2026-07-01T00:00:00Z',
+            'latest_task_id': 'sum-3',
+            'open_count': 3,
+            'overdue_count': 1,
+            'high_risk_count': 1,
+            'owners': ['김기수'],
+            'next_questions': ['릴리스 테스트 상태는 확인됐습니까?'],
+          }
+        ],
       });
 
       expect(dashboard.openCount, 3);
       expect(dashboard.urgentPromises.single.teamId, 'team-1');
       expect(dashboard.urgentPromises.single.notificationSentAt, isNotNull);
       expect(dashboard.recentChanges.single.eventType, 'merged');
+      expect(dashboard.responsibilityScores.single.riskLevel, 'high');
+      expect(dashboard.meetingSeries.single.latestTaskId, 'sum-3');
 
       final merge = PromiseLedgerMergeResponse.fromJson({
         'target': {

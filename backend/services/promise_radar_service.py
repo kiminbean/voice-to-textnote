@@ -76,6 +76,7 @@ from backend.schemas.promise_radar import (
     PromiseLedgerSplitResponse,
     PromiseLedgerUpdateRequest,
     PromiseMatchExplanation,
+    PromiseMeetingSeries,
     PromiseNextMeetingBriefing,
     PromiseNotificationDispatchResponse,
     PromiseOwnerAlias,
@@ -91,6 +92,7 @@ from backend.schemas.promise_radar import (
     PromiseRadarPromiseChain,
     PromiseRadarResponse,
     PromiseReminderCandidate,
+    PromiseResponsibilityScore,
     PromiseTaskLinkResponse,
     PromiseTimelineItem,
     PromiseTimelineResponse,
@@ -369,6 +371,26 @@ class PromiseRadarService:
         limit: int = 50,
     ) -> list[PromiseLedgerEntryResponse]:
         """List scoped ledger entries for the current user or guest session."""
+        entries = await self._list_ledger_entry_models(
+            session,
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
+            team_id=team_id,
+            statuses=statuses,
+            limit=limit,
+        )
+        return [self._entry_to_response(entry) for entry in entries]
+
+    async def _list_ledger_entry_models(
+        self,
+        session: AsyncSession,
+        *,
+        owner_id: UUID | str | None = None,
+        guest_session_id: str | None = None,
+        team_id: UUID | str | None = None,
+        statuses: set[str] | None = None,
+        limit: int = 100,
+    ) -> list[PromiseLedgerEntry]:
         stmt = select(PromiseLedgerEntry).where(
             self._ledger_scope_condition(owner_id, guest_session_id, team_id=team_id)
         )
@@ -379,9 +401,9 @@ class PromiseRadarService:
             PromiseLedgerEntry.due_at.is_(None),
             PromiseLedgerEntry.due_at.asc(),
             PromiseLedgerEntry.last_seen_at.desc(),
-        ).limit(max(1, min(limit, 100)))
+        ).limit(max(1, min(limit, 250)))
         result = await session.execute(stmt)
-        return [self._entry_to_response(entry) for entry in result.scalars().all()]
+        return list(result.scalars().all())
 
     async def build_next_meeting_briefing(
         self,
@@ -401,7 +423,22 @@ class PromiseRadarService:
             statuses=_OPEN_LEDGER_STATUSES,
             limit=limit,
         )
-        return self._build_next_meeting_briefing(entries)
+        briefing = self._build_next_meeting_briefing(entries)
+        briefing.responsibility_scores = await self.build_responsibility_scores(
+            session,
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
+            team_id=team_id,
+            limit=limit,
+        )
+        briefing.meeting_series = await self.build_meeting_series(
+            session,
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
+            team_id=team_id,
+            limit=limit,
+        )
+        return briefing
 
     async def update_ledger_entry(
         self,
@@ -668,7 +705,9 @@ class PromiseRadarService:
                 actor_user_id=owner_id,
             )
 
-        target.risk_level = self._ledger_risk_level(target.priority, target.due_at, target.occurrences)
+        target.risk_level = self._ledger_risk_level(
+            target.priority, target.due_at, target.occurrences
+        )
         target.updated_at = now
         self._record_ledger_event(
             session,
@@ -714,9 +753,13 @@ class PromiseRadarService:
         now = datetime.now(UTC).replace(tzinfo=None)
         evidence = self._split_evidence(original.evidence or [], payload.evidence_indices)
         due_text = payload.due_date.strip() if payload.due_date else None
-        due_at = payload.due_at.replace(tzinfo=None) if payload.due_at else self._parse_due_at(
-            due_text,
-            original.last_seen_at,
+        due_at = (
+            payload.due_at.replace(tzinfo=None)
+            if payload.due_at
+            else self._parse_due_at(
+                due_text,
+                original.last_seen_at,
+            )
         )
         created = PromiseLedgerEntry(
             owner_id=original.owner_id,
@@ -840,6 +883,20 @@ class PromiseRadarService:
             guest_session_id=guest_session_id,
             team_id=team_id,
         )
+        responsibility_scores = await self.build_responsibility_scores(
+            session,
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
+            team_id=team_id,
+            limit=limit,
+        )
+        meeting_series = await self.build_meeting_series(
+            session,
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
+            team_id=team_id,
+            limit=limit,
+        )
         return PromiseRadarDashboard(
             open_count=len(entries),
             high_risk_count=sum(1 for entry in entries if entry.risk_level == "high"),
@@ -854,6 +911,204 @@ class PromiseRadarService:
             owner_hotspots=self._owner_risks_from_entries(entries)[:6],
             urgent_promises=urgent[:8],
             recent_changes=recent,
+            responsibility_scores=responsibility_scores[:6],
+            meeting_series=meeting_series[:6],
+        )
+
+    async def build_responsibility_scores(
+        self,
+        session: AsyncSession,
+        *,
+        owner_id: UUID | str | None = None,
+        guest_session_id: str | None = None,
+        team_id: UUID | str | None = None,
+        limit: int = 100,
+    ) -> list[PromiseResponsibilityScore]:
+        """Score owners by unresolved, delayed, overdue, and unconfirmed promises."""
+        entries = await self._list_ledger_entry_models(
+            session,
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
+            team_id=team_id,
+            limit=limit,
+        )
+        now = datetime.now(UTC).replace(tzinfo=None)
+        buckets: dict[tuple[str, str | None], dict[str, Any]] = {}
+        for entry in entries:
+            owner = entry.owner_name or entry.speaker_label or "미지정"
+            assigned_user_id = str(entry.assigned_user_id) if entry.assigned_user_id else None
+            bucket = buckets.setdefault(
+                (owner, assigned_user_id),
+                {
+                    "open": 0,
+                    "completed": 0,
+                    "delayed": 0,
+                    "blocked": 0,
+                    "overdue": 0,
+                    "unconfirmed": 0,
+                    "recurring": 0,
+                    "total": 0,
+                },
+            )
+            bucket["total"] += 1
+            if entry.status == "completed":
+                bucket["completed"] += 1
+            if entry.status in _OPEN_LEDGER_STATUSES:
+                bucket["open"] += 1
+            if entry.status in {"delayed", "changed"}:
+                bucket["delayed"] += 1
+            if entry.status == "blocked":
+                bucket["blocked"] += 1
+            if entry.status in _OPEN_LEDGER_STATUSES and entry.due_at and entry.due_at < now:
+                bucket["overdue"] += 1
+            if entry.status in _OPEN_LEDGER_STATUSES and not entry.user_confirmed:
+                bucket["unconfirmed"] += 1
+            if entry.occurrences >= 2:
+                bucket["recurring"] += 1
+
+        scores: list[PromiseResponsibilityScore] = []
+        for (owner, assigned_user_id), values in buckets.items():
+            total = max(1, int(values["total"]))
+            completion_rate = int(values["completed"]) / total
+            score = min(
+                100,
+                max(
+                    0,
+                    int(values["open"]) * 10
+                    + int(values["delayed"]) * 14
+                    + int(values["blocked"]) * 18
+                    + int(values["overdue"]) * 25
+                    + int(values["unconfirmed"]) * 7
+                    + int(values["recurring"]) * 10
+                    - int(values["completed"]) * 4,
+                ),
+            )
+            if score >= 80:
+                risk_level = "critical"
+            elif score >= 55:
+                risk_level = "high"
+            elif score >= 30:
+                risk_level = "medium"
+            else:
+                risk_level = "low"
+            reasons: list[str] = []
+            if values["overdue"]:
+                reasons.append(f"기한 초과 {values['overdue']}개")
+            if values["blocked"]:
+                reasons.append(f"차단 {values['blocked']}개")
+            if values["delayed"]:
+                reasons.append(f"지연/변경 {values['delayed']}개")
+            if values["recurring"]:
+                reasons.append(f"반복 약속 {values['recurring']}개")
+            if values["unconfirmed"]:
+                reasons.append(f"확정 필요 {values['unconfirmed']}개")
+            if not reasons:
+                reasons.append("현재 위험 신호 낮음")
+            scores.append(
+                PromiseResponsibilityScore(
+                    owner=owner,
+                    assigned_user_id=assigned_user_id,
+                    score=score,
+                    risk_level=risk_level,
+                    open_count=int(values["open"]),
+                    completed_count=int(values["completed"]),
+                    delayed_count=int(values["delayed"]),
+                    blocked_count=int(values["blocked"]),
+                    overdue_count=int(values["overdue"]),
+                    unconfirmed_count=int(values["unconfirmed"]),
+                    recurring_count=int(values["recurring"]),
+                    completion_rate=round(completion_rate, 3),
+                    reasons=reasons[:4],
+                )
+            )
+        return sorted(scores, key=lambda item: item.score, reverse=True)
+
+    async def build_meeting_series(
+        self,
+        session: AsyncSession,
+        *,
+        owner_id: UUID | str | None = None,
+        guest_session_id: str | None = None,
+        team_id: UUID | str | None = None,
+        limit: int = 100,
+    ) -> list[PromiseMeetingSeries]:
+        """Infer recurring meeting groups from ledger source meetings and titles."""
+        entries = await self._list_ledger_entry_models(
+            session,
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
+            team_id=team_id,
+            statuses=_OPEN_LEDGER_STATUSES,
+            limit=limit,
+        )
+        if not entries:
+            return []
+        titles = await self._meeting_titles_for_entries(session, entries)
+        now = datetime.now(UTC).replace(tzinfo=None)
+        buckets: dict[str, dict[str, Any]] = {}
+        for entry in entries:
+            source_id = entry.last_source_task_id or entry.source_task_id
+            title = titles.get(source_id) or self._fallback_series_title(entry)
+            series_key = self._meeting_series_key(title)
+            bucket = buckets.setdefault(
+                series_key,
+                {
+                    "title": title,
+                    "task_ids": set(),
+                    "first_seen_at": entry.first_seen_at,
+                    "last_seen_at": entry.last_seen_at,
+                    "latest_task_id": source_id,
+                    "open": 0,
+                    "overdue": 0,
+                    "high_risk": 0,
+                    "owners": set(),
+                    "questions": [],
+                },
+            )
+            bucket["task_ids"].add(source_id)
+            if entry.first_seen_at < bucket["first_seen_at"]:
+                bucket["first_seen_at"] = entry.first_seen_at
+            if entry.last_seen_at > bucket["last_seen_at"]:
+                bucket["last_seen_at"] = entry.last_seen_at
+                bucket["latest_task_id"] = source_id
+            bucket["open"] += 1
+            if entry.due_at and entry.due_at < now:
+                bucket["overdue"] += 1
+            if entry.risk_level == "high":
+                bucket["high_risk"] += 1
+            owner = entry.owner_name or entry.speaker_label
+            if owner:
+                bucket["owners"].add(owner)
+            if len(bucket["questions"]) < 3:
+                owner_prefix = f"{owner}님의 " if owner else ""
+                bucket["questions"].append(
+                    f"{owner_prefix}'{entry.text}' 진행 상태를 확인했습니까?"
+                )
+
+        series: list[PromiseMeetingSeries] = []
+        for series_key, values in buckets.items():
+            task_ids = values["task_ids"]
+            if len(task_ids) < 2 and int(values["open"]) < 2:
+                continue
+            series.append(
+                PromiseMeetingSeries(
+                    series_key=series_key,
+                    title=str(values["title"]),
+                    meeting_count=max(1, len(task_ids)),
+                    first_seen_at=values["first_seen_at"],
+                    last_seen_at=values["last_seen_at"],
+                    latest_task_id=str(values["latest_task_id"]),
+                    open_count=int(values["open"]),
+                    overdue_count=int(values["overdue"]),
+                    high_risk_count=int(values["high_risk"]),
+                    owners=sorted(values["owners"])[:5],
+                    next_questions=list(values["questions"])[:3],
+                )
+            )
+        return sorted(
+            series,
+            key=lambda item: (item.overdue_count, item.high_risk_count, item.open_count),
+            reverse=True,
         )
 
     async def dispatch_due_notifications(
@@ -1032,9 +1287,7 @@ class PromiseRadarService:
             if not tokens:
                 continue
             overdue = [entry for entry in user_entries if entry.due_at and entry.due_at < moment]
-            horizon = moment + (
-                timedelta(days=1) if normalized == "daily" else timedelta(days=7)
-            )
+            horizon = moment + (timedelta(days=1) if normalized == "daily" else timedelta(days=7))
             due_soon = [
                 entry
                 for entry in user_entries
@@ -1084,6 +1337,124 @@ class PromiseRadarService:
         await session.commit()
         record_promise_radar_notification(
             "digest",
+            sent=sent_count,
+            failed=failure_count,
+        )
+        return PromiseNotificationDispatchResponse(
+            considered_count=len(entries),
+            sent_count=sent_count,
+            failure_count=failure_count,
+            invalid_tokens=invalid_tokens,
+            notified_entry_ids=notified_ids,
+        )
+
+    async def dispatch_pre_meeting_brief_notifications(
+        self,
+        session: AsyncSession,
+        *,
+        owner_id: UUID | str | None = None,
+        team_id: UUID | str | None = None,
+        now: datetime | None = None,
+        limit: int = 8,
+        push_service: PushService | None = None,
+        allow_global: bool = False,
+    ) -> PromiseNotificationDispatchResponse:
+        """Send a pre-meeting Promise Brief push without consuming due-push state."""
+        owner_uuid = self._coerce_uuid(owner_id)
+        team_uuid = self._coerce_uuid(team_id)
+        if owner_uuid is None and team_uuid is None and not allow_global:
+            raise ValueError("로그인 사용자 또는 팀 범위가 필요합니다")
+
+        moment = (now or datetime.now(UTC)).replace(tzinfo=None)
+        if team_uuid is not None:
+            scope_condition = PromiseLedgerEntry.team_id == team_uuid
+        elif owner_uuid is not None:
+            scope_condition = PromiseLedgerEntry.owner_id == owner_uuid
+        else:
+            scope_condition = PromiseLedgerEntry.id.is_not(None)
+        result = await session.execute(
+            select(PromiseLedgerEntry)
+            .where(
+                scope_condition,
+                PromiseLedgerEntry.status.in_(_OPEN_LEDGER_STATUSES),
+            )
+            .order_by(
+                PromiseLedgerEntry.risk_level.desc(),
+                PromiseLedgerEntry.due_at.is_(None),
+                PromiseLedgerEntry.due_at.asc(),
+                PromiseLedgerEntry.last_seen_at.desc(),
+            )
+            .limit(max(1, min(limit, 50)))
+        )
+        entries = list(result.scalars().all())
+        grouped: dict[UUID, list[PromiseLedgerEntry]] = {}
+        for entry in entries:
+            target_user_id = entry.assigned_user_id or entry.owner_id or owner_uuid
+            if target_user_id is None:
+                continue
+            grouped.setdefault(target_user_id, []).append(entry)
+
+        push = push_service or get_push_service()
+        sent_count = 0
+        failure_count = 0
+        invalid_tokens: list[str] = []
+        notified_ids: list[str] = []
+        for target_user_id, user_entries in grouped.items():
+            if await self._pre_meeting_brief_already_sent(
+                session,
+                target_user_id,
+                moment=moment,
+            ):
+                continue
+            tokens_result = await session.execute(
+                select(DeviceToken.fcm_token)
+                .where(DeviceToken.user_id == str(target_user_id))
+                .where(DeviceToken.is_active)
+            )
+            tokens = [row[0] for row in tokens_result.all()]
+            if not tokens:
+                continue
+            overdue = [entry for entry in user_entries if entry.due_at and entry.due_at < moment]
+            high_risk = [entry for entry in user_entries if entry.risk_level == "high"]
+            body = (
+                f"회의 전 확인할 약속 {len(user_entries)}개 · "
+                f"기한 초과 {len(overdue)}개 · 고위험 {len(high_risk)}개"
+            )
+            response = await push.send_multicast(
+                tokens=tokens,
+                title="회의 전 약속 브리프",
+                body=body,
+                data={
+                    "type": "promise_radar_pre_meeting_brief",
+                    "entry_count": str(len(user_entries)),
+                    "overdue_count": str(len(overdue)),
+                    "high_risk_count": str(len(high_risk)),
+                },
+            )
+            sent_count += int(response.get("success_count") or 0)
+            failure_count += int(response.get("failure_count") or 0)
+            invalid = [str(token) for token in response.get("invalid_tokens") or []]
+            invalid_tokens.extend(invalid)
+            for invalid_token in invalid:
+                await push.invalidate_token(session, invalid_token)
+            if int(response.get("success_count") or 0) > 0:
+                anchor = user_entries[0]
+                notified_ids.extend(str(entry.id) for entry in user_entries)
+                self._record_ledger_event(
+                    session,
+                    anchor,
+                    "pre_meeting_brief_sent",
+                    new_value={
+                        "sent_at": moment.isoformat(),
+                        "entry_count": len(user_entries),
+                        "overdue_count": len(overdue),
+                        "high_risk_count": len(high_risk),
+                    },
+                    actor_user_id=target_user_id,
+                )
+        await session.commit()
+        record_promise_radar_notification(
+            "pre_meeting_brief",
             sent=sent_count,
             failed=failure_count,
         )
@@ -1610,9 +1981,7 @@ class PromiseRadarService:
         if entry is None:
             raise ValueError("약속 원장 항목을 찾을 수 없습니다")
         previous_evidence = [
-            PromiseRadarEvidence(**item)
-            for item in entry.evidence or []
-            if isinstance(item, dict)
+            PromiseRadarEvidence(**item) for item in entry.evidence or [] if isinstance(item, dict)
         ]
         try:
             pack = await self.latest_evidence_pack(
@@ -1679,7 +2048,7 @@ class PromiseRadarService:
 
         response = self._entry_to_response(entry)
         candidate = self._reminder_candidate(response)
-        start = (response.due_at or response.reminder_at or datetime.now(UTC).replace(tzinfo=None))
+        start = response.due_at or response.reminder_at or datetime.now(UTC).replace(tzinfo=None)
         end = start + timedelta(minutes=30)
         title = candidate.title
         description = self._calendar_description(response)
@@ -1826,7 +2195,9 @@ class PromiseRadarService:
             if event_type == "learning_feedback":
                 expected_status = self._clean_optional(new.get("expected_status"))
                 current_status = self._clean_optional(new.get("current_status"))
-                predicted_status = self._clean_optional(new.get("predicted_status")) or current_status
+                predicted_status = (
+                    self._clean_optional(new.get("predicted_status")) or current_status
+                )
                 if expected_status and predicted_status and expected_status != predicted_status:
                     false_positive += 1
                     status_false_positive[predicted_status] = (
@@ -1847,7 +2218,9 @@ class PromiseRadarService:
                 }:
                     false_positive += 1
                     if old_status:
-                        status_false_positive[old_status] = status_false_positive.get(old_status, 0) + 1
+                        status_false_positive[old_status] = (
+                            status_false_positive.get(old_status, 0) + 1
+                        )
                 elif new.get("user_confirmed") is True:
                     confirmed += 1
                     if new_status:
@@ -2094,10 +2467,7 @@ class PromiseRadarService:
             summary=summary,
             promises=briefing.promises[:limit],
             questions=briefing.questions[:limit],
-            checkpoints=[
-                self._briefing_checkpoint(entry)
-                for entry in briefing.promises[:limit]
-            ],
+            checkpoints=[self._briefing_checkpoint(entry) for entry in briefing.promises[:limit]],
         )
 
     async def build_digest(
@@ -2354,7 +2724,9 @@ class PromiseRadarService:
         external_id = (payload.external_id or metadata.get("external_id") or "").strip()
         if not external_id:
             raise ValueError("업데이트할 Google Tasks task id가 없습니다")
-        status = (payload.status or ("completed" if entry.status == "completed" else "needsAction")).strip()
+        status = (
+            payload.status or ("completed" if entry.status == "completed" else "needsAction")
+        ).strip()
         if status not in {"completed", "needsAction"}:
             raise ValueError("Google Tasks 상태는 completed 또는 needsAction만 지원합니다")
         body: dict[str, Any] = {"status": status}
@@ -3361,7 +3733,12 @@ class PromiseRadarService:
                 reason = self._autopilot_reason(candidate_status, marker_hits, matched_text)
                 break
 
-        if conflict is None and status == entry.status and entry.due_at is not None and entry.due_at < now:
+        if (
+            conflict is None
+            and status == entry.status
+            and entry.due_at is not None
+            and entry.due_at < now
+        ):
             status = "delayed"
             marker_confidence = max(marker_confidence, 0.2)
             reason = "기한이 지났지만 완료 또는 취소 근거가 없어 지연 약속으로 판정했습니다."
@@ -3417,7 +3794,11 @@ class PromiseRadarService:
                 and assessment.suggested_status not in policy.allowed_auto_statuses
             ):
                 return False
-            if policy.high_risk_requires_review and entry is not None and entry.risk_level == "high":
+            if (
+                policy.high_risk_requires_review
+                and entry is not None
+                and entry.risk_level == "high"
+            ):
                 return False
         if evidence_lock_enabled and not self._has_locked_evidence(assessment):
             return False
@@ -3446,7 +3827,9 @@ class PromiseRadarService:
         }
         active = {status: markers for status, markers in hits.items() if markers}
         if "completed" in active and ("delayed" in active or "dismissed" in active):
-            labels = ", ".join(f"{status}:{'/'.join(markers[:2])}" for status, markers in active.items())
+            labels = ", ".join(
+                f"{status}:{'/'.join(markers[:2])}" for status, markers in active.items()
+            )
             return f"상태 신호가 충돌합니다. 자동 적용하지 않습니다: {labels}"
         return None
 
@@ -3503,7 +3886,9 @@ class PromiseRadarService:
         best_payload: dict[str, Any] = {}
         best_score = 0.0
         for text, payload in candidates:
-            score = self._promise_similarity(entry.text, text, entry.owner_name, payload.get("speaker"))
+            score = self._promise_similarity(
+                entry.text, text, entry.owner_name, payload.get("speaker")
+            )
             if score > best_score:
                 best_text = text
                 best_payload = payload
@@ -3808,19 +4193,27 @@ class PromiseRadarService:
                 entry.speaker_label,
                 entry.owner_name,
                 speaker_label=entry.speaker_label,
-                speaker_profile_id=str(entry.speaker_profile_id) if entry.speaker_profile_id else None,
+                speaker_profile_id=str(entry.speaker_profile_id)
+                if entry.speaker_profile_id
+                else None,
                 assigned_user_id=entry.assigned_user_id,
             )
             add_alias(
                 str(entry.speaker_profile_id) if entry.speaker_profile_id else None,
                 entry.owner_name,
                 speaker_label=entry.speaker_label,
-                speaker_profile_id=str(entry.speaker_profile_id) if entry.speaker_profile_id else None,
+                speaker_profile_id=str(entry.speaker_profile_id)
+                if entry.speaker_profile_id
+                else None,
                 assigned_user_id=entry.assigned_user_id,
             )
             for item in entry.evidence or []:
                 if isinstance(item, dict):
-                    add_alias(item.get("speaker"), entry.owner_name, assigned_user_id=entry.assigned_user_id)
+                    add_alias(
+                        item.get("speaker"),
+                        entry.owner_name,
+                        assigned_user_id=entry.assigned_user_id,
+                    )
                     add_alias(
                         item.get("speaker_label"),
                         entry.owner_name,
@@ -3842,7 +4235,13 @@ class PromiseRadarService:
                 confidence=min(0.97, 0.65 + count * 0.08),
                 source_count=count,
             )
-            for (alias, canonical, speaker_label, speaker_profile_id, assigned_user_id), count in grouped.items()
+            for (
+                alias,
+                canonical,
+                speaker_label,
+                speaker_profile_id,
+                assigned_user_id,
+            ), count in grouped.items()
         ]
         aliases.sort(key=lambda item: (item.confidence, item.source_count), reverse=True)
         return aliases[:50]
@@ -3878,8 +4277,10 @@ class PromiseRadarService:
             if str(status).strip().lower() in _AUTOMATION_POLICY_DEFAULT_ALLOWED
         ]
         if not statuses and mode in {"safe_auto", "completed_only"}:
-            statuses = ["completed"] if mode == "completed_only" else sorted(
-                _AUTOMATION_POLICY_DEFAULT_ALLOWED
+            statuses = (
+                ["completed"]
+                if mode == "completed_only"
+                else sorted(_AUTOMATION_POLICY_DEFAULT_ALLOWED)
             )
         return PromiseAutomationPolicy(
             scope=scope,
@@ -3977,6 +4378,25 @@ class PromiseRadarService:
             if isinstance(event.new_value, dict) and event.new_value.get("cadence") == cadence:
                 return True
         return False
+
+    async def _pre_meeting_brief_already_sent(
+        self,
+        session: AsyncSession,
+        target_user_id: UUID,
+        *,
+        moment: datetime,
+    ) -> bool:
+        day_start = moment.replace(hour=0, minute=0, second=0, microsecond=0)
+        result = await session.execute(
+            select(PromiseLedgerEvent.id)
+            .where(
+                PromiseLedgerEvent.actor_user_id == target_user_id,
+                PromiseLedgerEvent.event_type == "pre_meeting_brief_sent",
+                PromiseLedgerEvent.created_at >= day_start,
+            )
+            .limit(1)
+        )
+        return result.scalar_one_or_none() is not None
 
     async def _digest_preference_enabled_for_target(
         self,
@@ -4491,16 +4911,24 @@ class PromiseRadarService:
         normalized_email_local = self._normalized_person_alias(email_local)
         if owner and (owner == display or owner in display or owner in email):
             return 0.92, "회의에서 추출된 담당자 이름이 사용자 이름/이메일과 일치합니다."
-        if normalized_owner and normalized_display and (
-            normalized_owner == normalized_display
-            or normalized_owner in normalized_display
-            or normalized_display.endswith(normalized_owner)
-            or self._same_korean_given_name(normalized_owner, normalized_display)
+        if (
+            normalized_owner
+            and normalized_display
+            and (
+                normalized_owner == normalized_display
+                or normalized_owner in normalized_display
+                or normalized_display.endswith(normalized_owner)
+                or self._same_korean_given_name(normalized_owner, normalized_display)
+            )
         ):
             return 0.9, "화자/담당자 별칭이 사용자 이름과 일치합니다."
-        if normalized_owner and normalized_email_local and (
-            normalized_owner in normalized_email_local
-            or normalized_email_local.endswith(normalized_owner)
+        if (
+            normalized_owner
+            and normalized_email_local
+            and (
+                normalized_owner in normalized_email_local
+                or normalized_email_local.endswith(normalized_owner)
+            )
         ):
             return 0.88, "화자/담당자 별칭이 사용자 이메일 ID와 일치합니다."
         if normalized_owner and normalized_owner in email:
@@ -4581,7 +5009,9 @@ class PromiseRadarService:
             issues.append("기한이 없어 알림/캘린더 자동화가 약합니다.")
 
         normalized_text = entry.text.lower()
-        if len(entry.text.strip()) >= 8 and any(term in normalized_text for term in _QUALITY_ACTION_TERMS):
+        if len(entry.text.strip()) >= 8 and any(
+            term in normalized_text for term in _QUALITY_ACTION_TERMS
+        ):
             score += 20
             strengths.append("행동 동사가 포함되어 있습니다.")
         else:
@@ -4607,7 +5037,15 @@ class PromiseRadarService:
         else:
             score += 4
 
-        level = "excellent" if score >= 85 else "good" if score >= 70 else "weak" if score >= 50 else "risky"
+        level = (
+            "excellent"
+            if score >= 85
+            else "good"
+            if score >= 70
+            else "weak"
+            if score >= 50
+            else "risky"
+        )
         return PromiseQualityScore(
             score=min(score, 100),
             level=level,
@@ -4639,7 +5077,11 @@ class PromiseRadarService:
         for item in evidence:
             if item.voiceprint_similarity is not None:
                 best_voiceprint = max(best_voiceprint, item.voiceprint_similarity)
-            if item.speaker and entry.owner_name and self._owner_key(item.speaker) == self._owner_key(entry.owner_name):
+            if (
+                item.speaker
+                and entry.owner_name
+                and self._owner_key(item.speaker) == self._owner_key(entry.owner_name)
+            ):
                 score += 0.08
                 factors.append("근거 발화자 일치")
                 break
@@ -4713,10 +5155,7 @@ class PromiseRadarService:
 
     def _ics_escape(self, value: str) -> str:
         return (
-            value.replace("\\", "\\\\")
-            .replace("\n", "\\n")
-            .replace(",", "\\,")
-            .replace(";", "\\;")
+            value.replace("\\", "\\\\").replace("\n", "\\n").replace(",", "\\,").replace(";", "\\;")
         )
 
     def _calendar_description(self, entry: PromiseLedgerEntryResponse) -> str:
@@ -4771,9 +5210,13 @@ class PromiseRadarService:
             due = entry.due_at
             if due.tzinfo is None:
                 due = due.replace(tzinfo=UTC)
-            payload["due"] = due.astimezone(UTC).isoformat(timespec="milliseconds").replace(
-                "+00:00",
-                "Z",
+            payload["due"] = (
+                due.astimezone(UTC)
+                .isoformat(timespec="milliseconds")
+                .replace(
+                    "+00:00",
+                    "Z",
+                )
             )
         return payload
 
@@ -5222,6 +5665,59 @@ class PromiseRadarService:
             return merged
         return data
 
+    async def _meeting_titles_for_entries(
+        self,
+        session: AsyncSession,
+        entries: list[PromiseLedgerEntry],
+    ) -> dict[str, str]:
+        task_ids = {
+            str(entry.last_source_task_id or entry.source_task_id)
+            for entry in entries
+            if entry.last_source_task_id or entry.source_task_id
+        }
+        if not task_ids:
+            return {}
+        result = await session.execute(select(TaskResult).where(TaskResult.task_id.in_(task_ids)))
+        titles: dict[str, str] = {}
+        for record in result.scalars().all():
+            title = self._meeting_title(record)
+            if title:
+                titles[record.task_id] = title
+        return titles
+
+    def _meeting_title(self, record: TaskResult) -> str | None:
+        data = self._result_data(record)
+        for key in ("title", "meeting_title", "subject"):
+            value = data.get(key)
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+        metadata = data.get("metadata")
+        if isinstance(metadata, dict):
+            value = metadata.get("title") or metadata.get("meeting_title")
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+        for key in ("summary_text", "summary", "markdown"):
+            value = data.get(key)
+            if isinstance(value, str) and value.strip():
+                line = next(
+                    (item.strip("# -\t ") for item in value.splitlines() if item.strip()),
+                    "",
+                )
+                if line:
+                    return line[:80]
+        return None
+
+    def _fallback_series_title(self, entry: PromiseLedgerEntry) -> str:
+        text = entry.semantic_summary or entry.canonical_text or entry.text
+        owner = entry.owner_name or entry.speaker_label
+        return f"{owner}: {text[:64]}" if owner else text[:80]
+
+    def _meeting_series_key(self, title: str) -> str:
+        normalized = self._normalized_text(title)
+        if not normalized:
+            normalized = "general"
+        return normalized[:80]
+
     def _record_text(self, record: TaskResult) -> str:
         data = self._result_data(record)
         parts: list[str] = []
@@ -5301,7 +5797,11 @@ class PromiseRadarService:
                     len(normalized_right),
                 )
         owner_bonus = 0.0
-        if left_owner and right_owner and self._owner_key(left_owner) == self._owner_key(right_owner):
+        if (
+            left_owner
+            and right_owner
+            and self._owner_key(left_owner) == self._owner_key(right_owner)
+        ):
             owner_bonus = 0.06
         return min(1.0, token_score * 0.55 + char_score * 0.30 + containment * 0.09 + owner_bonus)
 

@@ -186,6 +186,40 @@ class PromiseRadarApi {
     );
   }
 
+  Future<List<PromiseResponsibilityScore>> getResponsibilityScores({
+    String? teamId,
+    int limit = 100,
+  }) async {
+    final response = await _dio.get(
+      '/promise-radar/responsibility-scores',
+      queryParameters: {
+        'limit': limit,
+        if (teamId != null) 'team_id': teamId,
+      },
+    );
+    return (response.data as List<dynamic>? ?? [])
+        .whereType<Map<String, dynamic>>()
+        .map(PromiseResponsibilityScore.fromJson)
+        .toList();
+  }
+
+  Future<List<PromiseMeetingSeries>> getMeetingSeries({
+    String? teamId,
+    int limit = 100,
+  }) async {
+    final response = await _dio.get(
+      '/promise-radar/meeting-series',
+      queryParameters: {
+        'limit': limit,
+        if (teamId != null) 'team_id': teamId,
+      },
+    );
+    return (response.data as List<dynamic>? ?? [])
+        .whereType<Map<String, dynamic>>()
+        .map(PromiseMeetingSeries.fromJson)
+        .toList();
+  }
+
   Future<PromiseLedgerEntry> updateLedgerEntry(
     String entryId,
     PromiseLedgerUpdateRequest request, {
@@ -615,6 +649,23 @@ class PromiseRadarApi {
       '/promise-radar/ledger/notifications/digest',
       queryParameters: {
         'cadence': cadence,
+        'limit': limit,
+        if (teamId != null) 'team_id': teamId,
+      },
+    );
+    return PromiseNotificationDispatchResponse.fromJson(
+      response.data as Map<String, dynamic>,
+    );
+  }
+
+  Future<PromiseNotificationDispatchResponse>
+      dispatchPreMeetingBriefNotifications({
+    String? teamId,
+    int limit = 8,
+  }) async {
+    final response = await _dio.post(
+      '/promise-radar/briefing/pre-meeting/notifications',
+      queryParameters: {
         'limit': limit,
         if (teamId != null) 'team_id': teamId,
       },

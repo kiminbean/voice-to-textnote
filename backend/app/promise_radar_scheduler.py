@@ -74,6 +74,24 @@ async def run_promise_radar_digest_notification_tick(
     )
 
 
+async def run_promise_radar_pre_meeting_brief_tick(limit: int = 100) -> None:
+    """Dispatch scheduled pre-meeting Promise Brief notifications once."""
+    service = PromiseRadarService()
+    async with _session_factory() as session:
+        result = await service.dispatch_pre_meeting_brief_notifications(
+            session,
+            now=datetime.now(UTC),
+            limit=limit,
+            allow_global=True,
+        )
+    logger.info(
+        "Promise Radar pre-meeting brief tick complete",
+        considered=result.considered_count,
+        sent=result.sent_count,
+        failures=result.failure_count,
+    )
+
+
 async def _promise_radar_notification_loop(interval_seconds: int, limit: int) -> None:
     while True:
         try:
@@ -87,6 +105,12 @@ async def _promise_radar_notification_loop(interval_seconds: int, limit: int) ->
                     cadence=os.environ.get("PROMISE_RADAR_DIGEST_PUSH_CADENCE", "daily"),
                     limit=limit,
                 )
+            if os.environ.get("PROMISE_RADAR_PRE_MEETING_PUSH_ENABLED", "").lower() in {
+                "1",
+                "true",
+                "yes",
+            }:
+                await run_promise_radar_pre_meeting_brief_tick(limit=limit)
         except asyncio.CancelledError:
             raise
         except Exception as exc:

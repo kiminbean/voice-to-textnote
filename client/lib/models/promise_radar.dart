@@ -1615,6 +1615,105 @@ class PromiseNotificationDispatchResponse {
   }
 }
 
+class PromiseResponsibilityScore {
+  final String owner;
+  final String? assignedUserId;
+  final int score;
+  final String riskLevel;
+  final int openCount;
+  final int completedCount;
+  final int delayedCount;
+  final int blockedCount;
+  final int overdueCount;
+  final int unconfirmedCount;
+  final int recurringCount;
+  final double completionRate;
+  final List<String> reasons;
+
+  const PromiseResponsibilityScore({
+    required this.owner,
+    this.assignedUserId,
+    required this.score,
+    required this.riskLevel,
+    required this.openCount,
+    required this.completedCount,
+    required this.delayedCount,
+    required this.blockedCount,
+    required this.overdueCount,
+    required this.unconfirmedCount,
+    required this.recurringCount,
+    required this.completionRate,
+    required this.reasons,
+  });
+
+  factory PromiseResponsibilityScore.fromJson(Map<String, dynamic> json) {
+    return PromiseResponsibilityScore(
+      owner: json['owner'] as String? ?? '미지정',
+      assignedUserId: json['assigned_user_id'] as String?,
+      score: json['score'] as int? ?? 0,
+      riskLevel: json['risk_level'] as String? ?? 'low',
+      openCount: json['open_count'] as int? ?? 0,
+      completedCount: json['completed_count'] as int? ?? 0,
+      delayedCount: json['delayed_count'] as int? ?? 0,
+      blockedCount: json['blocked_count'] as int? ?? 0,
+      overdueCount: json['overdue_count'] as int? ?? 0,
+      unconfirmedCount: json['unconfirmed_count'] as int? ?? 0,
+      recurringCount: json['recurring_count'] as int? ?? 0,
+      completionRate: (json['completion_rate'] as num?)?.toDouble() ?? 0,
+      reasons: (json['reasons'] as List<dynamic>? ?? [])
+          .whereType<String>()
+          .toList(),
+    );
+  }
+}
+
+class PromiseMeetingSeries {
+  final String seriesKey;
+  final String title;
+  final int meetingCount;
+  final String firstSeenAt;
+  final String lastSeenAt;
+  final String latestTaskId;
+  final int openCount;
+  final int overdueCount;
+  final int highRiskCount;
+  final List<String> owners;
+  final List<String> nextQuestions;
+
+  const PromiseMeetingSeries({
+    required this.seriesKey,
+    required this.title,
+    required this.meetingCount,
+    required this.firstSeenAt,
+    required this.lastSeenAt,
+    required this.latestTaskId,
+    required this.openCount,
+    required this.overdueCount,
+    required this.highRiskCount,
+    required this.owners,
+    required this.nextQuestions,
+  });
+
+  factory PromiseMeetingSeries.fromJson(Map<String, dynamic> json) {
+    return PromiseMeetingSeries(
+      seriesKey: json['series_key'] as String? ?? '',
+      title: json['title'] as String? ?? '반복 회의',
+      meetingCount: json['meeting_count'] as int? ?? 1,
+      firstSeenAt: json['first_seen_at'] as String? ?? '',
+      lastSeenAt: json['last_seen_at'] as String? ?? '',
+      latestTaskId: json['latest_task_id'] as String? ?? '',
+      openCount: json['open_count'] as int? ?? 0,
+      overdueCount: json['overdue_count'] as int? ?? 0,
+      highRiskCount: json['high_risk_count'] as int? ?? 0,
+      owners:
+          (json['owners'] as List<dynamic>? ?? []).whereType<String>().toList(),
+      nextQuestions: (json['next_questions'] as List<dynamic>? ?? [])
+          .whereType<String>()
+          .toList(),
+    );
+  }
+}
+
 class PromiseNextMeetingBriefing {
   final String title;
   final int highRiskCount;
@@ -1624,6 +1723,8 @@ class PromiseNextMeetingBriefing {
   final List<PromiseLedgerEntry> promises;
   final List<String> questions;
   final List<PromiseReminderCandidate> reminderCandidates;
+  final List<PromiseResponsibilityScore> responsibilityScores;
+  final List<PromiseMeetingSeries> meetingSeries;
 
   const PromiseNextMeetingBriefing({
     required this.title,
@@ -1634,6 +1735,8 @@ class PromiseNextMeetingBriefing {
     required this.promises,
     required this.questions,
     required this.reminderCandidates,
+    this.responsibilityScores = const [],
+    this.meetingSeries = const [],
   });
 
   factory PromiseNextMeetingBriefing.fromJson(Map<String, dynamic> json) {
@@ -1657,6 +1760,15 @@ class PromiseNextMeetingBriefing {
           .whereType<Map<String, dynamic>>()
           .map(PromiseReminderCandidate.fromJson)
           .toList(),
+      responsibilityScores:
+          (json['responsibility_scores'] as List<dynamic>? ?? [])
+              .whereType<Map<String, dynamic>>()
+              .map(PromiseResponsibilityScore.fromJson)
+              .toList(),
+      meetingSeries: (json['meeting_series'] as List<dynamic>? ?? [])
+          .whereType<Map<String, dynamic>>()
+          .map(PromiseMeetingSeries.fromJson)
+          .toList(),
     );
   }
 }
@@ -1671,6 +1783,8 @@ class PromiseRadarDashboard {
   final List<PromiseRadarOwnerRisk> ownerHotspots;
   final List<PromiseLedgerEntry> urgentPromises;
   final List<PromiseLedgerHistoryEntry> recentChanges;
+  final List<PromiseResponsibilityScore> responsibilityScores;
+  final List<PromiseMeetingSeries> meetingSeries;
 
   const PromiseRadarDashboard({
     required this.openCount,
@@ -1682,6 +1796,8 @@ class PromiseRadarDashboard {
     required this.ownerHotspots,
     required this.urgentPromises,
     required this.recentChanges,
+    this.responsibilityScores = const [],
+    this.meetingSeries = const [],
   });
 
   factory PromiseRadarDashboard.fromJson(Map<String, dynamic> json) {
@@ -1703,6 +1819,15 @@ class PromiseRadarDashboard {
       recentChanges: (json['recent_changes'] as List<dynamic>? ?? [])
           .whereType<Map<String, dynamic>>()
           .map(PromiseLedgerHistoryEntry.fromJson)
+          .toList(),
+      responsibilityScores:
+          (json['responsibility_scores'] as List<dynamic>? ?? [])
+              .whereType<Map<String, dynamic>>()
+              .map(PromiseResponsibilityScore.fromJson)
+              .toList(),
+      meetingSeries: (json['meeting_series'] as List<dynamic>? ?? [])
+          .whereType<Map<String, dynamic>>()
+          .map(PromiseMeetingSeries.fromJson)
           .toList(),
     );
   }

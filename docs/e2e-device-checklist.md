@@ -236,6 +236,7 @@ Firebase message id: projects/voice-to-textnote/messages/1782749586143713
 | 7.1 | 최신 Android staging release 설치 | `lastUpdateTime`이 현재 검증 시각으로 갱신 | ☐ |
 | 7.2 | 결과 화면 탭 목록 확인 | `약속 레이더`가 `탭 12개 중 4번째`로 표시 | ☐ |
 | 7.3 | APK URL guard | `libapp.so`에 `http://100.69.69.119:8000/api/v1` 포함, production host 미사용 | ☐ |
+| 7.4 | 자동 gate 실행 | `python3 client/scripts/verify_promise_radar_device_gate.py --serial 76aadc20`가 `PASS Promise Radar Android device gate` 출력 | ☐ |
 
 ---
 
@@ -295,6 +296,10 @@ Firebase message id: projects/voice-to-textnote/messages/1782749586143713
 - `promise_radar_accuracy_report`: 원장 헤더의 정확도 버튼에서 172건 fixture, 실제 회의 label 112건, accuracy 1.0, confidence bucket, coverage, source quality warning이 표시되는지 확인한다.
 - `promise_radar_accuracy_audit_gate`: `python backend/scripts/audit_promise_radar_accuracy_set.py --target-real-cases 100`가 오류 없이 통과하고 fixture/manifest mismatch가 없음을 확인한다.
 - `promise_radar_identity_confidence`: 원장 행에서 화자/담당자 신뢰도 pill이 표시되고, speaker/owner/assigned user가 없는 항목은 표시되지 않거나 낮은 값으로 표시되는지 확인한다.
+- `promise_radar_responsibility_scores`: Result 화면 `담당자 책임 점수` 섹션에서 owner별 open/completed/overdue/completion rate와 risk chip이 표시되는지 확인한다.
+- `promise_radar_meeting_series`: Result 화면 `반복회의 연결` 섹션에서 같은 회의 제목/시리즈의 열린 약속, 기한 초과, 고위험 수와 확인 질문이 표시되는지 확인한다.
+- `promise_radar_pre_meeting_push`: 원장 헤더의 `회의 전 브리프 푸시` 버튼 또는 `PROMISE_RADAR_PRE_MEETING_PUSH_ENABLED=true` scheduler tick으로 `promise_radar_pre_meeting_brief` FCM data가 발송되고 같은 사용자/일자 중복 발송이 차단되는지 확인한다.
+- `promise_radar_android_device_gate`: Android staging release에서 `client/scripts/verify_promise_radar_device_gate.py`가 설치 metadata, UIAutomator `약속 레이더`/`탭 12개`, APK staging URL guard를 모두 통과하는지 확인한다.
 
 ### 2026-07-01 iPhone 실기기 release evidence
 
@@ -312,6 +317,7 @@ Firebase message id: projects/voice-to-textnote/messages/1782749586143713
 - Install evidence: `adb shell dumpsys package com.voicetextnote.app` -> `versionName=1.0.0`, `lastUpdateTime=2026-07-01 15:39:18`
 - UI evidence: UIAutomator dump after reinstall showed `약속 레이더\n탭 12개 중 4번째`
 - URL guard: APK `lib/arm64-v8a/libapp.so` strings contained `http://100.69.69.119:8000/api/v1`
+- Automated gate: `python3 client/scripts/verify_promise_radar_device_gate.py --serial 76aadc20` -> `PASS Promise Radar Android device gate`
 - Root cause for missing menu: stale Android release APK. The stale install showed `탭 11개` and no `약속 레이더` tab.
 
 ## 결과 기록

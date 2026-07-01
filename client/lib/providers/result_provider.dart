@@ -305,6 +305,18 @@ final promiseRadarDashboardProvider =
   return api.getDashboard();
 });
 
+final promiseResponsibilityScoresProvider =
+    FutureProvider<List<PromiseResponsibilityScore>>((ref) {
+  final api = ref.watch(promiseRadarApiProvider);
+  return api.getResponsibilityScores();
+});
+
+final promiseMeetingSeriesProvider =
+    FutureProvider<List<PromiseMeetingSeries>>((ref) {
+  final api = ref.watch(promiseRadarApiProvider);
+  return api.getMeetingSeries();
+});
+
 // 관계 추론형 마인드맵 결과 로딩 프로바이더.
 // 백엔드가 비동기 생성 작업을 반환하므로 create → status polling → result 순서로 처리한다.
 final mindMapResultProvider =

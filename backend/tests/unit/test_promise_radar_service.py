@@ -541,6 +541,142 @@ async def test_ledger_merge_split_history_dashboard_and_due_push(session_factory
 
 
 @pytest.mark.asyncio
+async def test_responsibility_series_and_pre_meeting_push(session_factory):
+    service = PromiseRadarService()
+    owner_id = uuid.uuid4()
+    now = datetime(2026, 7, 1, 9, 0, 0)
+
+    async with session_factory() as session:
+        session.add_all(
+            [
+                User(
+                    id=owner_id,
+                    email="promise-owner@example.com",
+                    display_name="김기수",
+                    password_hash="hash",
+                ),
+                DeviceToken(
+                    user_id=str(owner_id),
+                    fcm_token="fcm-token-pre-meeting",
+                    platform="android",
+                    is_active=True,
+                ),
+                TaskResult(
+                    task_id="series-1",
+                    task_type="summary",
+                    status="completed",
+                    created_at=now - timedelta(days=7),
+                    completed_at=now - timedelta(days=7),
+                    result_data={"title": "릴리스 주간 회의", "summary_text": "릴리스 회의"},
+                ),
+                TaskResult(
+                    task_id="series-2",
+                    task_type="summary",
+                    status="completed",
+                    created_at=now,
+                    completed_at=now,
+                    result_data={"title": "릴리스 주간 회의", "summary_text": "릴리스 회의"},
+                ),
+                PromiseLedgerEntry(
+                    owner_id=owner_id,
+                    source_task_id="series-1",
+                    last_source_task_id="series-1",
+                    canonical_key="android release e2e",
+                    canonical_text="Android 릴리스 E2E",
+                    text="Android 릴리스 E2E",
+                    owner_name="김기수",
+                    status="open",
+                    priority="high",
+                    risk_level="high",
+                    confidence=0.91,
+                    due_at=now - timedelta(days=1),
+                    occurrences=3,
+                    first_seen_at=now - timedelta(days=14),
+                    last_seen_at=now - timedelta(days=7),
+                    user_confirmed=False,
+                ),
+                PromiseLedgerEntry(
+                    owner_id=owner_id,
+                    source_task_id="series-2",
+                    last_source_task_id="series-2",
+                    canonical_key="ios release e2e",
+                    canonical_text="iOS 릴리스 E2E",
+                    text="iOS 릴리스 E2E",
+                    owner_name="김기수",
+                    status="blocked",
+                    priority="high",
+                    risk_level="medium",
+                    confidence=0.82,
+                    occurrences=1,
+                    first_seen_at=now - timedelta(days=6),
+                    last_seen_at=now,
+                    user_confirmed=True,
+                ),
+                PromiseLedgerEntry(
+                    owner_id=owner_id,
+                    source_task_id="series-1",
+                    last_source_task_id="series-1",
+                    canonical_key="release notes",
+                    canonical_text="릴리스 노트",
+                    text="릴리스 노트",
+                    owner_name="김기수",
+                    status="completed",
+                    priority="medium",
+                    risk_level="low",
+                    confidence=0.88,
+                    occurrences=1,
+                    first_seen_at=now - timedelta(days=10),
+                    last_seen_at=now - timedelta(days=2),
+                    completed_at=now - timedelta(days=1),
+                    user_confirmed=True,
+                ),
+            ]
+        )
+        await session.commit()
+
+        scores = await service.build_responsibility_scores(session, owner_id=owner_id)
+        assert scores[0].owner == "김기수"
+        assert scores[0].completed_count == 1
+        assert scores[0].overdue_count == 1
+        assert scores[0].blocked_count == 1
+        assert scores[0].risk_level in {"high", "critical"}
+
+        series = await service.build_meeting_series(session, owner_id=owner_id)
+        assert series[0].title == "릴리스 주간 회의"
+        assert series[0].meeting_count == 2
+        assert series[0].open_count == 2
+        assert series[0].next_questions
+
+        dashboard = await service.build_dashboard(session, owner_id=owner_id)
+        assert dashboard.responsibility_scores
+        assert dashboard.meeting_series
+
+        fake_push = _FakePushService()
+        dispatch = await service.dispatch_pre_meeting_brief_notifications(
+            session,
+            owner_id=owner_id,
+            now=now,
+            push_service=fake_push,
+        )
+        assert dispatch.sent_count == 1
+        assert fake_push.sent_payloads[-1]["data"]["type"] == "promise_radar_pre_meeting_brief"
+
+        duplicate = await service.dispatch_pre_meeting_brief_notifications(
+            session,
+            owner_id=owner_id,
+            now=now,
+            push_service=fake_push,
+        )
+        assert duplicate.sent_count == 0
+
+        event_types = {
+            event.event_type
+            for event in (await session.execute(select(PromiseLedgerEvent))).scalars()
+        }
+        assert "pre_meeting_brief_sent" in event_types
+
+
+@pytest.mark.asyncio
 async def test_promise_autopilot_calendar_assignee_and_quality(session_factory):
     service = PromiseRadarService()
     owner_id = uuid.uuid4()
