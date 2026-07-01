@@ -1,0 +1,80 @@
+[
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00008150-000239020C08401C",
+        "deviceName" : "Inbean의 iPhone",
+        "exportedFileName" : "11EC9BBA-3363-4A60-8CAC-FC3D5C9DE429.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "promise_radar_assignee_quality_ios_0_F6061513-0AA8-4C1E-8A8A-98AB25691885.png",
+        "timestamp" : 1782917861.277
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00008150-000239020C08401C",
+        "deviceName" : "Inbean의 iPhone",
+        "exportedFileName" : "67970AA6-514A-44BA-8D96-5C1BCA6EDD9F.txt",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "promise_radar_assignee_quality_ios_hierarchy_0_FBF7BC9D-5B94-4F92-8C82-E6F8285EB212.txt",
+        "timestamp" : 1782917861.207
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00008150-000239020C08401C",
+        "deviceName" : "Inbean의 iPhone",
+        "exportedFileName" : "B5EDF8BB-CA91-4D33-BB88-5F22603835DC.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "promise_radar_calendar_export_ios_0_C98C287D-1421-43C5-A91C-F4AF01B5FB9D.png",
+        "timestamp" : 1782917861.054
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00008150-000239020C08401C",
+        "deviceName" : "Inbean의 iPhone",
+        "exportedFileName" : "30FFA468-70F9-413C-AE84-000D39002D31.txt",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "promise_radar_calendar_export_ios_hierarchy_0_884CBA6E-A3B4-453F-936A-D7A719AECF88.txt",
+        "timestamp" : 1782917860.983
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00008150-000239020C08401C",
+        "deviceName" : "Inbean의 iPhone",
+        "exportedFileName" : "499E505B-B0D4-45F6-A468-7E10E66309F1.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "promise_radar_autopilot_status_ios_0_8F230B81-AC2B-455B-A459-E9CF6B70C460.png",
+        "timestamp" : 1782917860.825
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00008150-000239020C08401C",
+        "deviceName" : "Inbean의 iPhone",
+        "exportedFileName" : "47291A00-A07E-406F-AE18-17E5D209FBD9.txt",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "promise_radar_autopilot_status_ios_hierarchy_0_286EBCA0-D9C1-4F44-AB96-1B9D023137BC.txt",
+        "timestamp" : 1782917860.751
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00008150-000239020C08401C",
+        "deviceName" : "Inbean의 iPhone",
+        "exportedFileName" : "3F47A0B4-3517-47C9-912F-5229E55E64E1.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "promise_radar_ios_loaded_0_E2B2CBC3-DE3E-478D-8E51-B7CD75D4E446.png",
+        "timestamp" : 1782917860.248
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00008150-000239020C08401C",
+        "deviceName" : "Inbean의 iPhone",
+        "exportedFileName" : "2F5DBEDC-DE28-4273-BD4B-2A0E5A6E72C4.txt",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "promise_radar_ios_loaded_hierarchy_0_EE45A653-BB7C-421C-8210-3EE8937BC316.txt",
+        "timestamp" : 1782917860.171
+      }
+    ],
+    "testIdentifier" : "RunnerUITests/testIosPromiseRadarEvidence()",
+    "testIdentifierURL" : "test://com.apple.xcode/Runner/RunnerUITests/RunnerUITests/testIosPromiseRadarEvidence"
+  }
+]

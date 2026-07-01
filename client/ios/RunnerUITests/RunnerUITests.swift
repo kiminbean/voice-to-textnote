@@ -693,7 +693,20 @@ final class RunnerUITests: XCTestCase {
         if tapFirstHittableButton(labels: ["권한 허용"]) {
             return true
         }
-        return tapFirstHittableButton(labels: ["녹음 시작"])
+        if tapFirstHittableButton(labels: ["녹음 시작"]) {
+            return true
+        }
+        if waitForAnyVisibleElement(
+            labels: ["탭하여 녹음 시작", "경과 시간 00:00", "AI 녹음"],
+            timeout: 2
+        ) != nil {
+            let coordinate = app.coordinate(
+                withNormalizedOffset: CGVector(dx: 0.5, dy: 0.72)
+            )
+            coordinate.tap()
+            return true
+        }
+        return false
     }
 
     private func discardRecoveryDialogIfPresent(timeout: TimeInterval = 2) {

@@ -274,6 +274,8 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     final meeting = meetings.where((m) => m.id == widget.meetingId).firstOrNull;
     final minutesTaskId = meeting?.minutesTaskId;
     final summaryTaskId = meeting?.summaryTaskId;
+    final promiseRadarTaskId =
+        summaryTaskId ?? (meeting == null ? widget.meetingId : null);
     _scheduleAuxiliaryPrefetch(
       minutesTaskId: minutesTaskId,
       summaryTaskId: summaryTaskId,
@@ -409,7 +411,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                   // 액션 아이템 탭 (summaryTaskId 사용)
                   _ActionItemsTab(taskId: summaryTaskId),
                   // 약속 레이더: 과거 회의와 현재 회의의 약속/결정 연속성 분석
-                  _PromiseRadarTab(taskId: summaryTaskId),
+                  _PromiseRadarTab(taskId: promiseRadarTaskId),
                   // 회의록 탭: 양식 기반 테이블 형태 회의록
                   _MinutesTab(taskId: summaryTaskId, meeting: meeting),
                   // 마인드맵 탭: 백엔드 AI 생성 API 기반 관계 그래프
