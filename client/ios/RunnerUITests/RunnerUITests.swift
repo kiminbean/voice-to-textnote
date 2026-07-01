@@ -1,3 +1,4 @@
+import Foundation
 import XCTest
 
 @MainActor
@@ -186,6 +187,139 @@ final class RunnerUITests: XCTestCase {
         _ = tapFirstHittableButton(labels: ["삭제", "Discard"])
     }
 
+    func testIosPushTopicNotificationEvidence() throws {
+        allowAnySpringboardAlertIfPresent()
+        try ensureGuestHome()
+        allowAnySpringboardAlertIfPresent()
+        waitForFirebaseTopicSubscription()
+
+        let scenarios = [
+            ("push_stt_complete", "STT 처리 완료", "회의 전사가 완료되었습니다."),
+            ("push_summary_complete", "요약 생성 완료", "회의 요약이 완료되었습니다."),
+            ("push_failure", "처리 실패", "회의 처리 중 오류가 발생했습니다."),
+            ("promise_radar_due_push", "약속 마감 알림", "오늘 확인해야 할 약속이 있습니다.")
+        ]
+
+        XCUIDevice.shared.press(.home)
+        for scenario in scenarios {
+            try requestPushScenario(scenario.0)
+            waitForSeconds(5)
+            openNotificationCenter()
+            let notification = waitForSpringboardElement(
+                labels: [scenario.1, scenario.2],
+                timeout: 12
+            )
+            attachSpringboardHierarchy("\(scenario.0)_ios_notification_center_hierarchy")
+            attachScreenshot("\(scenario.0)_ios_notification_center")
+            XCTAssertNotNil(
+                notification,
+                "Expected iOS Notification Center to show \(scenario.1) for \(scenario.0)."
+            )
+            XCUIDevice.shared.press(.home)
+            waitForSeconds(1)
+        }
+    }
+
+    func testIosPushDeeplinkBackgroundEvidence() throws {
+        allowAnySpringboardAlertIfPresent()
+        try ensureGuestHome()
+        waitForFirebaseTopicSubscription()
+
+        XCUIDevice.shared.press(.home)
+        try requestPushScenario("push_deeplink_background")
+        waitForSeconds(5)
+        openNotificationCenter()
+        attachSpringboardHierarchy("push_deeplink_background_ios_notification_hierarchy")
+        attachScreenshot("push_deeplink_background_ios_notification_center")
+        XCTAssertTrue(
+            tapSpringboardElement(labels: ["회의 결과 열기", "알림을 눌러 회의 결과를 확인하세요."]),
+            "Expected to tap the background deeplink notification."
+        )
+
+        let result = waitForResultScreen(timeout: 30)
+        attachUIHierarchy("push_deeplink_background_ios_result_hierarchy")
+        attachScreenshot("push_deeplink_background_ios_result")
+        XCTAssertNotNil(result, "Expected tapping a background push to open the result screen.")
+    }
+
+    func testIosPushDeeplinkColdStartEvidence() throws {
+        allowAnySpringboardAlertIfPresent()
+        try ensureGuestHome()
+        waitForFirebaseTopicSubscription()
+
+        app.terminate()
+        try requestPushScenario("push_deeplink_cold_start")
+        waitForSeconds(5)
+        openNotificationCenter()
+        attachSpringboardHierarchy("push_deeplink_cold_start_ios_notification_hierarchy")
+        attachScreenshot("push_deeplink_cold_start_ios_notification_center")
+        XCTAssertTrue(
+            tapSpringboardElement(labels: ["회의 결과 열기", "알림을 눌러 회의 결과를 확인하세요."]),
+            "Expected to tap the cold-start deeplink notification."
+        )
+
+        let result = waitForResultScreen(timeout: 35)
+        attachUIHierarchy("push_deeplink_cold_start_ios_result_hierarchy")
+        attachScreenshot("push_deeplink_cold_start_ios_result")
+        XCTAssertNotNil(result, "Expected tapping a cold-start push to launch the result screen.")
+    }
+
+    func testIosExportShareEvidence() throws {
+        try openResultScreen()
+        attachScreenshot("export_share_ios_result_initial")
+        attachUIHierarchy("export_share_ios_result_hierarchy")
+
+        XCTAssertTrue(
+            tapFirstVisible(labels: ["Share & Export", "내보내기"]),
+            "Expected result screen to expose Share & Export."
+        )
+        XCTAssertTrue(
+            tapFirstVisible(labels: ["Export PDF", "PDF"]),
+            "Expected export menu to expose PDF export."
+        )
+
+        let shareSheet = waitForAnyVisibleElement(
+            labels: ["AirDrop", "Copy", "복사", "파일에 저장", "Save to Files", "공유"],
+            timeout: 20
+        )
+        attachUIHierarchy("export_share_ios_share_sheet_hierarchy")
+        attachSpringboardHierarchy("export_share_ios_springboard_hierarchy")
+        attachScreenshot("export_share_ios_share_sheet")
+        XCTAssertNotNil(shareSheet, "Expected the iOS system share sheet after PDF export.")
+    }
+
+    func testIosPromiseRadarEvidence() throws {
+        try openResultScreen()
+        try openPromiseRadarTab()
+
+        let radar = waitForAnyVisibleElement(
+            labels: ["약속 레이더", "약속 원장", "담당자 책임 점수", "이번 회의의 새 약속"],
+            timeout: 30
+        )
+        attachUIHierarchy("promise_radar_ios_loaded_hierarchy")
+        attachScreenshot("promise_radar_ios_loaded")
+        XCTAssertNotNil(radar, "Expected Promise Radar content on the result screen.")
+        XCTAssertFalse(
+            app.descendants(matching: .any)["약속 레이더를 불러올 수 없습니다"].exists,
+            "Promise Radar tab must not show a load failure."
+        )
+
+        let autopilot = scrollToVisibleElement(labels: ["자동 판정"], maxSwipes: 8)
+        attachUIHierarchy("promise_radar_autopilot_status_ios_hierarchy")
+        attachScreenshot("promise_radar_autopilot_status_ios")
+        XCTAssertNotNil(autopilot, "Expected Promise Radar autopilot status/action.")
+
+        let calendar = scrollToVisibleElement(labels: ["캘린더"], maxSwipes: 8)
+        attachUIHierarchy("promise_radar_calendar_export_ios_hierarchy")
+        attachScreenshot("promise_radar_calendar_export_ios")
+        XCTAssertNotNil(calendar, "Expected Promise Radar calendar export action.")
+
+        let assignee = scrollToVisibleElement(labels: ["담당자", "품질"], maxSwipes: 8)
+        attachUIHierarchy("promise_radar_assignee_quality_ios_hierarchy")
+        attachScreenshot("promise_radar_assignee_quality_ios")
+        XCTAssertNotNil(assignee, "Expected Promise Radar assignee and quality indicators.")
+    }
+
     private func ensureGuestHome() throws {
         if app.buttons["게스트로 시작 (24시간 저장)"].exists
             || app.descendants(matching: .any)["게스트로 시작"].exists {
@@ -207,6 +341,44 @@ final class RunnerUITests: XCTestCase {
         )
 
         XCTAssertNotNil(homeElement, "Expected guest login to reach the home screen.")
+    }
+
+    private func openResultScreen(
+        meetingId: String = "6ab36c5a-d1e7-460f-8393-34e7f25dbce9"
+    ) throws {
+        guard let url = URL(string: "voicetextnote://result/\(meetingId)") else {
+            XCTFail("Invalid result deeplink URL.")
+            return
+        }
+        guard #available(iOS 16.4, *) else {
+            XCTFail("Opening a deeplink from XCUITest requires iOS 16.4 or newer.")
+            return
+        }
+        app.open(url)
+        let result = waitForResultScreen(timeout: 30)
+        XCTAssertNotNil(result, "Expected result deeplink to open the meeting result screen.")
+    }
+
+    private func waitForResultScreen(timeout: TimeInterval) -> XCUIElement? {
+        waitForAnyVisibleElement(
+            labels: ["AI Notes", "Share & Export", "회의록", "약속 레이더"],
+            timeout: timeout
+        )
+    }
+
+    private func openPromiseRadarTab() throws {
+        if tapFirstVisible(labels: ["약속 레이더"]) {
+            return
+        }
+        for _ in 0..<8 {
+            app.swipeLeft()
+            if tapFirstVisible(labels: ["약속 레이더"]) {
+                return
+            }
+        }
+        attachUIHierarchy("promise_radar_tab_missing_hierarchy")
+        attachScreenshot("promise_radar_tab_missing")
+        XCTFail("Expected to find the Promise Radar tab.")
     }
 
     private func openRecordingScreen(discardStaleRecovery: Bool = true) throws {
@@ -323,6 +495,19 @@ final class RunnerUITests: XCTestCase {
         return true
     }
 
+    private func scrollToVisibleElement(
+        labels: [String],
+        maxSwipes: Int
+    ) -> XCUIElement? {
+        for _ in 0..<maxSwipes {
+            if let element = waitForAnyVisibleElement(labels: labels, timeout: 1) {
+                return element
+            }
+            app.swipeUp()
+        }
+        return waitForAnyVisibleElement(labels: labels, timeout: 1)
+    }
+
     @discardableResult
     private func tapHittableButton(label: String) -> Bool {
         guard let button = waitForHittableButton(labels: [label], timeout: 3) else {
@@ -402,6 +587,126 @@ final class RunnerUITests: XCTestCase {
             }
         }
         return false
+    }
+
+    private func waitForFirebaseTopicSubscription() {
+        waitForSeconds(6)
+    }
+
+    private func requestPushScenario(_ scenario: String) throws {
+        let environment = ProcessInfo.processInfo.environment
+        guard let base = environment["VOICE_TEXTNOTE_PUSH_SENDER_URL"],
+              !base.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              var components = URLComponents(string: base) else {
+            XCTFail("VOICE_TEXTNOTE_PUSH_SENDER_URL must point to the Mac mini push sender endpoint.")
+            return
+        }
+        components.queryItems = [
+            URLQueryItem(name: "scenario", value: scenario),
+            URLQueryItem(
+                name: "meeting_id",
+                value: "6ab36c5a-d1e7-460f-8393-34e7f25dbce9"
+            )
+        ]
+        guard let url = components.url else {
+            XCTFail("Invalid push sender URL for \(scenario).")
+            return
+        }
+
+        let semaphore = DispatchSemaphore(value: 0)
+        var responseBody = ""
+        var statusCode = 0
+        var requestError: Error?
+
+        URLSession.shared.dataTask(with: url) { data, response, error in
+            requestError = error
+            if let httpResponse = response as? HTTPURLResponse {
+                statusCode = httpResponse.statusCode
+            }
+            if let data {
+                responseBody = String(data: data, encoding: .utf8) ?? ""
+            }
+            semaphore.signal()
+        }.resume()
+
+        let result = semaphore.wait(timeout: .now() + 25)
+        let attachment = XCTAttachment(string: responseBody)
+        attachment.name = "\(scenario)_ios_push_sender_response"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+
+        XCTAssertEqual(result, .success, "Timed out requesting push scenario \(scenario).")
+        if let requestError {
+            throw requestError
+        }
+        XCTAssertTrue(
+            (200..<300).contains(statusCode),
+            "Push sender returned HTTP \(statusCode) for \(scenario): \(responseBody)"
+        )
+    }
+
+    private func openNotificationCenter() {
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        let attempts: [(CGFloat, CGFloat)] = [(0.12, 0.92), (0.5, 0.92)]
+        for attempt in attempts {
+            let start = springboard.coordinate(
+                withNormalizedOffset: CGVector(dx: attempt.0, dy: 0.01)
+            )
+            let end = springboard.coordinate(
+                withNormalizedOffset: CGVector(dx: attempt.0, dy: attempt.1)
+            )
+            start.press(forDuration: 0.15, thenDragTo: end)
+            waitForSeconds(1)
+            if springboard.descendants(matching: .any)["Notification Center"].exists ||
+                springboard.descendants(matching: .any)["알림 센터"].exists ||
+                springboard.descendants(matching: .any)["Voice TextNote"].exists {
+                return
+            }
+        }
+    }
+
+    private func waitForSpringboardElement(
+        labels: [String],
+        timeout: TimeInterval
+    ) -> XCUIElement? {
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            for label in labels {
+                let exactPredicate = NSPredicate(format: "label == %@", label)
+                let exactElements = springboard.descendants(matching: .any).matching(exactPredicate)
+                for index in 0..<exactElements.count {
+                    let element = exactElements.element(boundBy: index)
+                    if element.exists {
+                        return element
+                    }
+                }
+
+                let containsLabel = NSPredicate(format: "label CONTAINS[c] %@", label)
+                let partialElements = springboard.descendants(matching: .any).matching(containsLabel)
+                for index in 0..<partialElements.count {
+                    let element = partialElements.element(boundBy: index)
+                    if element.exists {
+                        return element
+                    }
+                }
+            }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.25))
+        }
+        return nil
+    }
+
+    @discardableResult
+    private func tapSpringboardElement(labels: [String]) -> Bool {
+        guard let element = waitForSpringboardElement(labels: labels, timeout: 12) else {
+            return false
+        }
+        element.tap()
+        return true
+    }
+
+    private func waitForSeconds(_ seconds: TimeInterval) {
+        RunLoop.current.run(until: Date().addingTimeInterval(seconds))
     }
 
     private func attachScreenshot(_ name: String) {
