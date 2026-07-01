@@ -272,13 +272,20 @@ final promiseRadarProvider =
 
 final promiseLedgerProvider = FutureProvider<List<PromiseLedgerEntry>>((ref) {
   final api = ref.watch(promiseRadarApiProvider);
-  return api.listLedger(statuses: const ['open', 'delegated', 'blocked', 'changed']);
+  return api
+      .listLedger(statuses: const ['open', 'delegated', 'blocked', 'changed']);
 });
 
 final promiseNextMeetingBriefingProvider =
     FutureProvider<PromiseNextMeetingBriefing>((ref) {
   final api = ref.watch(promiseRadarApiProvider);
   return api.getNextMeetingBriefing();
+});
+
+final promiseRadarDashboardProvider =
+    FutureProvider<PromiseRadarDashboard>((ref) {
+  final api = ref.watch(promiseRadarApiProvider);
+  return api.getDashboard();
 });
 
 // 관계 추론형 마인드맵 결과 로딩 프로바이더.

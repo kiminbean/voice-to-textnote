@@ -26,6 +26,8 @@ class PromiseLedgerEntry(Base):
 
     owner_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True)
     guest_session_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    team_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True, index=True)
+    assigned_user_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True, index=True)
 
     source_task_id: Mapped[str] = mapped_column(
         String(255),
@@ -51,6 +53,7 @@ class PromiseLedgerEntry(Base):
     due_date_text: Mapped[str | None] = mapped_column(String(120), nullable=True)
     due_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     reminder_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    notification_sent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     calendar_event: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     action_item_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True)
 
@@ -74,6 +77,7 @@ class PromiseLedgerEntry(Base):
     __table_args__ = (
         Index("ix_promise_ledger_owner_status", "owner_id", "status"),
         Index("ix_promise_ledger_guest_status", "guest_session_id", "status"),
+        Index("ix_promise_ledger_team_status", "team_id", "status"),
         Index("ix_promise_ledger_source_key", "source_task_id", "canonical_key"),
     )
 
@@ -81,4 +85,36 @@ class PromiseLedgerEntry(Base):
         return (
             f"<PromiseLedgerEntry(id={self.id}, status={self.status!r}, "
             f"canonical_key={self.canonical_key!r})>"
+        )
+
+
+class PromiseLedgerEvent(Base):
+    """Auditable history event for one promise ledger entry."""
+
+    __tablename__ = "promise_ledger_events"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    ledger_entry_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("promise_ledger_entries.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    owner_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True, index=True)
+    guest_session_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    team_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True, index=True)
+    actor_user_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True)
+    event_type: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    old_value: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    new_value: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)
+
+    __table_args__ = (
+        Index("ix_promise_ledger_events_entry_created", "ledger_entry_id", "created_at"),
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"<PromiseLedgerEvent(id={self.id}, ledger_entry_id={self.ledger_entry_id}, "
+            f"event_type={self.event_type!r})>"
         )

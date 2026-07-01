@@ -167,7 +167,8 @@ void main() {
       expect(result.ledgerEntries.single.evidence.single.startSeconds, 12.3);
       expect(result.nextMeetingBriefing!.dueSoonCount, 1);
       expect(
-        result.nextMeetingBriefing!.reminderCandidates.single.calendarEvent!['source'],
+        result.nextMeetingBriefing!.reminderCandidates.single
+            .calendarEvent!['source'],
         'promise_radar',
       );
       expect(result.semanticEnrichmentStatus, 'zai_applied');
@@ -196,6 +197,124 @@ void main() {
 
       expect(response.actionItemId, 'action-1');
       expect(response.status, 'pending');
+    });
+
+    test('parses dashboard, history, merge, split, and notification responses',
+        () {
+      final dashboard = PromiseRadarDashboard.fromJson({
+        'open_count': 3,
+        'high_risk_count': 1,
+        'overdue_count': 1,
+        'due_soon_count': 2,
+        'blocked_count': 0,
+        'unconfirmed_count': 1,
+        'owner_hotspots': [
+          {
+            'owner': '김기수',
+            'open_promises': 2,
+            'stale_promises': 1,
+            'recurring_promises': 1,
+            'risk_score': 54,
+            'latest_promises': ['QA 체크리스트'],
+          }
+        ],
+        'urgent_promises': [
+          {
+            'id': 'ledger-1',
+            'canonical_key': 'qa',
+            'canonical_text': 'QA 체크리스트',
+            'text': 'QA 체크리스트',
+            'team_id': 'team-1',
+            'assigned_user_id': 'user-1',
+            'status': 'open',
+            'priority': 'high',
+            'risk_level': 'high',
+            'confidence': 0.9,
+            'occurrences': 2,
+            'first_seen_at': '2026-07-01T00:00:00Z',
+            'last_seen_at': '2026-07-01T00:00:00Z',
+            'user_confirmed': true,
+            'notification_sent_at': '2026-07-01T01:00:00Z',
+          }
+        ],
+        'recent_changes': [
+          {
+            'id': 'event-1',
+            'ledger_entry_id': 'ledger-1',
+            'event_type': 'merged',
+            'created_at': '2026-07-01T01:00:00Z',
+            'new_value': {
+              'merged_entry_ids': ['ledger-2']
+            },
+          }
+        ],
+      });
+
+      expect(dashboard.openCount, 3);
+      expect(dashboard.urgentPromises.single.teamId, 'team-1');
+      expect(dashboard.urgentPromises.single.notificationSentAt, isNotNull);
+      expect(dashboard.recentChanges.single.eventType, 'merged');
+
+      final merge = PromiseLedgerMergeResponse.fromJson({
+        'target': {
+          'id': 'ledger-1',
+          'canonical_key': 'qa',
+          'canonical_text': 'QA 체크리스트',
+          'text': 'QA 체크리스트',
+          'status': 'open',
+          'priority': 'high',
+          'risk_level': 'medium',
+          'confidence': 0.9,
+          'occurrences': 3,
+          'first_seen_at': '2026-07-01T00:00:00Z',
+          'last_seen_at': '2026-07-01T00:00:00Z',
+          'user_confirmed': true,
+        },
+        'merged_entry_ids': ['ledger-2'],
+      });
+      expect(merge.mergedEntryIds.single, 'ledger-2');
+      expect(merge.target.occurrences, 3);
+
+      final split = PromiseLedgerSplitResponse.fromJson({
+        'original': {
+          'id': 'ledger-1',
+          'canonical_key': 'qa',
+          'canonical_text': 'QA 체크리스트',
+          'text': 'QA 체크리스트',
+          'status': 'open',
+          'priority': 'high',
+          'risk_level': 'medium',
+          'confidence': 0.9,
+          'occurrences': 3,
+          'first_seen_at': '2026-07-01T00:00:00Z',
+          'last_seen_at': '2026-07-01T00:00:00Z',
+          'user_confirmed': true,
+        },
+        'created': {
+          'id': 'ledger-3',
+          'canonical_key': 'release',
+          'canonical_text': '릴리스 테스트',
+          'text': '릴리스 테스트',
+          'status': 'open',
+          'priority': 'medium',
+          'risk_level': 'low',
+          'confidence': 0.7,
+          'occurrences': 1,
+          'first_seen_at': '2026-07-01T00:00:00Z',
+          'last_seen_at': '2026-07-01T00:00:00Z',
+          'user_confirmed': true,
+        },
+      });
+      expect(split.created.text, '릴리스 테스트');
+
+      final dispatch = PromiseNotificationDispatchResponse.fromJson({
+        'considered_count': 1,
+        'sent_count': 1,
+        'failure_count': 0,
+        'invalid_tokens': [],
+        'notified_entry_ids': ['ledger-1'],
+      });
+      expect(dispatch.notifiedEntryIds.single, 'ledger-1');
     });
   });
 }

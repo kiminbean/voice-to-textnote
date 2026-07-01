@@ -1,6 +1,6 @@
 # Owll Benchmark PRD
 
-**Status**: Study Pack core implemented; Cross-Meeting Q&A evidence search and synthesis exposed in search; sales follow-up briefs are searchable and listable; 2026-06-30 benchmark refreshed; Promise Radar v3 ledger loop implemented
+**Status**: Study Pack core implemented; Cross-Meeting Q&A evidence search and synthesis exposed in search; sales follow-up briefs are searchable and listable; 2026-06-30 benchmark refreshed; Promise Radar v4 operational ledger loop implemented
 **Created**: 2026-06-21  
 **Last verified**: 2026-06-30
 **Owner**: Voice to TextNote  
@@ -93,7 +93,7 @@ The first implementation should be a Study Pack feature because it is high-impac
 
 ## 4.1 Killer Feature: Promise Radar
 
-**Implementation status (2026-07-01)**: Backend schema/service/API, route registration, Flutter API/model/provider, Result-screen `약속 레이더` tab, and focused unit/model tests are implemented. v2 added promise chains, owner-level risk, high-risk counts, and recurring promise follow-up questions. v3 adds a persistent Promise Ledger, transcript/speaker/timestamp evidence, user confirmation/status correction, next-meeting briefing, internal reminder/calendar candidates, internal ActionItem conversion, and ZAI GLM-5.2 semantic normalization with deterministic fallback.
+**Implementation status (2026-07-01)**: Backend schema/service/API, route registration, Flutter API/model/provider, Result-screen `약속 레이더` tab, Home promise dashboard, and focused backend/Flutter tests are implemented. v2 added promise chains, owner-level risk, high-risk counts, and recurring promise follow-up questions. v3 added a persistent Promise Ledger, transcript/speaker/timestamp evidence, user confirmation/status correction, next-meeting briefing, internal reminder/calendar candidates, internal ActionItem conversion, and ZAI GLM-5.2 semantic normalization with deterministic fallback. v4 adds operational schema repair, merge/split UI and API, auditable ledger history, stronger semantic matching, expanded Korean due-date parsing, FCM due-promise dispatch, Home dashboard exposure, team-scoped ledger access, and release-gate regression coverage.
 
 ### Problem
 
@@ -106,10 +106,12 @@ Voice to TextNote should become the app that remembers meeting obligations over 
 ### UX
 
 - A new `약속 레이더` tab appears in the meeting result screen.
+- The Home screen shows a compact `약속 레이더` dashboard for open/high-risk/due-soon/overdue promises.
 - The tab shows:
   - risk score and headline
   - next-meeting briefing
   - editable promise ledger
+  - merge, split, reminder, history, completion, blocked, confirmation, and ActionItem actions
   - transcript/speaker/timestamp evidence
   - owner-level promise risk
   - promise chains across meetings
@@ -124,14 +126,23 @@ Voice to TextNote should become the app that remembers meeting obligations over 
 - Endpoint: `GET /api/v1/promise-radar/{summary_task_id}?limit=30`
 - Ledger endpoints:
   - `GET /api/v1/promise-radar/ledger`
+  - `GET /api/v1/promise-radar/dashboard`
   - `PATCH /api/v1/promise-radar/ledger/{entry_id}`
   - `GET /api/v1/promise-radar/briefing/next`
   - `POST /api/v1/promise-radar/ledger/{entry_id}/calendar`
   - `POST /api/v1/promise-radar/ledger/{entry_id}/action-item`
+  - `POST /api/v1/promise-radar/ledger/{entry_id}/merge`
+  - `POST /api/v1/promise-radar/ledger/{entry_id}/split`
+  - `GET /api/v1/promise-radar/ledger/{entry_id}/history`
+  - `POST /api/v1/promise-radar/ledger/notifications/due`
 - Source data: persisted `TaskResult` summary rows using `action_items`, `key_decisions`, and `next_steps`.
-- Access model: current task access is verified; previous meetings are filtered by current user ownership or guest session where available.
-- Persistence model: `promise_ledger_entries` stores user/guest-scoped promises with status, owner, due date, risk, occurrences, evidence, confirmation state, and reminder/calendar metadata.
+- Access model: current task access is verified; previous meetings are filtered by current user ownership, guest session, or explicit team scope. Team-scoped ledger calls require `TeamMember` membership before any ledger row is returned or changed.
+- Persistence model: `promise_ledger_entries` stores user/guest/team-scoped promises with status, owner, assigned user, due date, risk, occurrences, evidence, confirmation state, reminder/calendar metadata, notification send state, and ActionItem links. `promise_ledger_events` stores auditable detected/updated/merged/split/calendar/action/notification history.
+- Operational migration model: `validate_startup()` still runs `Base.metadata.create_all`, then repairs legacy SQLite `promise_ledger_entries` tables by adding `team_id`, `assigned_user_id`, `notification_sent_at`, and the team/assignee indexes. This prevents the previous class of "code expects a new Ledger column but the local/server SQLite DB was created before the column existed" startup/runtime failure.
 - Fallback principle: deterministic extraction remains the source of truth when ZAI is unavailable or returns invalid JSON.
+- Matching model: deterministic matching normalizes Korean particles and common product/deployment/checklist synonyms, then combines token overlap, character n-grams, containment, and owner match bonus. Exact canonical keys are still preferred; fuzzy matching is only used inside the same scoped open ledger.
+- Due-date model: the parser handles fixed dates (`YYYY-MM-DD`, `7월 3일`, `7/3`), relative dates (`오늘`, `내일`, `모레`, `3일 후`, `2주 후`), Korean weekdays (`이번/다음 주 화요일`, `금요일`), and `오전/오후 N시 N분`.
+- Push model: due/reminder-ready open promises can be dispatched through the existing FCM `PushService` and `DeviceToken` table. Successful sends set `notification_sent_at` and create a `notification_sent` ledger event; invalid tokens are deactivated through the existing push token invalidation path.
 - v2 response additions:
   - `promise_chains`: grouped promise history with first/last seen timestamps, age, occurrence count, status, and risk level.
   - `owner_risks`: per-owner open/stale/recurring promise counts and risk score.
@@ -142,6 +153,11 @@ Voice to TextNote should become the app that remembers meeting obligations over 
   - `semantic_enrichment_status`: whether ZAI semantic normalization was applied, unavailable, failed, or deterministic only.
   - `reminder_candidates`: internal reminder/calendar payloads derived from due dates.
   - `action_item_id`: internal ActionItem linkage when a promise is converted into a task.
+- v4 response additions:
+  - `team_id`, `assigned_user_id`, `notification_sent_at`, and `dismissed_reason` on ledger entries.
+  - `PromiseLedgerHistoryEntry`: auditable event stream for each ledger entry.
+  - `PromiseRadarDashboard`: Home/dashboard counts, owner hotspots, urgent promises, and recent changes.
+  - `PromiseNotificationDispatchResponse`: FCM due-promise dispatch evidence.
 
 ### Acceptance Criteria
 
@@ -158,6 +174,13 @@ Voice to TextNote should become the app that remembers meeting obligations over 
 - Given unresolved promises exist, the next-meeting briefing returns high-risk/overdue/due-soon counts, owner hotspots, questions, and reminder candidates.
 - Given a logged-in user turns a promise into a task, the backend creates one internal ActionItem and remembers the link idempotently.
 - Given ZAI GLM-5.2 is configured, semantic normalization may improve canonical promise matching; if it fails, deterministic matching still returns a usable radar.
+- Given two ledger promises represent the same obligation, the user can merge them; the source entry is dismissed with `merged_into:<target_id>`, evidence/occurrences are preserved on the target, and both sides get history events.
+- Given one ledger promise contains two obligations, the user can split it into a new tracked entry with owner/due-date edits and history.
+- Given the user opens a ledger entry history, the app can show update, merge, split, calendar, ActionItem, and push notification events.
+- Given an old SQLite DB is started after v4 code is deployed, startup schema repair adds missing Promise Ledger v4 columns/indexes without deleting data.
+- Given an open promise reaches its due/reminder time and a user has active FCM tokens, due-promise dispatch sends a real push and marks the ledger item as notified.
+- Given a team ID is supplied, Promise Radar ledger/dashboard/briefing/update operations are scoped to that team only after membership is verified.
+- Given release-gate checks are run, `ruff`, targeted Promise Radar backend tests, compile/route loading, Flutter analyze, and Flutter model/result-screen tests pass.
 
 ## 5. PRD: Study Pack Generation
 

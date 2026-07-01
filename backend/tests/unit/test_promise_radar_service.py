@@ -7,11 +7,17 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 import backend.db.auth_models  # noqa: F401
+import backend.db.device_token_models  # noqa: F401
 import backend.db.promise_ledger_models  # noqa: F401
 from backend.db.auth_models import MeetingOwnership
+from backend.db.device_token_models import DeviceToken
 from backend.db.models import ActionItem, TaskResult
-from backend.db.promise_ledger_models import PromiseLedgerEntry
-from backend.schemas.promise_radar import PromiseLedgerUpdateRequest
+from backend.db.promise_ledger_models import PromiseLedgerEntry, PromiseLedgerEvent
+from backend.schemas.promise_radar import (
+    PromiseLedgerMergeRequest,
+    PromiseLedgerSplitRequest,
+    PromiseLedgerUpdateRequest,
+)
 from backend.services.promise_radar_service import PromiseRadarService
 
 
@@ -130,6 +136,35 @@ def test_promise_radar_falls_back_to_next_steps():
     assert result.current_promises[0].confidence < 0.7
     assert result.promise_chains[0].status == "active"
     assert result.stale_promises == []
+
+
+def test_semantic_matching_and_korean_due_parser_are_stronger():
+    service = PromiseRadarService()
+    base = datetime(2026, 7, 1, 10, 0, 0)
+
+    score = service._promise_similarity(
+        "모바일 앱 QA 체크리스트 작성",
+        "모바일 앱 검증 체크리스트 마무리",
+        "김기수",
+        "김기수",
+    )
+
+    assert score >= 0.5
+    assert service._parse_due_at("다음 주 화요일 오전 9시", base) == datetime(
+        2026,
+        7,
+        7,
+        9,
+        0,
+    )
+    assert service._parse_due_at("7월 3일 오후 2시 30분", base) == datetime(
+        2026,
+        7,
+        3,
+        14,
+        30,
+    )
+    assert service._parse_due_at("3일 후", base) == datetime(2026, 7, 4, 18, 0)
 
 
 @pytest.mark.asyncio
@@ -303,3 +338,173 @@ async def test_next_meeting_briefing_builds_reminder_candidates(session_factory)
         assert briefing.due_soon_count == 1
         assert briefing.owner_hotspots[0].owner == "김기수"
         assert briefing.reminder_candidates[0].calendar_event["source"] == "promise_radar"
+
+
+class _FakePushService:
+    def __init__(self) -> None:
+        self.sent_payloads = []
+        self.invalidated_tokens = []
+
+    async def send_multicast(self, tokens, title, body, data=None):
+        self.sent_payloads.append(
+            {
+                "tokens": tokens,
+                "title": title,
+                "body": body,
+                "data": data or {},
+            }
+        )
+        return {"success_count": len(tokens), "failure_count": 0, "invalid_tokens": []}
+
+    async def invalidate_token(self, db, fcm_token):
+        self.invalidated_tokens.append(fcm_token)
+
+
+@pytest.mark.asyncio
+async def test_ledger_merge_split_history_dashboard_and_due_push(session_factory):
+    service = PromiseRadarService()
+    owner_id = uuid.uuid4()
+    now = datetime.now()
+
+    async with session_factory() as session:
+        target = PromiseLedgerEntry(
+            owner_id=owner_id,
+            source_task_id="sum-target",
+            last_source_task_id="sum-target",
+            canonical_key="검증 체크리스트",
+            canonical_text="모바일 앱 검증 체크리스트",
+            text="모바일 앱 검증 체크리스트",
+            owner_name="김기수",
+            status="open",
+            priority="high",
+            risk_level="medium",
+            confidence=0.82,
+            due_date_text="내일",
+            due_at=now + timedelta(days=1),
+            occurrences=1,
+            first_seen_at=now,
+            last_seen_at=now,
+            evidence=[
+                {
+                    "source_task_id": "sum-target",
+                    "meeting_link": "/results/sum-target",
+                    "transcript": "검증 체크리스트를 마무리하겠습니다.",
+                }
+            ],
+        )
+        duplicate = PromiseLedgerEntry(
+            owner_id=owner_id,
+            source_task_id="sum-dup",
+            last_source_task_id="sum-dup",
+            canonical_key="qa 체크리스트",
+            canonical_text="모바일 앱 QA 체크리스트",
+            text="모바일 앱 QA 체크리스트",
+            owner_name="김기수",
+            status="open",
+            priority="medium",
+            risk_level="low",
+            confidence=0.78,
+            occurrences=1,
+            first_seen_at=now - timedelta(days=2),
+            last_seen_at=now - timedelta(days=2),
+            evidence=[
+                {
+                    "source_task_id": "sum-dup",
+                    "meeting_link": "/results/sum-dup",
+                    "transcript": "QA 체크리스트를 작성하겠습니다.",
+                }
+            ],
+        )
+        due_entry = PromiseLedgerEntry(
+            owner_id=owner_id,
+            source_task_id="sum-due",
+            last_source_task_id="sum-due",
+            canonical_key="배포 확인",
+            canonical_text="배포 확인",
+            text="배포 확인",
+            owner_name="김기수",
+            status="open",
+            priority="high",
+            risk_level="high",
+            confidence=0.9,
+            due_date_text="오늘",
+            due_at=now - timedelta(minutes=5),
+            reminder_at=now - timedelta(minutes=10),
+            occurrences=1,
+            first_seen_at=now,
+            last_seen_at=now,
+        )
+        session.add_all(
+            [
+                target,
+                duplicate,
+                due_entry,
+                DeviceToken(
+                    user_id=str(owner_id),
+                    fcm_token="fcm-token-1",
+                    platform="ios",
+                    is_active=True,
+                ),
+            ]
+        )
+        await session.commit()
+        await session.refresh(target)
+        await session.refresh(duplicate)
+        await session.refresh(due_entry)
+
+        merged = await service.merge_ledger_entries(
+            session,
+            target.id,
+            PromiseLedgerMergeRequest(source_entry_ids=[str(duplicate.id)], note="same promise"),
+            owner_id=owner_id,
+        )
+        assert merged.target.occurrences == 2
+        assert merged.merged_entry_ids == [str(duplicate.id)]
+
+        duplicate_after = (
+            await session.execute(
+                select(PromiseLedgerEntry).where(PromiseLedgerEntry.id == duplicate.id)
+            )
+        ).scalar_one()
+        assert duplicate_after.status == "dismissed"
+        assert duplicate_after.dismissed_reason == f"merged_into:{target.id}"
+
+        split = await service.split_ledger_entry(
+            session,
+            target.id,
+            PromiseLedgerSplitRequest(
+                text="Android 릴리스 빌드 회귀 테스트",
+                owner="김기수",
+                due_date="다음 주 월요일",
+            ),
+            owner_id=owner_id,
+        )
+        assert split.created.text == "Android 릴리스 빌드 회귀 테스트"
+        assert split.created.due_at is not None
+
+        history = await service.list_ledger_history(session, target.id, owner_id=owner_id)
+        assert {item.event_type for item in history} >= {"merged", "split"}
+
+        dashboard = await service.build_dashboard(session, owner_id=owner_id)
+        assert dashboard.open_count >= 2
+        assert dashboard.high_risk_count >= 1
+        assert dashboard.urgent_promises
+
+        fake_push = _FakePushService()
+        dispatch = await service.dispatch_due_notifications(
+            session,
+            owner_id=owner_id,
+            now=now,
+            push_service=fake_push,
+        )
+        assert dispatch.sent_count == 1
+        assert dispatch.notified_entry_ids == [str(due_entry.id)]
+        assert fake_push.sent_payloads[0]["data"]["ledger_entry_id"] == str(due_entry.id)
+
+        event_types = {
+            event.event_type
+            for event in (
+                await session.execute(select(PromiseLedgerEvent))
+            ).scalars()
+        }
+        assert {"merged", "split", "split_created", "notification_sent"}.issubset(event_types)

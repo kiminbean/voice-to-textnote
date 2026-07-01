@@ -96,6 +96,8 @@ class PromiseLedgerEntryResponse(BaseModel):
     canonical_text: str
     text: str
     owner: str | None = None
+    team_id: str | None = None
+    assigned_user_id: str | None = None
     speaker_label: str | None = None
     speaker_profile_id: str | None = None
     status: str = Field(description="open, completed, dismissed, delegated, blocked, or changed")
@@ -105,6 +107,7 @@ class PromiseLedgerEntryResponse(BaseModel):
     due_date: str | None = None
     due_at: datetime | None = None
     reminder_at: datetime | None = None
+    notification_sent_at: datetime | None = None
     occurrences: int = Field(ge=1)
     first_seen_at: datetime
     last_seen_at: datetime
@@ -113,6 +116,7 @@ class PromiseLedgerEntryResponse(BaseModel):
     semantic_summary: str | None = None
     calendar_event: dict | None = None
     action_item_id: str | None = None
+    dismissed_reason: str | None = None
 
 
 class PromiseLedgerUpdateRequest(BaseModel):
@@ -122,12 +126,62 @@ class PromiseLedgerUpdateRequest(BaseModel):
         default=None,
         description="open, completed, dismissed, delegated, blocked, or changed",
     )
+    text: str | None = None
     owner: str | None = None
+    team_id: str | None = None
+    assigned_user_id: str | None = None
+    priority: str | None = None
     due_date: str | None = None
     due_at: datetime | None = None
     reminder_at: datetime | None = None
     user_confirmed: bool | None = None
     dismissed_reason: str | None = None
+
+
+class PromiseLedgerMergeRequest(BaseModel):
+    """Merge duplicate/source ledger entries into the target entry."""
+
+    source_entry_ids: list[str] = Field(min_length=1)
+    note: str | None = None
+
+
+class PromiseLedgerSplitRequest(BaseModel):
+    """Create a new ledger entry by splitting part of an existing entry."""
+
+    text: str = Field(min_length=1)
+    owner: str | None = None
+    due_date: str | None = None
+    due_at: datetime | None = None
+    priority: str | None = None
+    evidence_indices: list[int] = Field(default_factory=list)
+    note: str | None = None
+
+
+class PromiseLedgerMergeResponse(BaseModel):
+    """Result of a merge operation."""
+
+    target: PromiseLedgerEntryResponse
+    merged_entry_ids: list[str] = Field(default_factory=list)
+
+
+class PromiseLedgerSplitResponse(BaseModel):
+    """Result of a split operation."""
+
+    original: PromiseLedgerEntryResponse
+    created: PromiseLedgerEntryResponse
+
+
+class PromiseLedgerHistoryEntry(BaseModel):
+    """Auditable Promise Ledger history event."""
+
+    id: str
+    ledger_entry_id: str
+    event_type: str
+    actor_user_id: str | None = None
+    old_value: dict | None = None
+    new_value: dict | None = None
+    note: str | None = None
+    created_at: datetime
 
 
 class PromiseReminderCandidate(BaseModel):
@@ -148,6 +202,30 @@ class PromiseTaskLinkResponse(BaseModel):
     action_item_id: str
     title: str
     status: str
+
+
+class PromiseNotificationDispatchResponse(BaseModel):
+    """Result of dispatching due Promise Radar push notifications."""
+
+    considered_count: int = Field(ge=0)
+    sent_count: int = Field(ge=0)
+    failure_count: int = Field(ge=0)
+    invalid_tokens: list[str] = Field(default_factory=list)
+    notified_entry_ids: list[str] = Field(default_factory=list)
+
+
+class PromiseRadarDashboard(BaseModel):
+    """Home/dashboard summary for active promise obligations."""
+
+    open_count: int = Field(ge=0)
+    high_risk_count: int = Field(ge=0)
+    overdue_count: int = Field(ge=0)
+    due_soon_count: int = Field(ge=0)
+    blocked_count: int = Field(ge=0)
+    unconfirmed_count: int = Field(ge=0)
+    owner_hotspots: list[PromiseRadarOwnerRisk] = Field(default_factory=list)
+    urgent_promises: list[PromiseLedgerEntryResponse] = Field(default_factory=list)
+    recent_changes: list[PromiseLedgerHistoryEntry] = Field(default_factory=list)
 
 
 class PromiseNextMeetingBriefing(BaseModel):

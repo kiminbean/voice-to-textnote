@@ -110,6 +110,11 @@ async def on_pipeline_success(
             f"Push 전송 완료: user_id={user_id}, meeting_id={meeting_id}, "
             f"success={result['success_count']}, failure={result['failure_count']}"
         )
+        await _dispatch_due_promise_notifications(
+            user_id=user_id,
+            meeting_id=meeting_id,
+            db_session=db_session,
+        )
         return result["success_count"] > 0
 
     except Exception as e:
@@ -119,6 +124,29 @@ async def on_pipeline_success(
             f"user_id={user_id}, meeting_id={meeting_id}, error={e}"
         )
         return False
+
+
+async def _dispatch_due_promise_notifications(
+    user_id: str,
+    meeting_id: str,
+    db_session: Any,
+) -> None:
+    """Send due Promise Radar reminders after pipeline completion, best-effort."""
+    try:
+        from backend.services.promise_radar_service import PromiseRadarService
+
+        result = await PromiseRadarService().dispatch_due_notifications(
+            db_session,
+            owner_id=user_id,
+        )
+        logger.info(
+            f"Promise Radar 기한 알림 확인: user_id={user_id}, meeting_id={meeting_id}, "
+            f"sent={result.sent_count}, considered={result.considered_count}"
+        )
+    except Exception as e:
+        logger.warning(
+            f"Promise Radar 기한 알림 건너뜀: user_id={user_id}, meeting_id={meeting_id}, error={e}"
+        )
 
 
 async def on_pipeline_failure(

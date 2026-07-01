@@ -1,5 +1,6 @@
 """Branch coverage for Celery push notification hooks."""
 
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -48,7 +49,13 @@ async def test_pipeline_success_sends_completion_push_and_handles_no_db():
 
     push_service = MagicMock()
     push_service.send_to_user = AsyncMock(return_value={"success_count": 2, "failure_count": 0})
-    with patch("backend.services.push_service.get_push_service", return_value=push_service):
+    with (
+        patch("backend.services.push_service.get_push_service", return_value=push_service),
+        patch(
+            "backend.services.promise_radar_service.PromiseRadarService.dispatch_due_notifications",
+            AsyncMock(return_value=SimpleNamespace(sent_count=1, considered_count=1)),
+        ) as promise_dispatch,
+    ):
         result = await hooks.on_pipeline_success(
             "user-1",
             "meeting-1",
@@ -58,6 +65,7 @@ async def test_pipeline_success_sends_completion_push_and_handles_no_db():
 
     assert result is True
     push_service.send_to_user.assert_awaited_once()
+    promise_dispatch.assert_awaited_once()
     kwargs = push_service.send_to_user.await_args.kwargs
     assert kwargs["title"] == "회의록 처리 완료"
     assert kwargs["data"] == {"task_id": "task-1", "type": "pipeline_complete"}

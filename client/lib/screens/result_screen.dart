@@ -5137,15 +5137,19 @@ class _PromiseRadarTab extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _sectionTitle(context, Icons.event_available_outlined, briefing.title),
+            _sectionTitle(
+                context, Icons.event_available_outlined, briefing.title),
             const SizedBox(height: AppSpacing.sm),
             Wrap(
               spacing: AppSpacing.sm,
               runSpacing: AppSpacing.xs,
               children: [
-                _PromiseMetricPill(label: '고위험', value: '${briefing.highRiskCount}'),
-                _PromiseMetricPill(label: '기한 초과', value: '${briefing.overdueCount}'),
-                _PromiseMetricPill(label: '3일 내', value: '${briefing.dueSoonCount}'),
+                _PromiseMetricPill(
+                    label: '고위험', value: '${briefing.highRiskCount}'),
+                _PromiseMetricPill(
+                    label: '기한 초과', value: '${briefing.overdueCount}'),
+                _PromiseMetricPill(
+                    label: '3일 내', value: '${briefing.dueSoonCount}'),
               ],
             ),
             if (briefing.questions.isNotEmpty) ...[
@@ -5195,7 +5199,8 @@ class _PromiseRadarTab extends ConsumerWidget {
                   decoration: BoxDecoration(
                     border: Border(
                       left: BorderSide(
-                        color: _riskLevelColor(entry.riskLevel, theme.colorScheme),
+                        color:
+                            _riskLevelColor(entry.riskLevel, theme.colorScheme),
                         width: 3,
                       ),
                     ),
@@ -5247,7 +5252,8 @@ class _PromiseRadarTab extends ConsumerWidget {
                                 entry.id,
                                 'completed',
                               ),
-                              icon: const Icon(Icons.check_circle_outline, size: 18),
+                              icon: const Icon(Icons.check_circle_outline,
+                                  size: 18),
                               label: const Text('완료'),
                             ),
                             TextButton.icon(
@@ -5270,7 +5276,8 @@ class _PromiseRadarTab extends ConsumerWidget {
                                 entry.status,
                                 userConfirmed: true,
                               ),
-                              icon: const Icon(Icons.verified_outlined, size: 18),
+                              icon:
+                                  const Icon(Icons.verified_outlined, size: 18),
                               label: const Text('맞음'),
                             ),
                             TextButton.icon(
@@ -5282,8 +5289,58 @@ class _PromiseRadarTab extends ConsumerWidget {
                                         entry.id,
                                       )
                                   : null,
-                              icon: const Icon(Icons.add_task_outlined, size: 18),
-                              label: Text(entry.actionItemId == null ? '할 일' : '연결됨'),
+                              icon:
+                                  const Icon(Icons.add_task_outlined, size: 18),
+                              label: Text(
+                                  entry.actionItemId == null ? '할 일' : '연결됨'),
+                            ),
+                            TextButton.icon(
+                              onPressed: entries.length > 1
+                                  ? () => _showMergeLedgerDialog(
+                                        context,
+                                        ref,
+                                        summaryTaskId,
+                                        entry,
+                                        entries,
+                                      )
+                                  : null,
+                              icon: const Icon(Icons.merge_type_outlined,
+                                  size: 18),
+                              label: const Text('병합'),
+                            ),
+                            TextButton.icon(
+                              onPressed: () => _showSplitLedgerDialog(
+                                context,
+                                ref,
+                                summaryTaskId,
+                                entry,
+                              ),
+                              icon: const Icon(Icons.call_split_outlined,
+                                  size: 18),
+                              label: const Text('분리'),
+                            ),
+                            TextButton.icon(
+                              onPressed: () => _createReminderCandidate(
+                                context,
+                                ref,
+                                summaryTaskId,
+                                entry.id,
+                              ),
+                              icon: const Icon(
+                                  Icons.notifications_active_outlined,
+                                  size: 18),
+                              label:
+                                  Text(entry.reminderAt == null ? '알림' : '알림됨'),
+                            ),
+                            TextButton.icon(
+                              onPressed: () => _showLedgerHistory(
+                                context,
+                                ref,
+                                entry.id,
+                              ),
+                              icon:
+                                  const Icon(Icons.history_outlined, size: 18),
+                              label: const Text('이력'),
                             ),
                           ],
                         ),
@@ -5604,7 +5661,264 @@ class _PromiseRadarTab extends ConsumerWidget {
       if (speaker != null && speaker.isNotEmpty) speaker,
       if (time != null) time,
     ].join(' · ');
-    return prefix.isEmpty ? evidence.transcript : '$prefix: ${evidence.transcript}';
+    return prefix.isEmpty
+        ? evidence.transcript
+        : '$prefix: ${evidence.transcript}';
+  }
+
+  Future<void> _showMergeLedgerDialog(
+    BuildContext context,
+    WidgetRef ref,
+    String summaryTaskId,
+    PromiseLedgerEntry target,
+    List<PromiseLedgerEntry> entries,
+  ) async {
+    final candidates = entries.where((entry) => entry.id != target.id).toList();
+    final selected = <String>{};
+    final noteController = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('약속 병합'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  target.text,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Flexible(
+                  child: ListView(
+                    shrinkWrap: true,
+                    children: [
+                      for (final entry in candidates)
+                        CheckboxListTile(
+                          value: selected.contains(entry.id),
+                          onChanged: (checked) {
+                            setState(() {
+                              if (checked == true) {
+                                selected.add(entry.id);
+                              } else {
+                                selected.remove(entry.id);
+                              }
+                            });
+                          },
+                          title: Text(
+                            entry.text,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          subtitle: Text(
+                              entry.owner ?? entry.speakerLabel ?? '담당자 미지정'),
+                        ),
+                    ],
+                  ),
+                ),
+                TextField(
+                  controller: noteController,
+                  decoration: const InputDecoration(labelText: '메모'),
+                  maxLines: 2,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('취소'),
+            ),
+            FilledButton(
+              onPressed: selected.isEmpty
+                  ? null
+                  : () => Navigator.of(dialogContext).pop(true),
+              child: const Text('병합'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (confirmed != true || selected.isEmpty) {
+      noteController.dispose();
+      return;
+    }
+    try {
+      await ref.read(promiseRadarApiProvider).mergeLedgerEntries(
+            target.id,
+            sourceEntryIds: selected.toList(),
+            note: noteController.text.trim().isEmpty
+                ? null
+                : noteController.text.trim(),
+          );
+      ref.invalidate(promiseRadarProvider(summaryTaskId));
+      ref.invalidate(promiseLedgerProvider);
+      ref.invalidate(promiseNextMeetingBriefingProvider);
+      ref.invalidate(promiseRadarDashboardProvider);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('약속이 병합됐습니다.')),
+        );
+      }
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('약속 병합에 실패했습니다.')),
+        );
+      }
+    } finally {
+      noteController.dispose();
+    }
+  }
+
+  Future<void> _showSplitLedgerDialog(
+    BuildContext context,
+    WidgetRef ref,
+    String summaryTaskId,
+    PromiseLedgerEntry entry,
+  ) async {
+    final textController = TextEditingController(text: entry.text);
+    final ownerController = TextEditingController(text: entry.owner ?? '');
+    final dueController = TextEditingController(text: entry.dueDate ?? '');
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('약속 분리'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: textController,
+              decoration: const InputDecoration(labelText: '새 약속 내용'),
+              maxLines: 3,
+            ),
+            TextField(
+              controller: ownerController,
+              decoration: const InputDecoration(labelText: '담당자'),
+            ),
+            TextField(
+              controller: dueController,
+              decoration: const InputDecoration(labelText: '기한'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('취소'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('분리'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || textController.text.trim().isEmpty) {
+      textController.dispose();
+      ownerController.dispose();
+      dueController.dispose();
+      return;
+    }
+    try {
+      await ref.read(promiseRadarApiProvider).splitLedgerEntry(
+            entry.id,
+            text: textController.text.trim(),
+            owner: ownerController.text.trim().isEmpty
+                ? null
+                : ownerController.text.trim(),
+            dueDate: dueController.text.trim().isEmpty
+                ? null
+                : dueController.text.trim(),
+            priority: entry.priority,
+          );
+      ref.invalidate(promiseRadarProvider(summaryTaskId));
+      ref.invalidate(promiseLedgerProvider);
+      ref.invalidate(promiseNextMeetingBriefingProvider);
+      ref.invalidate(promiseRadarDashboardProvider);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('약속이 분리됐습니다.')),
+        );
+      }
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('약속 분리에 실패했습니다.')),
+        );
+      }
+    } finally {
+      textController.dispose();
+      ownerController.dispose();
+      dueController.dispose();
+    }
+  }
+
+  Future<void> _showLedgerHistory(
+    BuildContext context,
+    WidgetRef ref,
+    String entryId,
+  ) async {
+    try {
+      final history =
+          await ref.read(promiseRadarApiProvider).listLedgerHistory(entryId);
+      if (!context.mounted) return;
+      await showModalBottomSheet<void>(
+        context: context,
+        builder: (sheetContext) => SafeArea(
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.history_outlined),
+                title: const Text('약속 변경 이력'),
+                subtitle: Text('${history.length}개 이벤트'),
+              ),
+              for (final item in history)
+                ListTile(
+                  title: Text(item.eventType),
+                  subtitle: Text(item.note ?? item.createdAt),
+                ),
+            ],
+          ),
+        ),
+      );
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('약속 이력 조회에 실패했습니다.')),
+        );
+      }
+    }
+  }
+
+  Future<void> _createReminderCandidate(
+    BuildContext context,
+    WidgetRef ref,
+    String summaryTaskId,
+    String entryId,
+  ) async {
+    try {
+      await ref.read(promiseRadarApiProvider).createCalendarCandidate(entryId);
+      ref.invalidate(promiseRadarProvider(summaryTaskId));
+      ref.invalidate(promiseLedgerProvider);
+      ref.invalidate(promiseNextMeetingBriefingProvider);
+      ref.invalidate(promiseRadarDashboardProvider);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('약속 알림 후보가 생성됐습니다.')),
+        );
+      }
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('약속 알림 생성에 실패했습니다.')),
+        );
+      }
+    }
   }
 
   Future<void> _updateLedgerStatus(
@@ -5626,6 +5940,7 @@ class _PromiseRadarTab extends ConsumerWidget {
       ref.invalidate(promiseRadarProvider(summaryTaskId));
       ref.invalidate(promiseLedgerProvider);
       ref.invalidate(promiseNextMeetingBriefingProvider);
+      ref.invalidate(promiseRadarDashboardProvider);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('약속 원장이 업데이트됐습니다.')),
@@ -5650,6 +5965,7 @@ class _PromiseRadarTab extends ConsumerWidget {
       await ref.read(promiseRadarApiProvider).createActionItem(entryId);
       ref.invalidate(promiseRadarProvider(summaryTaskId));
       ref.invalidate(promiseLedgerProvider);
+      ref.invalidate(promiseRadarDashboardProvider);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('약속이 할 일로 연결됐습니다.')),

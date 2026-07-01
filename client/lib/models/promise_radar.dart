@@ -215,8 +215,7 @@ class PromiseRadarEvidence {
       speaker: json['speaker'] as String?,
       speakerLabel: json['speaker_label'] as String?,
       speakerProfileId: json['speaker_profile_id'] as String?,
-      voiceprintSimilarity:
-          (json['voiceprint_similarity'] as num?)?.toDouble(),
+      voiceprintSimilarity: (json['voiceprint_similarity'] as num?)?.toDouble(),
       startSeconds: (json['start_seconds'] as num?)?.toDouble(),
       endSeconds: (json['end_seconds'] as num?)?.toDouble(),
     );
@@ -229,6 +228,8 @@ class PromiseLedgerEntry {
   final String canonicalText;
   final String text;
   final String? owner;
+  final String? teamId;
+  final String? assignedUserId;
   final String? speakerLabel;
   final String? speakerProfileId;
   final String status;
@@ -238,6 +239,7 @@ class PromiseLedgerEntry {
   final String? dueDate;
   final String? dueAt;
   final String? reminderAt;
+  final String? notificationSentAt;
   final int occurrences;
   final String firstSeenAt;
   final String lastSeenAt;
@@ -246,6 +248,7 @@ class PromiseLedgerEntry {
   final String? semanticSummary;
   final Map<String, dynamic>? calendarEvent;
   final String? actionItemId;
+  final String? dismissedReason;
 
   const PromiseLedgerEntry({
     required this.id,
@@ -253,6 +256,8 @@ class PromiseLedgerEntry {
     required this.canonicalText,
     required this.text,
     this.owner,
+    this.teamId,
+    this.assignedUserId,
     this.speakerLabel,
     this.speakerProfileId,
     required this.status,
@@ -262,6 +267,7 @@ class PromiseLedgerEntry {
     this.dueDate,
     this.dueAt,
     this.reminderAt,
+    this.notificationSentAt,
     required this.occurrences,
     required this.firstSeenAt,
     required this.lastSeenAt,
@@ -270,6 +276,7 @@ class PromiseLedgerEntry {
     this.semanticSummary,
     this.calendarEvent,
     this.actionItemId,
+    this.dismissedReason,
   });
 
   factory PromiseLedgerEntry.fromJson(Map<String, dynamic> json) {
@@ -279,6 +286,8 @@ class PromiseLedgerEntry {
       canonicalText: json['canonical_text'] as String? ?? '',
       text: json['text'] as String? ?? '',
       owner: json['owner'] as String?,
+      teamId: json['team_id'] as String?,
+      assignedUserId: json['assigned_user_id'] as String?,
       speakerLabel: json['speaker_label'] as String?,
       speakerProfileId: json['speaker_profile_id'] as String?,
       status: json['status'] as String? ?? 'open',
@@ -288,6 +297,7 @@ class PromiseLedgerEntry {
       dueDate: json['due_date'] as String?,
       dueAt: json['due_at'] as String?,
       reminderAt: json['reminder_at'] as String?,
+      notificationSentAt: json['notification_sent_at'] as String?,
       occurrences: json['occurrences'] as int? ?? 1,
       firstSeenAt: json['first_seen_at'] as String? ?? '',
       lastSeenAt: json['last_seen_at'] as String? ?? '',
@@ -299,6 +309,84 @@ class PromiseLedgerEntry {
       semanticSummary: json['semantic_summary'] as String?,
       calendarEvent: json['calendar_event'] as Map<String, dynamic>?,
       actionItemId: json['action_item_id'] as String?,
+      dismissedReason: json['dismissed_reason'] as String?,
+    );
+  }
+}
+
+class PromiseLedgerHistoryEntry {
+  final String id;
+  final String ledgerEntryId;
+  final String eventType;
+  final String? actorUserId;
+  final Map<String, dynamic>? oldValue;
+  final Map<String, dynamic>? newValue;
+  final String? note;
+  final String createdAt;
+
+  const PromiseLedgerHistoryEntry({
+    required this.id,
+    required this.ledgerEntryId,
+    required this.eventType,
+    this.actorUserId,
+    this.oldValue,
+    this.newValue,
+    this.note,
+    required this.createdAt,
+  });
+
+  factory PromiseLedgerHistoryEntry.fromJson(Map<String, dynamic> json) {
+    return PromiseLedgerHistoryEntry(
+      id: json['id'] as String? ?? '',
+      ledgerEntryId: json['ledger_entry_id'] as String? ?? '',
+      eventType: json['event_type'] as String? ?? '',
+      actorUserId: json['actor_user_id'] as String?,
+      oldValue: json['old_value'] as Map<String, dynamic>?,
+      newValue: json['new_value'] as Map<String, dynamic>?,
+      note: json['note'] as String?,
+      createdAt: json['created_at'] as String? ?? '',
+    );
+  }
+}
+
+class PromiseLedgerMergeResponse {
+  final PromiseLedgerEntry target;
+  final List<String> mergedEntryIds;
+
+  const PromiseLedgerMergeResponse({
+    required this.target,
+    required this.mergedEntryIds,
+  });
+
+  factory PromiseLedgerMergeResponse.fromJson(Map<String, dynamic> json) {
+    return PromiseLedgerMergeResponse(
+      target: PromiseLedgerEntry.fromJson(
+        json['target'] as Map<String, dynamic>? ?? const <String, dynamic>{},
+      ),
+      mergedEntryIds: (json['merged_entry_ids'] as List<dynamic>? ?? [])
+          .whereType<String>()
+          .toList(),
+    );
+  }
+}
+
+class PromiseLedgerSplitResponse {
+  final PromiseLedgerEntry original;
+  final PromiseLedgerEntry created;
+
+  const PromiseLedgerSplitResponse({
+    required this.original,
+    required this.created,
+  });
+
+  factory PromiseLedgerSplitResponse.fromJson(Map<String, dynamic> json) {
+    return PromiseLedgerSplitResponse(
+      original: PromiseLedgerEntry.fromJson(
+        json['original'] as Map<String, dynamic>? ?? const <String, dynamic>{},
+      ),
+      created: PromiseLedgerEntry.fromJson(
+        json['created'] as Map<String, dynamic>? ?? const <String, dynamic>{},
+      ),
     );
   }
 }
@@ -355,6 +443,38 @@ class PromiseTaskLinkResponse {
   }
 }
 
+class PromiseNotificationDispatchResponse {
+  final int consideredCount;
+  final int sentCount;
+  final int failureCount;
+  final List<String> invalidTokens;
+  final List<String> notifiedEntryIds;
+
+  const PromiseNotificationDispatchResponse({
+    required this.consideredCount,
+    required this.sentCount,
+    required this.failureCount,
+    required this.invalidTokens,
+    required this.notifiedEntryIds,
+  });
+
+  factory PromiseNotificationDispatchResponse.fromJson(
+    Map<String, dynamic> json,
+  ) {
+    return PromiseNotificationDispatchResponse(
+      consideredCount: json['considered_count'] as int? ?? 0,
+      sentCount: json['sent_count'] as int? ?? 0,
+      failureCount: json['failure_count'] as int? ?? 0,
+      invalidTokens: (json['invalid_tokens'] as List<dynamic>? ?? [])
+          .whereType<String>()
+          .toList(),
+      notifiedEntryIds: (json['notified_entry_ids'] as List<dynamic>? ?? [])
+          .whereType<String>()
+          .toList(),
+    );
+  }
+}
+
 class PromiseNextMeetingBriefing {
   final String title;
   final int highRiskCount;
@@ -393,18 +513,68 @@ class PromiseNextMeetingBriefing {
       questions: (json['questions'] as List<dynamic>? ?? [])
           .whereType<String>()
           .toList(),
-      reminderCandidates:
-          (json['reminder_candidates'] as List<dynamic>? ?? [])
-              .whereType<Map<String, dynamic>>()
-              .map(PromiseReminderCandidate.fromJson)
-              .toList(),
+      reminderCandidates: (json['reminder_candidates'] as List<dynamic>? ?? [])
+          .whereType<Map<String, dynamic>>()
+          .map(PromiseReminderCandidate.fromJson)
+          .toList(),
+    );
+  }
+}
+
+class PromiseRadarDashboard {
+  final int openCount;
+  final int highRiskCount;
+  final int overdueCount;
+  final int dueSoonCount;
+  final int blockedCount;
+  final int unconfirmedCount;
+  final List<PromiseRadarOwnerRisk> ownerHotspots;
+  final List<PromiseLedgerEntry> urgentPromises;
+  final List<PromiseLedgerHistoryEntry> recentChanges;
+
+  const PromiseRadarDashboard({
+    required this.openCount,
+    required this.highRiskCount,
+    required this.overdueCount,
+    required this.dueSoonCount,
+    required this.blockedCount,
+    required this.unconfirmedCount,
+    required this.ownerHotspots,
+    required this.urgentPromises,
+    required this.recentChanges,
+  });
+
+  factory PromiseRadarDashboard.fromJson(Map<String, dynamic> json) {
+    return PromiseRadarDashboard(
+      openCount: json['open_count'] as int? ?? 0,
+      highRiskCount: json['high_risk_count'] as int? ?? 0,
+      overdueCount: json['overdue_count'] as int? ?? 0,
+      dueSoonCount: json['due_soon_count'] as int? ?? 0,
+      blockedCount: json['blocked_count'] as int? ?? 0,
+      unconfirmedCount: json['unconfirmed_count'] as int? ?? 0,
+      ownerHotspots: (json['owner_hotspots'] as List<dynamic>? ?? [])
+          .whereType<Map<String, dynamic>>()
+          .map(PromiseRadarOwnerRisk.fromJson)
+          .toList(),
+      urgentPromises: (json['urgent_promises'] as List<dynamic>? ?? [])
+          .whereType<Map<String, dynamic>>()
+          .map(PromiseLedgerEntry.fromJson)
+          .toList(),
+      recentChanges: (json['recent_changes'] as List<dynamic>? ?? [])
+          .whereType<Map<String, dynamic>>()
+          .map(PromiseLedgerHistoryEntry.fromJson)
+          .toList(),
     );
   }
 }
 
 class PromiseLedgerUpdateRequest {
   final String? status;
+  final String? text;
   final String? owner;
+  final String? teamId;
+  final String? assignedUserId;
+  final String? priority;
   final String? dueDate;
   final DateTime? dueAt;
   final DateTime? reminderAt;
@@ -413,7 +583,11 @@ class PromiseLedgerUpdateRequest {
 
   const PromiseLedgerUpdateRequest({
     this.status,
+    this.text,
     this.owner,
+    this.teamId,
+    this.assignedUserId,
+    this.priority,
     this.dueDate,
     this.dueAt,
     this.reminderAt,
@@ -424,7 +598,11 @@ class PromiseLedgerUpdateRequest {
   Map<String, dynamic> toJson() {
     return {
       if (status != null) 'status': status,
+      if (text != null) 'text': text,
       if (owner != null) 'owner': owner,
+      if (teamId != null) 'team_id': teamId,
+      if (assignedUserId != null) 'assigned_user_id': assignedUserId,
+      if (priority != null) 'priority': priority,
       if (dueDate != null) 'due_date': dueDate,
       if (dueAt != null) 'due_at': dueAt!.toIso8601String(),
       if (reminderAt != null) 'reminder_at': reminderAt!.toIso8601String(),

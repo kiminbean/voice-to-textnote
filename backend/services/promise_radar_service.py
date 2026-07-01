@@ -17,20 +17,28 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.config import settings
 from backend.db.auth_models import MeetingOwnership
+from backend.db.device_token_models import DeviceToken
 from backend.db.models import ActionItem, TaskResult
-from backend.db.promise_ledger_models import PromiseLedgerEntry
+from backend.db.promise_ledger_models import PromiseLedgerEntry, PromiseLedgerEvent
 from backend.ml.zai_client import AsyncZAIClient, structured_json_completion_options
 from backend.schemas.promise_radar import (
     PromiseLedgerEntryResponse,
+    PromiseLedgerHistoryEntry,
+    PromiseLedgerMergeRequest,
+    PromiseLedgerMergeResponse,
+    PromiseLedgerSplitRequest,
+    PromiseLedgerSplitResponse,
     PromiseLedgerUpdateRequest,
     PromiseNextMeetingBriefing,
+    PromiseNotificationDispatchResponse,
     PromiseRadarCarryOver,
     PromiseRadarChainLink,
+    PromiseRadarDashboard,
     PromiseRadarDecisionDrift,
     PromiseRadarEvidence,
     PromiseRadarOwnerRisk,
@@ -40,6 +48,7 @@ from backend.schemas.promise_radar import (
     PromiseReminderCandidate,
     PromiseTaskLinkResponse,
 )
+from backend.services.push_service import PushService, get_push_service
 
 _TOKEN_RE = re.compile(r"[0-9A-Za-z가-힣]+")
 _STOPWORDS = {
@@ -62,6 +71,56 @@ _STOPWORDS = {
     "with",
     "that",
     "this",
+}
+_SYNONYM_MAP = {
+    "qa": "검증",
+    "테스트": "검증",
+    "검수": "검증",
+    "체크": "확인",
+    "확인": "확인",
+    "점검": "확인",
+    "마무리": "완료",
+    "완료": "완료",
+    "종료": "완료",
+    "작성": "작성",
+    "초안": "작성",
+    "정리": "작성",
+    "릴리즈": "배포",
+    "릴리스": "배포",
+    "배포": "배포",
+    "서버": "백엔드",
+    "백엔드": "백엔드",
+    "api": "api",
+    "url": "url",
+    "주소": "url",
+    "도메인": "url",
+    "ip": "url",
+    "푸시": "알림",
+    "알림": "알림",
+}
+_KOREAN_TOKEN_SUFFIXES = (
+    "까지",
+    "부터",
+    "에서",
+    "에게",
+    "으로",
+    "로",
+    "을",
+    "를",
+    "은",
+    "는",
+    "이",
+    "가",
+    "님",
+)
+_WEEKDAY_TO_INDEX = {
+    "월": 0,
+    "화": 1,
+    "수": 2,
+    "목": 3,
+    "금": 4,
+    "토": 5,
+    "일": 6,
 }
 
 _OPEN_LEDGER_STATUSES = {"open", "delegated", "blocked", "changed"}
@@ -114,6 +173,7 @@ class PromiseRadarService:
         *,
         owner_id: UUID | str | None = None,
         guest_session_id: str | None = None,
+        team_id: UUID | str | None = None,
         limit: int = 30,
     ) -> PromiseRadarResponse:
         current = await self._get_record(session, task_id)
@@ -125,19 +185,21 @@ class PromiseRadarService:
             current=current,
             owner_id=owner_id,
             guest_session_id=guest_session_id,
+            team_id=team_id,
             limit=limit,
         )
         response = self.analyze_records(current, previous)
         semantic_promises, semantic_status = await self._semantic_promises(current)
         response.semantic_enrichment_status = semantic_status
 
-        if owner_id is not None or guest_session_id:
+        if owner_id is not None or guest_session_id or team_id is not None:
             ledger_entries = await self._sync_ledger(
                 session=session,
                 current=current,
                 response=response,
                 owner_id=owner_id,
                 guest_session_id=guest_session_id,
+                team_id=team_id,
                 semantic_promises=semantic_promises,
             )
             response.ledger_entries = ledger_entries
@@ -152,12 +214,13 @@ class PromiseRadarService:
         *,
         owner_id: UUID | str | None = None,
         guest_session_id: str | None = None,
+        team_id: UUID | str | None = None,
         statuses: set[str] | None = None,
         limit: int = 50,
     ) -> list[PromiseLedgerEntryResponse]:
         """List scoped ledger entries for the current user or guest session."""
         stmt = select(PromiseLedgerEntry).where(
-            self._ledger_scope_condition(owner_id, guest_session_id)
+            self._ledger_scope_condition(owner_id, guest_session_id, team_id=team_id)
         )
         if statuses:
             stmt = stmt.where(PromiseLedgerEntry.status.in_(statuses))
@@ -176,6 +239,7 @@ class PromiseRadarService:
         *,
         owner_id: UUID | str | None = None,
         guest_session_id: str | None = None,
+        team_id: UUID | str | None = None,
         limit: int = 30,
     ) -> PromiseNextMeetingBriefing:
         """Build a pre-meeting brief from unresolved ledger entries."""
@@ -183,6 +247,7 @@ class PromiseRadarService:
             session,
             owner_id=owner_id,
             guest_session_id=guest_session_id,
+            team_id=team_id,
             statuses=_OPEN_LEDGER_STATUSES,
             limit=limit,
         )
@@ -196,6 +261,7 @@ class PromiseRadarService:
         *,
         owner_id: UUID | str | None = None,
         guest_session_id: str | None = None,
+        team_id: UUID | str | None = None,
     ) -> PromiseLedgerEntryResponse:
         """Apply a user correction to a ledger item."""
         entry = await self._get_scoped_ledger_entry(
@@ -203,10 +269,19 @@ class PromiseRadarService:
             entry_id,
             owner_id=owner_id,
             guest_session_id=guest_session_id,
+            team_id=team_id,
         )
         if entry is None:
             raise ValueError("약속 원장 항목을 찾을 수 없습니다")
 
+        old_value = self._ledger_snapshot(entry)
+
+        if payload.text is not None:
+            text = payload.text.strip()
+            if text:
+                entry.text = text
+                entry.canonical_text = text
+                entry.canonical_key = self._canonical_key(text)
         if payload.status is not None:
             status = payload.status.strip().lower()
             if status not in _VALID_LEDGER_STATUSES:
@@ -218,21 +293,43 @@ class PromiseRadarService:
 
         if payload.owner is not None:
             entry.owner_name = payload.owner.strip() or None
+        if payload.priority is not None:
+            entry.priority = payload.priority.strip().lower() or entry.priority
+        if payload.team_id is not None:
+            requested_team_id = self._coerce_uuid(payload.team_id)
+            scoped_team_id = self._coerce_uuid(team_id)
+            if requested_team_id != scoped_team_id:
+                raise ValueError("검증된 팀 범위와 요청 팀 ID가 일치하지 않습니다")
+            entry.team_id = requested_team_id
+        if payload.assigned_user_id is not None:
+            entry.assigned_user_id = self._coerce_uuid(payload.assigned_user_id)
         if payload.due_date is not None:
             entry.due_date_text = payload.due_date.strip() or None
             entry.due_at = payload.due_at or self._parse_due_at(
                 entry.due_date_text, entry.last_seen_at
             )
+            entry.notification_sent_at = None
         elif payload.due_at is not None:
             entry.due_at = payload.due_at.replace(tzinfo=None)
+            entry.notification_sent_at = None
         if payload.reminder_at is not None:
             entry.reminder_at = payload.reminder_at.replace(tzinfo=None)
+            entry.notification_sent_at = None
         if payload.user_confirmed is not None:
             entry.user_confirmed = payload.user_confirmed
         if payload.dismissed_reason is not None:
             entry.dismissed_reason = payload.dismissed_reason.strip() or None
 
+        entry.risk_level = self._ledger_risk_level(entry.priority, entry.due_at, entry.occurrences)
         entry.updated_at = datetime.now(UTC).replace(tzinfo=None)
+        self._record_ledger_event(
+            session,
+            entry,
+            "updated",
+            old_value=old_value,
+            new_value=self._ledger_snapshot(entry),
+            actor_user_id=owner_id,
+        )
         await session.commit()
         await session.refresh(entry)
         return self._entry_to_response(entry)
@@ -244,6 +341,7 @@ class PromiseRadarService:
         *,
         owner_id: UUID | str | None = None,
         guest_session_id: str | None = None,
+        team_id: UUID | str | None = None,
     ) -> PromiseReminderCandidate:
         """Persist an internal calendar/reminder candidate for one promise."""
         entry = await self._get_scoped_ledger_entry(
@@ -251,6 +349,7 @@ class PromiseRadarService:
             entry_id,
             owner_id=owner_id,
             guest_session_id=guest_session_id,
+            team_id=team_id,
         )
         if entry is None:
             raise ValueError("약속 원장 항목을 찾을 수 없습니다")
@@ -259,6 +358,13 @@ class PromiseRadarService:
         entry.calendar_event = candidate.calendar_event
         entry.reminder_at = candidate.reminder_at
         entry.updated_at = datetime.now(UTC).replace(tzinfo=None)
+        self._record_ledger_event(
+            session,
+            entry,
+            "calendar_candidate_created",
+            new_value=candidate.model_dump(mode="json"),
+            actor_user_id=owner_id,
+        )
         await session.commit()
         await session.refresh(entry)
         return self._reminder_candidate(self._entry_to_response(entry))
@@ -270,6 +376,7 @@ class PromiseRadarService:
         *,
         owner_id: UUID | str | None = None,
         guest_session_id: str | None = None,
+        team_id: UUID | str | None = None,
     ) -> PromiseTaskLinkResponse:
         """Convert a promise ledger entry into an internal ActionItem."""
         owner_uuid = self._coerce_uuid(owner_id)
@@ -281,6 +388,7 @@ class PromiseRadarService:
             entry_id,
             owner_id=owner_uuid,
             guest_session_id=guest_session_id,
+            team_id=team_id,
         )
         if entry is None:
             raise ValueError("약속 원장 항목을 찾을 수 없습니다")
@@ -319,6 +427,17 @@ class PromiseRadarService:
         entry.action_item_id = action_item.id
         entry.user_confirmed = True
         entry.updated_at = datetime.now(UTC).replace(tzinfo=None)
+        self._record_ledger_event(
+            session,
+            entry,
+            "action_item_created",
+            new_value={
+                "action_item_id": str(action_item.id),
+                "title": action_item.title,
+                "status": action_item.status,
+            },
+            actor_user_id=owner_uuid,
+        )
         await session.commit()
         await session.refresh(action_item)
         await session.refresh(entry)
@@ -327,6 +446,354 @@ class PromiseRadarService:
             action_item_id=str(action_item.id),
             title=action_item.title,
             status=action_item.status,
+        )
+
+    async def merge_ledger_entries(
+        self,
+        session: AsyncSession,
+        entry_id: UUID | str,
+        payload: PromiseLedgerMergeRequest,
+        *,
+        owner_id: UUID | str | None = None,
+        guest_session_id: str | None = None,
+        team_id: UUID | str | None = None,
+    ) -> PromiseLedgerMergeResponse:
+        """Merge duplicate promise ledger entries into a target entry."""
+        target = await self._get_scoped_ledger_entry(
+            session,
+            entry_id,
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
+            team_id=team_id,
+        )
+        if target is None:
+            raise ValueError("병합 대상 약속 원장 항목을 찾을 수 없습니다")
+
+        source_ids = {
+            source_id
+            for source_id in (self._coerce_uuid(item) for item in payload.source_entry_ids)
+            if source_id is not None and source_id != target.id
+        }
+        if not source_ids:
+            raise ValueError("병합할 원본 약속 원장 항목을 선택해야 합니다")
+
+        result = await session.execute(
+            select(PromiseLedgerEntry).where(
+                PromiseLedgerEntry.id.in_(source_ids),
+                self._ledger_scope_condition(owner_id, guest_session_id, team_id=team_id),
+            )
+        )
+        sources = list(result.scalars().all())
+        if not sources:
+            raise ValueError("병합할 원본 약속 원장 항목을 찾을 수 없습니다")
+
+        old_target = self._ledger_snapshot(target)
+        now = datetime.now(UTC).replace(tzinfo=None)
+        merged_ids: list[str] = []
+        for source in sources:
+            merged_ids.append(str(source.id))
+            target.occurrences += max(1, source.occurrences)
+            target.first_seen_at = min(target.first_seen_at, source.first_seen_at)
+            target.last_seen_at = max(target.last_seen_at, source.last_seen_at)
+            target.confidence = max(target.confidence, source.confidence)
+            target.evidence = self._merge_evidence(target.evidence or [], source.evidence or [])
+            target.due_at = target.due_at or source.due_at
+            target.due_date_text = target.due_date_text or source.due_date_text
+            target.owner_name = target.owner_name or source.owner_name
+            target.assigned_user_id = target.assigned_user_id or source.assigned_user_id
+            target.calendar_event = target.calendar_event or source.calendar_event
+            target.action_item_id = target.action_item_id or source.action_item_id
+
+            old_source = self._ledger_snapshot(source)
+            source.status = "dismissed"
+            source.dismissed_reason = f"merged_into:{target.id}"
+            source.updated_at = now
+            self._record_ledger_event(
+                session,
+                source,
+                "merged_away",
+                old_value=old_source,
+                new_value={"merged_into": str(target.id)},
+                note=payload.note,
+                actor_user_id=owner_id,
+            )
+
+        target.risk_level = self._ledger_risk_level(target.priority, target.due_at, target.occurrences)
+        target.updated_at = now
+        self._record_ledger_event(
+            session,
+            target,
+            "merged",
+            old_value=old_target,
+            new_value={**self._ledger_snapshot(target), "merged_entry_ids": merged_ids},
+            note=payload.note,
+            actor_user_id=owner_id,
+        )
+        await session.commit()
+        await session.refresh(target)
+        return PromiseLedgerMergeResponse(
+            target=self._entry_to_response(target),
+            merged_entry_ids=merged_ids,
+        )
+
+    async def split_ledger_entry(
+        self,
+        session: AsyncSession,
+        entry_id: UUID | str,
+        payload: PromiseLedgerSplitRequest,
+        *,
+        owner_id: UUID | str | None = None,
+        guest_session_id: str | None = None,
+        team_id: UUID | str | None = None,
+    ) -> PromiseLedgerSplitResponse:
+        """Split a mixed promise ledger entry into a new tracked entry."""
+        original = await self._get_scoped_ledger_entry(
+            session,
+            entry_id,
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
+            team_id=team_id,
+        )
+        if original is None:
+            raise ValueError("분리할 약속 원장 항목을 찾을 수 없습니다")
+
+        text = payload.text.strip()
+        if not text:
+            raise ValueError("분리할 약속 내용을 입력해야 합니다")
+
+        now = datetime.now(UTC).replace(tzinfo=None)
+        evidence = self._split_evidence(original.evidence or [], payload.evidence_indices)
+        due_text = payload.due_date.strip() if payload.due_date else None
+        due_at = payload.due_at.replace(tzinfo=None) if payload.due_at else self._parse_due_at(
+            due_text,
+            original.last_seen_at,
+        )
+        created = PromiseLedgerEntry(
+            owner_id=original.owner_id,
+            guest_session_id=original.guest_session_id,
+            team_id=original.team_id,
+            assigned_user_id=original.assigned_user_id,
+            source_task_id=original.source_task_id,
+            last_source_task_id=original.last_source_task_id,
+            canonical_key=self._canonical_key(text),
+            canonical_text=text,
+            text=text,
+            owner_name=payload.owner.strip() if payload.owner else original.owner_name,
+            speaker_label=original.speaker_label,
+            speaker_profile_id=original.speaker_profile_id,
+            status="open",
+            priority=(payload.priority or original.priority or "medium").strip().lower(),
+            risk_level="low",
+            confidence=original.confidence,
+            due_date_text=due_text,
+            due_at=due_at,
+            occurrences=1,
+            first_seen_at=original.last_seen_at,
+            last_seen_at=original.last_seen_at,
+            evidence=evidence,
+            user_confirmed=True,
+            created_at=now,
+            updated_at=now,
+        )
+        created.risk_level = self._ledger_risk_level(
+            created.priority,
+            created.due_at,
+            created.occurrences,
+        )
+        session.add(created)
+        await session.flush()
+
+        original.updated_at = now
+        self._record_ledger_event(
+            session,
+            original,
+            "split",
+            new_value={"created_entry_id": str(created.id), "text": created.text},
+            note=payload.note,
+            actor_user_id=owner_id,
+        )
+        self._record_ledger_event(
+            session,
+            created,
+            "split_created",
+            new_value=self._ledger_snapshot(created),
+            note=payload.note,
+            actor_user_id=owner_id,
+        )
+        await session.commit()
+        await session.refresh(original)
+        await session.refresh(created)
+        return PromiseLedgerSplitResponse(
+            original=self._entry_to_response(original),
+            created=self._entry_to_response(created),
+        )
+
+    async def list_ledger_history(
+        self,
+        session: AsyncSession,
+        entry_id: UUID | str,
+        *,
+        owner_id: UUID | str | None = None,
+        guest_session_id: str | None = None,
+        team_id: UUID | str | None = None,
+        limit: int = 30,
+    ) -> list[PromiseLedgerHistoryEntry]:
+        """Return chronological audit events for a scoped ledger entry."""
+        entry = await self._get_scoped_ledger_entry(
+            session,
+            entry_id,
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
+            team_id=team_id,
+        )
+        if entry is None:
+            raise ValueError("약속 원장 항목을 찾을 수 없습니다")
+        result = await session.execute(
+            select(PromiseLedgerEvent)
+            .where(PromiseLedgerEvent.ledger_entry_id == entry.id)
+            .order_by(PromiseLedgerEvent.created_at.desc())
+            .limit(max(1, min(limit, 100)))
+        )
+        return [self._event_to_response(item) for item in result.scalars().all()]
+
+    async def build_dashboard(
+        self,
+        session: AsyncSession,
+        *,
+        owner_id: UUID | str | None = None,
+        guest_session_id: str | None = None,
+        team_id: UUID | str | None = None,
+        limit: int = 50,
+    ) -> PromiseRadarDashboard:
+        """Build the Home/dashboard promise obligation summary."""
+        entries = await self.list_ledger_entries(
+            session,
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
+            team_id=team_id,
+            statuses=_OPEN_LEDGER_STATUSES,
+            limit=limit,
+        )
+        now = datetime.now(UTC).replace(tzinfo=None)
+        urgent = sorted(
+            entries,
+            key=lambda entry: (
+                entry.risk_level != "high",
+                entry.due_at is None,
+                entry.due_at or now + timedelta(days=365),
+                -entry.occurrences,
+            ),
+        )
+        recent = await self._recent_history(
+            session,
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
+            team_id=team_id,
+        )
+        return PromiseRadarDashboard(
+            open_count=len(entries),
+            high_risk_count=sum(1 for entry in entries if entry.risk_level == "high"),
+            overdue_count=sum(1 for entry in entries if entry.due_at and entry.due_at < now),
+            due_soon_count=sum(
+                1
+                for entry in entries
+                if entry.due_at and now <= entry.due_at <= now + timedelta(days=3)
+            ),
+            blocked_count=sum(1 for entry in entries if entry.status == "blocked"),
+            unconfirmed_count=sum(1 for entry in entries if not entry.user_confirmed),
+            owner_hotspots=self._owner_risks_from_entries(entries)[:6],
+            urgent_promises=urgent[:8],
+            recent_changes=recent,
+        )
+
+    async def dispatch_due_notifications(
+        self,
+        session: AsyncSession,
+        *,
+        owner_id: UUID | str | None = None,
+        team_id: UUID | str | None = None,
+        now: datetime | None = None,
+        limit: int = 25,
+        push_service: PushService | None = None,
+    ) -> PromiseNotificationDispatchResponse:
+        """Send FCM notifications for due or reminder-ready promises."""
+        owner_uuid = self._coerce_uuid(owner_id)
+        team_uuid = self._coerce_uuid(team_id)
+        if owner_uuid is None and team_uuid is None:
+            raise ValueError("로그인 사용자 또는 팀 범위가 필요합니다")
+
+        moment = (now or datetime.now(UTC)).replace(tzinfo=None)
+        scope_condition = (
+            PromiseLedgerEntry.team_id == team_uuid
+            if team_uuid is not None
+            else PromiseLedgerEntry.owner_id == owner_uuid
+        )
+        result = await session.execute(
+            select(PromiseLedgerEntry)
+            .where(
+                scope_condition,
+                PromiseLedgerEntry.status.in_(_OPEN_LEDGER_STATUSES),
+                PromiseLedgerEntry.notification_sent_at.is_(None),
+                or_(
+                    PromiseLedgerEntry.reminder_at <= moment,
+                    PromiseLedgerEntry.due_at <= moment,
+                ),
+            )
+            .order_by(PromiseLedgerEntry.due_at.is_(None), PromiseLedgerEntry.due_at.asc())
+            .limit(max(1, min(limit, 100)))
+        )
+        entries = list(result.scalars().all())
+        push = push_service or get_push_service()
+        sent_count = 0
+        failure_count = 0
+        invalid_tokens: list[str] = []
+        notified_ids: list[str] = []
+        for entry in entries:
+            target_user_id = entry.assigned_user_id or entry.owner_id or owner_uuid
+            if target_user_id is None:
+                continue
+            tokens_result = await session.execute(
+                select(DeviceToken.fcm_token)
+                .where(DeviceToken.user_id == str(target_user_id))
+                .where(DeviceToken.is_active)
+            )
+            tokens = [row[0] for row in tokens_result.all()]
+            if not tokens:
+                continue
+            response = await push.send_multicast(
+                tokens=tokens,
+                title="약속 기한 확인",
+                body=self._notification_body(entry),
+                data={
+                    "type": "promise_radar",
+                    "ledger_entry_id": str(entry.id),
+                    "meeting_id": entry.last_source_task_id,
+                },
+            )
+            sent_count += int(response.get("success_count") or 0)
+            failure_count += int(response.get("failure_count") or 0)
+            invalid = [str(token) for token in response.get("invalid_tokens") or []]
+            invalid_tokens.extend(invalid)
+            for invalid_token in invalid:
+                await push.invalidate_token(session, invalid_token)
+            if int(response.get("success_count") or 0) > 0:
+                entry.notification_sent_at = moment
+                entry.updated_at = moment
+                notified_ids.append(str(entry.id))
+                self._record_ledger_event(
+                    session,
+                    entry,
+                    "notification_sent",
+                    new_value={"sent_at": moment.isoformat()},
+                    actor_user_id=owner_uuid,
+                )
+        await session.commit()
+        return PromiseNotificationDispatchResponse(
+            considered_count=len(entries),
+            sent_count=sent_count,
+            failure_count=failure_count,
+            invalid_tokens=invalid_tokens,
+            notified_entry_ids=notified_ids,
         )
 
     def analyze_records(
@@ -390,9 +857,12 @@ class PromiseRadarService:
         response: PromiseRadarResponse,
         owner_id: UUID | str | None,
         guest_session_id: str | None,
+        team_id: UUID | str | None,
         semantic_promises: list[_SemanticPromise],
     ) -> list[PromiseLedgerEntryResponse]:
         evidence_records = await self._load_evidence_records(session, current)
+        team_uuid = self._coerce_uuid(team_id)
+        new_entries: list[PromiseLedgerEntry] = []
         for promise in response.current_promises:
             semantic = self._match_semantic_promise(promise, semantic_promises)
             canonical_text = semantic.canonical_text if semantic else promise.text
@@ -407,14 +877,17 @@ class PromiseRadarService:
             existing = await self._find_open_ledger_entry(
                 session,
                 canonical_key,
+                canonical_text,
                 owner_id=owner_id,
                 guest_session_id=guest_session_id,
+                team_id=team_id,
             )
             if existing is None:
                 session.add(
-                    PromiseLedgerEntry(
+                    entry := PromiseLedgerEntry(
                         owner_id=self._coerce_uuid(owner_id),
                         guest_session_id=guest_session_id,
+                        team_id=team_uuid,
                         source_task_id=promise.source_task_id,
                         last_source_task_id=promise.source_task_id,
                         canonical_key=canonical_key,
@@ -442,6 +915,7 @@ class PromiseRadarService:
                         evidence=evidence,
                     )
                 )
+                new_entries.append(entry)
                 continue
 
             if existing.last_source_task_id != promise.source_task_id:
@@ -479,10 +953,19 @@ class PromiseRadarService:
             existing.updated_at = datetime.now(UTC).replace(tzinfo=None)
 
         await session.flush()
+        for entry in new_entries:
+            self._record_ledger_event(
+                session,
+                entry,
+                "detected",
+                new_value=self._ledger_snapshot(entry),
+                actor_user_id=owner_id,
+            )
         return await self.list_ledger_entries(
             session,
             owner_id=owner_id,
             guest_session_id=guest_session_id,
+            team_id=team_id,
             statuses=_OPEN_LEDGER_STATUSES,
             limit=30,
         )
@@ -689,7 +1172,12 @@ class PromiseRadarService:
         self,
         owner_id: UUID | str | None,
         guest_session_id: str | None,
+        *,
+        team_id: UUID | str | None = None,
     ):
+        team_uuid = self._coerce_uuid(team_id)
+        if team_uuid is not None:
+            return PromiseLedgerEntry.team_id == team_uuid
         owner_uuid = self._coerce_uuid(owner_id)
         if owner_uuid is not None:
             return PromiseLedgerEntry.owner_id == owner_uuid
@@ -704,6 +1192,7 @@ class PromiseRadarService:
         *,
         owner_id: UUID | str | None,
         guest_session_id: str | None,
+        team_id: UUID | str | None = None,
     ) -> PromiseLedgerEntry | None:
         entry_uuid = self._coerce_uuid(entry_id)
         if entry_uuid is None:
@@ -711,7 +1200,7 @@ class PromiseRadarService:
         result = await session.execute(
             select(PromiseLedgerEntry).where(
                 PromiseLedgerEntry.id == entry_uuid,
-                self._ledger_scope_condition(owner_id, guest_session_id),
+                self._ledger_scope_condition(owner_id, guest_session_id, team_id=team_id),
             )
         )
         return result.scalar_one_or_none()
@@ -720,21 +1209,44 @@ class PromiseRadarService:
         self,
         session: AsyncSession,
         canonical_key: str,
+        canonical_text: str,
         *,
         owner_id: UUID | str | None,
         guest_session_id: str | None,
+        team_id: UUID | str | None = None,
     ) -> PromiseLedgerEntry | None:
-        result = await session.execute(
+        scoped = self._ledger_scope_condition(owner_id, guest_session_id, team_id=team_id)
+        exact_result = await session.execute(
             select(PromiseLedgerEntry)
             .where(
-                self._ledger_scope_condition(owner_id, guest_session_id),
+                scoped,
                 PromiseLedgerEntry.canonical_key == canonical_key,
                 PromiseLedgerEntry.status.in_(_OPEN_LEDGER_STATUSES),
             )
             .order_by(PromiseLedgerEntry.last_seen_at.desc())
             .limit(1)
         )
-        return result.scalar_one_or_none()
+        exact = exact_result.scalar_one_or_none()
+        if exact is not None:
+            return exact
+
+        result = await session.execute(
+            select(PromiseLedgerEntry)
+            .where(
+                scoped,
+                PromiseLedgerEntry.status.in_(_OPEN_LEDGER_STATUSES),
+            )
+            .order_by(PromiseLedgerEntry.last_seen_at.desc())
+            .limit(30)
+        )
+        best: PromiseLedgerEntry | None = None
+        best_score = 0.0
+        for entry in result.scalars().all():
+            score = self._promise_similarity(canonical_text, entry.canonical_text)
+            if score > best_score:
+                best = entry
+                best_score = score
+        return best if best is not None and best_score >= 0.74 else None
 
     def _entry_to_response(self, entry: PromiseLedgerEntry) -> PromiseLedgerEntryResponse:
         evidence = []
@@ -747,6 +1259,8 @@ class PromiseRadarService:
             canonical_text=entry.canonical_text,
             text=entry.text,
             owner=entry.owner_name,
+            team_id=str(entry.team_id) if entry.team_id else None,
+            assigned_user_id=str(entry.assigned_user_id) if entry.assigned_user_id else None,
             speaker_label=entry.speaker_label,
             speaker_profile_id=str(entry.speaker_profile_id) if entry.speaker_profile_id else None,
             status=entry.status,
@@ -756,6 +1270,7 @@ class PromiseRadarService:
             due_date=entry.due_date_text,
             due_at=entry.due_at,
             reminder_at=entry.reminder_at,
+            notification_sent_at=entry.notification_sent_at,
             occurrences=entry.occurrences,
             first_seen_at=entry.first_seen_at,
             last_seen_at=entry.last_seen_at,
@@ -764,7 +1279,111 @@ class PromiseRadarService:
             semantic_summary=entry.semantic_summary,
             calendar_event=entry.calendar_event,
             action_item_id=str(entry.action_item_id) if entry.action_item_id else None,
+            dismissed_reason=entry.dismissed_reason,
         )
+
+    def _event_to_response(self, event: PromiseLedgerEvent) -> PromiseLedgerHistoryEntry:
+        return PromiseLedgerHistoryEntry(
+            id=str(event.id),
+            ledger_entry_id=str(event.ledger_entry_id),
+            event_type=event.event_type,
+            actor_user_id=str(event.actor_user_id) if event.actor_user_id else None,
+            old_value=event.old_value,
+            new_value=event.new_value,
+            note=event.note,
+            created_at=event.created_at,
+        )
+
+    async def _recent_history(
+        self,
+        session: AsyncSession,
+        *,
+        owner_id: UUID | str | None,
+        guest_session_id: str | None,
+        team_id: UUID | str | None,
+        limit: int = 12,
+    ) -> list[PromiseLedgerHistoryEntry]:
+        team_uuid = self._coerce_uuid(team_id)
+        owner_uuid = self._coerce_uuid(owner_id)
+        stmt = select(PromiseLedgerEvent)
+        if team_uuid is not None:
+            stmt = stmt.where(PromiseLedgerEvent.team_id == team_uuid)
+        elif owner_uuid is not None:
+            stmt = stmt.where(PromiseLedgerEvent.owner_id == owner_uuid)
+        elif guest_session_id:
+            stmt = stmt.where(PromiseLedgerEvent.guest_session_id == guest_session_id)
+        else:
+            return []
+        stmt = stmt.order_by(PromiseLedgerEvent.created_at.desc()).limit(max(1, min(limit, 50)))
+        result = await session.execute(stmt)
+        return [self._event_to_response(item) for item in result.scalars().all()]
+
+    def _record_ledger_event(
+        self,
+        session: AsyncSession,
+        entry: PromiseLedgerEntry,
+        event_type: str,
+        *,
+        old_value: dict[str, Any] | None = None,
+        new_value: dict[str, Any] | None = None,
+        note: str | None = None,
+        actor_user_id: UUID | str | None = None,
+    ) -> None:
+        session.add(
+            PromiseLedgerEvent(
+                ledger_entry_id=entry.id,
+                owner_id=entry.owner_id,
+                guest_session_id=entry.guest_session_id,
+                team_id=entry.team_id,
+                actor_user_id=self._coerce_uuid(actor_user_id),
+                event_type=event_type,
+                old_value=old_value,
+                new_value=new_value,
+                note=note.strip() if note else None,
+            )
+        )
+
+    def _ledger_snapshot(self, entry: PromiseLedgerEntry) -> dict[str, Any]:
+        return {
+            "id": str(entry.id),
+            "text": entry.text,
+            "canonical_key": entry.canonical_key,
+            "owner": entry.owner_name,
+            "team_id": str(entry.team_id) if entry.team_id else None,
+            "assigned_user_id": str(entry.assigned_user_id) if entry.assigned_user_id else None,
+            "status": entry.status,
+            "priority": entry.priority,
+            "risk_level": entry.risk_level,
+            "confidence": entry.confidence,
+            "due_date": entry.due_date_text,
+            "due_at": entry.due_at.isoformat() if entry.due_at else None,
+            "reminder_at": entry.reminder_at.isoformat() if entry.reminder_at else None,
+            "notification_sent_at": (
+                entry.notification_sent_at.isoformat() if entry.notification_sent_at else None
+            ),
+            "occurrences": entry.occurrences,
+            "user_confirmed": entry.user_confirmed,
+            "dismissed_reason": entry.dismissed_reason,
+            "action_item_id": str(entry.action_item_id) if entry.action_item_id else None,
+        }
+
+    def _split_evidence(
+        self,
+        evidence: list[dict[str, Any]],
+        indices: list[int],
+    ) -> list[dict[str, Any]]:
+        if not evidence:
+            return []
+        selected: list[dict[str, Any]] = []
+        for index in indices:
+            if 0 <= index < len(evidence):
+                selected.append(evidence[index])
+        return selected or evidence[:1]
+
+    def _notification_body(self, entry: PromiseLedgerEntry) -> str:
+        due = f" · 기한 {entry.due_date_text}" if entry.due_date_text else ""
+        owner = f"{entry.owner_name} · " if entry.owner_name else ""
+        return f"{owner}{entry.text[:80]}{due}"
 
     def _match_semantic_promise(
         self,
@@ -774,11 +1393,11 @@ class PromiseRadarService:
         best: _SemanticPromise | None = None
         best_score = 0.0
         for semantic in semantic_promises:
-            score = self._similarity(promise.text, semantic.text)
+            score = self._promise_similarity(promise.text, semantic.text)
             if score > best_score:
                 best = semantic
                 best_score = score
-        return best if best_score >= 0.28 else None
+        return best if best_score >= 0.48 else None
 
     def _canonical_key(self, text: str) -> str:
         normalized = self._normalized_text(text)
@@ -787,28 +1406,137 @@ class PromiseRadarService:
     def _parse_due_at(self, due_date: str | None, anchor: datetime | None) -> datetime | None:
         if not due_date:
             return None
-        text = due_date.strip()
-        base = anchor or datetime.now(UTC).replace(tzinfo=None)
+        text = due_date.strip().lower()
+        base = (anchor or datetime.now(UTC).replace(tzinfo=None)).replace(tzinfo=None)
+        hour, minute = self._parse_due_time(text)
+
         for fmt in ("%Y-%m-%d", "%Y.%m.%d", "%Y/%m/%d"):
             try:
-                return datetime.strptime(text, fmt)
+                parsed = datetime.strptime(text, fmt)
+                return parsed.replace(hour=hour, minute=minute)
             except ValueError:
                 pass
+
+        month_day = re.search(r"(?<!\d)(\d{1,2})\s*월\s*(\d{1,2})\s*일", text)
+        if month_day:
+            month = int(month_day.group(1))
+            day = int(month_day.group(2))
+            try:
+                candidate = base.replace(
+                    month=month,
+                    day=day,
+                    hour=hour,
+                    minute=minute,
+                    second=0,
+                    microsecond=0,
+                )
+                if candidate < base:
+                    candidate = candidate.replace(year=candidate.year + 1)
+                return candidate
+            except ValueError:
+                return None
+
+        slash_month_day = re.search(r"(?<!\d)(\d{1,2})[./-](\d{1,2})(?!\d)", text)
+        if slash_month_day:
+            month = int(slash_month_day.group(1))
+            day = int(slash_month_day.group(2))
+            try:
+                candidate = base.replace(
+                    month=month,
+                    day=day,
+                    hour=hour,
+                    minute=minute,
+                    second=0,
+                    microsecond=0,
+                )
+                if candidate < base:
+                    candidate = candidate.replace(year=candidate.year + 1)
+                return candidate
+            except ValueError:
+                return None
+
+        relative_day = re.search(r"(\d+)\s*일\s*(후|뒤|내)", text)
+        if relative_day:
+            return (base + timedelta(days=int(relative_day.group(1)))).replace(
+                hour=hour,
+                minute=minute,
+                second=0,
+                microsecond=0,
+            )
+
+        relative_week = re.search(r"(\d+)\s*주\s*(후|뒤|내)", text)
+        if relative_week:
+            return (base + timedelta(weeks=int(relative_week.group(1)))).replace(
+                hour=hour,
+                minute=minute,
+                second=0,
+                microsecond=0,
+            )
+
         if "오늘" in text:
-            return base.replace(hour=18, minute=0, second=0, microsecond=0)
+            return base.replace(hour=hour, minute=minute, second=0, microsecond=0)
         if "내일" in text:
-            return (base + timedelta(days=1)).replace(hour=18, minute=0, second=0, microsecond=0)
-        if "이번 주" in text or "금요일" in text:
+            return (base + timedelta(days=1)).replace(
+                hour=hour,
+                minute=minute,
+                second=0,
+                microsecond=0,
+            )
+        if "모레" in text:
+            return (base + timedelta(days=2)).replace(
+                hour=hour,
+                minute=minute,
+                second=0,
+                microsecond=0,
+            )
+
+        weekday_match = re.search(r"(이번|다음)?\s*주?\s*([월화수목금토일])(?:요일)?", text)
+        if weekday_match:
+            prefix = weekday_match.group(1)
+            weekday = _WEEKDAY_TO_INDEX[weekday_match.group(2)]
+            if prefix == "다음":
+                start = base + timedelta(days=(7 - base.weekday()) % 7)
+                candidate = start + timedelta(days=weekday)
+            elif prefix == "이번":
+                start = base - timedelta(days=base.weekday())
+                candidate = start + timedelta(days=weekday)
+                if candidate < base:
+                    candidate += timedelta(days=7)
+            else:
+                candidate = base + timedelta(days=(weekday - base.weekday()) % 7)
+            return candidate.replace(hour=hour, minute=minute, second=0, microsecond=0)
+
+        if "이번 주" in text:
             days_until_friday = (4 - base.weekday()) % 7
             return (base + timedelta(days=days_until_friday)).replace(
-                hour=18,
-                minute=0,
+                hour=hour,
+                minute=minute,
                 second=0,
                 microsecond=0,
             )
         if "다음 주" in text:
-            return (base + timedelta(days=7)).replace(hour=18, minute=0, second=0, microsecond=0)
+            return (base + timedelta(days=7)).replace(
+                hour=hour,
+                minute=minute,
+                second=0,
+                microsecond=0,
+            )
         return None
+
+    def _parse_due_time(self, text: str) -> tuple[int, int]:
+        match = re.search(r"(오전|오후)?\s*(\d{1,2})\s*시(?:\s*(\d{1,2})\s*분?)?", text)
+        if not match:
+            return 18, 0
+        meridiem = match.group(1)
+        hour = int(match.group(2))
+        minute = int(match.group(3) or 0)
+        if meridiem == "오후" and hour < 12:
+            hour += 12
+        if meridiem == "오전" and hour == 12:
+            hour = 0
+        hour = min(max(hour, 0), 23)
+        minute = min(max(minute, 0), 59)
+        return hour, minute
 
     def _ledger_risk_level(
         self,
@@ -953,6 +1681,7 @@ class PromiseRadarService:
         current: TaskResult,
         owner_id: UUID | str | None,
         guest_session_id: str | None,
+        team_id: UUID | str | None,
         limit: int,
     ) -> list[TaskResult]:
         stmt = select(TaskResult).where(
@@ -963,7 +1692,11 @@ class PromiseRadarService:
         if current.created_at is not None:
             stmt = stmt.where(TaskResult.created_at <= current.created_at)
 
-        if owner_id is not None:
+        team_uuid = self._coerce_uuid(team_id)
+        if team_uuid is not None:
+            stmt = stmt.join(MeetingOwnership, MeetingOwnership.task_id == TaskResult.task_id)
+            stmt = stmt.where(MeetingOwnership.team_id == team_uuid)
+        elif owner_id is not None:
             stmt = stmt.join(MeetingOwnership, MeetingOwnership.task_id == TaskResult.task_id)
             stmt = stmt.where(
                 MeetingOwnership.owner_id == owner_id,
@@ -1046,7 +1779,12 @@ class PromiseRadarService:
             for index, previous in enumerate(previous_promises):
                 if index in used_previous:
                     continue
-                score = self._similarity(current.text, previous.text)
+                score = self._promise_similarity(
+                    current.text,
+                    previous.text,
+                    current.owner,
+                    previous.owner,
+                )
                 if score > best_score:
                     best_index = index
                     best_score = score
@@ -1076,10 +1814,18 @@ class PromiseRadarService:
                 continue
             seen.add(normalized)
             promise_match = max(
-                (self._similarity(previous.text, current.text) for current in current_promises),
+                (
+                    self._promise_similarity(
+                        previous.text,
+                        current.text,
+                        previous.owner,
+                        current.owner,
+                    )
+                    for current in current_promises
+                ),
                 default=0.0,
             )
-            text_match = self._similarity(previous.text, current_text)
+            text_match = self._promise_similarity(previous.text, current_text)
             if promise_match < 0.28 and text_match < 0.18:
                 stale.append(previous)
         return stale
@@ -1093,7 +1839,7 @@ class PromiseRadarService:
         drifts: list[PromiseRadarDecisionDrift] = []
         for current_decision in current_decisions:
             for previous_record, previous_decision in previous_decisions:
-                score = self._similarity(current_decision, previous_decision)
+                score = self._promise_similarity(current_decision, previous_decision)
                 if 0.30 <= score < 0.86 and self._normalized_text(
                     current_decision
                 ) != self._normalized_text(previous_decision):
@@ -1120,7 +1866,10 @@ class PromiseRadarService:
             best_cluster: list[_ExtractedPromise] | None = None
             best_score = 0.0
             for cluster in clusters:
-                score = max(self._similarity(promise.text, item.text) for item in cluster)
+                score = max(
+                    self._promise_similarity(promise.text, item.text, promise.owner, item.owner)
+                    for item in cluster
+                )
                 owner_matches = self._owner_key(promise.owner) == self._owner_key(cluster[-1].owner)
                 if owner_matches:
                     score += 0.08
@@ -1366,10 +2115,49 @@ class PromiseRadarService:
         union = len(left_tokens | right_tokens)
         return overlap / union if union else 0.0
 
+    def _promise_similarity(
+        self,
+        left: str,
+        right: str,
+        left_owner: str | None = None,
+        right_owner: str | None = None,
+    ) -> float:
+        token_score = self._similarity(left, right)
+        char_score = self._char_ngram_similarity(left, right)
+        normalized_left = self._normalized_text(left)
+        normalized_right = self._normalized_text(right)
+        containment = 0.0
+        if normalized_left and normalized_right:
+            if normalized_left in normalized_right or normalized_right in normalized_left:
+                containment = min(len(normalized_left), len(normalized_right)) / max(
+                    len(normalized_left),
+                    len(normalized_right),
+                )
+        owner_bonus = 0.0
+        if left_owner and right_owner and self._owner_key(left_owner) == self._owner_key(right_owner):
+            owner_bonus = 0.06
+        return min(1.0, token_score * 0.55 + char_score * 0.30 + containment * 0.09 + owner_bonus)
+
+    def _char_ngram_similarity(self, left: str, right: str, n: int = 3) -> float:
+        left_norm = re.sub(r"\s+", "", self._normalized_text(left))
+        right_norm = re.sub(r"\s+", "", self._normalized_text(right))
+        if not left_norm or not right_norm:
+            return 0.0
+        left_grams = self._ngrams(left_norm, n)
+        right_grams = self._ngrams(right_norm, n)
+        if not left_grams or not right_grams:
+            return 1.0 if left_norm == right_norm else 0.0
+        return (2 * len(left_grams & right_grams)) / (len(left_grams) + len(right_grams))
+
+    def _ngrams(self, text: str, n: int) -> set[str]:
+        if len(text) <= n:
+            return {text}
+        return {text[index : index + n] for index in range(len(text) - n + 1)}
+
     def _tokens(self, text: str) -> list[str]:
         tokens: list[str] = []
         for raw in _TOKEN_RE.findall(text.lower()):
-            token = raw.strip()
+            token = self._normalize_token(raw)
             if len(token) < 2 or token in _STOPWORDS:
                 continue
             tokens.append(token)
@@ -1377,6 +2165,17 @@ class PromiseRadarService:
 
     def _normalized_text(self, text: str) -> str:
         return " ".join(self._tokens(text))
+
+    def _normalize_token(self, raw: str) -> str:
+        token = raw.strip().lower()
+        for suffix in _KOREAN_TOKEN_SUFFIXES:
+            if token.endswith(suffix) and len(token) > len(suffix) + 1:
+                token = token[: -len(suffix)]
+                break
+        for prefix, normalized in _SYNONYM_MAP.items():
+            if token == prefix or token.startswith(prefix):
+                return normalized
+        return _SYNONYM_MAP.get(token, token)
 
     def _owner_key(self, owner: str | None) -> str:
         return owner.strip() if owner and owner.strip() else "미지정"

@@ -10,8 +10,10 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:voice_to_textnote/models/meeting.dart';
+import 'package:voice_to_textnote/models/promise_radar.dart';
 import 'package:voice_to_textnote/providers/auth_provider.dart';
 import 'package:voice_to_textnote/providers/meeting_list_provider.dart';
+import 'package:voice_to_textnote/providers/result_provider.dart';
 import 'package:voice_to_textnote/providers/theme_mode_provider.dart';
 import 'package:voice_to_textnote/services/history_api.dart';
 import 'package:voice_to_textnote/services/minutes_api.dart';
@@ -91,6 +93,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             const SliverToBoxAdapter(child: OfflineBanner()),
             SliverToBoxAdapter(child: _buildOwllHero(context)),
             SliverToBoxAdapter(child: _buildCaptureShortcuts(context, ref)),
+            SliverToBoxAdapter(
+                child: _buildPromiseRadarDashboard(context, ref)),
             // 본문
             meetingsAsync.when(
               loading: () => SliverPadding(
@@ -333,6 +337,100 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildPromiseRadarDashboard(BuildContext context, WidgetRef ref) {
+    final dashboardAsync = ref.watch(promiseRadarDashboardProvider);
+    return dashboardAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (dashboard) {
+        if (dashboard.openCount == 0 && dashboard.urgentPromises.isEmpty) {
+          return const SizedBox.shrink();
+        }
+        final theme = Theme.of(context);
+        final urgent = dashboard.urgentPromises.take(3).toList();
+        return Container(
+          margin: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            0,
+            AppSpacing.lg,
+            AppSpacing.lg,
+          ),
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surfaceContainerHighest,
+            borderRadius: AppRadius.brLg,
+            border: Border.all(
+              color: theme.colorScheme.outlineVariant.withAlpha(120),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.radar_rounded,
+                    color: dashboard.highRiskCount > 0
+                        ? theme.colorScheme.error
+                        : theme.colorScheme.primary,
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Text(
+                      '약속 레이더',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: '새로고침',
+                    onPressed: () =>
+                        ref.invalidate(promiseRadarDashboardProvider),
+                    icon: const Icon(Icons.refresh_rounded),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Wrap(
+                spacing: AppSpacing.sm,
+                runSpacing: AppSpacing.sm,
+                children: [
+                  _DashboardMetric(
+                    label: '열림',
+                    value: dashboard.openCount.toString(),
+                  ),
+                  _DashboardMetric(
+                    label: '고위험',
+                    value: dashboard.highRiskCount.toString(),
+                    tone: dashboard.highRiskCount > 0
+                        ? theme.colorScheme.error
+                        : null,
+                  ),
+                  _DashboardMetric(
+                    label: '기한 임박',
+                    value: dashboard.dueSoonCount.toString(),
+                  ),
+                  _DashboardMetric(
+                    label: '지연',
+                    value: dashboard.overdueCount.toString(),
+                    tone: dashboard.overdueCount > 0
+                        ? theme.colorScheme.error
+                        : null,
+                  ),
+                ],
+              ),
+              if (urgent.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.md),
+                for (final entry in urgent) _PromiseDashboardRow(entry: entry),
+              ],
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -1331,6 +1429,78 @@ class _ShortcutTile extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _DashboardMetric extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color? tone;
+
+  const _DashboardMetric({
+    required this.label,
+    required this.value,
+    this.tone,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final color = tone ?? theme.colorScheme.primary;
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xs,
+      ),
+      decoration: BoxDecoration(
+        color: color.withAlpha(24),
+        borderRadius: AppRadius.brSm,
+      ),
+      child: Text(
+        '$label $value',
+        style: theme.textTheme.labelMedium?.copyWith(
+          color: color,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+}
+
+class _PromiseDashboardRow extends StatelessWidget {
+  final PromiseLedgerEntry entry;
+
+  const _PromiseDashboardRow({required this.entry});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final due = entry.dueDate == null ? '' : ' · ${entry.dueDate}';
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.xs),
+      child: Row(
+        children: [
+          Icon(
+            entry.riskLevel == 'high'
+                ? Icons.priority_high_rounded
+                : Icons.checklist_rounded,
+            size: 18,
+            color: entry.riskLevel == 'high'
+                ? theme.colorScheme.error
+                : theme.colorScheme.primary,
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text(
+              '${entry.owner ?? entry.speakerLabel ?? '담당자 미지정'} · ${entry.text}$due',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodySmall,
+            ),
+          ),
+        ],
       ),
     );
   }

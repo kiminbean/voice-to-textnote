@@ -50,6 +50,45 @@ def _repair_sqlite_auth_schema(conn: Connection) -> None:
             conn.execute(text(statement))
 
 
+def _repair_sqlite_promise_ledger_schema(conn: Connection) -> None:
+    """
+    Promise Radar v4 컬럼 추가 전 생성된 SQLite DB를 보존하면서 Ledger API를 보정한다.
+    create_all()은 기존 테이블에 컬럼을 추가하지 않으므로 운영/로컬 재시작 시 직접 보강한다.
+    """
+    if conn.dialect.name != "sqlite":
+        return
+    inspector = inspect(conn)
+    if "promise_ledger_entries" not in inspector.get_table_names():
+        return
+
+    columns = {column["name"] for column in inspector.get_columns("promise_ledger_entries")}
+    repairs = {
+        "team_id": "ALTER TABLE promise_ledger_entries ADD COLUMN team_id CHAR(32)",
+        "assigned_user_id": (
+            "ALTER TABLE promise_ledger_entries ADD COLUMN assigned_user_id CHAR(32)"
+        ),
+        "notification_sent_at": (
+            "ALTER TABLE promise_ledger_entries ADD COLUMN notification_sent_at DATETIME"
+        ),
+    }
+    for column, statement in repairs.items():
+        if column not in columns:
+            conn.execute(text(statement))
+
+    conn.execute(
+        text(
+            "CREATE INDEX IF NOT EXISTS ix_promise_ledger_team_status "
+            "ON promise_ledger_entries (team_id, status)"
+        )
+    )
+    conn.execute(
+        text(
+            "CREATE INDEX IF NOT EXISTS ix_promise_ledger_entries_assigned_user_id "
+            "ON promise_ledger_entries (assigned_user_id)"
+        )
+    )
+
+
 async def validate_startup() -> dict:
     """
     시작 시 의존성 검증, 구조화된 상태 딕셔너리 반환
@@ -112,6 +151,7 @@ async def validate_startup() -> dict:
         async with _db_engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
             await conn.run_sync(_repair_sqlite_auth_schema)
+            await conn.run_sync(_repair_sqlite_promise_ledger_schema)
 
         status["database"] = "ok"
     except Exception as e:
