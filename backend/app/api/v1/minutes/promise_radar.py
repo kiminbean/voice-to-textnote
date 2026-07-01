@@ -17,9 +17,17 @@ from backend.app.errors import internal_error, not_found
 from backend.app.exceptions import VoiceNoteError
 from backend.db.auth_models import TeamMember
 from backend.schemas.promise_radar import (
+    PromiseAccuracyCase,
+    PromiseAccuracyEvaluation,
     PromiseAssigneeSuggestion,
     PromiseAutopilotResponse,
     PromiseCalendarExportResponse,
+    PromiseDigest,
+    PromiseExternalExportRequest,
+    PromiseExternalExportResponse,
+    PromiseLearningFeedbackRequest,
+    PromiseLearningFeedbackResponse,
+    PromiseLearningProfile,
     PromiseLedgerEntryResponse,
     PromiseLedgerHistoryEntry,
     PromiseLedgerMergeRequest,
@@ -30,10 +38,12 @@ from backend.schemas.promise_radar import (
     PromiseMatchExplanation,
     PromiseNextMeetingBriefing,
     PromiseNotificationDispatchResponse,
+    PromisePreMeetingBrief,
     PromiseRadarDashboard,
     PromiseRadarResponse,
     PromiseReminderCandidate,
     PromiseTaskLinkResponse,
+    PromiseTimelineResponse,
 )
 from backend.services.promise_radar_service import PromiseRadarService
 
@@ -95,6 +105,92 @@ async def get_next_meeting_briefing(
         raise
     except Exception as e:
         internal_error(f"다음 회의 브리핑 생성 중 오류가 발생했습니다: {e}")
+
+
+@router.get("/briefing/pre-meeting", response_model=PromisePreMeetingBrief)
+async def get_pre_meeting_promise_brief(
+    request: Request,
+    team_id: str | None = Query(default=None, description="팀 약속 브리핑 조회 범위"),
+    limit: int = Query(default=8, ge=1, le=30),
+    db: AsyncSession = Depends(get_db_session),
+    current_user=Depends(get_optional_current_user),
+    svc: PromiseRadarService = Depends(get_promise_radar_service),
+) -> PromisePreMeetingBrief:
+    """녹음 시작 전 확인할 약속 3~8개와 질문을 반환합니다."""
+    try:
+        scoped_team_id = await _accessible_team_id(db, current_user, team_id)
+        return await svc.build_pre_meeting_brief(
+            db,
+            owner_id=getattr(current_user, "id", None),
+            guest_session_id=_guest_session_id(request),
+            team_id=scoped_team_id,
+            limit=limit,
+        )
+    except VoiceNoteError:
+        raise
+    except Exception as e:
+        internal_error(f"회의 시작 전 약속 브리프 생성 중 오류가 발생했습니다: {e}")
+
+
+@router.get("/digest", response_model=PromiseDigest)
+async def get_promise_digest(
+    request: Request,
+    cadence: str = Query(default="daily", description="daily 또는 weekly"),
+    team_id: str | None = Query(default=None, description="팀 약속 digest 조회 범위"),
+    limit: int = Query(default=12, ge=1, le=50),
+    db: AsyncSession = Depends(get_db_session),
+    current_user=Depends(get_optional_current_user),
+    svc: PromiseRadarService = Depends(get_promise_radar_service),
+) -> PromiseDigest:
+    """개인/팀별 오늘 또는 이번 주 약속 요약을 반환합니다."""
+    try:
+        scoped_team_id = await _accessible_team_id(db, current_user, team_id)
+        return await svc.build_digest(
+            db,
+            cadence=cadence,
+            owner_id=getattr(current_user, "id", None),
+            guest_session_id=_guest_session_id(request),
+            team_id=scoped_team_id,
+            limit=limit,
+        )
+    except ValueError as e:
+        not_found(str(e))
+    except VoiceNoteError:
+        raise
+    except Exception as e:
+        internal_error(f"약속 digest 생성 중 오류가 발생했습니다: {e}")
+
+
+@router.get("/learning-profile", response_model=PromiseLearningProfile)
+async def get_promise_learning_profile(
+    request: Request,
+    team_id: str | None = Query(default=None, description="팀 학습 프로필 조회 범위"),
+    db: AsyncSession = Depends(get_db_session),
+    current_user=Depends(get_optional_current_user),
+    svc: PromiseRadarService = Depends(get_promise_radar_service),
+) -> PromiseLearningProfile:
+    """사용자 수정 이력으로 계산한 Promise Radar 학습 프로필을 반환합니다."""
+    try:
+        scoped_team_id = await _accessible_team_id(db, current_user, team_id)
+        return await svc.learning_profile(
+            db,
+            owner_id=getattr(current_user, "id", None),
+            guest_session_id=_guest_session_id(request),
+            team_id=scoped_team_id,
+        )
+    except VoiceNoteError:
+        raise
+    except Exception as e:
+        internal_error(f"약속 학습 프로필 조회 중 오류가 발생했습니다: {e}")
+
+
+@router.post("/accuracy/evaluate", response_model=PromiseAccuracyEvaluation)
+async def evaluate_promise_accuracy(
+    cases: list[PromiseAccuracyCase],
+    svc: PromiseRadarService = Depends(get_promise_radar_service),
+) -> PromiseAccuracyEvaluation:
+    """라벨링된 회의 fixture로 Promise Radar 자동 판정 정확도를 계산합니다."""
+    return svc.evaluate_accuracy_cases(cases)
 
 
 @router.get("/dashboard", response_model=PromiseRadarDashboard)
@@ -329,6 +425,93 @@ async def suggest_promise_assignees(
         raise
     except Exception as e:
         internal_error(f"약속 담당자 추천 중 오류가 발생했습니다: {e}")
+
+
+@router.post("/ledger/{entry_id}/learning-feedback", response_model=PromiseLearningFeedbackResponse)
+async def record_promise_learning_feedback(
+    entry_id: str,
+    payload: PromiseLearningFeedbackRequest,
+    request: Request,
+    team_id: str | None = Query(default=None, description="팀 약속 원장 범위"),
+    db: AsyncSession = Depends(get_db_session),
+    current_user=Depends(get_optional_current_user),
+    svc: PromiseRadarService = Depends(get_promise_radar_service),
+) -> PromiseLearningFeedbackResponse:
+    """사용자의 자동 판정/담당자/병합/분리 수정 피드백을 학습 이벤트로 저장합니다."""
+    try:
+        scoped_team_id = await _accessible_team_id(db, current_user, team_id)
+        return await svc.record_learning_feedback(
+            db,
+            entry_id,
+            payload,
+            owner_id=getattr(current_user, "id", None),
+            guest_session_id=_guest_session_id(request),
+            team_id=scoped_team_id,
+        )
+    except ValueError as e:
+        not_found(str(e))
+    except VoiceNoteError:
+        raise
+    except Exception as e:
+        internal_error(f"약속 학습 피드백 저장 중 오류가 발생했습니다: {e}")
+
+
+@router.get("/ledger/{entry_id}/timeline", response_model=PromiseTimelineResponse)
+async def get_promise_ledger_timeline(
+    entry_id: str,
+    request: Request,
+    team_id: str | None = Query(default=None, description="팀 약속 원장 범위"),
+    limit: int = Query(default=50, ge=1, le=100),
+    db: AsyncSession = Depends(get_db_session),
+    current_user=Depends(get_optional_current_user),
+    svc: PromiseRadarService = Depends(get_promise_radar_service),
+) -> PromiseTimelineResponse:
+    """약속의 감지/반복/지연/자동 판정/사용자 확정 흐름을 timeline으로 반환합니다."""
+    try:
+        scoped_team_id = await _accessible_team_id(db, current_user, team_id)
+        return await svc.build_ledger_timeline(
+            db,
+            entry_id,
+            owner_id=getattr(current_user, "id", None),
+            guest_session_id=_guest_session_id(request),
+            team_id=scoped_team_id,
+            limit=limit,
+        )
+    except ValueError as e:
+        not_found(str(e))
+    except VoiceNoteError:
+        raise
+    except Exception as e:
+        internal_error(f"약속 timeline 조회 중 오류가 발생했습니다: {e}")
+
+
+@router.post("/ledger/{entry_id}/external-task", response_model=PromiseExternalExportResponse)
+async def export_promise_external_task(
+    entry_id: str,
+    payload: PromiseExternalExportRequest,
+    request: Request,
+    team_id: str | None = Query(default=None, description="팀 약속 원장 범위"),
+    db: AsyncSession = Depends(get_db_session),
+    current_user=Depends(get_optional_current_user),
+    svc: PromiseRadarService = Depends(get_promise_radar_service),
+) -> PromiseExternalExportResponse:
+    """약속을 Slack 업무 메시지로 내보냅니다. 기본값은 dry-run payload 생성입니다."""
+    try:
+        scoped_team_id = await _accessible_team_id(db, current_user, team_id)
+        return await svc.export_external_task(
+            db,
+            entry_id,
+            payload,
+            owner_id=getattr(current_user, "id", None),
+            guest_session_id=_guest_session_id(request),
+            team_id=scoped_team_id,
+        )
+    except ValueError as e:
+        not_found(str(e))
+    except VoiceNoteError:
+        raise
+    except Exception as e:
+        internal_error(f"약속 외부 업무도구 연동 중 오류가 발생했습니다: {e}")
 
 
 @router.post("/ledger/{entry_id}/action-item", response_model=PromiseTaskLinkResponse)

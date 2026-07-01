@@ -342,6 +342,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   Widget _buildPromiseRadarDashboard(BuildContext context, WidgetRef ref) {
     final dashboardAsync = ref.watch(promiseRadarDashboardProvider);
+    final digestAsync = ref.watch(promiseDailyDigestProvider);
     return dashboardAsync.when(
       loading: () => const SizedBox.shrink(),
       error: (_, __) => const SizedBox.shrink(),
@@ -388,8 +389,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ),
                   IconButton(
                     tooltip: '새로고침',
-                    onPressed: () =>
-                        ref.invalidate(promiseRadarDashboardProvider),
+                    onPressed: () {
+                      ref.invalidate(promiseRadarDashboardProvider);
+                      ref.invalidate(promiseDailyDigestProvider);
+                    },
                     icon: const Icon(Icons.refresh_rounded),
                   ),
                 ],
@@ -427,6 +430,38 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 const SizedBox(height: AppSpacing.md),
                 for (final entry in urgent) _PromiseDashboardRow(entry: entry),
               ],
+              digestAsync.maybeWhen(
+                data: (digest) {
+                  if (digest.lines.isEmpty) return const SizedBox.shrink();
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: AppSpacing.md),
+                      Text(
+                        digest.title,
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      for (final line in digest.lines.take(4))
+                        Padding(
+                          padding:
+                              const EdgeInsets.only(top: AppSpacing.xs / 2),
+                          child: Text(
+                            line,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                    ],
+                  );
+                },
+                orElse: () => const SizedBox.shrink(),
+              ),
             ],
           ),
         );

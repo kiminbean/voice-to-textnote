@@ -18,6 +18,7 @@ from typing import Any
 from urllib.parse import quote
 from uuid import UUID
 
+import httpx
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -28,10 +29,18 @@ from backend.db.models import ActionItem, TaskResult
 from backend.db.promise_ledger_models import PromiseLedgerEntry, PromiseLedgerEvent
 from backend.ml.zai_client import AsyncZAIClient, structured_json_completion_options
 from backend.schemas.promise_radar import (
+    PromiseAccuracyCase,
+    PromiseAccuracyEvaluation,
     PromiseAssigneeSuggestion,
     PromiseAutopilotAssessment,
     PromiseAutopilotResponse,
     PromiseCalendarExportResponse,
+    PromiseDigest,
+    PromiseExternalExportRequest,
+    PromiseExternalExportResponse,
+    PromiseLearningFeedbackRequest,
+    PromiseLearningFeedbackResponse,
+    PromiseLearningProfile,
     PromiseLedgerEntryResponse,
     PromiseLedgerHistoryEntry,
     PromiseLedgerMergeRequest,
@@ -42,6 +51,7 @@ from backend.schemas.promise_radar import (
     PromiseMatchExplanation,
     PromiseNextMeetingBriefing,
     PromiseNotificationDispatchResponse,
+    PromisePreMeetingBrief,
     PromiseQualityScore,
     PromiseRadarCarryOver,
     PromiseRadarChainLink,
@@ -54,6 +64,8 @@ from backend.schemas.promise_radar import (
     PromiseRadarResponse,
     PromiseReminderCandidate,
     PromiseTaskLinkResponse,
+    PromiseTimelineItem,
+    PromiseTimelineResponse,
 )
 from backend.services.push_service import PushService, get_push_service
 
@@ -134,6 +146,8 @@ _OPEN_LEDGER_STATUSES = {"open", "delegated", "blocked", "delayed", "changed"}
 _CLOSED_LEDGER_STATUSES = {"completed", "dismissed"}
 _VALID_LEDGER_STATUSES = _OPEN_LEDGER_STATUSES | _CLOSED_LEDGER_STATUSES
 _AUTOPILOT_APPLY_THRESHOLD = 0.68
+_EVIDENCE_LOCK_MIN_SIMILARITY = 0.24
+_EVIDENCE_LOCK_MIN_FACTORS = 2
 _AUTOPILOT_MARKERS = {
     "completed": (
         "완료",
@@ -910,13 +924,23 @@ class PromiseRadarService:
         entries = list(result.scalars().all())
         records = await self._load_evidence_records(session, current)
         candidates = self._current_evidence_candidates(current, records)
+        learning_profile = await self.learning_profile(
+            session,
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
+            team_id=team_id,
+        )
         now = datetime.now(UTC).replace(tzinfo=None)
         assessments: list[PromiseAutopilotAssessment] = []
         applied_count = 0
 
         for entry in entries:
             assessment = self._autopilot_assessment(entry, current, candidates, now)
-            if apply and self._should_apply_autopilot(assessment):
+            if apply and self._should_apply_autopilot(
+                assessment,
+                threshold=learning_profile.autopilot_threshold,
+                evidence_lock_enabled=learning_profile.evidence_lock_enabled,
+            ):
                 old_value = self._ledger_snapshot(entry)
                 entry.status = assessment.suggested_status
                 if assessment.suggested_status == "completed":
@@ -962,6 +986,8 @@ class PromiseRadarService:
             await session.commit()
         return PromiseAutopilotResponse(
             task_id=task_id,
+            autopilot_threshold=learning_profile.autopilot_threshold,
+            evidence_lock_enforced=learning_profile.evidence_lock_enabled,
             assessed_count=len(assessments),
             applied_count=applied_count,
             assessments=assessments,
@@ -1096,6 +1122,390 @@ class PromiseRadarService:
         if entry is None:
             raise ValueError("약속 원장 항목을 찾을 수 없습니다")
         return await self._assignee_suggestions(session, entry, limit=limit)
+
+    async def record_learning_feedback(
+        self,
+        session: AsyncSession,
+        entry_id: UUID | str,
+        payload: PromiseLearningFeedbackRequest,
+        *,
+        owner_id: UUID | str | None = None,
+        guest_session_id: str | None = None,
+        team_id: UUID | str | None = None,
+    ) -> PromiseLearningFeedbackResponse:
+        """Record user feedback so later Autopilot runs can adapt thresholds."""
+        entry = await self._get_scoped_ledger_entry(
+            session,
+            entry_id,
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
+            team_id=team_id,
+        )
+        if entry is None:
+            raise ValueError("약속 원장 항목을 찾을 수 없습니다")
+
+        value = {
+            "correction_type": payload.correction_type,
+            "expected_status": payload.expected_status,
+            "expected_assigned_user_id": payload.expected_assigned_user_id,
+            "expected_owner": payload.expected_owner,
+            "current_status": entry.status,
+            "current_assigned_user_id": (
+                str(entry.assigned_user_id) if entry.assigned_user_id else None
+            ),
+            "current_owner": entry.owner_name,
+        }
+        self._record_ledger_event(
+            session,
+            entry,
+            "learning_feedback",
+            new_value=value,
+            note=payload.note,
+            actor_user_id=owner_id,
+        )
+        await session.commit()
+        profile = await self.learning_profile(
+            session,
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
+            team_id=team_id,
+        )
+        return PromiseLearningFeedbackResponse(
+            ledger_entry_id=str(entry.id),
+            recorded=True,
+            learning_profile=profile,
+        )
+
+    async def learning_profile(
+        self,
+        session: AsyncSession,
+        *,
+        owner_id: UUID | str | None = None,
+        guest_session_id: str | None = None,
+        team_id: UUID | str | None = None,
+        limit: int = 200,
+    ) -> PromiseLearningProfile:
+        """Build a scoped learning profile from user corrections and confirmations."""
+        events = await self._scoped_events(
+            session,
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
+            team_id=team_id,
+            limit=limit,
+        )
+        false_positive = 0
+        confirmed = 0
+        assignee_corrections = 0
+        aliases: dict[str, str] = {}
+        for event in events:
+            event_type = event.event_type
+            old = event.old_value or {}
+            new = event.new_value or {}
+            if event_type == "learning_feedback":
+                expected_status = self._clean_optional(new.get("expected_status"))
+                current_status = self._clean_optional(new.get("current_status"))
+                if expected_status and current_status and expected_status != current_status:
+                    false_positive += 1
+                if new.get("expected_assigned_user_id") or new.get("expected_owner"):
+                    assignee_corrections += 1
+                if new.get("expected_owner") and new.get("current_owner"):
+                    aliases[str(new["current_owner"])] = str(new["expected_owner"])
+                continue
+            if event_type == "updated":
+                old_status = self._clean_optional(old.get("status"))
+                new_status = self._clean_optional(new.get("status"))
+                if old_status in _CLOSED_LEDGER_STATUSES | {"delayed"} and new_status in {
+                    "open",
+                    "blocked",
+                    "changed",
+                }:
+                    false_positive += 1
+                elif new.get("user_confirmed") is True:
+                    confirmed += 1
+                if old.get("assigned_user_id") != new.get("assigned_user_id"):
+                    assignee_corrections += 1
+                if old.get("owner") and new.get("owner") and old.get("owner") != new.get("owner"):
+                    aliases[str(old["owner"])] = str(new["owner"])
+            elif event_type == "autopilot_applied":
+                confirmed += 1
+
+        adjustment = min(0.15, false_positive * 0.03) - min(0.06, confirmed * 0.01)
+        threshold = max(0.62, min(0.86, _AUTOPILOT_APPLY_THRESHOLD + adjustment))
+        return PromiseLearningProfile(
+            scope=self._scope_label(owner_id, guest_session_id, team_id),
+            autopilot_threshold=round(threshold, 3),
+            false_positive_count=false_positive,
+            confirmed_count=confirmed,
+            assignee_correction_count=assignee_corrections,
+            evidence_lock_enabled=True,
+            learned_owner_aliases=aliases,
+        )
+
+    async def build_ledger_timeline(
+        self,
+        session: AsyncSession,
+        entry_id: UUID | str,
+        *,
+        owner_id: UUID | str | None = None,
+        guest_session_id: str | None = None,
+        team_id: UUID | str | None = None,
+        limit: int = 50,
+    ) -> PromiseTimelineResponse:
+        """Return a user-readable lifecycle timeline for one promise."""
+        entry = await self._get_scoped_ledger_entry(
+            session,
+            entry_id,
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
+            team_id=team_id,
+        )
+        if entry is None:
+            raise ValueError("약속 원장 항목을 찾을 수 없습니다")
+        result = await session.execute(
+            select(PromiseLedgerEvent)
+            .where(PromiseLedgerEvent.ledger_entry_id == entry.id)
+            .order_by(PromiseLedgerEvent.created_at.asc())
+            .limit(max(1, min(limit, 100)))
+        )
+        events = list(result.scalars().all())
+        items = [self._timeline_item(event) for event in events]
+        if not items:
+            items.append(
+                PromiseTimelineItem(
+                    id=str(entry.id),
+                    event_type="detected",
+                    label="약속이 처음 감지됐습니다.",
+                    created_at=entry.first_seen_at,
+                    status_after=entry.status,
+                    source_task_id=entry.source_task_id,
+                )
+            )
+        return PromiseTimelineResponse(
+            ledger_entry_id=str(entry.id),
+            current_status=entry.status,
+            items=items,
+        )
+
+    async def build_pre_meeting_brief(
+        self,
+        session: AsyncSession,
+        *,
+        owner_id: UUID | str | None = None,
+        guest_session_id: str | None = None,
+        team_id: UUID | str | None = None,
+        limit: int = 8,
+    ) -> PromisePreMeetingBrief:
+        """Build a compact brief to show before starting a new recording."""
+        briefing = await self.build_next_meeting_briefing(
+            session,
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
+            team_id=team_id,
+            limit=limit,
+        )
+        readiness = max(
+            0,
+            100
+            - briefing.high_risk_count * 18
+            - briefing.overdue_count * 14
+            - briefing.due_soon_count * 6,
+        )
+        summary = (
+            "바로 시작해도 좋습니다."
+            if not briefing.promises
+            else f"회의 전 확인할 약속 {len(briefing.promises[:limit])}개가 있습니다."
+        )
+        return PromisePreMeetingBrief(
+            title="회의 시작 전 약속 브리프",
+            readiness_score=readiness,
+            summary=summary,
+            promises=briefing.promises[:limit],
+            questions=briefing.questions[:limit],
+        )
+
+    async def build_digest(
+        self,
+        session: AsyncSession,
+        *,
+        cadence: str = "daily",
+        owner_id: UUID | str | None = None,
+        guest_session_id: str | None = None,
+        team_id: UUID | str | None = None,
+        limit: int = 12,
+    ) -> PromiseDigest:
+        """Build a daily/weekly unresolved promise digest."""
+        normalized = cadence.lower().strip()
+        if normalized not in {"daily", "weekly"}:
+            raise ValueError("지원하지 않는 digest 주기입니다")
+        entries = await self.list_ledger_entries(
+            session,
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
+            team_id=team_id,
+            statuses=_OPEN_LEDGER_STATUSES,
+            limit=limit,
+        )
+        now = datetime.now(UTC).replace(tzinfo=None)
+        horizon = now + (timedelta(days=1) if normalized == "daily" else timedelta(days=7))
+        due_soon = [entry for entry in entries if entry.due_at and now <= entry.due_at <= horizon]
+        overdue = [entry for entry in entries if entry.due_at and entry.due_at < now]
+        high_risk = [entry for entry in entries if entry.risk_level == "high"]
+        lines = [
+            f"열린 약속 {len(entries)}개",
+            f"기한 초과 {len(overdue)}개",
+            f"{'오늘' if normalized == 'daily' else '이번 주'} 확인 {len(due_soon)}개",
+            f"고위험 {len(high_risk)}개",
+        ]
+        for entry in sorted(
+            entries,
+            key=lambda item: (
+                item.risk_level != "high",
+                item.due_at is None,
+                item.due_at or now + timedelta(days=365),
+            ),
+        )[:5]:
+            lines.append(f"- {entry.owner or '미지정'}: {entry.text}")
+        return PromiseDigest(
+            cadence=normalized,
+            title="오늘의 약속 레이더" if normalized == "daily" else "이번 주 약속 레이더",
+            generated_at=now,
+            open_count=len(entries),
+            overdue_count=len(overdue),
+            due_soon_count=len(due_soon),
+            high_risk_count=len(high_risk),
+            lines=lines,
+            promises=entries[:limit],
+        )
+
+    async def export_external_task(
+        self,
+        session: AsyncSession,
+        entry_id: UUID | str,
+        payload: PromiseExternalExportRequest,
+        *,
+        owner_id: UUID | str | None = None,
+        guest_session_id: str | None = None,
+        team_id: UUID | str | None = None,
+    ) -> PromiseExternalExportResponse:
+        """Export one promise to a first external work-tool integration: Slack."""
+        entry = await self._get_scoped_ledger_entry(
+            session,
+            entry_id,
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
+            team_id=team_id,
+        )
+        if entry is None:
+            raise ValueError("약속 원장 항목을 찾을 수 없습니다")
+        provider = payload.provider.strip().lower()
+        if provider != "slack":
+            raise ValueError("현재 외부 업무도구 1차 연동은 Slack만 지원합니다")
+        slack_payload = self._slack_payload(self._entry_to_response(entry))
+        webhook_url = os.environ.get("PROMISE_RADAR_SLACK_WEBHOOK_URL", "").strip()
+        sent = False
+        message = "Slack payload가 생성됐습니다."
+        if not payload.dry_run:
+            if not webhook_url:
+                raise ValueError("PROMISE_RADAR_SLACK_WEBHOOK_URL이 설정되어 있지 않습니다")
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.post(webhook_url, json=slack_payload)
+                response.raise_for_status()
+            sent = True
+            message = "Slack으로 약속을 전송했습니다."
+            self._record_ledger_event(
+                session,
+                entry,
+                "external_exported",
+                new_value={"provider": provider, "sent": True},
+                actor_user_id=owner_id,
+            )
+            await session.commit()
+        return PromiseExternalExportResponse(
+            ledger_entry_id=str(entry.id),
+            provider=provider,
+            sent=sent,
+            payload=slack_payload,
+            message=message,
+        )
+
+    def evaluate_accuracy_cases(
+        self,
+        cases: list[PromiseAccuracyCase],
+    ) -> PromiseAccuracyEvaluation:
+        """Evaluate Autopilot status predictions against labeled fixture cases."""
+        now = datetime.now(UTC).replace(tzinfo=None)
+        correct = 0
+        predicted_by_status: dict[str, int] = {}
+        correct_by_status: dict[str, int] = {}
+        failures: list[dict[str, Any]] = []
+        for case in cases:
+            entry = PromiseLedgerEntry(
+                source_task_id=f"{case.id}-source",
+                last_source_task_id=f"{case.id}-source",
+                canonical_key=self._canonical_key(case.entry_text),
+                canonical_text=case.entry_text,
+                text=case.entry_text,
+                owner_name=case.owner,
+                status="open",
+                priority="medium",
+                risk_level="low",
+                confidence=0.8,
+                due_at=case.due_at,
+                occurrences=1,
+                first_seen_at=now,
+                last_seen_at=now,
+            )
+            current = TaskResult(
+                task_id=f"{case.id}-current",
+                task_type="summary",
+                status="completed",
+                result_data={"summary_text": case.current_text},
+                created_at=now,
+                completed_at=now,
+            )
+            assessment = self._autopilot_assessment(
+                entry,
+                current,
+                [
+                    (
+                        case.current_text,
+                        {
+                            "source_task_id": current.task_id,
+                            "meeting_link": f"/results/{current.task_id}",
+                            "transcript": case.current_text,
+                        },
+                    )
+                ],
+                now,
+            )
+            predicted = assessment.suggested_status
+            expected = case.expected_status
+            predicted_by_status[predicted] = predicted_by_status.get(predicted, 0) + 1
+            if predicted == expected:
+                correct += 1
+                correct_by_status[predicted] = correct_by_status.get(predicted, 0) + 1
+            else:
+                failures.append(
+                    {
+                        "id": case.id,
+                        "expected": expected,
+                        "predicted": predicted,
+                        "confidence": assessment.confidence,
+                        "reason": assessment.reason,
+                    }
+                )
+        precision = {
+            status: round(correct_by_status.get(status, 0) / count, 3)
+            for status, count in predicted_by_status.items()
+            if count
+        }
+        return PromiseAccuracyEvaluation(
+            case_count=len(cases),
+            correct_count=correct,
+            accuracy=round(correct / len(cases), 3) if cases else 0.0,
+            status_precision=precision,
+            failures=failures,
+        )
 
     def analyze_records(
         self,
@@ -1642,10 +2052,27 @@ class PromiseRadarService:
             explanation=explanation,
         )
 
-    def _should_apply_autopilot(self, assessment: PromiseAutopilotAssessment) -> bool:
+    def _should_apply_autopilot(
+        self,
+        assessment: PromiseAutopilotAssessment,
+        *,
+        threshold: float = _AUTOPILOT_APPLY_THRESHOLD,
+        evidence_lock_enabled: bool = True,
+    ) -> bool:
+        if evidence_lock_enabled and not self._has_locked_evidence(assessment):
+            return False
         return (
             assessment.suggested_status != assessment.previous_status
-            and assessment.confidence >= _AUTOPILOT_APPLY_THRESHOLD
+            and assessment.confidence >= threshold
+        )
+
+    def _has_locked_evidence(self, assessment: PromiseAutopilotAssessment) -> bool:
+        explanation = assessment.explanation
+        return (
+            bool(explanation.matched_text)
+            and explanation.similarity >= _EVIDENCE_LOCK_MIN_SIMILARITY
+            and bool(explanation.evidence)
+            and len(explanation.confidence_factors) >= _EVIDENCE_LOCK_MIN_FACTORS
         )
 
     def _explain_entry_against_candidates(
@@ -1846,6 +2273,86 @@ class PromiseRadarService:
             note=event.note,
             created_at=event.created_at,
         )
+
+    def _timeline_item(self, event: PromiseLedgerEvent) -> PromiseTimelineItem:
+        old = event.old_value or {}
+        new = event.new_value or {}
+        label_by_type = {
+            "created": "약속이 처음 감지됐습니다.",
+            "updated": "약속이 수정됐습니다.",
+            "autopilot_applied": "자동 판정이 적용됐습니다.",
+            "autopilot_assessed": "자동 판정이 검토됐습니다.",
+            "learning_feedback": "사용자 피드백이 학습에 반영됐습니다.",
+            "merged": "중복 약속이 병합됐습니다.",
+            "merged_away": "다른 약속으로 병합됐습니다.",
+            "split": "약속이 분리됐습니다.",
+            "split_created": "분리된 약속이 생성됐습니다.",
+            "calendar_created": "캘린더 후보가 생성됐습니다.",
+            "calendar_exported": "캘린더 내보내기가 생성됐습니다.",
+            "action_item_created": "앱 내부 할 일이 생성됐습니다.",
+            "notification_sent": "기한 알림이 발송됐습니다.",
+            "external_exported": "외부 업무도구로 전송됐습니다.",
+        }
+        autopilot = new.get("autopilot") if isinstance(new.get("autopilot"), dict) else {}
+        status_before = old.get("status") or new.get("current_status")
+        status_after = new.get("status") or new.get("expected_status")
+        confidence = autopilot.get("confidence") or new.get("confidence")
+        source_task_id = (
+            new.get("source_task_id")
+            or new.get("last_source_task_id")
+            or old.get("source_task_id")
+            or old.get("last_source_task_id")
+        )
+        return PromiseTimelineItem(
+            id=str(event.id),
+            event_type=event.event_type,
+            label=label_by_type.get(event.event_type, "약속 이력이 기록됐습니다."),
+            created_at=event.created_at,
+            actor_user_id=str(event.actor_user_id) if event.actor_user_id else None,
+            status_before=str(status_before) if status_before else None,
+            status_after=str(status_after) if status_after else None,
+            confidence=float(confidence) if confidence is not None else None,
+            source_task_id=str(source_task_id) if source_task_id else None,
+            note=event.note,
+        )
+
+    async def _scoped_events(
+        self,
+        session: AsyncSession,
+        *,
+        owner_id: UUID | str | None,
+        guest_session_id: str | None,
+        team_id: UUID | str | None,
+        limit: int = 200,
+    ) -> list[PromiseLedgerEvent]:
+        team_uuid = self._coerce_uuid(team_id)
+        owner_uuid = self._coerce_uuid(owner_id)
+        stmt = select(PromiseLedgerEvent)
+        if team_uuid is not None:
+            stmt = stmt.where(PromiseLedgerEvent.team_id == team_uuid)
+        elif owner_uuid is not None:
+            stmt = stmt.where(PromiseLedgerEvent.owner_id == owner_uuid)
+        elif guest_session_id:
+            stmt = stmt.where(PromiseLedgerEvent.guest_session_id == guest_session_id)
+        else:
+            return []
+        stmt = stmt.order_by(PromiseLedgerEvent.created_at.desc()).limit(max(1, min(limit, 500)))
+        result = await session.execute(stmt)
+        return list(result.scalars().all())
+
+    def _scope_label(
+        self,
+        owner_id: UUID | str | None,
+        guest_session_id: str | None,
+        team_id: UUID | str | None,
+    ) -> str:
+        if team_id:
+            return f"team:{team_id}"
+        if owner_id:
+            return f"owner:{owner_id}"
+        if guest_session_id:
+            return f"guest:{guest_session_id}"
+        return "none"
 
     async def _recent_history(
         self,
@@ -2394,6 +2901,36 @@ class PromiseRadarService:
                 f"근거: {evidence}",
             ]
         )
+
+    def _slack_payload(self, entry: PromiseLedgerEntryResponse) -> dict[str, Any]:
+        due_text = entry.due_at.isoformat() if entry.due_at else entry.due_date or "기한 없음"
+        evidence = entry.evidence[0].transcript if entry.evidence else entry.text
+        return {
+            "text": f"Promise Radar: {entry.text}",
+            "blocks": [
+                {
+                    "type": "header",
+                    "text": {"type": "plain_text", "text": "Promise Radar"},
+                },
+                {
+                    "type": "section",
+                    "text": {"type": "mrkdwn", "text": f"*약속*\n{entry.text}"},
+                },
+                {
+                    "type": "section",
+                    "fields": [
+                        {"type": "mrkdwn", "text": f"*담당자*\n{entry.owner or '미지정'}"},
+                        {"type": "mrkdwn", "text": f"*기한*\n{due_text}"},
+                        {"type": "mrkdwn", "text": f"*상태*\n{entry.status}"},
+                        {"type": "mrkdwn", "text": f"*위험도*\n{entry.risk_level}"},
+                    ],
+                },
+                {
+                    "type": "context",
+                    "elements": [{"type": "mrkdwn", "text": f"근거: {evidence[:250]}"}],
+                },
+            ],
+        }
 
     def _action_item_priority(self, priority: str, risk_level: str) -> str:
         if risk_level == "high":

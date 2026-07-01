@@ -14,6 +14,9 @@ from backend.db.device_token_models import DeviceToken
 from backend.db.models import ActionItem, TaskResult
 from backend.db.promise_ledger_models import PromiseLedgerEntry, PromiseLedgerEvent
 from backend.schemas.promise_radar import (
+    PromiseAccuracyCase,
+    PromiseExternalExportRequest,
+    PromiseLearningFeedbackRequest,
     PromiseLedgerMergeRequest,
     PromiseLedgerSplitRequest,
     PromiseLedgerUpdateRequest,
@@ -657,6 +660,140 @@ async def test_promise_autopilot_calendar_assignee_and_quality(session_factory):
         response = service._entry_to_response(stored)
         assert response.quality is not None
         assert response.quality.score >= 70
+        assert autopilot.autopilot_threshold >= 0.62
+        assert autopilot.evidence_lock_enforced is True
+
+        weak_evidence = autopilot.assessments[0].model_copy(
+            update={
+                "explanation": autopilot.assessments[0].explanation.model_copy(
+                    update={"similarity": 0.1}
+                )
+            }
+        )
+        assert (
+            service._should_apply_autopilot(
+                weak_evidence,
+                threshold=0.1,
+                evidence_lock_enabled=True,
+            )
+            is False
+        )
+        assert (
+            service._should_apply_autopilot(
+                weak_evidence,
+                threshold=0.1,
+                evidence_lock_enabled=False,
+            )
+            is True
+        )
+
+        feedback = await service.record_learning_feedback(
+            session,
+            entry.id,
+            PromiseLearningFeedbackRequest(
+                expected_status="open",
+                correction_type="autopilot",
+                note="완료 아님",
+            ),
+            owner_id=owner_id,
+            team_id=team_id,
+        )
+        assert feedback.recorded is True
+        assert feedback.learning_profile.false_positive_count == 1
+        assert feedback.learning_profile.autopilot_threshold > autopilot.autopilot_threshold
+
+        timeline = await service.build_ledger_timeline(
+            session,
+            entry.id,
+            owner_id=owner_id,
+            team_id=team_id,
+        )
+        assert {item.event_type for item in timeline.items} >= {
+            "autopilot_applied",
+            "learning_feedback",
+        }
+
+        open_entry = PromiseLedgerEntry(
+            owner_id=owner_id,
+            team_id=team_id,
+            source_task_id="sum-open",
+            last_source_task_id="sum-open",
+            canonical_key="release note review",
+            canonical_text="릴리스 노트 검토",
+            text="릴리스 노트 검토",
+            owner_name="김기수",
+            status="open",
+            priority="high",
+            risk_level="high",
+            confidence=0.84,
+            due_date_text="어제",
+            due_at=now - timedelta(days=1),
+            occurrences=2,
+            first_seen_at=now - timedelta(days=3),
+            last_seen_at=now - timedelta(days=1),
+            evidence=[
+                {
+                    "source_task_id": "sum-open",
+                    "meeting_link": "/results/sum-open",
+                    "transcript": "릴리스 노트를 검토하겠습니다.",
+                }
+            ],
+        )
+        session.add(open_entry)
+        await session.commit()
+        await session.refresh(open_entry)
+
+        pre_meeting = await service.build_pre_meeting_brief(
+            session,
+            owner_id=owner_id,
+            team_id=team_id,
+            limit=3,
+        )
+        assert pre_meeting.readiness_score < 100
+        assert pre_meeting.promises[0].id == str(open_entry.id)
+        assert pre_meeting.questions
+
+        digest = await service.build_digest(
+            session,
+            owner_id=owner_id,
+            team_id=team_id,
+            cadence="daily",
+        )
+        assert digest.overdue_count == 1
+        assert any("기한 초과 1개" in line for line in digest.lines)
+
+        slack = await service.export_external_task(
+            session,
+            open_entry.id,
+            PromiseExternalExportRequest(provider="slack", dry_run=True),
+            owner_id=owner_id,
+            team_id=team_id,
+        )
+        assert slack.sent is False
+        assert slack.payload["text"].startswith("Promise Radar:")
+        assert slack.payload["blocks"]
+
+        evaluation = service.evaluate_accuracy_cases(
+            [
+                PromiseAccuracyCase(
+                    id="completed-1",
+                    entry_text="QA 체크리스트 작성",
+                    current_text="QA 체크리스트 작성 완료했습니다.",
+                    expected_status="completed",
+                    owner="김기수",
+                ),
+                PromiseAccuracyCase(
+                    id="delayed-1",
+                    entry_text="릴리스 노트 검토",
+                    current_text="오늘은 다른 안건만 논의했습니다.",
+                    expected_status="delayed",
+                    owner="김기수",
+                    due_at=now - timedelta(days=1),
+                ),
+            ]
+        )
+        assert evaluation.case_count == 2
+        assert evaluation.correct_count == 2
 
         event_types = {
             event.event_type
@@ -664,4 +801,8 @@ async def test_promise_autopilot_calendar_assignee_and_quality(session_factory):
                 await session.execute(select(PromiseLedgerEvent))
             ).scalars()
         }
-        assert {"autopilot_applied", "calendar_export_created"}.issubset(event_types)
+        assert {
+            "autopilot_applied",
+            "calendar_export_created",
+            "learning_feedback",
+        }.issubset(event_types)

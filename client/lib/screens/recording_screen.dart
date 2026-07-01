@@ -6,8 +6,10 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:voice_to_textnote/models/meeting.dart';
+import 'package:voice_to_textnote/models/promise_radar.dart';
 import 'package:voice_to_textnote/providers/meeting_list_provider.dart';
 import 'package:voice_to_textnote/providers/recording_provider.dart';
+import 'package:voice_to_textnote/providers/result_provider.dart';
 import 'package:voice_to_textnote/providers/vocabulary_provider.dart';
 import 'package:voice_to_textnote/providers/notification_provider.dart';
 import 'package:voice_to_textnote/services/permission_service.dart';
@@ -237,6 +239,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
   Widget build(BuildContext context) {
     final state = ref.watch(recordingProvider);
     final isRecording = state.status == RecordingStatus.recording;
+    final preMeetingBrief = ref.watch(promisePreMeetingBriefProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('AI 녹음')),
@@ -267,6 +270,10 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
                         _showMeetingLinkSheet();
                       },
                     ),
+                    if (!isRecording) ...[
+                      const SizedBox(height: AppSpacing.sm),
+                      _PreMeetingPromiseBrief(brief: preMeetingBrief),
+                    ],
                     if (_selectedMode == CaptureMode.upload) ...[
                       const SizedBox(height: AppSpacing.sm),
                       const _CaptureModeHint(
@@ -828,6 +835,90 @@ class _StatusPill extends StatelessWidget {
         RecordingStatus.paused => '일시 정지됨',
         RecordingStatus.stopped => '녹음 완료',
       };
+}
+
+class _PreMeetingPromiseBrief extends StatelessWidget {
+  final AsyncValue<PromisePreMeetingBrief> brief;
+
+  const _PreMeetingPromiseBrief({required this.brief});
+
+  @override
+  Widget build(BuildContext context) {
+    return brief.maybeWhen(
+      data: (value) {
+        if (value.promises.isEmpty && value.questions.isEmpty) {
+          return const SizedBox.shrink();
+        }
+        final theme = Theme.of(context);
+        final scheme = AppColors.of(context);
+        return Card(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.radar_outlined, color: scheme.primary),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Text(
+                        value.title,
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      '${value.readinessScore}%',
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        color: value.readinessScore < 70
+                            ? AppColors.warning
+                            : AppColors.success,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(value.summary, style: theme.textTheme.bodySmall),
+                for (final promise in value.promises.take(3)) ...[
+                  const SizedBox(height: AppSpacing.xs),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.checklist_outlined, size: 16),
+                      const SizedBox(width: AppSpacing.xs),
+                      Expanded(
+                        child: Text(
+                          '${promise.owner ?? '미지정'} · ${promise.text}',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodySmall,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+                for (final question in value.questions.take(2)) ...[
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    question,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: scheme.textSecondary,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+      orElse: () => const SizedBox.shrink(),
+    );
+  }
 }
 
 class _BlinkingDot extends StatefulWidget {

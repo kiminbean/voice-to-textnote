@@ -2,6 +2,8 @@
 Cross-meeting promise radar schemas.
 """
 
+from __future__ import annotations
+
 from datetime import datetime
 
 from pydantic import BaseModel, Field
@@ -136,6 +138,8 @@ class PromiseAutopilotResponse(BaseModel):
     """Batch result for Promise Autopilot status assessment."""
 
     task_id: str
+    autopilot_threshold: float = Field(default=0.68, ge=0.0, le=1.0)
+    evidence_lock_enforced: bool = True
     assessed_count: int = Field(ge=0)
     applied_count: int = Field(ge=0)
     assessments: list[PromiseAutopilotAssessment] = Field(default_factory=list)
@@ -151,6 +155,124 @@ class PromiseCalendarExportResponse(BaseModel):
     ics_content: str
     google_calendar_url: str
     calendar_event: dict | None = None
+
+
+class PromiseLearningFeedbackRequest(BaseModel):
+    """User feedback used by the Promise Radar learning loop."""
+
+    expected_status: str | None = None
+    expected_assigned_user_id: str | None = None
+    expected_owner: str | None = None
+    correction_type: str = Field(
+        default="status",
+        description="status, assignee, owner, merge, split, or autopilot",
+    )
+    note: str | None = None
+
+
+class PromiseLearningProfile(BaseModel):
+    """Scoped Promise Radar learning profile derived from ledger events."""
+
+    scope: str
+    autopilot_threshold: float = Field(ge=0.0, le=1.0)
+    false_positive_count: int = Field(ge=0)
+    confirmed_count: int = Field(ge=0)
+    assignee_correction_count: int = Field(ge=0)
+    evidence_lock_enabled: bool = True
+    learned_owner_aliases: dict[str, str] = Field(default_factory=dict)
+
+
+class PromiseLearningFeedbackResponse(BaseModel):
+    """Persisted learning feedback result."""
+
+    ledger_entry_id: str
+    recorded: bool
+    learning_profile: PromiseLearningProfile
+
+
+class PromiseTimelineItem(BaseModel):
+    """Readable timeline event for one promise."""
+
+    id: str
+    event_type: str
+    label: str
+    created_at: datetime
+    actor_user_id: str | None = None
+    status_before: str | None = None
+    status_after: str | None = None
+    confidence: float | None = Field(default=None, ge=0.0, le=1.0)
+    source_task_id: str | None = None
+    note: str | None = None
+
+
+class PromiseTimelineResponse(BaseModel):
+    """Timeline for one promise ledger entry."""
+
+    ledger_entry_id: str
+    current_status: str
+    items: list[PromiseTimelineItem] = Field(default_factory=list)
+
+
+class PromisePreMeetingBrief(BaseModel):
+    """Brief displayed before starting a new recording/meeting."""
+
+    title: str
+    readiness_score: int = Field(ge=0, le=100)
+    summary: str
+    promises: list[PromiseLedgerEntryResponse] = Field(default_factory=list)
+    questions: list[str] = Field(default_factory=list)
+
+
+class PromiseDigest(BaseModel):
+    """Daily or weekly digest for unresolved promises."""
+
+    cadence: str = Field(description="daily or weekly")
+    title: str
+    generated_at: datetime
+    open_count: int = Field(ge=0)
+    overdue_count: int = Field(ge=0)
+    due_soon_count: int = Field(ge=0)
+    high_risk_count: int = Field(ge=0)
+    lines: list[str] = Field(default_factory=list)
+    promises: list[PromiseLedgerEntryResponse] = Field(default_factory=list)
+
+
+class PromiseExternalExportRequest(BaseModel):
+    """Request to create or send a first-party external work-tool handoff."""
+
+    provider: str = Field(default="slack", description="slack")
+    dry_run: bool = True
+
+
+class PromiseExternalExportResponse(BaseModel):
+    """External work-tool handoff result."""
+
+    ledger_entry_id: str
+    provider: str
+    sent: bool
+    payload: dict
+    message: str
+
+
+class PromiseAccuracyCase(BaseModel):
+    """One expected Promise Radar accuracy fixture case."""
+
+    id: str
+    entry_text: str
+    current_text: str
+    expected_status: str
+    owner: str | None = None
+    due_at: datetime | None = None
+
+
+class PromiseAccuracyEvaluation(BaseModel):
+    """Precision/recall style Promise Radar evaluation summary."""
+
+    case_count: int = Field(ge=0)
+    correct_count: int = Field(ge=0)
+    accuracy: float = Field(ge=0.0, le=1.0)
+    status_precision: dict[str, float] = Field(default_factory=dict)
+    failures: list[dict] = Field(default_factory=list)
 
 
 class PromiseLedgerEntryResponse(BaseModel):

@@ -5414,6 +5414,35 @@ class _PromiseRadarTab extends ConsumerWidget {
                                   const Icon(Icons.history_outlined, size: 18),
                               label: const Text('이력'),
                             ),
+                            TextButton.icon(
+                              onPressed: () => _showLedgerTimeline(
+                                context,
+                                ref,
+                                entry.id,
+                              ),
+                              icon:
+                                  const Icon(Icons.timeline_outlined, size: 18),
+                              label: const Text('타임라인'),
+                            ),
+                            TextButton.icon(
+                              onPressed: () => _recordLearningFeedback(
+                                context,
+                                ref,
+                                summaryTaskId,
+                                entry,
+                              ),
+                              icon: const Icon(Icons.school_outlined, size: 18),
+                              label: const Text('오판'),
+                            ),
+                            TextButton.icon(
+                              onPressed: () => _exportSlackTaskPreview(
+                                context,
+                                ref,
+                                entry.id,
+                              ),
+                              icon: const Icon(Icons.send_outlined, size: 18),
+                              label: const Text('Slack'),
+                            ),
                           ],
                         ),
                       ],
@@ -5967,6 +5996,121 @@ class _PromiseRadarTab extends ConsumerWidget {
     }
   }
 
+  Future<void> _showLedgerTimeline(
+    BuildContext context,
+    WidgetRef ref,
+    String entryId,
+  ) async {
+    try {
+      final timeline =
+          await ref.read(promiseRadarApiProvider).getTimeline(entryId);
+      if (!context.mounted) return;
+      await showModalBottomSheet<void>(
+        context: context,
+        builder: (sheetContext) => SafeArea(
+          child: ListView(
+            shrinkWrap: true,
+            padding: const EdgeInsets.all(AppSpacing.md),
+            children: [
+              ListTile(
+                leading: const Icon(Icons.timeline_outlined),
+                title: const Text('약속 변경 타임라인'),
+                subtitle: Text('현재 상태: ${timeline.currentStatus}'),
+              ),
+              for (final item in timeline.items)
+                ListTile(
+                  leading: const Icon(Icons.radio_button_checked, size: 16),
+                  title: Text(item.label),
+                  subtitle: Text(
+                    [
+                      item.createdAt,
+                      if (item.statusBefore != null || item.statusAfter != null)
+                        '${item.statusBefore ?? '-'} → ${item.statusAfter ?? '-'}',
+                      if (item.confidence != null)
+                        '신뢰도 ${(item.confidence! * 100).round()}%',
+                      if (item.note != null) item.note!,
+                    ].join(' · '),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      );
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('약속 타임라인 조회에 실패했습니다.')),
+        );
+      }
+    }
+  }
+
+  Future<void> _recordLearningFeedback(
+    BuildContext context,
+    WidgetRef ref,
+    String summaryTaskId,
+    PromiseLedgerEntry entry,
+  ) async {
+    try {
+      final response =
+          await ref.read(promiseRadarApiProvider).recordLearningFeedback(
+                entry.id,
+                PromiseLearningFeedbackRequest(
+                  expectedStatus: 'open',
+                  expectedOwner: entry.owner,
+                  correctionType: 'autopilot',
+                  note: '완료 아님 또는 자동 판정 오판',
+                ),
+              );
+      ref.invalidate(promiseRadarProvider(summaryTaskId));
+      ref.invalidate(promiseLedgerProvider);
+      ref.invalidate(promiseLearningProfileProvider);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '학습 반영됨 · 자동 적용 기준 ${(response.learningProfile.autopilotThreshold * 100).round()}%',
+            ),
+          ),
+        );
+      }
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('학습 피드백 저장에 실패했습니다.')),
+        );
+      }
+    }
+  }
+
+  Future<void> _exportSlackTaskPreview(
+    BuildContext context,
+    WidgetRef ref,
+    String entryId,
+  ) async {
+    try {
+      final exported =
+          await ref.read(promiseRadarApiProvider).exportExternalTask(
+                entryId,
+                const PromiseExternalExportRequest(provider: 'slack'),
+              );
+      await Clipboard.setData(
+        ClipboardData(text: jsonEncode(exported.payload)),
+      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Slack 전송 payload를 복사했습니다.')),
+        );
+      }
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Slack payload 생성에 실패했습니다.')),
+        );
+      }
+    }
+  }
+
   Future<void> _createReminderCandidate(
     BuildContext context,
     WidgetRef ref,
@@ -6009,7 +6153,7 @@ class _PromiseRadarTab extends ConsumerWidget {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              '자동 판정 ${result.assessedCount}개 확인 · ${result.appliedCount}개 적용',
+              '자동 판정 ${result.assessedCount}개 확인 · ${result.appliedCount}개 적용 · 기준 ${(result.autopilotThreshold * 100).round()}%',
             ),
           ),
         );

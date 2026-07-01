@@ -1,0 +1,46 @@
+[
+  {
+    "id": "completed-qa-checklist",
+    "entry_text": "QA 체크리스트 작성",
+    "current_text": "QA 체크리스트 작성 완료했습니다.",
+    "expected_status": "completed",
+    "owner": "김기수"
+  },
+  {
+    "id": "delayed-release-note",
+    "entry_text": "릴리스 노트 검토",
+    "current_text": "릴리스 노트 검토 아직 못했습니다. 다음 회의에서 확인하겠습니다.",
+    "expected_status": "delayed",
+    "owner": "김기수"
+  },
+  {
+    "id": "changed-android-release",
+    "entry_text": "Android 릴리스 빌드",
+    "current_text": "Android 릴리스 빌드 범위를 베타 배포로 변경했습니다.",
+    "expected_status": "changed",
+    "owner": "김기수"
+  },
+  {
+    "id": "dismissed-vercel-backend",
+    "entry_text": "Vercel 백엔드 전환",
+    "current_text": "Vercel 백엔드 전환은 취소하고 진행하지 않기로 했습니다.",
+    "expected_status": "dismissed",
+    "owner": "김기수"
+  },
+  {
+    "id": "open-api-docs",
+    "entry_text": "API 문서 확인",
+    "current_text": "API 문서 확인 담당자는 김기수입니다.",
+    "expected_status": "open",
+    "owner": "김기수",
+    "due_at": "2026-07-07T09:00:00"
+  },
+  {
+    "id": "delayed-by-due-date",
+    "entry_text": "스피커 라벨 QA",
+    "current_text": "이번 회의에서는 로그인 이슈만 논의했습니다.",
+    "expected_status": "delayed",
+    "owner": "김기수",
+    "due_at": "2026-06-30T09:00:00"
+  }
+]

@@ -1,8 +1,8 @@
 # Owll Benchmark PRD
 
-**Status**: Study Pack core implemented; Cross-Meeting Q&A evidence search and synthesis exposed in search; sales follow-up briefs are searchable and listable; 2026-06-30 benchmark refreshed; Promise Radar v5 operational autopilot loop implemented
+**Status**: Study Pack core implemented; Cross-Meeting Q&A evidence search and synthesis exposed in search; sales follow-up briefs are searchable and listable; 2026-06-30 benchmark refreshed; Promise Radar v6 learning/briefing/evidence loop implemented
 **Created**: 2026-06-21  
-**Last verified**: 2026-06-30
+**Last verified**: 2026-07-01
 **Owner**: Voice to TextNote  
 **Scope**: Benchmark Owll AI Note Taker & Assistant and define feature upgrades that fit this project.
 
@@ -93,7 +93,7 @@ The first implementation should be a Study Pack feature because it is high-impac
 
 ## 4.1 Killer Feature: Promise Radar
 
-**Implementation status (2026-07-01)**: Backend schema/service/API, route registration, Flutter API/model/provider, Result-screen `약속 레이더` tab, Home promise dashboard, and focused backend/Flutter tests are implemented. v2 added promise chains, owner-level risk, high-risk counts, and recurring promise follow-up questions. v3 added a persistent Promise Ledger, transcript/speaker/timestamp evidence, user confirmation/status correction, next-meeting briefing, internal reminder/calendar candidates, internal ActionItem conversion, and ZAI GLM-5.2 semantic normalization with deterministic fallback. v4 adds operational schema repair, merge/split UI and API, auditable ledger history, stronger semantic matching, expanded Korean due-date parsing, FCM due-promise dispatch, Home dashboard exposure, team-scoped ledger access, and release-gate regression coverage. v5 adds Promise Autopilot status assessment, per-promise confidence explanations, Google Calendar/ICS export, optional due-notification scheduler, team assignee suggestions, promise quality scores, and strict release E2E scenario coverage for these flows.
+**Implementation status (2026-07-01)**: Backend schema/service/API, route registration, Flutter API/model/provider, Result-screen `약속 레이더` tab, Home promise dashboard, and focused backend/Flutter tests are implemented. v2 added promise chains, owner-level risk, high-risk counts, and recurring promise follow-up questions. v3 added a persistent Promise Ledger, transcript/speaker/timestamp evidence, user confirmation/status correction, next-meeting briefing, internal reminder/calendar candidates, internal ActionItem conversion, and ZAI GLM-5.2 semantic normalization with deterministic fallback. v4 adds operational schema repair, merge/split UI and API, auditable ledger history, stronger semantic matching, expanded Korean due-date parsing, FCM due-promise dispatch, Home dashboard exposure, team-scoped ledger access, and release-gate regression coverage. v5 adds Promise Autopilot status assessment, per-promise confidence explanations, Google Calendar/ICS export, optional due-notification scheduler, team assignee suggestions, promise quality scores, and strict release E2E scenario coverage for these flows. v6 adds a Promise Learning Loop, operator-friendly timeline, pre-meeting Promise Brief, Daily/Weekly Digest, Evidence Lock enforcement, first external work-tool integration through Slack, and a labeled accuracy fixture/evaluator.
 
 ### Problem
 
@@ -106,7 +106,9 @@ Voice to TextNote should become the app that remembers meeting obligations over 
 ### UX
 
 - A new `약속 레이더` tab appears in the meeting result screen.
-- The Home screen shows a compact `약속 레이더` dashboard for open/high-risk/due-soon/overdue promises.
+  - The Home screen shows a compact `약속 레이더` dashboard for open/high-risk/due-soon/overdue promises.
+  - The Home dashboard also shows a compact Daily Promise Digest.
+  - The recording screen can show a pre-meeting Promise Brief before the user starts recording.
 - The tab shows:
   - risk score and headline
   - next-meeting briefing
@@ -120,6 +122,7 @@ Voice to TextNote should become the app that remembers meeting obligations over 
   - repeated/carried-over promises
   - possible decision changes
   - current meeting promises
+  - v6 controls for timeline, learning feedback (`오판`), and Slack dry-run export
 
 ### Backend Contract
 
@@ -139,9 +142,16 @@ Voice to TextNote should become the app that remembers meeting obligations over 
   - `GET /api/v1/promise-radar/ledger/{entry_id}/explain`
   - `POST /api/v1/promise-radar/ledger/{entry_id}/calendar/export`
   - `GET /api/v1/promise-radar/ledger/{entry_id}/assignee-suggestions`
+  - `GET /api/v1/promise-radar/learning-profile`
+  - `POST /api/v1/promise-radar/ledger/{entry_id}/learning-feedback`
+  - `GET /api/v1/promise-radar/ledger/{entry_id}/timeline`
+  - `GET /api/v1/promise-radar/briefing/pre-meeting`
+  - `GET /api/v1/promise-radar/digest?cadence=daily|weekly`
+  - `POST /api/v1/promise-radar/ledger/{entry_id}/external-task`
+  - `POST /api/v1/promise-radar/accuracy/evaluate`
 - Source data: persisted `TaskResult` summary rows using `action_items`, `key_decisions`, and `next_steps`.
 - Access model: current task access is verified; previous meetings are filtered by current user ownership, guest session, or explicit team scope. Team-scoped ledger calls require `TeamMember` membership before any ledger row is returned or changed.
-- Persistence model: `promise_ledger_entries` stores user/guest/team-scoped promises with status, owner, assigned user, due date, risk, occurrences, evidence, confirmation state, reminder/calendar metadata, notification send state, and ActionItem links. `promise_ledger_events` stores auditable detected/updated/merged/split/calendar/action/notification history.
+- Persistence model: `promise_ledger_entries` stores user/guest/team-scoped promises with status, owner, assigned user, due date, risk, occurrences, evidence, confirmation state, reminder/calendar metadata, notification send state, and ActionItem links. `promise_ledger_events` stores auditable detected/updated/merged/split/calendar/action/notification/autopilot/learning/external-export history.
 - Operational migration model: Alembic revision `006_promise_radar_operational_ledger` creates/repairs the Promise Ledger and event tables for managed upgrades. `validate_startup()` still runs `Base.metadata.create_all`, then repairs legacy SQLite `promise_ledger_entries` tables by adding `team_id`, `assigned_user_id`, `notification_sent_at`, and the team/assignee indexes. This prevents the previous class of "code expects a new Ledger column but the local/server SQLite DB was created before the column existed" startup/runtime failure.
 - Fallback principle: deterministic extraction remains the source of truth when ZAI is unavailable or returns invalid JSON.
 - Matching model: deterministic matching normalizes Korean particles and common product/deployment/checklist synonyms, then combines token overlap, character n-grams, containment, and owner match bonus. Exact canonical keys are still preferred; fuzzy matching is only used inside the same scoped open ledger.
@@ -169,6 +179,13 @@ Voice to TextNote should become the app that remembers meeting obligations over 
   - `PromiseCalendarExportResponse`: Google Calendar URL plus valid ICS event content for real calendar handoff.
   - `PromiseAssigneeSuggestion`: team user recommendations from owner-name matching and historical assignment.
   - `PromiseQualityScore`: actionability score and issues for each ledger entry.
+- v6 response additions:
+  - `PromiseLearningProfile` and `PromiseLearningFeedbackResponse`: scoped threshold, correction counts, owner aliases, and feedback recording.
+  - `PromiseTimelineResponse`: readable lifecycle from first detection through repeats, delays, Autopilot assessment/application, user feedback, merge/split, calendar, push, and external export events.
+  - `PromisePreMeetingBrief`: readiness score, top promises, and questions before recording.
+  - `PromiseDigest`: daily/weekly open, overdue, due-soon, high-risk counts plus briefing lines.
+  - `PromiseExternalExportResponse`: Slack payload dry-run or webhook send result.
+  - `PromiseAccuracyEvaluation`: fixture-based status accuracy and per-status precision.
 
 ### Acceptance Criteria
 
@@ -195,8 +212,15 @@ Voice to TextNote should become the app that remembers meeting obligations over 
 - Given the user asks why a promise was matched, the app shows similarity, overlap terms, confidence factors, and source evidence.
 - Given a promise has a due/reminder time, the app can open Google Calendar or provide ICS event content.
 - Given a team-scoped promise has an extracted owner, the app can recommend matching team users and expose the quality score gaps that should be fixed.
+- Given the user marks an automatic decision as wrong, the learning loop records `learning_feedback`, raises/adjusts the scoped Autopilot threshold, and exposes the profile through API/UI.
+- Given the user opens a promise timeline, the app shows first detection, update/repeat, delay, Autopilot, user confirmation/feedback, merge/split, calendar, push, and external export events as a readable lifecycle.
+- Given the user is about to record, the recording screen can show the top unresolved promises/questions from the pre-meeting brief.
+- Given the user opens Home, the app can show a daily digest summary of open, overdue, due-soon, and high-risk promises.
+- Given Autopilot suggests a state change, Evidence Lock prevents automatic mutation unless matched text, source evidence, sufficient similarity, and confidence factors exist. Weak cases remain visible as assessments only.
+- Given a promise should move to an external work tool, Slack dry-run generates a payload without sending; non-dry-run requires `PROMISE_RADAR_SLACK_WEBHOOK_URL`.
+- Given Promise Radar rules change, `backend/tests/fixtures/promise_radar_accuracy_cases.json` and `backend/scripts/evaluate_promise_radar_accuracy.py` measure labeled status accuracy before release.
 - Given strict release evidence is collected, Promise Radar Autopilot, due push, calendar export, and assignee/quality display must each have Android/iOS physical-device observations.
-- Given release-gate checks are run, `ruff`, targeted Promise Radar backend tests, compile/route loading, Flutter analyze, and Flutter model/result-screen tests pass.
+- Given release-gate checks are run, `ruff`, targeted Promise Radar backend tests, accuracy evaluator, compile/route loading, Flutter analyze, and Flutter model/result-screen tests pass.
 
 ## 5. PRD: Study Pack Generation
 

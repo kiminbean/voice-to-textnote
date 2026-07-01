@@ -226,6 +226,111 @@ void main() {
       });
     });
 
+    test('parses learning, timeline, digest, external, and accuracy responses',
+        () {
+      final autopilot = PromiseAutopilotResponse.fromJson({
+        'task_id': 'sum-1',
+        'autopilot_threshold': 0.72,
+        'evidence_lock_enforced': true,
+        'assessed_count': 2,
+        'applied_count': 1,
+        'assessments': [],
+      });
+      expect(autopilot.autopilotThreshold, 0.72);
+      expect(autopilot.evidenceLockEnforced, isTrue);
+
+      final feedback = PromiseLearningFeedbackResponse.fromJson({
+        'ledger_entry_id': 'ledger-1',
+        'recorded': true,
+        'learning_profile': {
+          'scope': 'owner:user-1',
+          'autopilot_threshold': 0.75,
+          'false_positive_count': 2,
+          'confirmed_count': 1,
+          'assignee_correction_count': 1,
+          'evidence_lock_enabled': true,
+          'learned_owner_aliases': {'SPEAKER_01': '김기수'},
+        },
+      });
+      expect(feedback.learningProfile.falsePositiveCount, 2);
+      expect(feedback.learningProfile.learnedOwnerAliases['SPEAKER_01'], '김기수');
+
+      final timeline = PromiseTimelineResponse.fromJson({
+        'ledger_entry_id': 'ledger-1',
+        'current_status': 'completed',
+        'items': [
+          {
+            'id': 'event-1',
+            'event_type': 'autopilot_applied',
+            'label': '자동 판정이 적용됐습니다.',
+            'created_at': '2026-07-01T01:00:00Z',
+            'status_before': 'open',
+            'status_after': 'completed',
+            'confidence': 0.82,
+          }
+        ],
+      });
+      expect(timeline.items.single.statusAfter, 'completed');
+
+      final preMeeting = PromisePreMeetingBrief.fromJson({
+        'title': '회의 시작 전 약속 브리프',
+        'readiness_score': 76,
+        'summary': '회의 전 확인할 약속 1개가 있습니다.',
+        'promises': [
+          {
+            'id': 'ledger-1',
+            'canonical_key': 'qa',
+            'canonical_text': 'QA 체크리스트',
+            'text': 'QA 체크리스트',
+            'status': 'open',
+            'priority': 'high',
+            'risk_level': 'medium',
+            'confidence': 0.9,
+            'occurrences': 2,
+            'first_seen_at': '2026-07-01T00:00:00Z',
+            'last_seen_at': '2026-07-01T00:00:00Z',
+            'user_confirmed': false,
+          }
+        ],
+        'questions': ['QA 체크리스트 상태는 확인됐습니까?'],
+      });
+      expect(preMeeting.promises.single.text, 'QA 체크리스트');
+
+      final digest = PromiseDigest.fromJson({
+        'cadence': 'daily',
+        'title': '오늘의 약속 레이더',
+        'generated_at': '2026-07-01T00:00:00Z',
+        'open_count': 3,
+        'overdue_count': 1,
+        'due_soon_count': 1,
+        'high_risk_count': 1,
+        'lines': ['열린 약속 3개'],
+        'promises': [],
+      });
+      expect(digest.lines.single, '열린 약속 3개');
+
+      final external = PromiseExternalExportResponse.fromJson({
+        'ledger_entry_id': 'ledger-1',
+        'provider': 'slack',
+        'sent': false,
+        'payload': {'text': 'Promise Radar: QA 체크리스트'},
+        'message': 'Slack payload가 생성됐습니다.',
+      });
+      expect(external.payload['text'], contains('Promise Radar'));
+
+      const exportRequest = PromiseExternalExportRequest(provider: 'slack');
+      expect(exportRequest.toJson(), {'provider': 'slack', 'dry_run': true});
+
+      final evaluation = PromiseAccuracyEvaluation.fromJson({
+        'case_count': 6,
+        'correct_count': 5,
+        'accuracy': 0.833,
+        'status_precision': {'completed': 1.0},
+        'failures': [],
+      });
+      expect(evaluation.statusPrecision['completed'], 1.0);
+    });
+
     test('parses task link response', () {
       final response = PromiseTaskLinkResponse.fromJson({
         'ledger_entry_id': 'ledger-1',

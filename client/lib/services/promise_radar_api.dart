@@ -64,6 +64,52 @@ class PromiseRadarApi {
     );
   }
 
+  Future<PromisePreMeetingBrief> getPreMeetingBrief({
+    String? teamId,
+    int limit = 8,
+  }) async {
+    final response = await _dio.get(
+      '/promise-radar/briefing/pre-meeting',
+      queryParameters: {
+        'limit': limit,
+        if (teamId != null) 'team_id': teamId,
+      },
+    );
+    return PromisePreMeetingBrief.fromJson(
+      response.data as Map<String, dynamic>,
+    );
+  }
+
+  Future<PromiseDigest> getDigest({
+    String cadence = 'daily',
+    String? teamId,
+    int limit = 12,
+  }) async {
+    final response = await _dio.get(
+      '/promise-radar/digest',
+      queryParameters: {
+        'cadence': cadence,
+        'limit': limit,
+        if (teamId != null) 'team_id': teamId,
+      },
+    );
+    return PromiseDigest.fromJson(response.data as Map<String, dynamic>);
+  }
+
+  Future<PromiseLearningProfile> getLearningProfile({
+    String? teamId,
+  }) async {
+    final response = await _dio.get(
+      '/promise-radar/learning-profile',
+      queryParameters: {
+        if (teamId != null) 'team_id': teamId,
+      },
+    );
+    return PromiseLearningProfile.fromJson(
+      response.data as Map<String, dynamic>,
+    );
+  }
+
   Future<PromiseRadarDashboard> getDashboard({
     String? teamId,
     int limit = 50,
@@ -179,6 +225,57 @@ class PromiseRadarApi {
         .toList();
   }
 
+  Future<PromiseLearningFeedbackResponse> recordLearningFeedback(
+    String entryId,
+    PromiseLearningFeedbackRequest request, {
+    String? teamId,
+  }) async {
+    final response = await _dio.post(
+      '/promise-radar/ledger/$entryId/learning-feedback',
+      queryParameters: {
+        if (teamId != null) 'team_id': teamId,
+      },
+      data: request.toJson(),
+    );
+    return PromiseLearningFeedbackResponse.fromJson(
+      response.data as Map<String, dynamic>,
+    );
+  }
+
+  Future<PromiseTimelineResponse> getTimeline(
+    String entryId, {
+    String? teamId,
+    int limit = 50,
+  }) async {
+    final response = await _dio.get(
+      '/promise-radar/ledger/$entryId/timeline',
+      queryParameters: {
+        'limit': limit,
+        if (teamId != null) 'team_id': teamId,
+      },
+    );
+    return PromiseTimelineResponse.fromJson(
+      response.data as Map<String, dynamic>,
+    );
+  }
+
+  Future<PromiseExternalExportResponse> exportExternalTask(
+    String entryId,
+    PromiseExternalExportRequest request, {
+    String? teamId,
+  }) async {
+    final response = await _dio.post(
+      '/promise-radar/ledger/$entryId/external-task',
+      queryParameters: {
+        if (teamId != null) 'team_id': teamId,
+      },
+      data: request.toJson(),
+    );
+    return PromiseExternalExportResponse.fromJson(
+      response.data as Map<String, dynamic>,
+    );
+  }
+
   Future<PromiseTaskLinkResponse> createActionItem(
     String entryId, {
     String? teamId,
@@ -276,6 +373,18 @@ class PromiseRadarApi {
       },
     );
     return PromiseNotificationDispatchResponse.fromJson(
+      response.data as Map<String, dynamic>,
+    );
+  }
+
+  Future<PromiseAccuracyEvaluation> evaluateAccuracy(
+    List<PromiseAccuracyCase> cases,
+  ) async {
+    final response = await _dio.post(
+      '/promise-radar/accuracy/evaluate',
+      data: cases.map((caseItem) => caseItem.toJson()).toList(),
+    );
+    return PromiseAccuracyEvaluation.fromJson(
       response.data as Map<String, dynamic>,
     );
   }

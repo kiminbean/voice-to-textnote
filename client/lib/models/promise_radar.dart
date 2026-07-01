@@ -353,12 +353,16 @@ class PromiseAutopilotAssessment {
 
 class PromiseAutopilotResponse {
   final String taskId;
+  final double autopilotThreshold;
+  final bool evidenceLockEnforced;
   final int assessedCount;
   final int appliedCount;
   final List<PromiseAutopilotAssessment> assessments;
 
   const PromiseAutopilotResponse({
     required this.taskId,
+    this.autopilotThreshold = 0.68,
+    this.evidenceLockEnforced = true,
     required this.assessedCount,
     required this.appliedCount,
     required this.assessments,
@@ -367,6 +371,9 @@ class PromiseAutopilotResponse {
   factory PromiseAutopilotResponse.fromJson(Map<String, dynamic> json) {
     return PromiseAutopilotResponse(
       taskId: json['task_id'] as String? ?? '',
+      autopilotThreshold:
+          (json['autopilot_threshold'] as num?)?.toDouble() ?? 0.68,
+      evidenceLockEnforced: json['evidence_lock_enforced'] as bool? ?? true,
       assessedCount: json['assessed_count'] as int? ?? 0,
       appliedCount: json['applied_count'] as int? ?? 0,
       assessments: (json['assessments'] as List<dynamic>? ?? [])
@@ -405,6 +412,332 @@ class PromiseCalendarExportResponse {
       icsContent: json['ics_content'] as String? ?? '',
       googleCalendarUrl: json['google_calendar_url'] as String? ?? '',
       calendarEvent: json['calendar_event'] as Map<String, dynamic>?,
+    );
+  }
+}
+
+class PromiseLearningFeedbackRequest {
+  final String? expectedStatus;
+  final String? expectedAssignedUserId;
+  final String? expectedOwner;
+  final String correctionType;
+  final String? note;
+
+  const PromiseLearningFeedbackRequest({
+    this.expectedStatus,
+    this.expectedAssignedUserId,
+    this.expectedOwner,
+    this.correctionType = 'status',
+    this.note,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      if (expectedStatus != null) 'expected_status': expectedStatus,
+      if (expectedAssignedUserId != null)
+        'expected_assigned_user_id': expectedAssignedUserId,
+      if (expectedOwner != null) 'expected_owner': expectedOwner,
+      'correction_type': correctionType,
+      if (note != null) 'note': note,
+    };
+  }
+}
+
+class PromiseLearningProfile {
+  final String scope;
+  final double autopilotThreshold;
+  final int falsePositiveCount;
+  final int confirmedCount;
+  final int assigneeCorrectionCount;
+  final bool evidenceLockEnabled;
+  final Map<String, String> learnedOwnerAliases;
+
+  const PromiseLearningProfile({
+    required this.scope,
+    required this.autopilotThreshold,
+    required this.falsePositiveCount,
+    required this.confirmedCount,
+    required this.assigneeCorrectionCount,
+    required this.evidenceLockEnabled,
+    required this.learnedOwnerAliases,
+  });
+
+  factory PromiseLearningProfile.fromJson(Map<String, dynamic> json) {
+    return PromiseLearningProfile(
+      scope: json['scope'] as String? ?? 'none',
+      autopilotThreshold:
+          (json['autopilot_threshold'] as num?)?.toDouble() ?? 0.68,
+      falsePositiveCount: json['false_positive_count'] as int? ?? 0,
+      confirmedCount: json['confirmed_count'] as int? ?? 0,
+      assigneeCorrectionCount: json['assignee_correction_count'] as int? ?? 0,
+      evidenceLockEnabled: json['evidence_lock_enabled'] as bool? ?? true,
+      learnedOwnerAliases:
+          (json['learned_owner_aliases'] as Map<String, dynamic>? ?? {})
+              .map((key, value) => MapEntry(key, value.toString())),
+    );
+  }
+}
+
+class PromiseLearningFeedbackResponse {
+  final String ledgerEntryId;
+  final bool recorded;
+  final PromiseLearningProfile learningProfile;
+
+  const PromiseLearningFeedbackResponse({
+    required this.ledgerEntryId,
+    required this.recorded,
+    required this.learningProfile,
+  });
+
+  factory PromiseLearningFeedbackResponse.fromJson(Map<String, dynamic> json) {
+    return PromiseLearningFeedbackResponse(
+      ledgerEntryId: json['ledger_entry_id'] as String? ?? '',
+      recorded: json['recorded'] as bool? ?? false,
+      learningProfile: PromiseLearningProfile.fromJson(
+        json['learning_profile'] as Map<String, dynamic>? ??
+            const <String, dynamic>{},
+      ),
+    );
+  }
+}
+
+class PromiseTimelineItem {
+  final String id;
+  final String eventType;
+  final String label;
+  final String createdAt;
+  final String? actorUserId;
+  final String? statusBefore;
+  final String? statusAfter;
+  final double? confidence;
+  final String? sourceTaskId;
+  final String? note;
+
+  const PromiseTimelineItem({
+    required this.id,
+    required this.eventType,
+    required this.label,
+    required this.createdAt,
+    this.actorUserId,
+    this.statusBefore,
+    this.statusAfter,
+    this.confidence,
+    this.sourceTaskId,
+    this.note,
+  });
+
+  factory PromiseTimelineItem.fromJson(Map<String, dynamic> json) {
+    return PromiseTimelineItem(
+      id: json['id'] as String? ?? '',
+      eventType: json['event_type'] as String? ?? '',
+      label: json['label'] as String? ?? '',
+      createdAt: json['created_at'] as String? ?? '',
+      actorUserId: json['actor_user_id'] as String?,
+      statusBefore: json['status_before'] as String?,
+      statusAfter: json['status_after'] as String?,
+      confidence: (json['confidence'] as num?)?.toDouble(),
+      sourceTaskId: json['source_task_id'] as String?,
+      note: json['note'] as String?,
+    );
+  }
+}
+
+class PromiseTimelineResponse {
+  final String ledgerEntryId;
+  final String currentStatus;
+  final List<PromiseTimelineItem> items;
+
+  const PromiseTimelineResponse({
+    required this.ledgerEntryId,
+    required this.currentStatus,
+    required this.items,
+  });
+
+  factory PromiseTimelineResponse.fromJson(Map<String, dynamic> json) {
+    return PromiseTimelineResponse(
+      ledgerEntryId: json['ledger_entry_id'] as String? ?? '',
+      currentStatus: json['current_status'] as String? ?? '',
+      items: (json['items'] as List<dynamic>? ?? [])
+          .whereType<Map<String, dynamic>>()
+          .map(PromiseTimelineItem.fromJson)
+          .toList(),
+    );
+  }
+}
+
+class PromisePreMeetingBrief {
+  final String title;
+  final int readinessScore;
+  final String summary;
+  final List<PromiseLedgerEntry> promises;
+  final List<String> questions;
+
+  const PromisePreMeetingBrief({
+    required this.title,
+    required this.readinessScore,
+    required this.summary,
+    required this.promises,
+    required this.questions,
+  });
+
+  factory PromisePreMeetingBrief.fromJson(Map<String, dynamic> json) {
+    return PromisePreMeetingBrief(
+      title: json['title'] as String? ?? '회의 시작 전 약속 브리프',
+      readinessScore: json['readiness_score'] as int? ?? 100,
+      summary: json['summary'] as String? ?? '',
+      promises: (json['promises'] as List<dynamic>? ?? [])
+          .whereType<Map<String, dynamic>>()
+          .map(PromiseLedgerEntry.fromJson)
+          .toList(),
+      questions: (json['questions'] as List<dynamic>? ?? [])
+          .whereType<String>()
+          .toList(),
+    );
+  }
+}
+
+class PromiseDigest {
+  final String cadence;
+  final String title;
+  final String generatedAt;
+  final int openCount;
+  final int overdueCount;
+  final int dueSoonCount;
+  final int highRiskCount;
+  final List<String> lines;
+  final List<PromiseLedgerEntry> promises;
+
+  const PromiseDigest({
+    required this.cadence,
+    required this.title,
+    required this.generatedAt,
+    required this.openCount,
+    required this.overdueCount,
+    required this.dueSoonCount,
+    required this.highRiskCount,
+    required this.lines,
+    required this.promises,
+  });
+
+  factory PromiseDigest.fromJson(Map<String, dynamic> json) {
+    return PromiseDigest(
+      cadence: json['cadence'] as String? ?? 'daily',
+      title: json['title'] as String? ?? '오늘의 약속 레이더',
+      generatedAt: json['generated_at'] as String? ?? '',
+      openCount: json['open_count'] as int? ?? 0,
+      overdueCount: json['overdue_count'] as int? ?? 0,
+      dueSoonCount: json['due_soon_count'] as int? ?? 0,
+      highRiskCount: json['high_risk_count'] as int? ?? 0,
+      lines:
+          (json['lines'] as List<dynamic>? ?? []).whereType<String>().toList(),
+      promises: (json['promises'] as List<dynamic>? ?? [])
+          .whereType<Map<String, dynamic>>()
+          .map(PromiseLedgerEntry.fromJson)
+          .toList(),
+    );
+  }
+}
+
+class PromiseExternalExportRequest {
+  final String provider;
+  final bool dryRun;
+
+  const PromiseExternalExportRequest({
+    this.provider = 'slack',
+    this.dryRun = true,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'provider': provider,
+      'dry_run': dryRun,
+    };
+  }
+}
+
+class PromiseExternalExportResponse {
+  final String ledgerEntryId;
+  final String provider;
+  final bool sent;
+  final Map<String, dynamic> payload;
+  final String message;
+
+  const PromiseExternalExportResponse({
+    required this.ledgerEntryId,
+    required this.provider,
+    required this.sent,
+    required this.payload,
+    required this.message,
+  });
+
+  factory PromiseExternalExportResponse.fromJson(Map<String, dynamic> json) {
+    return PromiseExternalExportResponse(
+      ledgerEntryId: json['ledger_entry_id'] as String? ?? '',
+      provider: json['provider'] as String? ?? 'slack',
+      sent: json['sent'] as bool? ?? false,
+      payload:
+          json['payload'] as Map<String, dynamic>? ?? const <String, dynamic>{},
+      message: json['message'] as String? ?? '',
+    );
+  }
+}
+
+class PromiseAccuracyCase {
+  final String id;
+  final String entryText;
+  final String currentText;
+  final String expectedStatus;
+  final String? owner;
+  final DateTime? dueAt;
+
+  const PromiseAccuracyCase({
+    required this.id,
+    required this.entryText,
+    required this.currentText,
+    required this.expectedStatus,
+    this.owner,
+    this.dueAt,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'entry_text': entryText,
+      'current_text': currentText,
+      'expected_status': expectedStatus,
+      if (owner != null) 'owner': owner,
+      if (dueAt != null) 'due_at': dueAt!.toIso8601String(),
+    };
+  }
+}
+
+class PromiseAccuracyEvaluation {
+  final int caseCount;
+  final int correctCount;
+  final double accuracy;
+  final Map<String, double> statusPrecision;
+  final List<Map<String, dynamic>> failures;
+
+  const PromiseAccuracyEvaluation({
+    required this.caseCount,
+    required this.correctCount,
+    required this.accuracy,
+    required this.statusPrecision,
+    required this.failures,
+  });
+
+  factory PromiseAccuracyEvaluation.fromJson(Map<String, dynamic> json) {
+    return PromiseAccuracyEvaluation(
+      caseCount: json['case_count'] as int? ?? 0,
+      correctCount: json['correct_count'] as int? ?? 0,
+      accuracy: (json['accuracy'] as num?)?.toDouble() ?? 0,
+      statusPrecision:
+          (json['status_precision'] as Map<String, dynamic>? ?? {}).map(
+        (key, value) => MapEntry(key, (value as num?)?.toDouble() ?? 0),
+      ),
+      failures: (json['failures'] as List<dynamic>? ?? [])
+          .whereType<Map<String, dynamic>>()
+          .toList(),
     );
   }
 }

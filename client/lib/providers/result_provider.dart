@@ -282,6 +282,23 @@ final promiseNextMeetingBriefingProvider =
   return api.getNextMeetingBriefing();
 });
 
+final promisePreMeetingBriefProvider =
+    FutureProvider<PromisePreMeetingBrief>((ref) {
+  final api = ref.watch(promiseRadarApiProvider);
+  return api.getPreMeetingBrief();
+});
+
+final promiseDailyDigestProvider = FutureProvider<PromiseDigest>((ref) {
+  final api = ref.watch(promiseRadarApiProvider);
+  return api.getDigest();
+});
+
+final promiseLearningProfileProvider =
+    FutureProvider<PromiseLearningProfile>((ref) {
+  final api = ref.watch(promiseRadarApiProvider);
+  return api.getLearningProfile();
+});
+
 final promiseRadarDashboardProvider =
     FutureProvider<PromiseRadarDashboard>((ref) {
   final api = ref.watch(promiseRadarApiProvider);
