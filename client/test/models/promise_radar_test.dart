@@ -583,5 +583,53 @@ void main() {
       });
       expect(explanation.overlapTerms.single, '체크리스트');
     });
+
+    test('parses digest preference and Google Tasks sync contracts', () {
+      final preference = PromiseDigestPreference.fromJson({
+        'scope': 'owner:user-1',
+        'enabled': true,
+        'cadence': 'weekly',
+        'local_time': '08:30',
+        'timezone': 'Asia/Seoul',
+        'quiet_hours_start': '22:00',
+        'quiet_hours_end': '07:00',
+        'updated_at': '2026-07-01T00:00:00Z',
+      });
+      expect(preference.enabled, isTrue);
+      expect(preference.cadence, 'weekly');
+
+      const update = PromiseDigestPreferenceUpdateRequest(
+        enabled: true,
+        cadence: 'daily',
+      );
+      expect(update.toJson()['local_time'], '08:30');
+
+      final tasklists = PromiseGoogleTaskListResponse.fromJson({
+        'tasklists': [
+          {
+            'id': '@default',
+            'title': 'My Tasks',
+            'updated': '2026-07-01T00:00:00Z',
+          }
+        ],
+      });
+      expect(tasklists.tasklists.single.title, 'My Tasks');
+
+      const syncRequest = PromiseExternalTaskSyncRequest(
+        accessToken: 'token',
+        tasklist: '@default',
+        externalId: 'task-1',
+      );
+      expect(syncRequest.toJson()['external_id'], 'task-1');
+
+      final syncResponse = PromiseExternalTaskSyncResponse.fromJson({
+        'ledger_entry_id': 'ledger-1',
+        'provider': 'google_tasks',
+        'synced': true,
+        'status': 'completed',
+        'message': '동기화했습니다.',
+      });
+      expect(syncResponse.status, 'completed');
+    });
   });
 }

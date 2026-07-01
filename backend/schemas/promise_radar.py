@@ -186,6 +186,14 @@ class PromiseAutopilotConfirmRequest(BaseModel):
     note: str | None = None
 
 
+class PromiseAutopilotRejectRequest(BaseModel):
+    """User rejection request for a queued Autopilot review item."""
+
+    task_id: str
+    suggested_status: str | None = None
+    note: str | None = None
+
+
 class PromiseAutopilotReviewItem(BaseModel):
     """One pending Autopilot review queue row with user-visible ledger context."""
 
@@ -336,6 +344,30 @@ class PromiseDigest(BaseModel):
     promises: list[PromiseLedgerEntryResponse] = Field(default_factory=list)
 
 
+class PromiseDigestPreference(BaseModel):
+    """Scoped user/team preference for scheduled Promise Digest push."""
+
+    scope: str
+    enabled: bool = False
+    cadence: str = Field(default="daily", description="daily or weekly")
+    local_time: str = Field(default="08:30", description="HH:MM local notification time")
+    timezone: str = Field(default="Asia/Seoul")
+    quiet_hours_start: str | None = Field(default="22:00", description="HH:MM")
+    quiet_hours_end: str | None = Field(default="07:00", description="HH:MM")
+    updated_at: datetime | None = None
+
+
+class PromiseDigestPreferenceUpdateRequest(BaseModel):
+    """Update request for scheduled Promise Digest push preference."""
+
+    enabled: bool = False
+    cadence: str = Field(default="daily", description="daily or weekly")
+    local_time: str = Field(default="08:30", description="HH:MM local notification time")
+    timezone: str = Field(default="Asia/Seoul")
+    quiet_hours_start: str | None = Field(default="22:00", description="HH:MM")
+    quiet_hours_end: str | None = Field(default="07:00", description="HH:MM")
+
+
 class PromiseExternalExportRequest(BaseModel):
     """Request to create or send a first-party external work-tool handoff."""
 
@@ -357,6 +389,39 @@ class PromiseExternalExportResponse(BaseModel):
     message: str
     external_id: str | None = None
     external_url: str | None = None
+
+
+class PromiseGoogleTaskList(BaseModel):
+    """Google Tasks tasklist option returned from the user's OAuth scope."""
+
+    id: str
+    title: str
+    updated: str | None = None
+
+
+class PromiseGoogleTaskListResponse(BaseModel):
+    """Available Google Tasks tasklists for a scoped access token."""
+
+    tasklists: list[PromiseGoogleTaskList] = Field(default_factory=list)
+
+
+class PromiseExternalTaskSyncRequest(BaseModel):
+    """Request to sync one exported external task back into Promise Ledger."""
+
+    provider: str = Field(default="google_tasks")
+    access_token: str | None = None
+    tasklist: str = Field(default="@default")
+    external_id: str | None = None
+
+
+class PromiseExternalTaskSyncResponse(BaseModel):
+    """Result of syncing one external work-tool task."""
+
+    ledger_entry_id: str
+    provider: str
+    synced: bool
+    status: str | None = None
+    message: str
 
 
 class PromiseAccuracyCase(BaseModel):

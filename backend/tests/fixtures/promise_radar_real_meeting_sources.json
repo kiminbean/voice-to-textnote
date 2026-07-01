@@ -1,0 +1,103 @@
+[
+  {
+    "source_id": "town-meeting-tv-bac-2021-06-16",
+    "title": "Burlington Airport Commission - 6/16/2021",
+    "url": "https://www.youtube.com/watch?v=oq1XYJ6ggms",
+    "channel": "Town Meeting TV",
+    "license": "Creative Commons Attribution license (reuse allowed)",
+    "duration_seconds": 4038,
+    "verified_with": "yt-dlp --dump-single-json https://www.youtube.com/watch?v=oq1XYJ6ggms",
+    "rebuild_commands": [
+      "yt-dlp --write-auto-subs --sub-lang en --skip-download --sub-format json3 -o '.cache/promise-radar-youtube/%(id)s.%(ext)s' https://www.youtube.com/watch?v=oq1XYJ6ggms",
+      "yt-dlp -f bestaudio --download-sections '*00:03:16-00:04:59' --extract-audio --audio-format wav -o '.cache/promise-radar-youtube/oq1XYJ6ggms_196_299.%(ext)s' https://www.youtube.com/watch?v=oq1XYJ6ggms"
+    ],
+    "segments": [
+      {
+        "start_seconds": 196,
+        "end_seconds": 299,
+        "topic": "Pike Airfield Mill and Overlay contract",
+        "golden_case_ids": ["real-oq1-pike-contract-approved"],
+        "label_notes": "Motion language, unanimous approval, and ordered status indicate completed."
+      },
+      {
+        "start_seconds": 299,
+        "end_seconds": 541,
+        "topic": "Airfield lease agreement",
+        "golden_case_ids": ["real-oq1-airfield-lease-approved"],
+        "label_notes": "The agreement is approved as presented and extended for one year."
+      },
+      {
+        "start_seconds": 541,
+        "end_seconds": 648,
+        "topic": "Financial package",
+        "golden_case_ids": [
+          "real-oq1-financial-package-filed",
+          "real-oq1-financial-questions-marie"
+        ],
+        "label_notes": "The package is accepted/filed, while follow-up questions remain open for Marie."
+      },
+      {
+        "start_seconds": 648,
+        "end_seconds": 760,
+        "topic": "Construction update",
+        "golden_case_ids": [
+          "real-oq1-construction-grant-progress",
+          "real-oq1-construction-closeout-open"
+        ],
+        "label_notes": "Grant and closeout work are future-oriented and should remain open."
+      },
+      {
+        "start_seconds": 1743,
+        "end_seconds": 1850,
+        "topic": "Sound data",
+        "golden_case_ids": ["real-oq1-sound-overlay-next-month"],
+        "label_notes": "Flight path overlay is a possible next-month follow-up, not completed."
+      }
+    ]
+  },
+  {
+    "source_id": "town-meeting-tv-bac-2021-08-18",
+    "title": "Burlington Airport Commission - 8/18/2021",
+    "url": "https://www.youtube.com/watch?v=mo7lRpB8ao8",
+    "channel": "Town Meeting TV",
+    "license": "Creative Commons Attribution license (reuse allowed)",
+    "duration_seconds": 2865,
+    "verified_with": "yt-dlp --dump-single-json https://www.youtube.com/watch?v=mo7lRpB8ao8",
+    "rebuild_commands": [
+      "yt-dlp --write-auto-subs --sub-lang en --skip-download --sub-format json3 -o '.cache/promise-radar-youtube/%(id)s.%(ext)s' https://www.youtube.com/watch?v=mo7lRpB8ao8"
+    ],
+    "segments": [
+      {
+        "start_seconds": 650,
+        "end_seconds": 840,
+        "topic": "Meeting format discussion",
+        "golden_case_ids": ["real-mo7-format-airport-fyi-added"],
+        "label_notes": "The meeting format is changed by adding an Airport FYI item."
+      },
+      {
+        "start_seconds": 840,
+        "end_seconds": 1050,
+        "topic": "Accountable item format",
+        "golden_case_ids": ["real-mo7-accountable-owner-format"],
+        "label_notes": "The process changes so each item includes an accountable person and explanation."
+      },
+      {
+        "start_seconds": 1050,
+        "end_seconds": 1200,
+        "topic": "Procedures and rules",
+        "golden_case_ids": ["real-mo7-procedures-rules-adopted"],
+        "label_notes": "Procedure/rule adoption is approved by motion and ordered."
+      },
+      {
+        "start_seconds": 1200,
+        "end_seconds": 1500,
+        "topic": "Financial update",
+        "golden_case_ids": [
+          "real-mo7-year-end-adjustments",
+          "real-mo7-meeting-procedure-document-open"
+        ],
+        "label_notes": "Financial adjustments and procedure document distribution remain operational follow-ups."
+      }
+    ]
+  }
+]

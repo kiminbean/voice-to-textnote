@@ -134,11 +134,11 @@
 #### Promise Radar
 - **회의 간 약속 분석**: `GET /api/v1/promise-radar/{summary_task_id}`
 - **약속 원장/대시보드**: `GET /api/v1/promise-radar/ledger`, `GET /api/v1/promise-radar/dashboard`
-- **자동 판정/검토함**: `POST /api/v1/promise-radar/autopilot/{task_id}`, `GET /api/v1/promise-radar/autopilot/{task_id}/review-queue`, `POST /api/v1/promise-radar/ledger/{entry_id}/autopilot-confirm`
+- **자동 판정/검토함**: `POST /api/v1/promise-radar/autopilot/{task_id}`, `GET /api/v1/promise-radar/autopilot/{task_id}/review-queue`, `POST /api/v1/promise-radar/ledger/{entry_id}/autopilot-confirm`, `POST /api/v1/promise-radar/ledger/{entry_id}/autopilot-reject`
 - **학습/정책 루프**: `GET /api/v1/promise-radar/learning-profile`, `POST /api/v1/promise-radar/ledger/{entry_id}/learning-feedback`, `GET|PUT /api/v1/promise-radar/automation-policy`
-- **운영 브리핑/푸시**: `GET /api/v1/promise-radar/briefing/pre-meeting`, `GET /api/v1/promise-radar/digest?cadence=daily|weekly`, `POST /api/v1/promise-radar/ledger/notifications/digest`
-- **충돌/근거 감사**: `POST /api/v1/promise-radar/ledger/{entry_id}/resolve-conflict`, Review Queue Evidence Pack Viewer
-- **이력/연동/평가**: `GET /api/v1/promise-radar/ledger/{entry_id}/timeline`, `POST /api/v1/promise-radar/ledger/{entry_id}/external-task` (Slack/Google Tasks), `POST /api/v1/promise-radar/accuracy/evaluate`
+- **운영 브리핑/푸시**: `GET /api/v1/promise-radar/briefing/pre-meeting`, `GET /api/v1/promise-radar/digest?cadence=daily|weekly`, `GET|PUT /api/v1/promise-radar/digest-preference`, `POST /api/v1/promise-radar/ledger/notifications/digest`
+- **충돌/근거 감사**: `POST /api/v1/promise-radar/ledger/{entry_id}/resolve-conflict`, `GET /api/v1/promise-radar/ledger/{entry_id}/evidence-pack`, Review Queue Evidence Pack Viewer
+- **이력/연동/평가**: `GET /api/v1/promise-radar/ledger/{entry_id}/timeline`, `POST /api/v1/promise-radar/ledger/{entry_id}/external-task`, `POST /api/v1/promise-radar/external-task/google-tasklists`, `POST /api/v1/promise-radar/ledger/{entry_id}/external-task/sync`, `POST /api/v1/promise-radar/accuracy/evaluate`
 
 #### 외부 자료 가져오기
 - **URL/Transcript 가져오기**: `POST /api/v1/imports/external-text`

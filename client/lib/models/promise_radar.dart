@@ -908,6 +908,70 @@ class PromiseDigest {
   }
 }
 
+class PromiseDigestPreference {
+  final String scope;
+  final bool enabled;
+  final String cadence;
+  final String localTime;
+  final String timezone;
+  final String? quietHoursStart;
+  final String? quietHoursEnd;
+  final String? updatedAt;
+
+  const PromiseDigestPreference({
+    required this.scope,
+    required this.enabled,
+    required this.cadence,
+    required this.localTime,
+    required this.timezone,
+    this.quietHoursStart,
+    this.quietHoursEnd,
+    this.updatedAt,
+  });
+
+  factory PromiseDigestPreference.fromJson(Map<String, dynamic> json) {
+    return PromiseDigestPreference(
+      scope: json['scope'] as String? ?? 'none',
+      enabled: json['enabled'] as bool? ?? false,
+      cadence: json['cadence'] as String? ?? 'daily',
+      localTime: json['local_time'] as String? ?? '08:30',
+      timezone: json['timezone'] as String? ?? 'Asia/Seoul',
+      quietHoursStart: json['quiet_hours_start'] as String?,
+      quietHoursEnd: json['quiet_hours_end'] as String?,
+      updatedAt: json['updated_at'] as String?,
+    );
+  }
+}
+
+class PromiseDigestPreferenceUpdateRequest {
+  final bool enabled;
+  final String cadence;
+  final String localTime;
+  final String timezone;
+  final String? quietHoursStart;
+  final String? quietHoursEnd;
+
+  const PromiseDigestPreferenceUpdateRequest({
+    this.enabled = false,
+    this.cadence = 'daily',
+    this.localTime = '08:30',
+    this.timezone = 'Asia/Seoul',
+    this.quietHoursStart = '22:00',
+    this.quietHoursEnd = '07:00',
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'enabled': enabled,
+      'cadence': cadence,
+      'local_time': localTime,
+      'timezone': timezone,
+      if (quietHoursStart != null) 'quiet_hours_start': quietHoursStart,
+      if (quietHoursEnd != null) 'quiet_hours_end': quietHoursEnd,
+    };
+  }
+}
+
 class PromiseExternalExportRequest {
   final String provider;
   final bool dryRun;
@@ -966,6 +1030,90 @@ class PromiseExternalExportResponse {
       message: json['message'] as String? ?? '',
       externalId: json['external_id'] as String?,
       externalUrl: json['external_url'] as String?,
+    );
+  }
+}
+
+class PromiseGoogleTaskList {
+  final String id;
+  final String title;
+  final String? updated;
+
+  const PromiseGoogleTaskList({
+    required this.id,
+    required this.title,
+    this.updated,
+  });
+
+  factory PromiseGoogleTaskList.fromJson(Map<String, dynamic> json) {
+    return PromiseGoogleTaskList(
+      id: json['id'] as String? ?? '',
+      title: json['title'] as String? ?? 'Untitled',
+      updated: json['updated'] as String?,
+    );
+  }
+}
+
+class PromiseGoogleTaskListResponse {
+  final List<PromiseGoogleTaskList> tasklists;
+
+  const PromiseGoogleTaskListResponse({required this.tasklists});
+
+  factory PromiseGoogleTaskListResponse.fromJson(Map<String, dynamic> json) {
+    return PromiseGoogleTaskListResponse(
+      tasklists: (json['tasklists'] as List<dynamic>? ?? [])
+          .whereType<Map<String, dynamic>>()
+          .map(PromiseGoogleTaskList.fromJson)
+          .toList(),
+    );
+  }
+}
+
+class PromiseExternalTaskSyncRequest {
+  final String provider;
+  final String? accessToken;
+  final String tasklist;
+  final String? externalId;
+
+  const PromiseExternalTaskSyncRequest({
+    this.provider = 'google_tasks',
+    this.accessToken,
+    this.tasklist = '@default',
+    this.externalId,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'provider': provider,
+      if (accessToken != null) 'access_token': accessToken,
+      'tasklist': tasklist,
+      if (externalId != null) 'external_id': externalId,
+    };
+  }
+}
+
+class PromiseExternalTaskSyncResponse {
+  final String ledgerEntryId;
+  final String provider;
+  final bool synced;
+  final String? status;
+  final String message;
+
+  const PromiseExternalTaskSyncResponse({
+    required this.ledgerEntryId,
+    required this.provider,
+    required this.synced,
+    this.status,
+    required this.message,
+  });
+
+  factory PromiseExternalTaskSyncResponse.fromJson(Map<String, dynamic> json) {
+    return PromiseExternalTaskSyncResponse(
+      ledgerEntryId: json['ledger_entry_id'] as String? ?? '',
+      provider: json['provider'] as String? ?? 'google_tasks',
+      synced: json['synced'] as bool? ?? false,
+      status: json['status'] as String?,
+      message: json['message'] as String? ?? '',
     );
   }
 }

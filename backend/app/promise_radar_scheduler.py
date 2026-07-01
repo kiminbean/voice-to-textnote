@@ -63,6 +63,7 @@ async def run_promise_radar_digest_notification_tick(
             now=datetime.now(UTC),
             limit=limit,
             allow_global=True,
+            require_enabled_preference=True,
         )
     logger.info(
         "Promise Radar digest notification tick complete",

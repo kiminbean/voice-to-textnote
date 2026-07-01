@@ -5205,6 +5205,11 @@ class _PromiseRadarTab extends ConsumerWidget {
                   onPressed: () => _showAutomationPolicySheet(context, ref),
                   icon: const Icon(Icons.rule_folder_outlined),
                 ),
+                IconButton(
+                  tooltip: 'Digest 설정',
+                  onPressed: () => _showDigestPreferenceSheet(context, ref),
+                  icon: const Icon(Icons.notifications_outlined),
+                ),
                 OutlinedButton.icon(
                   onPressed: () => _runAutopilot(context, ref, summaryTaskId),
                   icon: const Icon(Icons.auto_fix_high_outlined, size: 18),
@@ -5404,6 +5409,18 @@ class _PromiseRadarTab extends ConsumerWidget {
                               label: const Text('근거'),
                             ),
                             TextButton.icon(
+                              onPressed: () => _showLatestEvidencePack(
+                                context,
+                                ref,
+                                entry.id,
+                              ),
+                              icon: const Icon(
+                                Icons.travel_explore_outlined,
+                                size: 18,
+                              ),
+                              label: const Text('증거팩'),
+                            ),
+                            TextButton.icon(
                               onPressed: () => _showAssigneeSuggestions(
                                 context,
                                 ref,
@@ -5462,6 +5479,18 @@ class _PromiseRadarTab extends ConsumerWidget {
                               icon:
                                   const Icon(Icons.task_alt_outlined, size: 18),
                               label: const Text('Tasks'),
+                            ),
+                            TextButton.icon(
+                              onPressed: _hasGoogleTaskLink(entry)
+                                  ? () => _syncGoogleTask(
+                                        context,
+                                        ref,
+                                        summaryTaskId,
+                                        entry,
+                                      )
+                                  : null,
+                              icon: const Icon(Icons.sync_outlined, size: 18),
+                              label: const Text('Tasks 동기화'),
                             ),
                           ],
                         ),
@@ -5792,6 +5821,27 @@ class _PromiseRadarTab extends ConsumerWidget {
       'manual_only' => '모든 판정 수동 확인',
       _ => '안전 자동 적용',
     };
+  }
+
+  String _digestCadenceLabel(String cadence) {
+    return switch (cadence) {
+      'weekly' => 'Weekly Digest',
+      _ => 'Daily Digest',
+    };
+  }
+
+  bool _hasGoogleTaskLink(PromiseLedgerEntry entry) {
+    return _googleTaskMetadata(entry)['external_id']?.isNotEmpty == true;
+  }
+
+  Map<String, String> _googleTaskMetadata(PromiseLedgerEntry entry) {
+    final externalTasks = entry.calendarEvent?['external_tasks'];
+    if (externalTasks is! Map<String, dynamic>) return const {};
+    final googleTasks = externalTasks['google_tasks'];
+    if (googleTasks is! Map<String, dynamic>) return const {};
+    return googleTasks.map(
+      (key, value) => MapEntry(key, value?.toString() ?? ''),
+    );
   }
 
   String _evidenceLabel(PromiseRadarEvidence evidence) {
@@ -6153,6 +6203,56 @@ class _PromiseRadarTab extends ConsumerWidget {
     }
   }
 
+  Future<String?> _requestGoogleTasksAccessToken(BuildContext context) async {
+    if (!isGoogleSignInConfiguredForPlatform(isIOS: Platform.isIOS)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Google Tasks OAuth 설정이 필요합니다.')),
+      );
+      return null;
+    }
+    final googleSignIn = GoogleSignIn(
+      clientId: googleClientIdForPlatform(
+        isIOS: Platform.isIOS,
+        isMacOS: Platform.isMacOS,
+      ),
+      serverClientId: googleServerClientId,
+      scopes: ['email', 'profile', _googleTasksScope],
+    );
+    var account = await googleSignIn.signInSilently();
+    account ??= await googleSignIn.signIn();
+    if (account == null) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Google Tasks 작업을 취소했습니다.')),
+        );
+      }
+      return null;
+    }
+    final hasScope = await googleSignIn.canAccessScopes([_googleTasksScope]);
+    final granted =
+        hasScope || await googleSignIn.requestScopes([_googleTasksScope]);
+    if (!granted) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Google Tasks 권한 승인이 필요합니다.')),
+        );
+      }
+      return null;
+    }
+    final auth = await account.authentication;
+    final accessToken = auth.accessToken;
+    if (accessToken == null || accessToken.isEmpty) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Google Tasks access token을 받을 수 없습니다.')),
+        );
+      }
+      return null;
+    }
+    return accessToken;
+  }
+
   Future<void> _exportGoogleTask(
     BuildContext context,
     WidgetRef ref,
@@ -6160,52 +6260,19 @@ class _PromiseRadarTab extends ConsumerWidget {
     String entryId,
   ) async {
     try {
-      if (!isGoogleSignInConfiguredForPlatform(isIOS: Platform.isIOS)) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Google Tasks OAuth 설정이 필요합니다.')),
-        );
-        return;
-      }
-      final googleSignIn = GoogleSignIn(
-        clientId: googleClientIdForPlatform(
-          isIOS: Platform.isIOS,
-          isMacOS: Platform.isMacOS,
-        ),
-        serverClientId: googleServerClientId,
-        scopes: ['email', 'profile', _googleTasksScope],
-      );
-      var account = await googleSignIn.signInSilently();
-      account ??= await googleSignIn.signIn();
-      if (account == null) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Google Tasks 전송을 취소했습니다.')),
-          );
-        }
-        return;
-      }
-      final hasScope = await googleSignIn.canAccessScopes([_googleTasksScope]);
-      final granted =
-          hasScope || await googleSignIn.requestScopes([_googleTasksScope]);
-      if (!granted) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Google Tasks 권한 승인이 필요합니다.')),
-          );
-        }
-        return;
-      }
-      final auth = await account.authentication;
-      final accessToken = auth.accessToken;
-      if (accessToken == null || accessToken.isEmpty) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text('Google Tasks access token을 받을 수 없습니다.')),
-          );
-        }
-        return;
-      }
+      final accessToken = await _requestGoogleTasksAccessToken(context);
+      if (accessToken == null) return;
+      final tasklists =
+          await ref.read(promiseRadarApiProvider).listGoogleTaskLists(
+                PromiseExternalExportRequest(
+                  provider: 'google_tasks',
+                  accessToken: accessToken,
+                ),
+              );
+      if (!context.mounted) return;
+      final selected =
+          await _chooseGoogleTaskList(context, tasklists.tasklists);
+      if (selected == null) return;
       final exported =
           await ref.read(promiseRadarApiProvider).exportExternalTask(
                 entryId,
@@ -6213,6 +6280,7 @@ class _PromiseRadarTab extends ConsumerWidget {
                   provider: 'google_tasks',
                   dryRun: false,
                   accessToken: accessToken,
+                  tasklist: selected.id,
                 ),
               );
       ref.invalidate(promiseRadarProvider(summaryTaskId));
@@ -6226,6 +6294,71 @@ class _PromiseRadarTab extends ConsumerWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Google Tasks 전송에 실패했습니다.')),
+        );
+      }
+    }
+  }
+
+  Future<PromiseGoogleTaskList?> _chooseGoogleTaskList(
+    BuildContext context,
+    List<PromiseGoogleTaskList> tasklists,
+  ) async {
+    final options = tasklists.isEmpty
+        ? const [PromiseGoogleTaskList(id: '@default', title: '기본 목록')]
+        : tasklists;
+    return showModalBottomSheet<PromiseGoogleTaskList>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          padding: const EdgeInsets.all(AppSpacing.md),
+          children: [
+            const ListTile(
+              leading: Icon(Icons.task_alt_outlined),
+              title: Text('Google Tasks 목록 선택'),
+            ),
+            for (final tasklist in options)
+              ListTile(
+                title: Text(tasklist.title),
+                subtitle: Text(tasklist.id),
+                onTap: () => Navigator.of(sheetContext).pop(tasklist),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _syncGoogleTask(
+    BuildContext context,
+    WidgetRef ref,
+    String summaryTaskId,
+    PromiseLedgerEntry entry,
+  ) async {
+    try {
+      final accessToken = await _requestGoogleTasksAccessToken(context);
+      if (accessToken == null) return;
+      final metadata = _googleTaskMetadata(entry);
+      final synced = await ref.read(promiseRadarApiProvider).syncExternalTask(
+            entry.id,
+            PromiseExternalTaskSyncRequest(
+              accessToken: accessToken,
+              tasklist: metadata['tasklist'] ?? '@default',
+              externalId: metadata['external_id'],
+            ),
+          );
+      ref.invalidate(promiseRadarProvider(summaryTaskId));
+      ref.invalidate(promiseLedgerProvider);
+      ref.invalidate(promiseRadarDashboardProvider);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(synced.message)),
+        );
+      }
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Google Tasks 동기화에 실패했습니다.')),
         );
       }
     }
@@ -6345,6 +6478,110 @@ class _PromiseRadarTab extends ConsumerWidget {
     }
   }
 
+  Future<void> _showDigestPreferenceSheet(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    try {
+      final preference =
+          await ref.read(promiseRadarApiProvider).getDigestPreference();
+      if (!context.mounted) return;
+      await showModalBottomSheet<void>(
+        context: context,
+        builder: (sheetContext) => SafeArea(
+          child: ListView(
+            shrinkWrap: true,
+            padding: const EdgeInsets.all(AppSpacing.md),
+            children: [
+              ListTile(
+                leading: const Icon(Icons.notifications_outlined),
+                title: const Text('Digest Push'),
+                subtitle: Text(
+                  preference.enabled
+                      ? '${_digestCadenceLabel(preference.cadence)} · ${preference.localTime}'
+                      : '예약 발송 꺼짐',
+                ),
+                trailing: Switch(
+                  value: preference.enabled,
+                  onChanged: (enabled) => _updateDigestPreference(
+                    sheetContext,
+                    ref,
+                    preference,
+                    enabled: enabled,
+                  ),
+                ),
+              ),
+              for (final cadence in const ['daily', 'weekly'])
+                ListTile(
+                  leading: Icon(
+                    preference.cadence == cadence
+                        ? Icons.check_circle
+                        : Icons.radio_button_unchecked,
+                  ),
+                  title: Text(_digestCadenceLabel(cadence)),
+                  subtitle: Text(
+                    cadence == 'daily' ? '매일 아침 확인할 약속' : '이번 주 확인할 약속',
+                  ),
+                  onTap: () => _updateDigestPreference(
+                    sheetContext,
+                    ref,
+                    preference,
+                    cadence: cadence,
+                    enabled: true,
+                  ),
+                ),
+              const ListTile(
+                dense: true,
+                leading: Icon(Icons.schedule_outlined),
+                title: Text('기본 발송 시각'),
+                subtitle: Text('08:30 Asia/Seoul · 조용한 시간 22:00-07:00'),
+              ),
+            ],
+          ),
+        ),
+      );
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Digest 설정을 불러오지 못했습니다.')),
+        );
+      }
+    }
+  }
+
+  Future<void> _updateDigestPreference(
+    BuildContext context,
+    WidgetRef ref,
+    PromiseDigestPreference preference, {
+    bool? enabled,
+    String? cadence,
+  }) async {
+    try {
+      await ref.read(promiseRadarApiProvider).updateDigestPreference(
+            PromiseDigestPreferenceUpdateRequest(
+              enabled: enabled ?? preference.enabled,
+              cadence: cadence ?? preference.cadence,
+              localTime: preference.localTime,
+              timezone: preference.timezone,
+              quietHoursStart: preference.quietHoursStart,
+              quietHoursEnd: preference.quietHoursEnd,
+            ),
+          );
+      if (context.mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Digest 설정을 저장했습니다.')),
+        );
+      }
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Digest 설정 저장에 실패했습니다.')),
+        );
+      }
+    }
+  }
+
   Future<void> _runAutopilot(
     BuildContext context,
     WidgetRef ref,
@@ -6456,6 +6693,10 @@ class _PromiseRadarTab extends ConsumerWidget {
               assessment.conflictReason ?? assessment.reason,
               style: Theme.of(parentContext).textTheme.bodySmall,
             ),
+            if (assessment.conflictDetected) ...[
+              const SizedBox(height: AppSpacing.sm),
+              _buildConflictSignalPanel(parentContext, assessment),
+            ],
             const SizedBox(height: AppSpacing.sm),
             Wrap(
               spacing: AppSpacing.xs,
@@ -6520,9 +6761,63 @@ class _PromiseRadarTab extends ConsumerWidget {
                       );
                     },
                     icon: const Icon(Icons.call_split_outlined, size: 18),
-                    label: const Text('분리'),
+                    label: const Text('분리 추천'),
                   ),
               ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildConflictSignalPanel(
+    BuildContext context,
+    PromiseAutopilotAssessment assessment,
+  ) {
+    final markers = assessment.evidencePack?.markerHits ?? const <String>[];
+    final positive = markers
+        .where(
+          (marker) =>
+              marker.contains('완료') ||
+              marker.contains('done') ||
+              marker.contains('completed'),
+        )
+        .toList();
+    final blocking = markers
+        .where(
+          (marker) =>
+              marker.contains('아직') ||
+              marker.contains('지연') ||
+              marker.contains('못') ||
+              marker.contains('delayed') ||
+              marker.contains('blocked') ||
+              marker.contains('cancel'),
+        )
+        .toList();
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.sm),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '충돌 근거 비교',
+              style: Theme.of(context).textTheme.labelLarge,
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+                '완료 신호: ${positive.isEmpty ? assessment.suggestedStatus : positive.join(', ')}'),
+            Text(
+                '지연/제외 신호: ${blocking.isEmpty ? assessment.conflictReason ?? '추가 확인 필요' : blocking.join(', ')}'),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              '한 발화에 상반된 신호가 있으면 자동 적용하지 않고 분리 후보로 검토합니다.',
+              style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
         ),
@@ -6614,19 +6909,19 @@ class _PromiseRadarTab extends ConsumerWidget {
     PromiseAutopilotAssessment assessment,
   ) async {
     try {
-      await ref.read(promiseRadarApiProvider).recordLearningFeedback(
+      await ref.read(promiseRadarApiProvider).rejectAutopilotReviewItem(
             assessment.ledgerEntryId,
-            PromiseLearningFeedbackRequest(
-              expectedStatus: assessment.previousStatus,
-              predictedStatus: assessment.suggestedStatus,
-              correctionType: 'autopilot',
-              note: 'Review Queue에서 자동 판정을 거절했습니다.',
-            ),
+            taskId: summaryTaskId,
+            suggestedStatus: assessment.suggestedStatus,
+            note: 'Review Queue에서 자동 판정을 거절했습니다.',
           );
+      ref.invalidate(promiseRadarProvider(summaryTaskId));
+      ref.invalidate(promiseLedgerProvider);
       ref.invalidate(promiseLearningProfileProvider);
       if (context.mounted) {
+        Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('거절 이력을 학습에 반영했습니다.')),
+          const SnackBar(content: Text('거절 이력을 저장하고 queue에서 제외했습니다.')),
         );
       }
     } catch (_) {
@@ -6676,7 +6971,38 @@ class _PromiseRadarTab extends ConsumerWidget {
     BuildContext context,
     PromiseAutopilotAssessment assessment,
   ) async {
-    final pack = assessment.evidencePack;
+    await _showEvidencePackSheet(
+      context,
+      pack: assessment.evidencePack,
+      explanation: assessment.explanation,
+    );
+  }
+
+  Future<void> _showLatestEvidencePack(
+    BuildContext context,
+    WidgetRef ref,
+    String entryId,
+  ) async {
+    try {
+      final pack = await ref
+          .read(promiseRadarApiProvider)
+          .getLatestEvidencePack(entryId);
+      if (!context.mounted) return;
+      await _showEvidencePackSheet(context, pack: pack);
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('저장된 Evidence Pack을 찾지 못했습니다.')),
+        );
+      }
+    }
+  }
+
+  Future<void> _showEvidencePackSheet(
+    BuildContext context, {
+    PromiseEvidencePack? pack,
+    PromiseMatchExplanation? explanation,
+  }) async {
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -6690,15 +7016,13 @@ class _PromiseRadarTab extends ConsumerWidget {
                 leading: const Icon(Icons.travel_explore_outlined),
                 title: const Text('Evidence Pack'),
                 subtitle: Text(
-                  '유사도 ${((pack?.similarity ?? assessment.explanation.similarity) * 100).round()}%',
+                  '유사도 ${((pack?.similarity ?? explanation?.similarity ?? 0) * 100).round()}%',
                 ),
               ),
               ListTile(
                 title: const Text('매칭 발화'),
                 subtitle: Text(
-                  pack?.matchedText ??
-                      assessment.explanation.matchedText ??
-                      '연결된 발화 없음',
+                  pack?.matchedText ?? explanation?.matchedText ?? '연결된 발화 없음',
                 ),
               ),
               if (pack != null && pack.markerHits.isNotEmpty)
@@ -6707,14 +7031,16 @@ class _PromiseRadarTab extends ConsumerWidget {
                   subtitle: Text(pack.markerHits.join(', ')),
                 ),
               for (final factor in pack?.confidenceFactors ??
-                  assessment.explanation.confidenceFactors)
+                  explanation?.confidenceFactors ??
+                  const <String>[])
                 ListTile(
                   dense: true,
                   leading: const Icon(Icons.check_circle_outline),
                   title: Text(factor),
                 ),
-              for (final evidence
-                  in pack?.evidence ?? assessment.explanation.evidence)
+              for (final evidence in pack?.evidence ??
+                  explanation?.evidence ??
+                  const <PromiseRadarEvidence>[])
                 ListTile(
                   dense: true,
                   leading: const Icon(Icons.notes_outlined),

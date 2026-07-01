@@ -253,9 +253,9 @@ Firebase message id: projects/voice-to-textnote/messages/1782749586143713
 | `promise_radar_calendar_export` | Promise Radar 캘린더 버튼으로 Google Calendar 열기 또는 ICS 복사 |
 | `promise_radar_assignee_quality` | Promise Radar 담당자 추천과 품질 점수/보강 이슈 표시 |
 
-### Promise Radar v8 추가 수동 확인
+### Promise Radar v9 추가 수동 확인
 
-아래 항목은 2026-07-01 기준 구현된 v6/v7/v8 기능이다. 현재 strict release evidence required key에는 추가하지 않는다. strict key를 늘리려면 `REQUIRED_E2E_SCENARIOS`, example/scaffold evidence, release-readiness 테스트를 같은 커밋에서 함께 갱신해야 한다.
+아래 항목은 2026-07-01 기준 구현된 v6/v7/v8/v9 기능이다. 현재 strict release evidence required key에는 추가하지 않는다. strict key를 늘리려면 `REQUIRED_E2E_SCENARIOS`, example/scaffold evidence, release-readiness 테스트를 같은 커밋에서 함께 갱신해야 한다.
 
 - `promise_radar_learning_loop`: Result 화면 `오판` 버튼으로 `learning_feedback` 저장 후 learning profile threshold가 갱신되는지 확인한다.
 - `promise_radar_timeline`: Result 화면 `타임라인` 버튼에서 감지/자동 판정/사용자 피드백/병합/분리 이벤트가 시간순으로 표시되는지 확인한다.
@@ -265,11 +265,14 @@ Firebase message id: projects/voice-to-textnote/messages/1782749586143713
 - `promise_radar_evidence_lock`: 근거가 약한 자동 판정은 assessment만 표시되고 원장 상태가 자동 변경되지 않는지 확인한다.
 - `promise_radar_slack_dry_run`: `Slack` 버튼이 webhook 없이 payload를 생성/복사하고, 실제 전송은 `PROMISE_RADAR_SLACK_WEBHOOK_URL` 설정 시에만 수행되는지 확인한다.
 - `promise_radar_autopilot_review_queue`: `자동 판정` 버튼이 즉시 원장을 바꾸지 않고 `확정 대기 약속함`을 표시하며, `모두 맞음`, 개별 `맞음`, `거절` 동작이 정상인지 확인한다.
+- `promise_radar_autopilot_reject_persistence`: Review Queue에서 `거절`한 후보가 학습 반영 후 같은 회의/상태 후보로 다시 표시되지 않는지 확인한다.
 - `promise_radar_status_thresholds`: 완료 오판 피드백 후 completed threshold만 올라가고 delayed/changed/dismissed threshold는 그대로 유지되는지 확인한다.
-- `promise_radar_evidence_pack`: Review Queue `근거` 버튼에서 matched text, marker hit, similarity, timestamp, source evidence가 감사 화면처럼 표시되는지 확인한다.
-- `promise_radar_conflict_resolution`: “완료했지만 아직 못했다”처럼 충돌 신호가 있는 약속이 자동 적용되지 않고, 사용자가 완료/지연/변경/제외/분리 중 해결 경로를 선택할 수 있는지 확인한다.
-- `promise_radar_google_tasks_oauth_send`: `Tasks` 버튼이 Google 계정 선택과 `https://www.googleapis.com/auth/tasks` scope 승인을 거쳐 실제 Google Tasks에 전송 완료 메시지를 보여주는지 확인한다.
-- `promise_radar_team_automation_policy`: 원장 헤더의 정책 아이콘에서 안전 자동/항상 미리보기/완료만 자동/모두 수동 정책을 저장하고 이후 자동 판정 적용 방식이 정책을 따르는지 확인한다.
+- `promise_radar_evidence_pack`: Review Queue `근거` 버튼과 원장 행 `증거팩` 버튼에서 matched text, marker hit, similarity, timestamp, source evidence가 감사 화면처럼 표시되는지 확인한다.
+- `promise_radar_conflict_resolution`: “완료했지만 아직 못했다”처럼 충돌 신호가 있는 약속이 자동 적용되지 않고, 사용자가 완료/지연/변경/제외/분리 추천 중 해결 경로를 선택하며 충돌 근거 비교가 표시되는지 확인한다.
+- `promise_radar_google_tasks_oauth_send`: `Tasks` 버튼이 Google 계정 선택과 `https://www.googleapis.com/auth/tasks` scope 승인을 거쳐 tasklist 선택 후 실제 Google Tasks에 전송 완료 메시지를 보여주는지 확인한다.
+- `promise_radar_google_tasks_sync`: Google Tasks에서 완료한 task가 앱의 `Tasks 동기화` 버튼으로 Promise Ledger 완료 상태에 반영되는지 확인한다.
+- `promise_radar_team_automation_policy`: 원장 헤더의 정책 아이콘에서 안전 자동/항상 미리보기/완료만 자동/모두 수동 정책을 저장하고 이후 자동 판정 적용 방식이 정책을 따르는지 확인한다. 팀 범위 정책 변경은 admin 멤버만 허용되는지 확인한다.
+- `promise_radar_digest_preference`: 원장 헤더의 Digest 설정에서 Daily/Weekly와 켬/끔 상태를 저장하고, 예약 digest push는 사용자가 켠 경우에만 발송되는지 확인한다.
 
 ## 결과 기록
 

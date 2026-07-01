@@ -429,5 +429,95 @@
     "current_text": "Notion integration is canceled and dropped for this release.",
     "expected_status": "dismissed",
     "owner": "Kim"
+  },
+  {
+    "id": "real-oq1-pike-contract-approved",
+    "entry_text": "Pike Airfield Mill and Overlay contract recommendation",
+    "current_text": "The commission moved to approve the Pike Airfield Mill and Overlay contract recommendation; all in favor and so ordered.",
+    "expected_status": "completed",
+    "owner": "Burlington Airport Commission"
+  },
+  {
+    "id": "real-oq1-airfield-lease-approved",
+    "entry_text": "Airfield lease amendment",
+    "current_text": "The airfield lease agreement was moved to approve as presented and extend officially for one year.",
+    "expected_status": "completed",
+    "owner": "Burlington Airport Commission"
+  },
+  {
+    "id": "real-oq1-financial-package-filed",
+    "entry_text": "Financial package acceptance",
+    "current_text": "The financial package had a motion to accept and place it on file.",
+    "expected_status": "completed",
+    "owner": "Burlington Airport Commission"
+  },
+  {
+    "id": "real-mo7-procedures-rules-adopted",
+    "entry_text": "Board of Airport Commissioners procedures and rules",
+    "current_text": "The board moved adoption of the procedures and rules; all in favor and so ordered.",
+    "expected_status": "completed",
+    "owner": "Burlington Airport Commission"
+  },
+  {
+    "id": "real-mo7-format-airport-fyi-added",
+    "entry_text": "Meeting format",
+    "current_text": "The meeting format changed to add item called Airport FYI at the end of the meeting.",
+    "expected_status": "changed",
+    "owner": "Burlington Airport Commission"
+  },
+  {
+    "id": "real-mo7-accountable-owner-format",
+    "entry_text": "Meeting item document format accountable explanation",
+    "current_text": "The meeting item document format changed so each item has a person accountable and each item has an explanation.",
+    "expected_status": "changed",
+    "owner": "Burlington Airport Commission"
+  },
+  {
+    "id": "real-oq1-construction-grant-progress",
+    "entry_text": "Apron project phase grant",
+    "current_text": "The grant was submitted and the team anticipates finishing by the end of the month.",
+    "expected_status": "open",
+    "owner": "Airport Director",
+    "due_at": "2026-07-31T09:00:00"
+  },
+  {
+    "id": "real-oq1-sound-overlay-next-month",
+    "entry_text": "Flight path overlay for noise complaints",
+    "current_text": "The overlay can be prepared at some point next month maybe.",
+    "expected_status": "open",
+    "owner": "Airport Director",
+    "due_at": "2026-08-01T09:00:00"
+  },
+  {
+    "id": "real-oq1-financial-questions-marie",
+    "entry_text": "Financial package questions to Marie",
+    "current_text": "People with questions should write Marie directly because she will be back next week.",
+    "expected_status": "open",
+    "owner": "Marie",
+    "due_at": "2026-07-08T09:00:00"
+  },
+  {
+    "id": "real-mo7-year-end-adjustments",
+    "entry_text": "Year-end financial adjustments",
+    "current_text": "The finance team will continue reporting and doing year-end adjustments.",
+    "expected_status": "open",
+    "owner": "Finance team",
+    "due_at": "2026-07-15T09:00:00"
+  },
+  {
+    "id": "real-mo7-meeting-procedure-document-open",
+    "entry_text": "Meeting procedures document distribution",
+    "current_text": "The procedures document should be shared with commissioners before the next meeting.",
+    "expected_status": "open",
+    "owner": "Board staff",
+    "due_at": "2026-07-15T09:00:00"
+  },
+  {
+    "id": "real-oq1-construction-closeout-open",
+    "entry_text": "Construction phase closeout",
+    "current_text": "The project team anticipates finishing the construction update by the end of the month.",
+    "expected_status": "open",
+    "owner": "Airport Director",
+    "due_at": "2026-07-31T09:00:00"
   }
 ]

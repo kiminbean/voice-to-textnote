@@ -36,15 +36,22 @@ from backend.schemas.promise_radar import (
     PromiseAutomationPolicyUpdateRequest,
     PromiseAutopilotAssessment,
     PromiseAutopilotConfirmRequest,
+    PromiseAutopilotRejectRequest,
     PromiseAutopilotResponse,
     PromiseAutopilotReviewItem,
     PromiseAutopilotReviewQueue,
     PromiseCalendarExportResponse,
     PromiseConflictResolveRequest,
     PromiseDigest,
+    PromiseDigestPreference,
+    PromiseDigestPreferenceUpdateRequest,
     PromiseEvidencePack,
     PromiseExternalExportRequest,
     PromiseExternalExportResponse,
+    PromiseExternalTaskSyncRequest,
+    PromiseExternalTaskSyncResponse,
+    PromiseGoogleTaskList,
+    PromiseGoogleTaskListResponse,
     PromiseLearningFeedbackRequest,
     PromiseLearningFeedbackResponse,
     PromiseLearningProfile,
@@ -171,6 +178,14 @@ _AUTOPILOT_MARKERS = {
         "completed",
         "finished",
         "resolved",
+        "approved",
+        "approve",
+        "adopted",
+        "adopt",
+        "accepted",
+        "so ordered",
+        "all in favor",
+        "place it on file",
     ),
     "delayed": (
         "아직",
@@ -196,6 +211,10 @@ _AUTOPILOT_MARKERS = {
         "우선순위 변경",
         "changed",
         "rescheduled",
+        "add item",
+        "new format",
+        "accountable",
+        "explanation",
     ),
     "dismissed": (
         "취소",
@@ -917,6 +936,7 @@ class PromiseRadarService:
         limit: int = 50,
         push_service: PushService | None = None,
         allow_global: bool = False,
+        require_enabled_preference: bool = False,
     ) -> PromiseNotificationDispatchResponse:
         """Send daily/weekly Promise Digest pushes grouped by responsible user."""
         normalized = cadence.lower().strip()
@@ -961,6 +981,12 @@ class PromiseRadarService:
         invalid_tokens: list[str] = []
         notified_ids: list[str] = []
         for target_user_id, user_entries in grouped.items():
+            if require_enabled_preference and not await self._digest_preference_enabled_for_target(
+                session,
+                target_user_id,
+                cadence=normalized,
+            ):
+                continue
             if await self._digest_already_sent(
                 session,
                 target_user_id,
@@ -1177,6 +1203,22 @@ class PromiseRadarService:
             or assessment.suggested_status != assessment.previous_status
             or assessment.confidence >= max(0.55, assessment.threshold)
         ]
+        rejected_keys = await self._rejected_review_keys(
+            session,
+            task_id,
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
+            team_id=team_id,
+        )
+        candidate_assessments = [
+            assessment
+            for assessment in candidate_assessments
+            if (
+                assessment.ledger_entry_id,
+                assessment.suggested_status,
+            )
+            not in rejected_keys
+        ]
         if not candidate_assessments:
             return PromiseAutopilotReviewQueue(
                 task_id=task_id,
@@ -1224,6 +1266,53 @@ class PromiseRadarService:
             ),
             conflict_count=sum(1 for item in items if item.assessment.conflict_detected),
             items=items,
+        )
+
+    async def reject_autopilot_review_item(
+        self,
+        session: AsyncSession,
+        entry_id: UUID | str,
+        payload: PromiseAutopilotRejectRequest,
+        *,
+        owner_id: UUID | str | None = None,
+        guest_session_id: str | None = None,
+        team_id: UUID | str | None = None,
+    ) -> PromiseLearningFeedbackResponse:
+        """Persist a Review Queue rejection and feed it into the learning loop."""
+        entry = await self._get_scoped_ledger_entry(
+            session,
+            entry_id,
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
+            team_id=team_id,
+        )
+        if entry is None:
+            raise ValueError("약속 원장 항목을 찾을 수 없습니다")
+        self._record_ledger_event(
+            session,
+            entry,
+            "autopilot_review_rejected",
+            new_value={
+                "task_id": payload.task_id,
+                "suggested_status": payload.suggested_status,
+                "previous_status": entry.status,
+            },
+            note=payload.note,
+            actor_user_id=owner_id,
+        )
+        await session.flush()
+        return await self.record_learning_feedback(
+            session,
+            entry_id,
+            PromiseLearningFeedbackRequest(
+                expected_status=entry.status,
+                predicted_status=payload.suggested_status,
+                correction_type="autopilot",
+                note=payload.note or "Review Queue에서 자동 판정을 거절했습니다.",
+            ),
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
+            team_id=team_id,
         )
 
     async def confirm_autopilot_assessment(
@@ -1417,6 +1506,46 @@ class PromiseRadarService:
             rationale=self._match_rationale(entry, similarity, matched),
             evidence=evidence[:3],
         )
+
+    async def latest_evidence_pack(
+        self,
+        session: AsyncSession,
+        entry_id: UUID | str,
+        *,
+        owner_id: UUID | str | None = None,
+        guest_session_id: str | None = None,
+        team_id: UUID | str | None = None,
+    ) -> PromiseEvidencePack:
+        """Return the latest immutable Evidence Pack stored on ledger events."""
+        entry = await self._get_scoped_ledger_entry(
+            session,
+            entry_id,
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
+            team_id=team_id,
+        )
+        if entry is None:
+            raise ValueError("약속 원장 항목을 찾을 수 없습니다")
+        result = await session.execute(
+            select(PromiseLedgerEvent)
+            .where(PromiseLedgerEvent.ledger_entry_id == entry.id)
+            .where(
+                PromiseLedgerEvent.event_type.in_(
+                    ["autopilot_applied", "autopilot_confirmed", "autopilot_assessed"]
+                )
+            )
+            .order_by(PromiseLedgerEvent.created_at.desc())
+            .limit(20)
+        )
+        for event in result.scalars().all():
+            value = event.new_value if isinstance(event.new_value, dict) else {}
+            pack = value.get("evidence_pack")
+            if isinstance(pack, dict):
+                return PromiseEvidencePack(**pack)
+            autopilot = value.get("autopilot")
+            if isinstance(autopilot, dict) and isinstance(autopilot.get("evidence_pack"), dict):
+                return PromiseEvidencePack(**autopilot["evidence_pack"])
+        raise ValueError("저장된 Evidence Pack이 없습니다")
 
     async def export_calendar_event(
         self,
@@ -1714,6 +1843,66 @@ class PromiseRadarService:
         await session.commit()
         return policy
 
+    async def get_digest_preference(
+        self,
+        session: AsyncSession,
+        *,
+        owner_id: UUID | str | None = None,
+        guest_session_id: str | None = None,
+        team_id: UUID | str | None = None,
+    ) -> PromiseDigestPreference:
+        """Return the latest scoped scheduled digest preference."""
+        result = await session.execute(
+            select(PromiseLedgerEvent)
+            .where(
+                self._event_scope_condition(owner_id, guest_session_id, team_id=team_id),
+                PromiseLedgerEvent.event_type == "digest_preference_updated",
+            )
+            .order_by(PromiseLedgerEvent.created_at.desc())
+            .limit(1)
+        )
+        event = result.scalar_one_or_none()
+        value = event.new_value if event and isinstance(event.new_value, dict) else {}
+        return self._digest_preference_from_value(
+            value,
+            scope=self._scope_label(owner_id, guest_session_id, team_id),
+            updated_at=event.created_at if event else None,
+        )
+
+    async def update_digest_preference(
+        self,
+        session: AsyncSession,
+        payload: PromiseDigestPreferenceUpdateRequest,
+        *,
+        owner_id: UUID | str | None = None,
+        guest_session_id: str | None = None,
+        team_id: UUID | str | None = None,
+    ) -> PromiseDigestPreference:
+        """Persist scheduled digest preference as an auditable ledger event."""
+        preference = self._digest_preference_from_value(
+            payload.model_dump(mode="json"),
+            scope=self._scope_label(owner_id, guest_session_id, team_id),
+            updated_at=datetime.now(UTC).replace(tzinfo=None),
+        )
+        result = await session.execute(
+            select(PromiseLedgerEntry)
+            .where(self._ledger_scope_condition(owner_id, guest_session_id, team_id=team_id))
+            .order_by(PromiseLedgerEntry.updated_at.desc())
+            .limit(1)
+        )
+        anchor = result.scalar_one_or_none()
+        if anchor is None:
+            raise ValueError("Digest 설정을 저장할 약속 원장 항목이 필요합니다")
+        self._record_ledger_event(
+            session,
+            anchor,
+            "digest_preference_updated",
+            new_value=preference.model_dump(mode="json"),
+            actor_user_id=owner_id,
+        )
+        await session.commit()
+        return preference
+
     async def build_ledger_timeline(
         self,
         session: AsyncSession,
@@ -1910,6 +2099,105 @@ class PromiseRadarService:
             message=message,
         )
 
+    async def list_google_tasklists(
+        self,
+        payload: PromiseExternalExportRequest,
+    ) -> PromiseGoogleTaskListResponse:
+        """List Google Tasks tasklists using a user-granted OAuth access token."""
+        token = (payload.access_token or "").strip()
+        if not token:
+            raise ValueError("Google Tasks tasklist 조회에는 OAuth access token이 필요합니다")
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(
+                "https://tasks.googleapis.com/tasks/v1/users/@me/lists",
+                headers={"Authorization": f"Bearer {token}"},
+                params={"maxResults": 100},
+            )
+            response.raise_for_status()
+        tasklists = [
+            PromiseGoogleTaskList(
+                id=str(item.get("id") or ""),
+                title=str(item.get("title") or "Untitled"),
+                updated=item.get("updated"),
+            )
+            for item in response.json().get("items", [])
+            if item.get("id")
+        ]
+        return PromiseGoogleTaskListResponse(tasklists=tasklists)
+
+    async def sync_external_task(
+        self,
+        session: AsyncSession,
+        entry_id: UUID | str,
+        payload: PromiseExternalTaskSyncRequest,
+        *,
+        owner_id: UUID | str | None = None,
+        guest_session_id: str | None = None,
+        team_id: UUID | str | None = None,
+    ) -> PromiseExternalTaskSyncResponse:
+        """Sync one external work-tool task state back to the Promise Ledger."""
+        entry = await self._get_scoped_ledger_entry(
+            session,
+            entry_id,
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
+            team_id=team_id,
+        )
+        if entry is None:
+            raise ValueError("약속 원장 항목을 찾을 수 없습니다")
+        provider = payload.provider.strip().lower()
+        if provider != "google_tasks":
+            raise ValueError("현재 동기화는 Google Tasks만 지원합니다")
+        token = (payload.access_token or "").strip()
+        if not token:
+            raise ValueError("Google Tasks 동기화에는 OAuth access token이 필요합니다")
+        metadata = self._google_task_metadata(entry)
+        tasklist = payload.tasklist.strip() or metadata.get("tasklist") or "@default"
+        external_id = (payload.external_id or metadata.get("external_id") or "").strip()
+        if not external_id:
+            raise ValueError("동기화할 Google Tasks task id가 없습니다")
+        endpoint = (
+            f"https://tasks.googleapis.com/tasks/v1/lists/{quote(tasklist, safe='@')}"
+            f"/tasks/{quote(external_id, safe='')}"
+        )
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(
+                endpoint,
+                headers={"Authorization": f"Bearer {token}"},
+            )
+            response.raise_for_status()
+        task = response.json()
+        old_value = self._ledger_snapshot(entry)
+        google_status = str(task.get("status") or "")
+        if google_status == "completed" and entry.status != "completed":
+            moment = datetime.now(UTC).replace(tzinfo=None)
+            entry.status = "completed"
+            entry.completed_at = moment
+            entry.user_confirmed = True
+            entry.updated_at = moment
+        self._record_ledger_event(
+            session,
+            entry,
+            "external_task_synced",
+            old_value=old_value,
+            new_value={
+                **self._ledger_snapshot(entry),
+                "provider": "google_tasks",
+                "external_id": external_id,
+                "tasklist": tasklist,
+                "external_status": google_status,
+            },
+            actor_user_id=owner_id,
+        )
+        await session.commit()
+        return PromiseExternalTaskSyncResponse(
+            ledger_entry_id=str(entry.id),
+            provider="google_tasks",
+            synced=True,
+            status=google_status,
+            message="Google Tasks 상태를 동기화했습니다.",
+        )
+
     async def _export_google_task(
         self,
         session: AsyncSession,
@@ -1948,6 +2236,18 @@ class PromiseRadarService:
             external_id = str(result.get("id")) if result.get("id") else None
             external_url = result.get("selfLink")
             message = "Google Tasks로 약속을 전송했습니다."
+            entry.calendar_event = {
+                **(entry.calendar_event or {}),
+                "external_tasks": {
+                    **((entry.calendar_event or {}).get("external_tasks") or {}),
+                    "google_tasks": {
+                        "external_id": external_id,
+                        "tasklist": tasklist,
+                        "external_url": external_url,
+                        "synced_at": datetime.now(UTC).replace(tzinfo=None).isoformat(),
+                    },
+                },
+            }
             self._record_ledger_event(
                 session,
                 entry,
@@ -3113,6 +3413,43 @@ class PromiseRadarService:
             updated_at=updated_at,
         )
 
+    def _digest_preference_from_value(
+        self,
+        value: dict[str, Any],
+        *,
+        scope: str,
+        updated_at: datetime | None,
+    ) -> PromiseDigestPreference:
+        cadence = str(value.get("cadence") or "daily").strip().lower()
+        if cadence not in {"daily", "weekly"}:
+            cadence = "daily"
+        return PromiseDigestPreference(
+            scope=scope,
+            enabled=bool(value.get("enabled", False)),
+            cadence=cadence,
+            local_time=self._hhmm(value.get("local_time"), default="08:30"),
+            timezone=str(value.get("timezone") or "Asia/Seoul").strip() or "Asia/Seoul",
+            quiet_hours_start=self._optional_hhmm(value.get("quiet_hours_start"), "22:00"),
+            quiet_hours_end=self._optional_hhmm(value.get("quiet_hours_end"), "07:00"),
+            updated_at=updated_at,
+        )
+
+    def _hhmm(self, value: Any, *, default: str) -> str:
+        text = str(value or default).strip()
+        if re.fullmatch(r"(?:[01]\d|2[0-3]):[0-5]\d", text):
+            return text
+        return default
+
+    def _optional_hhmm(self, value: Any, default: str | None) -> str | None:
+        if value is None:
+            return default
+        text = str(value).strip()
+        if not text:
+            return None
+        if re.fullmatch(r"(?:[01]\d|2[0-3]):[0-5]\d", text):
+            return text
+        return default
+
     async def _recent_history(
         self,
         session: AsyncSession,
@@ -3160,6 +3497,60 @@ class PromiseRadarService:
             if isinstance(event.new_value, dict) and event.new_value.get("cadence") == cadence:
                 return True
         return False
+
+    async def _digest_preference_enabled_for_target(
+        self,
+        session: AsyncSession,
+        target_user_id: UUID,
+        *,
+        cadence: str,
+    ) -> bool:
+        result = await session.execute(
+            select(PromiseLedgerEvent)
+            .where(
+                PromiseLedgerEvent.actor_user_id == target_user_id,
+                PromiseLedgerEvent.event_type == "digest_preference_updated",
+            )
+            .order_by(PromiseLedgerEvent.created_at.desc())
+            .limit(1)
+        )
+        event = result.scalar_one_or_none()
+        if event is None or not isinstance(event.new_value, dict):
+            return False
+        preference = self._digest_preference_from_value(
+            event.new_value,
+            scope=f"owner:{target_user_id}",
+            updated_at=event.created_at,
+        )
+        return preference.enabled and preference.cadence == cadence
+
+    async def _rejected_review_keys(
+        self,
+        session: AsyncSession,
+        task_id: str,
+        *,
+        owner_id: UUID | str | None,
+        guest_session_id: str | None,
+        team_id: UUID | str | None,
+    ) -> set[tuple[str, str]]:
+        result = await session.execute(
+            select(PromiseLedgerEvent)
+            .where(
+                self._event_scope_condition(owner_id, guest_session_id, team_id=team_id),
+                PromiseLedgerEvent.event_type == "autopilot_review_rejected",
+            )
+            .order_by(PromiseLedgerEvent.created_at.desc())
+            .limit(500)
+        )
+        rejected: set[tuple[str, str]] = set()
+        for event in result.scalars().all():
+            value = event.new_value if isinstance(event.new_value, dict) else {}
+            if value.get("task_id") != task_id:
+                continue
+            status = str(value.get("suggested_status") or "").strip()
+            if status:
+                rejected.add((str(event.ledger_entry_id), status))
+        return rejected
 
     def _record_ledger_event(
         self,
@@ -3748,6 +4139,20 @@ class PromiseRadarService:
                 "Z",
             )
         return payload
+
+    def _google_task_metadata(self, entry: PromiseLedgerEntry) -> dict[str, str]:
+        calendar_event = entry.calendar_event if isinstance(entry.calendar_event, dict) else {}
+        external_tasks = calendar_event.get("external_tasks")
+        if not isinstance(external_tasks, dict):
+            return {}
+        google_tasks = external_tasks.get("google_tasks")
+        if not isinstance(google_tasks, dict):
+            return {}
+        return {
+            key: str(value)
+            for key, value in google_tasks.items()
+            if key in {"external_id", "tasklist", "external_url"} and value
+        }
 
     def _action_item_priority(self, priority: str, risk_level: str) -> str:
         if risk_level == "high":

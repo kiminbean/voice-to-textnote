@@ -96,6 +96,36 @@ class PromiseRadarApi {
     return PromiseDigest.fromJson(response.data as Map<String, dynamic>);
   }
 
+  Future<PromiseDigestPreference> getDigestPreference({
+    String? teamId,
+  }) async {
+    final response = await _dio.get(
+      '/promise-radar/digest-preference',
+      queryParameters: {
+        if (teamId != null) 'team_id': teamId,
+      },
+    );
+    return PromiseDigestPreference.fromJson(
+      response.data as Map<String, dynamic>,
+    );
+  }
+
+  Future<PromiseDigestPreference> updateDigestPreference(
+    PromiseDigestPreferenceUpdateRequest request, {
+    String? teamId,
+  }) async {
+    final response = await _dio.put(
+      '/promise-radar/digest-preference',
+      queryParameters: {
+        if (teamId != null) 'team_id': teamId,
+      },
+      data: request.toJson(),
+    );
+    return PromiseDigestPreference.fromJson(
+      response.data as Map<String, dynamic>,
+    );
+  }
+
   Future<PromiseLearningProfile> getLearningProfile({
     String? teamId,
   }) async {
@@ -247,6 +277,29 @@ class PromiseRadarApi {
     );
   }
 
+  Future<PromiseLearningFeedbackResponse> rejectAutopilotReviewItem(
+    String entryId, {
+    required String taskId,
+    String? suggestedStatus,
+    String? note,
+    String? teamId,
+  }) async {
+    final response = await _dio.post(
+      '/promise-radar/ledger/$entryId/autopilot-reject',
+      queryParameters: {
+        if (teamId != null) 'team_id': teamId,
+      },
+      data: {
+        'task_id': taskId,
+        if (suggestedStatus != null) 'suggested_status': suggestedStatus,
+        if (note != null) 'note': note,
+      },
+    );
+    return PromiseLearningFeedbackResponse.fromJson(
+      response.data as Map<String, dynamic>,
+    );
+  }
+
   Future<PromiseLedgerEntry> resolveAutopilotConflict(
     String entryId,
     PromiseConflictResolveRequest request, {
@@ -277,6 +330,19 @@ class PromiseRadarApi {
     return PromiseMatchExplanation.fromJson(
       response.data as Map<String, dynamic>,
     );
+  }
+
+  Future<PromiseEvidencePack> getLatestEvidencePack(
+    String entryId, {
+    String? teamId,
+  }) async {
+    final response = await _dio.get(
+      '/promise-radar/ledger/$entryId/evidence-pack',
+      queryParameters: {
+        if (teamId != null) 'team_id': teamId,
+      },
+    );
+    return PromiseEvidencePack.fromJson(response.data as Map<String, dynamic>);
   }
 
   Future<PromiseReminderCandidate> createCalendarCandidate(
@@ -374,6 +440,35 @@ class PromiseRadarApi {
       data: request.toJson(),
     );
     return PromiseExternalExportResponse.fromJson(
+      response.data as Map<String, dynamic>,
+    );
+  }
+
+  Future<PromiseGoogleTaskListResponse> listGoogleTaskLists(
+    PromiseExternalExportRequest request,
+  ) async {
+    final response = await _dio.post(
+      '/promise-radar/external-task/google-tasklists',
+      data: request.toJson(),
+    );
+    return PromiseGoogleTaskListResponse.fromJson(
+      response.data as Map<String, dynamic>,
+    );
+  }
+
+  Future<PromiseExternalTaskSyncResponse> syncExternalTask(
+    String entryId,
+    PromiseExternalTaskSyncRequest request, {
+    String? teamId,
+  }) async {
+    final response = await _dio.post(
+      '/promise-radar/ledger/$entryId/external-task/sync',
+      queryParameters: {
+        if (teamId != null) 'team_id': teamId,
+      },
+      data: request.toJson(),
+    );
+    return PromiseExternalTaskSyncResponse.fromJson(
       response.data as Map<String, dynamic>,
     );
   }

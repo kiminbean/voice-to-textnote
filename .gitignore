@@ -109,6 +109,7 @@ logs/
 *.temp
 *.bak
 *.backup
+.cache/promise-radar-*/
 
 # ===========================================
 # Backups

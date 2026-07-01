@@ -13,7 +13,7 @@ from backend.app.dependencies import (
     get_optional_current_user,
     require_task_access,
 )
-from backend.app.errors import internal_error, not_found
+from backend.app.errors import forbidden, internal_error, not_found
 from backend.app.exceptions import VoiceNoteError
 from backend.db.auth_models import TeamMember
 from backend.schemas.promise_radar import (
@@ -24,13 +24,20 @@ from backend.schemas.promise_radar import (
     PromiseAutomationPolicyUpdateRequest,
     PromiseAutopilotAssessment,
     PromiseAutopilotConfirmRequest,
+    PromiseAutopilotRejectRequest,
     PromiseAutopilotResponse,
     PromiseAutopilotReviewQueue,
     PromiseCalendarExportResponse,
     PromiseConflictResolveRequest,
     PromiseDigest,
+    PromiseDigestPreference,
+    PromiseDigestPreferenceUpdateRequest,
+    PromiseEvidencePack,
     PromiseExternalExportRequest,
     PromiseExternalExportResponse,
+    PromiseExternalTaskSyncRequest,
+    PromiseExternalTaskSyncResponse,
+    PromiseGoogleTaskListResponse,
     PromiseLearningFeedbackRequest,
     PromiseLearningFeedbackResponse,
     PromiseLearningProfile,
@@ -225,6 +232,7 @@ async def update_promise_automation_policy(
     """팀/사용자별 Promise Radar 자동화 정책을 저장합니다."""
     try:
         scoped_team_id = await _accessible_team_id(db, current_user, team_id)
+        await _require_team_policy_admin(db, current_user, scoped_team_id)
         return await svc.update_automation_policy(
             db,
             payload,
@@ -238,6 +246,56 @@ async def update_promise_automation_policy(
         raise
     except Exception as e:
         internal_error(f"약속 자동화 정책 저장 중 오류가 발생했습니다: {e}")
+
+
+@router.get("/digest-preference", response_model=PromiseDigestPreference)
+async def get_promise_digest_preference(
+    request: Request,
+    team_id: str | None = Query(default=None, description="팀 digest 설정 조회 범위"),
+    db: AsyncSession = Depends(get_db_session),
+    current_user=Depends(get_optional_current_user),
+    svc: PromiseRadarService = Depends(get_promise_radar_service),
+) -> PromiseDigestPreference:
+    """예약 digest push 설정을 반환합니다."""
+    try:
+        scoped_team_id = await _accessible_team_id(db, current_user, team_id)
+        return await svc.get_digest_preference(
+            db,
+            owner_id=getattr(current_user, "id", None),
+            guest_session_id=_guest_session_id(request),
+            team_id=scoped_team_id,
+        )
+    except VoiceNoteError:
+        raise
+    except Exception as e:
+        internal_error(f"약속 digest 설정 조회 중 오류가 발생했습니다: {e}")
+
+
+@router.put("/digest-preference", response_model=PromiseDigestPreference)
+async def update_promise_digest_preference(
+    payload: PromiseDigestPreferenceUpdateRequest,
+    request: Request,
+    team_id: str | None = Query(default=None, description="팀 digest 설정 저장 범위"),
+    db: AsyncSession = Depends(get_db_session),
+    current_user=Depends(get_optional_current_user),
+    svc: PromiseRadarService = Depends(get_promise_radar_service),
+) -> PromiseDigestPreference:
+    """예약 digest push 설정을 저장합니다."""
+    try:
+        scoped_team_id = await _accessible_team_id(db, current_user, team_id)
+        return await svc.update_digest_preference(
+            db,
+            payload,
+            owner_id=getattr(current_user, "id", None),
+            guest_session_id=_guest_session_id(request),
+            team_id=scoped_team_id,
+        )
+    except ValueError as e:
+        not_found(str(e))
+    except VoiceNoteError:
+        raise
+    except Exception as e:
+        internal_error(f"약속 digest 설정 저장 중 오류가 발생했습니다: {e}")
 
 
 @router.post("/accuracy/evaluate", response_model=PromiseAccuracyEvaluation)
@@ -485,6 +543,33 @@ async def explain_promise_ledger_match(
         internal_error(f"약속 근거 설명 생성 중 오류가 발생했습니다: {e}")
 
 
+@router.get("/ledger/{entry_id}/evidence-pack", response_model=PromiseEvidencePack)
+async def get_promise_latest_evidence_pack(
+    entry_id: str,
+    request: Request,
+    team_id: str | None = Query(default=None, description="팀 약속 원장 범위"),
+    db: AsyncSession = Depends(get_db_session),
+    current_user=Depends(get_optional_current_user),
+    svc: PromiseRadarService = Depends(get_promise_radar_service),
+) -> PromiseEvidencePack:
+    """약속 원장 항목의 최신 Autopilot Evidence Pack을 반환합니다."""
+    try:
+        scoped_team_id = await _accessible_team_id(db, current_user, team_id)
+        return await svc.latest_evidence_pack(
+            db,
+            entry_id,
+            owner_id=getattr(current_user, "id", None),
+            guest_session_id=_guest_session_id(request),
+            team_id=scoped_team_id,
+        )
+    except ValueError as e:
+        not_found(str(e))
+    except VoiceNoteError:
+        raise
+    except Exception as e:
+        internal_error(f"약속 Evidence Pack 조회 중 오류가 발생했습니다: {e}")
+
+
 @router.post("/ledger/{entry_id}/calendar", response_model=PromiseReminderCandidate)
 async def create_promise_calendar_candidate(
     entry_id: str,
@@ -601,6 +686,39 @@ async def confirm_promise_autopilot_assessment(
         internal_error(f"약속 자동 판정 확정 중 오류가 발생했습니다: {e}")
 
 
+@router.post(
+    "/ledger/{entry_id}/autopilot-reject",
+    response_model=PromiseLearningFeedbackResponse,
+)
+async def reject_promise_autopilot_review_item(
+    entry_id: str,
+    payload: PromiseAutopilotRejectRequest,
+    request: Request,
+    team_id: str | None = Query(default=None, description="팀 약속 원장 범위"),
+    db: AsyncSession = Depends(get_db_session),
+    current_user=Depends(get_optional_current_user),
+    svc: PromiseRadarService = Depends(get_promise_radar_service),
+) -> PromiseLearningFeedbackResponse:
+    """Review Queue 후보를 거절하고 다음 queue에서 제외되도록 저장합니다."""
+    try:
+        await require_task_access(request, db, payload.task_id)
+        scoped_team_id = await _accessible_team_id(db, current_user, team_id)
+        return await svc.reject_autopilot_review_item(
+            db,
+            entry_id,
+            payload,
+            owner_id=getattr(current_user, "id", None),
+            guest_session_id=_guest_session_id(request),
+            team_id=scoped_team_id,
+        )
+    except ValueError as e:
+        not_found(str(e))
+    except VoiceNoteError:
+        raise
+    except Exception as e:
+        internal_error(f"약속 자동 판정 거절 중 오류가 발생했습니다: {e}")
+
+
 @router.post("/ledger/{entry_id}/resolve-conflict", response_model=PromiseLedgerEntryResponse)
 async def resolve_promise_autopilot_conflict(
     entry_id: str,
@@ -715,6 +833,52 @@ async def export_promise_external_task(
         raise
     except Exception as e:
         internal_error(f"약속 외부 업무도구 연동 중 오류가 발생했습니다: {e}")
+
+
+@router.post("/external-task/google-tasklists", response_model=PromiseGoogleTaskListResponse)
+async def list_google_tasklists(
+    payload: PromiseExternalExportRequest,
+    svc: PromiseRadarService = Depends(get_promise_radar_service),
+) -> PromiseGoogleTaskListResponse:
+    """Google Tasks OAuth token으로 tasklist 목록을 조회합니다."""
+    try:
+        return await svc.list_google_tasklists(payload)
+    except ValueError as e:
+        not_found(str(e))
+    except Exception as e:
+        internal_error(f"Google Tasks tasklist 조회 중 오류가 발생했습니다: {e}")
+
+
+@router.post(
+    "/ledger/{entry_id}/external-task/sync",
+    response_model=PromiseExternalTaskSyncResponse,
+)
+async def sync_promise_external_task(
+    entry_id: str,
+    payload: PromiseExternalTaskSyncRequest,
+    request: Request,
+    team_id: str | None = Query(default=None, description="팀 약속 원장 범위"),
+    db: AsyncSession = Depends(get_db_session),
+    current_user=Depends(get_optional_current_user),
+    svc: PromiseRadarService = Depends(get_promise_radar_service),
+) -> PromiseExternalTaskSyncResponse:
+    """외부 업무도구 task 상태를 약속 원장으로 동기화합니다."""
+    try:
+        scoped_team_id = await _accessible_team_id(db, current_user, team_id)
+        return await svc.sync_external_task(
+            db,
+            entry_id,
+            payload,
+            owner_id=getattr(current_user, "id", None),
+            guest_session_id=_guest_session_id(request),
+            team_id=scoped_team_id,
+        )
+    except ValueError as e:
+        not_found(str(e))
+    except VoiceNoteError:
+        raise
+    except Exception as e:
+        internal_error(f"외부 업무도구 동기화 중 오류가 발생했습니다: {e}")
 
 
 @router.post("/ledger/{entry_id}/action-item", response_model=PromiseTaskLinkResponse)
@@ -896,6 +1060,28 @@ async def _accessible_team_id(
     if result.scalar_one_or_none() is None:
         not_found("팀 약속 원장 접근 권한이 없습니다")
     return team_uuid
+
+
+async def _require_team_policy_admin(
+    db: AsyncSession,
+    current_user,
+    team_id: uuid.UUID | None,
+) -> None:
+    if team_id is None:
+        return
+    user_id = getattr(current_user, "id", None)
+    if user_id is None:
+        forbidden("팀 자동화 정책 변경은 로그인 사용자가 필요합니다")
+    user_uuid = user_id if isinstance(user_id, uuid.UUID) else uuid.UUID(str(user_id))
+    result = await db.execute(
+        select(TeamMember.role).where(
+            TeamMember.team_id == team_id,
+            TeamMember.user_id == user_uuid,
+        )
+    )
+    role = result.scalar_one_or_none()
+    if role != "admin":
+        forbidden("팀 자동화 정책은 팀 관리자만 변경할 수 있습니다")
 
 
 async def _validate_assigned_user_scope(

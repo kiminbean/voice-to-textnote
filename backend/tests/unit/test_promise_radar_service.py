@@ -17,7 +17,9 @@ from backend.schemas.promise_radar import (
     PromiseAccuracyCase,
     PromiseAutomationPolicyUpdateRequest,
     PromiseAutopilotConfirmRequest,
+    PromiseAutopilotRejectRequest,
     PromiseConflictResolveRequest,
+    PromiseDigestPreferenceUpdateRequest,
     PromiseExternalExportRequest,
     PromiseLearningFeedbackRequest,
     PromiseLedgerMergeRequest,
@@ -708,6 +710,14 @@ async def test_promise_autopilot_calendar_assignee_and_quality(session_factory):
         ).scalar_one()
         assert confirmed_stored.status == "completed"
         assert confirmed_stored.user_confirmed is True
+        latest_pack = await service.latest_evidence_pack(
+            session,
+            confirm_entry.id,
+            owner_id=owner_id,
+            team_id=team_id,
+        )
+        assert latest_pack.ledger_entry_id == str(confirm_entry.id)
+        assert latest_pack.marker_hits
 
         autopilot = await service.run_autopilot(
             session,
@@ -871,6 +881,25 @@ async def test_promise_autopilot_calendar_assignee_and_quality(session_factory):
         )
         assert digest.overdue_count == 1
         assert any("기한 초과 1개" in line for line in digest.lines)
+        default_preference = await service.get_digest_preference(
+            session,
+            owner_id=owner_id,
+            team_id=team_id,
+        )
+        assert default_preference.enabled is False
+        saved_preference = await service.update_digest_preference(
+            session,
+            PromiseDigestPreferenceUpdateRequest(enabled=True, cadence="daily"),
+            owner_id=owner_id,
+            team_id=team_id,
+        )
+        assert saved_preference.enabled is True
+        fetched_preference = await service.get_digest_preference(
+            session,
+            owner_id=owner_id,
+            team_id=team_id,
+        )
+        assert fetched_preference.cadence == "daily"
 
         slack = await service.export_external_task(
             session,
@@ -993,3 +1022,106 @@ async def test_promise_autopilot_calendar_assignee_and_quality(session_factory):
             "conflict_resolved",
             "automation_policy_updated",
         }.issubset(event_types)
+
+
+@pytest.mark.asyncio
+async def test_autopilot_review_rejection_removes_candidate(session_factory):
+    service = PromiseRadarService()
+    now = datetime(2026, 7, 1, 9, 0, 0)
+    owner_id = uuid.uuid4()
+    team_id = uuid.uuid4()
+
+    async with session_factory() as session:
+        entry = PromiseLedgerEntry(
+            owner_id=owner_id,
+            team_id=team_id,
+            source_task_id="sum-review-source",
+            last_source_task_id="sum-review-source",
+            canonical_key="release note review",
+            canonical_text="릴리스 노트 검토",
+            text="릴리스 노트 검토",
+            owner_name="김기수",
+            status="open",
+            priority="high",
+            risk_level="high",
+            confidence=0.86,
+            occurrences=1,
+            first_seen_at=now - timedelta(days=2),
+            last_seen_at=now - timedelta(days=2),
+            evidence=[
+                {
+                    "source_task_id": "sum-review-source",
+                    "meeting_link": "/results/sum-review-source",
+                    "transcript": "릴리스 노트를 검토하겠습니다.",
+                }
+            ],
+        )
+        session.add_all(
+            [
+                User(
+                    id=owner_id,
+                    email="review-owner@example.com",
+                    display_name="검토자",
+                    password_hash="hash",
+                ),
+                Team(id=team_id, name="리뷰 팀", created_by=owner_id),
+                TeamMember(team_id=team_id, user_id=owner_id, role="admin"),
+                TaskResult(
+                    task_id="sum-review",
+                    task_type="summary",
+                    status="completed",
+                    created_at=now,
+                    completed_at=now,
+                    result_data={
+                        "summary_text": "릴리스 노트 검토 완료",
+                        "action_items": [],
+                        "key_decisions": [],
+                        "next_steps": ["릴리스 노트 검토 완료했습니다."],
+                    },
+                ),
+                MeetingOwnership(task_id="sum-review", owner_id=owner_id, team_id=team_id),
+                entry,
+            ]
+        )
+        await session.commit()
+        await session.refresh(entry)
+
+        queue = await service.build_autopilot_review_queue(
+            session,
+            "sum-review",
+            owner_id=owner_id,
+            team_id=team_id,
+        )
+        assert queue.queue_count == 1
+        assessment = queue.items[0].assessment
+
+        rejected = await service.reject_autopilot_review_item(
+            session,
+            entry.id,
+            PromiseAutopilotRejectRequest(
+                task_id="sum-review",
+                suggested_status=assessment.suggested_status,
+                note="완료 아님",
+            ),
+            owner_id=owner_id,
+            team_id=team_id,
+        )
+        assert rejected.recorded is True
+
+        queue_after = await service.build_autopilot_review_queue(
+            session,
+            "sum-review",
+            owner_id=owner_id,
+            team_id=team_id,
+        )
+        assert queue_after.queue_count == 0
+
+        event_types = {
+            event.event_type
+            for event in (
+                await session.execute(select(PromiseLedgerEvent))
+            ).scalars()
+        }
+        assert {"autopilot_review_rejected", "learning_feedback"}.issubset(
+            event_types
+        )
