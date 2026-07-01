@@ -133,14 +133,14 @@
       "platforms": [
         "android"
       ],
-      "evidence": "Release build blocked external HTTP request and showed failure UI."
+      "evidence": "Release build allowed only the scoped staging host and blocked an unapproved external HTTP request."
     },
     "ios_release_http_blocked": {
       "pass": true,
       "platforms": [
         "ios"
       ],
-      "evidence": "iOS release build blocked non-HTTPS request with ATS failure path."
+      "evidence": "iOS release build allowed only the scoped staging host and blocked an unapproved non-HTTPS request with ATS failure path."
     },
     "export_share_android": {
       "pass": true,

@@ -100,6 +100,12 @@ python3 client/scripts/configure_github_mobile_release_env.py --repo kiminbean/v
 
 `--strict`는 환경변수 존재만 확인하지 않는다. `REQUIRE_ANDROID_RELEASE_SIGNING=true`가 설정되어 signed Android release gate와 같은 release 조건임을 먼저 확인하고, `docs/app-store-metadata.md`, `docs/privacy-policy.md`, `docs/e2e-device-checklist.md`에 release placeholder가 없어야 한다. 또한 `FIREBASE_CREDENTIALS_PATH`는 JSON object여야 하고 `type=service_account`, `project_id=voice-to-textnote`, 문자열 private key PEM, 문자열 `@voice-to-textnote.iam.gserviceaccount.com` client email을 가져야 한다. `APNS_AUTH_KEY_PATH`와 `APP_STORE_CONNECT_API_KEY_PATH`는 `.p8` 확장자와 `-----BEGIN PRIVATE KEY-----` / `-----END PRIVATE KEY-----` PEM 본문을 가져야 하며, `APP_STORE_CONNECT_ISSUER_ID`는 UUID 형식이어야 한다. `ANDROID_DEVICE_SERIAL`은 `adb devices -l`에 `device` 상태로 표시되어야 하고, `IOS_DEVICE_UDID`는 `xcrun devicectl list devices`에서 `available` 상태로 표시되어야 한다. `IOS_RELEASE_ENTITLEMENTS_PATH`는 체크아웃된 repo 내부 plist여야 하며 signed iOS release app에서 추출한 `aps-environment=production`, `get-task-allow=false`, App ID/Team ID 일치를 증명해야 한다. `RELEASE_E2E_EVIDENCE_PATH`는 체크아웃된 repo 내부 JSON 파일이어야 하며 `release_gate.android_release_signing=true`, `release_gate.ios_production_entitlements=true`, `release_gate.ios_entitlements_sha256`이 실제 `IOS_RELEASE_ENTITLEMENTS_PATH` SHA-256과 일치해야 한다. Android/iOS device id가 strict 환경변수와 일치하고, Push/딥링크/백그라운드 녹음/HTTP 정책/PDF 공유/Promise Radar Autopilot/Promise Radar due push/Promise Radar calendar export/Promise Radar assignee-quality 시나리오가 모두 `pass: true`와 증거 문구를 가져야 한다. 따라서 signed Android release 모드, Firebase/APNs/App Store Connect secret이 있어도 문서 placeholder가 남아 있거나 private key PEM이 아니거나 물리 기기가 연결되지 않았거나 trust/pairing이 완료되지 않았거나 실제 시나리오 증거가 없으면 E2E 진입 전 실패한다.
 
+현재 private staging release 검증은 `100.69.69.119` HTTP 예외만 허용한다.
+`verify_release_readiness.py`는 iOS ATS와 Android release/profile network security에서
+해당 host 하나만 통과시키고, 임의 cleartext domain 또는 비어 있는 cleartext 예외는
+실패시킨다. Store 제출용 production 빌드는 HTTPS-only 백엔드가 준비된 뒤 HTTP 예외를
+제거해서 별도로 검증한다.
+
 ### Release E2E evidence scaffold
 
 아래 명령은 현재 git revision, `ANDROID_DEVICE_SERIAL`, `IOS_DEVICE_UDID`, 기본 Android/iOS build artifact 경로, `artifact_sha256`, 모든 required scenario key를 포함한 JSON scaffold를 repo 내부에 생성한다. `artifacts` 값은 운영 장비 절대경로가 아니라 repo-relative 경로여야 하며, Android는 `client/build/app/outputs/flutter-apk/app-release.apk`, iOS는 `client/build/ios/iphoneos/Runner.app`만 허용된다. 생성 직후 scenario는 모두 `pass: false`이며, 실제 실기기 관측 증거를 채우기 전에는 strict readiness가 실패해야 정상이다.
@@ -244,8 +250,8 @@ Firebase message id: projects/voice-to-textnote/messages/1782749586143713
 | `push_deeplink_cold_start` | 4.6 cold-start Push 딥링크 |
 | `android_foreground_service` | 6.1-6.3 Android Foreground Service 알림 |
 | `android_debug_tailscale_cleartext_allowed` | SPEC-SEC-002 AC-M02 Android Debug Tailscale HTTP 허용 |
-| `android_release_cleartext_blocked` | SPEC-SEC-002 AC-M03 Android Release HTTP 차단 |
-| `ios_release_http_blocked` | SPEC-SEC-002 AC-M01 iOS Release HTTP 차단 |
+| `android_release_cleartext_blocked` | SPEC-SEC-002 AC-M03 Android Release 허용 목록 외 HTTP 차단 |
+| `ios_release_http_blocked` | SPEC-SEC-002 AC-M01 iOS Release 허용 목록 외 HTTP 차단 |
 | `export_share_android` | SPEC-EXPORT-001 Android PDF 공유 시트 |
 | `export_share_ios` | SPEC-EXPORT-001 iOS PDF 공유 시트 |
 | `promise_radar_autopilot_status` | Promise Radar 자동 판정 실행 후 완료/지연/변경/제외 상태 적용과 근거 표시 |

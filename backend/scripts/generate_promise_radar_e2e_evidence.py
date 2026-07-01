@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import sqlite3
 import subprocess
 import sys
@@ -37,10 +38,15 @@ def _redact_command_output(value: str) -> str:
         (r"\b0000[0-9A-Fa-f-]+\.coredevice\.local\b", "[redacted].coredevice.local"),
     )
     redacted = value
-    import re
 
     for pattern, replacement in replacements:
         redacted = re.sub(pattern, replacement, redacted)
+    if "List of devices attached" in redacted:
+        redacted = re.sub(
+            r"(?m)^([A-Za-z0-9._:-]+)(\s+device\b)",
+            r"[redacted-adb]\2",
+            redacted,
+        )
     return redacted
 
 
@@ -92,6 +98,14 @@ def _collect_devices() -> dict[str, Any]:
         "\tdevice" in line or " device " in line
         for line in android.get("stdout", "").splitlines()[1:]
     )
+    android_model = next(
+        (
+            match.group(1)
+            for line in android.get("stdout", "").splitlines()[1:]
+            if (match := re.search(r"\bmodel:([^\s]+)", line))
+        ),
+        None,
+    )
     return {
         "ios": {
             "connected": ios_identifier is not None,
@@ -101,6 +115,7 @@ def _collect_devices() -> dict[str, Any]:
         },
         "android": {
             "connected": android_connected,
+            "model": android_model,
             "adb_output": android,
         },
     }
@@ -465,6 +480,7 @@ def main() -> int:
 
     pass_checks = {
         "ios_device_connected": bool(devices["ios"]["connected"]),
+        "android_device_connected": bool(devices["android"]["connected"]),
         "actual_recording_chain": bool(chain["duration_seconds"] and chain["minutes_task_id"]),
         "radar_load": bool(checks["radar_load"].get("ok")),
         "autopilot_preview": bool(checks["autopilot_preview"].get("ok")),

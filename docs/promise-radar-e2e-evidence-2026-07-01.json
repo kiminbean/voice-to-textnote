@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-01T06:19:43.891191+00:00",
+  "generated_at": "2026-07-01T06:31:01.714465+00:00",
   "target_base_url": "http://100.69.69.119:8000/api/v1",
   "user": {
     "authenticated": true,
@@ -33,12 +33,13 @@
           "C7DD57C9-48FC-5362-B2FB-ED87CFFD51FA"
         ],
         "exit_code": 0,
-        "stdout": "Gathering device information…\nCurrent device information:\n• identifier: C7DD57C9-48FC-5362-B2FB-ED87CFFD51FA\n• tags: \n▿ hardwareProperties:\n    • cpuType: arm64e (type: 16777228, subtype: 2)\n    • deviceType: iPhone\n    • ecid: [redacted]\n    • hardwareModel: V53AP\n    • internalStorageCapacity: 512000000000\n    • isProductionFused: true\n    • marketingName: iPhone 17 Pro\n    • platform: iOS\n    • productType: iPhone18,1\n    • reality: physical\n    • serialNumber: [redacted]\n    ▿ supportedCPUTypes:\n        • arm64e (type: 16777228, subtype: 2)\n        • arm64 (type: 16777228, subtype: 0)\n    • supportedDeviceFamilies: [1]\n    • thinningProductType: iPhone18,1\n    • udid: [redacted]\n▿ deviceProperties:\n    • bootState: booted\n    • ddiServicesAvailable: true\n    • developerModeStatus: enabled\n    • hasInternalOSBuild: false\n    • name: Inbean의 iPhone\n    • osBuildUpdate: 23F81\n    • osVersionNumber: 26.5.1\n    ▿ providerSpecificValues:\n        • hasAMRestorableDeviceRef: true\n    • rootFileSystemIsWritable: false\n    • screenViewingURL: devices://device/open?id=C7DD57C9-48FC-5362-B2FB-ED87CFFD51FA\n    • bootedFromSnapshot: true\n    • bootedSnapshotName: com.apple.os.update-DD8F28E814ECA7ECCF24628FAE9BCA44301CC7E874390641F04D3CB7AA9616B4\n    • supportsCheckedAllocations: true\n▿ connectionProperties:\n    • authenticationType: manualPairing\n    • isMobileDeviceOnly: false\n    • lastConnectionDate: 2026-07-01 06:19:00 +0000\n    ▿ localHostnames:\n        • Inbean-ui-iPhone.coredevice.local\n        • C7DD57C9-48FC-5362-B2FB-ED87CFFD51FA.coredevice.local\n        • [redacted].coredevice.local\n    ▿ potentialHostnames:\n        • Inbean-ui-iPhone.coredevice.local\n        • C7DD57C9-48FC-5362-B2FB-ED87CFFD51FA.coredevice.local\n        • [redacted].coredevice.local\n    • pairingState: paired\n    • transportType: wired\n    • tunnelTransportProtocol: tcp\n    • tunnelIPAddress: [redacted]\n    • tunnelState: connected\n▿ capabilities:\n    • Acquire Usage Assertion (com.apple.coredevice.feature.acquireusageassertion)\n    • Application Control (com.apple.coredevice.feature.applicationcontrol)\n    • Capture Sysdiagnose (com.apple.coredevice.feature.capturesysdiagnose)\n    • Create Service Connection (com.apple.dt.serviceconnection.create)\n    • Create Service Socket (com.apple.dt.servicesocket.create)\n    • Disable Developer Disk Image Services (com.apple.coredevice.feature.disableddiservices)\n    • Disconnect from Device (com.apple.coredevice.feature.disconnectdevice)\n    • Fetch Application Icons (com.apple.coredevice.feature.fetchappicons)\n    • Fetch AuthListing Identifiers (com.apple.coredevice.feature.getauthlistingidentifiers)\n    • Fetch Developer Disk Image Services Metadata (com.apple.coredevice.feature.fetchddimetadata)\n    • Fetch Extended Device Info (com.apple.coredevice.feature.getdeviceinfo)\n    • Get Display Information (com.apple.coredevice.feature.getdisplayinfo)\n    • Get Lock State (com.apple.coredevice.feature.getlockstate)\n    • Install Application (com.apple.coredevice.feature.installapp)\n    • Install Root (com.apple.coredevice.feature.installroot)\n    • Launch Application (com.apple.coredevice.feature.launchapplication)\n    • List Files (com.apple.coredevice.feature.listFiles)\n    • List Roots (com.apple.coredevice.feature.listroots)\n    • Modify Tags (com.apple.coredevice.feature.tags)\n    • Modify credentials for default users for a device (com.apple.coredevice.feature.default.user.credentials)\n    • Monitor Process for Termination (com.apple.coredevice.feature.monitorprocesstermination)\n    • Post Darwin Notification (com.apple.dt.customer.postdarwinnotification)\n    • Process Control (com.apple.coredevice.feature.processcontrol)\n    • Query MobileGestalt (com.apple.coredevice.feature.querymobilegestalt)\n    • Reboot Device (com.apple.coredevice.feature.rebootdevice)\n    • Send Memory Warning to Process (com.apple.coredevice.feature.sendmemorywarningtoprocess)\n    • Send Signal to Process (com.apple.coredevice.feature.sendsignaltoprocess)\n    • Service Hub Profile (com.apple.dt.profile)\n    • Spawn Executable (com.apple.coredevice.feature.spawnexecutable)\n    • Stream Application List (com.apple.coredevice.feature.streamapplist)\n    • Stream Process List (com.apple.coredevice.feature.streamprocesslist)\n    • Transfer Files (com.apple.coredevice.feature.transferFiles)\n    • Uninstall Application (com.apple.coredevice.feature.uninstallapp)\n    • Uninstall Root (com.apple.coredevice.feature.uninstallroot)\n    • Unpair Device (com.apple.coredevice.feature.unpairdevice)\n    • View Device Screen (com.apple.coredevice.feature.viewdevicescreen)\n• visibilityClass: default",
+        "stdout": "Gathering device information…\nCurrent device information:\n• identifier: C7DD57C9-48FC-5362-B2FB-ED87CFFD51FA\n• tags: \n▿ hardwareProperties:\n    • cpuType: arm64e (type: 16777228, subtype: 2)\n    • deviceType: iPhone\n    • ecid: [redacted]\n    • hardwareModel: V53AP\n    • internalStorageCapacity: 512000000000\n    • isProductionFused: true\n    • marketingName: iPhone 17 Pro\n    • platform: iOS\n    • productType: iPhone18,1\n    • reality: physical\n    • serialNumber: [redacted]\n    ▿ supportedCPUTypes:\n        • arm64e (type: 16777228, subtype: 2)\n        • arm64 (type: 16777228, subtype: 0)\n    • supportedDeviceFamilies: [1]\n    • thinningProductType: iPhone18,1\n    • udid: [redacted]\n▿ deviceProperties:\n    • bootState: booted\n    • ddiServicesAvailable: true\n    • developerModeStatus: enabled\n    • hasInternalOSBuild: false\n    • name: Inbean의 iPhone\n    • osBuildUpdate: 23F81\n    • osVersionNumber: 26.5.1\n    • rootFileSystemIsWritable: false\n    • screenViewingURL: devices://device/open?id=C7DD57C9-48FC-5362-B2FB-ED87CFFD51FA\n    • bootedFromSnapshot: true\n    • bootedSnapshotName: com.apple.os.update-DD8F28E814ECA7ECCF24628FAE9BCA44301CC7E874390641F04D3CB7AA9616B4\n    • supportsCheckedAllocations: true\n▿ connectionProperties:\n    • authenticationType: manualPairing\n    • isMobileDeviceOnly: false\n    • lastConnectionDate: 2026-07-01 06:30:00 +0000\n    ▿ localHostnames:\n        • Inbean-ui-iPhone.coredevice.local\n        • C7DD57C9-48FC-5362-B2FB-ED87CFFD51FA.coredevice.local\n        • [redacted].coredevice.local\n    ▿ potentialHostnames:\n        • Inbean-ui-iPhone.coredevice.local\n        • C7DD57C9-48FC-5362-B2FB-ED87CFFD51FA.coredevice.local\n        • [redacted].coredevice.local\n    • pairingState: paired\n    • transportType: localNetwork\n    • tunnelTransportProtocol: tcp\n    • tunnelIPAddress: [redacted]\n    • tunnelState: connected\n▿ capabilities:\n    • Acquire Usage Assertion (com.apple.coredevice.feature.acquireusageassertion)\n    • Application Control (com.apple.coredevice.feature.applicationcontrol)\n    • Capture Sysdiagnose (com.apple.coredevice.feature.capturesysdiagnose)\n    • Create Service Connection (com.apple.dt.serviceconnection.create)\n    • Create Service Socket (com.apple.dt.servicesocket.create)\n    • Disable Developer Disk Image Services (com.apple.coredevice.feature.disableddiservices)\n    • Disconnect from Device (com.apple.coredevice.feature.disconnectdevice)\n    • Fetch Application Icons (com.apple.coredevice.feature.fetchappicons)\n    • Fetch AuthListing Identifiers (com.apple.coredevice.feature.getauthlistingidentifiers)\n    • Fetch Developer Disk Image Services Metadata (com.apple.coredevice.feature.fetchddimetadata)\n    • Fetch Extended Device Info (com.apple.coredevice.feature.getdeviceinfo)\n    • Get Display Information (com.apple.coredevice.feature.getdisplayinfo)\n    • Get Lock State (com.apple.coredevice.feature.getlockstate)\n    • Install Application (com.apple.coredevice.feature.installapp)\n    • Install Root (com.apple.coredevice.feature.installroot)\n    • Launch Application (com.apple.coredevice.feature.launchapplication)\n    • List Files (com.apple.coredevice.feature.listFiles)\n    • List Roots (com.apple.coredevice.feature.listroots)\n    • Modify Tags (com.apple.coredevice.feature.tags)\n    • Modify credentials for default users for a device (com.apple.coredevice.feature.default.user.credentials)\n    • Monitor Process for Termination (com.apple.coredevice.feature.monitorprocesstermination)\n    • Post Darwin Notification (com.apple.dt.customer.postdarwinnotification)\n    • Process Control (com.apple.coredevice.feature.processcontrol)\n    • Query MobileGestalt (com.apple.coredevice.feature.querymobilegestalt)\n    • Reboot Device (com.apple.coredevice.feature.rebootdevice)\n    • Send Memory Warning to Process (com.apple.coredevice.feature.sendmemorywarningtoprocess)\n    • Send Signal to Process (com.apple.coredevice.feature.sendsignaltoprocess)\n    • Service Hub Profile (com.apple.dt.profile)\n    • Spawn Executable (com.apple.coredevice.feature.spawnexecutable)\n    • Stream Application List (com.apple.coredevice.feature.streamapplist)\n    • Stream Process List (com.apple.coredevice.feature.streamprocesslist)\n    • Transfer Files (com.apple.coredevice.feature.transferFiles)\n    • Uninstall Application (com.apple.coredevice.feature.uninstallapp)\n    • Uninstall Root (com.apple.coredevice.feature.uninstallroot)\n    • Unpair Device (com.apple.coredevice.feature.unpairdevice)\n    • View Device Screen (com.apple.coredevice.feature.viewdevicescreen)\n• visibilityClass: default",
         "stderr": ""
       }
     },
     "android": {
-      "connected": false,
+      "connected": true,
+      "model": "Redmi_Note_9_Pro",
       "adb_output": {
         "command": [
           "adb",
@@ -46,7 +47,7 @@
           "-l"
         ],
         "exit_code": 0,
-        "stdout": "List of devices attached",
+        "stdout": "List of devices attached\n[redacted-adb]               device usb:3-1.1 product:joyeuse_global model:Redmi_Note_9_Pro device:joyeuse transport_id:27",
         "stderr": ""
       }
     }
@@ -68,7 +69,7 @@
       "ok": true,
       "status": 200,
       "url": "http://100.69.69.119:8000/api/v1/promise-radar/7f9942fe-dbc9-4ead-a712-098954363979?limit=5",
-      "duration_ms": 8307,
+      "duration_ms": 8063,
       "analyzed_meetings": 6,
       "ledger_entry_count": 21,
       "current_promise_count": 3,
@@ -79,7 +80,7 @@
       "ok": true,
       "status": 200,
       "url": "http://100.69.69.119:8000/api/v1/promise-radar/autopilot/7f9942fe-dbc9-4ead-a712-098954363979/preview?limit=5",
-      "duration_ms": 32,
+      "duration_ms": 45,
       "preview_mode": true,
       "assessed_count": 5,
       "applied_count": 0,
@@ -92,7 +93,7 @@
       "ok": true,
       "status": 200,
       "url": "http://100.69.69.119:8000/api/v1/promise-radar/autopilot/7f9942fe-dbc9-4ead-a712-098954363979/review-queue?limit=5",
-      "duration_ms": 21,
+      "duration_ms": 24,
       "queue_count": 0,
       "actionable_count": 0,
       "conflict_count": 0
@@ -101,7 +102,7 @@
       "ok": true,
       "status": 200,
       "url": "http://100.69.69.119:8000/api/v1/promise-radar/briefing/pre-meeting?limit=5",
-      "duration_ms": 13,
+      "duration_ms": 6,
       "readiness_score": 82,
       "promise_count": 5,
       "question_count": 5,
@@ -111,7 +112,7 @@
       "ok": true,
       "status": 200,
       "url": "http://100.69.69.119:8000/api/v1/promise-radar/ledger/6543b7ab-80a5-4baf-aed6-18678fa9709a/calendar/export",
-      "duration_ms": 20,
+      "duration_ms": 11,
       "ledger_entry_id": "6543b7ab-80a5-4baf-aed6-18678fa9709a",
       "ics_filename": "promise-6543b7ab-80a5-4baf-aed6-18678fa9709a.ics",
       "has_ics_content": true,
@@ -138,6 +139,7 @@
   },
   "pass_checks": {
     "ios_device_connected": true,
+    "android_device_connected": true,
     "actual_recording_chain": true,
     "radar_load": true,
     "autopilot_preview": true,
@@ -148,5 +150,5 @@
     "due_push_dispatch_contract": true
   },
   "overall_pass": true,
-  "android_release_device_note": "Android ADB device was not connected during this evidence run."
+  "android_release_device_note": "Android ADB device was connected."
 }

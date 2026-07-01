@@ -133,14 +133,14 @@
       "platforms": [
         "android"
       ],
-      "evidence": "TODO: Android release HTTP blocked"
+      "evidence": "TODO: Android release blocked non-staging HTTP while allowing only the scoped staging host"
     },
     "ios_release_http_blocked": {
       "pass": false,
       "platforms": [
         "ios"
       ],
-      "evidence": "TODO: iOS release HTTP blocked"
+      "evidence": "TODO: iOS release blocked non-staging HTTP while allowing only the scoped staging host"
     },
     "export_share_android": {
       "pass": false,

@@ -29,6 +29,7 @@ IOS_BUNDLE_ID = "com.voicetextnote.app"
 URL_SCHEME = "voicetextnote"
 MIN_IOS_DEPLOYMENT_TARGET = (15, 0)
 MIN_GOOGLE_PLAY_TARGET_SDK = 35
+STAGING_CLEAR_TEXT_HOSTS = {"100.69.69.119"}
 REQUIRED_E2E_SCENARIOS = {
     "permission_microphone_initial": "Initial microphone permission prompt",
     "permission_denied_recovery": "Permission denial recovery UI",
@@ -43,8 +44,8 @@ REQUIRED_E2E_SCENARIOS = {
     "push_deeplink_cold_start": "Push deeplink from cold start",
     "android_foreground_service": "Android foreground recording notification",
     "android_debug_tailscale_cleartext_allowed": "Android debug Tailscale HTTP allowed",
-    "android_release_cleartext_blocked": "Android release HTTP blocked",
-    "ios_release_http_blocked": "iOS release HTTP blocked",
+    "android_release_cleartext_blocked": "Android release non-staging HTTP blocked",
+    "ios_release_http_blocked": "iOS release non-staging HTTP blocked",
     "export_share_android": "Android PDF share sheet",
     "export_share_ios": "iOS PDF share sheet",
     "promise_radar_autopilot_status": "Promise Radar Autopilot status update",
@@ -160,6 +161,22 @@ class Reporter:
 
 def read_text(path: Path) -> str:
     return path.read_text(encoding="utf-8")
+
+
+def cleartext_domain_hosts(network_config: str) -> set[str]:
+    hosts: set[str] = set()
+    cleartext_blocks = re.findall(
+        r"<domain-config\b[^>]*cleartextTrafficPermitted=\"true\"[^>]*>(.*?)</domain-config>",
+        network_config,
+        flags=re.DOTALL,
+    )
+    for block in cleartext_blocks:
+        hosts.update(
+            host.strip()
+            for host in re.findall(r"<domain\b[^>]*>([^<]+)</domain>", block)
+            if host.strip()
+        )
+    return hosts
 
 
 def git_lines(root: Path, args: list[str]) -> list[str]:
@@ -540,11 +557,14 @@ def check_ios_project(root: Path, reporter: Reporter) -> None:
                     and config.get("NSExceptionAllowsInsecureHTTPLoads") is True
                 ):
                     insecure_domains.append(str(domain))
-        if insecure_domains:
+        unexpected_insecure_domains = sorted(set(insecure_domains) - STAGING_CLEAR_TEXT_HOSTS)
+        if unexpected_insecure_domains:
             reporter.fail(
                 "iOS ATS must not allow insecure HTTP loads: "
-                + ", ".join(sorted(insecure_domains))
+                + ", ".join(unexpected_insecure_domains)
             )
+        elif insecure_domains:
+            reporter.ok("iOS ATS insecure HTTP exceptions are limited to staging hosts")
         else:
             reporter.ok("iOS ATS blocks arbitrary and insecure HTTP loads")
 
@@ -734,13 +754,30 @@ def check_android_project(root: Path, reporter: Reporter) -> None:
         reporter.ok("Android release/profile cleartext traffic denied by default")
     else:
         reporter.fail("Android release/profile base cleartext denial missing")
-    if (
-        '<domain-config cleartextTrafficPermitted="true">' not in release_network
-        and "<domain " not in release_network
-    ):
-        reporter.ok("Android release/profile config has no cleartext domain exceptions")
+    release_cleartext_hosts = cleartext_domain_hosts(release_network)
+    has_release_cleartext_config = (
+        re.search(
+            r"<domain-config\b[^>]*cleartextTrafficPermitted=\"true\"",
+            release_network,
+        )
+        is not None
+    )
+    unexpected_release_cleartext_hosts = sorted(
+        release_cleartext_hosts - STAGING_CLEAR_TEXT_HOSTS
+    )
+    if unexpected_release_cleartext_hosts:
+        reporter.fail(
+            "Android release/profile config must not allow cleartext domain exceptions: "
+            + ", ".join(unexpected_release_cleartext_hosts)
+        )
+    elif has_release_cleartext_config and not release_cleartext_hosts:
+        reporter.fail(
+            "Android release/profile config must not allow empty cleartext domain exceptions"
+        )
+    elif release_cleartext_hosts:
+        reporter.ok("Android release/profile cleartext exceptions are limited to staging hosts")
     else:
-        reporter.fail("Android release/profile config must not allow cleartext domain exceptions")
+        reporter.ok("Android release/profile config has no cleartext domain exceptions")
 
     debug_network = read_text(debug_network_path)
     if '<base-config cleartextTrafficPermitted="false">' in debug_network:

@@ -175,7 +175,13 @@ def write_readme_status(root: Path, content: str) -> None:
     )
 
 
-def write_minimal_android_project(root: Path, *, target_sdk: int = 35) -> None:
+def write_minimal_android_project(
+    root: Path,
+    *,
+    target_sdk: int = 35,
+    release_cleartext_hosts: tuple[str, ...] = (),
+    empty_release_cleartext_config: bool = False,
+) -> None:
     android_root = root / "client/android/app"
     (android_root / "src/main/kotlin/com/voicetextnote/app").mkdir(parents=True)
     (android_root / "src/main/res/xml").mkdir(parents=True)
@@ -224,8 +230,25 @@ val payload = "filePath"
         """,
         encoding="utf-8",
     )
+    release_domain_lines = "\n".join(
+        f"    <domain>{host}</domain>" for host in release_cleartext_hosts
+    )
+    release_domain_config = (
+        f"""
+  <domain-config cleartextTrafficPermitted="true">
+{release_domain_lines}
+  </domain-config>
+        """
+        if release_cleartext_hosts or empty_release_cleartext_config
+        else ""
+    )
     (android_root / "src/main/res/xml/network_security_config.xml").write_text(
-        '<network-security-config><base-config cleartextTrafficPermitted="false"></base-config></network-security-config>',
+        f"""
+<network-security-config>
+  <base-config cleartextTrafficPermitted="false"></base-config>
+{release_domain_config}
+</network-security-config>
+        """,
         encoding="utf-8",
     )
     (android_root / "src/debug/res/xml/network_security_config.xml").write_text(
@@ -247,6 +270,7 @@ def write_minimal_ios_project(
     *,
     deployment_target: str = "15.0",
     insecure_ats_exception: bool = False,
+    insecure_ats_domain: str = "localhost",
 ) -> None:
     ios_root = root / "client/ios/Runner"
     project_root = root / "client/ios/Runner.xcodeproj"
@@ -272,7 +296,7 @@ def write_minimal_ios_project(
         info_plist["NSAppTransportSecurity"] = {
             "NSAllowsArbitraryLoads": False,
             "NSExceptionDomains": {
-                "localhost": {"NSExceptionAllowsInsecureHTTPLoads": True},
+                insecure_ats_domain: {"NSExceptionAllowsInsecureHTTPLoads": True},
             },
         }
     with (ios_root / "Info.plist").open("wb") as plist:
@@ -2142,6 +2166,49 @@ def test_android_project_rejects_stale_play_target_sdk(tmp_path):
     assert any("targetSdkVersion must be at least 35" in error for error in reporter.errors)
 
 
+def test_android_project_accepts_staging_release_cleartext_exception(tmp_path):
+    module = load_release_readiness_module()
+    write_minimal_android_project(
+        tmp_path,
+        release_cleartext_hosts=("100.69.69.119",),
+    )
+
+    reporter = module.Reporter()
+    module.check_android_project(tmp_path, reporter)
+
+    assert reporter.errors == []
+
+
+def test_android_project_rejects_unapproved_release_cleartext_exception(tmp_path):
+    module = load_release_readiness_module()
+    write_minimal_android_project(
+        tmp_path,
+        release_cleartext_hosts=("api.example.test",),
+    )
+
+    reporter = module.Reporter()
+    module.check_android_project(tmp_path, reporter)
+
+    assert any(
+        "release/profile config must not allow cleartext domain exceptions: api.example.test"
+        in error
+        for error in reporter.errors
+    )
+
+
+def test_android_project_rejects_empty_release_cleartext_exception(tmp_path):
+    module = load_release_readiness_module()
+    write_minimal_android_project(tmp_path, empty_release_cleartext_config=True)
+
+    reporter = module.Reporter()
+    module.check_android_project(tmp_path, reporter)
+
+    assert any(
+        "release/profile config must not allow empty cleartext domain exceptions" in error
+        for error in reporter.errors
+    )
+
+
 def test_ios_project_accepts_current_deployment_target():
     module = load_release_readiness_module()
     root = Path(__file__).resolve().parents[2]
@@ -2160,6 +2227,20 @@ def test_ios_project_rejects_stale_deployment_target(tmp_path):
     module.check_ios_project(tmp_path, reporter)
 
     assert any("deployment target must be at least 15.0" in error for error in reporter.errors)
+
+
+def test_ios_project_accepts_staging_ats_exception(tmp_path):
+    module = load_release_readiness_module()
+    write_minimal_ios_project(
+        tmp_path,
+        insecure_ats_exception=True,
+        insecure_ats_domain="100.69.69.119",
+    )
+
+    reporter = module.Reporter()
+    module.check_ios_project(tmp_path, reporter)
+
+    assert reporter.errors == []
 
 
 def test_ios_project_rejects_insecure_ats_exception(tmp_path):

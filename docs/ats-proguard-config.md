@@ -8,25 +8,42 @@
 
 ### 현재 상태
 
-`Info.plist`는 release 기준으로 임의 HTTP 로드를 차단한다.
+`Info.plist`는 release 기준으로 임의 HTTP 로드를 차단한다. 현재 private
+staging 실기기 release 검증은 unresolved production API 대신 Tailscale 백엔드
+`100.69.69.119`를 사용하므로, iOS ATS와 Android release/profile network security에
+해당 IP 하나만 좁게 허용한다.
 
 ```xml
 <key>NSAppTransportSecurity</key>
 <dict>
     <key>NSAllowsArbitraryLoads</key>
     <false/>
+    <key>NSExceptionDomains</key>
+    <dict>
+        <key>100.69.69.119</key>
+        <dict>
+            <key>NSExceptionAllowsInsecureHTTPLoads</key>
+            <true/>
+            <key>NSIncludesSubdomains</key>
+            <false/>
+        </dict>
+    </dict>
 </dict>
 ```
 
 ### 프로덕션 정책
 
-프로덕션 iOS 빌드에는 `NSExceptionAllowsInsecureHTTPLoads: true` 도메인 예외를 두지 않는다.
-로컬/Tailscale HTTP 테스트는 Android debug network security config 또는 개발 전용 실행 인자로 제한하고,
-iOS release E2E에서는 HTTP 요청이 ATS에 의해 차단되는 것을 검증한다.
+App Store/Play 제출용 production 빌드는 HTTPS-only 백엔드가 준비된 뒤 HTTP 예외를
+제거해야 한다. 현재 실기기 staging release 검증에서는 `100.69.69.119`만 예외로
+허용하고, 그 외 모든 HTTP 도메인은 실패해야 한다. 새 staging HTTP host가 필요하면
+플랫폼 보안 설정, `verify_release_readiness.py`, 회귀 테스트, release 문서를 같은
+커밋에서 함께 갱신한다.
 
 ### 심사 대응
-- App Store 제출 메타데이터에서 ATS 예외 사유가 필요하지 않도록 HTTPS-only release 구성을 유지한다.
-- `python3 client/scripts/verify_release_readiness.py`는 iOS ATS가 임의 로드나 insecure HTTP 예외를 허용하면 실패해야 한다.
+- App Store 제출 메타데이터에서 ATS 예외 사유가 필요하지 않도록 제출 전 production
+  빌드는 HTTPS-only 구성을 사용한다.
+- `python3 client/scripts/verify_release_readiness.py`는 iOS ATS가 임의 로드나
+  `100.69.69.119` 외 insecure HTTP 예외를 허용하면 실패해야 한다.
 
 ---
 
