@@ -3,12 +3,14 @@
 // SPEC-EXPORT-001: PDF 내보내기 기능 추가
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:dio/dio.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:voice_to_textnote/models/action_item.dart';
 import 'package:voice_to_textnote/models/meeting.dart';
@@ -51,6 +53,8 @@ import 'package:voice_to_textnote/widgets/tone_timeline.dart';
 import 'package:voice_to_textnote/providers/audio_player_provider.dart';
 import 'package:voice_to_textnote/providers/qa_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+const _googleTasksScope = 'https://www.googleapis.com/auth/tasks';
 
 // ConsumerStatefulWidget으로 변경: _isExporting 상태 관리 필요
 class ResultScreen extends ConsumerStatefulWidget {
@@ -5196,6 +5200,11 @@ class _PromiseRadarTab extends ConsumerWidget {
                   child: _sectionTitle(
                       context, Icons.fact_check_outlined, '약속 원장'),
                 ),
+                IconButton(
+                  tooltip: '자동화 정책',
+                  onPressed: () => _showAutomationPolicySheet(context, ref),
+                  icon: const Icon(Icons.rule_folder_outlined),
+                ),
                 OutlinedButton.icon(
                   onPressed: () => _runAutopilot(context, ref, summaryTaskId),
                   icon: const Icon(Icons.auto_fix_high_outlined, size: 18),
@@ -5444,9 +5453,10 @@ class _PromiseRadarTab extends ConsumerWidget {
                               label: const Text('Slack'),
                             ),
                             TextButton.icon(
-                              onPressed: () => _exportGoogleTaskPreview(
+                              onPressed: () => _exportGoogleTask(
                                 context,
                                 ref,
+                                summaryTaskId,
                                 entry.id,
                               ),
                               icon:
@@ -5772,6 +5782,15 @@ class _PromiseRadarTab extends ConsumerWidget {
       'delayed' => '지연',
       'changed' => '변경',
       _ => '진행',
+    };
+  }
+
+  String _automationPolicyLabel(String mode) {
+    return switch (mode) {
+      'preview_only' => '항상 미리보기',
+      'completed_only' => '완료만 자동 적용',
+      'manual_only' => '모든 판정 수동 확인',
+      _ => '안전 자동 적용',
     };
   }
 
@@ -6134,29 +6153,79 @@ class _PromiseRadarTab extends ConsumerWidget {
     }
   }
 
-  Future<void> _exportGoogleTaskPreview(
+  Future<void> _exportGoogleTask(
     BuildContext context,
     WidgetRef ref,
+    String summaryTaskId,
     String entryId,
   ) async {
     try {
+      if (!isGoogleSignInConfiguredForPlatform(isIOS: Platform.isIOS)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Google Tasks OAuth 설정이 필요합니다.')),
+        );
+        return;
+      }
+      final googleSignIn = GoogleSignIn(
+        clientId: googleClientIdForPlatform(
+          isIOS: Platform.isIOS,
+          isMacOS: Platform.isMacOS,
+        ),
+        serverClientId: googleServerClientId,
+        scopes: ['email', 'profile', _googleTasksScope],
+      );
+      var account = await googleSignIn.signInSilently();
+      account ??= await googleSignIn.signIn();
+      if (account == null) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Google Tasks 전송을 취소했습니다.')),
+          );
+        }
+        return;
+      }
+      final hasScope = await googleSignIn.canAccessScopes([_googleTasksScope]);
+      final granted =
+          hasScope || await googleSignIn.requestScopes([_googleTasksScope]);
+      if (!granted) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Google Tasks 권한 승인이 필요합니다.')),
+          );
+        }
+        return;
+      }
+      final auth = await account.authentication;
+      final accessToken = auth.accessToken;
+      if (accessToken == null || accessToken.isEmpty) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text('Google Tasks access token을 받을 수 없습니다.')),
+          );
+        }
+        return;
+      }
       final exported =
           await ref.read(promiseRadarApiProvider).exportExternalTask(
                 entryId,
-                const PromiseExternalExportRequest(provider: 'google_tasks'),
+                PromiseExternalExportRequest(
+                  provider: 'google_tasks',
+                  dryRun: false,
+                  accessToken: accessToken,
+                ),
               );
-      await Clipboard.setData(
-        ClipboardData(text: jsonEncode(exported.payload)),
-      );
+      ref.invalidate(promiseRadarProvider(summaryTaskId));
+      ref.invalidate(promiseLedgerProvider);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Google Tasks payload를 복사했습니다.')),
+          SnackBar(content: Text(exported.message)),
         );
       }
     } catch (_) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Google Tasks payload 생성에 실패했습니다.')),
+          const SnackBar(content: Text('Google Tasks 전송에 실패했습니다.')),
         );
       }
     }
@@ -6188,81 +6257,273 @@ class _PromiseRadarTab extends ConsumerWidget {
     }
   }
 
+  Future<void> _showAutomationPolicySheet(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    try {
+      final policy =
+          await ref.read(promiseRadarApiProvider).getAutomationPolicy();
+      if (!context.mounted) return;
+      await showModalBottomSheet<void>(
+        context: context,
+        builder: (sheetContext) => SafeArea(
+          child: ListView(
+            shrinkWrap: true,
+            padding: const EdgeInsets.all(AppSpacing.md),
+            children: [
+              ListTile(
+                leading: const Icon(Icons.rule_folder_outlined),
+                title: const Text('자동화 정책'),
+                subtitle: Text(_automationPolicyLabel(policy.mode)),
+              ),
+              for (final option in const [
+                'safe_auto',
+                'preview_only',
+                'completed_only',
+                'manual_only',
+              ])
+                ListTile(
+                  leading: Icon(
+                    policy.mode == option
+                        ? Icons.check_circle
+                        : Icons.radio_button_unchecked,
+                  ),
+                  title: Text(_automationPolicyLabel(option)),
+                  onTap: () => _updateAutomationPolicy(
+                    sheetContext,
+                    ref,
+                    option,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      );
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('자동화 정책을 불러오지 못했습니다.')),
+        );
+      }
+    }
+  }
+
+  Future<void> _updateAutomationPolicy(
+    BuildContext context,
+    WidgetRef ref,
+    String mode,
+  ) async {
+    final statuses = mode == 'completed_only'
+        ? const ['completed']
+        : mode == 'manual_only' || mode == 'preview_only'
+            ? const <String>[]
+            : const ['changed', 'completed', 'delayed', 'dismissed'];
+    try {
+      await ref.read(promiseRadarApiProvider).updateAutomationPolicy(
+            PromiseAutomationPolicyUpdateRequest(
+              mode: mode,
+              allowedAutoStatuses: statuses,
+              highRiskRequiresReview: true,
+              assigneeChangeRequiresReview: true,
+              conflictRequiresReview: true,
+            ),
+          );
+      ref.invalidate(promiseLearningProfileProvider);
+      if (context.mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('자동화 정책을 저장했습니다.')),
+        );
+      }
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('자동화 정책 저장에 실패했습니다.')),
+        );
+      }
+    }
+  }
+
   Future<void> _runAutopilot(
     BuildContext context,
     WidgetRef ref,
     String summaryTaskId,
   ) async {
     try {
-      final result = await ref
+      final queue = await ref
           .read(promiseRadarApiProvider)
-          .previewAutopilot(summaryTaskId);
+          .getAutopilotReviewQueue(summaryTaskId);
       if (context.mounted) {
-        await _showAutopilotPreviewSheet(
+        await _showAutopilotReviewQueueSheet(
           context,
           ref,
           summaryTaskId,
-          result,
+          queue,
         );
       }
     } catch (_) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('약속 자동 판정 미리보기에 실패했습니다.')),
+          const SnackBar(content: Text('약속 자동 판정 대기열 조회에 실패했습니다.')),
         );
       }
     }
   }
 
-  Future<void> _showAutopilotPreviewSheet(
+  Future<void> _showAutopilotReviewQueueSheet(
     BuildContext context,
     WidgetRef ref,
     String summaryTaskId,
-    PromiseAutopilotResponse result,
+    PromiseAutopilotReviewQueue queue,
   ) async {
     await showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
       builder: (sheetContext) => SafeArea(
-        child: ListView(
-          shrinkWrap: true,
-          padding: const EdgeInsets.all(AppSpacing.md),
-          children: [
-            ListTile(
-              leading: const Icon(Icons.auto_fix_high_outlined),
-              title: const Text('자동 판정 미리보기'),
-              subtitle: Text(
-                '${result.assessedCount}개 확인 · 기본 기준 ${(result.autopilotThreshold * 100).round()}%',
-              ),
-            ),
-            if (result.assessments.isEmpty)
-              const ListTile(title: Text('확인할 약속 후보가 없습니다.')),
-            for (final assessment in result.assessments)
+        child: FractionallySizedBox(
+          heightFactor: 0.9,
+          child: ListView(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            children: [
               ListTile(
-                title: Text(
-                  '${_statusLabel(assessment.previousStatus)} → ${_statusLabel(assessment.suggestedStatus)}'
-                  ' · ${(assessment.confidence * 100).round()}%',
-                ),
+                leading: const Icon(Icons.fact_check_outlined),
+                title: const Text('확정 대기 약속함'),
                 subtitle: Text(
-                  [
-                    assessment.reason,
-                    '기준 ${(assessment.threshold * 100).round()}%',
-                    if (assessment.evidenceLocked) '근거 잠김',
-                    if (assessment.conflictDetected) '충돌 감지',
-                  ].join(' · '),
+                  '${queue.queueCount}개 후보 · ${queue.actionableCount}개 확정 가능 · 충돌 ${queue.conflictCount}개',
                 ),
-                trailing: assessment.conflictDetected ||
-                        assessment.suggestedStatus == assessment.previousStatus
+                trailing: queue.actionableCount == 0
                     ? null
                     : TextButton(
-                        onPressed: () => _confirmAutopilotAssessment(
+                        onPressed: () => _confirmAllAutopilotAssessments(
                           sheetContext,
                           ref,
                           summaryTaskId,
-                          assessment,
+                          queue.items,
                         ),
-                        child: const Text('맞음'),
+                        child: const Text('모두 맞음'),
                       ),
               ),
+              if (queue.items.isEmpty)
+                const ListTile(title: Text('확인할 약속 후보가 없습니다.')),
+              for (final item in queue.items)
+                _buildAutopilotReviewTile(
+                  context,
+                  sheetContext,
+                  ref,
+                  summaryTaskId,
+                  item,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAutopilotReviewTile(
+    BuildContext parentContext,
+    BuildContext sheetContext,
+    WidgetRef ref,
+    String summaryTaskId,
+    PromiseAutopilotReviewItem item,
+  ) {
+    final assessment = item.assessment;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.sm),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(
+                assessment.conflictDetected
+                    ? Icons.report_problem_outlined
+                    : Icons.auto_fix_high_outlined,
+              ),
+              title: Text(item.ledgerEntry.text),
+              subtitle: Text(
+                [
+                  '${_statusLabel(assessment.previousStatus)} → ${_statusLabel(assessment.suggestedStatus)}',
+                  '${(assessment.confidence * 100).round()}%',
+                  if (assessment.evidenceLocked) '근거 잠김',
+                  if (assessment.conflictDetected) '충돌 감지',
+                ].join(' · '),
+              ),
+            ),
+            Text(
+              assessment.conflictReason ?? assessment.reason,
+              style: Theme.of(parentContext).textTheme.bodySmall,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Wrap(
+              spacing: AppSpacing.xs,
+              runSpacing: AppSpacing.xs,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: () => _showEvidencePackViewer(
+                    parentContext,
+                    assessment,
+                  ),
+                  icon: const Icon(Icons.travel_explore_outlined, size: 18),
+                  label: const Text('근거'),
+                ),
+                if (!assessment.conflictDetected &&
+                    assessment.suggestedStatus != assessment.previousStatus)
+                  FilledButton(
+                    onPressed: () => _confirmAutopilotAssessment(
+                      sheetContext,
+                      ref,
+                      summaryTaskId,
+                      assessment,
+                    ),
+                    child: const Text('맞음'),
+                  ),
+                if (!assessment.conflictDetected &&
+                    assessment.suggestedStatus != assessment.previousStatus)
+                  TextButton(
+                    onPressed: () => _rejectAutopilotAssessment(
+                      sheetContext,
+                      ref,
+                      summaryTaskId,
+                      assessment,
+                    ),
+                    child: const Text('거절'),
+                  ),
+                if (assessment.conflictDetected)
+                  for (final status in const [
+                    'completed',
+                    'delayed',
+                    'changed',
+                    'dismissed',
+                  ])
+                    TextButton(
+                      onPressed: () => _resolveAutopilotConflict(
+                        sheetContext,
+                        ref,
+                        summaryTaskId,
+                        assessment.ledgerEntryId,
+                        status,
+                      ),
+                      child: Text(_statusLabel(status)),
+                    ),
+                if (assessment.conflictDetected)
+                  TextButton.icon(
+                    onPressed: () {
+                      Navigator.of(sheetContext).pop();
+                      _showSplitLedgerDialog(
+                        parentContext,
+                        ref,
+                        summaryTaskId,
+                        item.ledgerEntry,
+                      );
+                    },
+                    icon: const Icon(Icons.call_split_outlined, size: 18),
+                    label: const Text('분리'),
+                  ),
+              ],
+            ),
           ],
         ),
       ),
@@ -6273,8 +6534,9 @@ class _PromiseRadarTab extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     String summaryTaskId,
-    PromiseAutopilotAssessment assessment,
-  ) async {
+    PromiseAutopilotAssessment assessment, {
+    bool closeSheet = true,
+  }) async {
     try {
       await ref.read(promiseRadarApiProvider).confirmAutopilotAssessment(
             assessment.ledgerEntryId,
@@ -6288,7 +6550,9 @@ class _PromiseRadarTab extends ConsumerWidget {
       ref.invalidate(promiseRadarDashboardProvider);
       ref.invalidate(promiseLearningProfileProvider);
       if (context.mounted) {
-        Navigator.of(context).pop();
+        if (closeSheet) {
+          Navigator.of(context).pop();
+        }
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('자동 판정을 확정했습니다.')),
         );
@@ -6300,6 +6564,168 @@ class _PromiseRadarTab extends ConsumerWidget {
         );
       }
     }
+  }
+
+  Future<void> _confirmAllAutopilotAssessments(
+    BuildContext context,
+    WidgetRef ref,
+    String summaryTaskId,
+    List<PromiseAutopilotReviewItem> items,
+  ) async {
+    final targets = items
+        .map((item) => item.assessment)
+        .where(
+          (assessment) =>
+              !assessment.conflictDetected &&
+              assessment.suggestedStatus != assessment.previousStatus,
+        )
+        .toList();
+    var confirmed = 0;
+    for (final assessment in targets) {
+      try {
+        await ref.read(promiseRadarApiProvider).confirmAutopilotAssessment(
+              assessment.ledgerEntryId,
+              taskId: summaryTaskId,
+              suggestedStatus: assessment.suggestedStatus,
+              note: '사용자가 Autopilot review queue에서 일괄 확인했습니다.',
+            );
+        confirmed += 1;
+      } catch (_) {
+        // 개별 후보 실패는 나머지 확정을 계속 진행합니다.
+      }
+    }
+    ref.invalidate(promiseRadarProvider(summaryTaskId));
+    ref.invalidate(promiseLedgerProvider);
+    ref.invalidate(promiseNextMeetingBriefingProvider);
+    ref.invalidate(promiseRadarDashboardProvider);
+    ref.invalidate(promiseLearningProfileProvider);
+    if (context.mounted) {
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('자동 판정 $confirmed개를 확정했습니다.')),
+      );
+    }
+  }
+
+  Future<void> _rejectAutopilotAssessment(
+    BuildContext context,
+    WidgetRef ref,
+    String summaryTaskId,
+    PromiseAutopilotAssessment assessment,
+  ) async {
+    try {
+      await ref.read(promiseRadarApiProvider).recordLearningFeedback(
+            assessment.ledgerEntryId,
+            PromiseLearningFeedbackRequest(
+              expectedStatus: assessment.previousStatus,
+              predictedStatus: assessment.suggestedStatus,
+              correctionType: 'autopilot',
+              note: 'Review Queue에서 자동 판정을 거절했습니다.',
+            ),
+          );
+      ref.invalidate(promiseLearningProfileProvider);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('거절 이력을 학습에 반영했습니다.')),
+        );
+      }
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('자동 판정 거절 처리에 실패했습니다.')),
+        );
+      }
+    }
+  }
+
+  Future<void> _resolveAutopilotConflict(
+    BuildContext context,
+    WidgetRef ref,
+    String summaryTaskId,
+    String entryId,
+    String status,
+  ) async {
+    try {
+      await ref.read(promiseRadarApiProvider).resolveAutopilotConflict(
+            entryId,
+            PromiseConflictResolveRequest(
+              status: status,
+              note: 'Review Queue에서 충돌 판정을 해결했습니다.',
+            ),
+          );
+      ref.invalidate(promiseRadarProvider(summaryTaskId));
+      ref.invalidate(promiseLedgerProvider);
+      ref.invalidate(promiseNextMeetingBriefingProvider);
+      ref.invalidate(promiseRadarDashboardProvider);
+      if (context.mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('충돌 판정을 해결했습니다.')),
+        );
+      }
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('충돌 판정 해결에 실패했습니다.')),
+        );
+      }
+    }
+  }
+
+  Future<void> _showEvidencePackViewer(
+    BuildContext context,
+    PromiseAutopilotAssessment assessment,
+  ) async {
+    final pack = assessment.evidencePack;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) => SafeArea(
+        child: FractionallySizedBox(
+          heightFactor: 0.8,
+          child: ListView(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            children: [
+              ListTile(
+                leading: const Icon(Icons.travel_explore_outlined),
+                title: const Text('Evidence Pack'),
+                subtitle: Text(
+                  '유사도 ${((pack?.similarity ?? assessment.explanation.similarity) * 100).round()}%',
+                ),
+              ),
+              ListTile(
+                title: const Text('매칭 발화'),
+                subtitle: Text(
+                  pack?.matchedText ??
+                      assessment.explanation.matchedText ??
+                      '연결된 발화 없음',
+                ),
+              ),
+              if (pack != null && pack.markerHits.isNotEmpty)
+                ListTile(
+                  title: const Text('Marker Hit'),
+                  subtitle: Text(pack.markerHits.join(', ')),
+                ),
+              for (final factor in pack?.confidenceFactors ??
+                  assessment.explanation.confidenceFactors)
+                ListTile(
+                  dense: true,
+                  leading: const Icon(Icons.check_circle_outline),
+                  title: Text(factor),
+                ),
+              for (final evidence
+                  in pack?.evidence ?? assessment.explanation.evidence)
+                ListTile(
+                  dense: true,
+                  leading: const Icon(Icons.notes_outlined),
+                  title: Text(_evidenceLabel(evidence)),
+                  subtitle: Text(evidence.transcript),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _showMatchExplanation(

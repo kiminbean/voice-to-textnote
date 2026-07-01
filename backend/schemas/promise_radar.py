@@ -186,6 +186,59 @@ class PromiseAutopilotConfirmRequest(BaseModel):
     note: str | None = None
 
 
+class PromiseAutopilotReviewItem(BaseModel):
+    """One pending Autopilot review queue row with user-visible ledger context."""
+
+    ledger_entry: PromiseLedgerEntryResponse
+    assessment: PromiseAutopilotAssessment
+    queued_at: datetime
+    decision_required: bool = True
+
+
+class PromiseAutopilotReviewQueue(BaseModel):
+    """Batch review queue for pending Autopilot decisions."""
+
+    task_id: str
+    queue_count: int = Field(ge=0)
+    actionable_count: int = Field(ge=0)
+    conflict_count: int = Field(ge=0)
+    items: list[PromiseAutopilotReviewItem] = Field(default_factory=list)
+
+
+class PromiseConflictResolveRequest(BaseModel):
+    """User-selected resolution for a conflicting Autopilot status signal."""
+
+    status: str = Field(
+        description="completed, delayed, changed, dismissed, open, or blocked",
+    )
+    note: str | None = None
+
+
+class PromiseAutomationPolicy(BaseModel):
+    """Scoped policy controlling how Promise Radar may auto-apply decisions."""
+
+    scope: str
+    mode: str = Field(
+        default="safe_auto",
+        description="safe_auto, preview_only, completed_only, or manual_only",
+    )
+    allowed_auto_statuses: list[str] = Field(default_factory=list)
+    high_risk_requires_review: bool = True
+    assignee_change_requires_review: bool = True
+    conflict_requires_review: bool = True
+    updated_at: datetime | None = None
+
+
+class PromiseAutomationPolicyUpdateRequest(BaseModel):
+    """Update request for scoped Promise Radar automation policy."""
+
+    mode: str = Field(default="safe_auto")
+    allowed_auto_statuses: list[str] = Field(default_factory=list)
+    high_risk_requires_review: bool = True
+    assignee_change_requires_review: bool = True
+    conflict_requires_review: bool = True
+
+
 class PromiseCalendarExportResponse(BaseModel):
     """Calendar handoff payload for Google Calendar or ICS import."""
 

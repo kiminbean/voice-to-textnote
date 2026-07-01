@@ -110,6 +110,36 @@ class PromiseRadarApi {
     );
   }
 
+  Future<PromiseAutomationPolicy> getAutomationPolicy({
+    String? teamId,
+  }) async {
+    final response = await _dio.get(
+      '/promise-radar/automation-policy',
+      queryParameters: {
+        if (teamId != null) 'team_id': teamId,
+      },
+    );
+    return PromiseAutomationPolicy.fromJson(
+      response.data as Map<String, dynamic>,
+    );
+  }
+
+  Future<PromiseAutomationPolicy> updateAutomationPolicy(
+    PromiseAutomationPolicyUpdateRequest request, {
+    String? teamId,
+  }) async {
+    final response = await _dio.put(
+      '/promise-radar/automation-policy',
+      queryParameters: {
+        if (teamId != null) 'team_id': teamId,
+      },
+      data: request.toJson(),
+    );
+    return PromiseAutomationPolicy.fromJson(
+      response.data as Map<String, dynamic>,
+    );
+  }
+
   Future<PromiseRadarDashboard> getDashboard({
     String? teamId,
     int limit = 50,
@@ -177,6 +207,23 @@ class PromiseRadarApi {
     );
   }
 
+  Future<PromiseAutopilotReviewQueue> getAutopilotReviewQueue(
+    String taskId, {
+    String? teamId,
+    int limit = 50,
+  }) async {
+    final response = await _dio.get(
+      '/promise-radar/autopilot/$taskId/review-queue',
+      queryParameters: {
+        'limit': limit,
+        if (teamId != null) 'team_id': teamId,
+      },
+    );
+    return PromiseAutopilotReviewQueue.fromJson(
+      response.data as Map<String, dynamic>,
+    );
+  }
+
   Future<PromiseAutopilotAssessment> confirmAutopilotAssessment(
     String entryId, {
     required String taskId,
@@ -198,6 +245,21 @@ class PromiseRadarApi {
     return PromiseAutopilotAssessment.fromJson(
       response.data as Map<String, dynamic>,
     );
+  }
+
+  Future<PromiseLedgerEntry> resolveAutopilotConflict(
+    String entryId,
+    PromiseConflictResolveRequest request, {
+    String? teamId,
+  }) async {
+    final response = await _dio.post(
+      '/promise-radar/ledger/$entryId/resolve-conflict',
+      queryParameters: {
+        if (teamId != null) 'team_id': teamId,
+      },
+      data: request.toJson(),
+    );
+    return PromiseLedgerEntry.fromJson(response.data as Map<String, dynamic>);
   }
 
   Future<PromiseMatchExplanation> explainLedgerEntry(
@@ -408,6 +470,24 @@ class PromiseRadarApi {
     final response = await _dio.post(
       '/promise-radar/ledger/notifications/due',
       queryParameters: {
+        'limit': limit,
+        if (teamId != null) 'team_id': teamId,
+      },
+    );
+    return PromiseNotificationDispatchResponse.fromJson(
+      response.data as Map<String, dynamic>,
+    );
+  }
+
+  Future<PromiseNotificationDispatchResponse> dispatchDigestNotifications({
+    String cadence = 'daily',
+    String? teamId,
+    int limit = 50,
+  }) async {
+    final response = await _dio.post(
+      '/promise-radar/ledger/notifications/digest',
+      queryParameters: {
+        'cadence': cadence,
         'limit': limit,
         if (teamId != null) 'team_id': teamId,
       },

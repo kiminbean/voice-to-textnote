@@ -20,10 +20,14 @@ from backend.schemas.promise_radar import (
     PromiseAccuracyCase,
     PromiseAccuracyEvaluation,
     PromiseAssigneeSuggestion,
+    PromiseAutomationPolicy,
+    PromiseAutomationPolicyUpdateRequest,
     PromiseAutopilotAssessment,
     PromiseAutopilotConfirmRequest,
     PromiseAutopilotResponse,
+    PromiseAutopilotReviewQueue,
     PromiseCalendarExportResponse,
+    PromiseConflictResolveRequest,
     PromiseDigest,
     PromiseExternalExportRequest,
     PromiseExternalExportResponse,
@@ -186,6 +190,56 @@ async def get_promise_learning_profile(
         internal_error(f"약속 학습 프로필 조회 중 오류가 발생했습니다: {e}")
 
 
+@router.get("/automation-policy", response_model=PromiseAutomationPolicy)
+async def get_promise_automation_policy(
+    request: Request,
+    team_id: str | None = Query(default=None, description="팀 자동화 정책 조회 범위"),
+    db: AsyncSession = Depends(get_db_session),
+    current_user=Depends(get_optional_current_user),
+    svc: PromiseRadarService = Depends(get_promise_radar_service),
+) -> PromiseAutomationPolicy:
+    """팀/사용자별 Promise Radar 자동화 정책을 반환합니다."""
+    try:
+        scoped_team_id = await _accessible_team_id(db, current_user, team_id)
+        return await svc.get_automation_policy(
+            db,
+            owner_id=getattr(current_user, "id", None),
+            guest_session_id=_guest_session_id(request),
+            team_id=scoped_team_id,
+        )
+    except VoiceNoteError:
+        raise
+    except Exception as e:
+        internal_error(f"약속 자동화 정책 조회 중 오류가 발생했습니다: {e}")
+
+
+@router.put("/automation-policy", response_model=PromiseAutomationPolicy)
+async def update_promise_automation_policy(
+    payload: PromiseAutomationPolicyUpdateRequest,
+    request: Request,
+    team_id: str | None = Query(default=None, description="팀 자동화 정책 저장 범위"),
+    db: AsyncSession = Depends(get_db_session),
+    current_user=Depends(get_optional_current_user),
+    svc: PromiseRadarService = Depends(get_promise_radar_service),
+) -> PromiseAutomationPolicy:
+    """팀/사용자별 Promise Radar 자동화 정책을 저장합니다."""
+    try:
+        scoped_team_id = await _accessible_team_id(db, current_user, team_id)
+        return await svc.update_automation_policy(
+            db,
+            payload,
+            owner_id=getattr(current_user, "id", None),
+            guest_session_id=_guest_session_id(request),
+            team_id=scoped_team_id,
+        )
+    except ValueError as e:
+        not_found(str(e))
+    except VoiceNoteError:
+        raise
+    except Exception as e:
+        internal_error(f"약속 자동화 정책 저장 중 오류가 발생했습니다: {e}")
+
+
 @router.post("/accuracy/evaluate", response_model=PromiseAccuracyEvaluation)
 async def evaluate_promise_accuracy(
     cases: list[PromiseAccuracyCase],
@@ -243,6 +297,33 @@ async def dispatch_due_promise_notifications(
         raise
     except Exception as e:
         internal_error(f"약속 푸시 알림 발송 중 오류가 발생했습니다: {e}")
+
+
+@router.post("/ledger/notifications/digest", response_model=PromiseNotificationDispatchResponse)
+async def dispatch_digest_promise_notifications(
+    team_id: str | None = Query(default=None, description="팀 digest 알림 발송 범위"),
+    cadence: str = Query(default="daily", description="daily 또는 weekly"),
+    limit: int = Query(default=50, ge=1, le=200),
+    db: AsyncSession = Depends(get_db_session),
+    current_user=Depends(get_optional_current_user),
+    svc: PromiseRadarService = Depends(get_promise_radar_service),
+) -> PromiseNotificationDispatchResponse:
+    """오늘/이번 주 확인할 약속 digest를 실제 FCM 푸시로 발송합니다."""
+    try:
+        scoped_team_id = await _accessible_team_id(db, current_user, team_id)
+        return await svc.dispatch_digest_notifications(
+            db,
+            cadence=cadence,
+            owner_id=getattr(current_user, "id", None),
+            team_id=scoped_team_id,
+            limit=limit,
+        )
+    except ValueError as e:
+        not_found(str(e))
+    except VoiceNoteError:
+        raise
+    except Exception as e:
+        internal_error(f"약속 digest 푸시 알림 발송 중 오류가 발생했습니다: {e}")
 
 
 @router.post("/autopilot/{task_id}", response_model=PromiseAutopilotResponse)
@@ -306,6 +387,36 @@ async def preview_promise_autopilot(
         raise
     except Exception as e:
         internal_error(f"약속 자동 판정 미리보기 중 오류가 발생했습니다: {e}")
+
+
+@router.get("/autopilot/{task_id}/review-queue", response_model=PromiseAutopilotReviewQueue)
+async def get_promise_autopilot_review_queue(
+    task_id: str,
+    request: Request,
+    team_id: str | None = Query(default=None, description="팀 약속 원장 범위"),
+    limit: int = Query(default=50, ge=1, le=100),
+    db: AsyncSession = Depends(get_db_session),
+    current_user=Depends(get_optional_current_user),
+    svc: PromiseRadarService = Depends(get_promise_radar_service),
+) -> PromiseAutopilotReviewQueue:
+    """확정 대기 중인 자동 판정 후보를 한 화면에서 검토할 queue로 반환합니다."""
+    try:
+        await require_task_access(request, db, task_id)
+        scoped_team_id = await _accessible_team_id(db, current_user, team_id)
+        return await svc.build_autopilot_review_queue(
+            db,
+            task_id,
+            owner_id=getattr(current_user, "id", None),
+            guest_session_id=_guest_session_id(request),
+            team_id=scoped_team_id,
+            limit=limit,
+        )
+    except ValueError as e:
+        not_found(str(e))
+    except VoiceNoteError:
+        raise
+    except Exception as e:
+        internal_error(f"약속 자동 판정 review queue 생성 중 오류가 발생했습니다: {e}")
 
 
 @router.patch("/ledger/{entry_id}", response_model=PromiseLedgerEntryResponse)
@@ -488,6 +599,35 @@ async def confirm_promise_autopilot_assessment(
         raise
     except Exception as e:
         internal_error(f"약속 자동 판정 확정 중 오류가 발생했습니다: {e}")
+
+
+@router.post("/ledger/{entry_id}/resolve-conflict", response_model=PromiseLedgerEntryResponse)
+async def resolve_promise_autopilot_conflict(
+    entry_id: str,
+    payload: PromiseConflictResolveRequest,
+    request: Request,
+    team_id: str | None = Query(default=None, description="팀 약속 원장 범위"),
+    db: AsyncSession = Depends(get_db_session),
+    current_user=Depends(get_optional_current_user),
+    svc: PromiseRadarService = Depends(get_promise_radar_service),
+) -> PromiseLedgerEntryResponse:
+    """충돌 감지된 약속 판정을 사용자가 선택한 상태로 해결합니다."""
+    try:
+        scoped_team_id = await _accessible_team_id(db, current_user, team_id)
+        return await svc.resolve_autopilot_conflict(
+            db,
+            entry_id,
+            payload,
+            owner_id=getattr(current_user, "id", None),
+            guest_session_id=_guest_session_id(request),
+            team_id=scoped_team_id,
+        )
+    except ValueError as e:
+        not_found(str(e))
+    except VoiceNoteError:
+        raise
+    except Exception as e:
+        internal_error(f"약속 충돌 해결 중 오류가 발생했습니다: {e}")
 
 
 @router.post("/ledger/{entry_id}/learning-feedback", response_model=PromiseLearningFeedbackResponse)

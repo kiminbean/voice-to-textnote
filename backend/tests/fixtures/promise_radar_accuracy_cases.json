@@ -171,5 +171,263 @@
     "current_text": "Slack integration changed to Google Tasks for this release.",
     "expected_status": "changed",
     "owner": "Kim"
+  },
+  {
+    "id": "completed-zai-key",
+    "entry_text": "ZAI API 키 환경변수 적용",
+    "current_text": "ZAI API 키 환경변수 적용은 완료했고 401 오류도 해결됐습니다.",
+    "expected_status": "completed",
+    "owner": "김기수"
+  },
+  {
+    "id": "completed-production-ip",
+    "entry_text": "백엔드 서버 IP 연결",
+    "current_text": "백엔드 서버 IP 연결은 100.69.69.119로 반영했고 로그인 확인까지 끝냈습니다.",
+    "expected_status": "completed",
+    "owner": "김기수"
+  },
+  {
+    "id": "completed-docs-update",
+    "entry_text": "프로덕션 URL 재발 방지 문서 업데이트",
+    "current_text": "프로덕션 URL 재발 방지 문서 업데이트 완료했습니다.",
+    "expected_status": "completed",
+    "owner": "김기수"
+  },
+  {
+    "id": "completed-promise-radar-v2",
+    "entry_text": "Promise Radar v2 미리보기 UX",
+    "current_text": "Promise Radar v2 미리보기 UX는 구현 완료했고 테스트도 통과했습니다.",
+    "expected_status": "completed",
+    "owner": "김기수"
+  },
+  {
+    "id": "completed-speaker-stats",
+    "entry_text": "통계 화면 화자별 발화 시간 매칭",
+    "current_text": "통계 화면 화자별 발화 시간 매칭은 반영했습니다.",
+    "expected_status": "completed",
+    "owner": "김기수"
+  },
+  {
+    "id": "completed-offline-whisper-fix",
+    "entry_text": "Whisper Base 오프라인 모델 크기 오류 수정",
+    "current_text": "Whisper Base 오프라인 모델 크기 오류는 처리했고 앱 실행도 확인했습니다.",
+    "expected_status": "completed",
+    "owner": "김기수"
+  },
+  {
+    "id": "delayed-huggingface-access",
+    "entry_text": "Hugging Face pyannote 약관 승인 확인",
+    "current_text": "Hugging Face pyannote 약관 승인 확인은 아직 승인 대기라 다음 주로 연기했습니다.",
+    "expected_status": "delayed",
+    "owner": "김기수"
+  },
+  {
+    "id": "delayed-google-tasks-oauth",
+    "entry_text": "Google Tasks OAuth 실연동",
+    "current_text": "Google Tasks OAuth 실연동은 아직 못 했고 다음 회의에서 다시 진행합니다.",
+    "expected_status": "delayed",
+    "owner": "김기수"
+  },
+  {
+    "id": "delayed-scheduled-push",
+    "entry_text": "Scheduled Digest Push 검증",
+    "current_text": "Scheduled Digest Push 검증은 FCM 토큰 확인이 늦어져 지연됐습니다.",
+    "expected_status": "delayed",
+    "owner": "김기수"
+  },
+  {
+    "id": "delayed-device-release",
+    "entry_text": "Android 기기 릴리스 재설치",
+    "current_text": "Android 기기 릴리스 재설치는 아직 못했습니다. 케이블 재연결 후 다시 진행하겠습니다.",
+    "expected_status": "delayed",
+    "owner": "김기수"
+  },
+  {
+    "id": "delayed-evidence-viewer",
+    "entry_text": "Evidence Pack Viewer QA",
+    "current_text": "Evidence Pack Viewer QA는 다음 회의로 미뤘습니다.",
+    "expected_status": "delayed",
+    "owner": "김기수"
+  },
+  {
+    "id": "delayed-fixture-labeling",
+    "entry_text": "실제 회의 100개 golden label 작성",
+    "current_text": "실제 회의 100개 golden label 작성은 아직 진행 중이고 다음 주로 미뤘습니다.",
+    "expected_status": "delayed",
+    "owner": "김기수"
+  },
+  {
+    "id": "changed-model-provider",
+    "entry_text": "AI 모델 공급자 설정",
+    "current_text": "AI 모델 공급자 설정은 OpenAI 대신 ZAI GLM-5.2로 변경했습니다.",
+    "expected_status": "changed",
+    "owner": "김기수"
+  },
+  {
+    "id": "changed-login-endpoint",
+    "entry_text": "구글 로그인 백엔드 엔드포인트",
+    "current_text": "구글 로그인 백엔드 엔드포인트는 프로덕션 URL 대신 IP 주소로 바꾸기로 했습니다.",
+    "expected_status": "changed",
+    "owner": "김기수"
+  },
+  {
+    "id": "changed-scope-slack-google",
+    "entry_text": "외부 업무도구 연동 범위",
+    "current_text": "외부 업무도구 연동 범위는 Slack dry-run에서 Google Tasks 실전송으로 전환했습니다.",
+    "expected_status": "changed",
+    "owner": "김기수"
+  },
+  {
+    "id": "changed-autopilot-policy",
+    "entry_text": "Autopilot 자동 적용 정책",
+    "current_text": "Autopilot 자동 적용 정책은 항상 미리보기 모드로 변경했습니다.",
+    "expected_status": "changed",
+    "owner": "김기수"
+  },
+  {
+    "id": "changed-digest-cadence",
+    "entry_text": "Promise Digest 발송 주기",
+    "current_text": "Promise Digest 발송 주기는 weekly 대신 daily로 재조정했습니다.",
+    "expected_status": "changed",
+    "owner": "김기수"
+  },
+  {
+    "id": "changed-speaker-threshold",
+    "entry_text": "화자 유사도 임계값",
+    "current_text": "화자 유사도 임계값은 0.72에서 0.82로 우선순위 변경했습니다.",
+    "expected_status": "changed",
+    "owner": "김기수"
+  },
+  {
+    "id": "dismissed-vercel-deploy",
+    "entry_text": "voice-to-textnote Vercel 배포",
+    "current_text": "voice-to-textnote Vercel 배포는 취소하고 백엔드 서버 유지로 결정했습니다.",
+    "expected_status": "dismissed",
+    "owner": "김기수"
+  },
+  {
+    "id": "dismissed-openai-cleanup",
+    "entry_text": "OpenAI API 키 재사용",
+    "current_text": "OpenAI API 키 재사용은 필요 없어서 폐기했습니다.",
+    "expected_status": "dismissed",
+    "owner": "김기수"
+  },
+  {
+    "id": "dismissed-watch-release",
+    "entry_text": "워치 앱 릴리스",
+    "current_text": "워치 앱 릴리스는 이번 버전에서 안 하기로 했습니다.",
+    "expected_status": "dismissed",
+    "owner": "김기수"
+  },
+  {
+    "id": "dismissed-notion-first",
+    "entry_text": "Notion 우선 연동",
+    "current_text": "Notion 우선 연동은 중단하고 Google Tasks만 진행합니다.",
+    "expected_status": "dismissed",
+    "owner": "김기수"
+  },
+  {
+    "id": "dismissed-manual-transcript",
+    "entry_text": "수동 회의록 업로드 플로우",
+    "current_text": "수동 회의록 업로드 플로우는 보류 해제하고 진행하지 않기로 했습니다.",
+    "expected_status": "dismissed",
+    "owner": "김기수"
+  },
+  {
+    "id": "dismissed-legacy-prod-url",
+    "entry_text": "기존 프로덕션 URL 유지",
+    "current_text": "기존 프로덕션 URL 유지는 취소하고 IP 연결로 고정했습니다.",
+    "expected_status": "dismissed",
+    "owner": "김기수"
+  },
+  {
+    "id": "open-digest-policy",
+    "entry_text": "팀별 Digest Push 정책 확인",
+    "current_text": "팀별 Digest Push 정책 확인은 김기수님 담당입니다.",
+    "expected_status": "open",
+    "owner": "김기수",
+    "due_at": "2026-07-08T09:00:00"
+  },
+  {
+    "id": "open-review-queue-qa",
+    "entry_text": "Autopilot Review Queue QA",
+    "current_text": "Autopilot Review Queue QA는 다음 회의 전에 하겠습니다.",
+    "expected_status": "open",
+    "owner": "김기수",
+    "due_at": "2026-07-08T09:00:00"
+  },
+  {
+    "id": "open-conflict-resolution-design",
+    "entry_text": "Conflict Resolution 화면 문구 검토",
+    "current_text": "Conflict Resolution 화면 문구 검토 담당자는 김기수입니다.",
+    "expected_status": "open",
+    "owner": "김기수",
+    "due_at": "2026-07-10T09:00:00"
+  },
+  {
+    "id": "open-tasks-scope-request",
+    "entry_text": "Google Tasks scope 승인",
+    "current_text": "Google Tasks scope 승인은 앱에서 사용자가 승인해야 합니다.",
+    "expected_status": "open",
+    "owner": "김기수",
+    "due_at": "2026-07-09T09:00:00"
+  },
+  {
+    "id": "open-unrelated-white-screen",
+    "entry_text": "Promise Radar 문서 업데이트",
+    "current_text": "오늘은 앱 백색화면 원인만 논의했습니다.",
+    "expected_status": "open",
+    "owner": "김기수",
+    "due_at": "2026-07-10T09:00:00"
+  },
+  {
+    "id": "open-future-release",
+    "entry_text": "릴리스 빌드 재검증",
+    "current_text": "릴리스 빌드 재검증은 아이폰 연결 후 진행하겠습니다.",
+    "expected_status": "open",
+    "owner": "김기수",
+    "due_at": "2026-07-08T09:00:00"
+  },
+  {
+    "id": "conflict-task-complete-delay",
+    "entry_text": "Google Tasks OAuth 실연동",
+    "current_text": "Google Tasks OAuth 실연동 완료했습니다. 다만 아직 전송 확인은 못했습니다.",
+    "expected_status": "open",
+    "owner": "김기수"
+  },
+  {
+    "id": "conflict-digest-cancel-complete",
+    "entry_text": "Scheduled Digest Push",
+    "current_text": "Scheduled Digest Push는 완료했습니다. 동시에 이번 릴리스에서는 취소하기로 했습니다.",
+    "expected_status": "open",
+    "owner": "김기수"
+  },
+  {
+    "id": "completed-en-google-tasks",
+    "entry_text": "Google Tasks OAuth flow",
+    "current_text": "Google Tasks OAuth flow is finished and verified on device.",
+    "expected_status": "completed",
+    "owner": "Kim"
+  },
+  {
+    "id": "delayed-en-review-queue",
+    "entry_text": "Autopilot review queue QA",
+    "current_text": "Autopilot review queue QA is delayed and will happen later.",
+    "expected_status": "delayed",
+    "owner": "Kim"
+  },
+  {
+    "id": "changed-en-automation-policy",
+    "entry_text": "team automation policy",
+    "current_text": "team automation policy changed to preview only for high risk promises.",
+    "expected_status": "changed",
+    "owner": "Kim"
+  },
+  {
+    "id": "dismissed-en-notion",
+    "entry_text": "Notion integration",
+    "current_text": "Notion integration is canceled and dropped for this release.",
+    "expected_status": "dismissed",
+    "owner": "Kim"
   }
 ]

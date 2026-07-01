@@ -32,10 +32,15 @@ from backend.schemas.promise_radar import (
     PromiseAccuracyCase,
     PromiseAccuracyEvaluation,
     PromiseAssigneeSuggestion,
+    PromiseAutomationPolicy,
+    PromiseAutomationPolicyUpdateRequest,
     PromiseAutopilotAssessment,
     PromiseAutopilotConfirmRequest,
     PromiseAutopilotResponse,
+    PromiseAutopilotReviewItem,
+    PromiseAutopilotReviewQueue,
     PromiseCalendarExportResponse,
+    PromiseConflictResolveRequest,
     PromiseDigest,
     PromiseEvidencePack,
     PromiseExternalExportRequest,
@@ -151,6 +156,8 @@ _VALID_LEDGER_STATUSES = _OPEN_LEDGER_STATUSES | _CLOSED_LEDGER_STATUSES
 _AUTOPILOT_APPLY_THRESHOLD = 0.68
 _EVIDENCE_LOCK_MIN_SIMILARITY = 0.24
 _EVIDENCE_LOCK_MIN_FACTORS = 2
+_AUTOMATION_POLICY_MODES = {"safe_auto", "preview_only", "completed_only", "manual_only"}
+_AUTOMATION_POLICY_DEFAULT_ALLOWED = {"completed", "delayed", "changed", "dismissed"}
 _AUTOPILOT_MARKERS = {
     "completed": (
         "완료",
@@ -899,6 +906,135 @@ class PromiseRadarService:
             notified_entry_ids=notified_ids,
         )
 
+    async def dispatch_digest_notifications(
+        self,
+        session: AsyncSession,
+        *,
+        cadence: str = "daily",
+        owner_id: UUID | str | None = None,
+        team_id: UUID | str | None = None,
+        now: datetime | None = None,
+        limit: int = 50,
+        push_service: PushService | None = None,
+        allow_global: bool = False,
+    ) -> PromiseNotificationDispatchResponse:
+        """Send daily/weekly Promise Digest pushes grouped by responsible user."""
+        normalized = cadence.lower().strip()
+        if normalized not in {"daily", "weekly"}:
+            raise ValueError("지원하지 않는 digest 주기입니다")
+        owner_uuid = self._coerce_uuid(owner_id)
+        team_uuid = self._coerce_uuid(team_id)
+        if owner_uuid is None and team_uuid is None and not allow_global:
+            raise ValueError("로그인 사용자 또는 팀 범위가 필요합니다")
+
+        moment = (now or datetime.now(UTC)).replace(tzinfo=None)
+        if team_uuid is not None:
+            scope_condition = PromiseLedgerEntry.team_id == team_uuid
+        elif owner_uuid is not None:
+            scope_condition = PromiseLedgerEntry.owner_id == owner_uuid
+        else:
+            scope_condition = PromiseLedgerEntry.id.is_not(None)
+        result = await session.execute(
+            select(PromiseLedgerEntry)
+            .where(
+                scope_condition,
+                PromiseLedgerEntry.status.in_(_OPEN_LEDGER_STATUSES),
+            )
+            .order_by(
+                PromiseLedgerEntry.risk_level.desc(),
+                PromiseLedgerEntry.due_at.is_(None),
+                PromiseLedgerEntry.due_at.asc(),
+            )
+            .limit(max(1, min(limit, 200)))
+        )
+        entries = list(result.scalars().all())
+        grouped: dict[UUID, list[PromiseLedgerEntry]] = {}
+        for entry in entries:
+            target_user_id = entry.assigned_user_id or entry.owner_id or owner_uuid
+            if target_user_id is None:
+                continue
+            grouped.setdefault(target_user_id, []).append(entry)
+
+        push = push_service or get_push_service()
+        sent_count = 0
+        failure_count = 0
+        invalid_tokens: list[str] = []
+        notified_ids: list[str] = []
+        for target_user_id, user_entries in grouped.items():
+            if await self._digest_already_sent(
+                session,
+                target_user_id,
+                cadence=normalized,
+                moment=moment,
+            ):
+                continue
+            tokens_result = await session.execute(
+                select(DeviceToken.fcm_token)
+                .where(DeviceToken.user_id == str(target_user_id))
+                .where(DeviceToken.is_active)
+            )
+            tokens = [row[0] for row in tokens_result.all()]
+            if not tokens:
+                continue
+            overdue = [entry for entry in user_entries if entry.due_at and entry.due_at < moment]
+            horizon = moment + (
+                timedelta(days=1) if normalized == "daily" else timedelta(days=7)
+            )
+            due_soon = [
+                entry
+                for entry in user_entries
+                if entry.due_at and moment <= entry.due_at <= horizon
+            ]
+            high_risk = [entry for entry in user_entries if entry.risk_level == "high"]
+            title = "오늘의 약속 레이더" if normalized == "daily" else "이번 주 약속 레이더"
+            body = (
+                f"열린 약속 {len(user_entries)}개 · "
+                f"기한 초과 {len(overdue)}개 · "
+                f"확인 필요 {len(due_soon)}개 · "
+                f"고위험 {len(high_risk)}개"
+            )
+            response = await push.send_multicast(
+                tokens=tokens,
+                title=title,
+                body=body,
+                data={
+                    "type": "promise_radar_digest",
+                    "cadence": normalized,
+                    "entry_count": str(len(user_entries)),
+                },
+            )
+            sent_count += int(response.get("success_count") or 0)
+            failure_count += int(response.get("failure_count") or 0)
+            invalid = [str(token) for token in response.get("invalid_tokens") or []]
+            invalid_tokens.extend(invalid)
+            for invalid_token in invalid:
+                await push.invalidate_token(session, invalid_token)
+            if int(response.get("success_count") or 0) > 0:
+                anchor = user_entries[0]
+                notified_ids.extend(str(entry.id) for entry in user_entries[:5])
+                self._record_ledger_event(
+                    session,
+                    anchor,
+                    "digest_notification_sent",
+                    new_value={
+                        "sent_at": moment.isoformat(),
+                        "cadence": normalized,
+                        "entry_count": len(user_entries),
+                        "overdue_count": len(overdue),
+                        "due_soon_count": len(due_soon),
+                        "high_risk_count": len(high_risk),
+                    },
+                    actor_user_id=target_user_id,
+                )
+        await session.commit()
+        return PromiseNotificationDispatchResponse(
+            considered_count=len(entries),
+            sent_count=sent_count,
+            failure_count=failure_count,
+            invalid_tokens=invalid_tokens,
+            notified_entry_ids=notified_ids,
+        )
+
     async def run_autopilot(
         self,
         session: AsyncSession,
@@ -933,6 +1069,12 @@ class PromiseRadarService:
             guest_session_id=guest_session_id,
             team_id=team_id,
         )
+        automation_policy = await self.get_automation_policy(
+            session,
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
+            team_id=team_id,
+        )
         now = datetime.now(UTC).replace(tzinfo=None)
         assessments: list[PromiseAutopilotAssessment] = []
         applied_count = 0
@@ -944,8 +1086,10 @@ class PromiseRadarService:
             assessment.evidence_locked = self._has_locked_evidence(assessment)
             if apply and self._should_apply_autopilot(
                 assessment,
+                entry=entry,
                 threshold=threshold,
                 evidence_lock_enabled=learning_profile.evidence_lock_enabled,
+                policy=automation_policy,
             ):
                 old_value = self._ledger_snapshot(entry)
                 entry.status = assessment.suggested_status
@@ -1004,6 +1148,82 @@ class PromiseRadarService:
             assessed_count=len(assessments),
             applied_count=applied_count,
             assessments=assessments,
+        )
+
+    async def build_autopilot_review_queue(
+        self,
+        session: AsyncSession,
+        task_id: str,
+        *,
+        owner_id: UUID | str | None = None,
+        guest_session_id: str | None = None,
+        team_id: UUID | str | None = None,
+        limit: int = 50,
+    ) -> PromiseAutopilotReviewQueue:
+        """Build a pending-review queue for Autopilot decisions without mutating entries."""
+        preview = await self.run_autopilot(
+            session,
+            task_id,
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
+            team_id=team_id,
+            apply=False,
+            limit=limit,
+        )
+        candidate_assessments = [
+            assessment
+            for assessment in preview.assessments
+            if assessment.conflict_detected
+            or assessment.suggested_status != assessment.previous_status
+            or assessment.confidence >= max(0.55, assessment.threshold)
+        ]
+        if not candidate_assessments:
+            return PromiseAutopilotReviewQueue(
+                task_id=task_id,
+                queue_count=0,
+                actionable_count=0,
+                conflict_count=0,
+                items=[],
+            )
+
+        entry_ids = [
+            entry_id
+            for assessment in candidate_assessments
+            if (entry_id := self._coerce_uuid(assessment.ledger_entry_id)) is not None
+        ]
+        result = await session.execute(
+            select(PromiseLedgerEntry).where(PromiseLedgerEntry.id.in_(entry_ids))
+        )
+        entries_by_id = {str(entry.id): entry for entry in result.scalars().all()}
+        queued_at = datetime.now(UTC).replace(tzinfo=None)
+        items: list[PromiseAutopilotReviewItem] = []
+        for assessment in candidate_assessments:
+            entry = entries_by_id.get(assessment.ledger_entry_id)
+            if entry is None:
+                continue
+            decision_required = (
+                assessment.conflict_detected
+                or assessment.suggested_status != assessment.previous_status
+            )
+            items.append(
+                PromiseAutopilotReviewItem(
+                    ledger_entry=self._entry_to_response(entry),
+                    assessment=assessment,
+                    queued_at=queued_at,
+                    decision_required=decision_required,
+                )
+            )
+        return PromiseAutopilotReviewQueue(
+            task_id=task_id,
+            queue_count=len(items),
+            actionable_count=sum(
+                1
+                for item in items
+                if not item.assessment.conflict_detected
+                and item.assessment.suggested_status != item.assessment.previous_status
+            ),
+            conflict_count=sum(1 for item in items if item.assessment.conflict_detected),
+            items=items,
         )
 
     async def confirm_autopilot_assessment(
@@ -1088,6 +1308,69 @@ class PromiseRadarService:
         )
         await session.commit()
         return assessment
+
+    async def resolve_autopilot_conflict(
+        self,
+        session: AsyncSession,
+        entry_id: UUID | str,
+        payload: PromiseConflictResolveRequest,
+        *,
+        owner_id: UUID | str | None = None,
+        guest_session_id: str | None = None,
+        team_id: UUID | str | None = None,
+    ) -> PromiseLedgerEntryResponse:
+        """Resolve a conflicting Autopilot assessment with an explicit user decision."""
+        entry = await self._get_scoped_ledger_entry(
+            session,
+            entry_id,
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
+            team_id=team_id,
+        )
+        if entry is None:
+            raise ValueError("약속 원장 항목을 찾을 수 없습니다")
+        status = payload.status.strip().lower()
+        if status not in _VALID_LEDGER_STATUSES:
+            raise ValueError("지원하지 않는 약속 상태입니다")
+
+        now = datetime.now(UTC).replace(tzinfo=None)
+        old_value = self._ledger_snapshot(entry)
+        entry.status = status
+        entry.user_confirmed = True
+        if status == "completed":
+            entry.completed_at = now
+            entry.dismissed_reason = None
+        elif status == "dismissed":
+            entry.completed_at = None
+            entry.dismissed_reason = payload.note or "conflict_resolved"
+        else:
+            entry.completed_at = None
+            if status != "dismissed":
+                entry.dismissed_reason = None
+        if status in {"blocked", "delayed"}:
+            entry.risk_level = "high"
+        else:
+            entry.risk_level = self._ledger_risk_level(
+                entry.priority,
+                entry.due_at,
+                entry.occurrences,
+            )
+        entry.updated_at = now
+        self._record_ledger_event(
+            session,
+            entry,
+            "conflict_resolved",
+            old_value=old_value,
+            new_value={
+                **self._ledger_snapshot(entry),
+                "resolution": status,
+            },
+            note=payload.note,
+            actor_user_id=owner_id,
+        )
+        await session.commit()
+        await session.refresh(entry)
+        return self._entry_to_response(entry)
 
     async def explain_ledger_entry_match(
         self,
@@ -1370,6 +1653,66 @@ class PromiseRadarService:
             learned_owner_aliases=aliases,
             owner_aliases=owner_aliases,
         )
+
+    async def get_automation_policy(
+        self,
+        session: AsyncSession,
+        *,
+        owner_id: UUID | str | None = None,
+        guest_session_id: str | None = None,
+        team_id: UUID | str | None = None,
+    ) -> PromiseAutomationPolicy:
+        """Return the latest scoped automation policy, falling back to conservative defaults."""
+        result = await session.execute(
+            select(PromiseLedgerEvent)
+            .where(
+                self._event_scope_condition(owner_id, guest_session_id, team_id=team_id),
+                PromiseLedgerEvent.event_type == "automation_policy_updated",
+            )
+            .order_by(PromiseLedgerEvent.created_at.desc())
+            .limit(1)
+        )
+        event = result.scalar_one_or_none()
+        value = event.new_value if event and isinstance(event.new_value, dict) else {}
+        return self._automation_policy_from_value(
+            value,
+            scope=self._scope_label(owner_id, guest_session_id, team_id),
+            updated_at=event.created_at if event else None,
+        )
+
+    async def update_automation_policy(
+        self,
+        session: AsyncSession,
+        payload: PromiseAutomationPolicyUpdateRequest,
+        *,
+        owner_id: UUID | str | None = None,
+        guest_session_id: str | None = None,
+        team_id: UUID | str | None = None,
+    ) -> PromiseAutomationPolicy:
+        """Persist a scoped automation policy as an auditable ledger event."""
+        policy = self._automation_policy_from_value(
+            payload.model_dump(mode="json"),
+            scope=self._scope_label(owner_id, guest_session_id, team_id),
+            updated_at=datetime.now(UTC).replace(tzinfo=None),
+        )
+        result = await session.execute(
+            select(PromiseLedgerEntry)
+            .where(self._ledger_scope_condition(owner_id, guest_session_id, team_id=team_id))
+            .order_by(PromiseLedgerEntry.updated_at.desc())
+            .limit(1)
+        )
+        anchor = result.scalar_one_or_none()
+        if anchor is None:
+            raise ValueError("정책을 저장할 약속 원장 항목이 필요합니다")
+        self._record_ledger_event(
+            session,
+            anchor,
+            "automation_policy_updated",
+            new_value=policy.model_dump(mode="json"),
+            actor_user_id=owner_id,
+        )
+        await session.commit()
+        return policy
 
     async def build_ledger_timeline(
         self,
@@ -2096,6 +2439,23 @@ class PromiseRadarService:
             return PromiseLedgerEntry.guest_session_id == guest_session_id
         return PromiseLedgerEntry.id.is_(None)
 
+    def _event_scope_condition(
+        self,
+        owner_id: UUID | str | None,
+        guest_session_id: str | None,
+        *,
+        team_id: UUID | str | None = None,
+    ):
+        team_uuid = self._coerce_uuid(team_id)
+        if team_uuid is not None:
+            return PromiseLedgerEvent.team_id == team_uuid
+        owner_uuid = self._coerce_uuid(owner_id)
+        if owner_uuid is not None:
+            return PromiseLedgerEvent.owner_id == owner_uuid
+        if guest_session_id:
+            return PromiseLedgerEvent.guest_session_id == guest_session_id
+        return PromiseLedgerEvent.id.is_(None)
+
     async def _get_scoped_ledger_entry(
         self,
         session: AsyncSession,
@@ -2277,11 +2637,25 @@ class PromiseRadarService:
         self,
         assessment: PromiseAutopilotAssessment,
         *,
+        entry: PromiseLedgerEntry | None = None,
         threshold: float = _AUTOPILOT_APPLY_THRESHOLD,
         evidence_lock_enabled: bool = True,
+        policy: PromiseAutomationPolicy | None = None,
     ) -> bool:
         if assessment.conflict_detected:
             return False
+        if policy is not None:
+            if policy.mode in {"preview_only", "manual_only"}:
+                return False
+            if policy.mode == "completed_only" and assessment.suggested_status != "completed":
+                return False
+            if (
+                policy.allowed_auto_statuses
+                and assessment.suggested_status not in policy.allowed_auto_statuses
+            ):
+                return False
+            if policy.high_risk_requires_review and entry is not None and entry.risk_level == "high":
+                return False
         if evidence_lock_enabled and not self._has_locked_evidence(assessment):
             return False
         return (
@@ -2707,6 +3081,38 @@ class PromiseRadarService:
             return f"guest:{guest_session_id}"
         return "none"
 
+    def _automation_policy_from_value(
+        self,
+        value: dict[str, Any],
+        *,
+        scope: str,
+        updated_at: datetime | None,
+    ) -> PromiseAutomationPolicy:
+        mode = str(value.get("mode") or "safe_auto").strip().lower()
+        if mode not in _AUTOMATION_POLICY_MODES:
+            mode = "safe_auto"
+        raw_statuses = value.get("allowed_auto_statuses")
+        statuses = [
+            str(status).strip().lower()
+            for status in (raw_statuses if isinstance(raw_statuses, list) else [])
+            if str(status).strip().lower() in _AUTOMATION_POLICY_DEFAULT_ALLOWED
+        ]
+        if not statuses and mode in {"safe_auto", "completed_only"}:
+            statuses = ["completed"] if mode == "completed_only" else sorted(
+                _AUTOMATION_POLICY_DEFAULT_ALLOWED
+            )
+        return PromiseAutomationPolicy(
+            scope=scope,
+            mode=mode,
+            allowed_auto_statuses=statuses,
+            high_risk_requires_review=bool(value.get("high_risk_requires_review", True)),
+            assignee_change_requires_review=bool(
+                value.get("assignee_change_requires_review", True)
+            ),
+            conflict_requires_review=bool(value.get("conflict_requires_review", True)),
+            updated_at=updated_at,
+        )
+
     async def _recent_history(
         self,
         session: AsyncSession,
@@ -2730,6 +3136,30 @@ class PromiseRadarService:
         stmt = stmt.order_by(PromiseLedgerEvent.created_at.desc()).limit(max(1, min(limit, 50)))
         result = await session.execute(stmt)
         return [self._event_to_response(item) for item in result.scalars().all()]
+
+    async def _digest_already_sent(
+        self,
+        session: AsyncSession,
+        target_user_id: UUID,
+        *,
+        cadence: str,
+        moment: datetime,
+    ) -> bool:
+        day_start = moment.replace(hour=0, minute=0, second=0, microsecond=0)
+        result = await session.execute(
+            select(PromiseLedgerEvent)
+            .where(
+                PromiseLedgerEvent.actor_user_id == target_user_id,
+                PromiseLedgerEvent.event_type == "digest_notification_sent",
+                PromiseLedgerEvent.created_at >= day_start,
+            )
+            .order_by(PromiseLedgerEvent.created_at.desc())
+            .limit(10)
+        )
+        for event in result.scalars().all():
+            if isinstance(event.new_value, dict) and event.new_value.get("cadence") == cadence:
+                return True
+        return False
 
     def _record_ledger_event(
         self,

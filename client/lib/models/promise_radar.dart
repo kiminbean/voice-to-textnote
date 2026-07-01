@@ -489,6 +489,144 @@ class PromiseAutopilotResponse {
   }
 }
 
+class PromiseAutopilotReviewItem {
+  final PromiseLedgerEntry ledgerEntry;
+  final PromiseAutopilotAssessment assessment;
+  final String queuedAt;
+  final bool decisionRequired;
+
+  const PromiseAutopilotReviewItem({
+    required this.ledgerEntry,
+    required this.assessment,
+    required this.queuedAt,
+    this.decisionRequired = true,
+  });
+
+  factory PromiseAutopilotReviewItem.fromJson(Map<String, dynamic> json) {
+    return PromiseAutopilotReviewItem(
+      ledgerEntry: PromiseLedgerEntry.fromJson(
+        json['ledger_entry'] as Map<String, dynamic>? ??
+            const <String, dynamic>{},
+      ),
+      assessment: PromiseAutopilotAssessment.fromJson(
+        json['assessment'] as Map<String, dynamic>? ??
+            const <String, dynamic>{},
+      ),
+      queuedAt: json['queued_at'] as String? ?? '',
+      decisionRequired: json['decision_required'] as bool? ?? true,
+    );
+  }
+}
+
+class PromiseAutopilotReviewQueue {
+  final String taskId;
+  final int queueCount;
+  final int actionableCount;
+  final int conflictCount;
+  final List<PromiseAutopilotReviewItem> items;
+
+  const PromiseAutopilotReviewQueue({
+    required this.taskId,
+    required this.queueCount,
+    required this.actionableCount,
+    required this.conflictCount,
+    required this.items,
+  });
+
+  factory PromiseAutopilotReviewQueue.fromJson(Map<String, dynamic> json) {
+    return PromiseAutopilotReviewQueue(
+      taskId: json['task_id'] as String? ?? '',
+      queueCount: json['queue_count'] as int? ?? 0,
+      actionableCount: json['actionable_count'] as int? ?? 0,
+      conflictCount: json['conflict_count'] as int? ?? 0,
+      items: (json['items'] as List<dynamic>? ?? [])
+          .whereType<Map<String, dynamic>>()
+          .map(PromiseAutopilotReviewItem.fromJson)
+          .toList(),
+    );
+  }
+}
+
+class PromiseConflictResolveRequest {
+  final String status;
+  final String? note;
+
+  const PromiseConflictResolveRequest({
+    required this.status,
+    this.note,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'status': status,
+      if (note != null) 'note': note,
+    };
+  }
+}
+
+class PromiseAutomationPolicy {
+  final String scope;
+  final String mode;
+  final List<String> allowedAutoStatuses;
+  final bool highRiskRequiresReview;
+  final bool assigneeChangeRequiresReview;
+  final bool conflictRequiresReview;
+  final String? updatedAt;
+
+  const PromiseAutomationPolicy({
+    required this.scope,
+    this.mode = 'safe_auto',
+    this.allowedAutoStatuses = const [],
+    this.highRiskRequiresReview = true,
+    this.assigneeChangeRequiresReview = true,
+    this.conflictRequiresReview = true,
+    this.updatedAt,
+  });
+
+  factory PromiseAutomationPolicy.fromJson(Map<String, dynamic> json) {
+    return PromiseAutomationPolicy(
+      scope: json['scope'] as String? ?? 'none',
+      mode: json['mode'] as String? ?? 'safe_auto',
+      allowedAutoStatuses:
+          (json['allowed_auto_statuses'] as List<dynamic>? ?? [])
+              .whereType<String>()
+              .toList(),
+      highRiskRequiresReview:
+          json['high_risk_requires_review'] as bool? ?? true,
+      assigneeChangeRequiresReview:
+          json['assignee_change_requires_review'] as bool? ?? true,
+      conflictRequiresReview: json['conflict_requires_review'] as bool? ?? true,
+      updatedAt: json['updated_at'] as String?,
+    );
+  }
+}
+
+class PromiseAutomationPolicyUpdateRequest {
+  final String mode;
+  final List<String> allowedAutoStatuses;
+  final bool highRiskRequiresReview;
+  final bool assigneeChangeRequiresReview;
+  final bool conflictRequiresReview;
+
+  const PromiseAutomationPolicyUpdateRequest({
+    this.mode = 'safe_auto',
+    this.allowedAutoStatuses = const [],
+    this.highRiskRequiresReview = true,
+    this.assigneeChangeRequiresReview = true,
+    this.conflictRequiresReview = true,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'mode': mode,
+      'allowed_auto_statuses': allowedAutoStatuses,
+      'high_risk_requires_review': highRiskRequiresReview,
+      'assignee_change_requires_review': assigneeChangeRequiresReview,
+      'conflict_requires_review': conflictRequiresReview,
+    };
+  }
+}
+
 class PromiseCalendarExportResponse {
   final String ledgerEntryId;
   final String title;

@@ -1,7 +1,6 @@
 // 인증 상태 관리 프로바이더
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -53,28 +52,24 @@ class AuthState {
   bool get isGuest => status == AuthStatus.guest;
 }
 
-@visibleForTesting
 const googleIosClientId = String.fromEnvironment(
   'GOOGLE_IOS_CLIENT_ID',
   defaultValue:
       '546416114080-456ie1r6jeolaitjfheaflsko521tqt0.apps.googleusercontent.com',
 );
 
-@visibleForTesting
 const googleMacosClientId = String.fromEnvironment(
   'GOOGLE_MACOS_CLIENT_ID',
   defaultValue:
       '546416114080-qvu4stec0b25hl4bksrsl77rgb9bk7dg.apps.googleusercontent.com',
 );
 
-@visibleForTesting
 const googleServerClientId = String.fromEnvironment(
   'GOOGLE_SERVER_CLIENT_ID',
   defaultValue:
       '546416114080-rqu4hpn5rdes9dein5r2squenh17q646.apps.googleusercontent.com',
 );
 
-@visibleForTesting
 String? googleClientIdForPlatform({
   required bool isIOS,
   bool isMacOS = false,
@@ -84,7 +79,6 @@ String? googleClientIdForPlatform({
   return null;
 }
 
-@visibleForTesting
 bool isGoogleSignInConfiguredForPlatform({
   required bool isIOS,
   bool isMacOS = false,
@@ -94,14 +88,12 @@ bool isGoogleSignInConfiguredForPlatform({
       (clientId == null || clientId.isNotEmpty);
 }
 
-@visibleForTesting
 bool shouldClearGoogleSelectionBeforeSignIn({
   required bool isIOS,
 }) {
   return !isIOS;
 }
 
-@visibleForTesting
 String socialLoginErrorMessage(Exception e, String provider) {
   final msg = e.toString();
   final lowerMsg = msg.toLowerCase();

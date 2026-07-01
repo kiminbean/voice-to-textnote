@@ -228,6 +228,36 @@ void main() {
 
     test('parses learning, timeline, digest, external, and accuracy responses',
         () {
+      final assessmentJson = <String, dynamic>{
+        'ledger_entry_id': 'ledger-1',
+        'previous_status': 'open',
+        'suggested_status': 'completed',
+        'applied': false,
+        'requires_confirmation': true,
+        'evidence_locked': true,
+        'conflict_detected': false,
+        'threshold': 0.8,
+        'confidence': 0.84,
+        'reason': '완료 신호가 확인됐습니다.',
+        'explanation': {
+          'ledger_entry_id': 'ledger-1',
+          'similarity': 0.7,
+          'overlap_terms': [],
+          'confidence_factors': [],
+          'rationale': '일치합니다.',
+          'evidence': [],
+        },
+        'evidence_pack': {
+          'ledger_entry_id': 'ledger-1',
+          'source_task_id': 'sum-1',
+          'matched_text': '완료했습니다.',
+          'similarity': 0.7,
+          'marker_hits': ['완료'],
+          'confidence_factors': ['근거 있음'],
+          'evidence': [],
+          'captured_at': '2026-07-01T01:00:00Z',
+        },
+      };
       final autopilot = PromiseAutopilotResponse.fromJson({
         'task_id': 'sum-1',
         'autopilot_threshold': 0.72,
@@ -236,38 +266,7 @@ void main() {
         'preview_mode': true,
         'assessed_count': 2,
         'applied_count': 1,
-        'assessments': [
-          {
-            'ledger_entry_id': 'ledger-1',
-            'previous_status': 'open',
-            'suggested_status': 'completed',
-            'applied': false,
-            'requires_confirmation': true,
-            'evidence_locked': true,
-            'conflict_detected': false,
-            'threshold': 0.8,
-            'confidence': 0.84,
-            'reason': '완료 신호가 확인됐습니다.',
-            'explanation': {
-              'ledger_entry_id': 'ledger-1',
-              'similarity': 0.7,
-              'overlap_terms': [],
-              'confidence_factors': [],
-              'rationale': '일치합니다.',
-              'evidence': [],
-            },
-            'evidence_pack': {
-              'ledger_entry_id': 'ledger-1',
-              'source_task_id': 'sum-1',
-              'matched_text': '완료했습니다.',
-              'similarity': 0.7,
-              'marker_hits': ['완료'],
-              'confidence_factors': ['근거 있음'],
-              'evidence': [],
-              'captured_at': '2026-07-01T01:00:00Z',
-            },
-          }
-        ],
+        'assessments': [assessmentJson],
       });
       expect(autopilot.autopilotThreshold, 0.72);
       expect(autopilot.statusThresholds['completed'], 0.8);
@@ -275,6 +274,50 @@ void main() {
       expect(autopilot.previewMode, isTrue);
       expect(
           autopilot.assessments.single.evidencePack!.markerHits.single, '완료');
+
+      final reviewQueue = PromiseAutopilotReviewQueue.fromJson({
+        'task_id': 'sum-1',
+        'queue_count': 1,
+        'actionable_count': 1,
+        'conflict_count': 0,
+        'items': [
+          {
+            'ledger_entry': {
+              'id': 'ledger-1',
+              'canonical_key': 'qa',
+              'canonical_text': 'QA 체크리스트',
+              'text': 'QA 체크리스트',
+              'status': 'open',
+              'priority': 'high',
+              'risk_level': 'medium',
+              'confidence': 0.8,
+              'occurrences': 1,
+              'first_seen_at': '2026-07-01T00:00:00Z',
+              'last_seen_at': '2026-07-01T00:00:00Z',
+              'evidence': [],
+            },
+            'assessment': assessmentJson,
+            'queued_at': '2026-07-01T01:00:00Z',
+            'decision_required': true,
+          }
+        ],
+      });
+      expect(reviewQueue.items.single.ledgerEntry.text, 'QA 체크리스트');
+      expect(reviewQueue.items.single.assessment.suggestedStatus, 'completed');
+
+      final policy = PromiseAutomationPolicy.fromJson({
+        'scope': 'team:1',
+        'mode': 'completed_only',
+        'allowed_auto_statuses': ['completed'],
+        'high_risk_requires_review': true,
+        'assignee_change_requires_review': true,
+        'conflict_requires_review': true,
+      });
+      expect(policy.mode, 'completed_only');
+      const policyRequest = PromiseAutomationPolicyUpdateRequest(
+        mode: 'preview_only',
+      );
+      expect(policyRequest.toJson()['mode'], 'preview_only');
 
       final feedback = PromiseLearningFeedbackResponse.fromJson({
         'ledger_entry_id': 'ledger-1',

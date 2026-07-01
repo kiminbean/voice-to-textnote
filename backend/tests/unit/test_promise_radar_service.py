@@ -15,7 +15,9 @@ from backend.db.models import ActionItem, TaskResult
 from backend.db.promise_ledger_models import PromiseLedgerEntry, PromiseLedgerEvent
 from backend.schemas.promise_radar import (
     PromiseAccuracyCase,
+    PromiseAutomationPolicyUpdateRequest,
     PromiseAutopilotConfirmRequest,
+    PromiseConflictResolveRequest,
     PromiseExternalExportRequest,
     PromiseLearningFeedbackRequest,
     PromiseLedgerMergeRequest,
@@ -505,13 +507,35 @@ async def test_ledger_merge_split_history_dashboard_and_due_push(session_factory
         assert dispatch.notified_entry_ids == [str(due_entry.id)]
         assert fake_push.sent_payloads[0]["data"]["ledger_entry_id"] == str(due_entry.id)
 
+        digest_dispatch = await service.dispatch_digest_notifications(
+            session,
+            owner_id=owner_id,
+            now=now,
+            push_service=fake_push,
+        )
+        assert digest_dispatch.sent_count == 1
+        assert fake_push.sent_payloads[-1]["data"]["type"] == "promise_radar_digest"
+        duplicate_digest = await service.dispatch_digest_notifications(
+            session,
+            owner_id=owner_id,
+            now=now,
+            push_service=fake_push,
+        )
+        assert duplicate_digest.sent_count == 0
+
         event_types = {
             event.event_type
             for event in (
                 await session.execute(select(PromiseLedgerEvent))
             ).scalars()
         }
-        assert {"merged", "split", "split_created", "notification_sent"}.issubset(event_types)
+        assert {
+            "merged",
+            "split",
+            "split_created",
+            "notification_sent",
+            "digest_notification_sent",
+        }.issubset(event_types)
 
 
 @pytest.mark.asyncio
@@ -652,6 +676,17 @@ async def test_promise_autopilot_calendar_assignee_and_quality(session_factory):
         assert preview.assessments[0].requires_confirmation is True
         assert preview.assessments[0].evidence_pack is not None
         assert preview.assessments[0].evidence_pack.marker_hits
+
+        review_queue = await service.build_autopilot_review_queue(
+            session,
+            "sum-autopilot",
+            owner_id=owner_id,
+            team_id=team_id,
+        )
+        assert review_queue.queue_count >= 2
+        assert review_queue.actionable_count >= 2
+        assert review_queue.items[0].ledger_entry.text
+        assert review_queue.items[0].assessment.evidence_pack is not None
 
         confirmed = await service.confirm_autopilot_assessment(
             session,
@@ -883,6 +918,46 @@ async def test_promise_autopilot_calendar_assignee_and_quality(session_factory):
         assert conflict_assessment.conflict_detected is True
         assert conflict_assessment.applied is False
 
+        conflict_queue = await service.build_autopilot_review_queue(
+            session,
+            "sum-conflict",
+            owner_id=owner_id,
+            team_id=team_id,
+        )
+        assert conflict_queue.conflict_count >= 1
+        resolved = await service.resolve_autopilot_conflict(
+            session,
+            open_entry.id,
+            PromiseConflictResolveRequest(status="delayed", note="충돌은 지연으로 해결"),
+            owner_id=owner_id,
+            team_id=team_id,
+        )
+        assert resolved.status == "delayed"
+        assert resolved.user_confirmed is True
+
+        default_policy = await service.get_automation_policy(
+            session,
+            owner_id=owner_id,
+            team_id=team_id,
+        )
+        assert default_policy.mode == "safe_auto"
+        saved_policy = await service.update_automation_policy(
+            session,
+            PromiseAutomationPolicyUpdateRequest(
+                mode="completed_only",
+                allowed_auto_statuses=["completed"],
+            ),
+            owner_id=owner_id,
+            team_id=team_id,
+        )
+        assert saved_policy.mode == "completed_only"
+        fetched_policy = await service.get_automation_policy(
+            session,
+            owner_id=owner_id,
+            team_id=team_id,
+        )
+        assert fetched_policy.allowed_auto_statuses == ["completed"]
+
         evaluation = service.evaluate_accuracy_cases(
             [
                 PromiseAccuracyCase(
@@ -915,4 +990,6 @@ async def test_promise_autopilot_calendar_assignee_and_quality(session_factory):
             "autopilot_applied",
             "calendar_export_created",
             "learning_feedback",
+            "conflict_resolved",
+            "automation_policy_updated",
         }.issubset(event_types)

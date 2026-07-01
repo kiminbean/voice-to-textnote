@@ -49,14 +49,47 @@ async def run_promise_radar_notification_tick(limit: int = 100) -> None:
     )
 
 
+async def run_promise_radar_digest_notification_tick(
+    *,
+    cadence: str = "daily",
+    limit: int = 100,
+) -> None:
+    """Dispatch scheduled Promise Radar digest notifications once."""
+    service = PromiseRadarService()
+    async with _session_factory() as session:
+        result = await service.dispatch_digest_notifications(
+            session,
+            cadence=cadence,
+            now=datetime.now(UTC),
+            limit=limit,
+            allow_global=True,
+        )
+    logger.info(
+        "Promise Radar digest notification tick complete",
+        cadence=cadence,
+        considered=result.considered_count,
+        sent=result.sent_count,
+        failures=result.failure_count,
+    )
+
+
 async def _promise_radar_notification_loop(interval_seconds: int, limit: int) -> None:
     while True:
         try:
             await run_promise_radar_notification_tick(limit=limit)
+            if os.environ.get("PROMISE_RADAR_DIGEST_PUSH_ENABLED", "").lower() in {
+                "1",
+                "true",
+                "yes",
+            }:
+                await run_promise_radar_digest_notification_tick(
+                    cadence=os.environ.get("PROMISE_RADAR_DIGEST_PUSH_CADENCE", "daily"),
+                    limit=limit,
+                )
         except asyncio.CancelledError:
             raise
         except Exception as exc:
-            logger.warning("Promise Radar due notification tick failed", error=str(exc))
+            logger.warning("Promise Radar notification tick failed", error=str(exc))
         await asyncio.sleep(interval_seconds)
 
 
