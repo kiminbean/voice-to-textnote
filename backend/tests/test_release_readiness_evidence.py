@@ -4,6 +4,7 @@ import importlib.util
 import json
 import plistlib
 import shutil
+import subprocess
 import zipfile
 from datetime import UTC, datetime, timedelta
 from functools import lru_cache
@@ -132,6 +133,27 @@ def write_evidence(tmp_path: Path, evidence: dict[str, object]) -> Path:
     evidence_path = tmp_path / "release-e2e-evidence.json"
     evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
     return evidence_path
+
+
+def git(tmp_path: Path, *args: str) -> str:
+    completed = subprocess.run(
+        ["git", *args],
+        cwd=tmp_path,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return completed.stdout.strip()
+
+
+def init_release_evidence_git_repo(tmp_path: Path) -> str:
+    git(tmp_path, "init")
+    git(tmp_path, "config", "user.email", "release-test@example.com")
+    git(tmp_path, "config", "user.name", "Release Test")
+    (tmp_path / "README.md").write_text("release repo\n", encoding="utf-8")
+    git(tmp_path, "add", "README.md")
+    git(tmp_path, "commit", "-m", "baseline")
+    return git(tmp_path, "rev-parse", "--short", "HEAD")
 
 
 def resolve_evidence_artifact(root: Path, evidence: dict[str, object], key: str) -> Path:
@@ -836,6 +858,54 @@ def test_release_e2e_evidence_rejects_version_mismatch_with_current_git(
     module.check_release_e2e_evidence(evidence_path, reporter)
 
     assert any("backend version does not match current git revision" in error for error in reporter.errors)
+
+
+def test_release_e2e_evidence_accepts_tested_revision_when_only_docs_changed(
+    tmp_path, monkeypatch
+):
+    module = load_release_readiness_module()
+    tested_revision = init_release_evidence_git_repo(tmp_path)
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "release-note.md").write_text("evidence update\n", encoding="utf-8")
+    git(tmp_path, "add", "docs/release-note.md")
+    git(tmp_path, "commit", "-m", "document release evidence")
+    evidence = make_evidence(tmp_path, module)
+    evidence["backend_version"] = f"git:{tested_revision}"
+    evidence["client_version"] = f"git:{tested_revision}"
+    evidence_path = write_evidence(tmp_path, evidence)
+    monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
+    monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")
+
+    reporter = module.Reporter()
+    module.check_release_e2e_evidence(evidence_path, reporter, tmp_path)
+
+    assert not any("does not match current git revision" in error for error in reporter.errors)
+    assert not any("runtime files changed" in error for error in reporter.errors)
+
+
+def test_release_e2e_evidence_rejects_tested_revision_when_runtime_changed(
+    tmp_path, monkeypatch
+):
+    module = load_release_readiness_module()
+    tested_revision = init_release_evidence_git_repo(tmp_path)
+    runtime_file = tmp_path / "client/lib/main.dart"
+    runtime_file.parent.mkdir(parents=True)
+    runtime_file.write_text("void main() {}\n", encoding="utf-8")
+    git(tmp_path, "add", "client/lib/main.dart")
+    git(tmp_path, "commit", "-m", "change runtime source")
+    evidence = make_evidence(tmp_path, module)
+    evidence["backend_version"] = f"git:{tested_revision}"
+    evidence["client_version"] = f"git:{tested_revision}"
+    evidence_path = write_evidence(tmp_path, evidence)
+    monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
+    monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")
+
+    reporter = module.Reporter()
+    module.check_release_e2e_evidence(evidence_path, reporter, tmp_path)
+
+    assert any("runtime files changed" in error for error in reporter.errors)
+    assert any("client/lib/main.dart" in error for error in reporter.errors)
 
 
 def test_release_e2e_evidence_rejects_placeholder_scenario_evidence(tmp_path, monkeypatch):
@@ -1965,6 +2035,7 @@ def test_tracked_release_e2e_scaffold_check_rejects_stale_platforms(tmp_path):
 
 
 def test_tracked_release_e2e_scaffold_matches_strict_top_level_schema():
+    module = load_release_readiness_module()
     scaffold_path = Path(__file__).resolve().parents[2] / "docs/release-e2e-evidence.json"
     scaffold = json.loads(scaffold_path.read_text(encoding="utf-8"))
 
@@ -1979,11 +2050,9 @@ def test_tracked_release_e2e_scaffold_matches_strict_top_level_schema():
         "artifact_sha256",
         "scenarios",
     }
-    assert scaffold["release_gate"] == {
-        "android_release_signing": True,
-        "ios_production_entitlements": True,
-        "ios_entitlements_sha256": "0" * 64,
-    }
+    assert scaffold["release_gate"]["android_release_signing"] is True
+    assert scaffold["release_gate"]["ios_production_entitlements"] is True
+    assert module.is_sha256_hex(scaffold["release_gate"]["ios_entitlements_sha256"])
     assert set(scaffold["artifact_sha256"]) == set(scaffold["artifacts"])
 
 

@@ -1,0 +1,35 @@
+{
+  "generated_at": "2026-07-01T11:11:25+00:00",
+  "apk_path": "client/build/app/outputs/flutter-apk/app-release.apk",
+  "required_api_url": "http://100.69.69.119:8000/api/v1",
+  "apk_url_ok": true,
+  "apk_failures": [],
+  "device": {
+    "serial": "76aadc20",
+    "package_name": "com.voicetextnote.app",
+    "version_name": "1.0.0",
+    "first_install_time": "2026-07-01 19:54:51",
+    "last_update_time": "2026-07-01 19:56:54",
+    "promise_radar_tab_visible": true,
+    "tab_count": 12,
+    "expected_tab_count": 12,
+    "lock_state": {
+      "wakefulness": "Awake",
+      "screen_state": "SCREEN_STATE_ON",
+      "input_restricted": false,
+      "locked_or_asleep": false
+    },
+    "ui_state": {
+      "screen": "promise_radar_result",
+      "markers": {
+        "login": false,
+        "promise_radar": true,
+        "home": false,
+        "server_error": false
+      }
+    },
+    "failures": []
+  },
+  "passed": true,
+  "failures": []
+}

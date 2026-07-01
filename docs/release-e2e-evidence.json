@@ -1,23 +1,23 @@
 {
-  "tested_at": "2026-06-20T16:51:37.973104+00:00",
+  "tested_at": "2026-07-01T11:01:19.471259+00:00",
   "tester": "ibkim",
-  "backend_version": "git:10df238",
-  "client_version": "git:10df238",
+  "backend_version": "git:2360dea",
+  "client_version": "git:2360dea",
   "release_gate": {
     "android_release_signing": true,
     "ios_production_entitlements": true,
-    "ios_entitlements_sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    "ios_entitlements_sha256": "e44b8d040b5abe77085420d347e186850201db6111dd89c8819b39c664924bd3"
   },
   "devices": {
     "android": {
-      "serial": "",
-      "model": "",
-      "os_version": ""
+      "serial": "76aadc20",
+      "model": "Redmi Note 9 Pro",
+      "os_version": "Android 12 API 31"
     },
     "ios": {
-      "udid": "",
-      "model": "",
-      "os_version": ""
+      "udid": "C7DD57C9-48FC-5362-B2FB-ED87CFFD51FA",
+      "model": "iPhone 17 Pro (iPhone18,1)",
+      "os_version": "iOS 26.5.1 (23F81)"
     }
   },
   "artifacts": {
@@ -25,8 +25,8 @@
     "ios_runner_app": "client/build/ios/iphoneos/Runner.app"
   },
   "artifact_sha256": {
-    "android_apk": "0000000000000000000000000000000000000000000000000000000000000000",
-    "ios_runner_app": "0000000000000000000000000000000000000000000000000000000000000000"
+    "android_apk": "d75e70b96a30e03988a292658ef51086fbe67f19b8c084d28ff6744c6432ec2a",
+    "ios_runner_app": "87bb41ab52064dff522ac02ac4cc40b688d2733f8ba75d3bc0959d84fb1039e9"
   },
   "scenarios": {
     "permission_microphone_initial": {
@@ -115,39 +115,39 @@
       "evidence": "TODO: Push deeplink from cold start"
     },
     "android_foreground_service": {
-      "pass": false,
+      "pass": true,
       "platforms": [
         "android"
       ],
-      "evidence": "TODO: Android foreground recording notification"
+      "evidence": "Android device 76aadc20 observed android_foreground_service foreground recording. Screenshot docs/release-e2e-artifacts/android_foreground_service-active-screen.png and UI dump docs/release-e2e-artifacts/android_foreground_service-active-ui.xml show 녹음 중, 경과 시간 00:08, 녹음 중지. Logs docs/release-e2e-artifacts/android_foreground_service-active-services.log show com.voicetextnote.app/.RecordingService isForeground=true foregroundId=1 channel=recording_channel. Stop verification logs docs/release-e2e-artifacts/android_foreground_service-after-stop-services.log show (nothing), with screenshot docs/release-e2e-artifacts/android_foreground_service-after-stop-screen.png."
     },
     "android_debug_tailscale_cleartext_allowed": {
-      "pass": false,
+      "pass": true,
       "platforms": [
         "android"
       ],
-      "evidence": "TODO: Android debug Tailscale HTTP allowed"
+      "evidence": "Android device 76aadc20 observed android_debug_tailscale_cleartext_allowed via :app:connectedDebugAndroidTest on Redmi Note 9 Pro - 12. logs docs/release-e2e-artifacts/android_debug_tailscale_cleartext_allowed-result.log record BUILD SUCCESSFUL, Started 1 tests, Finished 1 tests. logs docs/release-e2e-artifacts/android_debug_tailscale_cleartext_allowed-logcat.log and docs/release-e2e-artifacts/android_debug_tailscale_cleartext_allowed-test-result.xml show tests=1 failures=0 errors=0 for debugBuildAllowsOnlyLocalAndTailscaleCleartext; test source asserts localhost and 100.69.69.119 cleartext allowed while api.voicetextnote.com and example.com are blocked."
     },
     "android_release_cleartext_blocked": {
-      "pass": false,
+      "pass": true,
       "platforms": [
         "android"
       ],
-      "evidence": "TODO: Android release blocked non-staging HTTP while allowing only the scoped staging host"
+      "evidence": "Android device 76aadc20 observed android_release_cleartext_blocked with rebuilt staging release APK sha256 d75e70b96a30e03988a292658ef51086fbe67f19b8c084d28ff6744c6432ec2a installed successfully. logs docs/release-e2e-artifacts/android_release_cleartext_blocked-network-security.log show release network-security-config base-config cleartextTrafficPermitted=false and the only cleartext domain exception is 100.69.69.119. logs docs/release-e2e-artifacts/android_release_cleartext_blocked-manifest.log show android:networkSecurityConfig is packaged in the release manifest. logs docs/release-e2e-artifacts/android_staging_release_package.log show installed com.voicetextnote.app versionName=1.0.0 targetSdk=35 without debug flags; screenshot docs/release-e2e-artifacts/android_staging_release_screen.png and UI dump docs/release-e2e-artifacts/android_staging_release_ui.xml show Voice TextNote login screen after launch."
     },
     "ios_release_http_blocked": {
       "pass": false,
       "platforms": [
         "ios"
       ],
-      "evidence": "TODO: iOS release blocked non-staging HTTP while allowing only the scoped staging host"
+      "evidence": "TODO: iOS release non-staging HTTP blocked"
     },
     "export_share_android": {
-      "pass": false,
+      "pass": true,
       "platforms": [
         "android"
       ],
-      "evidence": "TODO: Android PDF share sheet"
+      "evidence": "Android device 76aadc20 observed export_share_android on staging release. screenshot docs/release-e2e-artifacts/export_share_android-system-share-screen.png and UI dump docs/release-e2e-artifacts/export_share_android-system-share-ui.xml show Android system 공유 sheet with PDF file minutes_6ab36c5a-d1e7-460f-8393-34e7f25dbce9.pdf plus share targets Gmail, Tailscale, 메시지. logs docs/release-e2e-artifacts/export_share_android-after-template-ui.xml show the generated meeting result screen with Share & Export; screenshot docs/release-e2e-artifacts/export_share_android-share-dialog-screen.png shows Export PDF option before launching the system share sheet."
     },
     "export_share_ios": {
       "pass": false,
@@ -162,7 +162,7 @@
         "android",
         "ios"
       ],
-      "evidence": "See docs/promise-radar-e2e-evidence-2026-07-01.json. Actual-recording API contract verified with Android ADB connected; full Android/iOS release UI observation still requires scenario-specific artifact evidence."
+      "evidence": "TODO: Promise Radar Autopilot status update"
     },
     "promise_radar_due_push": {
       "pass": false,
@@ -170,7 +170,7 @@
         "android",
         "ios"
       ],
-      "evidence": "See docs/promise-radar-e2e-evidence-2026-07-01.json. Due notification dispatch endpoint verified; end-to-end Android+iOS push delivery still requires both connected devices and eligible FCM/APNs tokens."
+      "evidence": "TODO: Promise Radar due promise push notification"
     },
     "promise_radar_calendar_export": {
       "pass": false,
@@ -178,7 +178,7 @@
         "android",
         "ios"
       ],
-      "evidence": "See docs/promise-radar-e2e-evidence-2026-07-01.json. Actual-recording calendar export verified with ICS output and Android ADB connected; full Android/iOS release UI observation still requires scenario-specific artifact evidence."
+      "evidence": "TODO: Promise Radar calendar export"
     },
     "promise_radar_assignee_quality": {
       "pass": false,
@@ -186,7 +186,7 @@
         "android",
         "ios"
       ],
-      "evidence": "See docs/promise-radar-e2e-evidence-2026-07-01.json. Actual-recording assignee/quality endpoint verified and Android ADB connected; full Android/iOS release UI observation still requires scenario-specific artifact evidence."
+      "evidence": "TODO: Promise Radar assignee suggestion and quality score"
     }
   }
 }

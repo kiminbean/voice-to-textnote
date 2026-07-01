@@ -25,6 +25,19 @@
 - [ ] GitHub release environment 사전검사 통과: `python3 client/scripts/verify_github_mobile_release_env.py --repo kiminbean/voice-to-textnote`
 - [ ] GitHub Actions strict release gate 통과: `.github/workflows/mobile.yml`의 `workflow_dispatch`를 실행하고 `evidence_path`에 실제 evidence JSON 경로를 입력
 
+2026-07-01 Mac mini 기준 현재 상태:
+
+- [x] APNs `.p8`, App Store Connect `.p8`, Firebase service account, FCM test token env 입력은 strict gate에서 PASS.
+- [x] App Store distribution archive 생성 완료: `/Users/ibkim/secure/voice-to-textnote/apple-signing/Runner-production-final-20260701191705.xcarchive`
+- [x] production entitlement 추출 완료: `docs/ios-release-entitlements.plist`, SHA-256 `e44b8d040b5abe77085420d347e186850201db6111dd89c8819b39c664924bd3`
+- [x] iPhone 실기기 연결 확인: `C7DD57C9-48FC-5362-B2FB-ED87CFFD51FA`, iPhone 17 Pro, iOS 26.5.1.
+- [x] Android 실기기 연결 확인: `76aadc20`, Redmi Note 9 Pro, Android 12 API 31.
+- [x] Android staging release APK 재빌드/설치 완료: `ENV=staging`, `API_BASE_URL=http://100.69.69.119:8000/api/v1`, SHA-256 `d75e70b96a30e03988a292658ef51086fbe67f19b8c084d28ff6744c6432ec2a`.
+- [x] Android strict scenario 4개 실제 증거 PASS: `android_foreground_service`, `android_debug_tailscale_cleartext_allowed`, `android_release_cleartext_blocked`, `export_share_android`.
+- [x] Android Promise Radar 메뉴/탭 gate 재확인: `python3 client/scripts/verify_promise_radar_device_gate.py --serial 76aadc20 --evidence-out docs/promise-radar-android-device-gate-2026-07-01-current.json` -> `PASS Promise Radar Android device gate`.
+- [ ] `docs/release-e2e-evidence.json`의 남은 17개 required scenario는 아직 실제 iOS 또는 Android+iOS screenshot/log/video/trace evidence와 `pass: true`가 필요.
+- [ ] iOS 물리 UI 자동화 blocker 해소 필요: 현재 `devicectl`은 wired/available/tunnel connected 상태와 display info는 확인하지만 CLI screenshot/tap 명령을 제공하지 않는다. `flutter screenshot -d 00008150-000239020C08401C`는 `Screenshot not supported for Inbean의 iPhone`으로 실패했고, `pymobiledevice3 remote browse`는 root 권한을 요구하며, `pymobiledevice3 usbmux list`는 `[]`를 반환한다. iOS 시나리오 증거는 Xcode/Runner UI test, WebDriverAgent, 또는 root tunnel 기반 캡처 경로를 준비해야 한다.
+
 ### 네이티브 빌드 기준선
 
 | 항목 | 기준 |
@@ -233,10 +246,10 @@ Firebase message id: projects/voice-to-textnote/messages/1782749586143713
 
 | # | 시나리오 | 예상 결과 | Pass/Fail |
 |---|---------|----------|-----------|
-| 7.1 | 최신 Android staging release 설치 | `lastUpdateTime`이 현재 검증 시각으로 갱신 | ☐ |
-| 7.2 | 결과 화면 탭 목록 확인 | `약속 레이더`가 `탭 12개 중 4번째`로 표시 | ☐ |
-| 7.3 | APK URL guard | `libapp.so`에 `http://100.69.69.119:8000/api/v1` 포함, production host 미사용 | ☐ |
-| 7.4 | 자동 gate 실행 | `python3 client/scripts/verify_promise_radar_device_gate.py --serial 76aadc20`가 `PASS Promise Radar Android device gate` 출력 | ☐ |
+| 7.1 | 최신 Android staging release 설치 | `lastUpdateTime`이 현재 검증 시각으로 갱신 | ☑ |
+| 7.2 | 결과 화면 탭 목록 확인 | `약속 레이더`가 `탭 12개 중 4번째`로 표시 | ☑ |
+| 7.3 | APK URL guard | `libapp.so`에 `http://100.69.69.119:8000/api/v1` 포함, production host 미사용 | ☑ |
+| 7.4 | 자동 gate 실행 | `python3 client/scripts/verify_promise_radar_device_gate.py --serial 76aadc20`가 `PASS Promise Radar Android device gate` 출력 | ☑ |
 
 ---
 

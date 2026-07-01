@@ -1,0 +1,255 @@
+PASS Android Firebase config: /Users/ibkim/Projects/voice-to-textnote/client/android/app/google-services.json
+PASS Android Firebase project_id is voice-to-textnote
+PASS Android Firebase package is com.voicetextnote.app
+PASS Android Firebase API key is present
+PASS iOS Firebase config: /Users/ibkim/Projects/voice-to-textnote/client/ios/Runner/GoogleService-Info.plist
+PASS iOS Firebase PROJECT_ID is voice-to-textnote
+PASS iOS Firebase BUNDLE_ID is com.voicetextnote.app
+PASS iOS Firebase app id and API key are present
+PASS FlutterFire options: /Users/ibkim/Projects/voice-to-textnote/client/lib/firebase_options.dart
+PASS FlutterFire options contain projectId: 'voice-to-textnote'
+PASS FlutterFire options contain iosBundleId: 'com.voicetextnote.app'
+PASS FlutterFire options contain TargetPlatform.android
+PASS FlutterFire options contain TargetPlatform.iOS
+PASS Flutter pubspec: /Users/ibkim/Projects/voice-to-textnote/client/pubspec.yaml
+PASS Flutter pubspec lock: /Users/ibkim/Projects/voice-to-textnote/client/pubspec.lock
+PASS Whisper runtime adapter: /Users/ibkim/Projects/voice-to-textnote/client/lib/services/local_stt_runtime_whisper.dart
+PASS Local STT service: /Users/ibkim/Projects/voice-to-textnote/client/lib/services/local_stt_service.dart
+PASS Local STT provider: /Users/ibkim/Projects/voice-to-textnote/client/lib/services/local_stt_provider.dart
+PASS Local STT smoke runner: /Users/ibkim/Projects/voice-to-textnote/client/tool/local_stt_smoke.dart
+PASS iOS Podfile.lock: /Users/ibkim/Projects/voice-to-textnote/client/ios/Podfile.lock
+PASS macOS Podfile.lock: /Users/ibkim/Projects/voice-to-textnote/client/macos/Podfile.lock
+PASS Flutter pubspec pins whisper_ggml_plus dependency
+PASS Flutter pubspec.lock resolves whisper_ggml_plus 1.5.2
+PASS Local STT uses whisper_ggml_plus FFI runtime adapter
+PASS Local STT service gates model readiness and FFI runtime availability
+PASS Local STT provider injects model manager and whisper runtime
+PASS Local STT smoke runner has a deterministic pass sentinel
+PASS iOS Pod lock includes whisper_ggml_plus native plugin
+PASS macOS Pod lock includes whisper_ggml_plus native plugin
+PASS iOS Info.plist: /Users/ibkim/Projects/voice-to-textnote/client/ios/Runner/Info.plist
+PASS iOS entitlements: /Users/ibkim/Projects/voice-to-textnote/client/ios/Runner/Runner.entitlements
+PASS iOS Xcode project: /Users/ibkim/Projects/voice-to-textnote/client/ios/Runner.xcodeproj/project.pbxproj
+PASS iOS AppDelegate: /Users/ibkim/Projects/voice-to-textnote/client/ios/Runner/AppDelegate.swift
+PASS iOS background modes include audio and remote-notification
+PASS iOS URL scheme is voicetextnote
+PASS iOS ATS insecure HTTP exceptions are limited to staging hosts
+PASS iOS document types accept PDF/DOCX/image Open In imports
+PASS iOS APNs entitlement is development
+WARN App Store distribution still requires production APNs entitlement from signing profile
+PASS iOS bundle id is com.voicetextnote.app
+PASS iOS deployment target satisfies release support policy
+PASS iOS development team is configured in Xcode project
+PASS iOS AppDelegate implements recording MethodChannel and AVAudioSession observers
+PASS iOS AppDelegate exposes shared import MethodChannel
+PASS Android app Gradle file: /Users/ibkim/Projects/voice-to-textnote/client/android/app/build.gradle
+PASS Android manifest: /Users/ibkim/Projects/voice-to-textnote/client/android/app/src/main/AndroidManifest.xml
+PASS Android MainActivity: /Users/ibkim/Projects/voice-to-textnote/client/android/app/src/main/kotlin/com/voicetextnote/app/MainActivity.kt
+PASS Android release/profile network security config: /Users/ibkim/Projects/voice-to-textnote/client/android/app/src/main/res/xml/network_security_config.xml
+PASS Android debug network security config: /Users/ibkim/Projects/voice-to-textnote/client/android/app/src/debug/res/xml/network_security_config.xml
+PASS Android package/application id is com.voicetextnote.app
+PASS Android targetSdkVersion satisfies Google Play target API policy
+PASS Android manifest references network security config
+PASS Android manifest accepts text/file share-sheet imports
+PASS Android MainActivity exposes shared import MethodChannel
+PASS Android release/profile cleartext traffic denied by default
+PASS Android release/profile cleartext exceptions are limited to staging hosts
+PASS Android debug cleartext traffic denied by default outside exceptions
+PASS Android debug cleartext exceptions are limited to local/staging hosts
+PASS Backend config: /Users/ibkim/Projects/voice-to-textnote/backend/app/config.py
+PASS Backend push service: /Users/ibkim/Projects/voice-to-textnote/backend/services/push_service.py
+PASS Celery push hooks: /Users/ibkim/Projects/voice-to-textnote/backend/app/workers/hooks/celery_push_hooks.py
+PASS Device token model: /Users/ibkim/Projects/voice-to-textnote/backend/db/device_token_models.py
+PASS Device registration API: /Users/ibkim/Projects/voice-to-textnote/backend/app/api/v1/auth/devices.py
+PASS Device token device_id migration: /Users/ibkim/Projects/voice-to-textnote/alembic/versions/003_add_device_id_to_device_tokens.py
+PASS Backend exposes firebase_credentials_path setting
+PASS Backend push service imports Firebase Admin messaging
+PASS Celery success/failure push hooks are present
+PASS Device tokens persist device_id with user/device lookup migration
+PASS Device unregister uses requested user_id/device_id mapping
+PASS Backend config: /Users/ibkim/Projects/voice-to-textnote/backend/app/config.py
+PASS Python project metadata: /Users/ibkim/Projects/voice-to-textnote/pyproject.toml
+PASS README: /Users/ibkim/Projects/voice-to-textnote/README.md
+PASS Tone analysis is disabled by default when tone_model is empty
+PASS Python dependency policy documents opensmile AGPL local-only constraints
+PASS README documents opensmile AGPL local-only and SaaS review policy
+PASS Local secret env files are not tracked
+PASS Local secret env files are ignored by git
+PASS Tracked product files contain no release-blocking secret placeholders
+PASS Production Docker Compose: /Users/ibkim/Projects/voice-to-textnote/docker-compose.prod.yml
+PASS Production compose fails fast when required secrets are missing
+PASS Production compose forces backend services into production environment
+PASS Production compose forces api and worker to internal async Postgres
+PASS Production compose does not accept external DATABASE_URL override
+PASS README: /Users/ibkim/Projects/voice-to-textnote/README.md
+PASS README distinguishes automated readiness from final physical release readiness
+PASS README does not overclaim Production Ready before strict evidence
+PASS README test counts match current release validation evidence
+PASS README Android RC status references release APK verification
+PASS README strict gate must document Android release signing
+PASS README strict command uses real release E2E evidence path
+PASS README avoids hard-coded completed SPEC counts outside the SPEC list
+PASS Firebase setup guide: /Users/ibkim/Projects/voice-to-textnote/docs/firebase-setup-guide.md
+PASS Device E2E checklist: /Users/ibkim/Projects/voice-to-textnote/docs/e2e-device-checklist.md
+PASS Release procedure: /Users/ibkim/Projects/voice-to-textnote/docs/release-procedure.md
+PASS App Store metadata: /Users/ibkim/Projects/voice-to-textnote/docs/app-store-metadata.md
+PASS Privacy policy: /Users/ibkim/Projects/voice-to-textnote/docs/privacy-policy.md
+PASS Screenshot guide: /Users/ibkim/Projects/voice-to-textnote/docs/screenshot-guide.md
+PASS Firebase guide documents FIREBASE_CREDENTIALS_PATH
+PASS Firebase guide documents APNs
+PASS Firebase guide documents google-services.json
+PASS Firebase guide documents GoogleService-Info.plist
+PASS E2E checklist covers Push/푸시 알림
+PASS E2E checklist covers 백그라운드 녹음
+PASS E2E checklist covers create_release_e2e_evidence.py
+PASS E2E checklist covers verify_mobile_release_runner.py
+PASS E2E checklist covers xcodebuild -version
+PASS E2E checklist covers ./scripts/verify_mobile.sh --native
+PASS E2E checklist covers REQUIRE_ANDROID_RELEASE_SIGNING
+PASS E2E checklist covers IOS_RELEASE_ENTITLEMENTS_PATH
+PASS E2E checklist covers RELEASE_E2E_EVIDENCE_PATH
+PASS E2E checklist covers artifact_sha256
+PASS E2E checklist covers Android release APK
+PASS E2E checklist covers Swift Package Manager warning
+PASS Release procedure matches current strict E2E evidence workflow
+PASS Release procedure uses current release evidence script path
+PASS Release procedure uses current 21-scenario evidence schema
+PASS Release procedure SPEC count matches README completed SPEC list
+PASS Release procedure backend test count matches latest full pytest evidence
+PASS Release procedure checklist requires runner and GitHub environment preflights
+PASS Release procedure version matches README current version
+PASS App Store metadata covers App Store Connect
+PASS App Store metadata covers Google Play Console
+PASS App Store metadata covers Privacy Policy
+PASS App Store metadata covers com.voicetextnote.app
+PASS App Store metadata covers iPhone 6.7
+PASS App Store metadata covers iPad Pro
+PASS App Store metadata covers Android
+PASS App Store metadata covers https://voicetextnote.com/privacy
+PASS App Store metadata covers RELEASE_E2E_EVIDENCE_PATH
+PASS App Store metadata has no unresolved store listing placeholders
+PASS Screenshot guide covers iPhone 6.7
+PASS Screenshot guide covers iPhone 6.5
+PASS Screenshot guide covers iPad 12.9
+PASS Screenshot guide covers Phone
+PASS Screenshot guide covers Tablet
+PASS Screenshot guide covers 홈 화면
+PASS Screenshot guide covers 녹음 화면
+PASS Screenshot guide covers 결과 화면
+PASS Screenshot guide covers 검색/내보내기
+PASS Privacy policy covers Audio Recordings
+PASS Privacy policy covers Push Notification Token
+PASS Privacy policy covers Firebase Cloud Messaging
+PASS Privacy policy covers ZAI API
+PASS Privacy policy covers Data Used for Tracking: None
+PASS Privacy policy covers privacy@voicetextnote.com
+PASS Store app icon: /Users/ibkim/Projects/voice-to-textnote/client/assets/icon/app_icon_no_alpha.png
+PASS Store app icon size is 1024x1024
+PASS Store app icon alpha channel policy is valid
+PASS iOS AppIcon 1024: /Users/ibkim/Projects/voice-to-textnote/client/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-1024x1024@1x.png
+PASS iOS AppIcon 1024 size is 1024x1024
+PASS iOS AppIcon 1024 alpha channel policy is valid
+PASS Owll benchmark PRD: /Users/ibkim/Projects/voice-to-textnote/docs/owll-benchmark-prd.md
+PASS Owll benchmark PRD captures current competitor evidence and gaps
+PASS Tracked release E2E evidence scaffold: /Users/ibkim/Projects/voice-to-textnote/docs/release-e2e-evidence.json
+PASS Tracked release E2E evidence scaffold matches strict schema keys
+PASS Tracked release E2E evidence scaffold hashes every artifact key
+PASS Tracked release E2E evidence scaffold records signed mobile release gates
+PASS Tracked release E2E evidence scaffold artifact path contract: android_apk
+PASS Tracked release E2E evidence scaffold artifact path contract: ios_runner_app
+PASS Tracked release E2E evidence scaffold lists every required scenario
+PASS Tracked release E2E evidence scaffold scenario platforms match contract
+PASS Release documentation has no unresolved placeholders: docs/app-store-metadata.md
+PASS Release documentation has no unresolved placeholders: docs/privacy-policy.md
+PASS Release documentation has no unresolved placeholders: docs/e2e-device-checklist.md
+PASS Android release signing gate: REQUIRE_ANDROID_RELEASE_SIGNING is set
+PASS Firebase service account type is valid
+PASS Firebase service account project_id is valid
+PASS Firebase service account private key is present
+PASS Firebase service account client_email is present
+PASS APNs auth key: APNS_AUTH_KEY_PATH private key is present
+PASS APNs key id: APNS_KEY_ID is set
+PASS APNs team id: APNS_TEAM_ID is set
+PASS App Store Connect API key: APP_STORE_CONNECT_API_KEY_PATH private key is present
+PASS App Store Connect key id: APP_STORE_CONNECT_KEY_ID is set
+PASS App Store Connect issuer id: APP_STORE_CONNECT_ISSUER_ID is set
+PASS Android physical test device serial: ANDROID_DEVICE_SERIAL is set
+PASS Android physical test device serial is connected via adb
+PASS iOS physical test device UDID: IOS_DEVICE_UDID is set
+PASS iOS physical test device UDID is connected and available
+PASS iOS release entitlements evidence: /Users/ibkim/Projects/voice-to-textnote/docs/ios-release-entitlements.plist
+PASS iOS release entitlements use production APNs environment
+PASS iOS release entitlements disable debugger attachment
+PASS iOS release entitlements team identifier matches APNs team
+PASS iOS release entitlements application identifier matches bundle id
+PASS Firebase test device token: FIREBASE_TEST_DEVICE_TOKEN is set
+PASS Release E2E evidence includes test timestamp
+PASS Release E2E evidence test timestamp is ISO-8601
+PASS Release E2E evidence includes tester
+PASS Release E2E evidence includes backend version
+PASS Release E2E evidence backend version is a git revision
+PASS Release E2E evidence backend version is compatible with current git revision; only release evidence, docs, tests, or release tooling changed since the tested revision
+PASS Release E2E evidence includes client version
+PASS Release E2E evidence client version is a git revision
+PASS Release E2E evidence client version is compatible with current git revision; only release evidence, docs, tests, or release tooling changed since the tested revision
+PASS Release E2E evidence includes release gate metadata
+PASS Release E2E evidence records signed Android release gate
+PASS Release E2E evidence records production iOS entitlement gate
+PASS Release E2E evidence iOS entitlements hash matches strict env
+PASS Release E2E evidence includes device metadata
+PASS Release E2E evidence includes android device serial
+PASS Release E2E evidence android device matches strict env
+PASS Release E2E evidence includes android device model
+PASS Release E2E evidence includes android device os_version
+PASS Release E2E evidence includes ios device udid
+PASS Release E2E evidence ios device matches strict env
+PASS Release E2E evidence includes ios device model
+PASS Release E2E evidence includes ios device os_version
+PASS Release E2E evidence includes build artifacts
+PASS Release E2E evidence includes artifact hashes
+PASS Release E2E evidence artifact exists: android_apk
+PASS Release E2E evidence artifact exists: ios_runner_app
+PASS Release E2E evidence includes scenario results
+PASS Release E2E scenario platforms match contract: permission_microphone_initial
+FAIL Release E2E scenario not marked pass: permission_microphone_initial
+PASS Release E2E scenario platforms match contract: permission_denied_recovery
+FAIL Release E2E scenario not marked pass: permission_denied_recovery
+PASS Release E2E scenario platforms match contract: ios_background_recording_lock
+FAIL Release E2E scenario not marked pass: ios_background_recording_lock
+PASS Release E2E scenario platforms match contract: ios_interruption_resume
+FAIL Release E2E scenario not marked pass: ios_interruption_resume
+PASS Release E2E scenario platforms match contract: ios_bluetooth_route_change
+FAIL Release E2E scenario not marked pass: ios_bluetooth_route_change
+PASS Release E2E scenario platforms match contract: unfinished_recording_recovery
+FAIL Release E2E scenario not marked pass: unfinished_recording_recovery
+PASS Release E2E scenario platforms match contract: push_stt_complete
+FAIL Release E2E scenario not marked pass: push_stt_complete
+PASS Release E2E scenario platforms match contract: push_summary_complete
+FAIL Release E2E scenario not marked pass: push_summary_complete
+PASS Release E2E scenario platforms match contract: push_failure
+FAIL Release E2E scenario not marked pass: push_failure
+PASS Release E2E scenario platforms match contract: push_deeplink_background
+FAIL Release E2E scenario not marked pass: push_deeplink_background
+PASS Release E2E scenario platforms match contract: push_deeplink_cold_start
+FAIL Release E2E scenario not marked pass: push_deeplink_cold_start
+PASS Release E2E scenario platforms match contract: android_foreground_service
+PASS Release E2E scenario passed: android_foreground_service
+PASS Release E2E scenario platforms match contract: android_debug_tailscale_cleartext_allowed
+PASS Release E2E scenario passed: android_debug_tailscale_cleartext_allowed
+PASS Release E2E scenario platforms match contract: android_release_cleartext_blocked
+PASS Release E2E scenario passed: android_release_cleartext_blocked
+PASS Release E2E scenario platforms match contract: ios_release_http_blocked
+FAIL Release E2E scenario not marked pass: ios_release_http_blocked
+PASS Release E2E scenario platforms match contract: export_share_android
+PASS Release E2E scenario passed: export_share_android
+PASS Release E2E scenario platforms match contract: export_share_ios
+FAIL Release E2E scenario not marked pass: export_share_ios
+PASS Release E2E scenario platforms match contract: promise_radar_autopilot_status
+FAIL Release E2E scenario not marked pass: promise_radar_autopilot_status
+PASS Release E2E scenario platforms match contract: promise_radar_due_push
+FAIL Release E2E scenario not marked pass: promise_radar_due_push
+PASS Release E2E scenario platforms match contract: promise_radar_calendar_export
+FAIL Release E2E scenario not marked pass: promise_radar_calendar_export
+PASS Release E2E scenario platforms match contract: promise_radar_assignee_quality
+FAIL Release E2E scenario not marked pass: promise_radar_assignee_quality
+release_readiness: 17 errors, 1 warnings

@@ -1,0 +1,15 @@
+APK=client/build/app/outputs/flutter-apk/app-release.apk
+sha256=d75e70b96a30e03988a292658ef51086fbe67f19b8c084d28ff6744c6432ec2a
+compiled_xml=res/8G.xml
+
+E: network-security-config (line=5)
+  E: base-config (line=6)
+    A: cleartextTrafficPermitted=(type 0x12)0x0
+    E: trust-anchors (line=7)
+      E: certificates (line=8)
+        A: src="system" (Raw: "system")
+  E: domain-config (line=11)
+    A: cleartextTrafficPermitted=(type 0x12)0xffffffff
+    E: domain (line=12)
+      A: includeSubdomains=(type 0x12)0x0
+      C: "100.69.69.119"

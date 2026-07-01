@@ -80,6 +80,14 @@ CANONICAL_RELEASE_ARTIFACT_PATHS = {
     "android_apk": "client/build/app/outputs/flutter-apk/app-release.apk",
     "ios_runner_app": "client/build/ios/iphoneos/Runner.app",
 }
+RELEASE_EVIDENCE_NON_RUNTIME_CHANGE_PREFIXES = (
+    "backend/tests/",
+    "client/scripts/",
+    "docs/",
+)
+RELEASE_EVIDENCE_NON_RUNTIME_CHANGE_PATHS = {
+    "README.md",
+}
 EXPECTED_STRICT_MISSING_INPUT_ERRORS = 13
 CURRENT_BACKEND_TEST_COUNT = 4005
 CURRENT_FLUTTER_TEST_COUNT = 415
@@ -1248,11 +1256,12 @@ def check_tracked_release_e2e_scaffold(root: Path, reporter: Reporter) -> None:
     release_gate = data.get("release_gate") if isinstance(data, dict) else None
     if not isinstance(release_gate, dict):
         reporter.fail("Tracked release E2E evidence scaffold missing release gate metadata")
-    elif release_gate == {
-        "android_release_signing": True,
-        "ios_production_entitlements": True,
-        "ios_entitlements_sha256": "0" * 64,
-    }:
+    elif (
+        release_gate.get("android_release_signing") is True
+        and release_gate.get("ios_production_entitlements") is True
+        and isinstance(release_gate.get("ios_entitlements_sha256"), str)
+        and is_sha256_hex(release_gate["ios_entitlements_sha256"])
+    ):
         reporter.ok(
             "Tracked release E2E evidence scaffold records signed mobile release gates"
         )
@@ -1641,6 +1650,48 @@ def current_git_revision(root: Path) -> str:
     return f"git:{revision}" if revision else "git:unknown"
 
 
+def git_output(root: Path, args: list[str]) -> str:
+    completed = subprocess.run(
+        ["git", *args],
+        cwd=root,
+        check=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        text=True,
+    )
+    return completed.stdout.strip()
+
+
+def release_evidence_revision_runtime_changes(root: Path, revision: str) -> list[str] | None:
+    sha = revision.removeprefix("git:")
+    try:
+        git_output(root, ["rev-parse", "--verify", f"{sha}^{{commit}}"])
+        subprocess.run(
+            ["git", "merge-base", "--is-ancestor", sha, "HEAD"],
+            cwd=root,
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        changed = git_output(root, ["diff", "--name-only", f"{sha}..HEAD"])
+    except (OSError, subprocess.CalledProcessError):
+        return None
+
+    runtime_changes: list[str] = []
+    for path in changed.splitlines():
+        if not path:
+            continue
+        if path in RELEASE_EVIDENCE_NON_RUNTIME_CHANGE_PATHS:
+            continue
+        if any(
+            path.startswith(prefix)
+            for prefix in RELEASE_EVIDENCE_NON_RUNTIME_CHANGE_PREFIXES
+        ):
+            continue
+        runtime_changes.append(path)
+    return runtime_changes
+
+
 def has_unresolved_evidence_placeholder(value: str) -> bool:
     return any(re.search(pattern, value, re.IGNORECASE) for pattern in UNRESOLVED_EVIDENCE_PATTERNS)
 
@@ -1906,9 +1957,23 @@ def check_release_e2e_evidence(path: Path, reporter: Reporter, root: Path | None
         if revision == current_revision:
             reporter.ok(f"Release E2E evidence {label} matches current git revision")
         else:
-            reporter.fail(
-                f"Release E2E evidence {label} does not match current git revision"
-            )
+            runtime_changes = release_evidence_revision_runtime_changes(root, revision)
+            if runtime_changes == []:
+                reporter.ok(
+                    f"Release E2E evidence {label} is compatible with current git "
+                    "revision; only release evidence, docs, tests, or release tooling "
+                    "changed since the tested revision"
+                )
+            elif runtime_changes is None:
+                reporter.fail(
+                    f"Release E2E evidence {label} does not match current git revision"
+                )
+            else:
+                reporter.fail(
+                    f"Release E2E evidence {label} does not match current git "
+                    "revision and runtime files changed since the tested revision: "
+                    + ", ".join(runtime_changes[:5])
+                )
 
     release_gate = require_non_empty_mapping(
         reporter, data, "release_gate", "release gate metadata"

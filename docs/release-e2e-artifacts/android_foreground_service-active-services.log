@@ -1,0 +1,19 @@
+ACTIVITY MANAGER SERVICES (dumpsys activity services)
+  User 0 active services:
+  * ServiceRecord{10195c2 u0 com.voicetextnote.app/.RecordingService}
+    intent={cmp=com.voicetextnote.app/.RecordingService}
+    packageName=com.voicetextnote.app
+    processName=com.voicetextnote.app
+    baseDir=/data/app/~~S5Fl1Lcu0LBWf7ShYcl4-Q==/com.voicetextnote.app-lrUW9vDseg8sdP4PiFfufg==/base.apk
+    dataDir=/data/user/0/com.voicetextnote.app
+    app=ProcessRecord{79711dc 23440:com.voicetextnote.app/u0a429}
+    allowWhileInUsePermissionInFgs=true
+    recentCallingPackage=com.voicetextnote.app
+    recentCallingUid=10429
+    allowStartForeground=12
+    startForegroundCount=1
+    infoAllowStartForeground=[callingPackage: com.voicetextnote.app; callingUid: 10429; uidState: TOP ; intent: Intent { cmp=com.voicetextnote.app/.RecordingService }; code:PROC_STATE_TOP; tempAllowListReason:<null>; targetSdkVersion:35; callerTargetSdkVersion:35; startForegroundCount:0; bindFromPackage:null]
+    isForeground=true foregroundId=1 foregroundNoti=Notification(channel=recording_channel shortcut=null contentView=null vibrate=null sound=null defaults=0x0 flags=0x42 color=0x00000000 vis=PRIVATE)
+    createTime=-9s706ms startingBgTimeout=--
+    lastActivity=-9s706ms restartTime=-9s706ms createdFromFg=true
+    startRequested=true delayedStop=false stopIfKilled=false callStart=true lastStartId=1

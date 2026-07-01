@@ -1,0 +1,4 @@
+android_debug_tailscale_cleartext_allowed device=76aadc20 Redmi Note 9 Pro Android 12
+command=:app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.voicetextnote.app.NetworkSecurityPolicyInstrumentedTest
+result=BUILD SUCCESSFUL; Started 1 tests on Redmi Note 9 Pro - 12; Finished 1 tests on Redmi Note 9 Pro - 12
+xml=docs/release-e2e-artifacts/android_debug_tailscale_cleartext_allowed-test-result.xml tests=1 failures=0 errors=0 testcase=debugBuildAllowsOnlyLocalAndTailscaleCleartext

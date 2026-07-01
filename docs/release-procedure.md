@@ -10,7 +10,9 @@
 - [x] `verify_release_readiness.py` (default) — 0 errors
 - [x] CI: Test & Lint PASS, Flutter Android PASS, Flutter iOS PASS
 - [x] 백엔드: 4005 passed, Flutter: 415 passed, backend coverage 100.00%
-- [ ] `verify_release_readiness.py --strict` — **13 errors (이 문서의 목표)**
+- [ ] `verify_release_readiness.py --strict` — 초기 외부 입력 미설정 기준 **13 errors**는 Mac mini 로컬 secret/device env로 해소됐다.
+  2026-07-01 현재 보유한 secret/iPhone/Android 입력 기준으로는 **17 errors, 1 warning**이 남아 있다:
+  Android-only scenario 4개는 실제 evidence로 `pass:true`이며, 나머지 iOS-only 또는 Android+iOS 공통 실기기 E2E scenario는 아직 실제 screenshot/log/video/trace evidence가 필요하다.
 
 ---
 
@@ -68,6 +70,14 @@ python3 client/scripts/verify_release_readiness.py --strict 2>&1 | grep APNs
 # 기대: PASS APNs auth key, PASS APNs key id, PASS APNs team id
 ```
 
+2026-07-01 Mac mini 기준 확인값:
+
+```text
+APNS_AUTH_KEY_PATH=/Users/ibkim/secure/voice-to-textnote/AuthKey_362893TR3Z.p8
+APNS_KEY_ID=362893TR3Z
+APNS_TEAM_ID=4NJ9JSQFW9
+```
+
 ### 1.3 App Store Connect API 키
 
 ```bash
@@ -82,6 +92,27 @@ export APP_STORE_CONNECT_ISSUER_ID=yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy
 python3 client/scripts/verify_release_readiness.py --strict 2>&1 | grep "App Store"
 # 기대: PASS App Store Connect API key, key id, issuer id
 ```
+
+2026-07-01 Mac mini 기준 확인값:
+
+```text
+APP_STORE_CONNECT_API_KEY_PATH=/Users/ibkim/secure/voice-to-textnote/AuthKey_5WDG3L7L32.p8
+APP_STORE_CONNECT_KEY_ID=5WDG3L7L32
+APP_STORE_CONNECT_ISSUER_ID=3af9f2b0-aefc-4670-a821-1606fb19e086
+```
+
+App Store Connect API로 생성한 production signing 산출물:
+
+```text
+Certificate ID: 4H9K72UW92
+Profile ID: 398AB7SHX6
+Profile UUID: 43a2b781-c7fb-48ad-934a-821e7fdb71ca
+Profile name: VoiceToTextNote App Store 20260701191236
+Profile path: /Users/ibkim/secure/voice-to-textnote/apple-signing/VoiceToTextNote_AppStore_20260701191236.mobileprovision
+Signing identity: Apple Distribution: KISOO KIM (4NJ9JSQFW9)
+```
+
+주의: MacBook의 Xcode automatic signing은 development signing에는 사용할 수 있지만, 2026-07-01 SSH 확인 당시 MacBook repo는 `b650ebb`였고 키체인에는 `Apple Development: KISOO KIM (PCZ7DH2Z2Q)`만 보였다. 현재 strict production entitlement 증거는 Mac mini에서 생성한 App Store distribution archive를 기준으로 한다.
 
 ### 1.4 iOS production entitlement evidence
 
@@ -101,6 +132,17 @@ shasum -a 256 "$IOS_RELEASE_ENTITLEMENTS_PATH"
 # - application-identifier = <APNS_TEAM_ID>.com.voicetextnote.app
 # - RELEASE_E2E_EVIDENCE_PATH의 release_gate.ios_entitlements_sha256과 일치
 python3 client/scripts/verify_release_readiness.py --strict 2>&1 | grep "iOS release entitlements"
+```
+
+2026-07-01 production archive 기준 확인값:
+
+```text
+Archive: /Users/ibkim/secure/voice-to-textnote/apple-signing/Runner-production-final-20260701191705.xcarchive
+Entitlements evidence: docs/ios-release-entitlements.plist
+SHA-256: e44b8d040b5abe77085420d347e186850201db6111dd89c8819b39c664924bd3
+application-identifier: 4NJ9JSQFW9.com.voicetextnote.app
+aps-environment: production
+get-task-allow: false
 ```
 
 ---
@@ -140,8 +182,8 @@ REQUIRE_ANDROID_RELEASE_SIGNING=true ./scripts/verify_mobile.sh --native
 # flutter build ios --release --dart-define=API_BASE_URL=https://api.voicetextnote.com/api/v1
 
 # Private staging release validation against the Tailscale backend
-flutter build ios --release --dart-define=ENV=staging --dart-define=API_BASE_URL=http://100.69.69.119:8000/api/v1
-flutter build apk --release --dart-define=ENV=staging --dart-define=API_BASE_URL=http://100.69.69.119:8000/api/v1
+flutter build ios --release --dart-define=ENV=staging --dart-define=API_BASE_URL=http://100.69.69.119:8000/api/v1 --dart-define=API_KEY="$API_KEY"
+flutter build apk --release --dart-define=ENV=staging --dart-define=API_BASE_URL=http://100.69.69.119:8000/api/v1 --dart-define=API_KEY="$API_KEY"
 
 # App Store IPA / archive
 flutter build ipa --release
@@ -158,7 +200,8 @@ Health: http://100.69.69.119:8000/api/v1/health
 
 - 기본 release 환경은 production이며 `https://api.voicetextnote.com/api/v1`을 사용한다.
 - `api.voicetextnote.com` DNS/HTTPS 백엔드가 준비되지 않은 상태에서 기본 release 빌드를 실기기에 설치하면 Google 계정 선택 후 `/auth/google` 호출 단계에서 "서버에 연결할 수 없습니다"가 발생한다.
-- 현재 private staging 실기기 검증은 반드시 `--dart-define=ENV=staging`과 `--dart-define=API_BASE_URL=http://100.69.69.119:8000/api/v1`을 함께 지정해 빌드한다.
+- 현재 private staging 실기기 검증은 반드시 `--dart-define=ENV=staging`, `--dart-define=API_BASE_URL=http://100.69.69.119:8000/api/v1`, `--dart-define=API_KEY="$API_KEY"`를 함께 지정해 빌드한다.
+- 기본 production placeholder release APK를 실기기에 설치하면 앱이 blank screen으로 보일 수 있다. 이 경우 코드를 고치기 전에 staging dart-define이 빠진 빌드인지 먼저 확인한다.
 - iOS ATS와 Android release/profile network security의 HTTP 예외는 `100.69.69.119`에만 좁게 허용한다. 새 HTTP staging host를 쓰려면 플랫폼 보안 설정과 테스트를 함께 갱신한다.
 
 2026-07-01 실기기 릴리스 설치 기준:
@@ -175,7 +218,8 @@ cd client
 flutter run --release --no-pub --no-resident \
   -d 00008150-000239020C08401C \
   --dart-define=ENV=staging \
-  --dart-define=API_BASE_URL=http://100.69.69.119:8000/api/v1
+  --dart-define=API_BASE_URL=http://100.69.69.119:8000/api/v1 \
+  --dart-define=API_KEY="$API_KEY"
 ```
 
 Android에서 동일한 명령을 직접 실행해야 할 때:
@@ -185,10 +229,11 @@ cd client
 flutter run --release --no-pub --no-resident \
   -d 76aadc20 \
   --dart-define=ENV=staging \
-  --dart-define=API_BASE_URL=http://100.69.69.119:8000/api/v1
+  --dart-define=API_BASE_URL=http://100.69.69.119:8000/api/v1 \
+  --dart-define=API_KEY="$API_KEY"
 ```
 
-2026-07-01 Android `Redmi Note 9 Pro` 검증에서 오래된 설치본은 결과 화면 탭이 11개였고 `약속 레이더` 탭이 없었다. 최신 staging release 재설치 후 `adb shell dumpsys package com.voicetextnote.app`의 `lastUpdateTime=2026-07-01 15:39:18`, UIAutomator dump의 `약속 레이더\n탭 12개 중 4번째`, release APK 문자열의 `http://100.69.69.119:8000/api/v1`을 확인했다. Promise Radar 메뉴가 보이지 않으면 먼저 stale APK 설치 여부를 의심하고 위 명령으로 재설치한다.
+2026-07-01 Android `Redmi Note 9 Pro` 검증에서 오래된 설치본은 결과 화면 탭이 11개였고 `약속 레이더` 탭이 없었다. 최신 staging release 재설치 후 `adb shell dumpsys package com.voicetextnote.app`의 `lastUpdateTime=2026-07-01 19:56:54`, UIAutomator dump의 `약속 레이더\n탭 12개 중 4번째`, release APK SHA-256 `d75e70b96a30e03988a292658ef51086fbe67f19b8c084d28ff6744c6432ec2a`, release APK network-security-config의 `base-config cleartextTrafficPermitted=false` 및 `100.69.69.119` 단일 cleartext 예외를 확인했다. Promise Radar 메뉴가 보이지 않거나 앱이 blank screen이면 먼저 stale APK 또는 staging dart-define 누락 여부를 의심하고 위 명령으로 재설치한다. `verify_promise_radar_device_gate.py`가 `Promise Radar tab missing or stale tab count: None`으로 실패하면 앱 문제가 아니라 Android가 MIUI 공유 시트(`MiuiChooserActivity`, 제목 `공유`)에 머물러 있을 수 있다. 이 경우 `adb shell input keyevent HOME` 후 `adb shell monkey -p com.voicetextnote.app -c android.intent.category.LAUNCHER 1`로 앱을 다시 앞으로 가져와 결과 화면 UI dump가 복원된 뒤 gate를 재실행한다.
 
 Archive 설치 경로를 써야 할 때:
 
@@ -348,3 +393,5 @@ gh release create v1.7.0 \
 | 2.3 E2E | `FIREBASE_TEST_DEVICE_TOKEN`, `RELEASE_E2E_EVIDENCE_PATH` | repo 내부 evidence JSON 21개 required scenario `pass:true` + `platforms` 계약 일치 + scenario별 device id + 중복 없는 screenshot/log/video/trace/attachment 관측 산출물 단서와 scenario key를 포함한 시나리오별 고유 파일명/URL/`artifact:`/`attachment:` 식별자 |
 | 3.1 Runner | (GitHub Actions) | `verify_github_mobile_release_env.py` PASS |
 | 4.1 Release | (README + tag) | `git tag` + GitHub Release 확인 |
+
+2026-07-01 Mac mini strict 상태: Android-only scenario 4개는 실제 evidence로 `pass:true`이며, strict 결과는 `release_readiness: 17 errors, 1 warnings`이다. 남은 17개는 iOS-only 또는 Android+iOS 공통 scenario이므로 iOS UI/스크린샷/푸시/딥링크 관측 경로가 준비되기 전에는 통과시키지 않는다.

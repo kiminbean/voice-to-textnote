@@ -1,0 +1,9 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<testsuite name="com.voicetextnote.app.NetworkSecurityPolicyInstrumentedTest" tests="1" failures="0" errors="0" skipped="0" time="2.616" timestamp="2026-07-01T10:52:20" hostname="localhost">
+  <properties>
+    <property name="device" value="Redmi Note 9 Pro - 12" />
+    <property name="flavor" value="" />
+    <property name="project" value=":app" />
+  </properties>
+  <testcase name="debugBuildAllowsOnlyLocalAndTailscaleCleartext" classname="com.voicetextnote.app.NetworkSecurityPolicyInstrumentedTest" time="0.005" />
+</testsuite>
