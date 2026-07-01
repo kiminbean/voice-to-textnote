@@ -1,0 +1,8 @@
+scenario=permission_microphone_initial
+platform=android
+device=76aadc20
+observed=Android runtime microphone permission prompt
+ui_dump=docs/release-e2e-artifacts/permission_microphone_initial_android-ui.xml
+screenshot=docs/release-e2e-artifacts/permission_microphone_initial_android-screen.png
+expected_text=Voice TextNote에서 오디오를 녹음하도록 허용하시겠습니까?
+buttons=앱 사용 중에만 허용|이번만 허용|허용 안함

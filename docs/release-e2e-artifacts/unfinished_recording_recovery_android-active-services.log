@@ -1,0 +1,50 @@
+ACTIVITY MANAGER SERVICES (dumpsys activity services)
+  User 0 active services:
+  * ServiceRecord{b99d055 u0 com.voicetextnote.app/.RecordingService}
+    intent={cmp=com.voicetextnote.app/.RecordingService}
+    packageName=com.voicetextnote.app
+    processName=com.voicetextnote.app
+    baseDir=/data/app/~~F8-fHVpxQILgBKbTgGoE0Q==/com.voicetextnote.app-0-g-AH8cBlOM9KZw5ZcE9w==/base.apk
+    dataDir=/data/user/0/com.voicetextnote.app
+    app=ProcessRecord{8e53335 32742:com.voicetextnote.app/u0a432}
+    allowWhileInUsePermissionInFgs=true
+    recentCallingPackage=com.voicetextnote.app
+    recentCallingUid=10432
+    allowStartForeground=12
+    startForegroundCount=1
+    infoAllowStartForeground=[callingPackage: com.voicetextnote.app; callingUid: 10432; uidState: TOP ; intent: Intent { cmp=com.voicetextnote.app/.RecordingService }; code:PROC_STATE_TOP; tempAllowListReason:<null>; targetSdkVersion:35; callerTargetSdkVersion:35; startForegroundCount:0; bindFromPackage:null]
+    isForeground=true foregroundId=1 foregroundNoti=Notification(channel=recording_channel shortcut=null contentView=null vibrate=null sound=null defaults=0x0 flags=0x62 color=0x00000000 vis=PRIVATE)
+    createTime=-13s673ms startingBgTimeout=--
+    lastActivity=-13s672ms restartTime=-13s672ms createdFromFg=true
+    startRequested=true delayedStop=false stopIfKilled=false callStart=true lastStartId=1
+
+  * ServiceRecord{61b9aed u0 com.voicetextnote.app/io.flutter.plugins.firebase.messaging.FlutterFirebaseMessagingService}
+    intent={act=com.google.firebase.MESSAGING_EVENT pkg=com.voicetextnote.app}
+    packageName=com.voicetextnote.app
+    processName=com.voicetextnote.app
+    baseDir=/data/app/~~F8-fHVpxQILgBKbTgGoE0Q==/com.voicetextnote.app-0-g-AH8cBlOM9KZw5ZcE9w==/base.apk
+    dataDir=/data/user/0/com.voicetextnote.app
+    app=ProcessRecord{8e53335 32742:com.voicetextnote.app/u0a432}
+    allowWhileInUsePermissionInFgs=true
+    recentCallingPackage=com.voicetextnote.app
+    recentCallingUid=10432
+    allowStartForeground=12
+    startForegroundCount=0
+    infoAllowStartForeground=[callingPackage: com.voicetextnote.app; callingUid: 10432; uidState: TOP ; intent: Intent { act=com.google.firebase.MESSAGING_EVENT pkg=com.voicetextnote.app }; code:PROC_STATE_TOP; tempAllowListReason:<null>; targetSdkVersion:35; callerTargetSdkVersion:35; startForegroundCount:0; bindFromPackage:null]
+    createTime=-1m52s978ms startingBgTimeout=--
+    lastActivity=-1m52s977ms restartTime=-1m52s977ms createdFromFg=true
+    Bindings:
+    * IntentBindRecord{2a947c1 CREATE}:
+      intent={act=com.google.firebase.MESSAGING_EVENT pkg=com.voicetextnote.app}
+      binder=android.os.BinderProxy@6368b66
+      requested=true received=true hasBound=true doRebind=false
+      * Client AppBindRecord{a969ea7 ProcessRecord{8e53335 32742:com.voicetextnote.app/u0a432}}
+        Per-process Connections:
+          ConnectionRecord{7d85504 u0 CR IMP com.voicetextnote.app/io.flutter.plugins.firebase.messaging.FlutterFirebaseMessagingService:@2bfdd17}
+    All Connections:
+      ConnectionRecord{7d85504 u0 CR IMP com.voicetextnote.app/io.flutter.plugins.firebase.messaging.FlutterFirebaseMessagingService:@2bfdd17}
+
+  Connection bindings to services:
+  * ConnectionRecord{7d85504 u0 CR IMP com.voicetextnote.app/io.flutter.plugins.firebase.messaging.FlutterFirebaseMessagingService:@2bfdd17}
+    binding=AppBindRecord{a969ea7 com.voicetextnote.app/io.flutter.plugins.firebase.messaging.FlutterFirebaseMessagingService:com.voicetextnote.app}
+    conn=android.os.BinderProxy@2bfdd17 flags=0x41

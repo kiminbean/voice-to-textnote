@@ -913,7 +913,7 @@ Copyright (c) 2026 kiminbean. **All Rights Reserved.**
 **마지막 업데이트**: 2026-07-01
 **버전**: 1.7.0
 **상태**: Phase 8 진행 중 — SPEC-OBSIDIAN-001 Obsidian Vault 연계 완료 + UI 재설계(디자인 시스템, 다크모드) 완료, 감정/톤 분석 활성화, 라이선스 All Rights Reserved 전환
-**최근 확인**: Promise Radar backend targeted 17 tests + Android device gate parser tests + Flutter model test + Flutter analyze 통과. Android `Redmi Note 9 Pro`에는 최신 staging release가 설치됐고 `약속 레이더` 탭이 표시됨을 확인했다. iPhone 17 Pro에서는 Release XCUITest launch smoke가 PASS했고 screenshot/UI hierarchy attachment가 보존됐다. Strict release readiness는 남은 17개 iOS/common 실기기 E2E scenario evidence가 채워져야 통과 가능.
+**최근 확인**: Promise Radar backend targeted 17 tests + Android device gate parser tests + Flutter model test + Flutter analyze 통과. Android `Redmi Note 9 Pro`에는 최신 staging release가 설치됐고 `약속 레이더` 탭이 표시됨을 확인했다. iPhone 17 Pro에서는 Release XCUITest launch smoke와 `permission_microphone_initial`, `permission_denied_recovery`, `unfinished_recording_recovery` Release XCUITest 증거가 PASS했다. Strict release readiness는 현재 `release_readiness: 13 errors, 1 warnings`이며, 남은 13개 iOS/common 실기기 E2E scenario evidence가 채워져야 통과 가능하다.
 
 ### 구현 완료 SPEC 목록
 

@@ -261,6 +261,7 @@ openapi:200
 | `/openapi.json` 500 | `pydantic` 파일/메타데이터 버전 불일치 | 서버 Python에서 `pydantic[email]>=2.9` 재설치 |
 | 앱에서 로컬 API 접근 실패 가능 | iPhone의 `localhost`는 Mac이 아니며, iOS Local Network/ATS 설정 필요 | `API_BASE_URL`을 Mac LAN/Tailscale IP로 지정하고 `Info.plist`에 local network/ATS 예외 추가 |
 | iPhone release에서 Google 계정 선택 후 "서버에 연결할 수 없습니다" | release 앱이 unresolved production host `https://api.voicetextnote.com/api/v1`로 빌드됨. 실제 서버는 `http://100.69.69.119:8000/api/v1` | `flutter build ios --release --dart-define=ENV=staging --dart-define=API_BASE_URL=http://100.69.69.119:8000/api/v1`으로 재빌드하고 `build/ios/iphoneos/Runner.app` 설치 |
+| iOS Release XCUITest가 `The application could not be launched because the Developer App Certificate is not trusted`로 실패 | 앱 uninstall/reinstall 뒤 iPhone이 `Apple Development: Created via API (5WDG3L7L32)` 개발자 앱 인증서를 신뢰하지 않음. `xcodebuild build-for-testing`은 성공하고 `xcodebuild test` launch만 실패하면 코드 문제가 아니라 기기 신뢰 설정 문제다. | iPhone에서 `설정 > 일반 > VPN 및 기기 관리 > Apple Development: Created via API (5WDG3L7L32) > 신뢰`를 완료한 뒤 같은 Release XCUITest를 다시 실행 |
 
 ## 2026-06-30 iPhone release Google login incident
 

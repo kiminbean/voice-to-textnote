@@ -1,0 +1,31 @@
+Optional(Attributes: Application, 0x1175bbd40, pid: 25679, label: 'Voice TextNote'
+Element subtree:
+ →Application, 0x1175bbd40, pid: 25679, label: 'Voice TextNote'
+    Window (Main), 0x1175bb700, {{0.0, 0.0}, {402.0, 874.0}}
+      Other, 0x1175b8a00, {{0.0, 0.0}, {402.0, 874.0}}
+        Other, 0x1175ba800, {{0.0, 0.0}, {402.0, 874.0}}
+          Other, 0x1175bbe80, {{0.0, 0.0}, {402.0, 874.0}}
+            Other, 0x1175bb5c0, {{0.0, 0.0}, {402.0, 874.0}}
+              Other, 0x1175ba940, {{0.0, 0.0}, {402.0, 874.0}}
+              Other, 0x1175bb480, {{0.0, 0.0}, {402.0, 874.0}}
+                Other, 0x1175b9400, {{0.0, 0.0}, {402.0, 874.0}}, label: '닫기'
+                Other, 0x1175ba1c0, {{0.0, 0.0}, {402.0, 874.0}}
+                  Other, 0x1175b8dc0, {{0.0, 0.0}, {402.0, 874.0}}
+                  Other, 0x1175b9e00, {{0.0, 0.0}, {402.0, 874.0}}
+                    Other, 0x1175ba580, {{0.0, 0.0}, {402.0, 874.0}}
+                    Other, 0x1175ba080, {{0.0, 0.0}, {402.0, 874.0}}
+                      Other, 0x1175b9cc0, {{0.0, 62.0}, {402.0, 778.0}}
+                      StaticText, 0x1175ba440, {{64.0, 368.5}, {274.0, 33.0}}, label: '마이크 권한 필요'
+                      Other, 0x1175ba300, {{0.0, 0.0}, {402.0, 874.0}}
+                        Other, 0x1175bad00, {{64.0, 417.5}, {274.0, 44.0}}
+                        StaticText, 0x1175bb0c0, {{64.0, 417.5}, {274.0, 44.0}}, label: '회의 녹음을 위해 마이크 접근 권한이 필요합니다.'
+                      Button, 0x1175bb200, {{163.8, 485.5}, {64.0, 48.0}}, label: '취소'
+                      Button, 0x1175bb980, {{235.8, 485.5}, {102.2, 48.0}}, label: '권한 허용'
+Path to element:
+ →Application, 0x1175bbd40, pid: 25679, label: 'Voice TextNote'
+Query chain:
+ →Find: Target Application 'com.voicetextnote.app'
+  Output: {
+    Application, 0x1175baf80, pid: 25679, label: 'Voice TextNote'
+  }
+)

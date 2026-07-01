@@ -1,0 +1,53 @@
+[
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00008150-000239020C08401C",
+        "deviceName" : "Inbean의 iPhone",
+        "exportedFileName" : "74FDEED0-3313-4C0D-BA28-8AFCC5B23CD7.txt",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "permission_microphone_initial_ios_after_allow_0_3E0C0988-84D7-4603-A722-59C310777BA3.txt",
+        "timestamp" : 1782909559.748
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00008150-000239020C08401C",
+        "deviceName" : "Inbean의 iPhone",
+        "exportedFileName" : "303410A2-9836-436D-B9A2-DA0075005911.txt",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "permission_microphone_initial_ios_springboard_0_BD4E8FA9-64BD-48CF-AEAF-833CD248D982.txt",
+        "timestamp" : 1782909546.578
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00008150-000239020C08401C",
+        "deviceName" : "Inbean의 iPhone",
+        "exportedFileName" : "B39BD4DD-EE80-4C7C-ABD4-2AE5728F34DF.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "permission_microphone_initial_ios_prompt_0_EECD6C7C-EB54-4325-AF6F-3E7661D18AB4.png",
+        "timestamp" : 1782909546.306
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00008150-000239020C08401C",
+        "deviceName" : "Inbean의 iPhone",
+        "exportedFileName" : "D30C5972-DC3D-4C69-9974-03B992CAC0F0.txt",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "ios_recording_screen_ui_hierarchy_0_18CBC71A-332F-4E4C-9B57-5F9D7E1A2A8E.txt",
+        "timestamp" : 1782909543.819
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00008150-000239020C08401C",
+        "deviceName" : "Inbean의 iPhone",
+        "exportedFileName" : "F058A89C-3298-4AD0-8D3F-EF57CDC60F2C.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "permission_microphone_initial_ios_initial_0_C1AEFA9C-09AE-4E92-AA0B-523C1A9CC6CB.png",
+        "timestamp" : 1782909541.127
+      }
+    ],
+    "testIdentifier" : "RunnerUITests/testPermissionMicrophoneInitialEvidence()",
+    "testIdentifierURL" : "test://com.apple.xcode/Runner/RunnerUITests/RunnerUITests/testPermissionMicrophoneInitialEvidence"
+  }
+]

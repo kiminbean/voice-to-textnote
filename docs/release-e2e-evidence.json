@@ -1,8 +1,8 @@
 {
-  "tested_at": "2026-07-01T11:01:19.471259+00:00",
+  "tested_at": "2026-07-01T13:01:24.137182+00:00",
   "tester": "ibkim",
-  "backend_version": "git:2360dea",
-  "client_version": "git:2360dea",
+  "backend_version": "git:51dc041",
+  "client_version": "git:51dc041",
   "release_gate": {
     "android_release_signing": true,
     "ios_production_entitlements": true,
@@ -15,7 +15,7 @@
       "os_version": "Android 12 API 31"
     },
     "ios": {
-      "udid": "C7DD57C9-48FC-5362-B2FB-ED87CFFD51FA",
+      "udid": "00008150-000239020C08401C",
       "model": "iPhone 17 Pro (iPhone18,1)",
       "os_version": "iOS 26.5.1 (23F81)"
     }
@@ -26,24 +26,24 @@
   },
   "artifact_sha256": {
     "android_apk": "d75e70b96a30e03988a292658ef51086fbe67f19b8c084d28ff6744c6432ec2a",
-    "ios_runner_app": "87bb41ab52064dff522ac02ac4cc40b688d2733f8ba75d3bc0959d84fb1039e9"
+    "ios_runner_app": "47437a946556dd19a25431984b84249495eb76f47e2c1f37d1df67587eec5211"
   },
   "scenarios": {
     "permission_microphone_initial": {
-      "pass": false,
+      "pass": true,
       "platforms": [
         "android",
         "ios"
       ],
-      "evidence": "TODO: Initial microphone permission prompt"
+      "evidence": "Android device 76aadc20 observed permission_microphone_initial runtime microphone prompt. screenshot docs/release-e2e-artifacts/permission_microphone_initial_android-screen.png and UI dump docs/release-e2e-artifacts/permission_microphone_initial_android-ui.xml show \"Voice TextNote에서 오디오를 녹음하도록 허용하시겠습니까?\" with buttons \"앱 사용 중에만 허용\", \"이번만 허용\", and \"허용 안함\". iOS device 00008150-000239020C08401C observed permission_microphone_initial via Release XCUITest RunnerUITests/testPermissionMicrophoneInitialEvidence with ** TEST SUCCEEDED **. Attachments docs/release-e2e-artifacts/permission_microphone_initial_ios_20260701213835_attachments/manifest.json, prompt screenshot docs/release-e2e-artifacts/permission_microphone_initial_ios_20260701213835_attachments/B39BD4DD-EE80-4C7C-ABD4-2AE5728F34DF.png, and SpringBoard hierarchy docs/release-e2e-artifacts/permission_microphone_initial_ios_20260701213835_attachments/303410A2-9836-436D-B9A2-DA0075005911.txt show the iOS microphone access prompt and allow flow."
     },
     "permission_denied_recovery": {
-      "pass": false,
+      "pass": true,
       "platforms": [
         "android",
         "ios"
       ],
-      "evidence": "TODO: Permission denial recovery UI"
+      "evidence": "Android device 76aadc20 observed permission_denied_recovery after denying RECORD_AUDIO. screenshot docs/release-e2e-artifacts/permission_denied_recovery_android-screen.png, UI dump docs/release-e2e-artifacts/permission_denied_recovery_android-ui.xml, and log docs/release-e2e-artifacts/permission_denied_recovery_android-permission.log show \"마이크 권한 필요\", \"회의 녹음을 위해 마이크 접근 권한이 필요합니다.\", \"취소\", and \"권한 허용\" while android.permission.RECORD_AUDIO is granted=false. iOS device 00008150-000239020C08401C observed permission_denied_recovery via Release XCUITest RunnerUITests/testPermissionDeniedRecoveryEvidence with ** TEST SUCCEEDED **. Attachments docs/release-e2e-artifacts/permission_denied_recovery_ios_20260701214254_attachments/manifest.json, prompt screenshot docs/release-e2e-artifacts/permission_denied_recovery_ios_20260701214254_attachments/6BF9735E-09FE-4CBF-93A1-B26520DFD9FC.png, SpringBoard hierarchy docs/release-e2e-artifacts/permission_denied_recovery_ios_20260701214254_attachments/5213FB23-46B4-49D2-A095-740C56B590F4.txt, verified screenshot docs/release-e2e-artifacts/permission_denied_recovery_ios_20260701214254_attachments/95835345-83A3-494F-A472-166EEC8329EF.png, and UI hierarchy docs/release-e2e-artifacts/permission_denied_recovery_ios_20260701214254_attachments/8038CD7F-C2D6-48FD-83B7-02477ED4F6E4.txt show denial followed by the app permission recovery UI."
     },
     "ios_background_recording_lock": {
       "pass": false,
@@ -67,12 +67,12 @@
       "evidence": "TODO: iOS Bluetooth route change"
     },
     "unfinished_recording_recovery": {
-      "pass": false,
+      "pass": true,
       "platforms": [
         "android",
         "ios"
       ],
-      "evidence": "TODO: Unfinished recording recovery after restart"
+      "evidence": "Android device 76aadc20 observed unfinished_recording_recovery after foreground recording, force-stop, relaunch, and opening the recording screen. active screenshot docs/release-e2e-artifacts/unfinished_recording_recovery_android-active-screen.png, UI dump docs/release-e2e-artifacts/unfinished_recording_recovery_android-active-ui.xml, and service log docs/release-e2e-artifacts/unfinished_recording_recovery_android-active-services.log show \"녹음 중\", \"경과 시간 00:12\", \"녹음 중지\", and RecordingService isForeground=true foregroundId=1. relaunch screenshot docs/release-e2e-artifacts/unfinished_recording_recovery_android-relaunch-screen.png, UI dump docs/release-e2e-artifacts/unfinished_recording_recovery_android-relaunch-ui.xml, and log docs/release-e2e-artifacts/unfinished_recording_recovery_android-recovery.log show \"중단된 녹음이 있습니다\", \"이전 녹음 세션이 정상적으로 종료되지 않았습니다.\", \"삭제\", and \"이어서 진행\". iOS device 00008150-000239020C08401C observed unfinished_recording_recovery via Release XCUITest RunnerUITests/testUnfinishedRecordingRecoveryEvidence with ** TEST SUCCEEDED ** in 80.429 seconds. Attachments docs/release-e2e-artifacts/unfinished_recording_recovery_ios_20260701215739_attachments/manifest.json, active recording screenshot docs/release-e2e-artifacts/unfinished_recording_recovery_ios_20260701215739_attachments/148F73F3-AE50-4B88-B645-BB31B9CAFCBC.png, active UI hierarchy docs/release-e2e-artifacts/unfinished_recording_recovery_ios_20260701215739_attachments/58B4141B-AB7F-4781-BEBF-8E0E8FDF46B4.txt, relaunch recovery screenshot docs/release-e2e-artifacts/unfinished_recording_recovery_ios_20260701215739_attachments/2B6A13B6-FC20-4166-8ED5-5669C668FF89.png, and relaunch recovery UI hierarchy docs/release-e2e-artifacts/unfinished_recording_recovery_ios_20260701215739_attachments/8BCC0B2A-0DA4-4776-A263-9E3B303D3822.txt show \"녹음 중\" before forced relaunch and \"중단된 녹음이 있습니다\" after relaunch."
     },
     "push_stt_complete": {
       "pass": false,
@@ -136,11 +136,11 @@
       "evidence": "Android device 76aadc20 observed android_release_cleartext_blocked with rebuilt staging release APK sha256 d75e70b96a30e03988a292658ef51086fbe67f19b8c084d28ff6744c6432ec2a installed successfully. logs docs/release-e2e-artifacts/android_release_cleartext_blocked-network-security.log show release network-security-config base-config cleartextTrafficPermitted=false and the only cleartext domain exception is 100.69.69.119. logs docs/release-e2e-artifacts/android_release_cleartext_blocked-manifest.log show android:networkSecurityConfig is packaged in the release manifest. logs docs/release-e2e-artifacts/android_staging_release_package.log show installed com.voicetextnote.app versionName=1.0.0 targetSdk=35 without debug flags; screenshot docs/release-e2e-artifacts/android_staging_release_screen.png and UI dump docs/release-e2e-artifacts/android_staging_release_ui.xml show Voice TextNote login screen after launch."
     },
     "ios_release_http_blocked": {
-      "pass": false,
+      "pass": true,
       "platforms": [
         "ios"
       ],
-      "evidence": "TODO: iOS release non-staging HTTP blocked"
+      "evidence": "iOS device 00008150-000239020C08401C (CoreDevice C7DD57C9-48FC-5362-B2FB-ED87CFFD51FA) observed ios_release_http_blocked via Release staging build configuration and ATS/AppConfig logs. logs artifact:docs/release-e2e-artifacts/ios_release_http_blocked-ats-appconfig.log show NSAllowsArbitraryLoads=false, the only HTTP ATS exception is 100.69.69.119, Generated.xcconfig contains ENV=staging and API_BASE_URL=http://100.69.69.119:8000/api/v1, and AppConfig release guards reject default production release and non-staging HTTP URLs."
     },
     "export_share_android": {
       "pass": true,

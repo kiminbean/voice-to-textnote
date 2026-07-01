@@ -1,0 +1,11 @@
+scenario=unfinished_recording_recovery
+platform=android
+device=76aadc20
+observed=Android force-stop during foreground recording, relaunch, then recording screen showed recovery dialog
+active_ui=docs/release-e2e-artifacts/unfinished_recording_recovery_android-active-ui.xml
+active_screenshot=docs/release-e2e-artifacts/unfinished_recording_recovery_android-active-screen.png
+active_services=docs/release-e2e-artifacts/unfinished_recording_recovery_android-active-services.log
+relaunch_ui=docs/release-e2e-artifacts/unfinished_recording_recovery_android-relaunch-ui.xml
+relaunch_screenshot=docs/release-e2e-artifacts/unfinished_recording_recovery_android-relaunch-screen.png
+active_expected=녹음 중|경과 시간 00:12|녹음 중지|RecordingService isForeground=true foregroundId=1
+relaunch_expected=중단된 녹음이 있습니다|이전 녹음 세션이 정상적으로 종료되지 않았습니다.|삭제|이어서 진행

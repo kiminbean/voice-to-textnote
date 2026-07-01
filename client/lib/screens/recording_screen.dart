@@ -44,6 +44,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
   late CaptureMode _selectedMode;
   String? _selectedVocabularyId;
   bool _isPermissionChecked = false;
+  bool _isPermissionDialogVisible = false;
   bool _promiseBriefDismissed = false;
   final Set<String> _acknowledgedPromiseIds = <String>{};
 
@@ -129,13 +130,22 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
     final permissionService = ref.read(permissionServiceProvider);
     final micStatus = await permissionService.checkMicrophonePermission();
     if (micStatus != PermissionStatus.granted) {
-      if (mounted) _showPermissionDialog(PermissionType.microphone);
+      if (mounted) _schedulePermissionDialog(PermissionType.microphone);
     } else {
       setState(() => _isPermissionChecked = true);
     }
   }
 
+  void _schedulePermissionDialog(PermissionType type) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _showPermissionDialog(type);
+    });
+  }
+
   void _showPermissionDialog(PermissionType type) {
+    if (_isPermissionDialogVisible) return;
+    _isPermissionDialogVisible = true;
     showDialog(
       context: context,
       builder: (context) => PermissionDialog(
@@ -143,7 +153,9 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
         onRequest: () => _requestPermission(type),
         onOpenSettings: () => _openSettings(),
       ),
-    );
+    ).whenComplete(() {
+      _isPermissionDialogVisible = false;
+    });
   }
 
   Future<void> _requestPermission(PermissionType type) async {
@@ -154,6 +166,8 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
         if (mounted) _showPermanentlyDeniedDialog(type);
       } else if (status == PermissionStatus.granted) {
         setState(() => _isPermissionChecked = true);
+      } else if (mounted) {
+        _schedulePermissionDialog(type);
       }
     }
   }

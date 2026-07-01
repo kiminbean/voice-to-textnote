@@ -1468,7 +1468,7 @@ def _devicectl_line_available(devicectl_output: str, identifiers: set[str]) -> b
         for line in devicectl_output.splitlines()
         if any(identifier and identifier in line for identifier in identifiers)
     ]
-    return any(re.search(r"\savailable\s", line) for line in matching_lines)
+    return any(re.search(r"\s(?:available|connected)\s", line) for line in matching_lines)
 
 
 def require_android_device(reporter: Reporter) -> None:

@@ -2644,3 +2644,38 @@ def test_strict_readiness_accepts_hardware_udid_from_devicectl_json(monkeypatch)
     module.require_ios_device(reporter)
 
     assert reporter.errors == []
+
+
+def test_strict_readiness_accepts_connected_devicectl_state(monkeypatch):
+    module = load_release_readiness_module()
+    reporter = module.Reporter()
+    core_device_id = "C7DD57C9-48FC-5362-B2FB-ED87CFFD51FA"
+    hardware_udid = "00008150-000239020C08401C"
+    table = f"Inbean의 iPhone host.local {core_device_id} connected iPhone 17 Pro"
+    payload = {
+        "result": {
+            "devices": [
+                {
+                    "identifier": core_device_id,
+                    "hardwareProperties": {"udid": hardware_udid},
+                    "connectionProperties": {
+                        "potentialHostnames": [
+                            f"{core_device_id}.coredevice.local",
+                            f"{hardware_udid}.coredevice.local",
+                        ]
+                    },
+                }
+            ]
+        }
+    }
+
+    monkeypatch.setenv("IOS_DEVICE_UDID", hardware_udid)
+    monkeypatch.setattr(
+        module,
+        "read_command_output",
+        lambda *_args: (0, table + "\n" + json.dumps(payload)),
+    )
+
+    module.require_ios_device(reporter)
+
+    assert reporter.errors == []

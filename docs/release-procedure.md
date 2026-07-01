@@ -10,9 +10,8 @@
 - [x] `verify_release_readiness.py` (default) — 0 errors
 - [x] CI: Test & Lint PASS, Flutter Android PASS, Flutter iOS PASS
 - [x] 백엔드: 4005 passed, Flutter: 415 passed, backend coverage 100.00%
-- [ ] `verify_release_readiness.py --strict` — 초기 외부 입력 미설정 기준 **13 errors**는 Mac mini 로컬 secret/device env로 해소됐다.
-  2026-07-01 현재 보유한 secret/iPhone/Android 입력 기준으로는 **17 errors, 1 warning**이 남아 있다:
-  Android-only scenario 4개는 실제 evidence로 `pass:true`이며, 나머지 iOS-only 또는 Android+iOS 공통 실기기 E2E scenario는 아직 실제 screenshot/log/video/trace evidence가 필요하다.
+- [ ] `verify_release_readiness.py --strict` — Mac mini 로컬 secret/device env는 PASS이며, 2026-07-01 현재 **13 errors, 1 warning**이 남아 있다.
+  Android-only scenario 4개, iOS HTTP 정책 scenario 1개, Android+iOS 공통 scenario 3개(`permission_microphone_initial`, `permission_denied_recovery`, `unfinished_recording_recovery`)는 실제 evidence로 `pass:true`다. 나머지 iOS-only 또는 Android+iOS 공통 실기기 E2E scenario는 아직 실제 screenshot/log/video/trace evidence가 필요하다.
 
 ---
 
@@ -394,4 +393,4 @@ gh release create v1.7.0 \
 | 3.1 Runner | (GitHub Actions) | `verify_github_mobile_release_env.py` PASS |
 | 4.1 Release | (README + tag) | `git tag` + GitHub Release 확인 |
 
-2026-07-01 Mac mini strict 상태: Android-only scenario 4개는 실제 evidence로 `pass:true`이며, strict 결과는 `release_readiness: 17 errors, 1 warnings`이다. iOS Release XCUITest launch smoke는 iPhone 17 Pro에서 PASS했고 screenshot/UI hierarchy attachment 경로가 확보됐다. 남은 17개는 iOS-only 또는 Android+iOS 공통 scenario이므로 각 scenario별 실제 조작/스크린샷/푸시/딥링크 관측 증거가 채워지기 전에는 통과시키지 않는다.
+2026-07-01 Mac mini strict 상태: Android-only scenario 4개, iOS HTTP 정책 scenario 1개, Android+iOS 공통 scenario 3개는 실제 evidence로 `pass:true`이며, strict 결과는 `release_readiness: 13 errors, 1 warnings`이다. Android+iOS 공통 scenario 중 `permission_microphone_initial`, `permission_denied_recovery`, `unfinished_recording_recovery`는 Redmi Note 9 Pro `76aadc20` Android screenshot/UI dump/service log와 iPhone `00008150-000239020C08401C` Release XCUITest attachment를 모두 확보했다. iOS Release XCUITest launch smoke도 iPhone 17 Pro에서 PASS했고 screenshot/UI hierarchy attachment 경로가 확보됐다. 앱 uninstall/reinstall 뒤 `The application could not be launched because the Developer App Certificate is not trusted`가 나오면 iPhone에서 `설정 > 일반 > VPN 및 기기 관리 > Apple Development: Created via API (5WDG3L7L32) > 신뢰`를 먼저 완료한다. 남은 13개는 iOS-only 또는 Android+iOS 공통 scenario이므로 각 scenario별 실제 조작/스크린샷/푸시/딥링크 관측 증거가 채워지기 전에는 통과시키지 않는다.

@@ -1,0 +1,62 @@
+[
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00008150-000239020C08401C",
+        "deviceName" : "Inbean의 iPhone",
+        "exportedFileName" : "95835345-83A3-494F-A472-166EEC8329EF.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "permission_denied_recovery_ios_verified_0_6FF61556-4792-4F1F-8930-7B9DBB1F872C.png",
+        "timestamp" : 1782909826.364
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00008150-000239020C08401C",
+        "deviceName" : "Inbean의 iPhone",
+        "exportedFileName" : "8038CD7F-C2D6-48FD-83B7-02477ED4F6E4.txt",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "permission_denied_recovery_ios_ui_hierarchy_0_64DABEB4-9547-49AA-BB51-1D6EFF9BF85E.txt",
+        "timestamp" : 1782909826.284
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00008150-000239020C08401C",
+        "deviceName" : "Inbean의 iPhone",
+        "exportedFileName" : "5213FB23-46B4-49D2-A095-740C56B590F4.txt",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "permission_denied_recovery_ios_springboard_0_8C82E326-C7D4-4FE2-AC67-CAECFB808125.txt",
+        "timestamp" : 1782909817.55
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00008150-000239020C08401C",
+        "deviceName" : "Inbean의 iPhone",
+        "exportedFileName" : "6BF9735E-09FE-4CBF-93A1-B26520DFD9FC.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "permission_denied_recovery_ios_prompt_0_81DEB18A-E8E8-45A1-9721-0B0A706D8BD3.png",
+        "timestamp" : 1782909817.28
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00008150-000239020C08401C",
+        "deviceName" : "Inbean의 iPhone",
+        "exportedFileName" : "341F418D-C775-469E-9E61-8C9132B38C88.txt",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "ios_recording_screen_ui_hierarchy_0_99E7F440-3643-42E6-A48A-F2CC8EF70575.txt",
+        "timestamp" : 1782909814.764
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00008150-000239020C08401C",
+        "deviceName" : "Inbean의 iPhone",
+        "exportedFileName" : "C7B29201-63F5-4676-A40D-96035AB0CCF4.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "permission_denied_recovery_ios_initial_0_1C7EF6D7-0EAA-44A8-ADF9-0E3370BDC017.png",
+        "timestamp" : 1782909812.084
+      }
+    ],
+    "testIdentifier" : "RunnerUITests/testPermissionDeniedRecoveryEvidence()",
+    "testIdentifierURL" : "test://com.apple.xcode/Runner/RunnerUITests/RunnerUITests/testPermissionDeniedRecoveryEvidence"
+  }
+]

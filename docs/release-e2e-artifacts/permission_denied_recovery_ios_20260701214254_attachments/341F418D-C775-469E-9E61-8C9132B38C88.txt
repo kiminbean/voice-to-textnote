@@ -1,0 +1,58 @@
+Optional(Attributes: Application, 0x116e370c0, pid: 25679, label: 'Voice TextNote'
+Element subtree:
+ →Application, 0x116e370c0, pid: 25679, label: 'Voice TextNote'
+    Window (Main), 0x116e35f40, {{0.0, 0.0}, {402.0, 874.0}}
+      Other, 0x116e36a80, {{0.0, 0.0}, {402.0, 874.0}}
+        Other, 0x116e37c00, {{0.0, 0.0}, {402.0, 874.0}}
+          Other, 0x116e37980, {{0.0, 0.0}, {402.0, 874.0}}
+            Other, 0x116e37700, {{0.0, 0.0}, {402.0, 874.0}}
+              Other, 0x116e37ac0, {{0.0, 0.0}, {402.0, 874.0}}
+              Other, 0x116e37840, {{0.0, 0.0}, {402.0, 874.0}}
+                Other, 0x116e36580, {{0.0, 0.0}, {402.0, 874.0}}
+                Other, 0x116e37200, {{0.0, 0.0}, {402.0, 874.0}}
+                  Other, 0x116e36bc0, {{0.0, 0.0}, {402.0, 874.0}}
+                  Other, 0x116e366c0, {{0.0, 0.0}, {402.0, 874.0}}
+                    Other, 0x116e36e40, {{0.0, 0.0}, {402.0, 874.0}}
+                    Other, 0x116e36440, {{0.0, 0.0}, {402.0, 874.0}}
+                      Other, 0x116e36800, {{0.0, 0.0}, {402.0, 214.0}}
+                      Other, 0x116e36940, {{0.0, 0.0}, {402.0, 874.0}}
+                        Other, 0x116e37d40, {{0.0, 0.0}, {402.0, 214.0}}
+                        Other, 0x116e375c0, {{16.0, 77.0}, {173.3, 34.0}}
+                        Button, 0x116e361c0, {{348.0, 67.0}, {54.0, 54.0}}, label: '메뉴'
+                      Other, 0x116e36f80, {{0.0, 0.0}, {402.0, 874.0}}
+                        Other, 0x116e37e80, {{0.0, 0.0}, {402.0, 214.0}}
+                        StaticText, 0x116e36d00, {{16.0, 152.0}, {173.3, 34.0}}, label: 'Voice TextNote'
+                    Other, 0x116e35b80, {{0.0, 0.0}, {402.0, 874.0}}
+                      ScrollView, 0x116def340, {{0.0, 0.0}, {402.0, 874.0}}
+                      StaticText, 0x116def200, {{55.0, 235.0}, {273.0, 20.0}}, label: '게스트 모드 — 데이터가 24시간 후 삭제됩니다'
+                      Button, 0x116dee440, {{328.0, 237.0}, {45.0, 16.0}}, label: '가입하기'
+                      StaticText, 0x116ded040, {{96.0, 316.5}, {266.0, 27.0}}, label: 'AI가 회의 기록을 대신합니다'
+                      StaticText, 0x116ded400, {{40.0, 368.0}, {322.0, 42.0}}, label: '녹음부터 실시간 전사, 요약, 액션 아이템, 팀 공유까지 한 흐름으로 정리하세요.'
+                      StaticText, 0x116dee940, {{73.0, 435.5}, {41.6, 15.0}}, label: '원탭 녹음'
+                      StaticText, 0x116defd40, {{168.6, 435.5}, {51.4, 15.0}}, label: '실시간 전사'
+                      StaticText, 0x116defc00, {{274.0, 435.5}, {51.4, 15.0}}, label: '액션 아이템'
+                      StaticText, 0x116def480, {{73.0, 477.5}, {62.5, 15.0}}, label: '공유/내보내기'
+                      Button, 0x116def5c0, {{40.0, 526.0}, {322.0, 48.0}}, label: '바로 기록 시작'
+                      StaticText, 0x116def840, {{40.0, 582.0}, {252.6, 16.0}}, label: '회의 내용을 놓치지 않도록 자동으로 정리합니다'
+                      StaticText, 0x116dec3c0, {{16.0, 634.0}, {181.0, 64.0}}, label: '파일 업로드
+WAV/MP3/M4A/MP4/OGG'
+                      StaticText, 0x116dec780, {{205.0, 634.0}, {181.0, 64.0}}, label: '온라인 회의
+Zoom/Meet/Teams'
+                      StaticText, 0x116decc80, {{16.0, 706.0}, {181.0, 65.0}}, label: '문서 가져오기
+PDF/DOCX/이미지 검색 노트'
+                      StaticText, 0x10bffa800, {{205.0, 706.5}, {181.0, 64.0}}, label: 'URL/Transcript
+YouTube, 웹 글, 외부 자료'
+                      StaticText, 0x10bffabc0, {{16.0, 779.0}, {370.0, 65.0}}, label: '명함 스캔
+촬영 또는 이미지 OCR 후 영업 탭에서 연락처 브리프'
+                      StaticText, 0x10bffaf80, {{0.0, 0.0}, {0.0, 0.0}}, label: '아직 녹음된 미팅이 없어요'
+                      StaticText, 0x10bffb0c0, {{0.0, 0.0}, {0.0, 0.0}}, label: '첫 번째 회의를 녹음해 보세요'
+                      Button, 0x10bffb200, {{0.0, 0.0}, {0.0, 0.0}}, label: '녹음 시작하기'
+                  Button, 0x10bffb480, {{264.1, 768.0}, {121.9, 56.0}}, label: '지금 녹음'
+Path to element:
+ →Application, 0x116e370c0, pid: 25679, label: 'Voice TextNote'
+Query chain:
+ →Find: Target Application 'com.voicetextnote.app'
+  Output: {
+    Application, 0x10bffa580, pid: 25679, label: 'Voice TextNote'
+  }
+)

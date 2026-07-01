@@ -1,0 +1,34 @@
+scenario=ios_release_http_blocked
+device=C7DD57C9-48FC-5362-B2FB-ED87CFFD51FA
+checked_at=2026-07-01T12:20:44Z
+--- Info.plist ATS ---
+  "NSAppTransportSecurity" => {
+    "NSAllowsArbitraryLoads" => false
+    "NSExceptionDomains" => {
+      "100.69.69.119" => {
+        "NSExceptionAllowsInsecureHTTPLoads" => true
+        "NSIncludesSubdomains" => false
+      }
+    }
+  }
+  "NSCameraUsageDescription" => "명함을 촬영해 영업 연락처 브리프를 만들기 위해 카메라 접근이 필요합니다."
+  "NSLocalNetworkUsageDescription" => "개발 중 로컬 백엔드 서버와 연결하기 위해 로컬 네트워크 접근이 필요합니다."
+  "NSMicrophoneUsageDescription" => "회의 녹음을 위해 마이크 접근이 필요합니다."
+  "NSPhotoLibraryUsageDescription" => "명함 이미지와 문서를 가져와 검색 가능한 노트로 만들기 위해 사진 보관함 접근이 필요합니다."
+--- AppConfig release guards ---
+19:  static const String stagingApiBaseUrl = 'http://100.69.69.119:8000/api/v1';
+20:  static const String productionApiBaseUrl =
+62:          url = stagingApiBaseUrl;
+64:          url = productionApiBaseUrl;
+68:    final isExplicitStagingHttp =
+69:        environment == Environment.staging && url == stagingApiBaseUrl;
+70:    final isDefaultProductionRelease = kReleaseMode &&
+73:    if (isDefaultProductionRelease) {
+75:        'Release production builds require an explicit API_BASE_URL. '
+78:        '--dart-define=API_BASE_URL=$stagingApiBaseUrl. '
+84:        !isExplicitStagingHttp) {
+86:        'Release builds require an HTTPS API_BASE_URL. '
+--- Generated iOS dart defines (sanitized) ---
+ENV=staging
+API_BASE_URL=http://100.69.69.119:8000/api/v1
+API_KEY=<redacted>

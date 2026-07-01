@@ -1,0 +1,32 @@
+Optional(Attributes: Application, 0x11769c500, pid: 25740, label: 'Voice TextNote'
+Element subtree:
+ →Application, 0x11769c500, pid: 25740, label: 'Voice TextNote'
+    Window (Main), 0x11769c3c0, {{0.0, 0.0}, {402.0, 874.0}}
+      Other, 0x11769c8c0, {{0.0, 0.0}, {402.0, 874.0}}
+        Other, 0x11769c780, {{0.0, 0.0}, {402.0, 874.0}}
+          Other, 0x11769c280, {{0.0, 0.0}, {402.0, 874.0}}
+            Other, 0x11769c000, {{0.0, 0.0}, {402.0, 874.0}}
+              Other, 0x116e1ed00, {{0.0, 0.0}, {402.0, 874.0}}
+              Other, 0x116e1cb40, {{0.0, 0.0}, {402.0, 874.0}}
+                Other, 0x116e1d040, {{0.0, 0.0}, {402.0, 874.0}}
+                Other, 0x11768f200, {{0.0, 0.0}, {402.0, 874.0}}
+                  Other, 0x11768e440, {{0.0, 0.0}, {402.0, 874.0}}
+                  Other, 0x11768e580, {{0.0, 0.0}, {402.0, 874.0}}
+                    Other, 0x11768e1c0, {{0.0, 0.0}, {402.0, 874.0}}
+                    Other, 0x11768ee40, {{0.0, 0.0}, {402.0, 874.0}}
+                      Other, 0x11768e6c0, {{0.0, 62.0}, {402.0, 778.0}}
+                      StaticText, 0x11768ea80, {{64.0, 321.5}, {274.0, 33.0}}, label: '중단된 녹음이 있습니다'
+                      Other, 0x11768f980, {{0.0, 0.0}, {402.0, 874.0}}
+                        Other, 0x11768e940, {{64.0, 370.5}, {274.0, 88.0}}
+                        StaticText, 0x11768f0c0, {{64.0, 370.5}, {274.0, 88.0}}, label: '이전 녹음 세션이 정상적으로 종료되지 않았습니다.
+해당 녹음 파일을 사용하시겠습니까, 아니면 삭제하시겠습니까?'
+                      Button, 0x11768f5c0, {{274.0, 482.5}, {64.0, 48.0}}, label: '삭제'
+                      Button, 0x11768f480, {{64.0, 530.5}, {274.0, 50.0}}, label: '이어서 진행'
+Path to element:
+ →Application, 0x11769c500, pid: 25740, label: 'Voice TextNote'
+Query chain:
+ →Find: Target Application 'com.voicetextnote.app'
+  Output: {
+    Application, 0x11768f700, pid: 25740, label: 'Voice TextNote'
+  }
+)

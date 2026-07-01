@@ -1,0 +1,10 @@
+scenario=permission_denied_recovery
+platform=android
+device=76aadc20
+observed=Android app microphone permission recovery UI after denying the runtime microphone prompt
+ui_dump=docs/release-e2e-artifacts/permission_denied_recovery_android-ui.xml
+screenshot=docs/release-e2e-artifacts/permission_denied_recovery_android-screen.png
+expected_text=마이크 권한 필요
+expected_body=회의 녹음을 위해 마이크 접근 권한이 필요합니다.
+buttons=취소|권한 허용
+permission_state=android.permission.RECORD_AUDIO granted=false
