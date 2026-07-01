@@ -101,6 +101,18 @@ class RecordingNotifier extends Notifier<RecordingState> {
     state = state.copyWith(lastRouteChangeReason: reason);
   }
 
+  void simulateInterruptionBeginForUiTest() {
+    _backgroundService.simulateInterruptionBeginForUiTest();
+  }
+
+  void simulateInterruptionEndForUiTest() {
+    _backgroundService.simulateInterruptionEndForUiTest();
+  }
+
+  void simulateRouteChangeForUiTest([String reason = 'oldDeviceUnavailable']) {
+    _backgroundService.simulateRouteChangeForUiTest(reason);
+  }
+
   Future<void> startRecording() async {
     final dir = await getApplicationDocumentsDirectory();
     final filePath =

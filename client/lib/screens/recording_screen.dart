@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:voice_to_textnote/config/app_config.dart';
 import 'package:voice_to_textnote/models/meeting.dart';
 import 'package:voice_to_textnote/models/promise_radar.dart';
 import 'package:voice_to_textnote/providers/meeting_list_provider.dart';
@@ -46,7 +47,13 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
   bool _isPermissionChecked = false;
   bool _isPermissionDialogVisible = false;
   bool _promiseBriefDismissed = false;
+  static const bool _compileTimeUiTestControlsEnabled =
+      bool.fromEnvironment('VOICE_TEXTNOTE_UI_TEST');
+  bool _uiTestControlsEnabled = _compileTimeUiTestControlsEnabled ||
+      AppConfig.environment != Environment.production;
   final Set<String> _acknowledgedPromiseIds = <String>{};
+  static const MethodChannel _recordingChannel =
+      MethodChannel('com.voicetextnote.app/recording');
 
   @override
   void initState() {
@@ -71,6 +78,30 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
         CurvedAnimation(parent: _pulseController, curve: Curves.easeOut);
     _checkPermissions();
     _checkInterruptedRecording();
+    if (!_uiTestControlsEnabled) {
+      _loadUiTestControlsEnabled();
+    }
+  }
+
+  Future<void> _loadUiTestControlsEnabled() async {
+    for (var attempt = 0; attempt < 12; attempt++) {
+      try {
+        final enabled =
+            await _recordingChannel.invokeMethod<bool>('isUiTestMode') ?? false;
+        if (!mounted) return;
+        if (enabled || attempt == 11) {
+          setState(() => _uiTestControlsEnabled = enabled);
+          return;
+        }
+      } catch (_) {
+        if (!mounted) return;
+        if (attempt == 11) {
+          setState(() => _uiTestControlsEnabled = false);
+          return;
+        }
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+    }
   }
 
   Future<void> _checkInterruptedRecording() async {
@@ -321,6 +352,22 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
                               color: AppColors.of(context).textSecondary,
                               fontWeight: FontWeight.w600,
                             ),
+                      ),
+                    ],
+                    if (_uiTestControlsEnabled &&
+                        (state.status == RecordingStatus.recording ||
+                            state.status == RecordingStatus.paused)) ...[
+                      const SizedBox(height: AppSpacing.sm),
+                      _UiTestRecordingControls(
+                        onInterruptionBegin: () => ref
+                            .read(recordingProvider.notifier)
+                            .simulateInterruptionBeginForUiTest(),
+                        onInterruptionEnd: () => ref
+                            .read(recordingProvider.notifier)
+                            .simulateInterruptionEndForUiTest(),
+                        onRouteChange: () => ref
+                            .read(recordingProvider.notifier)
+                            .simulateRouteChangeForUiTest(),
                       ),
                     ],
                     const SizedBox(height: AppSpacing.xl),
@@ -874,6 +921,41 @@ class _StatusPill extends StatelessWidget {
         RecordingStatus.paused => '일시 정지됨',
         RecordingStatus.stopped => '녹음 완료',
       };
+}
+
+class _UiTestRecordingControls extends StatelessWidget {
+  final VoidCallback onInterruptionBegin;
+  final VoidCallback onInterruptionEnd;
+  final VoidCallback onRouteChange;
+
+  const _UiTestRecordingControls({
+    required this.onInterruptionBegin,
+    required this.onInterruptionEnd,
+    required this.onRouteChange,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      alignment: WrapAlignment.center,
+      spacing: AppSpacing.xs,
+      runSpacing: AppSpacing.xs,
+      children: [
+        OutlinedButton(
+          onPressed: onInterruptionBegin,
+          child: const Text('UITest Interruption Begin'),
+        ),
+        OutlinedButton(
+          onPressed: onInterruptionEnd,
+          child: const Text('UITest Interruption End'),
+        ),
+        OutlinedButton(
+          onPressed: onRouteChange,
+          child: const Text('UITest Route Change'),
+        ),
+      ],
+    );
+  }
 }
 
 class _PreMeetingPromiseBrief extends StatelessWidget {

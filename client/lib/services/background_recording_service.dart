@@ -276,6 +276,18 @@ class BackgroundRecordingService {
     }
   }
 
+  void simulateInterruptionBeginForUiTest() {
+    _handleInterruptionBegin();
+  }
+
+  void simulateInterruptionEndForUiTest() {
+    _handleInterruptionEnd(shouldResume: true);
+  }
+
+  void simulateRouteChangeForUiTest(String reason) {
+    onRouteChanged?.call(reason);
+  }
+
   /// 백그라운드 녹음 중지
   Future<String?> stopRecording() async {
     _flushTimer?.cancel();

@@ -1,0 +1,44 @@
+[
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00008150-000239020C08401C",
+        "deviceName" : "Inbean의 iPhone",
+        "exportedFileName" : "7E5D76AC-C0A1-4EEC-9C11-D508BFF7CABB.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "ios_bluetooth_route_change_0_BD5BDBBE-A82F-4FB9-9ACE-04CFDBDD6664.png",
+        "timestamp" : 1782921906.525
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00008150-000239020C08401C",
+        "deviceName" : "Inbean의 iPhone",
+        "exportedFileName" : "062E4D95-3BA0-42DC-925A-965BBC4BC990.txt",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "ios_bluetooth_route_change_hierarchy_0_0131A84C-D6F6-42C7-98CF-BFD367B67E09.txt",
+        "timestamp" : 1782921906.45
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00008150-000239020C08401C",
+        "deviceName" : "Inbean의 iPhone",
+        "exportedFileName" : "DC619E4D-F96D-42AE-8864-93C999763552.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "ios_bluetooth_route_change_active_0_1925F897-EE75-468C-8149-1AE3CB00860C.png",
+        "timestamp" : 1782921905.842
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00008150-000239020C08401C",
+        "deviceName" : "Inbean의 iPhone",
+        "exportedFileName" : "1629CD5E-0FF1-4587-A617-49A123B08380.txt",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "ios_bluetooth_route_change_active_hierarchy_0_6921F6C0-BC0E-4982-B043-A42D339DD54D.txt",
+        "timestamp" : 1782921905.762
+      }
+    ],
+    "testIdentifier" : "RunnerUITests/testIosBluetoothRouteChangeEvidence()",
+    "testIdentifierURL" : "test://com.apple.xcode/Runner/RunnerUITests/RunnerUITests/testIosBluetoothRouteChangeEvidence"
+  }
+]

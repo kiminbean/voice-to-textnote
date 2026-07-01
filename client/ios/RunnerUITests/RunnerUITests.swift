@@ -24,6 +24,7 @@ final class RunnerUITests: XCTestCase {
 
         app = XCUIApplication()
         app.launchEnvironment["VOICE_TEXTNOTE_UI_TEST"] = "1"
+        app.launchArguments.append("--voice-textnote-ui-test")
         if name.contains("Permission") || name.contains("UnfinishedRecording") {
             app.resetAuthorizationStatus(for: .microphone)
         }
@@ -212,13 +213,19 @@ final class RunnerUITests: XCTestCase {
     func testIosInterruptionResumeEvidence() throws {
         try startRecordingForRuntimeEvidence(prefix: "ios_interruption_resume")
 
-        try openUiTestCommand("interruption-begin")
+        XCTAssertTrue(
+            tapFirstVisible(labels: ["UITest Interruption Begin"]),
+            "Expected UI test interruption begin control."
+        )
         let paused = waitForAnyVisibleElement(labels: ["일시 정지됨"], timeout: 12)
         attachUIHierarchy("ios_interruption_resume_paused_hierarchy")
         attachScreenshot("ios_interruption_resume_paused")
         XCTAssertNotNil(paused, "Expected injected interruption to pause recording.")
 
-        try openUiTestCommand("interruption-end")
+        XCTAssertTrue(
+            tapFirstVisible(labels: ["UITest Interruption End"]),
+            "Expected UI test interruption end control."
+        )
         let resumed = waitForAnyVisibleElement(labels: ["녹음 중", "녹음 중지"], timeout: 12)
         attachUIHierarchy("ios_interruption_resume_active_hierarchy")
         attachScreenshot("ios_interruption_resume_active")
@@ -229,9 +236,9 @@ final class RunnerUITests: XCTestCase {
     func testIosBluetoothRouteChangeEvidence() throws {
         try startRecordingForRuntimeEvidence(prefix: "ios_bluetooth_route_change")
 
-        try openUiTestCommand(
-            "route-change",
-            queryItems: [URLQueryItem(name: "reason", value: "oldDeviceUnavailable")]
+        XCTAssertTrue(
+            tapFirstVisible(labels: ["UITest Route Change"]),
+            "Expected UI test route-change control."
         )
         let routeChanged = waitForAnyVisibleElement(
             labels: ["오디오 경로 변경", "oldDeviceUnavailable"],

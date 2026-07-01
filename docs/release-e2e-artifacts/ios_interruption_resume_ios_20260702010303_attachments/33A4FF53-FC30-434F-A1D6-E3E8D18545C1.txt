@@ -1,0 +1,44 @@
+Optional(Attributes: Application, 0x11686c780, pid: 26248, label: 'Voice TextNote'
+Element subtree:
+ →Application, 0x11686c780, pid: 26248, label: 'Voice TextNote'
+    Window (Main), 0x1168a4280, {{0.0, 0.0}, {402.0, 874.0}}
+      Other, 0x1168a4140, {{0.0, 0.0}, {402.0, 874.0}}
+        Other, 0x1168a4000, {{0.0, 0.0}, {402.0, 874.0}}
+          Other, 0x1168a43c0, {{0.0, 0.0}, {402.0, 874.0}}
+            Other, 0x1168a4500, {{0.0, 0.0}, {402.0, 874.0}}
+              Other, 0x1168a4640, {{0.0, 0.0}, {402.0, 874.0}}
+              Other, 0x1168a2080, {{0.0, 0.0}, {402.0, 874.0}}
+                Other, 0x1168a21c0, {{0.0, 0.0}, {402.0, 874.0}}
+                Other, 0x1168a30c0, {{0.0, 0.0}, {402.0, 874.0}}
+                  Other, 0x1168a2300, {{0.0, 0.0}, {402.0, 874.0}}
+                  Other, 0x1168a2440, {{0.0, 0.0}, {402.0, 874.0}}
+                    Other, 0x1168a3200, {{0.0, 0.0}, {402.0, 118.0}}
+                    Button, 0x1168a3980, {{4.0, 66.0}, {48.0, 48.0}}, label: '뒤로'
+                    Other, 0x1168a3840, {{72.0, 76.5}, {61.5, 27.0}}, label: 'AI 녹음'
+                  Other, 0x1168a3ac0, {{0.0, 0.0}, {402.0, 874.0}}
+                    ScrollView, 0x1168a3c00, {{0.0, 118.0}, {402.0, 690.0}}
+                    StaticText, 0x1168a3d40, {{20.0, 130.0}, {120.7, 33.0}}, label: '녹음'
+                    StaticText, 0x1168a35c0, {{140.7, 130.0}, {120.7, 33.0}}, label: '업로드'
+                    StaticText, 0x1168a2d00, {{261.3, 130.0}, {120.7, 33.0}}, label: '회의 링크'
+                    StaticText, 0x1168a2bc0, {{178.3, 197.0}, {60.5, 20.0}}, label: '일시 정지됨'
+                    Button, 0x1168a2a80, {{16.0, 231.0}, {370.0, 50.0}}, label: 'UITest Interruption Begin'
+                    Button, 0x1168a1f40, {{16.0, 285.0}, {370.0, 50.0}}, label: 'UITest Interruption End'
+                    Button, 0x1168a3e80, {{16.0, 339.0}, {370.0, 50.0}}, label: 'UITest Route Change'
+                    Other, 0x1168a3700, {{92.0, 413.0}, {218.0, 64.0}}, label: '경과 시간 00:04
+00:04'
+                    Button, 0x1168a2e40, {{141.0, 521.0}, {120.0, 120.0}}, label: '녹음 시작'
+                    StaticText, 0x1168a3480, {{63.0, 702.0}, {130.5, 22.0}}, label: 'Live Transcript'
+                    StaticText, 0x1168a3340, {{42.1, 741.0}, {9.7, 18.0}}, label: 'A'
+                    StaticText, 0x1168a2580, {{69.0, 736.0}, {16.1, 16.0}}, label: 'AI'
+                    StaticText, 0x1168a2940, {{69.0, 754.0}, {300.0, 40.0}}, label: '조용한 백그라운드 녹음을 시작하면 전사가 여기에 실시간으로 표시됩니다.'
+                    StaticText, 0x1168a26c0, {{69.0, 806.0}, {23.4, 2.0}}, label: 'Tip'
+                    StaticText, 0x1168a2800, {{0.0, 0.0}, {0.0, 0.0}}, label: 'T'
+                    StaticText, 0x1168a2f80, {{0.0, 0.0}, {0.0, 0.0}}, label: '회의가 끝나면 요약, 결정 사항, 액션 아이템을 바로 확인하세요.'
+Path to element:
+ →Application, 0x11686c780, pid: 26248, label: 'Voice TextNote'
+Query chain:
+ →Find: Target Application 'com.voicetextnote.app'
+  Output: {
+    Application, 0x11686e580, pid: 26248, label: 'Voice TextNote'
+  }
+)

@@ -16,10 +16,27 @@ import UserNotifications
   private let channelName = "com.voicetextnote.app/recording"
   private let sharedImportChannelName = "com.voicetextnote.app/shared_import"
   private let deepLinkChannelName = "com.voicetextnote.app/deep_link"
+  private let uiTestInterruptionBeginNotification = "com.voicetextnote.uitest.interruption.begin"
+  private let uiTestInterruptionEndNotification = "com.voicetextnote.uitest.interruption.end"
+  private let uiTestRouteChangeNotification = "com.voicetextnote.uitest.route.oldDeviceUnavailable"
   private var pendingInitialSharedImport: [String: String]?
   private var pendingLatestSharedImport: [String: String]?
   private var pendingInitialDeepLink: String?
   private var pendingLatestDeepLink: String?
+
+  private var isUiTestMode: Bool {
+    if ProcessInfo.processInfo.environment["VOICE_TEXTNOTE_UI_TEST"] == "1"
+      || ProcessInfo.processInfo.arguments.contains("--voice-textnote-ui-test") {
+      return true
+    }
+
+    let testMarkers = ["XCTest", "UITest", "RunnerUITests"]
+    return ProcessInfo.processInfo.environment.keys.contains { key in
+      testMarkers.contains { key.localizedCaseInsensitiveContains($0) }
+    } || ProcessInfo.processInfo.arguments.contains { argument in
+      testMarkers.contains { argument.localizedCaseInsensitiveContains($0) }
+    }
+  }
 
   override func application(
     _ application: UIApplication,
@@ -98,6 +115,8 @@ import UserNotifications
       } else if method == "stopForegroundService" {
         // iOS에서는 불필요 — 호환성을 위해 no-op 응답
         result(true)
+      } else if method == "isUiTestMode" {
+        result(self?.isUiTestMode ?? false)
       } else {
         result(FlutterMethodNotImplemented)
       }
@@ -250,7 +269,7 @@ import UserNotifications
   }
 
   private func handleUiTestCommand(_ url: URL) -> Bool {
-    guard ProcessInfo.processInfo.environment["VOICE_TEXTNOTE_UI_TEST"] == "1",
+    guard isUiTestMode,
           url.scheme == "voicetextnote",
           url.host?.lowercased() == "uitest" else {
       return false
@@ -518,6 +537,64 @@ import UserNotifications
       queue: nil
     ) { [weak self] notification in
       self?.handleRouteChangeNotification(notification)
+    }
+
+    setupUiTestDarwinNotificationObservers()
+  }
+
+  private func setupUiTestDarwinNotificationObservers() {
+    guard isUiTestMode else {
+      return
+    }
+
+    let center = CFNotificationCenterGetDarwinNotifyCenter()
+    let observer = Unmanaged.passUnretained(self).toOpaque()
+    for name in [
+      uiTestInterruptionBeginNotification,
+      uiTestInterruptionEndNotification,
+      uiTestRouteChangeNotification,
+    ] {
+      CFNotificationCenterAddObserver(
+        center,
+        observer,
+        AppDelegate.uiTestDarwinNotificationCallback,
+        name as CFString,
+        nil,
+        .deliverImmediately
+      )
+    }
+  }
+
+  private static let uiTestDarwinNotificationCallback: CFNotificationCallback = {
+    _, observer, name, _, _ in
+    guard let observer, let name else {
+      return
+    }
+
+    let delegate = Unmanaged<AppDelegate>
+      .fromOpaque(observer)
+      .takeUnretainedValue()
+    delegate.handleUiTestDarwinNotification(name.rawValue as String)
+  }
+
+  private func handleUiTestDarwinNotification(_ name: String) {
+    DispatchQueue.main.async {
+      switch name {
+      case self.uiTestInterruptionBeginNotification:
+        self.forwardToDart(method: "onInterruptionBegin", arguments: nil)
+      case self.uiTestInterruptionEndNotification:
+        self.forwardToDart(
+          method: "onInterruptionEnd",
+          arguments: ["shouldResume": true]
+        )
+      case self.uiTestRouteChangeNotification:
+        self.forwardToDart(
+          method: "onRouteChange",
+          arguments: ["reason": "oldDeviceUnavailable"]
+        )
+      default:
+        return
+      }
     }
   }
 
