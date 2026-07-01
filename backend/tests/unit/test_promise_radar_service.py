@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 import backend.db.auth_models  # noqa: F401
 import backend.db.device_token_models  # noqa: F401
 import backend.db.promise_ledger_models  # noqa: F401
-from backend.db.auth_models import MeetingOwnership
+from backend.db.auth_models import MeetingOwnership, Team, TeamMember, User
 from backend.db.device_token_models import DeviceToken
 from backend.db.models import ActionItem, TaskResult
 from backend.db.promise_ledger_models import PromiseLedgerEntry, PromiseLedgerEvent
@@ -508,3 +508,160 @@ async def test_ledger_merge_split_history_dashboard_and_due_push(session_factory
             ).scalars()
         }
         assert {"merged", "split", "split_created", "notification_sent"}.issubset(event_types)
+
+
+@pytest.mark.asyncio
+async def test_promise_autopilot_calendar_assignee_and_quality(session_factory):
+    service = PromiseRadarService()
+    owner_id = uuid.uuid4()
+    teammate_id = uuid.uuid4()
+    team_id = uuid.uuid4()
+    now = datetime(2026, 7, 1, 9, 0, 0)
+
+    current = _summary_record(
+        "sum-autopilot",
+        created_at=now,
+        action_items=[],
+        next_steps=["QA 체크리스트 작성 완료했습니다."],
+    )
+    minutes = TaskResult(
+        task_id="min-autopilot",
+        task_type="minutes",
+        status="completed",
+        created_at=now,
+        completed_at=now,
+        result_data={
+            "segments": [
+                {
+                    "speaker_id": "SPEAKER_01",
+                    "identified_speaker_name": "김기수",
+                    "start": 5.0,
+                    "end": 9.0,
+                    "text": "QA 체크리스트 작성 완료했습니다.",
+                }
+            ]
+        },
+    )
+    current.input_metadata = {"minutes_task_id": "min-autopilot"}
+
+    async with session_factory() as session:
+        entry = PromiseLedgerEntry(
+            owner_id=owner_id,
+            team_id=team_id,
+            source_task_id="sum-source",
+            last_source_task_id="sum-source",
+            canonical_key="qa 체크리스트 작성",
+            canonical_text="QA 체크리스트 작성",
+            text="QA 체크리스트 작성",
+            owner_name="김기수",
+            status="open",
+            priority="high",
+            risk_level="medium",
+            confidence=0.86,
+            due_date_text="오늘",
+            due_at=now + timedelta(hours=3),
+            occurrences=2,
+            first_seen_at=now - timedelta(days=7),
+            last_seen_at=now - timedelta(days=7),
+            evidence=[
+                {
+                    "source_task_id": "sum-source",
+                    "meeting_link": "/results/sum-source",
+                    "transcript": "QA 체크리스트를 작성하겠습니다.",
+                }
+            ],
+        )
+        session.add_all(
+            [
+                User(
+                    id=owner_id,
+                    email="owner@example.com",
+                    display_name="소유자",
+                    password_hash="hash",
+                ),
+                User(
+                    id=teammate_id,
+                    email="kiminbean@example.com",
+                    display_name="김기수",
+                    password_hash="hash",
+                ),
+                Team(id=team_id, name="테스트 팀", created_by=owner_id),
+                TeamMember(team_id=team_id, user_id=owner_id, role="admin"),
+                TeamMember(team_id=team_id, user_id=teammate_id, role="member"),
+                TaskResult(
+                    task_id="sum-source",
+                    task_type="summary",
+                    status="completed",
+                    created_at=now - timedelta(days=7),
+                    completed_at=now - timedelta(days=7),
+                    result_data={"action_items": []},
+                ),
+                current,
+                minutes,
+                MeetingOwnership(task_id="sum-autopilot", owner_id=owner_id, team_id=team_id),
+                MeetingOwnership(task_id="min-autopilot", owner_id=owner_id, team_id=team_id),
+                entry,
+            ]
+        )
+        await session.commit()
+        await session.refresh(entry)
+
+        autopilot = await service.run_autopilot(
+            session,
+            "sum-autopilot",
+            owner_id=owner_id,
+            team_id=team_id,
+        )
+
+        assert autopilot.assessed_count == 1
+        assert autopilot.applied_count == 1
+        assert autopilot.assessments[0].suggested_status == "completed"
+        assert autopilot.assessments[0].confidence >= 0.68
+
+        stored = (
+            await session.execute(
+                select(PromiseLedgerEntry).where(PromiseLedgerEntry.id == entry.id)
+            )
+        ).scalar_one()
+        assert stored.status == "completed"
+        assert stored.completed_at is not None
+
+        explanation = await service.explain_ledger_entry_match(
+            session,
+            entry.id,
+            task_id="sum-autopilot",
+            owner_id=owner_id,
+            team_id=team_id,
+        )
+        assert explanation.similarity > 0
+        assert "확인" in explanation.overlap_terms
+
+        calendar = await service.export_calendar_event(
+            session,
+            entry.id,
+            owner_id=owner_id,
+            team_id=team_id,
+        )
+        assert "BEGIN:VCALENDAR" in calendar.ics_content
+        assert calendar.google_calendar_url.startswith("https://calendar.google.com/")
+
+        suggestions = await service.suggest_assignees(
+            session,
+            entry.id,
+            owner_id=owner_id,
+            team_id=team_id,
+        )
+        assert suggestions[0].user_id == str(teammate_id)
+        assert suggestions[0].confidence >= 0.9
+
+        response = service._entry_to_response(stored)
+        assert response.quality is not None
+        assert response.quality.score >= 70
+
+        event_types = {
+            event.event_type
+            for event in (
+                await session.execute(select(PromiseLedgerEvent))
+            ).scalars()
+        }
+        assert {"autopilot_applied", "calendar_export_created"}.issubset(event_types)

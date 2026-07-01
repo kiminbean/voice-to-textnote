@@ -17,6 +17,9 @@ from backend.app.errors import internal_error, not_found
 from backend.app.exceptions import VoiceNoteError
 from backend.db.auth_models import TeamMember
 from backend.schemas.promise_radar import (
+    PromiseAssigneeSuggestion,
+    PromiseAutopilotResponse,
+    PromiseCalendarExportResponse,
     PromiseLedgerEntryResponse,
     PromiseLedgerHistoryEntry,
     PromiseLedgerMergeRequest,
@@ -24,6 +27,7 @@ from backend.schemas.promise_radar import (
     PromiseLedgerSplitRequest,
     PromiseLedgerSplitResponse,
     PromiseLedgerUpdateRequest,
+    PromiseMatchExplanation,
     PromiseNextMeetingBriefing,
     PromiseNotificationDispatchResponse,
     PromiseRadarDashboard,
@@ -143,6 +147,38 @@ async def dispatch_due_promise_notifications(
         internal_error(f"약속 푸시 알림 발송 중 오류가 발생했습니다: {e}")
 
 
+@router.post("/autopilot/{task_id}", response_model=PromiseAutopilotResponse)
+async def run_promise_autopilot(
+    task_id: str,
+    request: Request,
+    team_id: str | None = Query(default=None, description="팀 약속 원장 범위"),
+    apply: bool = Query(default=True, description="신뢰도 기준을 넘은 상태 변경 자동 적용"),
+    limit: int = Query(default=50, ge=1, le=100),
+    db: AsyncSession = Depends(get_db_session),
+    current_user=Depends(get_optional_current_user),
+    svc: PromiseRadarService = Depends(get_promise_radar_service),
+) -> PromiseAutopilotResponse:
+    """현재 회의 근거로 미해결 약속의 완료/지연/변경/취소 상태를 자동 판정합니다."""
+    try:
+        await require_task_access(request, db, task_id)
+        scoped_team_id = await _accessible_team_id(db, current_user, team_id)
+        return await svc.run_autopilot(
+            db,
+            task_id,
+            owner_id=getattr(current_user, "id", None),
+            guest_session_id=_guest_session_id(request),
+            team_id=scoped_team_id,
+            apply=apply,
+            limit=limit,
+        )
+    except ValueError as e:
+        not_found(str(e))
+    except VoiceNoteError:
+        raise
+    except Exception as e:
+        internal_error(f"약속 자동 판정 중 오류가 발생했습니다: {e}")
+
+
 @router.patch("/ledger/{entry_id}", response_model=PromiseLedgerEntryResponse)
 async def update_promise_ledger_entry(
     entry_id: str,
@@ -178,6 +214,37 @@ async def update_promise_ledger_entry(
         internal_error(f"약속 원장 수정 중 오류가 발생했습니다: {e}")
 
 
+@router.get("/ledger/{entry_id}/explain", response_model=PromiseMatchExplanation)
+async def explain_promise_ledger_match(
+    entry_id: str,
+    request: Request,
+    task_id: str | None = Query(default=None, description="비교할 현재 회의 요약 task_id"),
+    team_id: str | None = Query(default=None, description="팀 약속 원장 범위"),
+    db: AsyncSession = Depends(get_db_session),
+    current_user=Depends(get_optional_current_user),
+    svc: PromiseRadarService = Depends(get_promise_radar_service),
+) -> PromiseMatchExplanation:
+    """약속 원장 항목이 현재 회의/원문 근거와 매칭된 이유를 설명합니다."""
+    try:
+        if task_id:
+            await require_task_access(request, db, task_id)
+        scoped_team_id = await _accessible_team_id(db, current_user, team_id)
+        return await svc.explain_ledger_entry_match(
+            db,
+            entry_id,
+            task_id=task_id,
+            owner_id=getattr(current_user, "id", None),
+            guest_session_id=_guest_session_id(request),
+            team_id=scoped_team_id,
+        )
+    except ValueError as e:
+        not_found(str(e))
+    except VoiceNoteError:
+        raise
+    except Exception as e:
+        internal_error(f"약속 근거 설명 생성 중 오류가 발생했습니다: {e}")
+
+
 @router.post("/ledger/{entry_id}/calendar", response_model=PromiseReminderCandidate)
 async def create_promise_calendar_candidate(
     entry_id: str,
@@ -203,6 +270,65 @@ async def create_promise_calendar_candidate(
         raise
     except Exception as e:
         internal_error(f"약속 캘린더 후보 생성 중 오류가 발생했습니다: {e}")
+
+
+@router.post("/ledger/{entry_id}/calendar/export", response_model=PromiseCalendarExportResponse)
+async def export_promise_calendar_event(
+    entry_id: str,
+    request: Request,
+    team_id: str | None = Query(default=None, description="팀 약속 원장 범위"),
+    db: AsyncSession = Depends(get_db_session),
+    current_user=Depends(get_optional_current_user),
+    svc: PromiseRadarService = Depends(get_promise_radar_service),
+) -> PromiseCalendarExportResponse:
+    """약속 원장 항목을 Google Calendar URL과 ICS 이벤트로 내보냅니다."""
+    try:
+        scoped_team_id = await _accessible_team_id(db, current_user, team_id)
+        return await svc.export_calendar_event(
+            db,
+            entry_id,
+            owner_id=getattr(current_user, "id", None),
+            guest_session_id=_guest_session_id(request),
+            team_id=scoped_team_id,
+        )
+    except ValueError as e:
+        not_found(str(e))
+    except VoiceNoteError:
+        raise
+    except Exception as e:
+        internal_error(f"약속 캘린더 내보내기 중 오류가 발생했습니다: {e}")
+
+
+@router.get(
+    "/ledger/{entry_id}/assignee-suggestions",
+    response_model=list[PromiseAssigneeSuggestion],
+)
+async def suggest_promise_assignees(
+    entry_id: str,
+    request: Request,
+    team_id: str | None = Query(default=None, description="팀 약속 원장 범위"),
+    limit: int = Query(default=5, ge=1, le=10),
+    db: AsyncSession = Depends(get_db_session),
+    current_user=Depends(get_optional_current_user),
+    svc: PromiseRadarService = Depends(get_promise_radar_service),
+) -> list[PromiseAssigneeSuggestion]:
+    """약속 담당자 이름/과거 지정 이력으로 팀 사용자 후보를 추천합니다."""
+    try:
+        scoped_team_id = await _accessible_team_id(db, current_user, team_id)
+        return await svc.suggest_assignees(
+            db,
+            entry_id,
+            owner_id=getattr(current_user, "id", None),
+            guest_session_id=_guest_session_id(request),
+            team_id=scoped_team_id,
+            limit=limit,
+        )
+    except ValueError as e:
+        not_found(str(e))
+    except VoiceNoteError:
+        raise
+    except Exception as e:
+        internal_error(f"약속 담당자 추천 중 오류가 발생했습니다: {e}")
 
 
 @router.post("/ledger/{entry_id}/action-item", response_model=PromiseTaskLinkResponse)

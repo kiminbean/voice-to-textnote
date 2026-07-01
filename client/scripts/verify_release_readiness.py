@@ -47,6 +47,10 @@ REQUIRED_E2E_SCENARIOS = {
     "ios_release_http_blocked": "iOS release HTTP blocked",
     "export_share_android": "Android PDF share sheet",
     "export_share_ios": "iOS PDF share sheet",
+    "promise_radar_autopilot_status": "Promise Radar Autopilot status update",
+    "promise_radar_due_push": "Promise Radar due promise push notification",
+    "promise_radar_calendar_export": "Promise Radar calendar export",
+    "promise_radar_assignee_quality": "Promise Radar assignee suggestion and quality score",
 }
 REQUIRED_E2E_SCENARIO_PLATFORMS = {
     "permission_microphone_initial": ("android", "ios"),
@@ -66,6 +70,10 @@ REQUIRED_E2E_SCENARIO_PLATFORMS = {
     "ios_release_http_blocked": ("ios",),
     "export_share_android": ("android",),
     "export_share_ios": ("ios",),
+    "promise_radar_autopilot_status": ("android", "ios"),
+    "promise_radar_due_push": ("android", "ios"),
+    "promise_radar_calendar_export": ("android", "ios"),
+    "promise_radar_assignee_quality": ("android", "ios"),
 }
 CANONICAL_RELEASE_ARTIFACT_PATHS = {
     "android_apk": "client/build/app/outputs/flutter-apk/app-release.apk",
@@ -1107,7 +1115,7 @@ def check_owll_benchmark_doc(root: Path, reporter: Reporter) -> None:
         reporter,
         content,
         [
-            "**Last verified**: 2026-06-22",
+            "**Last verified**: 2026-06-30",
             "https://apps.apple.com/us/app/owll-ai-note-taker-assistant/id6450300197",
             "https://play.google.com/store/apps/details?id=com.hmd.quickrecorder",
             "https://owll.ai/blog/ai-note-taker-for-teams",

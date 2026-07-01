@@ -5190,7 +5190,19 @@ class _PromiseRadarTab extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _sectionTitle(context, Icons.fact_check_outlined, '약속 원장'),
+            Row(
+              children: [
+                Expanded(
+                  child: _sectionTitle(
+                      context, Icons.fact_check_outlined, '약속 원장'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () => _runAutopilot(context, ref, summaryTaskId),
+                  icon: const Icon(Icons.auto_fix_high_outlined, size: 18),
+                  label: const Text('자동 판정'),
+                ),
+              ],
+            ),
             const SizedBox(height: AppSpacing.sm),
             for (final entry in entries.take(6))
               Padding(
@@ -5231,6 +5243,35 @@ class _PromiseRadarTab extends ConsumerWidget {
                             color: theme.colorScheme.onSurfaceVariant,
                           ),
                         ),
+                        if (entry.quality != null) ...[
+                          const SizedBox(height: AppSpacing.xs),
+                          Wrap(
+                            spacing: AppSpacing.xs,
+                            runSpacing: AppSpacing.xs,
+                            children: [
+                              _PromiseMetricPill(
+                                label: '품질',
+                                value: '${entry.quality!.score}%',
+                              ),
+                              if (entry.quality!.issues.isNotEmpty)
+                                _PromiseMetricPill(
+                                  label: '보강',
+                                  value: '${entry.quality!.issues.length}',
+                                ),
+                            ],
+                          ),
+                          if (entry.quality!.issues.isNotEmpty) ...[
+                            const SizedBox(height: AppSpacing.xs),
+                            Text(
+                              entry.quality!.issues.first,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.error,
+                              ),
+                            ),
+                          ],
+                        ],
                         if (entry.evidence.isNotEmpty) ...[
                           const SizedBox(height: AppSpacing.xs),
                           Text(
@@ -5331,6 +5372,37 @@ class _PromiseRadarTab extends ConsumerWidget {
                                   size: 18),
                               label:
                                   Text(entry.reminderAt == null ? '알림' : '알림됨'),
+                            ),
+                            TextButton.icon(
+                              onPressed: () => _exportCalendarEvent(
+                                context,
+                                ref,
+                                summaryTaskId,
+                                entry.id,
+                              ),
+                              icon: const Icon(Icons.event_outlined, size: 18),
+                              label: const Text('캘린더'),
+                            ),
+                            TextButton.icon(
+                              onPressed: () => _showMatchExplanation(
+                                context,
+                                ref,
+                                summaryTaskId,
+                                entry.id,
+                              ),
+                              icon: const Icon(Icons.psychology_alt_outlined,
+                                  size: 18),
+                              label: const Text('근거'),
+                            ),
+                            TextButton.icon(
+                              onPressed: () => _showAssigneeSuggestions(
+                                context,
+                                ref,
+                                entry.id,
+                              ),
+                              icon: const Icon(Icons.person_search_outlined,
+                                  size: 18),
+                              label: const Text('담당자'),
                             ),
                             TextButton.icon(
                               onPressed: () => _showLedgerHistory(
@@ -5921,6 +5993,165 @@ class _PromiseRadarTab extends ConsumerWidget {
     }
   }
 
+  Future<void> _runAutopilot(
+    BuildContext context,
+    WidgetRef ref,
+    String summaryTaskId,
+  ) async {
+    try {
+      final result =
+          await ref.read(promiseRadarApiProvider).runAutopilot(summaryTaskId);
+      ref.invalidate(promiseRadarProvider(summaryTaskId));
+      ref.invalidate(promiseLedgerProvider);
+      ref.invalidate(promiseNextMeetingBriefingProvider);
+      ref.invalidate(promiseRadarDashboardProvider);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '자동 판정 ${result.assessedCount}개 확인 · ${result.appliedCount}개 적용',
+            ),
+          ),
+        );
+      }
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('약속 자동 판정에 실패했습니다.')),
+        );
+      }
+    }
+  }
+
+  Future<void> _showMatchExplanation(
+    BuildContext context,
+    WidgetRef ref,
+    String summaryTaskId,
+    String entryId,
+  ) async {
+    try {
+      final explanation = await ref
+          .read(promiseRadarApiProvider)
+          .explainLedgerEntry(entryId, taskId: summaryTaskId);
+      if (!context.mounted) return;
+      await showModalBottomSheet<void>(
+        context: context,
+        builder: (sheetContext) => SafeArea(
+          child: ListView(
+            shrinkWrap: true,
+            padding: const EdgeInsets.all(AppSpacing.md),
+            children: [
+              ListTile(
+                leading: const Icon(Icons.psychology_alt_outlined),
+                title: const Text('약속 판정 근거'),
+                subtitle: Text(
+                  '유사도 ${(explanation.similarity * 100).round()}%',
+                ),
+              ),
+              ListTile(
+                title: Text(explanation.rationale),
+                subtitle: Text(explanation.matchedText ?? '연결된 발화 없음'),
+              ),
+              if (explanation.overlapTerms.isNotEmpty)
+                ListTile(
+                  title: const Text('겹친 핵심어'),
+                  subtitle: Text(explanation.overlapTerms.join(', ')),
+                ),
+              for (final factor in explanation.confidenceFactors)
+                ListTile(
+                  dense: true,
+                  leading: const Icon(Icons.check_circle_outline),
+                  title: Text(factor),
+                ),
+            ],
+          ),
+        ),
+      );
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('약속 근거 설명을 불러오지 못했습니다.')),
+        );
+      }
+    }
+  }
+
+  Future<void> _exportCalendarEvent(
+    BuildContext context,
+    WidgetRef ref,
+    String summaryTaskId,
+    String entryId,
+  ) async {
+    try {
+      final exported =
+          await ref.read(promiseRadarApiProvider).exportCalendarEvent(entryId);
+      ref.invalidate(promiseRadarProvider(summaryTaskId));
+      ref.invalidate(promiseLedgerProvider);
+      final uri = Uri.tryParse(exported.googleCalendarUrl);
+      final opened = uri != null &&
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!opened) {
+        await Clipboard.setData(ClipboardData(text: exported.icsContent));
+      }
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              opened ? 'Google Calendar를 열었습니다.' : 'ICS 내용을 복사했습니다.',
+            ),
+          ),
+        );
+      }
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('캘린더 내보내기에 실패했습니다.')),
+        );
+      }
+    }
+  }
+
+  Future<void> _showAssigneeSuggestions(
+    BuildContext context,
+    WidgetRef ref,
+    String entryId,
+  ) async {
+    try {
+      final suggestions =
+          await ref.read(promiseRadarApiProvider).suggestAssignees(entryId);
+      if (!context.mounted) return;
+      await showModalBottomSheet<void>(
+        context: context,
+        builder: (sheetContext) => SafeArea(
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.person_search_outlined),
+                title: const Text('담당자 추천'),
+                subtitle: Text('${suggestions.length}명 후보'),
+              ),
+              if (suggestions.isEmpty)
+                const ListTile(title: Text('추천할 팀 사용자가 없습니다.')),
+              for (final suggestion in suggestions)
+                ListTile(
+                  title: Text(suggestion.displayName),
+                  subtitle: Text(suggestion.rationale),
+                  trailing: Text('${(suggestion.confidence * 100).round()}%'),
+                ),
+            ],
+          ),
+        ),
+      );
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('담당자 추천을 불러오지 못했습니다.')),
+        );
+      }
+    }
+  }
+
   Future<void> _updateLedgerStatus(
     BuildContext context,
     WidgetRef ref,
@@ -6023,6 +6254,7 @@ class _StatusChip extends StatelessWidget {
       'dismissed' => '제외',
       'delegated' => '위임',
       'blocked' => '차단',
+      'delayed' => '지연',
       'changed' => '변경',
       _ => '진행',
     };

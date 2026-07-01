@@ -155,6 +155,38 @@
         "ios"
       ],
       "evidence": "iOS PDF export opened native share sheet and shared generated PDF."
+    },
+    "promise_radar_autopilot_status": {
+      "pass": true,
+      "platforms": [
+        "android",
+        "ios"
+      ],
+      "evidence": "Promise Radar Autopilot changed one overdue promise to delayed/completed with visible rationale."
+    },
+    "promise_radar_due_push": {
+      "pass": true,
+      "platforms": [
+        "android",
+        "ios"
+      ],
+      "evidence": "Due Promise Radar notification arrived on Android and iOS and opened the matching ledger entry."
+    },
+    "promise_radar_calendar_export": {
+      "pass": true,
+      "platforms": [
+        "android",
+        "ios"
+      ],
+      "evidence": "Promise Radar calendar export opened Google Calendar or copied a valid ICS event on both devices."
+    },
+    "promise_radar_assignee_quality": {
+      "pass": true,
+      "platforms": [
+        "android",
+        "ios"
+      ],
+      "evidence": "Promise Radar displayed assignee suggestions and quality score for a real recorded promise."
     }
   }
 }

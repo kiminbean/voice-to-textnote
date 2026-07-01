@@ -88,6 +88,71 @@ class PromiseRadarEvidence(BaseModel):
     end_seconds: float | None = Field(default=None, ge=0.0)
 
 
+class PromiseQualityScore(BaseModel):
+    """Actionability score for one promise ledger item."""
+
+    score: int = Field(ge=0, le=100)
+    level: str = Field(description="excellent, good, weak, or risky")
+    strengths: list[str] = Field(default_factory=list)
+    issues: list[str] = Field(default_factory=list)
+
+
+class PromiseAssigneeSuggestion(BaseModel):
+    """Suggested app user for a promise owner/speaker."""
+
+    user_id: str | None = None
+    display_name: str
+    email: str | None = None
+    confidence: float = Field(ge=0.0, le=1.0)
+    rationale: str
+
+
+class PromiseMatchExplanation(BaseModel):
+    """Human-readable explanation for a Promise Radar match or status guess."""
+
+    ledger_entry_id: str
+    matched_task_id: str | None = None
+    matched_text: str | None = None
+    similarity: float = Field(ge=0.0, le=1.0)
+    overlap_terms: list[str] = Field(default_factory=list)
+    confidence_factors: list[str] = Field(default_factory=list)
+    rationale: str
+    evidence: list[PromiseRadarEvidence] = Field(default_factory=list)
+
+
+class PromiseAutopilotAssessment(BaseModel):
+    """Autopilot status assessment for one unresolved promise."""
+
+    ledger_entry_id: str
+    previous_status: str
+    suggested_status: str
+    applied: bool = False
+    confidence: float = Field(ge=0.0, le=1.0)
+    reason: str
+    explanation: PromiseMatchExplanation
+
+
+class PromiseAutopilotResponse(BaseModel):
+    """Batch result for Promise Autopilot status assessment."""
+
+    task_id: str
+    assessed_count: int = Field(ge=0)
+    applied_count: int = Field(ge=0)
+    assessments: list[PromiseAutopilotAssessment] = Field(default_factory=list)
+
+
+class PromiseCalendarExportResponse(BaseModel):
+    """Calendar handoff payload for Google Calendar or ICS import."""
+
+    ledger_entry_id: str
+    title: str
+    due_at: datetime | None = None
+    ics_filename: str
+    ics_content: str
+    google_calendar_url: str
+    calendar_event: dict | None = None
+
+
 class PromiseLedgerEntryResponse(BaseModel):
     """Editable persisted promise ledger item."""
 
@@ -100,7 +165,9 @@ class PromiseLedgerEntryResponse(BaseModel):
     assigned_user_id: str | None = None
     speaker_label: str | None = None
     speaker_profile_id: str | None = None
-    status: str = Field(description="open, completed, dismissed, delegated, blocked, or changed")
+    status: str = Field(
+        description="open, completed, dismissed, delegated, blocked, delayed, or changed"
+    )
     priority: str
     risk_level: str
     confidence: float = Field(ge=0.0, le=1.0)
@@ -117,6 +184,8 @@ class PromiseLedgerEntryResponse(BaseModel):
     calendar_event: dict | None = None
     action_item_id: str | None = None
     dismissed_reason: str | None = None
+    quality: PromiseQualityScore | None = None
+    assignee_suggestions: list[PromiseAssigneeSuggestion] = Field(default_factory=list)
 
 
 class PromiseLedgerUpdateRequest(BaseModel):
@@ -124,7 +193,7 @@ class PromiseLedgerUpdateRequest(BaseModel):
 
     status: str | None = Field(
         default=None,
-        description="open, completed, dismissed, delegated, blocked, or changed",
+        description="open, completed, dismissed, delegated, blocked, delayed, or changed",
     )
     text: str | None = None
     owner: str | None = None
@@ -258,6 +327,7 @@ class PromiseRadarResponse(BaseModel):
     high_risk_count: int = Field(default=0, ge=0)
     ledger_entries: list[PromiseLedgerEntryResponse] = Field(default_factory=list)
     next_meeting_briefing: PromiseNextMeetingBriefing | None = None
+    autopilot_assessments: list[PromiseAutopilotAssessment] = Field(default_factory=list)
     semantic_enrichment_status: str = Field(
         default="deterministic",
         description="deterministic, zai_applied, zai_unavailable, or zai_failed",

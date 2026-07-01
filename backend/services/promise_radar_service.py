@@ -15,18 +15,23 @@ import re
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any
+from urllib.parse import quote
 from uuid import UUID
 
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.config import settings
-from backend.db.auth_models import MeetingOwnership
+from backend.db.auth_models import MeetingOwnership, TeamMember, User
 from backend.db.device_token_models import DeviceToken
 from backend.db.models import ActionItem, TaskResult
 from backend.db.promise_ledger_models import PromiseLedgerEntry, PromiseLedgerEvent
 from backend.ml.zai_client import AsyncZAIClient, structured_json_completion_options
 from backend.schemas.promise_radar import (
+    PromiseAssigneeSuggestion,
+    PromiseAutopilotAssessment,
+    PromiseAutopilotResponse,
+    PromiseCalendarExportResponse,
     PromiseLedgerEntryResponse,
     PromiseLedgerHistoryEntry,
     PromiseLedgerMergeRequest,
@@ -34,8 +39,10 @@ from backend.schemas.promise_radar import (
     PromiseLedgerSplitRequest,
     PromiseLedgerSplitResponse,
     PromiseLedgerUpdateRequest,
+    PromiseMatchExplanation,
     PromiseNextMeetingBriefing,
     PromiseNotificationDispatchResponse,
+    PromiseQualityScore,
     PromiseRadarCarryOver,
     PromiseRadarChainLink,
     PromiseRadarDashboard,
@@ -123,9 +130,86 @@ _WEEKDAY_TO_INDEX = {
     "일": 6,
 }
 
-_OPEN_LEDGER_STATUSES = {"open", "delegated", "blocked", "changed"}
+_OPEN_LEDGER_STATUSES = {"open", "delegated", "blocked", "delayed", "changed"}
 _CLOSED_LEDGER_STATUSES = {"completed", "dismissed"}
 _VALID_LEDGER_STATUSES = _OPEN_LEDGER_STATUSES | _CLOSED_LEDGER_STATUSES
+_AUTOPILOT_APPLY_THRESHOLD = 0.68
+_AUTOPILOT_MARKERS = {
+    "completed": (
+        "완료",
+        "끝냈",
+        "끝났",
+        "처리",
+        "해결",
+        "반영",
+        "배포했",
+        "done",
+        "completed",
+        "finished",
+        "resolved",
+    ),
+    "delayed": (
+        "아직",
+        "못 했",
+        "못했",
+        "지연",
+        "미뤘",
+        "연기",
+        "다음 회의",
+        "다음 주로",
+        "blocked",
+        "delayed",
+        "later",
+        "postpone",
+    ),
+    "changed": (
+        "변경",
+        "바꾸",
+        "전환",
+        "대신",
+        "재조정",
+        "범위 조정",
+        "우선순위 변경",
+        "changed",
+        "rescheduled",
+    ),
+    "dismissed": (
+        "취소",
+        "중단",
+        "폐기",
+        "안 하기로",
+        "필요 없",
+        "보류 해제",
+        "drop",
+        "cancel",
+        "dismiss",
+    ),
+}
+_QUALITY_COMPLETION_TERMS = (
+    "완료 기준",
+    "검증",
+    "테스트",
+    "확인",
+    "배포",
+    "리뷰",
+    "공유",
+    "전달",
+    "측정",
+)
+_QUALITY_ACTION_TERMS = (
+    "작성",
+    "확인",
+    "수정",
+    "배포",
+    "테스트",
+    "검증",
+    "공유",
+    "연결",
+    "적용",
+    "정리",
+    "마무리",
+    "완료",
+)
 
 
 @dataclass(frozen=True)
@@ -715,19 +799,21 @@ class PromiseRadarService:
         now: datetime | None = None,
         limit: int = 25,
         push_service: PushService | None = None,
+        allow_global: bool = False,
     ) -> PromiseNotificationDispatchResponse:
         """Send FCM notifications for due or reminder-ready promises."""
         owner_uuid = self._coerce_uuid(owner_id)
         team_uuid = self._coerce_uuid(team_id)
-        if owner_uuid is None and team_uuid is None:
+        if owner_uuid is None and team_uuid is None and not allow_global:
             raise ValueError("로그인 사용자 또는 팀 범위가 필요합니다")
 
         moment = (now or datetime.now(UTC)).replace(tzinfo=None)
-        scope_condition = (
-            PromiseLedgerEntry.team_id == team_uuid
-            if team_uuid is not None
-            else PromiseLedgerEntry.owner_id == owner_uuid
-        )
+        if team_uuid is not None:
+            scope_condition = PromiseLedgerEntry.team_id == team_uuid
+        elif owner_uuid is not None:
+            scope_condition = PromiseLedgerEntry.owner_id == owner_uuid
+        else:
+            scope_condition = PromiseLedgerEntry.id.is_not(None)
         result = await session.execute(
             select(PromiseLedgerEntry)
             .where(
@@ -795,6 +881,221 @@ class PromiseRadarService:
             invalid_tokens=invalid_tokens,
             notified_entry_ids=notified_ids,
         )
+
+    async def run_autopilot(
+        self,
+        session: AsyncSession,
+        task_id: str,
+        *,
+        owner_id: UUID | str | None = None,
+        guest_session_id: str | None = None,
+        team_id: UUID | str | None = None,
+        apply: bool = True,
+        limit: int = 50,
+    ) -> PromiseAutopilotResponse:
+        """Assess unresolved promises against the current meeting and optionally apply status."""
+        current = await self._get_record(session, task_id)
+        if current is None:
+            raise ValueError("회의 요약을 찾을 수 없습니다")
+
+        result = await session.execute(
+            select(PromiseLedgerEntry)
+            .where(
+                self._ledger_scope_condition(owner_id, guest_session_id, team_id=team_id),
+                PromiseLedgerEntry.status.in_(_OPEN_LEDGER_STATUSES),
+            )
+            .order_by(PromiseLedgerEntry.risk_level.desc(), PromiseLedgerEntry.last_seen_at.desc())
+            .limit(max(1, min(limit, 100)))
+        )
+        entries = list(result.scalars().all())
+        records = await self._load_evidence_records(session, current)
+        candidates = self._current_evidence_candidates(current, records)
+        now = datetime.now(UTC).replace(tzinfo=None)
+        assessments: list[PromiseAutopilotAssessment] = []
+        applied_count = 0
+
+        for entry in entries:
+            assessment = self._autopilot_assessment(entry, current, candidates, now)
+            if apply and self._should_apply_autopilot(assessment):
+                old_value = self._ledger_snapshot(entry)
+                entry.status = assessment.suggested_status
+                if assessment.suggested_status == "completed":
+                    entry.completed_at = now
+                elif assessment.suggested_status == "dismissed":
+                    entry.completed_at = None
+                    entry.dismissed_reason = "autopilot"
+                else:
+                    entry.completed_at = None
+                if assessment.suggested_status in {"blocked", "delayed"}:
+                    entry.risk_level = "high"
+                else:
+                    entry.risk_level = self._ledger_risk_level(
+                        entry.priority,
+                        entry.due_at,
+                        entry.occurrences,
+                    )
+                entry.updated_at = now
+                assessment.applied = True
+                applied_count += 1
+                self._record_ledger_event(
+                    session,
+                    entry,
+                    "autopilot_applied",
+                    old_value=old_value,
+                    new_value={
+                        **self._ledger_snapshot(entry),
+                        "autopilot": assessment.model_dump(mode="json"),
+                    },
+                    actor_user_id=owner_id,
+                )
+            elif apply and assessment.confidence >= 0.55:
+                self._record_ledger_event(
+                    session,
+                    entry,
+                    "autopilot_assessed",
+                    new_value=assessment.model_dump(mode="json"),
+                    actor_user_id=owner_id,
+                )
+            assessments.append(assessment)
+
+        if apply:
+            await session.commit()
+        return PromiseAutopilotResponse(
+            task_id=task_id,
+            assessed_count=len(assessments),
+            applied_count=applied_count,
+            assessments=assessments,
+        )
+
+    async def explain_ledger_entry_match(
+        self,
+        session: AsyncSession,
+        entry_id: UUID | str,
+        *,
+        task_id: str | None = None,
+        owner_id: UUID | str | None = None,
+        guest_session_id: str | None = None,
+        team_id: UUID | str | None = None,
+    ) -> PromiseMatchExplanation:
+        """Explain why one ledger entry matches the current meeting or its stored evidence."""
+        entry = await self._get_scoped_ledger_entry(
+            session,
+            entry_id,
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
+            team_id=team_id,
+        )
+        if entry is None:
+            raise ValueError("약속 원장 항목을 찾을 수 없습니다")
+
+        if task_id:
+            current = await self._get_record(session, task_id)
+            if current is None:
+                raise ValueError("회의 요약을 찾을 수 없습니다")
+            records = await self._load_evidence_records(session, current)
+            candidates = self._current_evidence_candidates(current, records)
+            return self._explain_entry_against_candidates(entry, candidates)
+
+        evidence = []
+        for item in entry.evidence or []:
+            if isinstance(item, dict):
+                evidence.append(PromiseRadarEvidence(**item))
+        matched = evidence[0].transcript if evidence else entry.text
+        similarity = self._promise_similarity(entry.text, matched, entry.owner_name, None)
+        return PromiseMatchExplanation(
+            ledger_entry_id=str(entry.id),
+            matched_task_id=entry.last_source_task_id,
+            matched_text=matched,
+            similarity=round(similarity, 3),
+            overlap_terms=sorted(set(self._tokens(entry.text)) & set(self._tokens(matched)))[:8],
+            confidence_factors=self._confidence_factors(entry, similarity, evidence),
+            rationale=self._match_rationale(entry, similarity, matched),
+            evidence=evidence[:3],
+        )
+
+    async def export_calendar_event(
+        self,
+        session: AsyncSession,
+        entry_id: UUID | str,
+        *,
+        owner_id: UUID | str | None = None,
+        guest_session_id: str | None = None,
+        team_id: UUID | str | None = None,
+    ) -> PromiseCalendarExportResponse:
+        """Build a concrete calendar handoff payload for Google Calendar and ICS import."""
+        entry = await self._get_scoped_ledger_entry(
+            session,
+            entry_id,
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
+            team_id=team_id,
+        )
+        if entry is None:
+            raise ValueError("약속 원장 항목을 찾을 수 없습니다")
+
+        response = self._entry_to_response(entry)
+        candidate = self._reminder_candidate(response)
+        start = (response.due_at or response.reminder_at or datetime.now(UTC).replace(tzinfo=None))
+        end = start + timedelta(minutes=30)
+        title = candidate.title
+        description = self._calendar_description(response)
+        uid = f"promise-{response.id}@voice-to-textnote"
+        ics_content = self._ics_content(
+            uid=uid,
+            title=title,
+            description=description,
+            start=start,
+            end=end,
+        )
+        google_url = self._google_calendar_url(title, description, start, end)
+        entry.calendar_event = {
+            **(candidate.calendar_event or {}),
+            "uid": uid,
+            "google_calendar_url": google_url,
+            "ics_filename": f"promise-{response.id}.ics",
+        }
+        entry.reminder_at = candidate.reminder_at
+        entry.updated_at = datetime.now(UTC).replace(tzinfo=None)
+        self._record_ledger_event(
+            session,
+            entry,
+            "calendar_export_created",
+            new_value=entry.calendar_event,
+            actor_user_id=owner_id,
+        )
+        await session.commit()
+        await session.refresh(entry)
+        return PromiseCalendarExportResponse(
+            ledger_entry_id=response.id,
+            title=title,
+            due_at=start,
+            ics_filename=f"promise-{response.id}.ics",
+            ics_content=ics_content,
+            google_calendar_url=google_url,
+            calendar_event=entry.calendar_event,
+        )
+
+    async def suggest_assignees(
+        self,
+        session: AsyncSession,
+        entry_id: UUID | str,
+        *,
+        owner_id: UUID | str | None = None,
+        guest_session_id: str | None = None,
+        team_id: UUID | str | None = None,
+        limit: int = 5,
+    ) -> list[PromiseAssigneeSuggestion]:
+        """Suggest a concrete app user for a promise owner/speaker."""
+        entry = await self._get_scoped_ledger_entry(
+            session,
+            entry_id,
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
+            team_id=team_id,
+        )
+        if entry is None:
+            raise ValueError("약속 원장 항목을 찾을 수 없습니다")
+        return await self._assignee_suggestions(session, entry, limit=limit)
 
     def analyze_records(
         self,
@@ -1205,6 +1506,257 @@ class PromiseRadarService:
         )
         return result.scalar_one_or_none()
 
+    def _current_evidence_candidates(
+        self,
+        current: TaskResult,
+        records: list[TaskResult],
+    ) -> list[tuple[str, dict[str, Any]]]:
+        candidates: list[tuple[str, dict[str, Any]]] = []
+        for record in records:
+            data = self._result_data(record)
+            for segment in data.get("segments") or []:
+                if not isinstance(segment, dict):
+                    continue
+                text = str(segment.get("text") or "").strip()
+                if not text:
+                    continue
+                candidates.append(
+                    (
+                        text,
+                        {
+                            "source_task_id": record.task_id,
+                            "meeting_link": f"/results/{record.task_id}",
+                            "transcript": text,
+                            "speaker": self._clean_optional(
+                                segment.get("identified_speaker_name")
+                                or segment.get("speaker_name")
+                                or segment.get("speaker")
+                            ),
+                            "speaker_label": self._clean_optional(
+                                segment.get("speaker_id") or segment.get("speaker_label")
+                            ),
+                            "speaker_profile_id": self._clean_optional(
+                                segment.get("identified_speaker_profile_id")
+                            ),
+                            "voiceprint_similarity": segment.get("voiceprint_similarity"),
+                            "start_seconds": segment.get("start"),
+                            "end_seconds": segment.get("end"),
+                        },
+                    )
+                )
+
+        data = self._result_data(current)
+        for key in ("summary_text", "summary", "markdown"):
+            value = data.get(key)
+            if isinstance(value, str) and value.strip():
+                candidates.append(
+                    (
+                        value.strip(),
+                        {
+                            "source_task_id": current.task_id,
+                            "meeting_link": f"/results/{current.task_id}",
+                            "transcript": value.strip(),
+                        },
+                    )
+                )
+        for item in data.get("action_items") or []:
+            if not isinstance(item, dict):
+                continue
+            text = str(item.get("task") or item.get("title") or "").strip()
+            if text:
+                candidates.append(
+                    (
+                        text,
+                        {
+                            "source_task_id": current.task_id,
+                            "meeting_link": f"/results/{current.task_id}",
+                            "transcript": text,
+                        },
+                    )
+                )
+        for key in ("key_decisions", "next_steps"):
+            value = data.get(key)
+            if isinstance(value, list):
+                for item in value:
+                    text = str(item).strip()
+                    if text:
+                        candidates.append(
+                            (
+                                text,
+                                {
+                                    "source_task_id": current.task_id,
+                                    "meeting_link": f"/results/{current.task_id}",
+                                    "transcript": text,
+                                },
+                            )
+                        )
+        return candidates
+
+    def _autopilot_assessment(
+        self,
+        entry: PromiseLedgerEntry,
+        current: TaskResult,
+        candidates: list[tuple[str, dict[str, Any]]],
+        now: datetime,
+    ) -> PromiseAutopilotAssessment:
+        explanation = self._explain_entry_against_candidates(entry, candidates)
+        matched_text = explanation.matched_text or ""
+        status = entry.status
+        reason = "현재 회의에서 상태 변경을 확정할 근거가 부족합니다."
+        marker_confidence = 0.0
+
+        if explanation.similarity >= 0.18:
+            for candidate_status in ("dismissed", "completed", "changed", "delayed"):
+                marker_hits = self._marker_hits(matched_text, candidate_status)
+                if not marker_hits:
+                    continue
+                if candidate_status == "completed" and self._looks_future_intent(matched_text):
+                    continue
+                status = candidate_status
+                marker_confidence = min(0.28, 0.14 + len(marker_hits) * 0.04)
+                reason = self._autopilot_reason(candidate_status, marker_hits, matched_text)
+                break
+
+        if status == entry.status and entry.due_at is not None and entry.due_at < now:
+            status = "delayed"
+            marker_confidence = max(marker_confidence, 0.2)
+            reason = "기한이 지났지만 완료 또는 취소 근거가 없어 지연 약속으로 판정했습니다."
+
+        evidence_bonus = 0.06 if explanation.evidence else 0.0
+        confidence = min(
+            1.0,
+            explanation.similarity * 0.66
+            + marker_confidence
+            + evidence_bonus
+            + min(entry.confidence, 1.0) * 0.08,
+        )
+        if status == entry.status and marker_confidence == 0:
+            confidence = min(confidence, 0.54)
+
+        return PromiseAutopilotAssessment(
+            ledger_entry_id=str(entry.id),
+            previous_status=entry.status,
+            suggested_status=status,
+            confidence=round(confidence, 3),
+            reason=reason,
+            explanation=explanation,
+        )
+
+    def _should_apply_autopilot(self, assessment: PromiseAutopilotAssessment) -> bool:
+        return (
+            assessment.suggested_status != assessment.previous_status
+            and assessment.confidence >= _AUTOPILOT_APPLY_THRESHOLD
+        )
+
+    def _explain_entry_against_candidates(
+        self,
+        entry: PromiseLedgerEntry,
+        candidates: list[tuple[str, dict[str, Any]]],
+    ) -> PromiseMatchExplanation:
+        best_text = ""
+        best_payload: dict[str, Any] = {}
+        best_score = 0.0
+        for text, payload in candidates:
+            score = self._promise_similarity(entry.text, text, entry.owner_name, payload.get("speaker"))
+            if score > best_score:
+                best_text = text
+                best_payload = payload
+                best_score = score
+
+        evidence = []
+        if best_payload:
+            evidence.append(PromiseRadarEvidence(**best_payload))
+        if not evidence:
+            for item in entry.evidence or []:
+                if isinstance(item, dict):
+                    evidence.append(PromiseRadarEvidence(**item))
+                    if len(evidence) >= 3:
+                        break
+
+        overlap = sorted(set(self._tokens(entry.text)) & set(self._tokens(best_text)))[:8]
+        return PromiseMatchExplanation(
+            ledger_entry_id=str(entry.id),
+            matched_task_id=best_payload.get("source_task_id") or entry.last_source_task_id,
+            matched_text=best_text or (evidence[0].transcript if evidence else None),
+            similarity=round(best_score, 3),
+            overlap_terms=overlap,
+            confidence_factors=self._confidence_factors(entry, best_score, evidence),
+            rationale=self._match_rationale(entry, best_score, best_text),
+            evidence=evidence[:3],
+        )
+
+    def _confidence_factors(
+        self,
+        entry: PromiseLedgerEntry,
+        similarity: float,
+        evidence: list[PromiseRadarEvidence],
+    ) -> list[str]:
+        factors: list[str] = []
+        if similarity >= 0.65:
+            factors.append("약속 내용의 의미 유사도가 높습니다.")
+        elif similarity >= 0.35:
+            factors.append("약속 내용의 핵심 단어가 일부 겹칩니다.")
+        if entry.owner_name:
+            factors.append("원장에 담당자 이름이 있습니다.")
+        if entry.due_at:
+            factors.append("기한 정보가 있어 상태 위험도를 계산할 수 있습니다.")
+        if evidence:
+            factors.append("회의 원문 근거가 연결되어 있습니다.")
+        if entry.occurrences >= 2:
+            factors.append(f"{entry.occurrences}회 이상 반복 추적된 약속입니다.")
+        return factors
+
+    def _match_rationale(
+        self,
+        entry: PromiseLedgerEntry,
+        similarity: float,
+        matched_text: str,
+    ) -> str:
+        if similarity >= 0.65:
+            return "현재 회의 발화가 원장 약속과 강하게 일치합니다."
+        if similarity >= 0.35:
+            return "현재 회의 발화가 원장 약속과 일부 유사합니다."
+        if matched_text:
+            return "현재 회의에서 약한 관련 신호만 발견했습니다."
+        return "현재 회의에서 직접 관련 발화를 찾지 못했습니다."
+
+    def _marker_hits(self, text: str, category: str) -> list[str]:
+        lowered = text.lower()
+        return [marker for marker in _AUTOPILOT_MARKERS[category] if marker.lower() in lowered]
+
+    def _looks_future_intent(self, text: str) -> bool:
+        lowered = text.lower()
+        return any(
+            marker in lowered
+            for marker in (
+                "하겠습니다",
+                "하겠",
+                "할 예정",
+                "해야",
+                "진행하겠습니다",
+                "will",
+                "todo",
+                "next",
+            )
+        )
+
+    def _autopilot_reason(
+        self,
+        status: str,
+        marker_hits: list[str],
+        matched_text: str,
+    ) -> str:
+        markers = ", ".join(marker_hits[:3])
+        if status == "completed":
+            return f"현재 회의 근거에서 완료 신호({markers})가 확인됐습니다."
+        if status == "delayed":
+            return f"현재 회의 근거에서 지연 신호({markers})가 확인됐습니다."
+        if status == "changed":
+            return f"현재 회의 근거에서 범위/기한 변경 신호({markers})가 확인됐습니다."
+        if status == "dismissed":
+            return f"현재 회의 근거에서 취소/폐기 신호({markers})가 확인됐습니다."
+        return f"현재 회의 근거를 확인했습니다: {matched_text[:80]}"
+
     async def _find_open_ledger_entry(
         self,
         session: AsyncSession,
@@ -1280,6 +1832,7 @@ class PromiseRadarService:
             calendar_event=entry.calendar_event,
             action_item_id=str(entry.action_item_id) if entry.action_item_id else None,
             dismissed_reason=entry.dismissed_reason,
+            quality=self._quality_score(entry),
         )
 
     def _event_to_response(self, event: PromiseLedgerEvent) -> PromiseLedgerHistoryEntry:
@@ -1641,6 +2194,194 @@ class PromiseRadarService:
             due_at=due_at,
             reminder_at=reminder_at,
             calendar_event=calendar_event,
+        )
+
+    async def _assignee_suggestions(
+        self,
+        session: AsyncSession,
+        entry: PromiseLedgerEntry,
+        *,
+        limit: int = 5,
+    ) -> list[PromiseAssigneeSuggestion]:
+        users: list[User] = []
+        if entry.team_id is not None:
+            result = await session.execute(
+                select(User)
+                .join(TeamMember, TeamMember.user_id == User.id)
+                .where(TeamMember.team_id == entry.team_id, User.is_active)
+                .limit(50)
+            )
+            users = list(result.scalars().all())
+        elif entry.owner_id is not None:
+            result = await session.execute(select(User).where(User.id == entry.owner_id))
+            user = result.scalar_one_or_none()
+            if user is not None:
+                users = [user]
+
+        if not users:
+            return []
+
+        history_counts: dict[UUID, int] = {}
+        if entry.owner_name:
+            scoped = (
+                PromiseLedgerEntry.team_id == entry.team_id
+                if entry.team_id is not None
+                else PromiseLedgerEntry.owner_id == entry.owner_id
+            )
+            result = await session.execute(
+                select(PromiseLedgerEntry.assigned_user_id).where(
+                    scoped,
+                    PromiseLedgerEntry.owner_name == entry.owner_name,
+                    PromiseLedgerEntry.assigned_user_id.is_not(None),
+                )
+            )
+            for assigned_user_id in result.scalars().all():
+                if assigned_user_id is not None:
+                    history_counts[assigned_user_id] = history_counts.get(assigned_user_id, 0) + 1
+
+        suggestions: list[PromiseAssigneeSuggestion] = []
+        for user in users:
+            confidence, rationale = self._assignee_confidence(entry, user, history_counts)
+            suggestions.append(
+                PromiseAssigneeSuggestion(
+                    user_id=str(user.id),
+                    display_name=user.display_name,
+                    email=user.email,
+                    confidence=confidence,
+                    rationale=rationale,
+                )
+            )
+        suggestions.sort(key=lambda item: item.confidence, reverse=True)
+        return suggestions[: max(1, min(limit, 10))]
+
+    def _assignee_confidence(
+        self,
+        entry: PromiseLedgerEntry,
+        user: User,
+        history_counts: dict[UUID, int],
+    ) -> tuple[float, str]:
+        if entry.assigned_user_id == user.id:
+            return 0.99, "이미 이 약속에 지정된 사용자입니다."
+        owner = (entry.owner_name or "").strip().lower()
+        display = user.display_name.strip().lower()
+        email = user.email.strip().lower()
+        if owner and (owner == display or owner in display or owner in email):
+            return 0.92, "회의에서 추출된 담당자 이름이 사용자 이름/이메일과 일치합니다."
+        history_count = history_counts.get(user.id, 0)
+        if history_count >= 3:
+            return 0.84, f"같은 담당자 이름으로 과거 {history_count}회 지정됐습니다."
+        if history_count:
+            return 0.72, f"같은 담당자 이름으로 과거 {history_count}회 지정된 이력이 있습니다."
+        if entry.owner_id == user.id:
+            return 0.48, "개인 원장의 소유자입니다."
+        return 0.35, "팀 멤버 후보입니다. 이름 매칭 또는 과거 지정 이력은 아직 약합니다."
+
+    def _quality_score(self, entry: PromiseLedgerEntry) -> PromiseQualityScore:
+        score = 0
+        strengths: list[str] = []
+        issues: list[str] = []
+        if entry.owner_name or entry.assigned_user_id or entry.speaker_label:
+            score += 24
+            strengths.append("담당자 또는 화자 근거가 있습니다.")
+        else:
+            issues.append("담당자 또는 화자 정보가 없습니다.")
+
+        if entry.due_at or entry.due_date_text:
+            score += 22
+            strengths.append("기한 정보가 있습니다.")
+        else:
+            issues.append("기한이 없어 알림/캘린더 자동화가 약합니다.")
+
+        normalized_text = entry.text.lower()
+        if len(entry.text.strip()) >= 8 and any(term in normalized_text for term in _QUALITY_ACTION_TERMS):
+            score += 20
+            strengths.append("행동 동사가 포함되어 있습니다.")
+        else:
+            issues.append("해야 할 행동이 명확하지 않습니다.")
+
+        if entry.evidence:
+            score += 16
+            strengths.append("회의 원문 근거가 연결되어 있습니다.")
+        else:
+            issues.append("원문 근거가 없어 신뢰도 설명이 약합니다.")
+
+        if any(term in normalized_text for term in _QUALITY_COMPLETION_TERMS):
+            score += 10
+            strengths.append("검증 또는 완료 기준 단서가 있습니다.")
+        else:
+            issues.append("완료 기준 또는 검증 단서가 부족합니다.")
+
+        if entry.confidence >= 0.75:
+            score += 8
+            strengths.append("추출 신뢰도가 높습니다.")
+        elif entry.confidence < 0.5:
+            issues.append("추출 신뢰도가 낮아 사용자 확인이 필요합니다.")
+        else:
+            score += 4
+
+        level = "excellent" if score >= 85 else "good" if score >= 70 else "weak" if score >= 50 else "risky"
+        return PromiseQualityScore(
+            score=min(score, 100),
+            level=level,
+            strengths=strengths,
+            issues=issues,
+        )
+
+    def _ics_content(
+        self,
+        *,
+        uid: str,
+        title: str,
+        description: str,
+        start: datetime,
+        end: datetime,
+    ) -> str:
+        return "\r\n".join(
+            [
+                "BEGIN:VCALENDAR",
+                "VERSION:2.0",
+                "PRODID:-//Voice to TextNote//Promise Radar//KO",
+                "CALSCALE:GREGORIAN",
+                "BEGIN:VEVENT",
+                f"UID:{self._ics_escape(uid)}",
+                f"DTSTAMP:{self._calendar_utc(datetime.now(UTC).replace(tzinfo=None))}",
+                f"DTSTART:{self._calendar_utc(start)}",
+                f"DTEND:{self._calendar_utc(end)}",
+                f"SUMMARY:{self._ics_escape(title)}",
+                f"DESCRIPTION:{self._ics_escape(description)}",
+                "STATUS:TENTATIVE",
+                "END:VEVENT",
+                "END:VCALENDAR",
+                "",
+            ]
+        )
+
+    def _google_calendar_url(
+        self,
+        title: str,
+        description: str,
+        start: datetime,
+        end: datetime,
+    ) -> str:
+        dates = f"{self._calendar_utc(start)}/{self._calendar_utc(end)}"
+        return (
+            "https://calendar.google.com/calendar/render?action=TEMPLATE"
+            f"&text={quote(title)}"
+            f"&dates={dates}"
+            f"&details={quote(description)}"
+        )
+
+    def _calendar_utc(self, value: datetime) -> str:
+        if value.tzinfo is None:
+            value = value.replace(tzinfo=UTC)
+        return value.astimezone(UTC).strftime("%Y%m%dT%H%M%SZ")
+
+    def _ics_escape(self, value: str) -> str:
+        return (
+            value.replace("\\", "\\\\")
+            .replace("\n", "\\n")
+            .replace(",", "\\,")
+            .replace(";", "\\;")
         )
 
     def _calendar_description(self, entry: PromiseLedgerEntryResponse) -> str:

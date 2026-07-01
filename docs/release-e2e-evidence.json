@@ -155,6 +155,38 @@
         "ios"
       ],
       "evidence": "TODO: iOS PDF share sheet"
+    },
+    "promise_radar_autopilot_status": {
+      "pass": false,
+      "platforms": [
+        "android",
+        "ios"
+      ],
+      "evidence": "TODO: Promise Radar Autopilot status update"
+    },
+    "promise_radar_due_push": {
+      "pass": false,
+      "platforms": [
+        "android",
+        "ios"
+      ],
+      "evidence": "TODO: Promise Radar due promise push notification"
+    },
+    "promise_radar_calendar_export": {
+      "pass": false,
+      "platforms": [
+        "android",
+        "ios"
+      ],
+      "evidence": "TODO: Promise Radar calendar export"
+    },
+    "promise_radar_assignee_quality": {
+      "pass": false,
+      "platforms": [
+        "android",
+        "ios"
+      ],
+      "evidence": "TODO: Promise Radar assignee suggestion and quality score"
     }
   }
 }

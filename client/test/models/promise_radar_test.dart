@@ -110,6 +110,21 @@ void main() {
             'last_seen_at': '2026-06-30T00:00:00Z',
             'user_confirmed': false,
             'action_item_id': 'action-1',
+            'quality': {
+              'score': 82,
+              'level': 'good',
+              'strengths': ['담당자 또는 화자 근거가 있습니다.'],
+              'issues': ['완료 기준 또는 검증 단서가 부족합니다.'],
+            },
+            'assignee_suggestions': [
+              {
+                'user_id': 'user-1',
+                'display_name': '김기수',
+                'email': 'kiminbean@example.com',
+                'confidence': 0.92,
+                'rationale': '회의에서 추출된 담당자 이름이 일치합니다.',
+              }
+            ],
             'evidence': [
               {
                 'source_task_id': 'min-1',
@@ -150,6 +165,26 @@ void main() {
             }
           ],
         },
+        'autopilot_assessments': [
+          {
+            'ledger_entry_id': 'ledger-1',
+            'previous_status': 'open',
+            'suggested_status': 'completed',
+            'applied': true,
+            'confidence': 0.84,
+            'reason': '완료 신호가 확인됐습니다.',
+            'explanation': {
+              'ledger_entry_id': 'ledger-1',
+              'matched_task_id': 'sum-1',
+              'matched_text': 'QA 체크리스트 작성 완료했습니다.',
+              'similarity': 0.77,
+              'overlap_terms': ['체크리스트'],
+              'confidence_factors': ['회의 원문 근거가 연결되어 있습니다.'],
+              'rationale': '현재 회의 발화가 원장 약속과 강하게 일치합니다.',
+              'evidence': [],
+            },
+          }
+        ],
         'semantic_enrichment_status': 'zai_applied',
         'follow_up_questions': ['QA 체크리스트 상태는 확인됐습니까?'],
       });
@@ -164,6 +199,9 @@ void main() {
       expect(result.ownerRisks.single.owner, '김기수');
       expect(result.highRiskCount, 1);
       expect(result.ledgerEntries.single.actionItemId, 'action-1');
+      expect(result.ledgerEntries.single.quality!.score, 82);
+      expect(result.ledgerEntries.single.assigneeSuggestions.single.displayName,
+          '김기수');
       expect(result.ledgerEntries.single.evidence.single.startSeconds, 12.3);
       expect(result.nextMeetingBriefing!.dueSoonCount, 1);
       expect(
@@ -172,6 +210,7 @@ void main() {
         'promise_radar',
       );
       expect(result.semanticEnrichmentStatus, 'zai_applied');
+      expect(result.autopilotAssessments.single.applied, isTrue);
       expect(result.followUpQuestions.single, contains('QA 체크리스트'));
     });
 
@@ -315,6 +354,27 @@ void main() {
         'notified_entry_ids': ['ledger-1'],
       });
       expect(dispatch.notifiedEntryIds.single, 'ledger-1');
+
+      final calendar = PromiseCalendarExportResponse.fromJson({
+        'ledger_entry_id': 'ledger-1',
+        'title': '약속 확인: QA 체크리스트',
+        'due_at': '2026-07-01T09:00:00Z',
+        'ics_filename': 'promise-ledger-1.ics',
+        'ics_content': 'BEGIN:VCALENDAR',
+        'google_calendar_url': 'https://calendar.google.com/calendar/render',
+      });
+      expect(calendar.icsContent, contains('VCALENDAR'));
+
+      final explanation = PromiseMatchExplanation.fromJson({
+        'ledger_entry_id': 'ledger-1',
+        'matched_text': 'QA 체크리스트 작성 완료했습니다.',
+        'similarity': 0.8,
+        'overlap_terms': ['체크리스트'],
+        'confidence_factors': ['근거 있음'],
+        'rationale': '강하게 일치합니다.',
+        'evidence': [],
+      });
+      expect(explanation.overlapTerms.single, '체크리스트');
     });
   });
 }

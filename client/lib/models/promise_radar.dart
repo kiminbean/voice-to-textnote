@@ -222,6 +222,193 @@ class PromiseRadarEvidence {
   }
 }
 
+class PromiseQualityScore {
+  final int score;
+  final String level;
+  final List<String> strengths;
+  final List<String> issues;
+
+  const PromiseQualityScore({
+    required this.score,
+    required this.level,
+    required this.strengths,
+    required this.issues,
+  });
+
+  factory PromiseQualityScore.fromJson(Map<String, dynamic> json) {
+    return PromiseQualityScore(
+      score: json['score'] as int? ?? 0,
+      level: json['level'] as String? ?? 'risky',
+      strengths: (json['strengths'] as List<dynamic>? ?? [])
+          .whereType<String>()
+          .toList(),
+      issues:
+          (json['issues'] as List<dynamic>? ?? []).whereType<String>().toList(),
+    );
+  }
+}
+
+class PromiseAssigneeSuggestion {
+  final String? userId;
+  final String displayName;
+  final String? email;
+  final double confidence;
+  final String rationale;
+
+  const PromiseAssigneeSuggestion({
+    this.userId,
+    required this.displayName,
+    this.email,
+    required this.confidence,
+    required this.rationale,
+  });
+
+  factory PromiseAssigneeSuggestion.fromJson(Map<String, dynamic> json) {
+    return PromiseAssigneeSuggestion(
+      userId: json['user_id'] as String?,
+      displayName: json['display_name'] as String? ?? '',
+      email: json['email'] as String?,
+      confidence: (json['confidence'] as num?)?.toDouble() ?? 0,
+      rationale: json['rationale'] as String? ?? '',
+    );
+  }
+}
+
+class PromiseMatchExplanation {
+  final String ledgerEntryId;
+  final String? matchedTaskId;
+  final String? matchedText;
+  final double similarity;
+  final List<String> overlapTerms;
+  final List<String> confidenceFactors;
+  final String rationale;
+  final List<PromiseRadarEvidence> evidence;
+
+  const PromiseMatchExplanation({
+    required this.ledgerEntryId,
+    this.matchedTaskId,
+    this.matchedText,
+    required this.similarity,
+    required this.overlapTerms,
+    required this.confidenceFactors,
+    required this.rationale,
+    required this.evidence,
+  });
+
+  factory PromiseMatchExplanation.fromJson(Map<String, dynamic> json) {
+    return PromiseMatchExplanation(
+      ledgerEntryId: json['ledger_entry_id'] as String? ?? '',
+      matchedTaskId: json['matched_task_id'] as String?,
+      matchedText: json['matched_text'] as String?,
+      similarity: (json['similarity'] as num?)?.toDouble() ?? 0,
+      overlapTerms: (json['overlap_terms'] as List<dynamic>? ?? [])
+          .whereType<String>()
+          .toList(),
+      confidenceFactors: (json['confidence_factors'] as List<dynamic>? ?? [])
+          .whereType<String>()
+          .toList(),
+      rationale: json['rationale'] as String? ?? '',
+      evidence: (json['evidence'] as List<dynamic>? ?? [])
+          .whereType<Map<String, dynamic>>()
+          .map(PromiseRadarEvidence.fromJson)
+          .toList(),
+    );
+  }
+}
+
+class PromiseAutopilotAssessment {
+  final String ledgerEntryId;
+  final String previousStatus;
+  final String suggestedStatus;
+  final bool applied;
+  final double confidence;
+  final String reason;
+  final PromiseMatchExplanation explanation;
+
+  const PromiseAutopilotAssessment({
+    required this.ledgerEntryId,
+    required this.previousStatus,
+    required this.suggestedStatus,
+    required this.applied,
+    required this.confidence,
+    required this.reason,
+    required this.explanation,
+  });
+
+  factory PromiseAutopilotAssessment.fromJson(Map<String, dynamic> json) {
+    return PromiseAutopilotAssessment(
+      ledgerEntryId: json['ledger_entry_id'] as String? ?? '',
+      previousStatus: json['previous_status'] as String? ?? '',
+      suggestedStatus: json['suggested_status'] as String? ?? '',
+      applied: json['applied'] as bool? ?? false,
+      confidence: (json['confidence'] as num?)?.toDouble() ?? 0,
+      reason: json['reason'] as String? ?? '',
+      explanation: PromiseMatchExplanation.fromJson(
+        json['explanation'] as Map<String, dynamic>? ??
+            const <String, dynamic>{},
+      ),
+    );
+  }
+}
+
+class PromiseAutopilotResponse {
+  final String taskId;
+  final int assessedCount;
+  final int appliedCount;
+  final List<PromiseAutopilotAssessment> assessments;
+
+  const PromiseAutopilotResponse({
+    required this.taskId,
+    required this.assessedCount,
+    required this.appliedCount,
+    required this.assessments,
+  });
+
+  factory PromiseAutopilotResponse.fromJson(Map<String, dynamic> json) {
+    return PromiseAutopilotResponse(
+      taskId: json['task_id'] as String? ?? '',
+      assessedCount: json['assessed_count'] as int? ?? 0,
+      appliedCount: json['applied_count'] as int? ?? 0,
+      assessments: (json['assessments'] as List<dynamic>? ?? [])
+          .whereType<Map<String, dynamic>>()
+          .map(PromiseAutopilotAssessment.fromJson)
+          .toList(),
+    );
+  }
+}
+
+class PromiseCalendarExportResponse {
+  final String ledgerEntryId;
+  final String title;
+  final String? dueAt;
+  final String icsFilename;
+  final String icsContent;
+  final String googleCalendarUrl;
+  final Map<String, dynamic>? calendarEvent;
+
+  const PromiseCalendarExportResponse({
+    required this.ledgerEntryId,
+    required this.title,
+    this.dueAt,
+    required this.icsFilename,
+    required this.icsContent,
+    required this.googleCalendarUrl,
+    this.calendarEvent,
+  });
+
+  factory PromiseCalendarExportResponse.fromJson(Map<String, dynamic> json) {
+    return PromiseCalendarExportResponse(
+      ledgerEntryId: json['ledger_entry_id'] as String? ?? '',
+      title: json['title'] as String? ?? '',
+      dueAt: json['due_at'] as String?,
+      icsFilename: json['ics_filename'] as String? ?? '',
+      icsContent: json['ics_content'] as String? ?? '',
+      googleCalendarUrl: json['google_calendar_url'] as String? ?? '',
+      calendarEvent: json['calendar_event'] as Map<String, dynamic>?,
+    );
+  }
+}
+
 class PromiseLedgerEntry {
   final String id;
   final String canonicalKey;
@@ -249,6 +436,8 @@ class PromiseLedgerEntry {
   final Map<String, dynamic>? calendarEvent;
   final String? actionItemId;
   final String? dismissedReason;
+  final PromiseQualityScore? quality;
+  final List<PromiseAssigneeSuggestion> assigneeSuggestions;
 
   const PromiseLedgerEntry({
     required this.id,
@@ -277,6 +466,8 @@ class PromiseLedgerEntry {
     this.calendarEvent,
     this.actionItemId,
     this.dismissedReason,
+    this.quality,
+    this.assigneeSuggestions = const [],
   });
 
   factory PromiseLedgerEntry.fromJson(Map<String, dynamic> json) {
@@ -310,6 +501,15 @@ class PromiseLedgerEntry {
       calendarEvent: json['calendar_event'] as Map<String, dynamic>?,
       actionItemId: json['action_item_id'] as String?,
       dismissedReason: json['dismissed_reason'] as String?,
+      quality: json['quality'] is Map<String, dynamic>
+          ? PromiseQualityScore.fromJson(
+              json['quality'] as Map<String, dynamic>)
+          : null,
+      assigneeSuggestions:
+          (json['assignee_suggestions'] as List<dynamic>? ?? [])
+              .whereType<Map<String, dynamic>>()
+              .map(PromiseAssigneeSuggestion.fromJson)
+              .toList(),
     );
   }
 }
@@ -627,6 +827,7 @@ class PromiseRadarResult {
   final int highRiskCount;
   final List<PromiseLedgerEntry> ledgerEntries;
   final PromiseNextMeetingBriefing? nextMeetingBriefing;
+  final List<PromiseAutopilotAssessment> autopilotAssessments;
   final String semanticEnrichmentStatus;
   final List<String> followUpQuestions;
 
@@ -645,6 +846,7 @@ class PromiseRadarResult {
     required this.highRiskCount,
     this.ledgerEntries = const [],
     this.nextMeetingBriefing,
+    this.autopilotAssessments = const [],
     this.semanticEnrichmentStatus = 'deterministic',
     required this.followUpQuestions,
   });
@@ -691,6 +893,11 @@ class PromiseRadarResult {
               json['next_meeting_briefing'] as Map<String, dynamic>,
             )
           : null,
+      autopilotAssessments:
+          (json['autopilot_assessments'] as List<dynamic>? ?? [])
+              .whereType<Map<String, dynamic>>()
+              .map(PromiseAutopilotAssessment.fromJson)
+              .toList(),
       semanticEnrichmentStatus:
           json['semantic_enrichment_status'] as String? ?? 'deterministic',
       followUpQuestions: (json['follow_up_questions'] as List<dynamic>? ?? [])

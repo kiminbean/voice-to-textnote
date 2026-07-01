@@ -26,6 +26,10 @@ from backend.app.middleware.rate_limit import setup_rate_limiting
 from backend.app.middleware.request_id import RequestIDMiddleware
 from backend.app.middleware.security_headers import SecurityHeadersMiddleware
 from backend.app.middleware.validators import PathValidationMiddleware
+from backend.app.promise_radar_scheduler import (
+    start_promise_radar_notification_scheduler,
+    stop_promise_radar_notification_scheduler,
+)
 from backend.ml.diarization_engine import DiarizationEngine
 from backend.ml.stt_engine import WhisperEngine
 from backend.ml.tone_engine import ToneEngine
@@ -93,6 +97,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # SPEC-LIFECYCLE-001: 시작 시 의존성 검증 (Redis, DB)
     await validate_startup()
+    promise_scheduler_task = start_promise_radar_notification_scheduler()
 
     # STT 모델 사전 로드 (REQ-STT-021)
     if os.environ.get("PYTEST_CURRENT_TEST"):
@@ -131,7 +136,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     else:
         logger.info("tone_model 미설정 - 톤 분석 기능 비활성화")
 
-    yield
+    try:
+        yield
+    finally:
+        await stop_promise_radar_notification_scheduler(promise_scheduler_task)
 
     # 종료 시 클린업
     logger.info("서버 종료")

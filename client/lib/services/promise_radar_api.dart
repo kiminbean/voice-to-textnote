@@ -95,6 +95,42 @@ class PromiseRadarApi {
     return PromiseLedgerEntry.fromJson(response.data as Map<String, dynamic>);
   }
 
+  Future<PromiseAutopilotResponse> runAutopilot(
+    String taskId, {
+    bool apply = true,
+    String? teamId,
+    int limit = 50,
+  }) async {
+    final response = await _dio.post(
+      '/promise-radar/autopilot/$taskId',
+      queryParameters: {
+        'apply': apply,
+        'limit': limit,
+        if (teamId != null) 'team_id': teamId,
+      },
+    );
+    return PromiseAutopilotResponse.fromJson(
+      response.data as Map<String, dynamic>,
+    );
+  }
+
+  Future<PromiseMatchExplanation> explainLedgerEntry(
+    String entryId, {
+    String? taskId,
+    String? teamId,
+  }) async {
+    final response = await _dio.get(
+      '/promise-radar/ledger/$entryId/explain',
+      queryParameters: {
+        if (taskId != null) 'task_id': taskId,
+        if (teamId != null) 'team_id': teamId,
+      },
+    );
+    return PromiseMatchExplanation.fromJson(
+      response.data as Map<String, dynamic>,
+    );
+  }
+
   Future<PromiseReminderCandidate> createCalendarCandidate(
     String entryId, {
     String? teamId,
@@ -108,6 +144,39 @@ class PromiseRadarApi {
     return PromiseReminderCandidate.fromJson(
       response.data as Map<String, dynamic>,
     );
+  }
+
+  Future<PromiseCalendarExportResponse> exportCalendarEvent(
+    String entryId, {
+    String? teamId,
+  }) async {
+    final response = await _dio.post(
+      '/promise-radar/ledger/$entryId/calendar/export',
+      queryParameters: {
+        if (teamId != null) 'team_id': teamId,
+      },
+    );
+    return PromiseCalendarExportResponse.fromJson(
+      response.data as Map<String, dynamic>,
+    );
+  }
+
+  Future<List<PromiseAssigneeSuggestion>> suggestAssignees(
+    String entryId, {
+    String? teamId,
+    int limit = 5,
+  }) async {
+    final response = await _dio.get(
+      '/promise-radar/ledger/$entryId/assignee-suggestions',
+      queryParameters: {
+        'limit': limit,
+        if (teamId != null) 'team_id': teamId,
+      },
+    );
+    return (response.data as List<dynamic>? ?? [])
+        .whereType<Map<String, dynamic>>()
+        .map(PromiseAssigneeSuggestion.fromJson)
+        .toList();
   }
 
   Future<PromiseTaskLinkResponse> createActionItem(
