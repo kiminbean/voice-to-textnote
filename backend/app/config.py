@@ -210,6 +210,15 @@ class Settings(BaseSettings):
     keyword_result_ttl: int = Field(default=604800, ge=60)
     keyword_max_text_chars: int = Field(default=100000, ge=1000, le=1000000)
 
+    # SPEC-RELATED-001: 관련 회의 추천(Related Meetings) 설정
+    # 요청 시 limit 미지정 기본값과 상한 (사용자 입력 검증에 사용)
+    related_meetings_default_limit: int = Field(default=5, ge=1, le=50)
+    related_meetings_max_limit: int = Field(default=20, ge=1, le=100)
+    # 기준 회의에서 추출해 매칭에 사용할 상위 키워드 개수
+    related_meetings_keyword_count: int = Field(default=10, ge=1, le=50)
+    # 관련 회의로 인정하기 위한 최소 공유 키워드 수
+    related_meetings_min_shared: int = Field(default=1, ge=0, le=20)
+
     # REQ-SEC-009/REQ-SEC-010: CORS 설정
     # 허용할 HTTP 메서드 목록 (와일드카드 금지)
     cors_allow_methods: list[str] = Field(

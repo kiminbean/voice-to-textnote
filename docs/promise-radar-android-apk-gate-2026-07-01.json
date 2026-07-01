@@ -1,0 +1,10 @@
+{
+  "generated_at": "2026-07-01T07:42:56+00:00",
+  "apk_path": "client/build/app/outputs/flutter-apk/app-release.apk",
+  "required_api_url": "http://100.69.69.119:8000/api/v1",
+  "apk_url_ok": true,
+  "apk_failures": [],
+  "device": null,
+  "passed": true,
+  "failures": []
+}

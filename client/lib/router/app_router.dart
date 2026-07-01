@@ -6,6 +6,7 @@ import 'package:voice_to_textnote/providers/auth_provider.dart';
 import 'package:voice_to_textnote/screens/home_screen.dart';
 import 'package:voice_to_textnote/screens/login_screen.dart';
 import 'package:voice_to_textnote/screens/processing_screen.dart';
+import 'package:voice_to_textnote/screens/promise_review_inbox_screen.dart';
 import 'package:voice_to_textnote/screens/recording_screen.dart';
 import 'package:voice_to_textnote/screens/register_screen.dart';
 import 'package:voice_to_textnote/screens/result_screen.dart';
@@ -111,6 +112,10 @@ GoRouter createRouter(ProviderContainer container) {
       GoRoute(
         path: '/search',
         builder: (_, __) => const SearchScreen(),
+      ),
+      GoRoute(
+        path: '/promise-review',
+        builder: (_, __) => const PromiseReviewInboxScreen(),
       ),
       // 영업 고객 목록
       GoRoute(

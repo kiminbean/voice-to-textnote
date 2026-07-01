@@ -5,9 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:voice_to_textnote/models/promise_radar.dart';
 import 'package:voice_to_textnote/models/search_result.dart';
 import 'package:voice_to_textnote/providers/connectivity_provider.dart';
 import 'package:voice_to_textnote/providers/qa_provider.dart';
+import 'package:voice_to_textnote/providers/result_provider.dart';
 import 'package:voice_to_textnote/providers/search_provider.dart';
 import 'package:voice_to_textnote/screens/home_screen.dart';
 import 'package:voice_to_textnote/screens/search_screen.dart';
@@ -29,6 +31,32 @@ List<Override> _onlineOverrides(MockConnectivityService mockService) {
 
   return [
     connectivityServiceProvider.overrideWithValue(mockService),
+    promiseRadarDashboardProvider.overrideWith((_) async {
+      return const PromiseRadarDashboard(
+        openCount: 0,
+        highRiskCount: 0,
+        overdueCount: 0,
+        dueSoonCount: 0,
+        blockedCount: 0,
+        unconfirmedCount: 0,
+        ownerHotspots: [],
+        urgentPromises: [],
+        recentChanges: [],
+      );
+    }),
+    promiseDailyDigestProvider.overrideWith((_) async {
+      return const PromiseDigest(
+        cadence: 'daily',
+        title: '오늘의 약속 레이더',
+        generatedAt: '',
+        openCount: 0,
+        overdueCount: 0,
+        dueSoonCount: 0,
+        highRiskCount: 0,
+        lines: [],
+        promises: [],
+      );
+    }),
   ];
 }
 

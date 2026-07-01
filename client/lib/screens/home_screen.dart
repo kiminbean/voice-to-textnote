@@ -388,10 +388,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ),
                   ),
                   IconButton(
+                    tooltip: '검토함',
+                    onPressed: () => context.push('/promise-review'),
+                    icon: const Icon(Icons.inbox_outlined),
+                  ),
+                  IconButton(
                     tooltip: '새로고침',
                     onPressed: () {
                       ref.invalidate(promiseRadarDashboardProvider);
                       ref.invalidate(promiseDailyDigestProvider);
+                      ref.invalidate(promiseAutopilotReviewInboxProvider);
                     },
                     icon: const Icon(Icons.refresh_rounded),
                   ),
@@ -1024,6 +1030,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             context.push('/search');
           case 'sales_contacts':
             context.push('/sales-contacts');
+          case 'promise_review':
+            context.push('/promise-review');
           case 'toggle_theme':
             ref.read(themeModeProvider.notifier).setMode(
                   currentMode == AppThemeMode.dark
@@ -1043,6 +1051,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           child: _MenuItem(
             icon: Icons.business_center_outlined,
             label: '영업 고객',
+          ),
+        ),
+        const PopupMenuItem(
+          value: 'promise_review',
+          child: _MenuItem(
+            icon: Icons.inbox_outlined,
+            label: '약속 검토함',
           ),
         ),
         PopupMenuItem(

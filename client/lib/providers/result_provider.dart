@@ -299,6 +299,12 @@ final promiseLearningProfileProvider =
   return api.getLearningProfile();
 });
 
+final promiseLearningInsightProvider =
+    FutureProvider<PromiseLearningInsight>((ref) {
+  final api = ref.watch(promiseRadarApiProvider);
+  return api.getLearningInsights();
+});
+
 final promiseRadarDashboardProvider =
     FutureProvider<PromiseRadarDashboard>((ref) {
   final api = ref.watch(promiseRadarApiProvider);
@@ -311,10 +317,28 @@ final promiseResponsibilityScoresProvider =
   return api.getResponsibilityScores();
 });
 
+final promiseResponsibilityTrendsProvider =
+    FutureProvider<List<PromiseResponsibilityTrend>>((ref) {
+  final api = ref.watch(promiseRadarApiProvider);
+  return api.getResponsibilityTrends();
+});
+
 final promiseMeetingSeriesProvider =
     FutureProvider<List<PromiseMeetingSeries>>((ref) {
   final api = ref.watch(promiseRadarApiProvider);
   return api.getMeetingSeries();
+});
+
+final promiseAutopilotReviewInboxProvider =
+    FutureProvider<PromiseAutopilotReviewQueue>((ref) {
+  final api = ref.watch(promiseRadarApiProvider);
+  return api.getAutopilotReviewInbox();
+});
+
+final promiseExternalTaskReconcileProvider =
+    FutureProvider<PromiseExternalTaskReconcileResponse>((ref) {
+  final api = ref.watch(promiseRadarApiProvider);
+  return api.reconcileExternalTasks();
 });
 
 // 관계 추론형 마인드맵 결과 로딩 프로바이더.

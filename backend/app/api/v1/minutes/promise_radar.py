@@ -39,12 +39,14 @@ from backend.schemas.promise_radar import (
     PromiseEvidencePack,
     PromiseExternalExportRequest,
     PromiseExternalExportResponse,
+    PromiseExternalTaskReconcileResponse,
     PromiseExternalTaskSyncRequest,
     PromiseExternalTaskSyncResponse,
     PromiseExternalTaskUpdateRequest,
     PromiseGoogleTaskListResponse,
     PromiseLearningFeedbackRequest,
     PromiseLearningFeedbackResponse,
+    PromiseLearningInsight,
     PromiseLearningProfile,
     PromiseLedgerEntryResponse,
     PromiseLedgerHistoryEntry,
@@ -55,6 +57,7 @@ from backend.schemas.promise_radar import (
     PromiseLedgerUpdateRequest,
     PromiseMatchExplanation,
     PromiseMeetingSeries,
+    PromiseMeetingSeriesTimeline,
     PromiseNextMeetingBriefing,
     PromiseNotificationDispatchResponse,
     PromisePreMeetingBrief,
@@ -62,6 +65,7 @@ from backend.schemas.promise_radar import (
     PromiseRadarResponse,
     PromiseReminderCandidate,
     PromiseResponsibilityScore,
+    PromiseResponsibilityTrend,
     PromiseTaskLinkResponse,
     PromiseTimelineResponse,
 )
@@ -202,6 +206,31 @@ async def get_promise_learning_profile(
         raise
     except Exception as e:
         internal_error(f"약속 학습 프로필 조회 중 오류가 발생했습니다: {e}")
+
+
+@router.get("/learning-insights", response_model=PromiseLearningInsight)
+async def get_promise_learning_insights(
+    request: Request,
+    team_id: str | None = Query(default=None, description="팀 학습 인사이트 조회 범위"),
+    limit: int = Query(default=200, ge=10, le=500),
+    db: AsyncSession = Depends(get_db_session),
+    current_user=Depends(get_optional_current_user),
+    svc: PromiseRadarService = Depends(get_promise_radar_service),
+) -> PromiseLearningInsight:
+    """사용자 피드백 기반의 운영 인사이트와 다음 조치 권장값을 반환합니다."""
+    try:
+        scoped_team_id = await _accessible_team_id(db, current_user, team_id)
+        return await svc.build_learning_insights(
+            db,
+            owner_id=getattr(current_user, "id", None),
+            guest_session_id=_guest_session_id(request),
+            team_id=scoped_team_id,
+            limit=limit,
+        )
+    except VoiceNoteError:
+        raise
+    except Exception as e:
+        internal_error(f"약속 학습 인사이트 조회 중 오류가 발생했습니다: {e}")
 
 
 @router.get("/automation-policy", response_model=PromiseAutomationPolicy)
@@ -392,6 +421,31 @@ async def get_promise_responsibility_scores(
         internal_error(f"약속 책임 점수 조회 중 오류가 발생했습니다: {e}")
 
 
+@router.get("/responsibility-trends", response_model=list[PromiseResponsibilityTrend])
+async def get_promise_responsibility_trends(
+    request: Request,
+    team_id: str | None = Query(default=None, description="팀 책임 점수 추세 조회 범위"),
+    limit: int = Query(default=250, ge=1, le=250),
+    db: AsyncSession = Depends(get_db_session),
+    current_user=Depends(get_optional_current_user),
+    svc: PromiseRadarService = Depends(get_promise_radar_service),
+) -> list[PromiseResponsibilityTrend]:
+    """담당자별 책임 점수의 최근 추세를 반환합니다."""
+    try:
+        scoped_team_id = await _accessible_team_id(db, current_user, team_id)
+        return await svc.build_responsibility_trends(
+            db,
+            owner_id=getattr(current_user, "id", None),
+            guest_session_id=_guest_session_id(request),
+            team_id=scoped_team_id,
+            limit=limit,
+        )
+    except VoiceNoteError:
+        raise
+    except Exception as e:
+        internal_error(f"약속 책임 점수 추세 조회 중 오류가 발생했습니다: {e}")
+
+
 @router.get("/meeting-series", response_model=list[PromiseMeetingSeries])
 async def get_promise_meeting_series(
     request: Request,
@@ -415,6 +469,33 @@ async def get_promise_meeting_series(
         raise
     except Exception as e:
         internal_error(f"반복회의 약속 묶음 조회 중 오류가 발생했습니다: {e}")
+
+
+@router.get("/meeting-series/{series_key}/timeline", response_model=PromiseMeetingSeriesTimeline)
+async def get_promise_meeting_series_timeline(
+    series_key: str,
+    request: Request,
+    team_id: str | None = Query(default=None, description="팀 반복회의 timeline 조회 범위"),
+    limit: int = Query(default=250, ge=1, le=250),
+    db: AsyncSession = Depends(get_db_session),
+    current_user=Depends(get_optional_current_user),
+    svc: PromiseRadarService = Depends(get_promise_radar_service),
+) -> PromiseMeetingSeriesTimeline:
+    """반복회의 묶음 안에서 약속이 등장/지연/반복된 흐름을 반환합니다."""
+    try:
+        scoped_team_id = await _accessible_team_id(db, current_user, team_id)
+        return await svc.build_meeting_series_timeline(
+            db,
+            series_key,
+            owner_id=getattr(current_user, "id", None),
+            guest_session_id=_guest_session_id(request),
+            team_id=scoped_team_id,
+            limit=limit,
+        )
+    except VoiceNoteError:
+        raise
+    except Exception as e:
+        internal_error(f"반복회의 timeline 조회 중 오류가 발생했습니다: {e}")
 
 
 @router.post("/ledger/notifications/due", response_model=PromiseNotificationDispatchResponse)
@@ -495,6 +576,31 @@ async def dispatch_pre_meeting_brief_notifications(
         raise
     except Exception as e:
         internal_error(f"회의 전 약속 브리프 푸시 발송 중 오류가 발생했습니다: {e}")
+
+
+@router.get("/autopilot/review-inbox", response_model=PromiseAutopilotReviewQueue)
+async def get_promise_autopilot_review_inbox(
+    request: Request,
+    team_id: str | None = Query(default=None, description="팀 Review Inbox 조회 범위"),
+    limit: int = Query(default=50, ge=1, le=100),
+    db: AsyncSession = Depends(get_db_session),
+    current_user=Depends(get_optional_current_user),
+    svc: PromiseRadarService = Depends(get_promise_radar_service),
+) -> PromiseAutopilotReviewQueue:
+    """회의별 결과 화면과 독립된 전역 Autopilot Review Inbox를 반환합니다."""
+    try:
+        scoped_team_id = await _accessible_team_id(db, current_user, team_id)
+        return await svc.build_autopilot_review_inbox(
+            db,
+            owner_id=getattr(current_user, "id", None),
+            guest_session_id=_guest_session_id(request),
+            team_id=scoped_team_id,
+            limit=limit,
+        )
+    except VoiceNoteError:
+        raise
+    except Exception as e:
+        internal_error(f"약속 자동 판정 Review Inbox 조회 중 오류가 발생했습니다: {e}")
 
 
 @router.post("/autopilot/{task_id}", response_model=PromiseAutopilotResponse)
@@ -987,6 +1093,31 @@ async def list_google_tasklists(
         not_found(str(e))
     except Exception as e:
         internal_error(f"Google Tasks tasklist 조회 중 오류가 발생했습니다: {e}")
+
+
+@router.get("/external-task/reconcile", response_model=PromiseExternalTaskReconcileResponse)
+async def reconcile_promise_external_tasks(
+    request: Request,
+    team_id: str | None = Query(default=None, description="팀 외부 업무도구 재조정 범위"),
+    limit: int = Query(default=100, ge=1, le=250),
+    db: AsyncSession = Depends(get_db_session),
+    current_user=Depends(get_optional_current_user),
+    svc: PromiseRadarService = Depends(get_promise_radar_service),
+) -> PromiseExternalTaskReconcileResponse:
+    """Google Tasks와 Promise Ledger의 연결 상태와 재동기화 후보를 반환합니다."""
+    try:
+        scoped_team_id = await _accessible_team_id(db, current_user, team_id)
+        return await svc.build_external_task_reconcile_report(
+            db,
+            owner_id=getattr(current_user, "id", None),
+            guest_session_id=_guest_session_id(request),
+            team_id=scoped_team_id,
+            limit=limit,
+        )
+    except VoiceNoteError:
+        raise
+    except Exception as e:
+        internal_error(f"외부 업무도구 재조정 리포트 생성 중 오류가 발생했습니다: {e}")
 
 
 @router.post(

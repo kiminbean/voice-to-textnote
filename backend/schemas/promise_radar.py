@@ -305,6 +305,24 @@ class PromiseLearningProfile(BaseModel):
     owner_aliases: list[PromiseOwnerAlias] = Field(default_factory=list)
 
 
+class PromiseLearningInsight(BaseModel):
+    """Operator-facing learning-loop summary with recommended next controls."""
+
+    scope: str
+    autopilot_threshold: float = Field(ge=0.0, le=1.0)
+    status_thresholds: dict[str, float] = Field(default_factory=dict)
+    feedback_count: int = Field(ge=0)
+    false_positive_count: int = Field(ge=0)
+    confirmed_count: int = Field(ge=0)
+    assignee_correction_count: int = Field(ge=0)
+    status_attention: list[str] = Field(default_factory=list)
+    recommended_policy: str = Field(
+        description="safe_auto, preview_only, completed_only, or manual_only"
+    )
+    insights: list[str] = Field(default_factory=list)
+    next_actions: list[str] = Field(default_factory=list)
+
+
 class PromiseLearningFeedbackResponse(BaseModel):
     """Persisted learning feedback result."""
 
@@ -542,6 +560,33 @@ class PromiseLedgerEntryResponse(BaseModel):
     identity_confidence_factors: list[str] = Field(default_factory=list)
 
 
+class PromiseExternalTaskReconcileItem(BaseModel):
+    """One linked external task that may need a Google Tasks/ledger reconciliation."""
+
+    ledger_entry: PromiseLedgerEntryResponse
+    provider: str = "google_tasks"
+    tasklist: str | None = None
+    external_id: str | None = None
+    external_url: str | None = None
+    ledger_status: str
+    external_status: str | None = None
+    needs_sync: bool = False
+    direction: str = Field(description="none, push_to_external, or pull_from_external")
+    issue: str | None = None
+    sync_contract: dict[str, Any] | None = None
+
+
+class PromiseExternalTaskReconcileResponse(BaseModel):
+    """Batch reconciliation report for linked external work-tool tasks."""
+
+    provider: str = "google_tasks"
+    checked_count: int = Field(ge=0)
+    linked_count: int = Field(ge=0)
+    needs_sync_count: int = Field(ge=0)
+    requires_oauth: bool = True
+    items: list[PromiseExternalTaskReconcileItem] = Field(default_factory=list)
+
+
 class PromiseLedgerUpdateRequest(BaseModel):
     """User correction for a ledger item."""
 
@@ -655,6 +700,31 @@ class PromiseResponsibilityScore(BaseModel):
     reasons: list[str] = Field(default_factory=list)
 
 
+class PromiseResponsibilityTrendPoint(BaseModel):
+    """Responsibility score snapshot for one date bucket."""
+
+    period_start: str
+    score: int = Field(ge=0, le=100)
+    open_count: int = Field(ge=0)
+    completed_count: int = Field(ge=0)
+    delayed_count: int = Field(ge=0)
+    blocked_count: int = Field(ge=0)
+    overdue_count: int = Field(ge=0)
+    unconfirmed_count: int = Field(ge=0)
+    recurring_count: int = Field(ge=0)
+
+
+class PromiseResponsibilityTrend(BaseModel):
+    """Owner accountability trend assembled from ledger first/last seen dates."""
+
+    owner: str
+    assigned_user_id: str | None = None
+    current_score: int = Field(ge=0, le=100)
+    risk_level: str
+    direction: str = Field(description="improving, worsening, or stable")
+    points: list[PromiseResponsibilityTrendPoint] = Field(default_factory=list)
+
+
 class PromiseMeetingSeries(BaseModel):
     """Recurring meeting continuity group inferred from ledger source meetings."""
 
@@ -669,6 +739,32 @@ class PromiseMeetingSeries(BaseModel):
     high_risk_count: int = Field(ge=0)
     owners: list[str] = Field(default_factory=list)
     next_questions: list[str] = Field(default_factory=list)
+
+
+class PromiseMeetingSeriesTimelineItem(BaseModel):
+    """One meeting occurrence inside a recurring Promise Radar series."""
+
+    series_key: str
+    task_id: str
+    title: str
+    seen_at: datetime
+    open_count: int = Field(ge=0)
+    overdue_count: int = Field(ge=0)
+    high_risk_count: int = Field(ge=0)
+    owners: list[str] = Field(default_factory=list)
+    promises: list[PromiseLedgerEntryResponse] = Field(default_factory=list)
+    questions: list[str] = Field(default_factory=list)
+
+
+class PromiseMeetingSeriesTimeline(BaseModel):
+    """Recurring meeting timeline from first appearance to latest open promises."""
+
+    series_key: str
+    title: str
+    meeting_count: int = Field(ge=0)
+    first_seen_at: datetime | None = None
+    last_seen_at: datetime | None = None
+    items: list[PromiseMeetingSeriesTimelineItem] = Field(default_factory=list)
 
 
 class PromiseRadarDashboard(BaseModel):

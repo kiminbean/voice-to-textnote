@@ -677,6 +677,140 @@ async def test_responsibility_series_and_pre_meeting_push(session_factory):
 
 
 @pytest.mark.asyncio
+async def test_promise_operational_reports_use_learning_series_and_external_links(
+    session_factory,
+):
+    service = PromiseRadarService()
+    owner_id = uuid.uuid4()
+    now = datetime(2026, 7, 1, 9, 0, 0)
+
+    async with session_factory() as session:
+        source_one = TaskResult(
+            task_id="sum-ops-1",
+            task_type="summary",
+            status="completed",
+            created_at=now - timedelta(days=7),
+            completed_at=now - timedelta(days=7),
+            result_data={"title": "릴리스 주간 회의", "action_items": []},
+        )
+        source_two = TaskResult(
+            task_id="sum-ops-2",
+            task_type="summary",
+            status="completed",
+            created_at=now,
+            completed_at=now,
+            result_data={"title": "릴리스 주간 회의", "action_items": []},
+        )
+        entry = PromiseLedgerEntry(
+            owner_id=owner_id,
+            source_task_id="sum-ops-1",
+            last_source_task_id="sum-ops-2",
+            canonical_key="qa checklist",
+            canonical_text="QA 체크리스트 마무리",
+            text="QA 체크리스트 마무리",
+            owner_name="김기수",
+            status="open",
+            priority="high",
+            risk_level="high",
+            confidence=0.9,
+            due_date_text="오늘",
+            due_at=now - timedelta(days=10),
+            occurrences=2,
+            first_seen_at=now - timedelta(days=7),
+            last_seen_at=now,
+            calendar_event={
+                "external_tasks": {
+                    "google_tasks": {
+                        "external_id": "task-ops-1",
+                        "tasklist": "@default",
+                        "external_url": "https://tasks.google.com/task/task-ops-1",
+                        "external_status": "needsAction",
+                    }
+                }
+            },
+        )
+        session.add_all([source_one, source_two, entry])
+        await session.commit()
+        await session.refresh(entry)
+
+        session.add_all(
+            [
+                PromiseLedgerEvent(
+                    ledger_entry_id=entry.id,
+                    owner_id=owner_id,
+                    event_type="learning_feedback",
+                    new_value={
+                        "expected_status": "open",
+                        "predicted_status": "completed",
+                        "correction_type": "autopilot",
+                    },
+                ),
+                PromiseLedgerEvent(
+                    ledger_entry_id=entry.id,
+                    owner_id=owner_id,
+                    event_type="autopilot_assessed",
+                    new_value={
+                        "autopilot": {
+                            "ledger_entry_id": str(entry.id),
+                            "previous_status": "open",
+                            "suggested_status": "completed",
+                            "applied": False,
+                            "requires_confirmation": True,
+                            "evidence_locked": True,
+                            "conflict_detected": False,
+                            "threshold": 0.72,
+                            "confidence": 0.84,
+                            "reason": "완료 신호가 확인됐습니다.",
+                            "explanation": {
+                                "ledger_entry_id": str(entry.id),
+                                "matched_task_id": "sum-ops-2",
+                                "matched_text": "QA 체크리스트 완료했습니다.",
+                                "similarity": 0.83,
+                                "overlap_terms": ["체크리스트"],
+                                "confidence_factors": ["근거 있음"],
+                                "rationale": "현재 회의 발화가 약속과 일치합니다.",
+                                "evidence": [],
+                            },
+                        }
+                    },
+                ),
+            ]
+        )
+        await session.commit()
+
+        insights = await service.build_learning_insights(session, owner_id=owner_id)
+        assert insights.false_positive_count == 1
+        assert insights.status_attention == ["completed"]
+        assert insights.next_actions
+
+        trends = await service.build_responsibility_trends(session, owner_id=owner_id)
+        assert trends[0].owner == "김기수"
+        assert trends[0].points[-1].overdue_count == 1
+        assert trends[0].current_score >= trends[0].points[-1].score
+
+        timeline = await service.build_meeting_series_timeline(
+            session,
+            "릴리스 주간 회의",
+            owner_id=owner_id,
+        )
+        assert timeline.meeting_count == 2
+        assert {item.task_id for item in timeline.items} == {"sum-ops-1", "sum-ops-2"}
+        assert timeline.items[0].promises[0].text == "QA 체크리스트 마무리"
+
+        inbox = await service.build_autopilot_review_inbox(session, owner_id=owner_id)
+        assert inbox.queue_count == 1
+        assert inbox.items[0].assessment.suggested_status == "completed"
+
+        reconcile = await service.build_external_task_reconcile_report(
+            session,
+            owner_id=owner_id,
+        )
+        assert reconcile.linked_count == 1
+        assert reconcile.items[0].external_id == "task-ops-1"
+        assert reconcile.items[0].needs_sync is False
+
+
+@pytest.mark.asyncio
 async def test_promise_autopilot_calendar_assignee_and_quality(session_factory):
     service = PromiseRadarService()
     owner_id = uuid.uuid4()

@@ -60,6 +60,8 @@ from backend.schemas.promise_radar import (
     PromiseEvidencePack,
     PromiseExternalExportRequest,
     PromiseExternalExportResponse,
+    PromiseExternalTaskReconcileItem,
+    PromiseExternalTaskReconcileResponse,
     PromiseExternalTaskSyncRequest,
     PromiseExternalTaskSyncResponse,
     PromiseExternalTaskUpdateRequest,
@@ -67,6 +69,7 @@ from backend.schemas.promise_radar import (
     PromiseGoogleTaskListResponse,
     PromiseLearningFeedbackRequest,
     PromiseLearningFeedbackResponse,
+    PromiseLearningInsight,
     PromiseLearningProfile,
     PromiseLedgerEntryResponse,
     PromiseLedgerHistoryEntry,
@@ -77,6 +80,8 @@ from backend.schemas.promise_radar import (
     PromiseLedgerUpdateRequest,
     PromiseMatchExplanation,
     PromiseMeetingSeries,
+    PromiseMeetingSeriesTimeline,
+    PromiseMeetingSeriesTimelineItem,
     PromiseNextMeetingBriefing,
     PromiseNotificationDispatchResponse,
     PromiseOwnerAlias,
@@ -93,6 +98,8 @@ from backend.schemas.promise_radar import (
     PromiseRadarResponse,
     PromiseReminderCandidate,
     PromiseResponsibilityScore,
+    PromiseResponsibilityTrend,
+    PromiseResponsibilityTrendPoint,
     PromiseTaskLinkResponse,
     PromiseTimelineItem,
     PromiseTimelineResponse,
@@ -1023,6 +1030,193 @@ class PromiseRadarService:
             )
         return sorted(scores, key=lambda item: item.score, reverse=True)
 
+    async def build_learning_insights(
+        self,
+        session: AsyncSession,
+        *,
+        owner_id: UUID | str | None = None,
+        guest_session_id: str | None = None,
+        team_id: UUID | str | None = None,
+        limit: int = 200,
+    ) -> PromiseLearningInsight:
+        """Summarize learning-loop feedback into operator actions."""
+        profile = await self.learning_profile(
+            session,
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
+            team_id=team_id,
+        )
+        events = await self._scoped_events(
+            session,
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
+            team_id=team_id,
+            limit=limit,
+        )
+        feedback_count = sum(
+            1
+            for event in events
+            if event.event_type
+            in {
+                "learning_feedback",
+                "autopilot_review_rejected",
+                "autopilot_confirmed",
+                "autopilot_applied",
+                "updated",
+            }
+        )
+        status_attention = [
+            status
+            for status, count in sorted(
+                profile.status_false_positive_count.items(),
+                key=lambda item: item[1],
+                reverse=True,
+            )
+            if count > 0
+        ]
+        recommended_policy = "safe_auto"
+        if profile.false_positive_count >= max(3, profile.confirmed_count + 1):
+            recommended_policy = "preview_only"
+        elif profile.assignee_correction_count >= 3:
+            recommended_policy = "preview_only"
+        elif any(status in {"delayed", "changed", "dismissed"} for status in status_attention):
+            recommended_policy = "completed_only"
+
+        insights = [
+            f"현재 자동 적용 기준은 {round(profile.autopilot_threshold * 100)}%입니다.",
+            f"확정 {profile.confirmed_count}건, 오판/거절 {profile.false_positive_count}건이 반영됐습니다.",
+        ]
+        if profile.assignee_correction_count:
+            insights.append(f"담당자 보정 {profile.assignee_correction_count}건이 감지됐습니다.")
+        if status_attention:
+            insights.append(f"주의 상태: {', '.join(status_attention[:4])}")
+        if not profile.owner_aliases:
+            insights.append("아직 충분한 담당자 alias graph가 없습니다.")
+
+        next_actions: list[str] = []
+        if recommended_policy == "preview_only":
+            next_actions.append("자동 적용보다 Review Inbox 확정을 우선하세요.")
+        if profile.assignee_correction_count:
+            next_actions.append("반복 보정된 담당자 이름을 팀 alias로 고정하세요.")
+        if status_attention:
+            next_actions.append("주의 상태의 threshold를 낮추지 말고 evidence pack을 확인하세요.")
+        if not next_actions:
+            next_actions.append("현재 정책을 유지하고 확정/거절 피드백을 계속 누적하세요.")
+
+        return PromiseLearningInsight(
+            scope=profile.scope,
+            autopilot_threshold=profile.autopilot_threshold,
+            status_thresholds=profile.status_thresholds,
+            feedback_count=feedback_count,
+            false_positive_count=profile.false_positive_count,
+            confirmed_count=profile.confirmed_count,
+            assignee_correction_count=profile.assignee_correction_count,
+            status_attention=status_attention[:6],
+            recommended_policy=recommended_policy,
+            insights=insights[:6],
+            next_actions=next_actions[:5],
+        )
+
+    async def build_responsibility_trends(
+        self,
+        session: AsyncSession,
+        *,
+        owner_id: UUID | str | None = None,
+        guest_session_id: str | None = None,
+        team_id: UUID | str | None = None,
+        limit: int = 250,
+    ) -> list[PromiseResponsibilityTrend]:
+        """Build owner responsibility score trends from ledger first/last seen dates."""
+        entries = await self._list_ledger_entry_models(
+            session,
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
+            team_id=team_id,
+            limit=limit,
+        )
+        if not entries:
+            return []
+        current_scores = {
+            (item.owner, item.assigned_user_id): item
+            for item in await self.build_responsibility_scores(
+                session,
+                owner_id=owner_id,
+                guest_session_id=guest_session_id,
+                team_id=team_id,
+                limit=limit,
+            )
+        }
+        now = datetime.now(UTC).replace(tzinfo=None)
+        buckets: dict[tuple[str, str | None], dict[str, dict[str, int]]] = {}
+        for entry in entries:
+            owner = entry.owner_name or entry.speaker_label or "미지정"
+            assigned_user_id = str(entry.assigned_user_id) if entry.assigned_user_id else None
+            period = (entry.last_seen_at or entry.first_seen_at or now).date().isoformat()
+            values = buckets.setdefault((owner, assigned_user_id), {}).setdefault(
+                period,
+                {
+                    "open": 0,
+                    "completed": 0,
+                    "delayed": 0,
+                    "blocked": 0,
+                    "overdue": 0,
+                    "unconfirmed": 0,
+                    "recurring": 0,
+                },
+            )
+            if entry.status == "completed":
+                values["completed"] += 1
+            if entry.status in _OPEN_LEDGER_STATUSES:
+                values["open"] += 1
+            if entry.status in {"delayed", "changed"}:
+                values["delayed"] += 1
+            if entry.status == "blocked":
+                values["blocked"] += 1
+            if entry.status in _OPEN_LEDGER_STATUSES and entry.due_at and entry.due_at < now:
+                values["overdue"] += 1
+            if entry.status in _OPEN_LEDGER_STATUSES and not entry.user_confirmed:
+                values["unconfirmed"] += 1
+            if entry.occurrences >= 2:
+                values["recurring"] += 1
+
+        trends: list[PromiseResponsibilityTrend] = []
+        for key, periods in buckets.items():
+            owner, assigned_user_id = key
+            points = [
+                PromiseResponsibilityTrendPoint(
+                    period_start=period,
+                    score=self._responsibility_score_from_counts(values),
+                    open_count=values["open"],
+                    completed_count=values["completed"],
+                    delayed_count=values["delayed"],
+                    blocked_count=values["blocked"],
+                    overdue_count=values["overdue"],
+                    unconfirmed_count=values["unconfirmed"],
+                    recurring_count=values["recurring"],
+                )
+                for period, values in sorted(periods.items())
+            ]
+            if len(points) >= 2 and points[-1].score > points[0].score + 5:
+                direction = "worsening"
+            elif len(points) >= 2 and points[-1].score < points[0].score - 5:
+                direction = "improving"
+            else:
+                direction = "stable"
+            current = current_scores.get(key)
+            current_score = current.score if current else points[-1].score
+            risk_level = current.risk_level if current else self._responsibility_risk_level(current_score)
+            trends.append(
+                PromiseResponsibilityTrend(
+                    owner=owner,
+                    assigned_user_id=assigned_user_id,
+                    current_score=current_score,
+                    risk_level=risk_level,
+                    direction=direction,
+                    points=points[-12:],
+                )
+            )
+        return sorted(trends, key=lambda item: item.current_score, reverse=True)
+
     async def build_meeting_series(
         self,
         session: AsyncSession,
@@ -1109,6 +1303,258 @@ class PromiseRadarService:
             series,
             key=lambda item: (item.overdue_count, item.high_risk_count, item.open_count),
             reverse=True,
+        )
+
+    async def build_meeting_series_timeline(
+        self,
+        session: AsyncSession,
+        series_key: str,
+        *,
+        owner_id: UUID | str | None = None,
+        guest_session_id: str | None = None,
+        team_id: UUID | str | None = None,
+        limit: int = 250,
+    ) -> PromiseMeetingSeriesTimeline:
+        """Return a recurring meeting series timeline with grouped promises."""
+        entries = await self._list_ledger_entry_models(
+            session,
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
+            team_id=team_id,
+            limit=limit,
+        )
+        if not entries:
+            return PromiseMeetingSeriesTimeline(series_key=series_key, title=series_key, meeting_count=0)
+        titles = await self._meeting_titles_for_entries(session, entries)
+        now = datetime.now(UTC).replace(tzinfo=None)
+        buckets: dict[str, dict[str, Any]] = {}
+        selected_title = series_key
+        normalized_target = self._meeting_series_key(series_key)
+        for entry in entries:
+            response_entry = self._entry_to_response(entry)
+            source_points = [
+                (entry.source_task_id, entry.first_seen_at),
+                (entry.last_source_task_id, entry.last_seen_at),
+            ]
+            seen_source_ids: set[str] = set()
+            for raw_source_id, seen_at in source_points:
+                source_id = str(raw_source_id or "")
+                if not source_id or source_id in seen_source_ids:
+                    continue
+                seen_source_ids.add(source_id)
+                title = titles.get(source_id) or self._fallback_series_title(entry)
+                key = self._meeting_series_key(title)
+                if key != normalized_target and series_key != key:
+                    continue
+                selected_title = title
+                bucket = buckets.setdefault(
+                    source_id,
+                    {
+                        "title": title,
+                        "seen_at": seen_at,
+                        "open": 0,
+                        "overdue": 0,
+                        "high_risk": 0,
+                        "owners": set(),
+                        "promises": [],
+                        "questions": [],
+                    },
+                )
+                if seen_at > bucket["seen_at"]:
+                    bucket["seen_at"] = seen_at
+                if entry.status in _OPEN_LEDGER_STATUSES:
+                    bucket["open"] += 1
+                if entry.status in _OPEN_LEDGER_STATUSES and entry.due_at and entry.due_at < now:
+                    bucket["overdue"] += 1
+                if entry.risk_level == "high":
+                    bucket["high_risk"] += 1
+                owner = entry.owner_name or entry.speaker_label
+                if owner:
+                    bucket["owners"].add(owner)
+                if len(bucket["promises"]) < 8:
+                    bucket["promises"].append(response_entry)
+                if len(bucket["questions"]) < 3:
+                    bucket["questions"].append(self._briefing_checkpoint(response_entry))
+
+        items = [
+            PromiseMeetingSeriesTimelineItem(
+                series_key=normalized_target,
+                task_id=task_id,
+                title=str(values["title"]),
+                seen_at=values["seen_at"],
+                open_count=int(values["open"]),
+                overdue_count=int(values["overdue"]),
+                high_risk_count=int(values["high_risk"]),
+                owners=sorted(values["owners"])[:6],
+                promises=values["promises"],
+                questions=list(values["questions"])[:3],
+            )
+            for task_id, values in sorted(
+                buckets.items(), key=lambda item: item[1]["seen_at"], reverse=True
+            )
+        ]
+        return PromiseMeetingSeriesTimeline(
+            series_key=normalized_target,
+            title=selected_title,
+            meeting_count=len(items),
+            first_seen_at=min((item.seen_at for item in items), default=None),
+            last_seen_at=max((item.seen_at for item in items), default=None),
+            items=items,
+        )
+
+    async def build_autopilot_review_inbox(
+        self,
+        session: AsyncSession,
+        *,
+        owner_id: UUID | str | None = None,
+        guest_session_id: str | None = None,
+        team_id: UUID | str | None = None,
+        limit: int = 50,
+    ) -> PromiseAutopilotReviewQueue:
+        """Build a global Review Inbox from persisted Autopilot assessment events."""
+        events = await self._scoped_events(
+            session,
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
+            team_id=team_id,
+            limit=max(limit * 4, 50),
+        )
+        pending: list[tuple[PromiseLedgerEvent, PromiseAutopilotAssessment]] = []
+        seen: set[tuple[str, str]] = set()
+        for event in events:
+            if event.event_type not in {"autopilot_assessed", "autopilot_applied"}:
+                continue
+            value = event.new_value if isinstance(event.new_value, dict) else {}
+            autopilot = value.get("autopilot")
+            if not isinstance(autopilot, dict):
+                continue
+            try:
+                assessment = PromiseAutopilotAssessment(**autopilot)
+            except Exception:
+                continue
+            key = (assessment.ledger_entry_id, assessment.suggested_status)
+            if key in seen:
+                continue
+            seen.add(key)
+            if (
+                assessment.conflict_detected
+                or assessment.requires_confirmation
+                or assessment.suggested_status != assessment.previous_status
+            ):
+                pending.append((event, assessment))
+            if len(pending) >= limit:
+                break
+
+        if not pending:
+            return PromiseAutopilotReviewQueue(
+                task_id="review-inbox",
+                queue_count=0,
+                actionable_count=0,
+                conflict_count=0,
+                items=[],
+            )
+        entry_ids = [
+            entry_id
+            for _, assessment in pending
+            if (entry_id := self._coerce_uuid(assessment.ledger_entry_id)) is not None
+        ]
+        result = await session.execute(
+            select(PromiseLedgerEntry).where(PromiseLedgerEntry.id.in_(entry_ids))
+        )
+        entries_by_id = {str(entry.id): entry for entry in result.scalars().all()}
+        items: list[PromiseAutopilotReviewItem] = []
+        for event, assessment in pending:
+            entry = entries_by_id.get(assessment.ledger_entry_id)
+            if entry is None or entry.status not in _OPEN_LEDGER_STATUSES:
+                continue
+            items.append(
+                PromiseAutopilotReviewItem(
+                    ledger_entry=self._entry_to_response(entry),
+                    assessment=assessment,
+                    queued_at=event.created_at,
+                    decision_required=(
+                        assessment.conflict_detected
+                        or assessment.suggested_status != assessment.previous_status
+                    ),
+                )
+            )
+        return PromiseAutopilotReviewQueue(
+            task_id="review-inbox",
+            queue_count=len(items),
+            actionable_count=sum(
+                1
+                for item in items
+                if not item.assessment.conflict_detected
+                and item.assessment.suggested_status != item.assessment.previous_status
+            ),
+            conflict_count=sum(1 for item in items if item.assessment.conflict_detected),
+            items=items,
+        )
+
+    async def build_external_task_reconcile_report(
+        self,
+        session: AsyncSession,
+        *,
+        owner_id: UUID | str | None = None,
+        guest_session_id: str | None = None,
+        team_id: UUID | str | None = None,
+        limit: int = 100,
+    ) -> PromiseExternalTaskReconcileResponse:
+        """Report linked Google Tasks that need explicit sync/update review."""
+        entries = await self._list_ledger_entry_models(
+            session,
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
+            team_id=team_id,
+            limit=limit,
+        )
+        items: list[PromiseExternalTaskReconcileItem] = []
+        for entry in entries:
+            metadata = self._google_task_metadata(entry)
+            external_id = metadata.get("external_id")
+            if not external_id:
+                continue
+            ledger_status = "completed" if entry.status == "completed" else "needsAction"
+            external_status = metadata.get("external_status")
+            needs_sync = external_status in {"completed", "needsAction"} and external_status != ledger_status
+            direction = "none"
+            issue = None
+            if needs_sync:
+                direction = (
+                    "pull_from_external"
+                    if external_status == "completed"
+                    else "push_to_external"
+                )
+                issue = "Google Tasks 상태와 Promise Ledger 상태가 다릅니다."
+            elif external_status is None:
+                issue = "OAuth 토큰으로 Google Tasks 최신 상태 확인이 필요합니다."
+            items.append(
+                PromiseExternalTaskReconcileItem(
+                    ledger_entry=self._entry_to_response(entry),
+                    provider="google_tasks",
+                    tasklist=metadata.get("tasklist") or "@default",
+                    external_id=external_id,
+                    external_url=metadata.get("external_url"),
+                    ledger_status=ledger_status,
+                    external_status=external_status,
+                    needs_sync=needs_sync,
+                    direction=direction,
+                    issue=issue,
+                    sync_contract=self._external_sync_contract(
+                        entry,
+                        provider="google_tasks",
+                        tasklist=metadata.get("tasklist") or "@default",
+                        external_id=external_id,
+                    ),
+                )
+            )
+        return PromiseExternalTaskReconcileResponse(
+            provider="google_tasks",
+            checked_count=len(entries),
+            linked_count=len(items),
+            needs_sync_count=sum(1 for item in items if item.needs_sync),
+            requires_oauth=True,
+            items=items,
         )
 
     async def dispatch_due_notifications(
@@ -4321,6 +4767,30 @@ class PromiseRadarService:
             return text
         return default
 
+    def _responsibility_score_from_counts(self, values: dict[str, int]) -> int:
+        return min(
+            100,
+            max(
+                0,
+                int(values.get("open", 0)) * 10
+                + int(values.get("delayed", 0)) * 14
+                + int(values.get("blocked", 0)) * 18
+                + int(values.get("overdue", 0)) * 25
+                + int(values.get("unconfirmed", 0)) * 7
+                + int(values.get("recurring", 0)) * 10
+                - int(values.get("completed", 0)) * 4,
+            ),
+        )
+
+    def _responsibility_risk_level(self, score: int) -> str:
+        if score >= 80:
+            return "critical"
+        if score >= 55:
+            return "high"
+        if score >= 30:
+            return "medium"
+        return "low"
+
     def _optional_hhmm(self, value: Any, default: str | None) -> str | None:
         if value is None:
             return default
@@ -5236,9 +5706,11 @@ class PromiseRadarService:
                 "external_id",
                 "tasklist",
                 "external_url",
+                "external_status",
                 "source_task_id",
                 "canonical_key",
                 "idempotency_key",
+                "synced_at",
             }
             and value
         }
@@ -5670,11 +6142,11 @@ class PromiseRadarService:
         session: AsyncSession,
         entries: list[PromiseLedgerEntry],
     ) -> dict[str, str]:
-        task_ids = {
-            str(entry.last_source_task_id or entry.source_task_id)
-            for entry in entries
-            if entry.last_source_task_id or entry.source_task_id
-        }
+        task_ids: set[str] = set()
+        for entry in entries:
+            for task_id in (entry.source_task_id, entry.last_source_task_id):
+                if task_id:
+                    task_ids.add(str(task_id))
         if not task_ids:
             return {}
         result = await session.execute(select(TaskResult).where(TaskResult.task_id.in_(task_ids)))

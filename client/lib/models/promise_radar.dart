@@ -798,6 +798,60 @@ class PromiseLearningProfile {
   }
 }
 
+class PromiseLearningInsight {
+  final String scope;
+  final double autopilotThreshold;
+  final Map<String, double> statusThresholds;
+  final int feedbackCount;
+  final int falsePositiveCount;
+  final int confirmedCount;
+  final int assigneeCorrectionCount;
+  final List<String> statusAttention;
+  final String recommendedPolicy;
+  final List<String> insights;
+  final List<String> nextActions;
+
+  const PromiseLearningInsight({
+    required this.scope,
+    required this.autopilotThreshold,
+    required this.statusThresholds,
+    required this.feedbackCount,
+    required this.falsePositiveCount,
+    required this.confirmedCount,
+    required this.assigneeCorrectionCount,
+    required this.statusAttention,
+    required this.recommendedPolicy,
+    required this.insights,
+    required this.nextActions,
+  });
+
+  factory PromiseLearningInsight.fromJson(Map<String, dynamic> json) {
+    return PromiseLearningInsight(
+      scope: json['scope'] as String? ?? 'none',
+      autopilotThreshold:
+          (json['autopilot_threshold'] as num?)?.toDouble() ?? 0.68,
+      statusThresholds:
+          (json['status_thresholds'] as Map<String, dynamic>? ?? {}).map(
+        (key, value) => MapEntry(key, (value as num?)?.toDouble() ?? 0.68),
+      ),
+      feedbackCount: json['feedback_count'] as int? ?? 0,
+      falsePositiveCount: json['false_positive_count'] as int? ?? 0,
+      confirmedCount: json['confirmed_count'] as int? ?? 0,
+      assigneeCorrectionCount: json['assignee_correction_count'] as int? ?? 0,
+      statusAttention: (json['status_attention'] as List<dynamic>? ?? [])
+          .whereType<String>()
+          .toList(),
+      recommendedPolicy: json['recommended_policy'] as String? ?? 'safe_auto',
+      insights: (json['insights'] as List<dynamic>? ?? [])
+          .whereType<String>()
+          .toList(),
+      nextActions: (json['next_actions'] as List<dynamic>? ?? [])
+          .whereType<String>()
+          .toList(),
+    );
+  }
+}
+
 class PromiseLearningFeedbackResponse {
   final String ledgerEntryId;
   final bool recorded;
@@ -1203,6 +1257,89 @@ class PromiseExternalTaskSyncResponse {
       syncContract: json['sync_contract'] is Map<String, dynamic>
           ? json['sync_contract'] as Map<String, dynamic>
           : null,
+    );
+  }
+}
+
+class PromiseExternalTaskReconcileItem {
+  final PromiseLedgerEntry ledgerEntry;
+  final String provider;
+  final String? tasklist;
+  final String? externalId;
+  final String? externalUrl;
+  final String ledgerStatus;
+  final String? externalStatus;
+  final bool needsSync;
+  final String direction;
+  final String? issue;
+  final Map<String, dynamic>? syncContract;
+
+  const PromiseExternalTaskReconcileItem({
+    required this.ledgerEntry,
+    required this.provider,
+    this.tasklist,
+    this.externalId,
+    this.externalUrl,
+    required this.ledgerStatus,
+    this.externalStatus,
+    required this.needsSync,
+    required this.direction,
+    this.issue,
+    this.syncContract,
+  });
+
+  factory PromiseExternalTaskReconcileItem.fromJson(Map<String, dynamic> json) {
+    return PromiseExternalTaskReconcileItem(
+      ledgerEntry: PromiseLedgerEntry.fromJson(
+        json['ledger_entry'] as Map<String, dynamic>? ??
+            const <String, dynamic>{},
+      ),
+      provider: json['provider'] as String? ?? 'google_tasks',
+      tasklist: json['tasklist'] as String?,
+      externalId: json['external_id'] as String?,
+      externalUrl: json['external_url'] as String?,
+      ledgerStatus: json['ledger_status'] as String? ?? '',
+      externalStatus: json['external_status'] as String?,
+      needsSync: json['needs_sync'] as bool? ?? false,
+      direction: json['direction'] as String? ?? 'none',
+      issue: json['issue'] as String?,
+      syncContract: json['sync_contract'] is Map<String, dynamic>
+          ? json['sync_contract'] as Map<String, dynamic>
+          : null,
+    );
+  }
+}
+
+class PromiseExternalTaskReconcileResponse {
+  final String provider;
+  final int checkedCount;
+  final int linkedCount;
+  final int needsSyncCount;
+  final bool requiresOauth;
+  final List<PromiseExternalTaskReconcileItem> items;
+
+  const PromiseExternalTaskReconcileResponse({
+    required this.provider,
+    required this.checkedCount,
+    required this.linkedCount,
+    required this.needsSyncCount,
+    required this.requiresOauth,
+    required this.items,
+  });
+
+  factory PromiseExternalTaskReconcileResponse.fromJson(
+    Map<String, dynamic> json,
+  ) {
+    return PromiseExternalTaskReconcileResponse(
+      provider: json['provider'] as String? ?? 'google_tasks',
+      checkedCount: json['checked_count'] as int? ?? 0,
+      linkedCount: json['linked_count'] as int? ?? 0,
+      needsSyncCount: json['needs_sync_count'] as int? ?? 0,
+      requiresOauth: json['requires_oauth'] as bool? ?? true,
+      items: (json['items'] as List<dynamic>? ?? [])
+          .whereType<Map<String, dynamic>>()
+          .map(PromiseExternalTaskReconcileItem.fromJson)
+          .toList(),
     );
   }
 }
@@ -1667,6 +1804,76 @@ class PromiseResponsibilityScore {
   }
 }
 
+class PromiseResponsibilityTrendPoint {
+  final String periodStart;
+  final int score;
+  final int openCount;
+  final int completedCount;
+  final int delayedCount;
+  final int blockedCount;
+  final int overdueCount;
+  final int unconfirmedCount;
+  final int recurringCount;
+
+  const PromiseResponsibilityTrendPoint({
+    required this.periodStart,
+    required this.score,
+    required this.openCount,
+    required this.completedCount,
+    required this.delayedCount,
+    required this.blockedCount,
+    required this.overdueCount,
+    required this.unconfirmedCount,
+    required this.recurringCount,
+  });
+
+  factory PromiseResponsibilityTrendPoint.fromJson(Map<String, dynamic> json) {
+    return PromiseResponsibilityTrendPoint(
+      periodStart: json['period_start'] as String? ?? '',
+      score: json['score'] as int? ?? 0,
+      openCount: json['open_count'] as int? ?? 0,
+      completedCount: json['completed_count'] as int? ?? 0,
+      delayedCount: json['delayed_count'] as int? ?? 0,
+      blockedCount: json['blocked_count'] as int? ?? 0,
+      overdueCount: json['overdue_count'] as int? ?? 0,
+      unconfirmedCount: json['unconfirmed_count'] as int? ?? 0,
+      recurringCount: json['recurring_count'] as int? ?? 0,
+    );
+  }
+}
+
+class PromiseResponsibilityTrend {
+  final String owner;
+  final String? assignedUserId;
+  final int currentScore;
+  final String riskLevel;
+  final String direction;
+  final List<PromiseResponsibilityTrendPoint> points;
+
+  const PromiseResponsibilityTrend({
+    required this.owner,
+    this.assignedUserId,
+    required this.currentScore,
+    required this.riskLevel,
+    required this.direction,
+    required this.points,
+  });
+
+  factory PromiseResponsibilityTrend.fromJson(Map<String, dynamic> json) {
+    return PromiseResponsibilityTrend(
+      owner: json['owner'] as String? ?? '미지정',
+      assignedUserId: json['assigned_user_id'] as String?,
+      currentScore: json['current_score'] as int? ?? 0,
+      riskLevel: json['risk_level'] as String? ?? 'low',
+      direction: json['direction'] as String? ?? 'stable',
+      points: (json['points'] as List<dynamic>? ?? [])
+          .whereType<Map<String, dynamic>>()
+          .map(PromiseResponsibilityTrendPoint.fromJson)
+          .toList(),
+    );
+  }
+}
+
 class PromiseMeetingSeries {
   final String seriesKey;
   final String title;
@@ -1709,6 +1916,87 @@ class PromiseMeetingSeries {
           (json['owners'] as List<dynamic>? ?? []).whereType<String>().toList(),
       nextQuestions: (json['next_questions'] as List<dynamic>? ?? [])
           .whereType<String>()
+          .toList(),
+    );
+  }
+}
+
+class PromiseMeetingSeriesTimelineItem {
+  final String seriesKey;
+  final String taskId;
+  final String title;
+  final String seenAt;
+  final int openCount;
+  final int overdueCount;
+  final int highRiskCount;
+  final List<String> owners;
+  final List<PromiseLedgerEntry> promises;
+  final List<String> questions;
+
+  const PromiseMeetingSeriesTimelineItem({
+    required this.seriesKey,
+    required this.taskId,
+    required this.title,
+    required this.seenAt,
+    required this.openCount,
+    required this.overdueCount,
+    required this.highRiskCount,
+    required this.owners,
+    required this.promises,
+    required this.questions,
+  });
+
+  factory PromiseMeetingSeriesTimelineItem.fromJson(
+    Map<String, dynamic> json,
+  ) {
+    return PromiseMeetingSeriesTimelineItem(
+      seriesKey: json['series_key'] as String? ?? '',
+      taskId: json['task_id'] as String? ?? '',
+      title: json['title'] as String? ?? '반복 회의',
+      seenAt: json['seen_at'] as String? ?? '',
+      openCount: json['open_count'] as int? ?? 0,
+      overdueCount: json['overdue_count'] as int? ?? 0,
+      highRiskCount: json['high_risk_count'] as int? ?? 0,
+      owners:
+          (json['owners'] as List<dynamic>? ?? []).whereType<String>().toList(),
+      promises: (json['promises'] as List<dynamic>? ?? [])
+          .whereType<Map<String, dynamic>>()
+          .map(PromiseLedgerEntry.fromJson)
+          .toList(),
+      questions: (json['questions'] as List<dynamic>? ?? [])
+          .whereType<String>()
+          .toList(),
+    );
+  }
+}
+
+class PromiseMeetingSeriesTimeline {
+  final String seriesKey;
+  final String title;
+  final int meetingCount;
+  final String? firstSeenAt;
+  final String? lastSeenAt;
+  final List<PromiseMeetingSeriesTimelineItem> items;
+
+  const PromiseMeetingSeriesTimeline({
+    required this.seriesKey,
+    required this.title,
+    required this.meetingCount,
+    this.firstSeenAt,
+    this.lastSeenAt,
+    required this.items,
+  });
+
+  factory PromiseMeetingSeriesTimeline.fromJson(Map<String, dynamic> json) {
+    return PromiseMeetingSeriesTimeline(
+      seriesKey: json['series_key'] as String? ?? '',
+      title: json['title'] as String? ?? '반복 회의',
+      meetingCount: json['meeting_count'] as int? ?? 0,
+      firstSeenAt: json['first_seen_at'] as String?,
+      lastSeenAt: json['last_seen_at'] as String?,
+      items: (json['items'] as List<dynamic>? ?? [])
+          .whereType<Map<String, dynamic>>()
+          .map(PromiseMeetingSeriesTimelineItem.fromJson)
           .toList(),
     );
   }

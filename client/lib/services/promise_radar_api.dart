@@ -140,6 +140,22 @@ class PromiseRadarApi {
     );
   }
 
+  Future<PromiseLearningInsight> getLearningInsights({
+    String? teamId,
+    int limit = 200,
+  }) async {
+    final response = await _dio.get(
+      '/promise-radar/learning-insights',
+      queryParameters: {
+        'limit': limit,
+        if (teamId != null) 'team_id': teamId,
+      },
+    );
+    return PromiseLearningInsight.fromJson(
+      response.data as Map<String, dynamic>,
+    );
+  }
+
   Future<PromiseAutomationPolicy> getAutomationPolicy({
     String? teamId,
   }) async {
@@ -203,6 +219,23 @@ class PromiseRadarApi {
         .toList();
   }
 
+  Future<List<PromiseResponsibilityTrend>> getResponsibilityTrends({
+    String? teamId,
+    int limit = 250,
+  }) async {
+    final response = await _dio.get(
+      '/promise-radar/responsibility-trends',
+      queryParameters: {
+        'limit': limit,
+        if (teamId != null) 'team_id': teamId,
+      },
+    );
+    return (response.data as List<dynamic>? ?? [])
+        .whereType<Map<String, dynamic>>()
+        .map(PromiseResponsibilityTrend.fromJson)
+        .toList();
+  }
+
   Future<List<PromiseMeetingSeries>> getMeetingSeries({
     String? teamId,
     int limit = 100,
@@ -218,6 +251,24 @@ class PromiseRadarApi {
         .whereType<Map<String, dynamic>>()
         .map(PromiseMeetingSeries.fromJson)
         .toList();
+  }
+
+  Future<PromiseMeetingSeriesTimeline> getMeetingSeriesTimeline(
+    String seriesKey, {
+    String? teamId,
+    int limit = 250,
+  }) async {
+    final encodedSeriesKey = Uri.encodeComponent(seriesKey);
+    final response = await _dio.get(
+      '/promise-radar/meeting-series/$encodedSeriesKey/timeline',
+      queryParameters: {
+        'limit': limit,
+        if (teamId != null) 'team_id': teamId,
+      },
+    );
+    return PromiseMeetingSeriesTimeline.fromJson(
+      response.data as Map<String, dynamic>,
+    );
   }
 
   Future<PromiseLedgerEntry> updateLedgerEntry(
@@ -278,6 +329,22 @@ class PromiseRadarApi {
   }) async {
     final response = await _dio.get(
       '/promise-radar/autopilot/$taskId/review-queue',
+      queryParameters: {
+        'limit': limit,
+        if (teamId != null) 'team_id': teamId,
+      },
+    );
+    return PromiseAutopilotReviewQueue.fromJson(
+      response.data as Map<String, dynamic>,
+    );
+  }
+
+  Future<PromiseAutopilotReviewQueue> getAutopilotReviewInbox({
+    String? teamId,
+    int limit = 50,
+  }) async {
+    final response = await _dio.get(
+      '/promise-radar/autopilot/review-inbox',
       queryParameters: {
         'limit': limit,
         if (teamId != null) 'team_id': teamId,
@@ -501,6 +568,22 @@ class PromiseRadarApi {
       data: request.toJson(),
     );
     return PromiseGoogleTaskListResponse.fromJson(
+      response.data as Map<String, dynamic>,
+    );
+  }
+
+  Future<PromiseExternalTaskReconcileResponse> reconcileExternalTasks({
+    String? teamId,
+    int limit = 100,
+  }) async {
+    final response = await _dio.get(
+      '/promise-radar/external-task/reconcile',
+      queryParameters: {
+        'limit': limit,
+        if (teamId != null) 'team_id': teamId,
+      },
+    );
+    return PromiseExternalTaskReconcileResponse.fromJson(
       response.data as Map<String, dynamic>,
     );
   }

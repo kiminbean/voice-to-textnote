@@ -714,6 +714,120 @@ void main() {
       );
       expect(taskUpdate.toJson()['status'], 'completed');
       expect(taskUpdate.toJson()['title'], 'QA 체크리스트');
+
+      final insight = PromiseLearningInsight.fromJson({
+        'scope': 'owner:user-1',
+        'autopilot_threshold': 0.78,
+        'status_thresholds': {'completed': 0.82},
+        'feedback_count': 5,
+        'false_positive_count': 2,
+        'confirmed_count': 3,
+        'assignee_correction_count': 1,
+        'status_attention': ['completed'],
+        'recommended_policy': 'preview_only',
+        'insights': ['완료 오판이 감지됐습니다.'],
+        'next_actions': ['Review Inbox 확정을 우선하세요.'],
+      });
+      expect(insight.recommendedPolicy, 'preview_only');
+      expect(insight.statusThresholds['completed'], 0.82);
+
+      final trend = PromiseResponsibilityTrend.fromJson({
+        'owner': '김기수',
+        'current_score': 74,
+        'risk_level': 'high',
+        'direction': 'worsening',
+        'points': [
+          {
+            'period_start': '2026-07-01',
+            'score': 74,
+            'open_count': 2,
+            'completed_count': 0,
+            'delayed_count': 1,
+            'blocked_count': 0,
+            'overdue_count': 1,
+            'unconfirmed_count': 1,
+            'recurring_count': 1,
+          }
+        ],
+      });
+      expect(trend.points.single.overdueCount, 1);
+
+      final seriesTimeline = PromiseMeetingSeriesTimeline.fromJson({
+        'series_key': 'release weekly',
+        'title': 'Release Weekly',
+        'meeting_count': 1,
+        'first_seen_at': '2026-07-01T00:00:00Z',
+        'last_seen_at': '2026-07-01T00:00:00Z',
+        'items': [
+          {
+            'series_key': 'release weekly',
+            'task_id': 'sum-1',
+            'title': 'Release Weekly',
+            'seen_at': '2026-07-01T00:00:00Z',
+            'open_count': 1,
+            'overdue_count': 0,
+            'high_risk_count': 1,
+            'owners': ['김기수'],
+            'promises': [
+              {
+                'id': 'ledger-1',
+                'canonical_key': 'qa',
+                'canonical_text': 'QA 체크리스트',
+                'text': 'QA 체크리스트',
+                'status': 'open',
+                'priority': 'high',
+                'risk_level': 'high',
+                'confidence': 0.9,
+                'occurrences': 1,
+                'first_seen_at': '2026-07-01T00:00:00Z',
+                'last_seen_at': '2026-07-01T00:00:00Z',
+                'user_confirmed': false,
+              }
+            ],
+            'questions': ['QA 체크리스트 상태를 확인했습니까?'],
+          }
+        ],
+      });
+      expect(seriesTimeline.items.single.promises.single.text, 'QA 체크리스트');
+
+      final reconcile = PromiseExternalTaskReconcileResponse.fromJson({
+        'provider': 'google_tasks',
+        'checked_count': 3,
+        'linked_count': 1,
+        'needs_sync_count': 1,
+        'requires_oauth': true,
+        'items': [
+          {
+            'ledger_entry': {
+              'id': 'ledger-1',
+              'canonical_key': 'qa',
+              'canonical_text': 'QA 체크리스트',
+              'text': 'QA 체크리스트',
+              'status': 'completed',
+              'priority': 'high',
+              'risk_level': 'high',
+              'confidence': 0.9,
+              'occurrences': 1,
+              'first_seen_at': '2026-07-01T00:00:00Z',
+              'last_seen_at': '2026-07-01T00:00:00Z',
+              'user_confirmed': true,
+            },
+            'provider': 'google_tasks',
+            'tasklist': '@default',
+            'external_id': 'task-1',
+            'ledger_status': 'completed',
+            'external_status': 'needsAction',
+            'needs_sync': true,
+            'direction': 'push_to_external',
+            'issue': '상태가 다릅니다.',
+            'sync_contract': {
+              'idempotency_key': 'promise:google_tasks:ledger-1',
+            },
+          }
+        ],
+      });
+      expect(reconcile.items.single.needsSync, isTrue);
+      expect(reconcile.items.single.externalId, 'task-1');
     });
 
     test('parses accuracy report, evidence comparison, and identity confidence',

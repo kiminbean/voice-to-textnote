@@ -44,6 +44,8 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
   late CaptureMode _selectedMode;
   String? _selectedVocabularyId;
   bool _isPermissionChecked = false;
+  bool _promiseBriefDismissed = false;
+  final Set<String> _acknowledgedPromiseIds = <String>{};
 
   @override
   void initState() {
@@ -272,7 +274,20 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
                     ),
                     if (!isRecording) ...[
                       const SizedBox(height: AppSpacing.sm),
-                      _PreMeetingPromiseBrief(brief: preMeetingBrief),
+                      if (!_promiseBriefDismissed)
+                        _PreMeetingPromiseBrief(
+                          brief: preMeetingBrief,
+                          acknowledgedPromiseIds: _acknowledgedPromiseIds,
+                          onAcknowledgePromise: (id) {
+                            setState(() => _acknowledgedPromiseIds.add(id));
+                          },
+                          onDismiss: () {
+                            setState(() => _promiseBriefDismissed = true);
+                          },
+                          onAcknowledgeAll: (ids) {
+                            setState(() => _acknowledgedPromiseIds.addAll(ids));
+                          },
+                        ),
                     ],
                     if (_selectedMode == CaptureMode.upload) ...[
                       const SizedBox(height: AppSpacing.sm),
@@ -839,8 +854,18 @@ class _StatusPill extends StatelessWidget {
 
 class _PreMeetingPromiseBrief extends StatelessWidget {
   final AsyncValue<PromisePreMeetingBrief> brief;
+  final Set<String> acknowledgedPromiseIds;
+  final ValueChanged<String> onAcknowledgePromise;
+  final ValueChanged<Iterable<String>> onAcknowledgeAll;
+  final VoidCallback onDismiss;
 
-  const _PreMeetingPromiseBrief({required this.brief});
+  const _PreMeetingPromiseBrief({
+    required this.brief,
+    required this.acknowledgedPromiseIds,
+    required this.onAcknowledgePromise,
+    required this.onAcknowledgeAll,
+    required this.onDismiss,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -853,6 +878,12 @@ class _PreMeetingPromiseBrief extends StatelessWidget {
         }
         final theme = Theme.of(context);
         final scheme = AppColors.of(context);
+        final promises = value.promises.take(3).toList();
+        final acknowledgedCount = promises
+            .where((promise) => acknowledgedPromiseIds.contains(promise.id))
+            .length;
+        final allAcknowledged =
+            promises.isNotEmpty && acknowledgedCount == promises.length;
         return Card(
           child: Padding(
             padding: const EdgeInsets.all(AppSpacing.md),
@@ -871,6 +902,21 @@ class _PreMeetingPromiseBrief extends StatelessWidget {
                         ),
                       ),
                     ),
+                    if (promises.isNotEmpty)
+                      TextButton.icon(
+                        onPressed: allAcknowledged
+                            ? null
+                            : () => onAcknowledgeAll(
+                                  promises.map((promise) => promise.id),
+                                ),
+                        icon: const Icon(Icons.done_all_rounded, size: 16),
+                        label: Text('$acknowledgedCount/${promises.length}'),
+                      ),
+                    IconButton(
+                      tooltip: '숨기기',
+                      onPressed: onDismiss,
+                      icon: const Icon(Icons.close_rounded),
+                    ),
                     Text(
                       '${value.readinessScore}%',
                       style: theme.textTheme.labelLarge?.copyWith(
@@ -883,7 +929,10 @@ class _PreMeetingPromiseBrief extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: AppSpacing.xs),
-                Text(value.summary, style: theme.textTheme.bodySmall),
+                Text(
+                  allAcknowledged ? '확인할 약속을 모두 표시했습니다.' : value.summary,
+                  style: theme.textTheme.bodySmall,
+                ),
                 for (final checkpoint in value.checkpoints.take(3)) ...[
                   const SizedBox(height: AppSpacing.xs),
                   Row(
@@ -908,12 +957,20 @@ class _PreMeetingPromiseBrief extends StatelessWidget {
                     ],
                   ),
                 ],
-                for (final promise in value.promises.take(3)) ...[
+                for (final promise in promises) ...[
                   const SizedBox(height: AppSpacing.xs),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.checklist_outlined, size: 16),
+                      Icon(
+                        acknowledgedPromiseIds.contains(promise.id)
+                            ? Icons.check_circle_rounded
+                            : Icons.checklist_outlined,
+                        size: 16,
+                        color: acknowledgedPromiseIds.contains(promise.id)
+                            ? AppColors.success
+                            : null,
+                      ),
                       const SizedBox(width: AppSpacing.xs),
                       Expanded(
                         child: Text(
@@ -922,6 +979,19 @@ class _PreMeetingPromiseBrief extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: theme.textTheme.bodySmall,
                         ),
+                      ),
+                      const SizedBox(width: AppSpacing.xs),
+                      IconButton(
+                        tooltip: '확인',
+                        constraints: const BoxConstraints.tightFor(
+                          width: 32,
+                          height: 32,
+                        ),
+                        padding: EdgeInsets.zero,
+                        onPressed: acknowledgedPromiseIds.contains(promise.id)
+                            ? null
+                            : () => onAcknowledgePromise(promise.id),
+                        icon: const Icon(Icons.done_rounded, size: 18),
                       ),
                     ],
                   ),
