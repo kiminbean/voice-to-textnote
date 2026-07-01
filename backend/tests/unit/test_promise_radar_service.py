@@ -21,6 +21,7 @@ from backend.schemas.promise_radar import (
     PromiseConflictResolveRequest,
     PromiseDigestPreferenceUpdateRequest,
     PromiseExternalExportRequest,
+    PromiseExternalTaskUpdateRequest,
     PromiseLearningFeedbackRequest,
     PromiseLedgerMergeRequest,
     PromiseLedgerSplitRequest,
@@ -718,6 +719,15 @@ async def test_promise_autopilot_calendar_assignee_and_quality(session_factory):
         )
         assert latest_pack.ledger_entry_id == str(confirm_entry.id)
         assert latest_pack.marker_hits
+        comparison = await service.evidence_comparison(
+            session,
+            confirm_entry.id,
+            owner_id=owner_id,
+            team_id=team_id,
+        )
+        assert comparison.current_pack is not None
+        assert comparison.current_similarity is not None
+        assert comparison.shared_terms
 
         autopilot = await service.run_autopilot(
             session,
@@ -1008,6 +1018,23 @@ async def test_promise_autopilot_calendar_assignee_and_quality(session_factory):
         )
         assert evaluation.case_count == 2
         assert evaluation.correct_count == 2
+        report = service.build_accuracy_report(
+            [
+                PromiseAccuracyCase(
+                    id="real-v10-video1-case",
+                    entry_text="QA 체크리스트 작성",
+                    current_text="QA 체크리스트 작성 완료했습니다.",
+                    expected_status="completed",
+                    owner="김기수",
+                )
+            ],
+            fixture_path="backend/tests/fixtures/promise_radar_accuracy_cases.json",
+            source_manifest_path="backend/tests/fixtures/promise_radar_real_meeting_sources.json",
+            target_case_count=1,
+        )
+        assert report.real_meeting_case_count == 1
+        assert report.source_counts["video1"] == 1
+        assert report.below_target is False
 
         event_types = {
             event.event_type
@@ -1022,6 +1049,114 @@ async def test_promise_autopilot_calendar_assignee_and_quality(session_factory):
             "conflict_resolved",
             "automation_policy_updated",
         }.issubset(event_types)
+
+
+def test_digest_preference_due_window_and_quiet_hours():
+    service = PromiseRadarService()
+    preference = service._digest_preference_from_value(
+        {
+            "enabled": True,
+            "cadence": "daily",
+            "local_time": "08:30",
+            "timezone": "Asia/Seoul",
+            "quiet_hours_start": "22:00",
+            "quiet_hours_end": "07:00",
+        },
+        scope="owner:test",
+        updated_at=datetime(2026, 7, 1, 0, 0, 0),
+    )
+
+    assert service._digest_preference_due_now(
+        preference,
+        datetime(2026, 6, 30, 23, 45, 0),
+    )
+    assert not service._digest_preference_due_now(
+        preference,
+        datetime(2026, 7, 1, 2, 0, 0),
+    )
+    assert not service._digest_preference_due_now(
+        preference,
+        datetime(2026, 7, 1, 14, 30, 0),
+    )
+
+
+@pytest.mark.asyncio
+async def test_update_external_google_task_pushes_ledger_state(session_factory, monkeypatch):
+    service = PromiseRadarService()
+    owner_id = uuid.uuid4()
+    now = datetime(2026, 7, 1, 9, 0, 0)
+    calls: list[dict] = []
+
+    class _FakeResponse:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {
+                "status": "completed",
+                "selfLink": "https://tasks.googleapis.com/tasks/v1/lists/@default/tasks/task-1",
+            }
+
+    class _FakeAsyncClient:
+        def __init__(self, timeout):
+            self.timeout = timeout
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def patch(self, endpoint, headers, json):
+            calls.append({"endpoint": endpoint, "headers": headers, "json": json})
+            return _FakeResponse()
+
+    monkeypatch.setattr(
+        "backend.services.promise_radar_service.httpx.AsyncClient",
+        _FakeAsyncClient,
+    )
+
+    async with session_factory() as session:
+        entry = PromiseLedgerEntry(
+            owner_id=owner_id,
+            source_task_id="sum-google-task",
+            last_source_task_id="sum-google-task",
+            canonical_key="release note review",
+            canonical_text="릴리스 노트 검토",
+            text="릴리스 노트 검토",
+            owner_name="김기수",
+            status="completed",
+            priority="high",
+            risk_level="high",
+            confidence=0.9,
+            occurrences=1,
+            first_seen_at=now,
+            last_seen_at=now,
+            calendar_event={
+                "external_tasks": {
+                    "google_tasks": {
+                        "external_id": "task-1",
+                        "tasklist": "@default",
+                    }
+                }
+            },
+        )
+        session.add(entry)
+        await session.commit()
+        await session.refresh(entry)
+
+        response = await service.update_external_task(
+            session,
+            entry.id,
+            PromiseExternalTaskUpdateRequest(access_token="token"),
+            owner_id=owner_id,
+        )
+
+        assert response.synced is True
+        assert response.status == "completed"
+        assert calls[0]["endpoint"].endswith("/lists/@default/tasks/task-1")
+        assert calls[0]["endpoint"].count("/tasks/task-1") == 1
+        assert calls[0]["json"]["status"] == "completed"
 
 
 @pytest.mark.asyncio

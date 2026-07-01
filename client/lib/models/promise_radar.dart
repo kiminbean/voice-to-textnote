@@ -390,6 +390,56 @@ class PromiseEvidencePack {
   }
 }
 
+class PromiseEvidenceComparison {
+  final String ledgerEntryId;
+  final String? previousText;
+  final String? currentText;
+  final double? previousSimilarity;
+  final double? currentSimilarity;
+  final double? similarityDelta;
+  final List<String> sharedTerms;
+  final List<PromiseRadarEvidence> previousEvidence;
+  final PromiseEvidencePack? currentPack;
+  final String summary;
+
+  const PromiseEvidenceComparison({
+    required this.ledgerEntryId,
+    this.previousText,
+    this.currentText,
+    this.previousSimilarity,
+    this.currentSimilarity,
+    this.similarityDelta,
+    required this.sharedTerms,
+    required this.previousEvidence,
+    this.currentPack,
+    required this.summary,
+  });
+
+  factory PromiseEvidenceComparison.fromJson(Map<String, dynamic> json) {
+    return PromiseEvidenceComparison(
+      ledgerEntryId: json['ledger_entry_id'] as String? ?? '',
+      previousText: json['previous_text'] as String?,
+      currentText: json['current_text'] as String?,
+      previousSimilarity: (json['previous_similarity'] as num?)?.toDouble(),
+      currentSimilarity: (json['current_similarity'] as num?)?.toDouble(),
+      similarityDelta: (json['similarity_delta'] as num?)?.toDouble(),
+      sharedTerms: (json['shared_terms'] as List<dynamic>? ?? [])
+          .whereType<String>()
+          .toList(),
+      previousEvidence: (json['previous_evidence'] as List<dynamic>? ?? [])
+          .whereType<Map<String, dynamic>>()
+          .map(PromiseRadarEvidence.fromJson)
+          .toList(),
+      currentPack: json['current_pack'] is Map<String, dynamic>
+          ? PromiseEvidencePack.fromJson(
+              json['current_pack'] as Map<String, dynamic>,
+            )
+          : null,
+      summary: json['summary'] as String? ?? '',
+    );
+  }
+}
+
 class PromiseAutopilotAssessment {
   final String ledgerEntryId;
   final String previousStatus;
@@ -1092,6 +1142,35 @@ class PromiseExternalTaskSyncRequest {
   }
 }
 
+class PromiseExternalTaskUpdateRequest {
+  final String provider;
+  final String? accessToken;
+  final String tasklist;
+  final String? externalId;
+  final String? status;
+  final String? title;
+
+  const PromiseExternalTaskUpdateRequest({
+    this.provider = 'google_tasks',
+    this.accessToken,
+    this.tasklist = '@default',
+    this.externalId,
+    this.status,
+    this.title,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'provider': provider,
+      if (accessToken != null) 'access_token': accessToken,
+      'tasklist': tasklist,
+      if (externalId != null) 'external_id': externalId,
+      if (status != null) 'status': status,
+      if (title != null) 'title': title,
+    };
+  }
+}
+
 class PromiseExternalTaskSyncResponse {
   final String ledgerEntryId;
   final String provider;
@@ -1178,6 +1257,51 @@ class PromiseAccuracyEvaluation {
   }
 }
 
+class PromiseAccuracyReport {
+  final String generatedAt;
+  final String fixturePath;
+  final String? sourceManifestPath;
+  final PromiseAccuracyEvaluation evaluation;
+  final Map<String, int> statusCounts;
+  final Map<String, int> sourceCounts;
+  final int realMeetingCaseCount;
+  final int targetCaseCount;
+  final bool belowTarget;
+
+  const PromiseAccuracyReport({
+    required this.generatedAt,
+    required this.fixturePath,
+    this.sourceManifestPath,
+    required this.evaluation,
+    required this.statusCounts,
+    required this.sourceCounts,
+    required this.realMeetingCaseCount,
+    required this.targetCaseCount,
+    required this.belowTarget,
+  });
+
+  factory PromiseAccuracyReport.fromJson(Map<String, dynamic> json) {
+    return PromiseAccuracyReport(
+      generatedAt: json['generated_at'] as String? ?? '',
+      fixturePath: json['fixture_path'] as String? ?? '',
+      sourceManifestPath: json['source_manifest_path'] as String?,
+      evaluation: PromiseAccuracyEvaluation.fromJson(
+        json['evaluation'] as Map<String, dynamic>? ??
+            const <String, dynamic>{},
+      ),
+      statusCounts: (json['status_counts'] as Map<String, dynamic>? ?? {}).map(
+        (key, value) => MapEntry(key, (value as num?)?.toInt() ?? 0),
+      ),
+      sourceCounts: (json['source_counts'] as Map<String, dynamic>? ?? {}).map(
+        (key, value) => MapEntry(key, (value as num?)?.toInt() ?? 0),
+      ),
+      realMeetingCaseCount: json['real_meeting_case_count'] as int? ?? 0,
+      targetCaseCount: json['target_case_count'] as int? ?? 100,
+      belowTarget: json['below_target'] as bool? ?? false,
+    );
+  }
+}
+
 class PromiseLedgerEntry {
   final String id;
   final String canonicalKey;
@@ -1207,6 +1331,8 @@ class PromiseLedgerEntry {
   final String? dismissedReason;
   final PromiseQualityScore? quality;
   final List<PromiseAssigneeSuggestion> assigneeSuggestions;
+  final double? identityConfidence;
+  final List<String> identityConfidenceFactors;
 
   const PromiseLedgerEntry({
     required this.id,
@@ -1237,6 +1363,8 @@ class PromiseLedgerEntry {
     this.dismissedReason,
     this.quality,
     this.assigneeSuggestions = const [],
+    this.identityConfidence,
+    this.identityConfidenceFactors = const [],
   });
 
   factory PromiseLedgerEntry.fromJson(Map<String, dynamic> json) {
@@ -1278,6 +1406,11 @@ class PromiseLedgerEntry {
           (json['assignee_suggestions'] as List<dynamic>? ?? [])
               .whereType<Map<String, dynamic>>()
               .map(PromiseAssigneeSuggestion.fromJson)
+              .toList(),
+      identityConfidence: (json['identity_confidence'] as num?)?.toDouble(),
+      identityConfidenceFactors:
+          (json['identity_confidence_factors'] as List<dynamic>? ?? [])
+              .whereType<String>()
               .toList(),
     );
   }

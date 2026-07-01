@@ -12,11 +12,13 @@ from __future__ import annotations
 import json
 import os
 import re
+from collections import Counter
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any
 from urllib.parse import quote
 from uuid import UUID
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import httpx
 from sqlalchemy import or_, select
@@ -31,6 +33,7 @@ from backend.ml.zai_client import AsyncZAIClient, structured_json_completion_opt
 from backend.schemas.promise_radar import (
     PromiseAccuracyCase,
     PromiseAccuracyEvaluation,
+    PromiseAccuracyReport,
     PromiseAssigneeSuggestion,
     PromiseAutomationPolicy,
     PromiseAutomationPolicyUpdateRequest,
@@ -45,11 +48,13 @@ from backend.schemas.promise_radar import (
     PromiseDigest,
     PromiseDigestPreference,
     PromiseDigestPreferenceUpdateRequest,
+    PromiseEvidenceComparison,
     PromiseEvidencePack,
     PromiseExternalExportRequest,
     PromiseExternalExportResponse,
     PromiseExternalTaskSyncRequest,
     PromiseExternalTaskSyncResponse,
+    PromiseExternalTaskUpdateRequest,
     PromiseGoogleTaskList,
     PromiseGoogleTaskListResponse,
     PromiseLearningFeedbackRequest,
@@ -985,6 +990,7 @@ class PromiseRadarService:
                 session,
                 target_user_id,
                 cadence=normalized,
+                moment=moment,
             ):
                 continue
             if await self._digest_already_sent(
@@ -1546,6 +1552,73 @@ class PromiseRadarService:
             if isinstance(autopilot, dict) and isinstance(autopilot.get("evidence_pack"), dict):
                 return PromiseEvidencePack(**autopilot["evidence_pack"])
         raise ValueError("저장된 Evidence Pack이 없습니다")
+
+    async def evidence_comparison(
+        self,
+        session: AsyncSession,
+        entry_id: UUID | str,
+        *,
+        owner_id: UUID | str | None = None,
+        guest_session_id: str | None = None,
+        team_id: UUID | str | None = None,
+    ) -> PromiseEvidenceComparison:
+        """Compare original ledger evidence with the latest Autopilot Evidence Pack."""
+        entry = await self._get_scoped_ledger_entry(
+            session,
+            entry_id,
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
+            team_id=team_id,
+        )
+        if entry is None:
+            raise ValueError("약속 원장 항목을 찾을 수 없습니다")
+        previous_evidence = [
+            PromiseRadarEvidence(**item)
+            for item in entry.evidence or []
+            if isinstance(item, dict)
+        ]
+        try:
+            pack = await self.latest_evidence_pack(
+                session,
+                entry_id,
+                owner_id=owner_id,
+                guest_session_id=guest_session_id,
+                team_id=team_id,
+            )
+        except ValueError:
+            pack = None
+        previous_text = previous_evidence[0].transcript if previous_evidence else entry.text
+        current_text = pack.matched_text if pack else None
+        previous_similarity = round(
+            self._promise_similarity(entry.text, previous_text, entry.owner_name, None),
+            3,
+        )
+        current_similarity = pack.similarity if pack else None
+        shared_terms = sorted(
+            set(self._tokens(previous_text)) & set(self._tokens(current_text or ""))
+        )[:10]
+        delta = (
+            round(current_similarity - previous_similarity, 3)
+            if current_similarity is not None
+            else None
+        )
+        summary = (
+            "현재 자동 판정 근거가 기존 원장 근거보다 강합니다."
+            if delta is not None and delta >= 0
+            else "기존 원장 근거와 현재 자동 판정 근거의 차이를 확인해야 합니다."
+        )
+        return PromiseEvidenceComparison(
+            ledger_entry_id=str(entry.id),
+            previous_text=previous_text,
+            current_text=current_text,
+            previous_similarity=previous_similarity,
+            current_similarity=current_similarity,
+            similarity_delta=delta,
+            shared_terms=shared_terms,
+            previous_evidence=previous_evidence[:3],
+            current_pack=pack,
+            summary=summary,
+        )
 
     async def export_calendar_event(
         self,
@@ -2198,6 +2271,92 @@ class PromiseRadarService:
             message="Google Tasks 상태를 동기화했습니다.",
         )
 
+    async def update_external_task(
+        self,
+        session: AsyncSession,
+        entry_id: UUID | str,
+        payload: PromiseExternalTaskUpdateRequest,
+        *,
+        owner_id: UUID | str | None = None,
+        guest_session_id: str | None = None,
+        team_id: UUID | str | None = None,
+    ) -> PromiseExternalTaskSyncResponse:
+        """Push a Promise Ledger state change to an exported external task."""
+        entry = await self._get_scoped_ledger_entry(
+            session,
+            entry_id,
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
+            team_id=team_id,
+        )
+        if entry is None:
+            raise ValueError("약속 원장 항목을 찾을 수 없습니다")
+        provider = payload.provider.strip().lower()
+        if provider != "google_tasks":
+            raise ValueError("현재 외부 task 업데이트는 Google Tasks만 지원합니다")
+        token = (payload.access_token or "").strip()
+        if not token:
+            raise ValueError("Google Tasks 업데이트에는 OAuth access token이 필요합니다")
+        metadata = self._google_task_metadata(entry)
+        tasklist = payload.tasklist.strip() or metadata.get("tasklist") or "@default"
+        external_id = (payload.external_id or metadata.get("external_id") or "").strip()
+        if not external_id:
+            raise ValueError("업데이트할 Google Tasks task id가 없습니다")
+        status = (payload.status or ("completed" if entry.status == "completed" else "needsAction")).strip()
+        if status not in {"completed", "needsAction"}:
+            raise ValueError("Google Tasks 상태는 completed 또는 needsAction만 지원합니다")
+        body: dict[str, Any] = {"status": status}
+        if payload.title:
+            body["title"] = payload.title
+        if status == "completed":
+            body["completed"] = datetime.now(UTC).isoformat().replace("+00:00", "Z")
+        endpoint = (
+            f"https://tasks.googleapis.com/tasks/v1/lists/{quote(tasklist, safe='@')}"
+            f"/tasks/{quote(external_id, safe='')}"
+        )
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.patch(
+                endpoint,
+                headers={"Authorization": f"Bearer {token}"},
+                json=body,
+            )
+            response.raise_for_status()
+        task = response.json()
+        entry.calendar_event = {
+            **(entry.calendar_event or {}),
+            "external_tasks": {
+                **((entry.calendar_event or {}).get("external_tasks") or {}),
+                "google_tasks": {
+                    **metadata,
+                    "external_id": external_id,
+                    "tasklist": tasklist,
+                    "external_url": metadata.get("external_url") or task.get("selfLink"),
+                    "external_status": str(task.get("status") or status),
+                    "synced_at": datetime.now(UTC).replace(tzinfo=None).isoformat(),
+                },
+            },
+        }
+        self._record_ledger_event(
+            session,
+            entry,
+            "external_task_updated",
+            new_value={
+                "provider": "google_tasks",
+                "external_id": external_id,
+                "tasklist": tasklist,
+                "external_status": str(task.get("status") or status),
+            },
+            actor_user_id=owner_id,
+        )
+        await session.commit()
+        return PromiseExternalTaskSyncResponse(
+            ledger_entry_id=str(entry.id),
+            provider="google_tasks",
+            synced=True,
+            status=str(task.get("status") or status),
+            message="Promise Ledger 상태를 Google Tasks에 반영했습니다.",
+        )
+
     async def _export_google_task(
         self,
         session: AsyncSession,
@@ -2348,6 +2507,41 @@ class PromiseRadarService:
             accuracy=round(correct / len(cases), 3) if cases else 0.0,
             status_precision=precision,
             failures=failures,
+        )
+
+    def build_accuracy_report(
+        self,
+        cases: list[PromiseAccuracyCase],
+        *,
+        fixture_path: str,
+        source_manifest_path: str | None = None,
+        target_case_count: int = 100,
+    ) -> PromiseAccuracyReport:
+        """Build an operator-facing accuracy report from fixture labels."""
+        evaluation = self.evaluate_accuracy_cases(cases)
+        status_counts = Counter(case.expected_status for case in cases)
+        source_counts: Counter[str] = Counter()
+        real_meeting_case_count = 0
+        for case in cases:
+            if case.id.startswith("real-"):
+                real_meeting_case_count += 1
+            parts = case.id.split("-")
+            if case.id.startswith("real-v10-") and len(parts) >= 3:
+                source_counts[parts[2]] += 1
+            elif case.id.startswith("real-") and len(parts) >= 2:
+                source_counts[parts[1]] += 1
+            else:
+                source_counts["synthetic"] += 1
+        return PromiseAccuracyReport(
+            generated_at=datetime.now(UTC).replace(tzinfo=None),
+            fixture_path=fixture_path,
+            source_manifest_path=source_manifest_path,
+            evaluation=evaluation,
+            status_counts=dict(status_counts),
+            source_counts=dict(source_counts),
+            real_meeting_case_count=real_meeting_case_count,
+            target_case_count=target_case_count,
+            below_target=real_meeting_case_count < target_case_count,
         )
 
     def analyze_records(
@@ -3174,6 +3368,7 @@ class PromiseRadarService:
         for item in entry.evidence or []:
             if isinstance(item, dict):
                 evidence.append(PromiseRadarEvidence(**item))
+        identity_confidence, identity_factors = self._identity_confidence(entry, evidence)
         return PromiseLedgerEntryResponse(
             id=str(entry.id),
             canonical_key=entry.canonical_key,
@@ -3202,6 +3397,8 @@ class PromiseRadarService:
             action_item_id=str(entry.action_item_id) if entry.action_item_id else None,
             dismissed_reason=entry.dismissed_reason,
             quality=self._quality_score(entry),
+            identity_confidence=identity_confidence,
+            identity_confidence_factors=identity_factors,
         )
 
     def _event_to_response(self, event: PromiseLedgerEvent) -> PromiseLedgerHistoryEntry:
@@ -3504,6 +3701,7 @@ class PromiseRadarService:
         target_user_id: UUID,
         *,
         cadence: str,
+        moment: datetime,
     ) -> bool:
         result = await session.execute(
             select(PromiseLedgerEvent)
@@ -3522,7 +3720,53 @@ class PromiseRadarService:
             scope=f"owner:{target_user_id}",
             updated_at=event.created_at,
         )
-        return preference.enabled and preference.cadence == cadence
+        return (
+            preference.enabled
+            and preference.cadence == cadence
+            and self._digest_preference_due_now(preference, moment)
+        )
+
+    def _digest_preference_due_now(
+        self,
+        preference: PromiseDigestPreference,
+        moment: datetime,
+    ) -> bool:
+        try:
+            timezone = ZoneInfo(preference.timezone)
+        except ZoneInfoNotFoundError:
+            timezone = ZoneInfo("Asia/Seoul")
+        aware = moment.replace(tzinfo=UTC) if moment.tzinfo is None else moment.astimezone(UTC)
+        local = aware.astimezone(timezone)
+        if self._in_quiet_hours(
+            local,
+            preference.quiet_hours_start,
+            preference.quiet_hours_end,
+        ):
+            return False
+        hour, minute = [int(part) for part in preference.local_time.split(":", maxsplit=1)]
+        scheduled = local.replace(hour=hour, minute=minute, second=0, microsecond=0)
+        return 0 <= (local - scheduled).total_seconds() < 3600
+
+    def _in_quiet_hours(
+        self,
+        local: datetime,
+        start: str | None,
+        end: str | None,
+    ) -> bool:
+        if not start or not end:
+            return False
+        start_minutes = self._hhmm_to_minutes(start)
+        end_minutes = self._hhmm_to_minutes(end)
+        now_minutes = local.hour * 60 + local.minute
+        if start_minutes == end_minutes:
+            return False
+        if start_minutes < end_minutes:
+            return start_minutes <= now_minutes < end_minutes
+        return now_minutes >= start_minutes or now_minutes < end_minutes
+
+    def _hhmm_to_minutes(self, value: str) -> int:
+        hour, minute = [int(part) for part in value.split(":", maxsplit=1)]
+        return hour * 60 + minute
 
     async def _rejected_review_keys(
         self,
@@ -4024,6 +4268,47 @@ class PromiseRadarService:
             strengths=strengths,
             issues=issues,
         )
+
+    def _identity_confidence(
+        self,
+        entry: PromiseLedgerEntry,
+        evidence: list[PromiseRadarEvidence],
+    ) -> tuple[float | None, list[str]]:
+        """Estimate how strongly owner/speaker/assignee identity is grounded."""
+        score = 0.0
+        factors: list[str] = []
+        if entry.owner_name:
+            score += 0.24
+            factors.append("담당자 이름")
+        if entry.assigned_user_id:
+            score += 0.24
+            factors.append("팀 사용자 지정")
+        if entry.speaker_label:
+            score += 0.16
+            factors.append("화자 라벨")
+        if entry.speaker_profile_id:
+            score += 0.18
+            factors.append("저장된 화자 프로필")
+        best_voiceprint = 0.0
+        for item in evidence:
+            if item.voiceprint_similarity is not None:
+                best_voiceprint = max(best_voiceprint, item.voiceprint_similarity)
+            if item.speaker and entry.owner_name and self._owner_key(item.speaker) == self._owner_key(entry.owner_name):
+                score += 0.08
+                factors.append("근거 발화자 일치")
+                break
+        if best_voiceprint >= 0.9:
+            score += 0.16
+            factors.append("목소리 유사도 90% 이상")
+        elif best_voiceprint >= 0.8:
+            score += 0.12
+            factors.append("목소리 유사도 80% 이상")
+        elif best_voiceprint >= 0.7:
+            score += 0.06
+            factors.append("목소리 유사도 70% 이상")
+        if not factors:
+            return None, []
+        return round(min(score, 1.0), 3), factors
 
     def _ics_content(
         self,

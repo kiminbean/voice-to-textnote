@@ -2,7 +2,9 @@
 Cross-meeting promise radar API.
 """
 
+import json
 import uuid
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy import select
@@ -19,6 +21,7 @@ from backend.db.auth_models import TeamMember
 from backend.schemas.promise_radar import (
     PromiseAccuracyCase,
     PromiseAccuracyEvaluation,
+    PromiseAccuracyReport,
     PromiseAssigneeSuggestion,
     PromiseAutomationPolicy,
     PromiseAutomationPolicyUpdateRequest,
@@ -32,11 +35,13 @@ from backend.schemas.promise_radar import (
     PromiseDigest,
     PromiseDigestPreference,
     PromiseDigestPreferenceUpdateRequest,
+    PromiseEvidenceComparison,
     PromiseEvidencePack,
     PromiseExternalExportRequest,
     PromiseExternalExportResponse,
     PromiseExternalTaskSyncRequest,
     PromiseExternalTaskSyncResponse,
+    PromiseExternalTaskUpdateRequest,
     PromiseGoogleTaskListResponse,
     PromiseLearningFeedbackRequest,
     PromiseLearningFeedbackResponse,
@@ -307,6 +312,34 @@ async def evaluate_promise_accuracy(
     return svc.evaluate_accuracy_cases(cases)
 
 
+@router.get("/accuracy/report", response_model=PromiseAccuracyReport)
+async def get_promise_accuracy_report(
+    target_case_count: int = Query(default=100, ge=1, le=1000),
+    svc: PromiseRadarService = Depends(get_promise_radar_service),
+) -> PromiseAccuracyReport:
+    """서버에 고정된 Promise Radar fixture 정확도와 실제 회의 label 수를 반환합니다."""
+    try:
+        backend_root = Path(__file__).resolve().parents[4]
+        fixture = backend_root / "tests" / "fixtures" / "promise_radar_accuracy_cases.json"
+        source_manifest = (
+            backend_root / "tests" / "fixtures" / "promise_radar_real_meeting_sources.json"
+        )
+        raw_cases = json.loads(fixture.read_text(encoding="utf-8"))
+        cases = [PromiseAccuracyCase(**item) for item in raw_cases]
+        return svc.build_accuracy_report(
+            cases,
+            fixture_path=str(fixture),
+            source_manifest_path=str(source_manifest) if source_manifest.exists() else None,
+            target_case_count=target_case_count,
+        )
+    except FileNotFoundError as e:
+        not_found(f"Promise Radar fixture 파일을 찾을 수 없습니다: {e}")
+    except ValueError as e:
+        not_found(str(e))
+    except Exception as e:
+        internal_error(f"Promise Radar 정확도 보고서 생성 중 오류가 발생했습니다: {e}")
+
+
 @router.get("/dashboard", response_model=PromiseRadarDashboard)
 async def get_promise_dashboard(
     request: Request,
@@ -568,6 +601,33 @@ async def get_promise_latest_evidence_pack(
         raise
     except Exception as e:
         internal_error(f"약속 Evidence Pack 조회 중 오류가 발생했습니다: {e}")
+
+
+@router.get("/ledger/{entry_id}/evidence-comparison", response_model=PromiseEvidenceComparison)
+async def compare_promise_evidence(
+    entry_id: str,
+    request: Request,
+    team_id: str | None = Query(default=None, description="팀 약속 원장 범위"),
+    db: AsyncSession = Depends(get_db_session),
+    current_user=Depends(get_optional_current_user),
+    svc: PromiseRadarService = Depends(get_promise_radar_service),
+) -> PromiseEvidenceComparison:
+    """저장된 원장 근거와 최신 Evidence Pack을 비교합니다."""
+    try:
+        scoped_team_id = await _accessible_team_id(db, current_user, team_id)
+        return await svc.evidence_comparison(
+            db,
+            entry_id,
+            owner_id=getattr(current_user, "id", None),
+            guest_session_id=_guest_session_id(request),
+            team_id=scoped_team_id,
+        )
+    except ValueError as e:
+        not_found(str(e))
+    except VoiceNoteError:
+        raise
+    except Exception as e:
+        internal_error(f"약속 Evidence 비교 중 오류가 발생했습니다: {e}")
 
 
 @router.post("/ledger/{entry_id}/calendar", response_model=PromiseReminderCandidate)
@@ -879,6 +939,38 @@ async def sync_promise_external_task(
         raise
     except Exception as e:
         internal_error(f"외부 업무도구 동기화 중 오류가 발생했습니다: {e}")
+
+
+@router.post(
+    "/ledger/{entry_id}/external-task/update",
+    response_model=PromiseExternalTaskSyncResponse,
+)
+async def update_promise_external_task(
+    entry_id: str,
+    payload: PromiseExternalTaskUpdateRequest,
+    request: Request,
+    team_id: str | None = Query(default=None, description="팀 약속 원장 범위"),
+    db: AsyncSession = Depends(get_db_session),
+    current_user=Depends(get_optional_current_user),
+    svc: PromiseRadarService = Depends(get_promise_radar_service),
+) -> PromiseExternalTaskSyncResponse:
+    """약속 원장의 현재 상태를 외부 업무도구 task로 반영합니다."""
+    try:
+        scoped_team_id = await _accessible_team_id(db, current_user, team_id)
+        return await svc.update_external_task(
+            db,
+            entry_id,
+            payload,
+            owner_id=getattr(current_user, "id", None),
+            guest_session_id=_guest_session_id(request),
+            team_id=scoped_team_id,
+        )
+    except ValueError as e:
+        not_found(str(e))
+    except VoiceNoteError:
+        raise
+    except Exception as e:
+        internal_error(f"외부 업무도구 업데이트 중 오류가 발생했습니다: {e}")
 
 
 @router.post("/ledger/{entry_id}/action-item", response_model=PromiseTaskLinkResponse)

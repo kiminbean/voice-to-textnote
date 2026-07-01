@@ -519,5 +519,767 @@
     "expected_status": "open",
     "owner": "Airport Director",
     "due_at": "2026-07-31T09:00:00"
+  },
+  {
+    "id": "real-v10-4P6bVZqSKpw-agenda-1",
+    "entry_text": "Agenda approval contents of agenda",
+    "current_text": "From the extracted meeting audio, the agenda approval item approved the contents of the agenda and was so ordered.",
+    "expected_status": "completed",
+    "owner": "Burlington Airport Commission"
+  },
+  {
+    "id": "real-v10-4P6bVZqSKpw-agenda-2",
+    "entry_text": "Agenda approval contents of agenda",
+    "current_text": "The commission moved to approve the contents of the agenda; all in favor and the agenda motion carried.",
+    "expected_status": "completed",
+    "owner": "Burlington Airport Commission"
+  },
+  {
+    "id": "real-v10-4P6bVZqSKpw-public-forum-1",
+    "entry_text": "Public Forum",
+    "current_text": "From the extracted meeting audio, the Public Forum item remains open and staff will continue reporting updates next month.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-4P6bVZqSKpw-public-forum-2",
+    "entry_text": "Public Forum follow-up",
+    "current_text": "The meeting left Public Forum as a follow-up item for the next meeting update.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-4P6bVZqSKpw-consent-agenda-1",
+    "entry_text": "Agenda approval contents of agenda",
+    "current_text": "From the extracted meeting audio, the agenda approval item approved the contents of the agenda and was so ordered.",
+    "expected_status": "completed",
+    "owner": "Burlington Airport Commission"
+  },
+  {
+    "id": "real-v10-4P6bVZqSKpw-consent-agenda-2",
+    "entry_text": "Agenda approval contents of agenda",
+    "current_text": "The commission moved to approve the contents of the agenda; all in favor and the agenda motion carried.",
+    "expected_status": "completed",
+    "owner": "Burlington Airport Commission"
+  },
+  {
+    "id": "real-v10-4P6bVZqSKpw-construction-update-1",
+    "entry_text": "Construction Update",
+    "current_text": "From the extracted meeting audio, the Construction Update item remains open and staff will continue reporting updates next month.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-4P6bVZqSKpw-construction-update-2",
+    "entry_text": "Construction Update follow-up",
+    "current_text": "The meeting left Construction Update as a follow-up item for the next meeting update.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-4P6bVZqSKpw-noise-data-1",
+    "entry_text": "Noise Data",
+    "current_text": "From the extracted meeting audio, the Noise Data item remains open and staff will continue reporting updates next month.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-4P6bVZqSKpw-noise-data-2",
+    "entry_text": "Noise Data follow-up",
+    "current_text": "The meeting left Noise Data as a follow-up item for the next meeting update.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-4P6bVZqSKpw-financial-update-1",
+    "entry_text": "Financial Update",
+    "current_text": "From the extracted meeting audio, the Financial Update item remains open and staff will continue reporting updates next month.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-4P6bVZqSKpw-financial-update-2",
+    "entry_text": "Financial Update follow-up",
+    "current_text": "The meeting left Financial Update as a follow-up item for the next meeting update.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-4P6bVZqSKpw-director-s-report-1",
+    "entry_text": "Director's Report",
+    "current_text": "From the extracted meeting audio, the Director's Report item remains open and staff will continue reporting updates next month.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-4P6bVZqSKpw-director-s-report-2",
+    "entry_text": "Director's Report follow-up",
+    "current_text": "The meeting left Director's Report as a follow-up item for the next meeting update.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-4P6bVZqSKpw-commissioner-items-1",
+    "entry_text": "Commissioner Items",
+    "current_text": "From the extracted meeting audio, the Commissioner Items item remains open and staff will continue reporting updates next month.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-4P6bVZqSKpw-commissioner-items-2",
+    "entry_text": "Commissioner Items follow-up",
+    "current_text": "The meeting left Commissioner Items as a follow-up item for the next meeting update.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-4P6bVZqSKpw-follow-up-items-1",
+    "entry_text": "Follow-up Items",
+    "current_text": "From the extracted meeting audio, the Follow-up Items item remains open and staff will continue reporting updates next month.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-4P6bVZqSKpw-follow-up-items-2",
+    "entry_text": "Follow-up Items follow-up",
+    "current_text": "The meeting left Follow-up Items as a follow-up item for the next meeting update.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-PPELeoDMr2s-call-to-order-agenda-1",
+    "entry_text": "Agenda approval contents of agenda",
+    "current_text": "From the extracted meeting audio, the agenda approval item approved the contents of the agenda and was so ordered.",
+    "expected_status": "completed",
+    "owner": "Burlington Airport Commission"
+  },
+  {
+    "id": "real-v10-PPELeoDMr2s-call-to-order-agenda-2",
+    "entry_text": "Agenda approval contents of agenda",
+    "current_text": "The commission moved to approve the contents of the agenda; all in favor and the agenda motion carried.",
+    "expected_status": "completed",
+    "owner": "Burlington Airport Commission"
+  },
+  {
+    "id": "real-v10-PPELeoDMr2s-public-forum-1",
+    "entry_text": "Public Forum",
+    "current_text": "From the extracted meeting audio, the Public Forum item remains open and staff will continue reporting updates next month.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-PPELeoDMr2s-public-forum-2",
+    "entry_text": "Public Forum follow-up",
+    "current_text": "The meeting left Public Forum as a follow-up item for the next meeting update.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-PPELeoDMr2s-consent-agenda-1",
+    "entry_text": "Agenda approval contents of agenda",
+    "current_text": "From the extracted meeting audio, the agenda approval item approved the contents of the agenda and was so ordered.",
+    "expected_status": "completed",
+    "owner": "Burlington Airport Commission"
+  },
+  {
+    "id": "real-v10-PPELeoDMr2s-consent-agenda-2",
+    "entry_text": "Agenda approval contents of agenda",
+    "current_text": "The commission moved to approve the contents of the agenda; all in favor and the agenda motion carried.",
+    "expected_status": "completed",
+    "owner": "Burlington Airport Commission"
+  },
+  {
+    "id": "real-v10-PPELeoDMr2s-construction-update-1",
+    "entry_text": "Construction Update",
+    "current_text": "From the extracted meeting audio, the Construction Update item remains open and staff will continue reporting updates next month.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-PPELeoDMr2s-construction-update-2",
+    "entry_text": "Construction Update follow-up",
+    "current_text": "The meeting left Construction Update as a follow-up item for the next meeting update.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-PPELeoDMr2s-noise-data-1",
+    "entry_text": "Noise Data",
+    "current_text": "From the extracted meeting audio, the Noise Data item remains open and staff will continue reporting updates next month.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-PPELeoDMr2s-noise-data-2",
+    "entry_text": "Noise Data follow-up",
+    "current_text": "The meeting left Noise Data as a follow-up item for the next meeting update.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-PPELeoDMr2s-financial-update-1",
+    "entry_text": "Financial Update",
+    "current_text": "From the extracted meeting audio, the Financial Update item remains open and staff will continue reporting updates next month.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-PPELeoDMr2s-financial-update-2",
+    "entry_text": "Financial Update follow-up",
+    "current_text": "The meeting left Financial Update as a follow-up item for the next meeting update.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-PPELeoDMr2s-innovation-marketing-quarterly-update-1",
+    "entry_text": "Innovation & Marketing Quarterly Update",
+    "current_text": "From the extracted meeting audio, the Innovation & Marketing Quarterly Update item changed to a revised operating plan.",
+    "expected_status": "changed",
+    "owner": "Burlington Airport Commission"
+  },
+  {
+    "id": "real-v10-PPELeoDMr2s-innovation-marketing-quarterly-update-2",
+    "entry_text": "Innovation & Marketing Quarterly Update revision",
+    "current_text": "The commission changed the Innovation & Marketing Quarterly Update approach and will use the revised version going forward.",
+    "expected_status": "changed",
+    "owner": "Burlington Airport Commission"
+  },
+  {
+    "id": "real-v10-PPELeoDMr2s-director-s-report-1",
+    "entry_text": "Director's Report",
+    "current_text": "From the extracted meeting audio, the Director's Report item remains open and staff will continue reporting updates next month.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-PPELeoDMr2s-director-s-report-2",
+    "entry_text": "Director's Report follow-up",
+    "current_text": "The meeting left Director's Report as a follow-up item for the next meeting update.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-PPELeoDMr2s-commissioner-items-1",
+    "entry_text": "Commissioner Items",
+    "current_text": "From the extracted meeting audio, the Commissioner Items item remains open and staff will continue reporting updates next month.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-PPELeoDMr2s-commissioner-items-2",
+    "entry_text": "Commissioner Items follow-up",
+    "current_text": "The meeting left Commissioner Items as a follow-up item for the next meeting update.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-PPELeoDMr2s-follow-up-items-1",
+    "entry_text": "Follow-up Items",
+    "current_text": "From the extracted meeting audio, the Follow-up Items item remains open and staff will continue reporting updates next month.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-PPELeoDMr2s-follow-up-items-2",
+    "entry_text": "Follow-up Items follow-up",
+    "current_text": "The meeting left Follow-up Items as a follow-up item for the next meeting update.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-yLXVG8ktaag-call-to-order-agenda-1",
+    "entry_text": "Agenda approval contents of agenda",
+    "current_text": "From the extracted meeting audio, the agenda approval item approved the contents of the agenda and was so ordered.",
+    "expected_status": "completed",
+    "owner": "Burlington Airport Commission"
+  },
+  {
+    "id": "real-v10-yLXVG8ktaag-call-to-order-agenda-2",
+    "entry_text": "Agenda approval contents of agenda",
+    "current_text": "The commission moved to approve the contents of the agenda; all in favor and the agenda motion carried.",
+    "expected_status": "completed",
+    "owner": "Burlington Airport Commission"
+  },
+  {
+    "id": "real-v10-yLXVG8ktaag-public-forum-1",
+    "entry_text": "Public Forum",
+    "current_text": "From the extracted meeting audio, the Public Forum item remains open and staff will continue reporting updates next month.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-yLXVG8ktaag-public-forum-2",
+    "entry_text": "Public Forum follow-up",
+    "current_text": "The meeting left Public Forum as a follow-up item for the next meeting update.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-yLXVG8ktaag-consent-agenda-1",
+    "entry_text": "Agenda approval contents of agenda",
+    "current_text": "From the extracted meeting audio, the agenda approval item approved the contents of the agenda and was so ordered.",
+    "expected_status": "completed",
+    "owner": "Burlington Airport Commission"
+  },
+  {
+    "id": "real-v10-yLXVG8ktaag-consent-agenda-2",
+    "entry_text": "Agenda approval contents of agenda",
+    "current_text": "The commission moved to approve the contents of the agenda; all in favor and the agenda motion carried.",
+    "expected_status": "completed",
+    "owner": "Burlington Airport Commission"
+  },
+  {
+    "id": "real-v10-yLXVG8ktaag-airport-commission-annual-report-1",
+    "entry_text": "Airport Commission Annual Report",
+    "current_text": "From the extracted meeting audio, the Airport Commission Annual Report item was approved and so ordered.",
+    "expected_status": "completed",
+    "owner": "Burlington Airport Commission"
+  },
+  {
+    "id": "real-v10-yLXVG8ktaag-airport-commission-annual-report-2",
+    "entry_text": "Airport Commission Annual Report approval",
+    "current_text": "The commission moved to approve the Airport Commission Annual Report item; all in favor and the motion carried.",
+    "expected_status": "completed",
+    "owner": "Burlington Airport Commission"
+  },
+  {
+    "id": "real-v10-yLXVG8ktaag-gsa-tsa-lease-1",
+    "entry_text": "GSA/TSA Lease",
+    "current_text": "From the extracted meeting audio, the GSA/TSA Lease item was approved and so ordered.",
+    "expected_status": "completed",
+    "owner": "Burlington Airport Commission"
+  },
+  {
+    "id": "real-v10-yLXVG8ktaag-gsa-tsa-lease-2",
+    "entry_text": "GSA/TSA Lease approval",
+    "current_text": "The commission moved to approve the GSA/TSA Lease item; all in favor and the motion carried.",
+    "expected_status": "completed",
+    "owner": "Burlington Airport Commission"
+  },
+  {
+    "id": "real-v10-yLXVG8ktaag-oldcc-grant-approval-1",
+    "entry_text": "OLDCC Grant Approval",
+    "current_text": "From the extracted meeting audio, the OLDCC Grant Approval item was approved and so ordered.",
+    "expected_status": "completed",
+    "owner": "Burlington Airport Commission"
+  },
+  {
+    "id": "real-v10-yLXVG8ktaag-oldcc-grant-approval-2",
+    "entry_text": "OLDCC Grant Approval approval",
+    "current_text": "The commission moved to approve the OLDCC Grant Approval item; all in favor and the motion carried.",
+    "expected_status": "completed",
+    "owner": "Burlington Airport Commission"
+  },
+  {
+    "id": "real-v10-yLXVG8ktaag-deputy-director-position-1",
+    "entry_text": "Deputy Director Position",
+    "current_text": "From the extracted meeting audio, the Deputy Director Position item changed to a revised operating plan.",
+    "expected_status": "changed",
+    "owner": "Burlington Airport Commission"
+  },
+  {
+    "id": "real-v10-yLXVG8ktaag-deputy-director-position-2",
+    "entry_text": "Deputy Director Position revision",
+    "current_text": "The commission changed the Deputy Director Position approach and will use the revised version going forward.",
+    "expected_status": "changed",
+    "owner": "Burlington Airport Commission"
+  },
+  {
+    "id": "real-v10-yLXVG8ktaag-construction-update-1",
+    "entry_text": "Construction Update",
+    "current_text": "From the extracted meeting audio, the Construction Update item remains open and staff will continue reporting updates next month.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-yLXVG8ktaag-construction-update-2",
+    "entry_text": "Construction Update follow-up",
+    "current_text": "The meeting left Construction Update as a follow-up item for the next meeting update.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-yLXVG8ktaag-noise-data-report-1",
+    "entry_text": "Noise Data Report",
+    "current_text": "From the extracted meeting audio, the Noise Data Report item remains open and staff will continue reporting updates next month.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-yLXVG8ktaag-noise-data-report-2",
+    "entry_text": "Noise Data Report follow-up",
+    "current_text": "The meeting left Noise Data Report as a follow-up item for the next meeting update.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-yLXVG8ktaag-financial-update-1",
+    "entry_text": "Financial Update",
+    "current_text": "From the extracted meeting audio, the Financial Update item remains open and staff will continue reporting updates next month.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-yLXVG8ktaag-financial-update-2",
+    "entry_text": "Financial Update follow-up",
+    "current_text": "The meeting left Financial Update as a follow-up item for the next meeting update.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-yLXVG8ktaag-director-s-report-1",
+    "entry_text": "Director's Report",
+    "current_text": "From the extracted meeting audio, the Director's Report item remains open and staff will continue reporting updates next month.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-yLXVG8ktaag-director-s-report-2",
+    "entry_text": "Director's Report follow-up",
+    "current_text": "The meeting left Director's Report as a follow-up item for the next meeting update.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-yLXVG8ktaag-commissioner-items-1",
+    "entry_text": "Commissioner Items",
+    "current_text": "From the extracted meeting audio, the Commissioner Items item remains open and staff will continue reporting updates next month.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-yLXVG8ktaag-commissioner-items-2",
+    "entry_text": "Commissioner Items follow-up",
+    "current_text": "The meeting left Commissioner Items as a follow-up item for the next meeting update.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-yLXVG8ktaag-follow-up-items-1",
+    "entry_text": "Follow-up Items",
+    "current_text": "From the extracted meeting audio, the Follow-up Items item remains open and staff will continue reporting updates next month.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-yLXVG8ktaag-follow-up-items-2",
+    "entry_text": "Follow-up Items follow-up",
+    "current_text": "The meeting left Follow-up Items as a follow-up item for the next meeting update.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-yLXVG8ktaag-executive-session-1",
+    "entry_text": "Executive Session",
+    "current_text": "From the extracted meeting audio, the Executive Session item remains open and staff will continue reporting updates next month.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-yLXVG8ktaag-executive-session-2",
+    "entry_text": "Executive Session follow-up",
+    "current_text": "The meeting left Executive Session as a follow-up item for the next meeting update.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-1j1rB2aupYQ-agenda-1",
+    "entry_text": "Agenda approval contents of agenda",
+    "current_text": "From the extracted meeting audio, the agenda approval item approved the contents of the agenda and was so ordered.",
+    "expected_status": "completed",
+    "owner": "Burlington Airport Commission"
+  },
+  {
+    "id": "real-v10-1j1rB2aupYQ-agenda-2",
+    "entry_text": "Agenda approval contents of agenda",
+    "current_text": "The commission moved to approve the contents of the agenda; all in favor and the agenda motion carried.",
+    "expected_status": "completed",
+    "owner": "Burlington Airport Commission"
+  },
+  {
+    "id": "real-v10-1j1rB2aupYQ-public-forum-1",
+    "entry_text": "Public Forum",
+    "current_text": "From the extracted meeting audio, the Public Forum item remains open and staff will continue reporting updates next month.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-1j1rB2aupYQ-public-forum-2",
+    "entry_text": "Public Forum follow-up",
+    "current_text": "The meeting left Public Forum as a follow-up item for the next meeting update.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-1j1rB2aupYQ-consent-agenda-1",
+    "entry_text": "Agenda approval contents of agenda",
+    "current_text": "From the extracted meeting audio, the agenda approval item approved the contents of the agenda and was so ordered.",
+    "expected_status": "completed",
+    "owner": "Burlington Airport Commission"
+  },
+  {
+    "id": "real-v10-1j1rB2aupYQ-consent-agenda-2",
+    "entry_text": "Agenda approval contents of agenda",
+    "current_text": "The commission moved to approve the contents of the agenda; all in favor and the agenda motion carried.",
+    "expected_status": "completed",
+    "owner": "Burlington Airport Commission"
+  },
+  {
+    "id": "real-v10-1j1rB2aupYQ-faa-grant-application-for-project-next-construct-1",
+    "entry_text": "FAA Grant Application for Project NexT Construction",
+    "current_text": "From the extracted meeting audio, the FAA Grant Application for Project NexT Construction item remains open and staff will continue reporting updates next month.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-1j1rB2aupYQ-faa-grant-application-for-project-next-construct-2",
+    "entry_text": "FAA Grant Application for Project NexT Construction follow-up",
+    "current_text": "The meeting left FAA Grant Application for Project NexT Construction as a follow-up item for the next meeting update.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-1j1rB2aupYQ-purchase-wheeled-loader-using-passenger-facility-1",
+    "entry_text": "Purchase Wheeled Loader Using Passenger Facility Charges",
+    "current_text": "From the extracted meeting audio, the Purchase Wheeled Loader Using Passenger Facility Charges item was approved and so ordered.",
+    "expected_status": "completed",
+    "owner": "Burlington Airport Commission"
+  },
+  {
+    "id": "real-v10-1j1rB2aupYQ-purchase-wheeled-loader-using-passenger-facility-2",
+    "entry_text": "Purchase Wheeled Loader Using Passenger Facility Charges approval",
+    "current_text": "The commission moved to approve the Purchase Wheeled Loader Using Passenger Facility Charges item; all in favor and the motion carried.",
+    "expected_status": "completed",
+    "owner": "Burlington Airport Commission"
+  },
+  {
+    "id": "real-v10-1j1rB2aupYQ-contract-with-jacobs-engineering-group-inc-jeg-f-1",
+    "entry_text": "Contract with Jacobs Engineering Group, Inc. (JEG) for Taxiway C/G Rehabilitation",
+    "current_text": "From the extracted meeting audio, the Contract with Jacobs Engineering Group, Inc. (JEG) for Taxiway C/G Rehabilitation item was approved and so ordered.",
+    "expected_status": "completed",
+    "owner": "Burlington Airport Commission"
+  },
+  {
+    "id": "real-v10-1j1rB2aupYQ-contract-with-jacobs-engineering-group-inc-jeg-f-2",
+    "entry_text": "Contract with Jacobs Engineering Group, Inc. (JEG) for Taxiway C/G Rehabilitation approval",
+    "current_text": "The commission moved to approve the Contract with Jacobs Engineering Group, Inc. (JEG) for Taxiway C/G Rehabilitation item; all in favor and the motion carried.",
+    "expected_status": "completed",
+    "owner": "Burlington Airport Commission"
+  },
+  {
+    "id": "real-v10-1j1rB2aupYQ-construction-update-1",
+    "entry_text": "Construction Update",
+    "current_text": "From the extracted meeting audio, the Construction Update item remains open and staff will continue reporting updates next month.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-1j1rB2aupYQ-construction-update-2",
+    "entry_text": "Construction Update follow-up",
+    "current_text": "The meeting left Construction Update as a follow-up item for the next meeting update.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-1j1rB2aupYQ-noise-data-1",
+    "entry_text": "Noise Data",
+    "current_text": "From the extracted meeting audio, the Noise Data item remains open and staff will continue reporting updates next month.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-1j1rB2aupYQ-noise-data-2",
+    "entry_text": "Noise Data follow-up",
+    "current_text": "The meeting left Noise Data as a follow-up item for the next meeting update.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-1j1rB2aupYQ-financial-update-1",
+    "entry_text": "Financial Update",
+    "current_text": "From the extracted meeting audio, the Financial Update item remains open and staff will continue reporting updates next month.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-1j1rB2aupYQ-financial-update-2",
+    "entry_text": "Financial Update follow-up",
+    "current_text": "The meeting left Financial Update as a follow-up item for the next meeting update.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-1j1rB2aupYQ-director-s-report-1",
+    "entry_text": "Director's Report",
+    "current_text": "From the extracted meeting audio, the Director's Report item remains open and staff will continue reporting updates next month.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-1j1rB2aupYQ-director-s-report-2",
+    "entry_text": "Director's Report follow-up",
+    "current_text": "The meeting left Director's Report as a follow-up item for the next meeting update.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-1j1rB2aupYQ-commissioner-items-1",
+    "entry_text": "Commissioner Items",
+    "current_text": "From the extracted meeting audio, the Commissioner Items item remains open and staff will continue reporting updates next month.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-1j1rB2aupYQ-commissioner-items-2",
+    "entry_text": "Commissioner Items follow-up",
+    "current_text": "The meeting left Commissioner Items as a follow-up item for the next meeting update.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-1j1rB2aupYQ-follow-up-items-1",
+    "entry_text": "Follow-up Items",
+    "current_text": "From the extracted meeting audio, the Follow-up Items item remains open and staff will continue reporting updates next month.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-1j1rB2aupYQ-follow-up-items-2",
+    "entry_text": "Follow-up Items follow-up",
+    "current_text": "The meeting left Follow-up Items as a follow-up item for the next meeting update.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-KHcsyoDitJg-agenda-1",
+    "entry_text": "Agenda approval contents of agenda",
+    "current_text": "From the extracted meeting audio, the agenda approval item approved the contents of the agenda and was so ordered.",
+    "expected_status": "completed",
+    "owner": "Burlington Airport Commission"
+  },
+  {
+    "id": "real-v10-KHcsyoDitJg-agenda-2",
+    "entry_text": "Agenda approval contents of agenda",
+    "current_text": "The commission moved to approve the contents of the agenda; all in favor and the agenda motion carried.",
+    "expected_status": "completed",
+    "owner": "Burlington Airport Commission"
+  },
+  {
+    "id": "real-v10-KHcsyoDitJg-public-forum-1",
+    "entry_text": "Public Forum",
+    "current_text": "From the extracted meeting audio, the Public Forum item remains open and staff will continue reporting updates next month.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-KHcsyoDitJg-public-forum-2",
+    "entry_text": "Public Forum follow-up",
+    "current_text": "The meeting left Public Forum as a follow-up item for the next meeting update.",
+    "expected_status": "open",
+    "owner": "Burlington Airport Commission",
+    "due_at": "2026-08-15T09:00:00"
+  },
+  {
+    "id": "real-v10-KHcsyoDitJg-consent-agenda-1",
+    "entry_text": "Agenda approval contents of agenda",
+    "current_text": "From the extracted meeting audio, the agenda approval item approved the contents of the agenda and was so ordered.",
+    "expected_status": "completed",
+    "owner": "Burlington Airport Commission"
+  },
+  {
+    "id": "real-v10-KHcsyoDitJg-consent-agenda-2",
+    "entry_text": "Agenda approval contents of agenda",
+    "current_text": "The commission moved to approve the contents of the agenda; all in favor and the agenda motion carried.",
+    "expected_status": "completed",
+    "owner": "Burlington Airport Commission"
+  },
+  {
+    "id": "real-v10-KHcsyoDitJg-new-job-descriptions-1",
+    "entry_text": "New Job Descriptions",
+    "current_text": "From the extracted meeting audio, the New Job Descriptions item changed to a revised operating plan.",
+    "expected_status": "changed",
+    "owner": "Burlington Airport Commission"
+  },
+  {
+    "id": "real-v10-KHcsyoDitJg-new-job-descriptions-2",
+    "entry_text": "New Job Descriptions revision",
+    "current_text": "The commission changed the New Job Descriptions approach and will use the revised version going forward.",
+    "expected_status": "changed",
+    "owner": "Burlington Airport Commission"
+  },
+  {
+    "id": "real-v10-KHcsyoDitJg-aerodyme-lease-1",
+    "entry_text": "Aerodyme Lease",
+    "current_text": "From the extracted meeting audio, the Aerodyme Lease item was approved and so ordered.",
+    "expected_status": "completed",
+    "owner": "Burlington Airport Commission"
+  },
+  {
+    "id": "real-v10-KHcsyoDitJg-aerodyme-lease-2",
+    "entry_text": "Aerodyme Lease approval",
+    "current_text": "The commission moved to approve the Aerodyme Lease item; all in favor and the motion carried.",
+    "expected_status": "completed",
+    "owner": "Burlington Airport Commission"
   }
 ]

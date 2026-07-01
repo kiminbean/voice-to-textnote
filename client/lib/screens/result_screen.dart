@@ -5210,6 +5210,11 @@ class _PromiseRadarTab extends ConsumerWidget {
                   onPressed: () => _showDigestPreferenceSheet(context, ref),
                   icon: const Icon(Icons.notifications_outlined),
                 ),
+                IconButton(
+                  tooltip: 'Promise Radar 정확도',
+                  onPressed: () => _showAccuracyReportSheet(context, ref),
+                  icon: const Icon(Icons.analytics_outlined),
+                ),
                 OutlinedButton.icon(
                   onPressed: () => _runAutopilot(context, ref, summaryTaskId),
                   icon: const Icon(Icons.auto_fix_high_outlined, size: 18),
@@ -5271,6 +5276,12 @@ class _PromiseRadarTab extends ConsumerWidget {
                                 _PromiseMetricPill(
                                   label: '보강',
                                   value: '${entry.quality!.issues.length}',
+                                ),
+                              if (entry.identityConfidence != null)
+                                _PromiseMetricPill(
+                                  label: '화자',
+                                  value:
+                                      '${(entry.identityConfidence! * 100).round()}%',
                                 ),
                             ],
                           ),
@@ -5421,6 +5432,18 @@ class _PromiseRadarTab extends ConsumerWidget {
                               label: const Text('증거팩'),
                             ),
                             TextButton.icon(
+                              onPressed: () => _showEvidenceComparison(
+                                context,
+                                ref,
+                                entry.id,
+                              ),
+                              icon: const Icon(
+                                Icons.compare_arrows_outlined,
+                                size: 18,
+                              ),
+                              label: const Text('근거 비교'),
+                            ),
+                            TextButton.icon(
                               onPressed: () => _showAssigneeSuggestions(
                                 context,
                                 ref,
@@ -5491,6 +5514,18 @@ class _PromiseRadarTab extends ConsumerWidget {
                                   : null,
                               icon: const Icon(Icons.sync_outlined, size: 18),
                               label: const Text('Tasks 동기화'),
+                            ),
+                            TextButton.icon(
+                              onPressed: _hasGoogleTaskLink(entry)
+                                  ? () => _updateGoogleTaskFromLedger(
+                                        context,
+                                        ref,
+                                        summaryTaskId,
+                                        entry,
+                                      )
+                                  : null,
+                              icon: const Icon(Icons.upload_outlined, size: 18),
+                              label: const Text('Tasks 업데이트'),
                             ),
                           ],
                         ),
@@ -6364,6 +6399,45 @@ class _PromiseRadarTab extends ConsumerWidget {
     }
   }
 
+  Future<void> _updateGoogleTaskFromLedger(
+    BuildContext context,
+    WidgetRef ref,
+    String summaryTaskId,
+    PromiseLedgerEntry entry,
+  ) async {
+    try {
+      final accessToken = await _requestGoogleTasksAccessToken(context);
+      if (accessToken == null) return;
+      final metadata = _googleTaskMetadata(entry);
+      final updated = await ref
+          .read(promiseRadarApiProvider)
+          .updateExternalTask(
+            entry.id,
+            PromiseExternalTaskUpdateRequest(
+              accessToken: accessToken,
+              tasklist: metadata['tasklist'] ?? '@default',
+              externalId: metadata['external_id'],
+              status: entry.status == 'completed' ? 'completed' : 'needsAction',
+              title: entry.text,
+            ),
+          );
+      ref.invalidate(promiseRadarProvider(summaryTaskId));
+      ref.invalidate(promiseLedgerProvider);
+      ref.invalidate(promiseRadarDashboardProvider);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(updated.message)),
+        );
+      }
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Google Tasks 업데이트에 실패했습니다.')),
+        );
+      }
+    }
+  }
+
   Future<void> _createReminderCandidate(
     BuildContext context,
     WidgetRef ref,
@@ -6385,6 +6459,76 @@ class _PromiseRadarTab extends ConsumerWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('약속 알림 생성에 실패했습니다.')),
+        );
+      }
+    }
+  }
+
+  Future<void> _showAccuracyReportSheet(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    try {
+      final report =
+          await ref.read(promiseRadarApiProvider).getAccuracyReport();
+      if (!context.mounted) return;
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        builder: (sheetContext) => SafeArea(
+          child: FractionallySizedBox(
+            heightFactor: 0.8,
+            child: ListView(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              children: [
+                ListTile(
+                  leading: Icon(
+                    report.belowTarget
+                        ? Icons.warning_amber_outlined
+                        : Icons.analytics_outlined,
+                  ),
+                  title: const Text('Promise Radar 정확도'),
+                  subtitle: Text(
+                    '정확도 ${(report.evaluation.accuracy * 100).round()}% · 실제 회의 label ${report.realMeetingCaseCount}/${report.targetCaseCount}',
+                  ),
+                ),
+                ListTile(
+                  title: const Text('Fixture'),
+                  subtitle: Text(report.fixturePath),
+                ),
+                const Divider(),
+                for (final entry in report.statusCounts.entries)
+                  ListTile(
+                    dense: true,
+                    title: Text(_statusLabel(entry.key)),
+                    trailing: Text('${entry.value}건'),
+                  ),
+                const Divider(),
+                for (final entry in report.sourceCounts.entries)
+                  ListTile(
+                    dense: true,
+                    title: Text(entry.key),
+                    trailing: Text('${entry.value}건'),
+                  ),
+                if (report.evaluation.failures.isNotEmpty) ...[
+                  const Divider(),
+                  for (final failure in report.evaluation.failures.take(5))
+                    ListTile(
+                      dense: true,
+                      leading: const Icon(Icons.error_outline),
+                      title: Text(failure['id']?.toString() ?? 'unknown'),
+                      subtitle: Text(failure.toString()),
+                    ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      );
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Promise Radar 정확도 보고서를 불러오지 못했습니다.')),
         );
       }
     }
@@ -6617,44 +6761,89 @@ class _PromiseRadarTab extends ConsumerWidget {
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      builder: (sheetContext) => SafeArea(
-        child: FractionallySizedBox(
-          heightFactor: 0.9,
-          child: ListView(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            children: [
-              ListTile(
-                leading: const Icon(Icons.fact_check_outlined),
-                title: const Text('확정 대기 약속함'),
-                subtitle: Text(
-                  '${queue.queueCount}개 후보 · ${queue.actionableCount}개 확정 가능 · 충돌 ${queue.conflictCount}개',
-                ),
-                trailing: queue.actionableCount == 0
-                    ? null
-                    : TextButton(
-                        onPressed: () => _confirmAllAutopilotAssessments(
-                          sheetContext,
-                          ref,
-                          summaryTaskId,
-                          queue.items,
-                        ),
-                        child: const Text('모두 맞음'),
+      builder: (sheetContext) {
+        var filter = 'all';
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final filtered = queue.items.where((item) {
+              final assessment = item.assessment;
+              return switch (filter) {
+                'conflict' => assessment.conflictDetected,
+                'weak' => !assessment.evidenceLocked ||
+                    assessment.confidence < assessment.threshold,
+                'high_risk' => item.ledgerEntry.riskLevel == 'high',
+                'due' => item.ledgerEntry.dueAt != null ||
+                    item.ledgerEntry.dueDate != null,
+                _ => true,
+              };
+            }).toList();
+            final actionableFiltered = filtered
+                .where((item) =>
+                    !item.assessment.conflictDetected &&
+                    item.assessment.suggestedStatus !=
+                        item.assessment.previousStatus)
+                .toList();
+            return SafeArea(
+              child: FractionallySizedBox(
+                heightFactor: 0.9,
+                child: ListView(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  children: [
+                    ListTile(
+                      leading: const Icon(Icons.fact_check_outlined),
+                      title: const Text('확정 대기 약속함'),
+                      subtitle: Text(
+                        '${filtered.length}/${queue.queueCount}개 표시 · ${queue.actionableCount}개 확정 가능 · 충돌 ${queue.conflictCount}개',
                       ),
-              ),
-              if (queue.items.isEmpty)
-                const ListTile(title: Text('확인할 약속 후보가 없습니다.')),
-              for (final item in queue.items)
-                _buildAutopilotReviewTile(
-                  context,
-                  sheetContext,
-                  ref,
-                  summaryTaskId,
-                  item,
+                      trailing: actionableFiltered.isEmpty
+                          ? null
+                          : TextButton(
+                              onPressed: () => _confirmAllAutopilotAssessments(
+                                sheetContext,
+                                ref,
+                                summaryTaskId,
+                                actionableFiltered,
+                              ),
+                              child: const Text('현재 모두 맞음'),
+                            ),
+                    ),
+                    Wrap(
+                      spacing: AppSpacing.xs,
+                      runSpacing: AppSpacing.xs,
+                      children: [
+                        for (final option in const [
+                          ('all', '전체'),
+                          ('conflict', '충돌'),
+                          ('weak', '약한 근거'),
+                          ('high_risk', '고위험'),
+                          ('due', '기한 있음'),
+                        ])
+                          FilterChip(
+                            label: Text(option.$2),
+                            selected: filter == option.$1,
+                            onSelected: (_) =>
+                                setSheetState(() => filter = option.$1),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    if (filtered.isEmpty)
+                      const ListTile(title: Text('확인할 약속 후보가 없습니다.')),
+                    for (final item in filtered)
+                      _buildAutopilotReviewTile(
+                        context,
+                        sheetContext,
+                        ref,
+                        summaryTaskId,
+                        item,
+                      ),
+                  ],
                 ),
-            ],
-          ),
-        ),
-      ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -6993,6 +7182,93 @@ class _PromiseRadarTab extends ConsumerWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('저장된 Evidence Pack을 찾지 못했습니다.')),
+        );
+      }
+    }
+  }
+
+  Future<void> _showEvidenceComparison(
+    BuildContext context,
+    WidgetRef ref,
+    String entryId,
+  ) async {
+    try {
+      final comparison = await ref
+          .read(promiseRadarApiProvider)
+          .getEvidenceComparison(entryId);
+      if (!context.mounted) return;
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        builder: (sheetContext) => SafeArea(
+          child: FractionallySizedBox(
+            heightFactor: 0.82,
+            child: ListView(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.compare_arrows_outlined),
+                  title: const Text('근거 비교'),
+                  subtitle: Text(comparison.summary),
+                ),
+                Wrap(
+                  spacing: AppSpacing.sm,
+                  runSpacing: AppSpacing.xs,
+                  children: [
+                    _PromiseMetricPill(
+                      label: '기존',
+                      value:
+                          '${((comparison.previousSimilarity ?? 0) * 100).round()}%',
+                    ),
+                    _PromiseMetricPill(
+                      label: '현재',
+                      value:
+                          '${((comparison.currentSimilarity ?? 0) * 100).round()}%',
+                    ),
+                    if (comparison.similarityDelta != null)
+                      _PromiseMetricPill(
+                        label: '변화',
+                        value:
+                            '${(comparison.similarityDelta! * 100).round()}%',
+                      ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                ListTile(
+                  title: const Text('기존 원장 근거'),
+                  subtitle: Text(comparison.previousText ?? '근거 없음'),
+                ),
+                ListTile(
+                  title: const Text('최신 자동 판정 근거'),
+                  subtitle: Text(comparison.currentText ?? 'Evidence Pack 없음'),
+                ),
+                if (comparison.sharedTerms.isNotEmpty)
+                  ListTile(
+                    title: const Text('공유 핵심어'),
+                    subtitle: Text(comparison.sharedTerms.join(', ')),
+                  ),
+                if (comparison.currentPack?.markerHits.isNotEmpty == true)
+                  ListTile(
+                    title: const Text('Marker Hit'),
+                    subtitle:
+                        Text(comparison.currentPack!.markerHits.join(', ')),
+                  ),
+                for (final evidence in comparison.previousEvidence)
+                  ListTile(
+                    dense: true,
+                    leading: const Icon(Icons.notes_outlined),
+                    title: Text(_evidenceLabel(evidence)),
+                    subtitle: Text(evidence.transcript),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      );
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('약속 근거 비교를 불러오지 못했습니다.')),
         );
       }
     }

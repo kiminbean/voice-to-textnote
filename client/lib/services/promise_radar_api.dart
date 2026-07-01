@@ -345,6 +345,21 @@ class PromiseRadarApi {
     return PromiseEvidencePack.fromJson(response.data as Map<String, dynamic>);
   }
 
+  Future<PromiseEvidenceComparison> getEvidenceComparison(
+    String entryId, {
+    String? teamId,
+  }) async {
+    final response = await _dio.get(
+      '/promise-radar/ledger/$entryId/evidence-comparison',
+      queryParameters: {
+        if (teamId != null) 'team_id': teamId,
+      },
+    );
+    return PromiseEvidenceComparison.fromJson(
+      response.data as Map<String, dynamic>,
+    );
+  }
+
   Future<PromiseReminderCandidate> createCalendarCandidate(
     String entryId, {
     String? teamId,
@@ -463,6 +478,23 @@ class PromiseRadarApi {
   }) async {
     final response = await _dio.post(
       '/promise-radar/ledger/$entryId/external-task/sync',
+      queryParameters: {
+        if (teamId != null) 'team_id': teamId,
+      },
+      data: request.toJson(),
+    );
+    return PromiseExternalTaskSyncResponse.fromJson(
+      response.data as Map<String, dynamic>,
+    );
+  }
+
+  Future<PromiseExternalTaskSyncResponse> updateExternalTask(
+    String entryId,
+    PromiseExternalTaskUpdateRequest request, {
+    String? teamId,
+  }) async {
+    final response = await _dio.post(
+      '/promise-radar/ledger/$entryId/external-task/update',
       queryParameters: {
         if (teamId != null) 'team_id': teamId,
       },
@@ -600,6 +632,18 @@ class PromiseRadarApi {
       data: cases.map((caseItem) => caseItem.toJson()).toList(),
     );
     return PromiseAccuracyEvaluation.fromJson(
+      response.data as Map<String, dynamic>,
+    );
+  }
+
+  Future<PromiseAccuracyReport> getAccuracyReport({
+    int targetCaseCount = 100,
+  }) async {
+    final response = await _dio.get(
+      '/promise-radar/accuracy/report',
+      queryParameters: {'target_case_count': targetCaseCount},
+    );
+    return PromiseAccuracyReport.fromJson(
       response.data as Map<String, dynamic>,
     );
   }

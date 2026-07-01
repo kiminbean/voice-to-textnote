@@ -630,6 +630,91 @@ void main() {
         'message': '동기화했습니다.',
       });
       expect(syncResponse.status, 'completed');
+
+      const taskUpdate = PromiseExternalTaskUpdateRequest(
+        accessToken: 'token',
+        tasklist: '@default',
+        externalId: 'task-1',
+        status: 'completed',
+        title: 'QA 체크리스트',
+      );
+      expect(taskUpdate.toJson()['status'], 'completed');
+      expect(taskUpdate.toJson()['title'], 'QA 체크리스트');
+    });
+
+    test('parses accuracy report, evidence comparison, and identity confidence',
+        () {
+      final report = PromiseAccuracyReport.fromJson({
+        'generated_at': '2026-07-01T00:00:00Z',
+        'fixture_path':
+            'backend/tests/fixtures/promise_radar_accuracy_cases.json',
+        'source_manifest_path':
+            'backend/tests/fixtures/promise_radar_real_meeting_sources.json',
+        'evaluation': {
+          'case_count': 172,
+          'correct_count': 172,
+          'accuracy': 1.0,
+          'status_precision': {'completed': 1.0},
+          'failures': [],
+        },
+        'status_counts': {'completed': 48, 'open': 81},
+        'source_counts': {'4P6bVZqSKpw': 18},
+        'real_meeting_case_count': 112,
+        'target_case_count': 100,
+        'below_target': false,
+      });
+      expect(report.evaluation.caseCount, 172);
+      expect(report.realMeetingCaseCount, 112);
+      expect(report.belowTarget, isFalse);
+
+      final comparison = PromiseEvidenceComparison.fromJson({
+        'ledger_entry_id': 'ledger-1',
+        'previous_text': 'QA 체크리스트 작성 예정',
+        'current_text': 'QA 체크리스트 작성 완료했습니다.',
+        'previous_similarity': 0.41,
+        'current_similarity': 0.88,
+        'similarity_delta': 0.47,
+        'shared_terms': ['체크리스트'],
+        'previous_evidence': [
+          {
+            'source_task_id': 'sum-1',
+            'meeting_link': '/results/sum-1',
+            'transcript': 'QA 체크리스트 작성 예정',
+          }
+        ],
+        'current_pack': {
+          'ledger_entry_id': 'ledger-1',
+          'source_task_id': 'sum-2',
+          'matched_text': 'QA 체크리스트 작성 완료했습니다.',
+          'similarity': 0.88,
+          'marker_hits': ['완료'],
+          'confidence_factors': ['근거 있음'],
+          'evidence': [],
+          'captured_at': '2026-07-01T00:00:00Z',
+        },
+        'summary': '현재 자동 판정 근거가 강합니다.',
+      });
+      expect(comparison.currentPack!.markerHits.single, '완료');
+      expect(comparison.sharedTerms.single, '체크리스트');
+
+      final entry = PromiseLedgerEntry.fromJson({
+        'id': 'ledger-1',
+        'canonical_key': 'qa',
+        'canonical_text': 'QA 체크리스트',
+        'text': 'QA 체크리스트',
+        'status': 'open',
+        'priority': 'high',
+        'risk_level': 'high',
+        'confidence': 0.9,
+        'occurrences': 1,
+        'first_seen_at': '2026-07-01T00:00:00Z',
+        'last_seen_at': '2026-07-01T00:00:00Z',
+        'evidence': [],
+        'identity_confidence': 0.82,
+        'identity_confidence_factors': ['담당자 이름', '화자 라벨'],
+      });
+      expect(entry.identityConfidence, 0.82);
+      expect(entry.identityConfidenceFactors, contains('화자 라벨'));
     });
   });
 }

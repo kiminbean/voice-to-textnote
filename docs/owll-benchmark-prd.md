@@ -93,7 +93,7 @@ The first implementation should be a Study Pack feature because it is high-impac
 
 ## 4.1 Killer Feature: Promise Radar
 
-**Implementation status (2026-07-01)**: Backend schema/service/API, route registration, Flutter API/model/provider, Result-screen `약속 레이더` tab, Home promise dashboard, and focused backend/Flutter tests are implemented. v2 added promise chains, owner-level risk, high-risk counts, and recurring promise follow-up questions. v3 added a persistent Promise Ledger, transcript/speaker/timestamp evidence, user confirmation/status correction, next-meeting briefing, internal reminder/calendar candidates, internal ActionItem conversion, and ZAI GLM-5.2 semantic normalization with deterministic fallback. v4 adds operational schema repair, merge/split UI and API, auditable ledger history, stronger semantic matching, expanded Korean due-date parsing, FCM due-promise dispatch, Home dashboard exposure, team-scoped ledger access, and release-gate regression coverage. v5 adds Promise Autopilot status assessment, per-promise confidence explanations, Google Calendar/ICS export, optional due-notification scheduler, team assignee suggestions, promise quality scores, and strict release E2E scenario coverage for these flows. v6 adds a Promise Learning Loop, operator-friendly timeline, pre-meeting Promise Brief, Daily/Weekly Digest, Evidence Lock enforcement, first external work-tool integration through Slack, and a labeled accuracy fixture/evaluator. v7 adds status-specific Learning Loop thresholds, Autopilot preview-before-confirm UX, 24-case golden accuracy set, speaker/owner alias graph, immutable Evidence Pack snapshots in ledger events, promise conflict detection, and Google Tasks dry-run/OAuth-token export. v8 expands the golden set to 60 cases, adds Autopilot Review Queue, conflict resolution UX/API, Evidence Pack Viewer, app-driven Google Tasks OAuth send, team automation policy, and scheduled digest push. v9 expands the golden set to 72 cases with Creative Commons Town Meeting TV meeting sources, persists Review Queue rejections, exposes latest Evidence Pack from ledger rows, adds Google Tasks tasklist selection and sync-back, requires admin role for team automation policy changes, and adds user opt-in Digest Push preferences.
+**Implementation status (2026-07-01)**: Backend schema/service/API, route registration, Flutter API/model/provider, Result-screen `약속 레이더` tab, Home promise dashboard, and focused backend/Flutter tests are implemented. v2 added promise chains, owner-level risk, high-risk counts, and recurring promise follow-up questions. v3 added a persistent Promise Ledger, transcript/speaker/timestamp evidence, user confirmation/status correction, next-meeting briefing, internal reminder/calendar candidates, internal ActionItem conversion, and ZAI GLM-5.2 semantic normalization with deterministic fallback. v4 adds operational schema repair, merge/split UI and API, auditable ledger history, stronger semantic matching, expanded Korean due-date parsing, FCM due-promise dispatch, Home dashboard exposure, team-scoped ledger access, and release-gate regression coverage. v5 adds Promise Autopilot status assessment, per-promise confidence explanations, Google Calendar/ICS export, optional due-notification scheduler, team assignee suggestions, promise quality scores, and strict release E2E scenario coverage for these flows. v6 adds a Promise Learning Loop, operator-friendly timeline, pre-meeting Promise Brief, Daily/Weekly Digest, Evidence Lock enforcement, first external work-tool integration through Slack, and a labeled accuracy fixture/evaluator. v7 adds status-specific Learning Loop thresholds, Autopilot preview-before-confirm UX, 24-case golden accuracy set, speaker/owner alias graph, immutable Evidence Pack snapshots in ledger events, promise conflict detection, and Google Tasks dry-run/OAuth-token export. v8 expands the golden set to 60 cases, adds Autopilot Review Queue, conflict resolution UX/API, Evidence Pack Viewer, app-driven Google Tasks OAuth send, team automation policy, and scheduled digest push. v9 expands the golden set to 72 cases with Creative Commons Town Meeting TV meeting sources, persists Review Queue rejections, exposes latest Evidence Pack from ledger rows, adds Google Tasks tasklist selection and sync-back, requires admin role for team automation policy changes, and adds user opt-in Digest Push preferences. v10 expands the golden set to 172 cases, including 112 Creative Commons real-meeting/audio-derived labels from Town Meeting TV, adds an accuracy report endpoint/UI, Review Queue filters, Evidence Comparison audit view, digest local-time/quiet-hours enforcement, Google Tasks push-update, and ledger identity confidence.
 
 ### Problem
 
@@ -122,7 +122,7 @@ Voice to TextNote should become the app that remembers meeting obligations over 
   - repeated/carried-over promises
   - possible decision changes
   - current meeting promises
-  - v9 controls for timeline, learning feedback (`오판`), Slack export, Google Tasks tasklist send/sync, Autopilot Review Queue reject persistence, conflict signal comparison, Evidence Pack Viewer, team automation policy, and Digest preference
+  - v10 controls for timeline, learning feedback (`오판`), Slack export, Google Tasks tasklist send/sync/update, Autopilot Review Queue filters/reject persistence, conflict signal comparison, Evidence Pack Viewer, Evidence Comparison, team automation policy, Digest preference, and accuracy report
 
 ### Backend Contract
 
@@ -150,7 +150,9 @@ Voice to TextNote should become the app that remembers meeting obligations over 
   - `GET /api/v1/promise-radar/briefing/pre-meeting`
   - `GET /api/v1/promise-radar/digest?cadence=daily|weekly`
   - `POST /api/v1/promise-radar/ledger/{entry_id}/external-task`
+  - `POST /api/v1/promise-radar/ledger/{entry_id}/external-task/update`
   - `POST /api/v1/promise-radar/accuracy/evaluate`
+  - `GET /api/v1/promise-radar/accuracy/report`
 - Source data: persisted `TaskResult` summary rows using `action_items`, `key_decisions`, and `next_steps`.
 - Access model: current task access is verified; previous meetings are filtered by current user ownership, guest session, or explicit team scope. Team-scoped ledger calls require `TeamMember` membership before any ledger row is returned or changed.
 - Persistence model: `promise_ledger_entries` stores user/guest/team-scoped promises with status, owner, assigned user, due date, risk, occurrences, evidence, confirmation state, reminder/calendar metadata, notification send state, and ActionItem links. `promise_ledger_events` stores auditable detected/updated/merged/split/calendar/action/notification/autopilot/learning/external-export history.
@@ -204,6 +206,12 @@ Voice to TextNote should become the app that remembers meeting obligations over 
   - `PromiseDigestPreference` and `PromiseDigestPreferenceUpdateRequest`: user/team scoped scheduled digest opt-in preferences.
   - `PromiseGoogleTaskListResponse`, `PromiseExternalTaskSyncRequest`, and `PromiseExternalTaskSyncResponse`: Google Tasks tasklist selection and sync-back status.
   - `GET /api/v1/promise-radar/ledger/{entry_id}/evidence-pack`: latest immutable Evidence Pack lookup for ledger-row audit.
+- v10 response additions:
+  - `PromiseAccuracyReport`: fixture path, source manifest path, status/source counts, target threshold, real-meeting label count, and full evaluation summary.
+  - `PromiseEvidenceComparison`: previous ledger evidence vs latest Evidence Pack text/similarity/shared terms for audit.
+  - `PromiseExternalTaskUpdateRequest`: pushes the current Promise Ledger status/title back to Google Tasks without storing OAuth access tokens.
+  - `PromiseLedgerEntryResponse.identity_confidence` and `identity_confidence_factors`: owner/speaker/assignee/voiceprint grounding visible in the ledger row.
+  - `GET /api/v1/promise-radar/ledger/{entry_id}/evidence-comparison`, `POST /api/v1/promise-radar/ledger/{entry_id}/external-task/update`, and `GET /api/v1/promise-radar/accuracy/report`.
 
 ### Acceptance Criteria
 

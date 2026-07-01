@@ -253,9 +253,9 @@ Firebase message id: projects/voice-to-textnote/messages/1782749586143713
 | `promise_radar_calendar_export` | Promise Radar 캘린더 버튼으로 Google Calendar 열기 또는 ICS 복사 |
 | `promise_radar_assignee_quality` | Promise Radar 담당자 추천과 품질 점수/보강 이슈 표시 |
 
-### Promise Radar v9 추가 수동 확인
+### Promise Radar v10 추가 수동 확인
 
-아래 항목은 2026-07-01 기준 구현된 v6/v7/v8/v9 기능이다. 현재 strict release evidence required key에는 추가하지 않는다. strict key를 늘리려면 `REQUIRED_E2E_SCENARIOS`, example/scaffold evidence, release-readiness 테스트를 같은 커밋에서 함께 갱신해야 한다.
+아래 항목은 2026-07-01 기준 구현된 v6/v7/v8/v9/v10 기능이다. 현재 strict release evidence required key에는 추가하지 않는다. strict key를 늘리려면 `REQUIRED_E2E_SCENARIOS`, example/scaffold evidence, release-readiness 테스트를 같은 커밋에서 함께 갱신해야 한다.
 
 - `promise_radar_learning_loop`: Result 화면 `오판` 버튼으로 `learning_feedback` 저장 후 learning profile threshold가 갱신되는지 확인한다.
 - `promise_radar_timeline`: Result 화면 `타임라인` 버튼에서 감지/자동 판정/사용자 피드백/병합/분리 이벤트가 시간순으로 표시되는지 확인한다.
@@ -271,8 +271,14 @@ Firebase message id: projects/voice-to-textnote/messages/1782749586143713
 - `promise_radar_conflict_resolution`: “완료했지만 아직 못했다”처럼 충돌 신호가 있는 약속이 자동 적용되지 않고, 사용자가 완료/지연/변경/제외/분리 추천 중 해결 경로를 선택하며 충돌 근거 비교가 표시되는지 확인한다.
 - `promise_radar_google_tasks_oauth_send`: `Tasks` 버튼이 Google 계정 선택과 `https://www.googleapis.com/auth/tasks` scope 승인을 거쳐 tasklist 선택 후 실제 Google Tasks에 전송 완료 메시지를 보여주는지 확인한다.
 - `promise_radar_google_tasks_sync`: Google Tasks에서 완료한 task가 앱의 `Tasks 동기화` 버튼으로 Promise Ledger 완료 상태에 반영되는지 확인한다.
+- `promise_radar_google_tasks_update`: 앱에서 약속 상태를 변경한 뒤 `Tasks 업데이트` 버튼으로 Google Tasks 상태/title이 반영되는지 확인한다. OAuth access token은 저장하지 않고 요청 1회에만 사용해야 한다.
 - `promise_radar_team_automation_policy`: 원장 헤더의 정책 아이콘에서 안전 자동/항상 미리보기/완료만 자동/모두 수동 정책을 저장하고 이후 자동 판정 적용 방식이 정책을 따르는지 확인한다. 팀 범위 정책 변경은 admin 멤버만 허용되는지 확인한다.
 - `promise_radar_digest_preference`: 원장 헤더의 Digest 설정에서 Daily/Weekly와 켬/끔 상태를 저장하고, 예약 digest push는 사용자가 켠 경우에만 발송되는지 확인한다.
+- `promise_radar_digest_time_window`: Digest Push가 사용자의 `local_time` 1시간 window 안에서만 발송되고 quiet hours에는 발송되지 않는지 확인한다.
+- `promise_radar_review_queue_filters`: Autopilot Review Queue에서 전체/충돌/약한 근거/고위험/기한 있음 필터가 동작하고 `현재 모두 맞음`은 표시된 후보에만 적용되는지 확인한다.
+- `promise_radar_evidence_comparison`: 원장 행의 `근거 비교` 버튼이 기존 원장 근거와 최신 Evidence Pack의 유사도, 공유 핵심어, marker hit를 표시하는지 확인한다.
+- `promise_radar_accuracy_report`: 원장 헤더의 정확도 버튼에서 172건 fixture, 실제 회의 label 112건, accuracy 1.0이 표시되는지 확인한다.
+- `promise_radar_identity_confidence`: 원장 행에서 화자/담당자 신뢰도 pill이 표시되고, speaker/owner/assigned user가 없는 항목은 표시되지 않거나 낮은 값으로 표시되는지 확인한다.
 
 ## 결과 기록
 

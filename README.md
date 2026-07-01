@@ -137,8 +137,9 @@
 - **자동 판정/검토함**: `POST /api/v1/promise-radar/autopilot/{task_id}`, `GET /api/v1/promise-radar/autopilot/{task_id}/review-queue`, `POST /api/v1/promise-radar/ledger/{entry_id}/autopilot-confirm`, `POST /api/v1/promise-radar/ledger/{entry_id}/autopilot-reject`
 - **학습/정책 루프**: `GET /api/v1/promise-radar/learning-profile`, `POST /api/v1/promise-radar/ledger/{entry_id}/learning-feedback`, `GET|PUT /api/v1/promise-radar/automation-policy`
 - **운영 브리핑/푸시**: `GET /api/v1/promise-radar/briefing/pre-meeting`, `GET /api/v1/promise-radar/digest?cadence=daily|weekly`, `GET|PUT /api/v1/promise-radar/digest-preference`, `POST /api/v1/promise-radar/ledger/notifications/digest`
-- **충돌/근거 감사**: `POST /api/v1/promise-radar/ledger/{entry_id}/resolve-conflict`, `GET /api/v1/promise-radar/ledger/{entry_id}/evidence-pack`, Review Queue Evidence Pack Viewer
-- **이력/연동/평가**: `GET /api/v1/promise-radar/ledger/{entry_id}/timeline`, `POST /api/v1/promise-radar/ledger/{entry_id}/external-task`, `POST /api/v1/promise-radar/external-task/google-tasklists`, `POST /api/v1/promise-radar/ledger/{entry_id}/external-task/sync`, `POST /api/v1/promise-radar/accuracy/evaluate`
+- **충돌/근거 감사**: `POST /api/v1/promise-radar/ledger/{entry_id}/resolve-conflict`, `GET /api/v1/promise-radar/ledger/{entry_id}/evidence-pack`, `GET /api/v1/promise-radar/ledger/{entry_id}/evidence-comparison`, Review Queue Evidence Pack Viewer
+- **이력/연동/평가**: `GET /api/v1/promise-radar/ledger/{entry_id}/timeline`, `POST /api/v1/promise-radar/ledger/{entry_id}/external-task`, `POST /api/v1/promise-radar/external-task/google-tasklists`, `POST /api/v1/promise-radar/ledger/{entry_id}/external-task/sync`, `POST /api/v1/promise-radar/ledger/{entry_id}/external-task/update`, `POST /api/v1/promise-radar/accuracy/evaluate`, `GET /api/v1/promise-radar/accuracy/report`
+- **정확도 기준선**: 2026-07-01 v10 기준 `promise_radar_accuracy_cases.json` 172건 중 112건은 Creative Commons Town Meeting TV 실제 회의/녹음 파생 label이며 evaluator 결과는 172/172, accuracy 1.0입니다. 출처와 재생성 명령은 `backend/tests/fixtures/promise_radar_real_meeting_sources.json`에 고정합니다.
 
 #### 외부 자료 가져오기
 - **URL/Transcript 가져오기**: `POST /api/v1/imports/external-text`

@@ -147,6 +147,21 @@ class PromiseEvidencePack(BaseModel):
     captured_at: datetime
 
 
+class PromiseEvidenceComparison(BaseModel):
+    """Audit comparison between stored ledger evidence and latest Autopilot pack."""
+
+    ledger_entry_id: str
+    previous_text: str | None = None
+    current_text: str | None = None
+    previous_similarity: float | None = Field(default=None, ge=0.0, le=1.0)
+    current_similarity: float | None = Field(default=None, ge=0.0, le=1.0)
+    similarity_delta: float | None = None
+    shared_terms: list[str] = Field(default_factory=list)
+    previous_evidence: list[PromiseRadarEvidence] = Field(default_factory=list)
+    current_pack: PromiseEvidencePack | None = None
+    summary: str
+
+
 class PromiseAutopilotAssessment(BaseModel):
     """Autopilot status assessment for one unresolved promise."""
 
@@ -414,6 +429,17 @@ class PromiseExternalTaskSyncRequest(BaseModel):
     external_id: str | None = None
 
 
+class PromiseExternalTaskUpdateRequest(BaseModel):
+    """Request to push one Promise Ledger state back to an external task."""
+
+    provider: str = Field(default="google_tasks")
+    access_token: str | None = None
+    tasklist: str = Field(default="@default")
+    external_id: str | None = None
+    status: str | None = Field(default=None, description="completed or needsAction")
+    title: str | None = None
+
+
 class PromiseExternalTaskSyncResponse(BaseModel):
     """Result of syncing one external work-tool task."""
 
@@ -443,6 +469,20 @@ class PromiseAccuracyEvaluation(BaseModel):
     accuracy: float = Field(ge=0.0, le=1.0)
     status_precision: dict[str, float] = Field(default_factory=dict)
     failures: list[dict] = Field(default_factory=list)
+
+
+class PromiseAccuracyReport(BaseModel):
+    """Fixture-level accuracy report for operator review."""
+
+    generated_at: datetime
+    fixture_path: str
+    source_manifest_path: str | None = None
+    evaluation: PromiseAccuracyEvaluation
+    status_counts: dict[str, int] = Field(default_factory=dict)
+    source_counts: dict[str, int] = Field(default_factory=dict)
+    real_meeting_case_count: int = Field(ge=0)
+    target_case_count: int = Field(default=100, ge=0)
+    below_target: bool = False
 
 
 class PromiseLedgerEntryResponse(BaseModel):
@@ -478,6 +518,8 @@ class PromiseLedgerEntryResponse(BaseModel):
     dismissed_reason: str | None = None
     quality: PromiseQualityScore | None = None
     assignee_suggestions: list[PromiseAssigneeSuggestion] = Field(default_factory=list)
+    identity_confidence: float | None = Field(default=None, ge=0.0, le=1.0)
+    identity_confidence_factors: list[str] = Field(default_factory=list)
 
 
 class PromiseLedgerUpdateRequest(BaseModel):

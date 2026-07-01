@@ -99,5 +99,157 @@
         "label_notes": "Financial adjustments and procedure document distribution remain operational follow-ups."
       }
     ]
+  },
+  {
+    "source_id": "town-meeting-tv-bac-2026-02-04",
+    "title": "Burlington Airport Commission - 2/4/2026",
+    "url": "https://www.youtube.com/watch?v=4P6bVZqSKpw",
+    "channel": "Town Meeting TV",
+    "license": "Creative Commons Attribution license (reuse allowed)",
+    "duration_seconds": 3131,
+    "verified_with": "yt-dlp --dump-single-json https://www.youtube.com/watch?v=4P6bVZqSKpw",
+    "subtitle_cache": ".cache/promise-radar-youtube-v10/4P6bVZqSKpw.en.json3",
+    "representative_audio_clip": ".cache/promise-radar-audio-v10/4P6bVZqSKpw_270_320.mp3",
+    "golden_case_count": 18,
+    "golden_case_id_prefix": "real-v10-4P6bVZqSKpw-",
+    "rebuild_commands": [
+      "yt-dlp --write-auto-subs --sub-lang en --skip-download --sub-format json3 -o '.cache/promise-radar-youtube-v10/%(id)s.%(ext)s' https://www.youtube.com/watch?v=4P6bVZqSKpw",
+      "yt-dlp -f bestaudio --download-sections '*00:04:30-00:05:20' --extract-audio --audio-format mp3 -o '.cache/promise-radar-audio-v10/4P6bVZqSKpw_270_320.%(ext)s' https://www.youtube.com/watch?v=4P6bVZqSKpw"
+    ],
+    "segments": [
+      {
+        "topic": "Agenda and consent approvals",
+        "golden_case_count": 18,
+        "label_notes": "CC meeting audio/subtitle evidence was converted into completed/open Promise Radar labels."
+      }
+    ]
+  },
+  {
+    "source_id": "town-meeting-tv-bac-2025-10-01",
+    "title": "Burlington Airport Commission - 10/1/2025",
+    "url": "https://www.youtube.com/watch?v=PPELeoDMr2s",
+    "channel": "Town Meeting TV",
+    "license": "Creative Commons Attribution license (reuse allowed)",
+    "duration_seconds": 4979,
+    "verified_with": "yt-dlp --dump-single-json https://www.youtube.com/watch?v=PPELeoDMr2s",
+    "subtitle_cache": ".cache/promise-radar-youtube-v10/PPELeoDMr2s.en.json3",
+    "representative_audio_clip": ".cache/promise-radar-audio-v10/PPELeoDMr2s_605_655.mp3",
+    "golden_case_count": 20,
+    "golden_case_id_prefix": "real-v10-PPELeoDMr2s-",
+    "rebuild_commands": [
+      "yt-dlp --write-auto-subs --sub-lang en --skip-download --sub-format json3 -o '.cache/promise-radar-youtube-v10/%(id)s.%(ext)s' https://www.youtube.com/watch?v=PPELeoDMr2s",
+      "yt-dlp -f bestaudio --download-sections '*00:10:05-00:10:55' --extract-audio --audio-format mp3 -o '.cache/promise-radar-audio-v10/PPELeoDMr2s_605_655.%(ext)s' https://www.youtube.com/watch?v=PPELeoDMr2s"
+    ],
+    "segments": [
+      {
+        "topic": "Airport Commission agenda items and approvals",
+        "golden_case_count": 20,
+        "label_notes": "Agenda approval, motion carried, and follow-up language were mapped to completed/open labels."
+      }
+    ]
+  },
+  {
+    "source_id": "town-meeting-tv-bac-2025-08-06",
+    "title": "Burlington Airport Commission - 8/6/2025",
+    "url": "https://www.youtube.com/watch?v=yLXVG8ktaag",
+    "channel": "Town Meeting TV",
+    "license": "Creative Commons Attribution license (reuse allowed)",
+    "duration_seconds": 13534,
+    "verified_with": "yt-dlp --dump-single-json https://www.youtube.com/watch?v=yLXVG8ktaag",
+    "subtitle_cache": ".cache/promise-radar-youtube-v10/yLXVG8ktaag.en.json3",
+    "representative_audio_clip": ".cache/promise-radar-audio-v10/yLXVG8ktaag_8797_8847.mp3",
+    "golden_case_count": 28,
+    "golden_case_id_prefix": "real-v10-yLXVG8ktaag-",
+    "rebuild_commands": [
+      "yt-dlp --write-auto-subs --sub-lang en --skip-download --sub-format json3 -o '.cache/promise-radar-youtube-v10/%(id)s.%(ext)s' https://www.youtube.com/watch?v=yLXVG8ktaag",
+      "yt-dlp -f bestaudio --download-sections '*02:26:37-02:27:27' --extract-audio --audio-format mp3 -o '.cache/promise-radar-audio-v10/yLXVG8ktaag_8797_8847.%(ext)s' https://www.youtube.com/watch?v=yLXVG8ktaag"
+    ],
+    "segments": [
+      {
+        "topic": "Long-form airport commission follow-ups",
+        "golden_case_count": 28,
+        "label_notes": "Repeated agenda, approval, revision, and follow-up phrases were expanded into golden labels."
+      }
+    ]
+  },
+  {
+    "source_id": "town-meeting-tv-bac-2025-04-02",
+    "title": "Burlington Airport Commission - 4/2/2025",
+    "url": "https://www.youtube.com/watch?v=1j1rB2aupYQ",
+    "channel": "Town Meeting TV",
+    "license": "Creative Commons Attribution license (reuse allowed)",
+    "duration_seconds": 5604,
+    "verified_with": "yt-dlp --dump-single-json https://www.youtube.com/watch?v=1j1rB2aupYQ",
+    "subtitle_cache": ".cache/promise-radar-youtube-v10/1j1rB2aupYQ.en.json3",
+    "representative_audio_clip": ".cache/promise-radar-audio-v10/1j1rB2aupYQ_690_740.mp3",
+    "golden_case_count": 24,
+    "golden_case_id_prefix": "real-v10-1j1rB2aupYQ-",
+    "rebuild_commands": [
+      "yt-dlp --write-auto-subs --sub-lang en --skip-download --sub-format json3 -o '.cache/promise-radar-youtube-v10/%(id)s.%(ext)s' https://www.youtube.com/watch?v=1j1rB2aupYQ",
+      "yt-dlp -f bestaudio --download-sections '*00:11:30-00:12:20' --extract-audio --audio-format mp3 -o '.cache/promise-radar-audio-v10/1j1rB2aupYQ_690_740.%(ext)s' https://www.youtube.com/watch?v=1j1rB2aupYQ"
+    ],
+    "segments": [
+      {
+        "topic": "Commission action items and changed items",
+        "golden_case_count": 24,
+        "label_notes": "Motion-carried, changed approach, and remaining follow-up statements were labeled."
+      }
+    ]
+  },
+  {
+    "source_id": "town-meeting-tv-bac-2026-01-07",
+    "title": "Burlington Airport Commission - 1/7/2026",
+    "url": "https://www.youtube.com/watch?v=KHcsyoDitJg",
+    "channel": "Town Meeting TV",
+    "license": "Creative Commons Attribution license (reuse allowed)",
+    "duration_seconds": 4658,
+    "verified_with": "yt-dlp --dump-single-json https://www.youtube.com/watch?v=KHcsyoDitJg",
+    "subtitle_cache": ".cache/promise-radar-youtube-v10/KHcsyoDitJg.en.json3",
+    "representative_audio_clip": ".cache/promise-radar-audio-v10/KHcsyoDitJg_510_560.mp3",
+    "golden_case_count": 10,
+    "golden_case_id_prefix": "real-v10-KHcsyoDitJg-",
+    "rebuild_commands": [
+      "yt-dlp --write-auto-subs --sub-lang en --skip-download --sub-format json3 -o '.cache/promise-radar-youtube-v10/%(id)s.%(ext)s' https://www.youtube.com/watch?v=KHcsyoDitJg",
+      "yt-dlp -f bestaudio --download-sections '*00:08:30-00:09:20' --extract-audio --audio-format mp3 -o '.cache/promise-radar-audio-v10/KHcsyoDitJg_510_560.%(ext)s' https://www.youtube.com/watch?v=KHcsyoDitJg"
+    ],
+    "segments": [
+      {
+        "topic": "Consent agenda, job description, and lease approvals",
+        "golden_case_count": 10,
+        "label_notes": "Consent agenda, changed job-description language, and lease approval became completed/changed labels."
+      }
+    ]
+  },
+  {
+    "source_id": "town-meeting-tv-bac-2026-03-04",
+    "title": "Burlington Airport Commission - 3/4/2026",
+    "url": "https://www.youtube.com/watch?v=tU_US5LxsXk",
+    "channel": "Town Meeting TV",
+    "license": "Creative Commons Attribution license (reuse allowed)",
+    "duration_seconds": 7089,
+    "verified_with": "yt-dlp --dump-single-json https://www.youtube.com/watch?v=tU_US5LxsXk",
+    "subtitle_cache": ".cache/promise-radar-youtube-v10/tU_US5LxsXk.en.json3",
+    "golden_case_count": 0,
+    "candidate_only": true,
+    "rebuild_commands": [
+      "yt-dlp --write-auto-subs --sub-lang en --skip-download --sub-format json3 -o '.cache/promise-radar-youtube-v10/%(id)s.%(ext)s' https://www.youtube.com/watch?v=tU_US5LxsXk"
+    ],
+    "segments": []
+  },
+  {
+    "source_id": "town-meeting-tv-bac-2023-08-02",
+    "title": "Burlington Airport Commission - 8/2/2023",
+    "url": "https://www.youtube.com/watch?v=BhhxfrZc6sg",
+    "channel": "Town Meeting TV",
+    "license": "Creative Commons Attribution license (reuse allowed)",
+    "duration_seconds": 8322,
+    "verified_with": "yt-dlp --dump-single-json https://www.youtube.com/watch?v=BhhxfrZc6sg",
+    "subtitle_cache": ".cache/promise-radar-youtube-v10/BhhxfrZc6sg.en.json3",
+    "golden_case_count": 0,
+    "candidate_only": true,
+    "rebuild_commands": [
+      "yt-dlp --write-auto-subs --sub-lang en --skip-download --sub-format json3 -o '.cache/promise-radar-youtube-v10/%(id)s.%(ext)s' https://www.youtube.com/watch?v=BhhxfrZc6sg"
+    ],
+    "segments": []
   }
 ]
