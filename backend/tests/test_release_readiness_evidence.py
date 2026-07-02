@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import plistlib
 import shutil
 import subprocess
@@ -20,6 +21,29 @@ def load_release_readiness_module():
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+def test_load_local_env_files_reads_release_env_without_overriding(tmp_path, monkeypatch):
+    module = load_release_readiness_module()
+    monkeypatch.delenv("FIREBASE_CREDENTIALS_PATH", raising=False)
+    monkeypatch.delenv("APNS_KEY_ID", raising=False)
+    monkeypatch.setenv("APP_STORE_CONNECT_ISSUER_ID", "from-ci")
+
+    (tmp_path / ".env").write_text(
+        'FIREBASE_CREDENTIALS_PATH="/secure/firebase-service-account.json"\n',
+        encoding="utf-8",
+    )
+    (tmp_path / ".env.release.local").write_text(
+        "APNS_KEY_ID=LOCALKEY123\n"
+        "export APP_STORE_CONNECT_ISSUER_ID=from-local-file\n",
+        encoding="utf-8",
+    )
+
+    module.load_local_env_files(tmp_path)
+
+    assert os.environ["FIREBASE_CREDENTIALS_PATH"] == "/secure/firebase-service-account.json"
+    assert os.environ["APNS_KEY_ID"] == "LOCALKEY123"
+    assert os.environ["APP_STORE_CONNECT_ISSUER_ID"] == "from-ci"
 
 
 def make_evidence(tmp_path: Path, module) -> dict[str, object]:

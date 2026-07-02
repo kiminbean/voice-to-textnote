@@ -14,6 +14,7 @@ import json
 import os
 import plistlib
 import re
+import shlex
 import shutil
 import struct
 import subprocess
@@ -152,6 +153,7 @@ TRACKED_SECRET_PATTERNS = (
     ("obsolete API_KEY_SECRET placeholder", re.compile(r"API_KEY_SECRET\s*=\s*your-secret-key")),
 )
 LOCAL_SECRET_ENV_FILES = (".env", ".env.local", ".env.production")
+LOCAL_RELEASE_ENV_FILES = (".env", ".env.release.local")
 
 
 class Reporter:
@@ -173,6 +175,32 @@ class Reporter:
 
 def read_text(path: Path) -> str:
     return path.read_text(encoding="utf-8")
+
+
+def load_local_env_files(root: Path) -> None:
+    """Load ignored local release env files without overriding CI-provided values."""
+    for name in LOCAL_RELEASE_ENV_FILES:
+        path = root / name
+        if not path.is_file():
+            continue
+        for raw_line in path.read_text(encoding="utf-8").splitlines():
+            line = raw_line.strip()
+            if not line or line.startswith("#"):
+                continue
+            if line.startswith("export "):
+                line = line.removeprefix("export ").strip()
+            if "=" not in line:
+                continue
+            key, raw_value = line.split("=", 1)
+            key = key.strip()
+            if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", key):
+                continue
+            try:
+                parsed = shlex.split(raw_value, comments=False, posix=True)
+            except ValueError:
+                parsed = []
+            value = parsed[0] if parsed else raw_value.strip().strip("\"'")
+            os.environ.setdefault(key, value)
 
 
 def cleartext_domain_hosts(network_config: str) -> set[str]:
@@ -2360,6 +2388,7 @@ def main() -> int:
     args = parser.parse_args()
 
     root = Path(__file__).resolve().parents[2]
+    load_local_env_files(root)
     reporter = Reporter()
 
     check_android_firebase(root, reporter)

@@ -41,6 +41,16 @@
 - [x] Android+iOS 공통 scenario 3개 실제 증거 PASS: `permission_microphone_initial`, `permission_denied_recovery`, `unfinished_recording_recovery`는 Redmi Note 9 Pro `76aadc20` Android screenshot/UI dump/service log와 iPhone `00008150-000239020C08401C` Release XCUITest attachment를 모두 확보했고 `docs/release-e2e-evidence.json`에서 `pass:true`다.
 - [ ] 나머지 iOS 시나리오별 UI 증거는 `RunnerUITests`를 계속 확장해서 수집한다. `devicectl`은 wired/available/tunnel connected 상태와 display info는 확인하지만 CLI screenshot/tap 명령을 제공하지 않고, `flutter screenshot -d 00008150-000239020C08401C`는 `Screenshot not supported for Inbean의 iPhone`으로 실패하며, `pymobiledevice3 remote browse`는 root 권한을 요구한다. 따라서 iOS 증거 수집의 기본 경로는 Xcode UI Test attachment다.
 
+2026-07-02 Mac mini 재점검:
+
+- [x] iPhone 연결 확인: `xcrun devicectl list devices`에서 `C7DD57C9-48FC-5362-B2FB-ED87CFFD51FA`가 `connected`, iPhone 17 Pro.
+- [x] Android 연결 확인: `adb devices -l`에서 `76aadc20`이 `device`, Redmi Note 9 Pro.
+- [x] iOS production entitlement 증거 확인: `docs/ios-release-entitlements.plist`의 `aps-environment=production`, `get-task-allow=false`, Team ID `4NJ9JSQFW9`.
+- [x] Private staging backend health 확인: `http://100.69.69.119:8000/api/v1/health` -> 200 healthy, Redis healthy, Celery active worker 1.
+- [x] Promise Radar staging E2E summary 재생성: `docs/promise-radar-e2e-evidence-2026-07-02-v20-summary.json` -> `overall_pass=true`.
+- [ ] Production backend `https://api.voicetextnote.com/api/v1/health`는 DNS 미해석으로 실패했다. Store production build/install 전 DNS/TLS/reverse proxy/backend health를 먼저 통과시킨다.
+- [ ] Strict production release readiness는 최신 git revision과 최신 Android/iOS artifact hash에 맞는 21개 scenario 재관측 전까지 실패해야 정상이다. 기존 `docs/release-e2e-evidence.json`의 revision/hash만 수동 보정하지 않는다.
+
 2026-07-01 iOS XCUITest 주의사항:
 
 - Debug configuration XCUITest는 iPhone 17 Pro iOS 26.5.1에서 Flutter engine `VSyncClient` / `createTouchRateCorrectionVSyncClientIfNeeded` SIGSEGV를 재현한다.

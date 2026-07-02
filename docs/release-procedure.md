@@ -179,6 +179,8 @@ REQUIRE_ANDROID_RELEASE_SIGNING=true ./scripts/verify_mobile.sh --native
 # iOS (Xcode에서 코드사인 필요)
 # iOS production release requires an explicit live HTTPS backend:
 # flutter build ios --release --dart-define=API_BASE_URL=https://api.voicetextnote.com/api/v1
+# Before any production install/build, run_production.sh verifies HTTPS and /health:
+# API_BASE_URL=https://<live-backend>/api/v1 API_KEY="$API_KEY" ./scripts/run_production.sh
 
 # Private staging release validation against the Tailscale backend
 flutter build ios --release --dart-define=ENV=staging --dart-define=API_BASE_URL=http://100.69.69.119:8000/api/v1 --dart-define=API_KEY="$API_KEY"
@@ -201,9 +203,20 @@ Health: http://100.69.69.119:8000/api/v1/health
 
 - 기본 release 환경은 production이며 `https://api.voicetextnote.com/api/v1`을 사용한다.
 - `api.voicetextnote.com` DNS/HTTPS 백엔드가 준비되지 않은 상태에서 기본 release 빌드를 실기기에 설치하면 Google 계정 선택 후 `/auth/google` 호출 단계에서 "서버에 연결할 수 없습니다"가 발생한다.
+- 2026-07-02 현재 `https://api.voicetextnote.com/api/v1/health`는 DNS 해석이 되지 않는다. Production 배포 전에는 DNS, TLS, reverse proxy, backend `/api/v1/health` 응답을 먼저 통과시킨다.
+- `client/scripts/run_production.sh`는 `API_BASE_URL`이 HTTPS가 아니거나 `${API_BASE_URL}/health`가 실패하면 `flutter run --release` 전에 중단한다. 이 검사를 우회하지 않는다.
+- 로컬 strict release gate 전용 값(`APNS_*`, `APP_STORE_CONNECT_*`, `ANDROID_DEVICE_SERIAL`, `IOS_DEVICE_UDID`, `RELEASE_E2E_EVIDENCE_PATH`, `FIREBASE_TEST_DEVICE_TOKEN`)은 `.env`가 아니라 `.env.release.local`에 둔다. `.env`는 backend Settings가 직접 읽기 때문에 미등록 release-only 키를 넣으면 백엔드 시작/pytest가 실패한다. `verify_release_readiness.py --strict`는 `.env`와 `.env.release.local`을 자동 로드하되, 셸/CI에서 이미 제공한 값은 덮어쓰지 않는다.
 - 현재 private staging 실기기 검증은 반드시 `--dart-define=ENV=staging`, `--dart-define=API_BASE_URL=http://100.69.69.119:8000/api/v1`, `--dart-define=API_KEY="$API_KEY"`를 함께 지정해 빌드한다.
 - 기본 production placeholder release APK를 실기기에 설치하면 앱이 blank screen으로 보일 수 있다. 이 경우 코드를 고치기 전에 staging dart-define이 빠진 빌드인지 먼저 확인한다.
 - iOS ATS와 Android release/profile network security의 HTTP 예외는 `100.69.69.119`에만 좁게 허용한다. 새 HTTP staging host를 쓰려면 플랫폼 보안 설정과 테스트를 함께 갱신한다.
+
+2026-07-02 release gate 재점검:
+
+- `dig +short api.voicetextnote.com`가 빈 응답이고 `curl https://api.voicetextnote.com/api/v1/health`는 `Could not resolve host`로 실패했다. Production 배포 전 DNS A/AAAA 또는 CNAME, TLS 인증서, reverse proxy, `/api/v1/health` 200 응답을 먼저 복구한다.
+- `http://100.69.69.119:8000/api/v1/health`는 Mac mini local backend 기동 후 200 healthy, Redis healthy, Celery active worker 1개로 확인했다. 이 주소는 private staging 검증용이며 Store production URL이 아니다.
+- `docs/ios-release-entitlements.plist`는 `aps-environment=production`, `get-task-allow=false`, `application-identifier=4NJ9JSQFW9.com.voicetextnote.app`로 확인했다. Xcode 프로젝트의 개발용 `Runner.entitlements`가 `development`인 warning은 production-signed archive에서 추출한 entitlement 증거와 별도로 관리한다.
+- 최신 Promise Radar staging API 증거는 `docs/promise-radar-e2e-evidence-2026-07-02-v20-summary.json`이며 `overall_pass=true`, `radar_load`, `autopilot_preview`, `review_queue`, `pre_meeting_brief`, `command_center`, `calendar_export`, `assignee_quality`, `due_push_dispatch_contract`가 모두 `ok=true`다.
+- `python3 client/scripts/verify_release_readiness.py --strict`는 release secret/device는 통과하지만, 현재 git revision과 새 Android/iOS build artifact hash가 `docs/release-e2e-evidence.json`에 기록된 관측 증거와 달라 실패해야 정상이다. 이 파일은 수동으로 hash/revision만 맞추지 말고, 현재 revision과 최신 artifact로 21개 required E2E scenario를 다시 관측한 뒤 갱신한다.
 
 2026-07-01 실기기 릴리스 설치 기준:
 

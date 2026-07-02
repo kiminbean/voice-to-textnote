@@ -31,14 +31,15 @@ echo "✓ Redis 서버 시작됨"
 echo ""
 echo "[2/6] 프로젝트 설정..."
 
-PROJECT_DIR="$HOME/voice-textnote"
+PROJECT_DIR="${PROJECT_DIR:-$HOME/voice-to-textnote}"
+REPO_URL="${REPO_URL:-https://github.com/kiminbean/voice-to-textnote.git}"
 
 if [ -d "$PROJECT_DIR" ]; then
     echo "기존 프로젝트 디렉토리 발견: $PROJECT_DIR"
     cd "$PROJECT_DIR"
     git pull origin main
 else
-    git clone https://github.com/kiminbean/my-project.git "$PROJECT_DIR"
+    git clone "$REPO_URL" "$PROJECT_DIR"
     cd "$PROJECT_DIR"
 fi
 

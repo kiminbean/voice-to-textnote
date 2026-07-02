@@ -23,6 +23,12 @@ def read_verify_mobile_script() -> str:
     ).read_text(encoding="utf-8")
 
 
+def read_run_production_script() -> str:
+    return (
+        Path(__file__).resolve().parents[2] / "client/scripts/run_production.sh"
+    ).read_text(encoding="utf-8")
+
+
 def shell_constant(script: str, name: str) -> str:
     match = re.search(rf'^{name}="([^"]+)"$', script, re.MULTILINE)
     assert match is not None
@@ -76,3 +82,16 @@ def test_verify_mobile_script_artifact_paths_match_release_evidence_defaults():
     assert create.DEFAULT_ANDROID_APK == f"client/{shell_constant(script, 'ANDROID_RELEASE_APK')}"
     assert create.DEFAULT_IOS_RUNNER_APP == f"client/{shell_constant(script, 'IOS_RUNNER_APP')}"
     assert shell_constant(script, "IOS_INFO_PLIST") == "$IOS_RUNNER_APP/Info.plist"
+
+
+def test_run_production_script_requires_https_and_health_check():
+    script = read_run_production_script()
+
+    assert 'API_BASE_URL="${API_BASE_URL:?API_BASE_URL 환경 변수를 실제 운영 HTTPS URL로 설정하세요}"' in script
+    assert 'API_HEALTH_URL="${API_HEALTH_URL:-${API_BASE_URL%/}/health}"' in script
+    assert 'if [[ "$API_BASE_URL" != https://* ]]; then' in script
+    assert 'curl --fail --silent --show-error --max-time "$API_HEALTH_TIMEOUT" "$API_HEALTH_URL"' in script
+    assert "프로덕션 API health check 실패" in script
+    assert script.index('curl --fail --silent --show-error') < script.index(
+        "flutter run --release"
+    )

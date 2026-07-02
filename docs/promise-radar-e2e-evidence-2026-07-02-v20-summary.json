@@ -1,0 +1,202 @@
+{
+  "generated_at": "2026-07-02T05:47:24.941612+00:00",
+  "target_base_url": "http://100.69.69.119:8000/api/v1",
+  "user": {
+    "authenticated": true,
+    "user_id_sha256_12": "c4cfbc9c0999",
+    "email_sha256_12": "90d6caf6ce09",
+    "email_domain": "gmail.com"
+  },
+  "devices": {
+    "ios": {
+      "connected": true,
+      "identifier": "C7DD57C9-48FC-5362-B2FB-ED87CFFD51FA",
+      "list_output": {
+        "command": [
+          "xcrun",
+          "devicectl",
+          "list",
+          "devices"
+        ],
+        "exit_code": 0,
+        "stdout": "Name             Hostname                            Identifier                             State         Model                     \n--------------   ---------------------------------   ------------------------------------   -----------   --------------------------\nInbean의 iPhone   Inbean-ui-iPhone.coredevice.local   C7DD57C9-48FC-5362-B2FB-ED87CFFD51FA   connected     iPhone 17 Pro (iPhone18,1)\nkisoo의 iPad      kisooui-iPad.coredevice.local       88A627A5-9626-5EA7-B154-5A025A7541E0   unavailable   iPad8,1",
+        "stderr": ""
+      },
+      "details_output": {
+        "command": [
+          "xcrun",
+          "devicectl",
+          "device",
+          "info",
+          "details",
+          "--device",
+          "C7DD57C9-48FC-5362-B2FB-ED87CFFD51FA"
+        ],
+        "exit_code": 0,
+        "stdout": "Gathering device information…\nCurrent device information:\n• identifier: C7DD57C9-48FC-5362-B2FB-ED87CFFD51FA\n• tags: \n▿ hardwareProperties:\n    • cpuType: arm64e (type: 16777228, subtype: 2)\n    • deviceType: iPhone\n    • ecid: [redacted]\n    • hardwareModel: V53AP\n    • internalStorageCapacity: 512000000000\n    • isProductionFused: true\n    • marketingName: iPhone 17 Pro\n    • platform: iOS\n    • productType: iPhone18,1\n    • reality: physical\n    • serialNumber: [redacted]\n    ▿ supportedCPUTypes:\n        • arm64e (type: 16777228, subtype: 2)\n        • arm64 (type: 16777228, subtype: 0)\n    • supportedDeviceFamilies: [1]\n    • thinningProductType: iPhone18,1\n    • udid: [redacted]\n▿ deviceProperties:\n    • bootState: booted\n    • ddiServicesAvailable: true\n    • developerModeStatus: enabled\n    • hasInternalOSBuild: false\n    • name: Inbean의 iPhone\n    • osBuildUpdate: 23F81\n    • osVersionNumber: 26.5.1\n    • rootFileSystemIsWritable: false\n    • screenViewingURL: devices://device/open?id=C7DD57C9-48FC-5362-B2FB-ED87CFFD51FA\n    • bootedFromSnapshot: true\n    • bootedSnapshotName: com.apple.os.update-DD8F28E814ECA7ECCF24628FAE9BCA44301CC7E874390641F04D3CB7AA9616B4\n    • supportsCheckedAllocations: true\n▿ connectionProperties:\n    • authenticationType: manualPairing\n    • isMobileDeviceOnly: false\n    • lastConnectionDate: 2026-07-02 05:47:00 +0000\n    ▿ localHostnames:\n        • Inbean-ui-iPhone.coredevice.local\n        • C7DD57C9-48FC-5362-B2FB-ED87CFFD51FA.coredevice.local\n        • [redacted].coredevice.local\n    ▿ potentialHostnames:\n        • Inbean-ui-iPhone.coredevice.local\n        • C7DD57C9-48FC-5362-B2FB-ED87CFFD51FA.coredevice.local\n        • [redacted].coredevice.local\n    • pairingState: paired\n    • transportType: localNetwork\n    • tunnelTransportProtocol: tcp\n    • tunnelIPAddress: [redacted]\n    • tunnelState: connected\n▿ capabilities:\n    • Acquire Usage Assertion (com.apple.coredevice.feature.acquireusageassertion)\n    • Application Control (com.apple.coredevice.feature.applicationcontrol)\n    • Capture Sysdiagnose (com.apple.coredevice.feature.capturesysdiagnose)\n    • Create Service Connection (com.apple.dt.serviceconnection.create)\n    • Create Service Socket (com.apple.dt.servicesocket.create)\n    • Disable Developer Disk Image Services (com.apple.coredevice.feature.disableddiservices)\n    • Disconnect from Device (com.apple.coredevice.feature.disconnectdevice)\n    • Fetch Application Icons (com.apple.coredevice.feature.fetchappicons)\n    • Fetch AuthListing Identifiers (com.apple.coredevice.feature.getauthlistingidentifiers)\n    • Fetch Developer Disk Image Services Metadata (com.apple.coredevice.feature.fetchddimetadata)\n    • Fetch Extended Device Info (com.apple.coredevice.feature.getdeviceinfo)\n    • Get Display Information (com.apple.coredevice.feature.getdisplayinfo)\n    • Get Lock State (com.apple.coredevice.feature.getlockstate)\n    • Install Application (com.apple.coredevice.feature.installapp)\n    • Install Root (com.apple.coredevice.feature.installroot)\n    • Launch Application (com.apple.coredevice.feature.launchapplication)\n    • List Files (com.apple.coredevice.feature.listFiles)\n    • List Roots (com.apple.coredevice.feature.listroots)\n    • Modify Tags (com.apple.coredevice.feature.tags)\n    • Modify credentials for default users for a device (com.apple.coredevice.feature.default.user.credentials)\n    • Monitor Process for Termination (com.apple.coredevice.feature.monitorprocesstermination)\n    • Post Darwin Notification (com.apple.dt.customer.postdarwinnotification)\n    • Process Control (com.apple.coredevice.feature.processcontrol)\n    • Query MobileGestalt (com.apple.coredevice.feature.querymobilegestalt)\n    • Reboot Device (com.apple.coredevice.feature.rebootdevice)\n    • Send Memory Warning to Process (com.apple.coredevice.feature.sendmemorywarningtoprocess)\n    • Send Signal to Process (com.apple.coredevice.feature.sendsignaltoprocess)\n    • Service Hub Profile (com.apple.dt.profile)\n    • Spawn Executable (com.apple.coredevice.feature.spawnexecutable)\n    • Stream Application List (com.apple.coredevice.feature.streamapplist)\n    • Stream Process List (com.apple.coredevice.feature.streamprocesslist)\n    • Transfer Files (com.apple.coredevice.feature.transferFiles)\n    • Uninstall Application (com.apple.coredevice.feature.uninstallapp)\n    • Uninstall Root (com.apple.coredevice.feature.uninstallroot)\n    • Unpair Device (com.apple.coredevice.feature.unpairdevice)\n    • View Device Screen (com.apple.coredevice.feature.viewdevicescreen)\n• visibilityClass: default",
+        "stderr": ""
+      }
+    },
+    "android": {
+      "connected": true,
+      "model": "Redmi_Note_9_Pro",
+      "adb_output": {
+        "command": [
+          "adb",
+          "devices",
+          "-l"
+        ],
+        "exit_code": 0,
+        "stdout": "List of devices attached\n[redacted-adb]               device usb:3-1.2.3 product:joyeuse_global model:Redmi_Note_9_Pro device:joyeuse transport_id:50",
+        "stderr": ""
+      }
+    }
+  },
+  "actual_recording": {
+    "summary_task_id": "7f9942fe-dbc9-4ead-a712-098954363979",
+    "summary_created_at": "2026-07-01 05:48:13.769778",
+    "minutes_task_id": "12c1b7e0-cdf8-4ac2-9c52-650085547838",
+    "diarization_task_id": "696c1a31-d2de-4f07-b761-83cca23cd660",
+    "stt_task_id": "35b3fe87-5cf4-4bdb-9ff4-b28cbc3938aa",
+    "duration_seconds": 60.973,
+    "stt_model": "mlx-community/whisper-small-mlx",
+    "summary_action_item_count": 3,
+    "minutes_segment_count": 1,
+    "diarization_speaker_count": 1
+  },
+  "checks": {
+    "radar_load": {
+      "ok": true,
+      "status": 200,
+      "url": "http://100.69.69.119:8000/api/v1/promise-radar/7f9942fe-dbc9-4ead-a712-098954363979?limit=5",
+      "duration_ms": 5914,
+      "analyzed_meetings": 6,
+      "ledger_entry_count": 23,
+      "current_promise_count": 3,
+      "semantic_enrichment_status": "zai_applied",
+      "first_ledger_entry_id": "6543b7ab-80a5-4baf-aed6-18678fa9709a"
+    },
+    "autopilot_preview": {
+      "ok": true,
+      "status": 200,
+      "url": "http://100.69.69.119:8000/api/v1/promise-radar/autopilot/7f9942fe-dbc9-4ead-a712-098954363979/preview?limit=5",
+      "duration_ms": 35,
+      "preview_mode": true,
+      "assessed_count": 5,
+      "applied_count": 0,
+      "suggested_statuses": [
+        "blocked",
+        "open"
+      ]
+    },
+    "review_queue": {
+      "ok": true,
+      "status": 200,
+      "url": "http://100.69.69.119:8000/api/v1/promise-radar/autopilot/7f9942fe-dbc9-4ead-a712-098954363979/review-queue?limit=5",
+      "duration_ms": 25,
+      "queue_count": 0,
+      "actionable_count": 0,
+      "conflict_count": 0
+    },
+    "pre_meeting_brief": {
+      "ok": true,
+      "status": 200,
+      "url": "http://100.69.69.119:8000/api/v1/promise-radar/briefing/pre-meeting?limit=5",
+      "duration_ms": 10,
+      "readiness_score": 82,
+      "promise_count": 5,
+      "question_count": 5,
+      "checkpoint_count": 5
+    },
+    "command_center": {
+      "ok": true,
+      "status": 200,
+      "url": "http://100.69.69.119:8000/api/v1/promise-radar/command-center?limit=10&target_case_count=1000",
+      "duration_ms": 171,
+      "focus_count": 5,
+      "action_count": 11,
+      "accuracy_case_count": 1089,
+      "accuracy_correct_count": 1089,
+      "real_meeting_case_count": 1022,
+      "hard_negative_case_count": 70,
+      "public_source_count": 24,
+      "target_case_count": 1000,
+      "extraction_case_count": 50,
+      "extraction_expected_count": 50,
+      "extraction_matched_count": 50,
+      "extraction_recall": 1.0,
+      "extraction_real_meeting_case_count": 50,
+      "memory_graph_node_count": 18,
+      "memory_graph_edge_count": 20,
+      "memory_graph_identity_cluster_count": 5,
+      "memory_graph_owner_alias_review_count": 4,
+      "shadow_candidate_count": 0,
+      "shadow_blocked_by_evidence_count": 0,
+      "evidence_export_allowed": true,
+      "evidence_blocked_export_count": 0,
+      "evidence_room_share_ready_count": 0,
+      "evidence_room_blocked_count": 0,
+      "learning_telemetry_event_count": 40,
+      "learning_telemetry_status_segment_count": 3,
+      "live_coach_prompt_count": 10,
+      "digest_push_ready": false,
+      "digest_sla_due_today_count": 0,
+      "autopilot_quarantine_count": 0,
+      "meeting_recipe_key": "team_sync",
+      "team_risk_score": 100,
+      "google_tasks_oauth_production_ready": true,
+      "google_tasks_oauth_ux_ready": true,
+      "google_tasks_token_exchange_ready": true,
+      "google_tasks_pkce_required": true,
+      "google_tasks_oauth_missing_setup_count": 0
+    },
+    "calendar_export": {
+      "ok": true,
+      "status": 200,
+      "url": "http://100.69.69.119:8000/api/v1/promise-radar/ledger/6543b7ab-80a5-4baf-aed6-18678fa9709a/calendar/export",
+      "duration_ms": 10,
+      "ledger_entry_id": "6543b7ab-80a5-4baf-aed6-18678fa9709a",
+      "ics_filename": "promise-6543b7ab-80a5-4baf-aed6-18678fa9709a.ics",
+      "has_ics_content": true,
+      "has_promise_id": true,
+      "has_google_calendar_url": true
+    },
+    "assignee_quality": {
+      "ok": true,
+      "status": 200,
+      "url": "http://100.69.69.119:8000/api/v1/promise-radar/ledger/6543b7ab-80a5-4baf-aed6-18678fa9709a/assignee-suggestions?limit=5",
+      "duration_ms": 5,
+      "suggestion_count": 1,
+      "top_confidence": 0.48
+    },
+    "due_push_dispatch_contract": {
+      "ok": true,
+      "status": 200,
+      "url": "http://100.69.69.119:8000/api/v1/promise-radar/ledger/notifications/due?limit=5",
+      "duration_ms": 5,
+      "considered_count": 0,
+      "sent_count": 0,
+      "failure_count": 0
+    }
+  },
+  "pass_checks": {
+    "ios_device_connected": true,
+    "android_device_connected": true,
+    "actual_recording_chain": true,
+    "radar_load": true,
+    "autopilot_preview": true,
+    "review_queue": true,
+    "calendar_export": true,
+    "assignee_quality": true,
+    "pre_meeting_brief": true,
+    "due_push_dispatch_contract": true,
+    "command_center": true,
+    "command_center_accuracy_baseline": true,
+    "command_center_v15_contract": true,
+    "command_center_v16_contract": true,
+    "command_center_v17_contract": true,
+    "command_center_v19_contract": true
+  },
+  "overall_pass": true,
+  "android_release_device_note": "Android ADB device was connected."
+}
