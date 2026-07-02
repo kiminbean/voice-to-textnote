@@ -15,8 +15,25 @@ class DiarizationApi {
   DiarizationApi(this._dio);
 
   // STT 태스크 ID로 화자 분리 태스크 생성
-  Future<Map<String, dynamic>> create(String sttTaskId) async {
-    final response = await _dio.post('/diarizations', data: {'stt_task_id': sttTaskId});
+  Future<Map<String, dynamic>> create(
+    String sttTaskId, {
+    int? numSpeakers,
+    int? minSpeakers,
+    int? maxSpeakers,
+  }) async {
+    final data = <String, dynamic>{'stt_task_id': sttTaskId};
+    if (numSpeakers != null) {
+      data['num_speakers'] = numSpeakers;
+    } else {
+      if (minSpeakers != null) {
+        data['min_speakers'] = minSpeakers;
+      }
+      if (maxSpeakers != null) {
+        data['max_speakers'] = maxSpeakers;
+      }
+    }
+
+    final response = await _dio.post('/diarizations', data: data);
     return response.data as Map<String, dynamic>;
   }
 

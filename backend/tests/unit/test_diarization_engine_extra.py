@@ -9,6 +9,7 @@ diarization_engine.py 추가 단위 테스트
 
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -28,6 +29,7 @@ def _reset_engine():
     DiarizationEngine._model_loaded = False
     DiarizationEngine._load_time_seconds = None
     DiarizationEngine._pipeline = None
+    DiarizationEngine._model_name = "pyannote/speaker-diarization-community-1"
     DiarizationEngine._vad_model = None
     DiarizationEngine._vad_loaded = False
 
@@ -133,6 +135,59 @@ class TestDiarizeChunked:
 
             # 최소 한 번 이상 호출되어야 함
             assert callback_mock.call_count >= 1
+
+    def test_diarize_chunked_forwards_speaker_count_hints(self, tmp_path):
+        """청크 모드도 pyannote에 화자 수 힌트를 전달"""
+        engine, mock_pipeline = _make_loaded_engine_with_mock_pipeline()
+
+        audio_file = tmp_path / "hinted.wav"
+        audio_file.write_bytes(b"x" * 1000)
+
+        mock_torchaudio = MagicMock()
+        mock_torchaudio.info.return_value = MagicMock(sample_rate=16000, num_frames=16000)
+        mock_torchaudio.load.return_value = (torch.zeros((1, 16000)), 16000)
+
+        with patch.dict(sys.modules, {"torchaudio": mock_torchaudio}):
+            engine.diarize_chunked(
+                audio_file,
+                chunk_duration_sec=1,
+                overlap_sec=0,
+                min_speakers=2,
+                max_speakers=8,
+            )
+
+        call_kwargs = mock_pipeline.call_args.kwargs
+        assert call_kwargs["min_speakers"] == 2
+        assert call_kwargs["max_speakers"] == 8
+
+    def test_diarize_chunked_reuses_stable_local_label_without_overlap(self, tmp_path):
+        """오버랩 매칭이 없어도 반복 local speaker label은 기존 global ID를 재사용"""
+        _reset_engine()
+
+        def make_result(speaker_id: str):
+            turn = MagicMock()
+            turn.start = 0.0
+            turn.end = 0.8
+            annotation = MagicMock(spec=[])
+            annotation.itertracks = MagicMock(return_value=[(turn, None, speaker_id)])
+            return annotation
+
+        mock_pipeline = MagicMock(side_effect=[make_result("LOCAL_A"), make_result("LOCAL_A")])
+        engine = DiarizationEngine.get_instance()
+        engine._pipeline = mock_pipeline
+        engine._model_loaded = True
+
+        audio_file = tmp_path / "stable.wav"
+        audio_file.write_bytes(b"x" * 1000)
+
+        mock_torchaudio = MagicMock()
+        mock_torchaudio.info.return_value = MagicMock(sample_rate=16000, num_frames=32000)
+        mock_torchaudio.load.return_value = (torch.zeros((1, 16000)), 16000)
+
+        with patch.dict(sys.modules, {"torchaudio": mock_torchaudio}):
+            result = engine.diarize_chunked(audio_file, chunk_duration_sec=1, overlap_sec=0)
+
+        assert [segment.speaker_id for segment in result] == ["SPEAKER_00", "SPEAKER_00"]
 
     def test_diarize_chunked_without_model_raises_error(self, tmp_path):
         """모델 미로드 시 RuntimeError"""
@@ -635,9 +690,34 @@ class TestCalcOverlap:
 class TestSegmentsFromResult:
     """pyannote 결과 변환 테스트"""
 
+    def test_segments_from_result_prefers_exclusive_speaker_diarization_attr(self):
+        """Community-1의 exclusive_speaker_diarization을 우선 사용"""
+        exclusive_turn = MagicMock()
+        exclusive_turn.start = 1.0
+        exclusive_turn.end = 2.0
+        legacy_turn = MagicMock()
+        legacy_turn.start = 3.0
+        legacy_turn.end = 4.0
+
+        exclusive_diarization = MagicMock()
+        exclusive_diarization.itertracks.return_value = [
+            (exclusive_turn, None, "SPEAKER_EXCLUSIVE")
+        ]
+        legacy_diarization = MagicMock()
+        legacy_diarization.itertracks.return_value = [(legacy_turn, None, "SPEAKER_LEGACY")]
+        mock_result = SimpleNamespace(
+            exclusive_speaker_diarization=exclusive_diarization,
+            speaker_diarization=legacy_diarization,
+        )
+
+        segments = DiarizationEngine._segments_from_result(mock_result)
+
+        assert len(segments) == 1
+        assert segments[0].speaker_id == "SPEAKER_EXCLUSIVE"
+
     def test_segments_from_result_with_speaker_diarization_attr(self):
         """speaker_diarization 속성 있는 경우"""
-        mock_result = MagicMock()
+        mock_result = MagicMock(spec=["speaker_diarization"])
         mock_diarization = MagicMock()
 
         # itertracks yield: (turn, track, speaker)

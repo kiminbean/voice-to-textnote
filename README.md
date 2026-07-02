@@ -55,10 +55,10 @@
 - **속도**: 약 0.3~0.5배 실시간
 
 #### 3. 화자 분리 (Speaker Diarization)
-- **모델**: pyannote.audio 3.1
+- **모델**: `pyannote/speaker-diarization-community-1` 기본, `pyannote/speaker-diarization-3.1` fallback
 - **처리**: CPU 기반 (GPU 미사용, 안정성 우선)
 - **출력**: 타임스탬프와 화자 ID 매칭
-- **DER**: < 15% (5명 이하 회의)
+- **다중 화자**: 자동 업로드 기본 최대 10명, 긴 녹음 chunk 처리에도 화자 수 힌트 전달
 - **재등장 화자 식별**: `pyannote/embedding` voiceprint 우선, 접근 실패 시 acoustic fallback
 - **운영 문서**: `docs/speaker-voiceprint-runbook.md`
 - **재발 방지**: `HUGGINGFACE_TOKEN` 존재만 확인하지 말고 `huggingface-cli whoami`, `pyannote/embedding` checkpoint 다운로드, `SpeakerEmbeddingEngine` 로드까지 검증

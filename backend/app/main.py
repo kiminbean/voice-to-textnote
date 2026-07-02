@@ -117,10 +117,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         if settings.huggingface_token:
             try:
                 dia_engine = DiarizationEngine.get_instance()
-                dia_engine.load(
-                    hf_token=settings.huggingface_token,
-                    model_name=settings.diarization_model,
-                )
+                fallback_model_name = settings.diarization_fallback_model
+                if not isinstance(fallback_model_name, str) or not fallback_model_name.strip():
+                    fallback_model_name = None
+                load_kwargs = {
+                    "hf_token": settings.huggingface_token,
+                    "model_name": settings.diarization_model,
+                }
+                if fallback_model_name:
+                    load_kwargs["fallback_model_name"] = fallback_model_name
+                dia_engine.load(**load_kwargs)
                 logger.info("화자 분리 모델 사전 로드 완료", model=settings.diarization_model)
             except Exception as e:
                 logger.error("화자 분리 모델 사전 로드 실패 (서버는 계속 실행)", error=str(e))

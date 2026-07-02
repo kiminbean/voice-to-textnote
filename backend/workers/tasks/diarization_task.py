@@ -371,10 +371,16 @@ def diarization_task(
         # --- 3단계: DiarizationEngine 초기화 ---
         engine = DiarizationEngine.get_instance()
         if not engine.is_loaded:
-            engine.load(
-                hf_token=settings.huggingface_token,
-                model_name=settings.diarization_model,
-            )
+            fallback_model_name = getattr(settings, "diarization_fallback_model", None)
+            if not isinstance(fallback_model_name, str) or not fallback_model_name.strip():
+                fallback_model_name = None
+            load_kwargs = {
+                "hf_token": settings.huggingface_token,
+                "model_name": settings.diarization_model,
+            }
+            if fallback_model_name:
+                load_kwargs["fallback_model_name"] = fallback_model_name
+            engine.load(**load_kwargs)
 
         _update_task_status(task_id, TaskStatus.processing, 0.30, "화자 분리 처리 중...")
 
@@ -399,11 +405,14 @@ def diarization_task(
                 msg = f"화자 분리 처리 중... (청크 {current}/{total})"
                 _update_task_status(task_id, TaskStatus.processing, progress, msg)
 
-            # 청크 모드는 현재 num_speakers 힌트 미지원 (각 청크별 별도 추정)
+            # 긴 녹음에서도 화자 수 힌트를 각 청크에 전달해 전체 화자 수 폭증을 줄인다.
             dia_segments = engine.diarize_chunked(
                 wav_path,
                 chunk_duration_sec=settings.dia_chunk_duration_minutes * 60,
                 overlap_sec=settings.dia_chunk_overlap_seconds,
+                num_speakers=num_speakers,
+                min_speakers=min_speakers,
+                max_speakers=max_speakers,
                 progress_callback=_progress_cb,
             )
         else:

@@ -38,6 +38,37 @@ class TestUploadTranscription:
         assert "result_url" in data
         assert "diarization_task_id" in data
 
+    def test_upload_schedules_diarization_with_configured_max_speakers(
+        self, client, test_audio_file, mock_redis_client, monkeypatch
+    ):
+        """자동 DIA 작업이 hard-coded 4가 아니라 설정 기반 max_speakers를 사용"""
+        from backend.app.api.v1.transcription import transcription as transcription_module
+
+        monkeypatch.setattr(
+            transcription_module.settings,
+            "default_diarization_max_speakers",
+            12,
+        )
+        mock_redis_client._set_pipeline_results([0, 0])
+
+        with (
+            patch("backend.workers.tasks.transcription_task.transcription_task.delay"),
+            patch(
+                "backend.workers.tasks.diarization_task.diarization_celery_task.apply_async"
+            ) as mock_dia_apply,
+        ):
+            with open(test_audio_file, "rb") as f:
+                response = client.post(
+                    "/api/v1/transcriptions",
+                    files={"file": ("test.wav", f, "audio/wav")},
+                    data={"language": "ko", "model": "mlx-community/whisper-small-mlx"},
+                )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        dia_kwargs = mock_dia_apply.call_args.kwargs["kwargs"]
+        assert dia_kwargs["min_speakers"] == 1
+        assert dia_kwargs["max_speakers"] == 12
+
     def test_upload_with_vocabulary_id(self, client, test_audio_file):
         """
         Given: vocabulary_id가 포함된 요청

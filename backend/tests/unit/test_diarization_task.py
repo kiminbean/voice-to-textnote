@@ -449,6 +449,9 @@ class TestDiarizationTaskErrors:
         chunked_kwargs = mock_engine.diarize_chunked.call_args.kwargs
         assert chunked_kwargs["chunk_duration_sec"] == 600
         assert chunked_kwargs["overlap_sec"] == 30
+        assert chunked_kwargs["num_speakers"] is None
+        assert chunked_kwargs["min_speakers"] == 1
+        assert chunked_kwargs["max_speakers"] == 10
 
 
 # ---------------------------------------------------------------------------

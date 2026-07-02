@@ -50,6 +50,7 @@ def _reset_engine():
     DiarizationEngine._model_loaded = False
     DiarizationEngine._load_time_seconds = None
     DiarizationEngine._pipeline = None
+    DiarizationEngine._model_name = "pyannote/speaker-diarization-community-1"
 
 
 # ---------------------------------------------------------------------------
@@ -139,6 +140,7 @@ class TestDiarizationEngineLoad:
             engine = DiarizationEngine.get_instance()
             engine.load(hf_token="hf_testtoken")
             assert engine.is_loaded is True
+            assert engine.model_name == "pyannote/speaker-diarization-community-1"
 
     def test_load_records_load_time(self):
         """load() 후 load_time_seconds 기록"""
@@ -201,6 +203,31 @@ class TestDiarizationEngineLoad:
             # 토큰이 전달되었는지 확인
             all_args = str(call_kwargs)
             assert "hf_mytoken123" in all_args
+
+    def test_load_falls_back_when_primary_model_fails(self):
+        """기본 모델 로드 실패 시 지정 fallback 모델로 재시도"""
+        from backend.ml.diarization_engine import DiarizationEngine
+
+        ctx, mock_pipeline_cls = self._patch_pyannote()
+        with ctx:
+            fallback_pipeline = _make_mock_pipeline()
+            mock_pipeline_cls.from_pretrained.side_effect = [
+                Exception("403 gated"),
+                fallback_pipeline,
+            ]
+            engine = DiarizationEngine.get_instance()
+
+            engine.load(
+                hf_token="hf_testtoken",
+                model_name="pyannote/speaker-diarization-community-1",
+                fallback_model_name="pyannote/speaker-diarization-3.1",
+            )
+
+            assert engine.is_loaded is True
+            assert engine.model_name == "pyannote/speaker-diarization-3.1"
+            call_args = mock_pipeline_cls.from_pretrained.call_args_list
+            assert call_args[0].args[0] == "pyannote/speaker-diarization-community-1"
+            assert call_args[1].args[0] == "pyannote/speaker-diarization-3.1"
 
 
 # ---------------------------------------------------------------------------

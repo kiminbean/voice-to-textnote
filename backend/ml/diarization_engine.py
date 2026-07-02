@@ -1,6 +1,6 @@
 """
 pyannote.audio 화자 분리 엔진 래퍼 - 싱글톤 패턴
-REQ-DIA-007: pyannote/speaker-diarization-3.1 모델 사용
+REQ-DIA-007: pyannote/speaker-diarization-community-1 모델 사용
 REQ-DIA-008: 지연 로딩 (lazy load) + 싱글톤 재사용
 REQ-DIA-009: CPU only 처리
 REQ-DIA-010: HuggingFace 토큰 인증
@@ -36,7 +36,7 @@ class DiarizationEngine:
 
     _model_loaded: bool = False
     _load_time_seconds: float | None = None
-    _model_name: str = "pyannote/speaker-diarization-3.1"
+    _model_name: str = "pyannote/speaker-diarization-community-1"
     _pipeline: Any = None
 
     # REQ-DIA-PERF-002: Silero VAD 사전 필터 (회의 무음 구간 제거)
@@ -69,14 +69,20 @@ class DiarizationEngine:
                     cls._instance = cls()
         return cls._instance
 
-    def load(self, hf_token: str | None = None, model_name: str | None = None) -> None:
+    def load(
+        self,
+        hf_token: str | None = None,
+        model_name: str | None = None,
+        fallback_model_name: str | None = None,
+    ) -> None:
         """
         pyannote Pipeline 로드 (REQ-DIA-008: lazy load + 재사용)
         이미 로드된 경우 즉시 반환
 
         Args:
             hf_token: HuggingFace 접근 토큰 (필수)
-            model_name: 사용할 모델 ID (기본: pyannote/speaker-diarization-3.1)
+            model_name: 사용할 모델 ID (기본: pyannote/speaker-diarization-community-1)
+            fallback_model_name: 기본 모델 로드 실패 시 시도할 모델 ID
 
         Raises:
             ValueError: HuggingFace 토큰 미제공 시
@@ -97,22 +103,43 @@ class DiarizationEngine:
                     "HUGGINGFACE_TOKEN 환경 변수를 설정하거나 hf_token 인자를 제공하세요."
                 )
 
-            if model_name:
-                self._model_name = model_name
+            primary_model_name = model_name or self._model_name
+            model_candidates = [primary_model_name]
+            if fallback_model_name and fallback_model_name not in model_candidates:
+                model_candidates.append(fallback_model_name)
 
-            logger.info("화자 분리 모델 로드 시작", model=self._model_name)
+            logger.info(
+                "화자 분리 모델 로드 시작",
+                model=primary_model_name,
+                fallback_model=fallback_model_name,
+            )
             start_time = time.time()
 
             try:
                 # pyannote.audio Pipeline 로드
                 from pyannote.audio import Pipeline  # type: ignore[import]
 
-                pipeline = Pipeline.from_pretrained(
-                    self._model_name,
-                    token=hf_token,
-                )
+                last_error: Exception | None = None
+                pipeline = None
+                loaded_model_name = primary_model_name
+                for candidate in model_candidates:
+                    try:
+                        pipeline = Pipeline.from_pretrained(candidate, token=hf_token)
+                        loaded_model_name = candidate
+                        break
+                    except Exception as e:
+                        last_error = e
+                        logger.warning(
+                            "화자 분리 모델 후보 로드 실패",
+                            model=candidate,
+                            error=str(e),
+                        )
+
+                if pipeline is None:
+                    raise RuntimeError(f"모든 화자 분리 모델 로드 실패: {last_error}")
 
                 self._pipeline = pipeline
+                self._model_name = loaded_model_name
                 self._load_time_seconds = time.time() - start_time
                 self._model_loaded = True
 
@@ -440,6 +467,9 @@ class DiarizationEngine:
         audio_path: str | Path,
         chunk_duration_sec: int = 600,
         overlap_sec: int = 30,
+        num_speakers: int | None = None,
+        min_speakers: int | None = None,
+        max_speakers: int | None = None,
         progress_callback: Any = None,
     ) -> list[SpeakerSegment]:
         """
@@ -449,6 +479,9 @@ class DiarizationEngine:
             audio_path: WAV 파일 경로
             chunk_duration_sec: 청크 길이 (초, 기본 600=10분)
             overlap_sec: 청크 간 오버랩 (초, 기본 30)
+            num_speakers: 알려진 정확한 화자 수
+            min_speakers: 예상 최소 화자 수
+            max_speakers: 예상 최대 화자 수
             progress_callback: 청크 완료 시 호출 (current_chunk, total_chunks)
 
         Returns:
@@ -465,6 +498,9 @@ class DiarizationEngine:
             path=str(audio_path),
             chunk_sec=chunk_duration_sec,
             overlap_sec=overlap_sec,
+            num_speakers=num_speakers,
+            min_speakers=min_speakers,
+            max_speakers=max_speakers,
         )
         start_time = time.time()
 
@@ -497,6 +533,16 @@ class DiarizationEngine:
 
         all_segments: list[SpeakerSegment] = []
         global_speaker_count = 0
+        stable_label_to_global: dict[str, str] = {}
+
+        pipeline_kwargs: dict[str, int] = {}
+        if num_speakers is not None:
+            pipeline_kwargs["num_speakers"] = num_speakers
+        else:
+            if min_speakers is not None:
+                pipeline_kwargs["min_speakers"] = min_speakers
+            if max_speakers is not None:
+                pipeline_kwargs["max_speakers"] = max_speakers
 
         for i, (chunk_start, chunk_end) in enumerate(chunks):
             chunk_waveform = None
@@ -518,7 +564,8 @@ class DiarizationEngine:
 
                 with torch.inference_mode():
                     result = self._pipeline(
-                        {"waveform": chunk_waveform, "sample_rate": sample_rate}
+                        {"waveform": chunk_waveform, "sample_rate": sample_rate},
+                        **pipeline_kwargs,
                     )
 
                 local_segments = self._segments_from_result(result)
@@ -529,6 +576,9 @@ class DiarizationEngine:
                     chunk_offset_sec=chunk_offset_sec,
                     overlap_sec=overlap_sec,
                 )
+                for speaker_id in {seg.speaker_id for seg in local_segments}:
+                    if speaker_id not in local_to_global and speaker_id in stable_label_to_global:
+                        local_to_global[speaker_id] = stable_label_to_global[speaker_id]
 
                 chunk_segments: list[SpeakerSegment] = []
                 for local_seg in local_segments:
@@ -537,6 +587,7 @@ class DiarizationEngine:
                         global_speaker_id = f"SPEAKER_{global_speaker_count:02d}"
                         local_to_global[local_seg.speaker_id] = global_speaker_id
                         global_speaker_count += 1
+                    stable_label_to_global[local_seg.speaker_id] = global_speaker_id
 
                     # BUGFIX: 이전 구현은 start < overlap_sec인 세그먼트를 통째로 버려서
                     # 경계에 걸친 발화의 뒷부분까지 잃었습니다. 오버랩 구간만 잘라내고
@@ -578,7 +629,9 @@ class DiarizationEngine:
     @staticmethod
     def _segments_from_result(result: Any) -> list[SpeakerSegment]:
         """pyannote 출력 객체를 SpeakerSegment 리스트로 정규화"""
-        diarization = getattr(result, "speaker_diarization", result)
+        diarization = getattr(result, "exclusive_speaker_diarization", None)
+        if diarization is None:
+            diarization = getattr(result, "speaker_diarization", result)
 
         segments: list[SpeakerSegment] = []
         for turn, _, speaker in diarization.itertracks(yield_label=True):

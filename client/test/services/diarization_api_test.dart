@@ -17,6 +17,33 @@ void main() {
   });
 
   group('DiarizationApi', () {
+    test('create가 화자 수 힌트를 요청 바디에 포함해야 함', () async {
+      when(() => mockDio.post(any(), data: any(named: 'data'))).thenAnswer(
+        (_) async => Response(
+          data: {'task_id': 'dia-001'},
+          statusCode: 201,
+          requestOptions: RequestOptions(path: ''),
+        ),
+      );
+
+      final result = await diarizationApi.create(
+        'stt-001',
+        minSpeakers: 2,
+        maxSpeakers: 8,
+      );
+
+      expect(result['task_id'], 'dia-001');
+      final captured = verify(
+        () => mockDio.post(captureAny(), data: captureAny(named: 'data')),
+      ).captured;
+      expect(captured[0], '/diarizations');
+      expect(captured[1], {
+        'stt_task_id': 'stt-001',
+        'min_speakers': 2,
+        'max_speakers': 8,
+      });
+    });
+
     // getResult: 화자 분리 결과 조회 성공 테스트
     test('getResult가 화자 분리 결과를 올바르게 반환해야 함', () async {
       // Arrange
@@ -67,7 +94,8 @@ void main() {
       );
 
       // Act & Assert
-      expect(() => diarizationApi.getResult('dia-001'), throwsA(isA<DioException>()));
+      expect(() => diarizationApi.getResult('dia-001'),
+          throwsA(isA<DioException>()));
     });
 
     // getResult: 500 오류 시 예외 전파 테스트
@@ -85,7 +113,8 @@ void main() {
       );
 
       // Act & Assert
-      expect(() => diarizationApi.getResult('dia-001'), throwsA(isA<DioException>()));
+      expect(() => diarizationApi.getResult('dia-001'),
+          throwsA(isA<DioException>()));
     });
   });
 }

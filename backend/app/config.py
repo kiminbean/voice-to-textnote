@@ -64,7 +64,9 @@ class Settings(BaseSettings):
 
     # 화자 분리 설정
     max_concurrent_diarizations: int = 2
-    diarization_model: str = "pyannote/speaker-diarization-3.1"
+    diarization_model: str = "pyannote/speaker-diarization-community-1"
+    diarization_fallback_model: str = "pyannote/speaker-diarization-3.1"
+    default_diarization_max_speakers: int = Field(default=10, ge=1, le=50)
     diarization_result_ttl: int = 604800  # 7일 (초)
     # REQ-PERF-001: 화자 분리 청크 분할 설정
     dia_chunk_duration_minutes: int = 10  # 청크 단위 (분)
