@@ -64,6 +64,8 @@ flutter analyze --no-pub
 
 Backend and Redis were running in tmux:
 
+> 2026-07-02 현재 운영 기준: 이 목록은 당시 검증 기록이다. Mac mini private staging API는 LaunchAgent `com.voicetextnote.backend-api`로 유지하고, Redis/Celery 상태는 `/api/v1/health`에서 확인한다.
+
 ```text
 voice-to-textnote-server
 voice-to-textnote-redis

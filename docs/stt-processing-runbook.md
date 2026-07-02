@@ -11,6 +11,7 @@
 - Local project path: `/Users/ibkim/Projects/voice-to-textnote`
 - Server project path: `/Users/ibkim/Projects/voice-to-textnote`
 - Latest confirmed fix commit: `537a0ac Keep STT progress from stalling on SSE gaps`
+- Mac mini backend API supervisor: LaunchAgent `com.voicetextnote.backend-api`
 
 ## 20%의 의미
 
@@ -36,8 +37,10 @@ currentTaskId: sttTaskId
 서버 자체가 처리 가능한지 먼저 확인한다.
 
 ```bash
+launchctl print gui/$(id -u)/com.voicetextnote.backend-api | rg 'state =|pid =|properties ='
+
 curl -sS -o /tmp/vtt_health.out -w 'health:%{http_code}\n' \
-  http://100.69.69.119:8000/health
+  http://100.69.69.119:8000/api/v1/health
 
 curl -sS -o /tmp/vtt_openapi.out -w 'openapi:%{http_code}\n' \
   http://100.69.69.119:8000/openapi.json
@@ -49,9 +52,18 @@ curl -sS -o /tmp/vtt_guest.out -w 'guest:%{http_code}\n' \
 기대값:
 
 ```text
+state = running
 health:200
 openapi:200
 guest:200
+```
+
+API 프로세스가 꺼져 있거나 재부팅 후 올라오지 않았다면 수동 `tmux` 세션을 만들지 말고
+아래 명령으로 LaunchAgent를 설치/재시작한다.
+
+```bash
+cd /Users/ibkim/Projects/voice-to-textnote
+./scripts/install_backend_api_launch_agent.sh
 ```
 
 ## 실제 원인과 수정
@@ -122,12 +134,13 @@ Installing and launching
 STT가 20%에서 멈추면 순서대로 확인한다.
 
 1. 현재 앱 빌드가 `API_BASE_URL=http://100.69.69.119:8000/api/v1`로 설치됐는지 확인한다.
-2. 서버 `/health`, `/openapi.json`, `/auth/guest`가 200인지 확인한다.
-3. 실제 WAV probe로 STT/DIA task가 completed 되는지 확인한다.
-4. task stream이 guest/user bearer auth로 `200`을 반환하는지 확인한다.
-5. 클라이언트 `SseService`가 인증 헤더를 넣는지 확인한다.
-6. STT/DIA 병렬 대기 중 SSE client가 서로 닫히지 않는지 확인한다.
-7. 서버 재시작 직전 생성된 오래된 task를 앱이 기다리는 상황이면 앱을 완전히 종료하고 새 녹음을 시작한다.
+2. `com.voicetextnote.backend-api` LaunchAgent가 `running`인지 확인한다.
+3. 서버 `/api/v1/health`, `/openapi.json`, `/auth/guest`가 200인지 확인한다.
+4. 실제 WAV probe로 STT/DIA task가 completed 되는지 확인한다.
+5. task stream이 guest/user bearer auth로 `200`을 반환하는지 확인한다.
+6. 클라이언트 `SseService`가 인증 헤더를 넣는지 확인한다.
+7. STT/DIA 병렬 대기 중 SSE client가 서로 닫히지 않는지 확인한다.
+8. 서버 재시작 직전 생성된 오래된 task를 앱이 기다리는 상황이면 앱을 완전히 종료하고 새 녹음을 시작한다.
 
 ## Android staging release 재설치 기준
 

@@ -1,5 +1,10 @@
 # Wiki Log
 
+## 2026-07-02
+
+- Added [[session-2026-07-02-ios-badge-launchagent]] after fixing the iOS badge count reset path, installing the iPhone release build, diagnosing backend connectivity as a stopped API process, and replacing temporary API runtime with LaunchAgent `com.voicetextnote.backend-api`.
+- Updated older backend recovery pages to mark tmux API guidance as historical and point current Mac mini private staging checks to the LaunchAgent plus `/api/v1/health`.
+
 ## 2026-07-01
 
 - Added [[session-2026-07-01-promise-radar-v11]] after adding the Promise Radar fixture/source audit gate, confidence-bucket report, Evidence Lock v2, and Review Queue diff preview.

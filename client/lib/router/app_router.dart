@@ -45,7 +45,20 @@ String? externalDeepLinkRedirect(Uri uri) {
 
   final normalizedId = meetingId?.trim();
   if (normalizedId == null || normalizedId.isEmpty) return '/';
-  return '/result/$normalizedId';
+  final tab = uri.queryParameters['tab']?.trim();
+  final query =
+      tab == null || tab.isEmpty ? '' : '?tab=${Uri.encodeQueryComponent(tab)}';
+  return '/result/$normalizedId$query';
+}
+
+int _resultInitialTabIndex(String? tab) {
+  switch (tab?.trim().toLowerCase().replaceAll('_', '-')) {
+    case 'promise-radar':
+    case 'promise':
+      return 3;
+    default:
+      return 0;
+  }
 }
 
 String? authRedirect(
@@ -143,6 +156,8 @@ GoRouter createRouter(ProviderContainer container, {bool uiTestMode = false}) {
         path: '/result/:id',
         builder: (_, state) => ResultScreen(
           meetingId: state.pathParameters['id']!,
+          initialTabIndex:
+              _resultInitialTabIndex(state.uri.queryParameters['tab']),
         ),
       ),
       // 검색 화면 (SPEC-SEARCH-001)

@@ -207,6 +207,8 @@ DB 영속 저장이 끝나기 전 짧은 구간에 앱이 status를 조회하면
 
 tmux 세션 `voice-to-textnote-server`로 API와 Celery worker를 실행했습니다.
 
+> 2026-07-02 현재 운영 기준: 이 방식은 당시 복구 기록으로만 남긴다. Mac mini private staging API는 `scripts/install_backend_api_launch_agent.sh`가 설치하는 LaunchAgent `com.voicetextnote.backend-api`로 유지한다. Celery worker는 별도 워커 상태를 확인하고 `/api/v1/health`에서 active worker가 보이는지 확인한다.
+
 ```bash
 tmux new-session -d -s voice-to-textnote-server -n api \
   'cd /Users/ibkim/Projects/voice-to-textnote && env STT_BACKEND=faster_whisper WHISPER_MODEL=mlx-community/whisper-small-mlx HUGGINGFACE_TOKEN= .venv/bin/python -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 2>&1 | tee -a logs/backend.log'

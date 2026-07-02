@@ -20,7 +20,7 @@ Server-side actions completed:
 
 - Pulled GitHub changes into `/Users/ibkim/Projects/voice-to-textnote`.
 - Copied local `.env` to the server project.
-- Restarted backend tmux services.
+- Restarted backend tmux services at that time. 2026-07-02 update: Mac mini private staging API is now owned by LaunchAgent `com.voicetextnote.backend-api`; do not start a duplicate API tmux session for normal device testing.
 - Verified server health, OpenAPI, guest auth, and real STT/DIA completion.
 
 Do not diagnose iPhone app failures until these checks pass:

@@ -50,6 +50,7 @@ import UserNotifications
     setupDeepLinkMethodChannel()
     setupAudioSessionObservers()
     UNUserNotificationCenter.current().delegate = self
+    clearApplicationBadge()
     if let remoteNotification = launchOptions?[.remoteNotification] as? [AnyHashable: Any] {
       queueNotificationDeepLink(from: remoteNotification)
     }
@@ -73,6 +74,11 @@ import UserNotifications
       application,
       didRegisterForRemoteNotificationsWithDeviceToken: deviceToken
     )
+  }
+
+  override func applicationDidBecomeActive(_ application: UIApplication) {
+    super.applicationDidBecomeActive(application)
+    clearApplicationBadge()
   }
 
   override func application(
@@ -183,6 +189,9 @@ import UserNotifications
       } else if call.method == "activateNotificationDelegate" {
         UNUserNotificationCenter.current().delegate = self
         result(true)
+      } else if call.method == "clearAppBadge" {
+        self.clearApplicationBadge()
+        result(true)
       } else {
         result(FlutterMethodNotImplemented)
       }
@@ -216,12 +225,25 @@ import UserNotifications
     didReceive response: UNNotificationResponse,
     withCompletionHandler completionHandler: @escaping () -> Void
   ) {
+    clearApplicationBadge()
     queueNotificationDeepLink(from: response.notification.request.content.userInfo)
     super.userNotificationCenter(
       center,
       didReceive: response,
       withCompletionHandler: completionHandler
     )
+  }
+
+  private func clearApplicationBadge() {
+    if #available(iOS 16.0, *) {
+      UNUserNotificationCenter.current().setBadgeCount(0) { error in
+        if let error = error {
+          NSLog("앱 배지 초기화 실패: %@", error.localizedDescription)
+        }
+      }
+    } else {
+      UIApplication.shared.applicationIconBadgeNumber = 0
+    }
   }
 
   private func sharedImportPayload(from url: URL) -> [String: String]? {
@@ -402,7 +424,8 @@ import UserNotifications
           !id.isEmpty else {
       return nil
     }
-    return "/result/\(id)"
+    let query = url.query.flatMap { $0.isEmpty ? nil : "?\($0)" } ?? ""
+    return "/result/\(id)\(query)"
   }
 
   private func copySharedFile(_ url: URL) -> [String: String]? {

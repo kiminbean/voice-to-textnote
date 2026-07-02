@@ -209,6 +209,7 @@ Health: http://100.69.69.119:8000/api/v1/health
 - 현재 private staging 실기기 검증은 반드시 `--dart-define=ENV=staging`, `--dart-define=API_BASE_URL=http://100.69.69.119:8000/api/v1`, `--dart-define=API_KEY="$API_KEY"`를 함께 지정해 빌드한다.
 - 기본 production placeholder release APK를 실기기에 설치하면 앱이 blank screen으로 보일 수 있다. 이 경우 코드를 고치기 전에 staging dart-define이 빠진 빌드인지 먼저 확인한다.
 - iOS ATS와 Android release/profile network security의 HTTP 예외는 `100.69.69.119`에만 좁게 허용한다. 새 HTTP staging host를 쓰려면 플랫폼 보안 설정과 테스트를 함께 갱신한다.
+- Mac mini private staging 서버는 `tmux` 임시 프로세스가 아니라 macOS LaunchAgent `com.voicetextnote.backend-api`로 유지한다. `./scripts/install_backend_api_launch_agent.sh`를 실행하면 로그인 시 자동 시작, 프로세스 종료 시 재시작, `logs/backend-api.launchd.*.log` 기록이 적용된다.
 
 2026-07-02 release gate 재점검:
 

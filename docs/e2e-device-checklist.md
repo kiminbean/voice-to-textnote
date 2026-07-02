@@ -6,7 +6,7 @@
 
 ## 사전 준비
 
-- [ ] 백엔드 서버 실행 (FastAPI + Celery + Redis)
+- [ ] 백엔드 서버 실행 (FastAPI + Celery + Redis). Mac mini private staging은 `./scripts/install_backend_api_launch_agent.sh`로 LaunchAgent `com.voicetextnote.backend-api`를 설치해 유지한다.
 - [ ] 클라이언트 디바이스 등록 (로그인 → FCM 토큰 등록)
 - [ ] Firebase 프로젝트 설정 완료 (T-019)
 - [ ] 개발 백엔드 PushService 실제 모드 확인: `mock_mode False`
@@ -47,6 +47,8 @@
 - [x] Android 연결 확인: `adb devices -l`에서 `76aadc20`이 `device`, Redmi Note 9 Pro.
 - [x] iOS production entitlement 증거 확인: `docs/ios-release-entitlements.plist`의 `aps-environment=production`, `get-task-allow=false`, Team ID `4NJ9JSQFW9`.
 - [x] Private staging backend health 확인: `http://100.69.69.119:8000/api/v1/health` -> 200 healthy, Redis healthy, Celery active worker 1.
+- [x] Mac mini private staging API 상시 실행 설정: LaunchAgent `com.voicetextnote.backend-api`가 `RunAtLoad + KeepAlive`로 등록됨. API 프로세스 강제 종료 후 새 PID로 자동 재시작했고 `/api/v1/health`가 다시 200을 반환했다.
+- [x] iPhone 앱 아이콘 배지 `1` 고정 현상 수정/확인: 앱 실행, 앱 활성화, 알림 탭 처리 시 iOS badge count를 0으로 초기화한다. 사용자가 홈 화면에서 숫자 `1`이 사라졌음을 확인했다.
 - [x] Promise Radar staging E2E summary 재생성: `docs/promise-radar-e2e-evidence-2026-07-02-v20-summary.json` -> `overall_pass=true`.
 - [ ] Production backend `https://api.voicetextnote.com/api/v1/health`는 DNS 미해석으로 실패했다. Store production build/install 전 DNS/TLS/reverse proxy/backend health를 먼저 통과시킨다.
 - [ ] Strict production release readiness는 최신 git revision과 최신 Android/iOS artifact hash에 맞는 21개 scenario 재관측 전까지 실패해야 정상이다. 기존 `docs/release-e2e-evidence.json`의 revision/hash만 수동 보정하지 않는다.
@@ -196,7 +198,7 @@ python3 client/scripts/create_release_e2e_evidence.py \
 | 4.1 | STT 처리 완료 | "전사 완료" 푸시 수신 | ☐ |
 | 4.2 | 요약 처리 완료 | "요약 완료" 푸시 수신 | ☐ |
 | 4.3 | 처리 실패 | 에러 푸시 수신 | ☐ |
-| 4.4 | 앱 백그라운드 시 푸시 | 알림 배지 표시 | ☐ |
+| 4.4 | 앱 백그라운드 시 푸시 | 알림 배지 표시 후 앱 실행/복귀 시 badge count 0으로 초기화 | ☐ |
 | 4.5 | 푸시 탭 → 결과 화면 | 딥링크로 이동 | ☐ |
 | 4.6 | 콜드 스타트 시 푸시 | 앱 실행 후 결과 화면 | ☐ |
 

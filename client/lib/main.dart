@@ -1,4 +1,6 @@
 // 앱 진입점
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -74,6 +76,7 @@ class _VoiceToTextNoteAppState extends State<VoiceToTextNoteApp>
     );
     _initializeAuthAndNotifications();
     _container.read(themeModeProvider.notifier).load();
+    _clearAppBadge();
 
     // SPEC-MOBILE-004 T-005: 딥링크 핸들러 연동
     DeepLinkService.instance.handleBackgroundResume();
@@ -140,6 +143,7 @@ class _VoiceToTextNoteAppState extends State<VoiceToTextNoteApp>
     // SPEC-MOBILE-005 REQ-005: 백그라운드 진입 시 녹음 상태 보존
     switch (state) {
       case AppLifecycleState.resumed:
+        _clearAppBadge();
         _container.read(notificationProvider.notifier).checkInitialMessage();
         _checkLatestSharedImport();
         // T-015: 설정 앱에서 권한 변경 후 복귀 시 UI 갱신 트리거
@@ -162,6 +166,10 @@ class _VoiceToTextNoteAppState extends State<VoiceToTextNoteApp>
         debugPrint('AppLifecycleState.hidden — 녹음 유지');
         break;
     }
+  }
+
+  void _clearAppBadge() {
+    unawaited(_container.read(pushNotificationServiceProvider).clearAppBadge());
   }
 
   Future<void> _checkLatestSharedImport() async {

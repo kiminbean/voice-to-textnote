@@ -786,13 +786,28 @@ celery -A backend.workers.celery_app worker --loglevel=info --concurrency=3
 # Redis 시작
 brew services start redis
 
-# 백엔드 서버 시작
+# 백엔드 서버 시작 (수동 foreground)
 MODEL_PRELOAD_ENABLED=false python -m uvicorn backend.app.main:app \
   --host 0.0.0.0 --port 8000 --loop asyncio --http h11
 
 # Celery 워커 시작 (별도 터미널, 실제 STT/화자분리 모델은 워커가 작업 시 로드)
 celery -A backend.workers.celery_app:celery_app worker --loglevel=info --concurrency=3
 ```
+
+Mac mini에서 iPhone/Android private staging 앱을 계속 테스트할 때는 백엔드 API를
+수동 터미널이나 `tmux`가 아니라 macOS LaunchAgent로 유지한다. 이 설정은 로그인 시
+자동 시작하고 프로세스가 종료되면 다시 시작한다.
+
+```bash
+./scripts/install_backend_api_launch_agent.sh
+launchctl print gui/$(id -u)/com.voicetextnote.backend-api | rg 'state =|pid =|properties ='
+curl http://100.69.69.119:8000/api/v1/health
+```
+
+LaunchAgent는 `.env`를 읽고 기본값으로 `MODEL_PRELOAD_ENABLED=false`,
+`STT_BACKEND=faster_whisper`, `BACKEND_API_HOST=0.0.0.0`,
+`BACKEND_API_PORT=8000`을 사용한다. 로그는 `logs/backend-api.launchd.out.log`와
+`logs/backend-api.launchd.err.log`에 남는다.
 
 ### 프로덕션 배포 (Ubuntu + systemd)
 

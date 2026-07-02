@@ -120,6 +120,20 @@ void main() {
       );
       expect(infoPlist, contains('public.image'));
     });
+
+    test('iOS 앱 배지는 앱 활성화와 알림 탭 처리 시 초기화해야 함', () {
+      expect(
+        appDelegate,
+        contains(
+          'private let deepLinkChannelName = "com.voicetextnote.app/deep_link"',
+        ),
+      );
+      expect(appDelegate, contains('call.method == "clearAppBadge"'));
+      expect(appDelegate, contains('private func clearApplicationBadge()'));
+      expect(appDelegate, contains('setBadgeCount(0)'));
+      expect(appDelegate, contains('applicationIconBadgeNumber = 0'));
+      expect(appDelegate, contains('override func applicationDidBecomeActive'));
+    });
   });
 
   group('Owll benchmark: Android share-sheet import contract', () {

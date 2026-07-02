@@ -19,6 +19,9 @@
 - Last verified backend MVP gap commit: `12d077b`
 - Last verified iOS release install device: `Inbean의 iPhone`, iOS `26.5.1`, UDID `00008150-000239020C08401C`
 - Last verified iOS staging release install method: `flutter build ios --release --dart-define=ENV=staging --dart-define=API_BASE_URL=http://100.69.69.119:8000/api/v1`, then `xcrun devicectl device install app` from `build/ios/iphoneos/Runner.app`
+- Mac mini private staging backend supervisor: macOS LaunchAgent `com.voicetextnote.backend-api`
+- LaunchAgent plist: `/Users/ibkim/Library/LaunchAgents/com.voicetextnote.backend-api.plist`
+- LaunchAgent installer: `./scripts/install_backend_api_launch_agent.sh`
 
 ## Firebase 파일 위치
 
@@ -220,18 +223,28 @@ iOS 앱이 포그라운드 상태이면 시스템 배너가 보이지 않을 수
 
 Google 로그인 테스트 전에 Redis와 백엔드가 떠 있어야 한다.
 
-```bash
-tmux new-session -d -s voice-to-textnote-redis \
-  '/opt/homebrew/bin/redis-server --port 6379 --save "" --appendonly no'
+2026-07-02부터 Mac mini private staging API는 `tmux` 임시 세션이 아니라
+macOS LaunchAgent `com.voicetextnote.backend-api`로 유지한다. 이 서비스는 사용자
+로그인 시 자동 시작되고 프로세스가 종료되면 `KeepAlive`로 재시작된다.
 
-tmux new-session -d -s voice-to-textnote-server \
-  -c /Users/ibkim/Projects/voice-to-textnote \
-  'MODEL_PRELOAD_ENABLED=false STT_BACKEND=faster_whisper python -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --loop asyncio --http h11 2>&1 | tee -a logs/backend.log'
+```bash
+cd /Users/ibkim/Projects/voice-to-textnote
+./scripts/install_backend_api_launch_agent.sh
+
+launchctl print gui/$(id -u)/com.voicetextnote.backend-api | rg 'state =|pid =|properties ='
+curl http://100.69.69.119:8000/api/v1/health
 ```
 
 `MODEL_PRELOAD_ENABLED=false`는 로컬/모바일 검증 중 FastAPI 라우터 기동을 STT/pyannote/tone 모델 웜업과 분리하기 위한 설정이다. 실제 STT/화자분리 처리는 Celery 워커가 작업 시 모델을 로드하므로, 로그인/기존 회의 조회/Promise Radar API 검증에서는 서버 라우터가 먼저 안정적으로 떠야 한다.
 
 macOS/Python 3.14 로컬 검증에서는 `--loop asyncio --http h11`을 함께 사용한다. `uvicorn[standard]`의 자동 이벤트 루프 선택보다 명시적인 asyncio/h11 경로가 device E2E 검증용 백엔드에서 더 안정적으로 재현된다.
+
+로그 위치:
+
+```text
+logs/backend-api.launchd.out.log
+logs/backend-api.launchd.err.log
+```
 
 검증:
 
@@ -261,6 +274,8 @@ openapi:200
 | `/openapi.json` 500 | `pydantic` 파일/메타데이터 버전 불일치 | 서버 Python에서 `pydantic[email]>=2.9` 재설치 |
 | 앱에서 로컬 API 접근 실패 가능 | iPhone의 `localhost`는 Mac이 아니며, iOS Local Network/ATS 설정 필요 | `API_BASE_URL`을 Mac LAN/Tailscale IP로 지정하고 `Info.plist`에 local network/ATS 예외 추가 |
 | iPhone release에서 Google 계정 선택 후 "서버에 연결할 수 없습니다" | release 앱이 unresolved production host `https://api.voicetextnote.com/api/v1`로 빌드됨. 실제 서버는 `http://100.69.69.119:8000/api/v1` | `flutter build ios --release --dart-define=ENV=staging --dart-define=API_BASE_URL=http://100.69.69.119:8000/api/v1`으로 재빌드하고 `build/ios/iphoneos/Runner.app` 설치 |
+| 앱 실행 직후 "서버에 연결할 수 없습니다" | private staging 앱은 `100.69.69.119:8000`을 호출하는데 백엔드 API 프로세스가 꺼져 있음 | `./scripts/install_backend_api_launch_agent.sh`로 LaunchAgent를 설치/재시작하고 `/api/v1/health`가 200인지 확인 |
+| iPhone 홈 화면 앱 아이콘에 숫자 `1`이 계속 남음 | iOS 알림 badge count를 앱 실행/복귀/알림 탭 처리 시 초기화하지 않음 | `AppDelegate.clearApplicationBadge()`와 Flutter `PushNotificationService.clearAppBadge()` 경로를 유지. 앱 활성화 시 badge는 0으로 내려가야 함 |
 | iOS Release XCUITest가 `The application could not be launched because the Developer App Certificate is not trusted`로 실패 | 앱 uninstall/reinstall 뒤 iPhone이 `Apple Development: Created via API (5WDG3L7L32)` 개발자 앱 인증서를 신뢰하지 않음. `xcodebuild build-for-testing`은 성공하고 `xcodebuild test` launch만 실패하면 코드 문제가 아니라 기기 신뢰 설정 문제다. | iPhone에서 `설정 > 일반 > VPN 및 기기 관리 > Apple Development: Created via API (5WDG3L7L32) > 신뢰`를 완료한 뒤 같은 Release XCUITest를 다시 실행 |
 
 ## 2026-06-30 iPhone release Google login incident
@@ -419,7 +434,7 @@ flutter analyze --no-pub
 Google 로그인이 실패하면 순서대로 본다.
 
 1. 앱이 debug 빌드인지 profile 빌드인지 확인한다.
-2. `voice-to-textnote-server`, `voice-to-textnote-redis` tmux 세션이 살아 있는지 확인한다.
+2. Mac mini private staging이면 `com.voicetextnote.backend-api` LaunchAgent가 `running`인지 확인하고, `curl http://100.69.69.119:8000/api/v1/health`에서 API/Redis/Celery가 healthy인지 확인한다.
 3. `curl`로 `guest:200`, `openapi:200`을 확인한다.
 4. 서버 로그에서 `/api/v1/auth/google` 401 사유를 확인한다.
 5. `Invalid audience`면 `.env GOOGLE_CLIENT_ID` 목록과 token `aud`를 비교한다.

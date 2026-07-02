@@ -114,6 +114,16 @@ class PushNotificationService {
     }
   }
 
+  Future<void> clearAppBadge() async {
+    if (!Platform.isIOS && !Platform.isMacOS) return;
+
+    try {
+      await _deepLinkChannel.invokeMethod<bool>('clearAppBadge');
+    } catch (e) {
+      debugPrint('iOS 앱 배지 초기화 실패: $e');
+    }
+  }
+
   /// 토픽 구독 (옵션)
   Future<void> _subscribeToTopic() async {
     try {

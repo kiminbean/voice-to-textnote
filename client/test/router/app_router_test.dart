@@ -30,6 +30,15 @@ void main() {
       );
     });
 
+    test('preserves result tab query for direct tab deep links', () {
+      expect(
+        externalDeepLinkRedirect(
+          Uri.parse('voicetextnote://result/meeting-123?tab=promise-radar'),
+        ),
+        '/result/meeting-123?tab=promise-radar',
+      );
+    });
+
     test('ignores normal app routes', () {
       expect(externalDeepLinkRedirect(Uri.parse('/result/local')), isNull);
     });

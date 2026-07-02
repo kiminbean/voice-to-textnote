@@ -185,11 +185,13 @@ speaker embedding inference loaded: Inference
 6. Restart both long-lived processes:
 
 ```bash
-tmux send-keys -t voice-to-textnote-runtime:backend C-c
-tmux send-keys -t voice-to-textnote-runtime:celery C-c
+./scripts/install_backend_api_launch_agent.sh
+tmux send-keys -t voice-to-textnote-celery:0 C-c
+tmux send-keys -t voice-to-textnote-celery:0 \
+  'cd /Users/ibkim/Projects/voice-to-textnote && STT_BACKEND=faster_whisper .venv/bin/celery -A backend.workers.celery_app worker --loglevel=info --pool=solo --concurrency=1 2>&1 | tee -a logs/celery.log' C-m
 ```
 
-Then start the backend API and Celery worker again. Restarting only the API is insufficient because voiceprint extraction runs inside Celery.
+Restarting only the API is insufficient because voiceprint extraction runs inside Celery. For Mac mini private staging, the API is owned by LaunchAgent `com.voicetextnote.backend-api`; do not start a second temporary API server in tmux.
 
 7. Confirm health:
 

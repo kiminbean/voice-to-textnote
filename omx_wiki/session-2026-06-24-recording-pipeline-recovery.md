@@ -8,10 +8,8 @@ Fixed a chain of production-like local issues around authenticated meeting histo
 
 - Current local API server address: `http://100.69.69.119:8000/api/v1`
 - `100.69.69.119` is the current Mac's Tailscale IP for this project, not a separate SSH host.
-- Runtime tmux session: `voice-to-textnote-server`
-- Windows:
-  - `api`: Uvicorn on `0.0.0.0:8000`
-  - `worker`: Celery worker with concurrency 3
+- 2026-06-24 historical runtime: tmux session `voice-to-textnote-server`.
+- 2026-07-02 current Mac mini runtime: API is supervised by LaunchAgent `com.voicetextnote.backend-api`; Celery remains a separate worker and must be visible in `/api/v1/health`.
 
 ## Backend Fixes
 

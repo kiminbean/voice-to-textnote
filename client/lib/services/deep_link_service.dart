@@ -155,32 +155,39 @@ class DeepLinkService {
   /// URL Scheme을 내부 경로로 변환
   /// voicetextnote://summary/abc123 → /result/abc123
   String? _convertSchemeToPath(String url) {
-    if (!url.startsWith(_scheme)) return null;
+    final uri = Uri.tryParse(url);
+    if (uri == null || uri.scheme != 'voicetextnote') return null;
 
-    final path = url.substring(_scheme.length);
+    final host = uri.host.toLowerCase();
+    final segments = uri.pathSegments;
+    String? meetingId;
 
-    // summary/{id} → /result/{id}
-    if (path.startsWith('summary/')) {
-      final id = path.substring('summary/'.length);
-      if (id.isNotEmpty) {
-        return _buildPath(meetingId: id);
-      }
+    if (host == 'summary' || host == 'result') {
+      meetingId = segments.isNotEmpty ? segments.first : null;
+    } else if (segments.length >= 2 &&
+        (segments[0] == 'summary' || segments[0] == 'result')) {
+      meetingId = segments[1];
     }
 
-    // result/{id} → /result/{id}
-    if (path.startsWith('result/')) {
-      final id = path.substring('result/'.length);
-      if (id.isNotEmpty) {
-        return _buildPath(meetingId: id);
-      }
-    }
-
-    return null;
+    final normalizedId = meetingId?.trim();
+    if (normalizedId == null || normalizedId.isEmpty) return null;
+    return _buildPath(
+      meetingId: normalizedId,
+      queryParameters: uri.queryParameters,
+    );
   }
 
   /// 내부 경로 생성
-  String _buildPath({required String meetingId, String? type}) {
-    return '${DeepLinkRoutes.summary}/$meetingId';
+  String _buildPath({
+    required String meetingId,
+    String? type,
+    Map<String, String>? queryParameters,
+  }) {
+    final tab = queryParameters?['tab']?.trim();
+    final query = tab == null || tab.isEmpty
+        ? ''
+        : '?tab=${Uri.encodeQueryComponent(tab)}';
+    return '${DeepLinkRoutes.summary}/$meetingId$query';
   }
 
   /// 딥링크 URL이 유효한지 검증

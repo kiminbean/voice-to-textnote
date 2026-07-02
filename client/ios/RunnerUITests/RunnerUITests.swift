@@ -17,6 +17,13 @@ final class RunnerUITests: XCTestCase {
         "Allow While Using App",
         "While Using the App"
     ]
+    private let promiseRadarBodyEvidenceLabels = [
+        "분석한 회의",
+        "약속 원장",
+        "담당자 책임 점수",
+        "이번 회의의 새 약속",
+        "약속 레이더를 불러올 수 없습니다"
+    ]
 
     override func setUpWithError() throws {
         continueAfterFailure = false
@@ -407,11 +414,11 @@ final class RunnerUITests: XCTestCase {
     }
 
     func testIosPromiseRadarEvidence() throws {
-        try openResultScreen()
+        try openResultScreen(initialTab: "promise-radar")
         try openPromiseRadarTab()
 
         let radar = waitForAnyVisibleElement(
-            labels: ["약속 레이더", "약속 원장", "담당자 책임 점수", "이번 회의의 새 약속"],
+            labels: promiseRadarBodyEvidenceLabels,
             timeout: 30
         )
         attachUIHierarchy("promise_radar_ios_loaded_hierarchy")
@@ -493,9 +500,14 @@ final class RunnerUITests: XCTestCase {
     }
 
     private func openResultScreen(
-        meetingId: String = "6ab36c5a-d1e7-460f-8393-34e7f25dbce9"
+        meetingId: String = "6ab36c5a-d1e7-460f-8393-34e7f25dbce9",
+        initialTab: String? = nil
     ) throws {
-        guard let url = URL(string: "voicetextnote://result/\(meetingId)") else {
+        var components = URLComponents(string: "voicetextnote://result/\(meetingId)")
+        if let initialTab {
+            components?.queryItems = [URLQueryItem(name: "tab", value: initialTab)]
+        }
+        guard let url = components?.url else {
             XCTFail("Invalid result deeplink URL.")
             return
         }
@@ -567,18 +579,56 @@ final class RunnerUITests: XCTestCase {
     }
 
     private func openPromiseRadarTab() throws {
-        if tapFirstVisible(labels: ["약속 레이더"]) {
-            return
-        }
-        for _ in 0..<8 {
-            app.swipeLeft()
-            if tapFirstVisible(labels: ["약속 레이더"]) {
+        for _ in 0..<3 {
+            if tapResultTab(label: "약속 레이더"),
+               waitForAnyVisibleElement(labels: promiseRadarBodyEvidenceLabels, timeout: 8) != nil {
                 return
             }
+        }
+
+        for _ in 0..<4 {
+            app.swipeLeft()
+            if waitForAnyVisibleElement(labels: promiseRadarBodyEvidenceLabels, timeout: 4) != nil {
+                return
+            }
+        }
+
+        if waitForAnyVisibleElement(labels: promiseRadarBodyEvidenceLabels, timeout: 2) != nil {
+            return
         }
         attachUIHierarchy("promise_radar_tab_missing_hierarchy")
         attachScreenshot("promise_radar_tab_missing")
         XCTFail("Expected to find the Promise Radar tab.")
+    }
+
+    @discardableResult
+    private func tapResultTab(label: String) -> Bool {
+        let predicate = NSPredicate(format: "label CONTAINS[c] %@", label)
+        let elements = app.descendants(matching: .any).matching(predicate)
+        for index in 0..<elements.count {
+            let element = elements.element(boundBy: index)
+            guard element.exists && element.isHittable else {
+                continue
+            }
+
+            let frame = element.frame
+            guard !frame.isEmpty,
+                  frame.minY >= 100,
+                  frame.maxY <= 190,
+                  app.frame.width > 0,
+                  app.frame.height > 0 else {
+                continue
+            }
+
+            app.coordinate(
+                withNormalizedOffset: CGVector(
+                    dx: frame.midX / app.frame.width,
+                    dy: frame.midY / app.frame.height
+                )
+            ).tap()
+            return true
+        }
+        return false
     }
 
     private func openRecordingScreen(discardStaleRecovery: Bool = true) throws {

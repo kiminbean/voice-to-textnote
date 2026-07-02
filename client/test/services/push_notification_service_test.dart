@@ -1,15 +1,26 @@
 // PushNotificationService 테스트
 // Firebase는 플랫폼 채널 기반이므로 mock 주입이 불가.
 // 테스트 가능한 범위: FcmTokenResult, extractMeetingId, 서비스 생성
+import 'dart:io';
+
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:voice_to_textnote/services/push_notification_service.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   group('PushNotificationService', () {
     late PushNotificationService service;
+    const deepLinkChannel = MethodChannel('com.voicetextnote.app/deep_link');
 
     setUp(() {
       service = PushNotificationService();
+    });
+
+    tearDown(() {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(deepLinkChannel, null);
     });
 
     test('서비스 인스턴스 생성이 가능해야 함', () {
@@ -50,6 +61,23 @@ void main() {
 
     test('getFCMToken 메서드가 존재해야 함', () {
       expect(service.getFCMToken, isA<Function>());
+    });
+
+    test('clearAppBadge는 iOS/macOS에서 네이티브 배지 초기화를 호출해야 함', () async {
+      final calls = <String>[];
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(deepLinkChannel, (call) async {
+        calls.add(call.method);
+        return true;
+      });
+
+      await service.clearAppBadge();
+
+      if (Platform.isIOS || Platform.isMacOS) {
+        expect(calls, equals(['clearAppBadge']));
+      } else {
+        expect(calls, isEmpty);
+      }
     });
 
     test('registerFCMBackgroundHandler 함수가 존재해야 함', () {

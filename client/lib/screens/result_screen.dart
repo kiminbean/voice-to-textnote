@@ -59,8 +59,13 @@ const _googleTasksScope = 'https://www.googleapis.com/auth/tasks';
 // ConsumerStatefulWidget으로 변경: _isExporting 상태 관리 필요
 class ResultScreen extends ConsumerStatefulWidget {
   final String meetingId;
+  final int initialTabIndex;
 
-  const ResultScreen({super.key, required this.meetingId});
+  const ResultScreen({
+    super.key,
+    required this.meetingId,
+    this.initialTabIndex = 0,
+  });
 
   @override
   ConsumerState<ResultScreen> createState() => _ResultScreenState();
@@ -283,9 +288,13 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     final sharedTeamsAsync = meeting?.sharedTeamIds.isNotEmpty == true
         ? ref.watch(teamListProvider)
         : const AsyncData(<Team>[]);
+    final initialTabIndex = widget.initialTabIndex < 0
+        ? 0
+        : (widget.initialTabIndex > 11 ? 11 : widget.initialTabIndex);
 
     return DefaultTabController(
       length: 12,
+      initialIndex: initialTabIndex,
       child: Scaffold(
         appBar: AppBar(
           leading: IconButton(
