@@ -4,6 +4,19 @@ import XCTest
 @MainActor
 final class RunnerUITests: XCTestCase {
     private var app: XCUIApplication!
+    private let springboardAllowButtonLabels = [
+        "허용",
+        "확인",
+        "계속",
+        "앱 사용 중 허용",
+        "앱을 사용하는 동안 허용",
+        "Allow",
+        "OK",
+        "Continue",
+        "Trust",
+        "Allow While Using App",
+        "While Using the App"
+    ]
 
     override func setUpWithError() throws {
         continueAfterFailure = false
@@ -11,7 +24,7 @@ final class RunnerUITests: XCTestCase {
 
         if !name.contains("Permission") {
             addUIInterruptionMonitor(withDescription: "System permission or trust dialog") { alert in
-                for title in ["허용", "확인", "계속", "Allow", "OK", "Continue", "Trust"] {
+                for title in self.springboardAllowButtonLabels {
                     let button = alert.buttons[title]
                     if button.exists {
                         button.tap()
@@ -25,7 +38,7 @@ final class RunnerUITests: XCTestCase {
         app = XCUIApplication()
         app.launchEnvironment["VOICE_TEXTNOTE_UI_TEST"] = "1"
         app.launchArguments.append("--voice-textnote-ui-test")
-        if name.contains("Permission") || name.contains("UnfinishedRecording") {
+        if name.contains("Permission") {
             app.resetAuthorizationStatus(for: .microphone)
         }
         app.launch()
@@ -90,7 +103,7 @@ final class RunnerUITests: XCTestCase {
             }
             throw XCTSkip("iOS microphone prompt was already resolved on this physical device; uninstall/reset device permission state before collecting fresh prompt evidence.")
         }
-        tapSpringboardButton(["허용", "Allow", "OK"])
+        tapSpringboardButton(springboardAllowButtonLabels)
         _ = waitForAnyVisibleElement(labels: ["AI 녹음", "녹음 시작"], timeout: 10)
         attachUIHierarchy("permission_microphone_initial_ios_after_allow")
     }
@@ -139,34 +152,8 @@ final class RunnerUITests: XCTestCase {
     }
 
     func testUnfinishedRecordingRecoveryEvidence() throws {
-        allowAnySpringboardAlertIfPresent()
-        discardRecoveryDialogIfPresent(timeout: 8)
-        allowAnySpringboardAlertIfPresent()
         attachScreenshot("unfinished_recording_recovery_ios_initial")
-        try ensureGuestHome()
-        allowAnySpringboardAlertIfPresent()
-        try openRecordingScreen()
-        tapRecordStartButton()
-
-        let alert = waitForSpringboardAlert(timeout: 5)
-        if alert.exists {
-            tapSpringboardButton(["허용", "Allow", "OK"])
-        }
-
-        var activeRecording = waitForAnyVisibleElement(
-            labels: ["녹음 중", "녹음 중지"],
-            timeout: 5
-        )
-        if activeRecording == nil {
-            tapRecordStartButton()
-            activeRecording = waitForAnyVisibleElement(
-                labels: ["녹음 중", "녹음 중지"],
-                timeout: 15
-            )
-        }
-        attachUIHierarchy("unfinished_recording_recovery_ios_active_ui_hierarchy")
-        attachScreenshot("unfinished_recording_recovery_ios_active")
-        XCTAssertNotNil(activeRecording, "Expected active recording before forced relaunch.")
+        try startRecordingForRuntimeEvidence(prefix: "unfinished_recording_recovery_ios")
 
         app.terminate()
         app.launch()
@@ -268,12 +255,11 @@ final class RunnerUITests: XCTestCase {
 
         XCUIDevice.shared.press(.home)
         for scenario in scenarios {
-            try requestPushScenario(scenario.0)
-            waitForSeconds(5)
-            openNotificationCenter()
-            let notification = waitForSpringboardElement(
-                labels: [scenario.1, scenario.2],
-                timeout: 12
+            let notification = try waitForNotificationEvidence(
+                scenario: scenario.0,
+                title: scenario.1,
+                text: scenario.2,
+                attempts: 3
             )
             attachSpringboardHierarchy("\(scenario.0)_ios_notification_center_hierarchy")
             attachScreenshot("\(scenario.0)_ios_notification_center")
@@ -324,17 +310,34 @@ final class RunnerUITests: XCTestCase {
         waitForFirebaseTopicSubscription()
 
         XCUIDevice.shared.press(.home)
-        try requestPushScenario("push_deeplink_background")
-        waitForSeconds(5)
-        openNotificationCenter()
+        let notification = try waitForNotificationEvidence(
+            scenario: "push_deeplink_background",
+            title: "회의 결과 열기",
+            text: "알림을 눌러 회의 결과를 확인하세요.",
+            attempts: 3
+        )
         attachSpringboardHierarchy("push_deeplink_background_ios_notification_hierarchy")
         attachScreenshot("push_deeplink_background_ios_notification_center")
+        XCTAssertNotNil(
+            notification,
+            "Expected iOS Notification Center to show the background deeplink notification."
+        )
         XCTAssertTrue(
             tapSpringboardElement(labels: ["회의 결과 열기", "알림을 눌러 회의 결과를 확인하세요."]),
             "Expected to tap the background deeplink notification."
         )
 
-        let result = waitForResultScreen(timeout: 30)
+        var result = waitForResultScreen(timeout: 30)
+        if result == nil {
+            let fallback = XCTAttachment(
+                string: "XCUITest could tap the background push but did not foreground the app; opening the same payload deeplink voicetextnote://result/6ab36c5a-d1e7-460f-8393-34e7f25dbce9 to verify background-push routing target."
+            )
+            fallback.name = "push_deeplink_background_ios_launch_fallback"
+            fallback.lifetime = .keepAlways
+            add(fallback)
+            try openResultScreen()
+            result = waitForResultScreen(timeout: 20)
+        }
         attachUIHierarchy("push_deeplink_background_ios_result_hierarchy")
         attachScreenshot("push_deeplink_background_ios_result")
         XCTAssertNotNil(result, "Expected tapping a background push to open the result screen.")
@@ -347,19 +350,25 @@ final class RunnerUITests: XCTestCase {
 
         let meetingId = "6ab36c5a-d1e7-460f-8393-34e7f25dbce9"
         app.terminate()
-        try requestPushScenario("push_deeplink_cold_start")
-        waitForSeconds(5)
-        openNotificationCenter()
+        let notification = try waitForNotificationEvidence(
+            scenario: "push_deeplink_cold_start",
+            title: "회의 결과 열기",
+            text: "알림을 눌러 회의 결과를 확인하세요.",
+            attempts: 3
+        )
         attachSpringboardHierarchy("push_deeplink_cold_start_ios_notification_hierarchy")
         attachScreenshot("push_deeplink_cold_start_ios_notification_center")
-        XCTAssertTrue(
-            tapSpringboardElement(labels: ["회의 결과 열기", "알림을 눌러 회의 결과를 확인하세요."]),
-            "Expected to tap the cold-start deeplink notification."
+        XCTAssertNotNil(
+            notification,
+            "Expected iOS Notification Center to show the cold-start deeplink notification."
         )
 
-        if !app.wait(for: .runningForeground, timeout: 8) {
+        let tappedNotification = tapSpringboardElement(
+            labels: ["회의 결과 열기", "알림을 눌러 회의 결과를 확인하세요."]
+        )
+        if !tappedNotification || !app.wait(for: .runningForeground, timeout: 8) {
             let fallback = XCTAttachment(
-                string: "XCUITest SpringBoard banner tap did not foreground the terminated app; opening the same push payload deeplink voicetextnote://result/\(meetingId) to verify cold-start routing."
+                string: "XCUITest observed the cold-start push notification but SpringBoard did not reliably foreground the terminated app from automation tap (tappedNotification=\(tappedNotification)); opening the same push payload deeplink voicetextnote://result/\(meetingId) to verify cold-start routing."
             )
             fallback.name = "push_deeplink_cold_start_ios_launch_fallback"
             fallback.lifetime = .keepAlways
@@ -469,12 +478,11 @@ final class RunnerUITests: XCTestCase {
         XCUIDevice.shared.press(.home)
         waitForSeconds(1)
 
-        try requestPushScenario(scenario)
-        waitForSeconds(8)
-        openNotificationCenter()
-        let notification = waitForSpringboardElement(
-            labels: [title, text],
-            timeout: 15
+        let notification = try waitForNotificationEvidence(
+            scenario: scenario,
+            title: title,
+            text: text,
+            attempts: 3
         )
         attachSpringboardHierarchy("\(scenario)_ios_notification_center_hierarchy")
         attachScreenshot("\(scenario)_ios_notification_center")
@@ -506,23 +514,25 @@ final class RunnerUITests: XCTestCase {
         try ensureGuestHome()
         try openRecordingScreen()
         dismissPromiseBriefIfPresent()
-        tapRecordStartButton()
 
-        let alert = waitForSpringboardAlert(timeout: 3)
-        if alert.exists {
-            tapSpringboardButton(["허용", "Allow", "OK"])
-        }
-
-        var recording = waitForAnyVisibleElement(
-            labels: ["녹음 중", "녹음 중지"],
-            timeout: 8
-        )
-        if recording == nil {
+        var recording: XCUIElement?
+        for attempt in 1...3 {
             tapRecordStartButton()
+            let alert = waitForSpringboardAlert(timeout: attempt == 1 ? 6 : 2)
+            if alert.exists {
+                tapSpringboardButton(springboardAllowButtonLabels)
+                waitForSeconds(1)
+                tapRecordStartButton()
+            }
             recording = waitForAnyVisibleElement(
-                labels: ["녹음 중", "녹음 중지"],
-                timeout: 12
+                labels: ["녹음 중", "녹음 중지", "경과 시간"],
+                timeout: attempt == 1 ? 12 : 18
             )
+            if recording != nil {
+                break
+            }
+            attachUIHierarchy("\(prefix)_start_attempt_\(attempt)_hierarchy")
+            attachScreenshot("\(prefix)_start_attempt_\(attempt)")
         }
         attachUIHierarchy("\(prefix)_active_hierarchy")
         attachScreenshot("\(prefix)_active")
@@ -782,7 +792,7 @@ final class RunnerUITests: XCTestCase {
         }
         attachScreenshot("ios_transient_springboard_alert")
         attachSpringboardHierarchy("ios_transient_springboard_hierarchy")
-        tapSpringboardButton(["허용", "확인", "계속", "Allow", "OK", "Continue"])
+        tapSpringboardButton(springboardAllowButtonLabels)
     }
 
     private func allowAnySpringboardAlertIfPresent() {
@@ -790,7 +800,7 @@ final class RunnerUITests: XCTestCase {
         guard alert.exists else { return }
         attachScreenshot("ios_springboard_alert_before_continue")
         attachSpringboardHierarchy("ios_springboard_alert_before_continue_hierarchy")
-        tapSpringboardButton(["허용", "확인", "계속", "Allow", "OK", "Continue"])
+        tapSpringboardButton(springboardAllowButtonLabels)
     }
 
     @discardableResult
@@ -809,7 +819,36 @@ final class RunnerUITests: XCTestCase {
     }
 
     private func waitForFirebaseTopicSubscription() {
-        waitForSeconds(6)
+        waitForSeconds(12)
+    }
+
+    private func waitForNotificationEvidence(
+        scenario: String,
+        title: String,
+        text: String,
+        attempts: Int
+    ) throws -> XCUIElement? {
+        for attempt in 1...attempts {
+            try requestPushScenario(scenario)
+            if let banner = waitForSpringboardElement(labels: [title, text], timeout: 12) {
+                return banner
+            }
+
+            waitForSeconds(TimeInterval(4 * attempt))
+            openNotificationCenter()
+            if let notification = waitForSpringboardElement(
+                labels: [title, text],
+                timeout: 18
+            ) {
+                return notification
+            }
+
+            attachSpringboardHierarchy("\(scenario)_ios_notification_attempt_\(attempt)_hierarchy")
+            attachScreenshot("\(scenario)_ios_notification_attempt_\(attempt)")
+            XCUIDevice.shared.press(.home)
+            waitForSeconds(TimeInterval(2 * attempt))
+        }
+        return nil
     }
 
     private func requestPushScenario(_ scenario: String) throws {

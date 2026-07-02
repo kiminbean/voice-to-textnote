@@ -80,6 +80,10 @@ CANONICAL_RELEASE_ARTIFACT_PATHS = {
     "android_apk": "client/build/app/outputs/flutter-apk/app-release.apk",
     "ios_runner_app": "client/build/ios/iphoneos/Runner.app",
 }
+ANDROID_DEBUG_CERTIFICATE_DN_PATTERN = re.compile(
+    r"Signer #[0-9]+ certificate DN: .*CN=Android Debug(?:[,\s]|$)",
+    re.IGNORECASE,
+)
 RELEASE_EVIDENCE_NON_RUNTIME_CHANGE_PREFIXES = (
     "backend/tests/",
     "client/scripts/",
@@ -1163,7 +1167,7 @@ def check_owll_benchmark_doc(root: Path, reporter: Reporter) -> None:
         reporter,
         content,
         [
-            "**Last verified**: 2026-07-01",
+            "**Last verified**: 2026-07-02",
             "https://apps.apple.com/us/app/owll-ai-note-taker-assistant/id6450300197",
             "https://play.google.com/store/apps/details?id=com.hmd.quickrecorder",
             "https://owll.ai/blog/ai-note-taker-for-teams",
@@ -1843,6 +1847,50 @@ def is_signed_android_apk(path: Path) -> bool:
     return has_apk_v1_signature(names) or has_apk_signing_block(path)
 
 
+def find_android_build_tool(tool: str) -> str | None:
+    discovered = shutil.which(tool)
+    if discovered:
+        return discovered
+
+    for env_name in ("ANDROID_HOME", "ANDROID_SDK_ROOT"):
+        sdk_root = os.environ.get(env_name, "")
+        if not sdk_root:
+            continue
+        build_tools = Path(sdk_root).expanduser() / "build-tools"
+        if not build_tools.is_dir():
+            continue
+        candidates = sorted(path for path in build_tools.glob(f"*/{tool}") if path.is_file())
+        if candidates:
+            return str(candidates[-1])
+    return None
+
+
+def android_apksigner_certificate_output(path: Path) -> str | None:
+    apksigner = find_android_build_tool("apksigner")
+    if not apksigner:
+        return None
+    try:
+        completed = subprocess.run(
+            [apksigner, "verify", "--print-certs", str(path)],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    except OSError:
+        return None
+    if completed.returncode != 0:
+        return None
+    return f"{completed.stdout}\n{completed.stderr}"
+
+
+def has_android_debug_certificate(path: Path) -> bool:
+    certificate_output = android_apksigner_certificate_output(path)
+    return bool(
+        certificate_output
+        and ANDROID_DEBUG_CERTIFICATE_DN_PATTERN.search(certificate_output)
+    )
+
+
 def ios_app_metadata(path: Path) -> dict[str, str]:
     try:
         with (path / "Info.plist").open("rb") as plist:
@@ -1898,6 +1946,8 @@ def release_artifact_structure_error(root: Path, key: str, artifact_path: str) -
             return f"artifact must be a valid APK zip: {key}"
         if key == "android_apk" and not is_signed_android_apk(resolved_artifact):
             return f"artifact must be signed: {key}"
+        if key == "android_apk" and has_android_debug_certificate(resolved_artifact):
+            return f"artifact must not use Android debug certificate: {key}"
         if key == "ios_runner_app" and not (resolved_artifact / "Info.plist").is_file():
             return f"artifact missing Info.plist: {key}"
         if key == "ios_runner_app":

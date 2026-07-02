@@ -12,6 +12,10 @@ fi
 ANDROID_RELEASE_APK="build/app/outputs/flutter-apk/app-release.apk"
 IOS_RUNNER_APP="build/ios/iphoneos/Runner.app"
 IOS_INFO_PLIST="$IOS_RUNNER_APP/Info.plist"
+APP_ENV="${APP_ENV:-staging}"
+API_BASE_URL="${API_BASE_URL:-http://100.69.69.119:8000/api/v1}"
+API_KEYS_FIRST="${API_KEYS:-}"
+API_KEY="${API_KEY:-${API_KEYS_FIRST%%,*}}"
 
 if [[ "$run_native" == true ]]; then
   android_sdk="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
@@ -88,6 +92,11 @@ verify_signed_android_artifact() {
     exit 1
   fi
   cat "$verify_output"
+  if grep -Eiq 'Signer #[0-9]+ certificate DN: .*CN=Android Debug([,[:space:]]|$)' "$verify_output"; then
+    echo "Android release APK is signed with the Android debug certificate. Configure client/android/key.properties with a production upload/release keystore." >&2
+    rm -f "$verify_output"
+    exit 1
+  fi
   rm -f "$verify_output"
   echo "Verified signed Android release APK: $path"
 }
@@ -102,12 +111,18 @@ if [[ "$run_native" != true ]]; then
   exit 0
 fi
 
-flutter build apk --release
+release_dart_defines=(
+  "--dart-define=ENV=$APP_ENV"
+  "--dart-define=API_BASE_URL=$API_BASE_URL"
+  "--dart-define=API_KEY=$API_KEY"
+)
+
+flutter build apk --release "${release_dart_defines[@]}"
 verify_file_artifact "$ANDROID_RELEASE_APK" "Android release APK"
 verify_signed_android_artifact "$ANDROID_RELEASE_APK"
 
 if [[ "$(uname -s)" == "Darwin" ]]; then
-  flutter build ios --debug --no-codesign
+  flutter build ios --release --no-codesign "${release_dart_defines[@]}"
   verify_directory_artifact "$IOS_RUNNER_APP" "iOS no-codesign app"
   verify_file_artifact "$IOS_INFO_PLIST" "iOS Info.plist"
 fi

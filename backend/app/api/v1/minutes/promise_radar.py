@@ -6,7 +6,7 @@ import json
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -1595,6 +1595,8 @@ async def get_promise_radar(
         )
     except ValueError as e:
         not_found(str(e))
+    except HTTPException:
+        raise
     except VoiceNoteError:
         raise
     except Exception as e:

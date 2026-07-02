@@ -1,3 +1,7 @@
+from types import SimpleNamespace
+
+import pytest
+from fastapi import HTTPException
 from fastapi.routing import APIRoute
 
 from backend.app.main import app
@@ -61,3 +65,24 @@ def test_promise_radar_routes_are_registered_in_app_openapi():
     assert "/api/v1/promise-radar/external-task/reconcile" in openapi_paths
     assert "/api/v1/promise-radar/accuracy/extraction-report" in openapi_paths
     assert "/api/v1/promise-radar/command-center" in openapi_paths
+
+
+@pytest.mark.asyncio
+async def test_get_promise_radar_preserves_task_access_404(monkeypatch):
+    from backend.app.api.v1.minutes import promise_radar
+
+    async def deny_access(*_args, **_kwargs):
+        raise HTTPException(status_code=404, detail="작업을 찾을 수 없습니다.")
+
+    monkeypatch.setattr(promise_radar, "require_task_access", deny_access)
+
+    with pytest.raises(HTTPException) as exc_info:
+        await promise_radar.get_promise_radar(
+            task_id="missing-task",
+            request=SimpleNamespace(state=SimpleNamespace()),
+            db=object(),
+            current_user=None,
+            svc=object(),
+        )
+
+    assert exc_info.value.status_code == 404

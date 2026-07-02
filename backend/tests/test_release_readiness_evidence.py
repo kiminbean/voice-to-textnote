@@ -1536,6 +1536,27 @@ def test_release_e2e_evidence_rejects_unsigned_android_apk(tmp_path, monkeypatch
     assert any("artifact must be signed: android_apk" in error for error in reporter.errors)
 
 
+def test_release_e2e_evidence_rejects_android_debug_certificate(tmp_path, monkeypatch):
+    module = load_release_readiness_module()
+    evidence = make_evidence(tmp_path, module)
+    evidence_path = write_evidence(tmp_path, evidence)
+    monkeypatch.setenv("ANDROID_DEVICE_SERIAL", "android-serial")
+    monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")
+    monkeypatch.setattr(
+        module,
+        "android_apksigner_certificate_output",
+        lambda _path: "Signer #1 certificate DN: C=US, O=Android, CN=Android Debug\n",
+    )
+
+    reporter = module.Reporter()
+    module.check_release_e2e_evidence(evidence_path, reporter, tmp_path)
+
+    assert any(
+        "artifact must not use Android debug certificate: android_apk" in error
+        for error in reporter.errors
+    )
+
+
 def test_release_e2e_evidence_rejects_ios_runner_without_info_plist(
     tmp_path, monkeypatch
 ):

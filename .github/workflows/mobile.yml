@@ -35,6 +35,7 @@ on:
       - "backend/tests/test_github_mobile_release_env.py"
       - "backend/tests/test_mobile_release_runner.py"
       - "backend/tests/test_release_readiness_evidence.py"
+      - "backend/tests/test_verify_mobile_script.py"
       - ".github/workflows/mobile.yml"
   push:
     branches:
@@ -60,6 +61,7 @@ on:
       - "backend/tests/test_github_mobile_release_env.py"
       - "backend/tests/test_mobile_release_runner.py"
       - "backend/tests/test_release_readiness_evidence.py"
+      - "backend/tests/test_verify_mobile_script.py"
       - ".github/workflows/mobile.yml"
 
 jobs:
@@ -107,9 +109,12 @@ jobs:
         working-directory: client
         run: flutter test
 
-      - name: Build Android release APK
+      - name: Build Android staging release APK
         working-directory: client
-        run: flutter build apk --release
+        run: >
+          flutter build apk --release
+          --dart-define=ENV=staging
+          --dart-define=API_BASE_URL=http://100.69.69.119:8000/api/v1
 
       - name: Verify Android release APK artifact
         working-directory: client
@@ -133,9 +138,12 @@ jobs:
         working-directory: client
         run: flutter pub get
 
-      - name: Build iOS debug without codesigning
+      - name: Build iOS staging release without codesigning
         working-directory: client
-        run: flutter build ios --debug --no-codesign
+        run: >
+          flutter build ios --release --no-codesign
+          --dart-define=ENV=staging
+          --dart-define=API_BASE_URL=http://100.69.69.119:8000/api/v1
 
       - name: Verify iOS no-codesign app artifact
         working-directory: client
@@ -222,6 +230,7 @@ jobs:
         working-directory: client
         env:
           REQUIRE_ANDROID_RELEASE_SIGNING: "true"
+          API_KEY: ${{ secrets.API_KEY }}
         run: ./scripts/verify_mobile.sh --native
 
       - name: Run strict release readiness gate

@@ -36,13 +36,19 @@ def test_verify_mobile_script_checks_native_artifact_outputs():
     assert 'verify_signed_android_artifact "$ANDROID_RELEASE_APK"' in script
     assert 'verify_directory_artifact "$IOS_RUNNER_APP"' in script
     assert 'verify_file_artifact "$IOS_INFO_PLIST"' in script
+    assert 'APP_ENV="${APP_ENV:-staging}"' in script
+    assert 'API_BASE_URL="${API_BASE_URL:-http://100.69.69.119:8000/api/v1}"' in script
+    assert 'API_KEY="${API_KEY:-${API_KEYS_FIRST%%,*}}"' in script
+    assert '"--dart-define=ENV=$APP_ENV"' in script
+    assert '"--dart-define=API_BASE_URL=$API_BASE_URL"' in script
+    assert '"--dart-define=API_KEY=$API_KEY"' in script
     assert script.index("flutter build apk --release") < script.index(
         'verify_file_artifact "$ANDROID_RELEASE_APK"'
     )
     assert script.index('verify_file_artifact "$ANDROID_RELEASE_APK"') < script.index(
         'verify_signed_android_artifact "$ANDROID_RELEASE_APK"'
     )
-    assert script.index("flutter build ios --debug --no-codesign") < script.index(
+    assert script.index("flutter build ios --release --no-codesign") < script.index(
         'verify_directory_artifact "$IOS_RUNNER_APP"'
     )
 
@@ -53,6 +59,14 @@ def test_verify_mobile_script_fails_on_missing_or_empty_artifacts():
     assert '[[ ! -s "$path" ]]' in script
     assert '[[ ! -d "$path" ]]' in script
     assert 'find "$path" -mindepth 1 -print -quit' in script
+
+
+def test_verify_mobile_script_rejects_android_debug_certificate():
+    script = read_verify_mobile_script()
+
+    assert "CN=Android Debug" in script
+    assert "Android release APK is signed with the Android debug certificate" in script
+    assert 'grep -Eiq' in script
 
 
 def test_verify_mobile_script_artifact_paths_match_release_evidence_defaults():

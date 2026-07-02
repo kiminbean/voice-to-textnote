@@ -188,6 +188,8 @@ flutter build apk --release --dart-define=ENV=staging --dart-define=API_BASE_URL
 flutter build ipa --release
 ```
 
+`apksigner verify --print-certs` 출력의 certificate DN에 `CN=Android Debug`가 있으면 release APK가 아니다. `client/android/key.properties`가 `/Users/<user>/.android/debug.keystore` 또는 `androiddebugkey`를 가리키지 않는지 확인하고, 운영 upload/release keystore로 다시 빌드해야 한다.
+
 현재 private staging 서버 기준값:
 
 ```text
@@ -383,7 +385,7 @@ gh release create v1.7.0 \
 
 | 단계 | 환경 변수 | 검증 방법 |
 |------|-----------|-----------|
-| 0.1 Android signing | `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`, `REQUIRE_ANDROID_RELEASE_SIGNING=true` | `REQUIRE_ANDROID_RELEASE_SIGNING=true ./scripts/verify_mobile.sh --native` + `--strict` signed mode PASS |
+| 0.1 Android signing | `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`, `REQUIRE_ANDROID_RELEASE_SIGNING=true` | `REQUIRE_ANDROID_RELEASE_SIGNING=true ./scripts/verify_mobile.sh --native` + `--strict` signed mode PASS, `apksigner --print-certs` DN이 `CN=Android Debug`가 아님 |
 | 1.1 Firebase | `FIREBASE_CREDENTIALS_PATH` | `--strict` Firebase PASS |
 | 1.2 APNs | `APNS_AUTH_KEY_PATH`, `APNS_KEY_ID`, `APNS_TEAM_ID` | `--strict` APNs 3개 PASS |
 | 1.3 App Store | `APP_STORE_CONNECT_API_KEY_PATH`, `KEY_ID`, `ISSUER_ID` | `--strict` App Store 3개 PASS |

@@ -6,7 +6,8 @@ set -euo pipefail
 
 DEVICE_ID="${IOS_DEVICE_UDID:-00008150-000239020C08401C}"
 API_BASE_URL="${API_BASE_URL:-http://100.69.69.119:8000/api/v1}"
-API_KEY="${API_KEY:-}"
+API_KEYS_FIRST="${API_KEYS:-}"
+API_KEY="${API_KEY:-${API_KEYS_FIRST%%,*}}"
 
 flutter run --release --no-pub --no-resident \
   -d "$DEVICE_ID" \

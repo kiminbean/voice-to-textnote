@@ -159,7 +159,9 @@ def test_mobile_workflow_matches_github_release_env_contract():
     assert "ios_entitlements_path:" in workflow
     assert "IOS_RELEASE_ENTITLEMENTS_PATH: ${{ inputs.ios_entitlements_path }}" in workflow
     assert "ANDROID_KEYSTORE_BASE64" in module.REQUIRED_SECRETS
+    assert "API_KEY" in module.REQUIRED_SECRETS
     assert "ANDROID_KEYSTORE_PATH" in workflow
+    assert "API_KEY: ${{ secrets.API_KEY }}" in workflow
     assert workflow.count("REQUIRE_ANDROID_RELEASE_SIGNING: \"true\"") == 2
     assert "python3 client/scripts/verify_mobile_release_runner.py" in workflow
     assert (
@@ -179,9 +181,11 @@ def test_mobile_workflow_verifies_ci_build_artifacts():
     assert "Verify iOS no-codesign app artifact" in workflow
     assert "test -d build/ios/iphoneos/Runner.app" in workflow
     assert "test -s build/ios/iphoneos/Runner.app/Info.plist" in workflow
+    assert "--dart-define=ENV=staging" in workflow
+    assert "--dart-define=API_BASE_URL=http://100.69.69.119:8000/api/v1" in workflow
     assert workflow.index("flutter build apk --release") < workflow.index(
         "test -s build/app/outputs/flutter-apk/app-release.apk"
     )
-    assert workflow.index("flutter build ios --debug --no-codesign") < workflow.index(
+    assert workflow.index("flutter build ios --release --no-codesign") < workflow.index(
         "test -d build/ios/iphoneos/Runner.app"
     )

@@ -1,8 +1,8 @@
 {
-  "tested_at": "2026-07-01T16:24:18Z",
+  "tested_at": "2026-07-02T01:26:43Z",
   "tester": "ibkim",
-  "backend_version": "git:7e334e6",
-  "client_version": "git:7e334e6",
+  "backend_version": "git:df0666d",
+  "client_version": "git:df0666d",
   "release_gate": {
     "android_release_signing": true,
     "ios_production_entitlements": true,
@@ -25,8 +25,8 @@
     "ios_runner_app": "client/build/ios/iphoneos/Runner.app"
   },
   "artifact_sha256": {
-    "android_apk": "1298a3a61ea802c168f34d84961efe7d363cd9576657725ef5dee9b2aa0078b2",
-    "ios_runner_app": "47437a946556dd19a25431984b84249495eb76f47e2c1f37d1df67587eec5211"
+    "android_apk": "5d9ca847c8c74f18dbc2b9616fa8acd4a748fb080c972ebd3ce4294f99469c46",
+    "ios_runner_app": "09897aefe67df9a791d828b3e3a511a0995a37c1494f7d7e2850d8e34bcd525a"
   },
   "scenarios": {
     "permission_microphone_initial": {
