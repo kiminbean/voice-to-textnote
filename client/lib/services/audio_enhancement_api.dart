@@ -179,6 +179,56 @@ class AudioQualityScore {
   }
 }
 
+String audioEnhancementErrorMessage(Object error) {
+  if (error is DioException) {
+    final statusCode = error.response?.statusCode;
+    if (statusCode == 401 || statusCode == 403) {
+      return '오디오 향상 인증이 만료되었습니다. 다시 로그인하거나 게스트로 시작한 뒤 시도해주세요.';
+    }
+    if (statusCode == 413) {
+      return '오디오 파일이 너무 큽니다. 100MB 이하 파일로 다시 시도해주세요.';
+    }
+    if (statusCode == 422) {
+      return _responseDetail(error.response?.data) ??
+          '지원하지 않는 오디오 파일이거나 파일을 읽을 수 없습니다.';
+    }
+
+    return switch (error.type) {
+      DioExceptionType.connectionTimeout => '서버 연결 시간이 초과되었습니다.',
+      DioExceptionType.receiveTimeout => '서버 응답 시간이 초과되었습니다.',
+      DioExceptionType.sendTimeout => '오디오 파일 전송 시간이 초과되었습니다.',
+      DioExceptionType.connectionError => '서버에 연결할 수 없습니다. 네트워크를 확인해주세요.',
+      DioExceptionType.badResponse
+          when statusCode != null && statusCode >= 500 =>
+        '서버에서 오디오 향상을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
+      DioExceptionType.badResponse =>
+        '오디오 향상 요청이 실패했습니다. (${statusCode ?? '응답 오류'})',
+      _ => '오디오 향상 중 네트워크 오류가 발생했습니다.',
+    };
+  }
+
+  final message = error.toString().replaceFirst('Exception: ', '').trim();
+  if (message.isEmpty) {
+    return '오디오 향상 중 오류가 발생했습니다.';
+  }
+  if (message.contains('401') || message.contains('Unauthorized')) {
+    return '오디오 향상 인증이 만료되었습니다. 다시 로그인하거나 게스트로 시작한 뒤 시도해주세요.';
+  }
+  return message;
+}
+
+String? _responseDetail(Object? data) {
+  if (data is Map) {
+    final detail = data['detail'];
+    if (detail is String && detail.isNotEmpty) return detail;
+    if (detail is Map) {
+      final message = detail['message'] ?? detail['msg'];
+      if (message is String && message.isNotEmpty) return message;
+    }
+  }
+  return null;
+}
+
 class AudioEnhancementApi {
   final Dio _dio;
 

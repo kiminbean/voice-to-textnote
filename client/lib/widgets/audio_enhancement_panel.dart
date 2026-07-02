@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:voice_to_textnote/providers/auth_provider.dart';
 import 'package:voice_to_textnote/services/audio_enhancement_api.dart';
 import 'package:voice_to_textnote/theme/app_spacing.dart';
+
+const _audioEnhancementAuthRequiredMessage =
+    '오디오 향상은 로그인 또는 게스트 세션이 필요합니다. 다시 로그인하거나 게스트로 시작한 뒤 시도해주세요.';
+const _audioEnhancementAuthCheckingMessage = '로그인 상태를 확인 중입니다. 잠시 후 다시 시도해주세요.';
 
 class AudioEnhancementPanel extends ConsumerStatefulWidget {
   final String audioFilePath;
@@ -69,6 +74,26 @@ class _AudioEnhancementPanelState extends ConsumerState<AudioEnhancementPanel> {
   AudioEnhancementResult? _result;
   String? _errorMessage;
 
+  Future<bool> _ensureEnhancementSession() async {
+    var authState = ref.read(authStateProvider);
+    if (authState.status == AuthStatus.initial) {
+      await ref.read(authStateProvider.notifier).checkAuth();
+      authState = ref.read(authStateProvider);
+    }
+
+    if (authState.isAuthenticated || authState.isGuest) {
+      return true;
+    }
+
+    if (!mounted) return false;
+    setState(() {
+      _errorMessage = authState.isLoading
+          ? _audioEnhancementAuthCheckingMessage
+          : _audioEnhancementAuthRequiredMessage;
+    });
+    return false;
+  }
+
   Future<void> _runEnhancement() async {
     if (_isProcessing) return;
 
@@ -78,6 +103,10 @@ class _AudioEnhancementPanelState extends ConsumerState<AudioEnhancementPanel> {
     });
 
     try {
+      if (!await _ensureEnhancementSession()) {
+        return;
+      }
+
       final api = ref.read(audioEnhancementApiProvider);
       final response = await api.enhance(
         widget.audioFilePath,
@@ -98,7 +127,7 @@ class _AudioEnhancementPanelState extends ConsumerState<AudioEnhancementPanel> {
       );
     } catch (e) {
       if (!mounted) return;
-      setState(() => _errorMessage = e.toString());
+      setState(() => _errorMessage = audioEnhancementErrorMessage(e));
     } finally {
       if (mounted) {
         setState(() => _isProcessing = false);
