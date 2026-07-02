@@ -13,6 +13,7 @@ import json
 import os
 import subprocess
 import sys
+import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -35,6 +36,102 @@ RELEASE_ARTIFACT_TYPES = {
     "android_apk": "file",
     "ios_runner_app": "directory",
 }
+
+
+def command_output(args: list[str], *, timeout: int = 10) -> str:
+    try:
+        completed = subprocess.run(
+            args,
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            timeout=timeout,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+    return completed.stdout.strip() if completed.returncode == 0 else ""
+
+
+def android_device_metadata(serial: str) -> dict[str, str]:
+    if not serial:
+        return {"model": "", "os_version": ""}
+    model = command_output(["adb", "-s", serial, "shell", "getprop", "ro.product.model"])
+    version = command_output(
+        ["adb", "-s", serial, "shell", "getprop", "ro.build.version.release"]
+    )
+    return {
+        "model": model,
+        "os_version": f"Android {version}" if version else "",
+    }
+
+
+def devicectl_devices() -> list[dict[str, object]]:
+    with tempfile.NamedTemporaryFile(suffix=".json") as output_file:
+        try:
+            completed = subprocess.run(
+                [
+                    "xcrun",
+                    "devicectl",
+                    "list",
+                    "devices",
+                    "--json-output",
+                    output_file.name,
+                ],
+                check=False,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+                text=True,
+                timeout=20,
+            )
+            output = Path(output_file.name).read_text(encoding="utf-8")
+        except (OSError, subprocess.TimeoutExpired):
+            return []
+    if completed.returncode != 0:
+        return []
+    start = output.find('{"result"')
+    if start == -1:
+        start = output.find("{")
+    if start == -1:
+        return []
+    try:
+        payload = json.loads(output[start:])
+    except json.JSONDecodeError:
+        return []
+    result = payload.get("result")
+    if not isinstance(result, dict):
+        return []
+    devices = result.get("devices")
+    return devices if isinstance(devices, list) else []
+
+
+def ios_device_metadata(udid: str) -> dict[str, str]:
+    if not udid:
+        return {"model": "", "os_version": ""}
+    for device in devicectl_devices():
+        if not isinstance(device, dict):
+            continue
+        hardware = device.get("hardwareProperties")
+        properties = device.get("deviceProperties")
+        connection = device.get("connectionProperties")
+        if not isinstance(hardware, dict) or not isinstance(properties, dict):
+            continue
+        hostnames = connection.get("potentialHostnames") if isinstance(connection, dict) else None
+        candidates = [
+            device.get("identifier"),
+            hardware.get("udid"),
+        ]
+        if isinstance(hostnames, list):
+            candidates.extend(hostnames)
+        if not any(isinstance(value, str) and udid in value for value in candidates):
+            continue
+        model = hardware.get("marketingName") or hardware.get("productType") or ""
+        version = properties.get("osVersionNumber") or ""
+        return {
+            "model": str(model),
+            "os_version": f"iOS {version}" if version else "",
+        }
+    return {"model": "", "os_version": ""}
 
 
 def git_revision(root: Path) -> str:
@@ -84,6 +181,10 @@ def build_evidence(root: Path, *, android_apk: str, ios_runner_app: str) -> dict
         if not ios_entitlements_path.is_file():
             raise ValueError("iOS entitlements evidence file is missing")
         ios_entitlements_hash = release_artifact_sha256(ios_entitlements_path)
+    android_serial = os.environ.get("ANDROID_DEVICE_SERIAL", "")
+    ios_udid = os.environ.get("IOS_DEVICE_UDID", "")
+    android_metadata = android_device_metadata(android_serial)
+    ios_metadata = ios_device_metadata(ios_udid)
     return {
         "tested_at": datetime.now(UTC).isoformat(),
         "tester": os.environ.get("USER", "release-operator"),
@@ -97,14 +198,14 @@ def build_evidence(root: Path, *, android_apk: str, ios_runner_app: str) -> dict
         },
         "devices": {
             "android": {
-                "serial": os.environ.get("ANDROID_DEVICE_SERIAL", ""),
-                "model": "",
-                "os_version": "",
+                "serial": android_serial,
+                "model": android_metadata["model"],
+                "os_version": android_metadata["os_version"],
             },
             "ios": {
-                "udid": os.environ.get("IOS_DEVICE_UDID", ""),
-                "model": "",
-                "os_version": "",
+                "udid": ios_udid,
+                "model": ios_metadata["model"],
+                "os_version": ios_metadata["os_version"],
             },
         },
         "artifacts": artifacts,

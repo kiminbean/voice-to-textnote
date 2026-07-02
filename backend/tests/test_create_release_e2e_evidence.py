@@ -64,6 +64,51 @@ def write_ios_release_entitlements(path: Path) -> None:
         )
 
 
+def test_android_device_metadata_collects_model_and_os(monkeypatch):
+    create = load_create_evidence_module()
+
+    def fake_command_output(args: list[str], *, timeout: int = 10) -> str:
+        assert timeout == 10
+        if args[-1] == "ro.product.model":
+            return "Pixel 8"
+        if args[-1] == "ro.build.version.release":
+            return "16"
+        return ""
+
+    monkeypatch.setattr(create, "command_output", fake_command_output)
+
+    assert create.android_device_metadata("android-serial") == {
+        "model": "Pixel 8",
+        "os_version": "Android 16",
+    }
+
+
+def test_ios_device_metadata_collects_model_and_os(monkeypatch):
+    create = load_create_evidence_module()
+    monkeypatch.setattr(
+        create,
+        "devicectl_devices",
+        lambda: [
+            {
+                "identifier": "core-device-id",
+                "hardwareProperties": {
+                    "marketingName": "iPhone 17 Pro",
+                    "udid": "ios-udid",
+                },
+                "deviceProperties": {"osVersionNumber": "26.5.1"},
+                "connectionProperties": {
+                    "potentialHostnames": ["ios-udid.coredevice.local"],
+                },
+            }
+        ],
+    )
+
+    assert create.ios_device_metadata("ios-udid") == {
+        "model": "iPhone 17 Pro",
+        "os_version": "iOS 26.5.1",
+    }
+
+
 def test_release_e2e_scaffold_contains_every_required_scenario(monkeypatch, tmp_path):
     create = load_create_evidence_module()
     readiness = load_release_readiness_module()
@@ -74,6 +119,16 @@ def test_release_e2e_scaffold_contains_every_required_scenario(monkeypatch, tmp_
     monkeypatch.setenv("IOS_DEVICE_UDID", "ios-udid")
     monkeypatch.setenv("REQUIRE_ANDROID_RELEASE_SIGNING", "true")
     monkeypatch.setenv("IOS_RELEASE_ENTITLEMENTS_PATH", entitlements_path.name)
+    monkeypatch.setattr(
+        create,
+        "android_device_metadata",
+        lambda serial: {"model": "Pixel 8", "os_version": "Android 16"},
+    )
+    monkeypatch.setattr(
+        create,
+        "ios_device_metadata",
+        lambda udid: {"model": "iPhone 17 Pro", "os_version": "iOS 26.5.1"},
+    )
 
     evidence = create.build_evidence(
         tmp_path,
@@ -82,7 +137,11 @@ def test_release_e2e_scaffold_contains_every_required_scenario(monkeypatch, tmp_
     )
 
     assert evidence["devices"]["android"]["serial"] == "android-serial"
+    assert evidence["devices"]["android"]["model"] == "Pixel 8"
+    assert evidence["devices"]["android"]["os_version"] == "Android 16"
     assert evidence["devices"]["ios"]["udid"] == "ios-udid"
+    assert evidence["devices"]["ios"]["model"] == "iPhone 17 Pro"
+    assert evidence["devices"]["ios"]["os_version"] == "iOS 26.5.1"
     assert evidence["release_gate"] == {
         "android_release_signing": True,
         "ios_production_entitlements": True,
