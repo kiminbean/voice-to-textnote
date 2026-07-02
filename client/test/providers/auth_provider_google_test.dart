@@ -60,5 +60,18 @@ void main() {
 
       expect(message, contains('Google 로그인 설정에 문제가 있습니다'));
     });
+
+    test('Android ApiException 10 shows configuration guidance', () {
+      final message = socialLoginErrorMessage(
+        PlatformException(
+          code: 'sign_in_failed',
+          message: 'com.google.android.gms.common.api.ApiException: 10:',
+        ),
+        'Google',
+      );
+
+      expect(message, contains('Google 로그인 설정에 문제가 있습니다'));
+      expect(message, contains('앱 서명과 OAuth 클라이언트 설정'));
+    });
   });
 }

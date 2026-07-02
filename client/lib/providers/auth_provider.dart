@@ -105,9 +105,13 @@ String socialLoginErrorMessage(Exception e, String provider) {
       (platformCode.contains('developer_error') ||
           platformCode == '10' ||
           platformMessage.contains('developer_error') ||
+          platformMessage.contains('apiexception: 10') ||
+          platformMessage.contains('api exception: 10') ||
           platformMessage.contains('oauth') ||
           platformMessage.contains('not registered') ||
           lowerMsg.contains('developer_error') ||
+          lowerMsg.contains('apiexception: 10') ||
+          lowerMsg.contains('api exception: 10') ||
           lowerMsg.contains('oauth') ||
           lowerMsg.contains('not registered') ||
           lowerMsg.contains('server client id'));

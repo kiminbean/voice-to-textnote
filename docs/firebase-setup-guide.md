@@ -20,7 +20,7 @@
    ```
 3. `google-services.json` 다운로드 → `client/android/app/` 에 배치
 
-### 2026-06-30 Android Google 로그인 기준값
+### Android Google 로그인 SHA-1 기준값
 
 USB 실기기 릴리스 APK 검증 중 Google Play Services가 아래 오류를 반환했다.
 
@@ -30,15 +30,21 @@ please confirm the package name and SHA-1 certificate fingerprint match
 what you registered in Google Developer Console.
 ```
 
-현재 로컬 테스트 릴리스 APK는 Android debug keystore로 서명되어 있으며, 실제 설치된 APK에서 확인한 지문은 아래와 같다.
+현재 Android OAuth client에는 package `com.voicetextnote.app`에 대해 아래 SHA-1 조합이 등록되어 있어야 한다.
 
 ```text
-Package name: com.voicetextnote.app
+Debug/local profile SHA-1:
 SHA-1: 1F:84:A6:04:D6:18:F5:17:EE:AC:5D:6D:5A:D5:EE:62:B0:C0:FC:66
 SHA-256: 22:9C:9D:7D:E9:8F:17:9C:AC:D4:65:E3:E9:FD:BA:D4:59:01:9C:BF:7C:21:F0:37:BF:0C:C5:04:D4:71:0D:1B
+
+Mac mini release upload key SHA-1 (2026-07-02):
+SHA-1: 45:6F:94:A6:F0:78:99:7A:8D:E9:DB:9C:C2:F1:03:B7:FF:BE:B7:4C
+SHA-256: BE:E7:20:D7:CD:3B:0C:A2:B0:AF:5B:CE:5E:D0:0C:50:55:3E:79:EC:FB:62:80:7D:4A:67:63:3B:9B:33:A7:55
 ```
 
 Google Cloud Console / Firebase Console의 Android OAuth client에 위 package/SHA-1 조합이 실제로 등록되어 있어야 한다. `google-services.json`에 과거 client entry가 남아 있어도 Cloud Console에서 해당 Android OAuth client가 삭제되었거나 비활성화되면 실기기 로그인은 계속 실패한다.
+
+2026-07-02 Android release 로그인 실패의 직접 원인은 새 upload key SHA-1이 Firebase에 등록되지 않은 상태에서 release APK를 설치한 것이었다. `firebase apps:android:sha:create`로 `45:6F:...:4C`를 등록하고 `firebase apps:sdkconfig ANDROID ...`로 `client/android/app/google-services.json`을 갱신한 뒤 release APK를 재설치했다.
 
 주의:
 
@@ -182,7 +188,7 @@ projects/voice-to-textnote/messages/1782749586143713
 | 백엔드 전송 실패 | 서비스 계정 키 미설정 | `FIREBASE_CREDENTIALS_PATH` 확인 |
 | iOS APNs 미수신 | APNs 키 미업로드 | .p8 키 Firebase 콘솔 등록 |
 | 백그라운드 핸들러 미작동 | `FirebaseAppDelegateProxyEnabled: false` 확인 | Info.plist 확인 (정상) |
-| Android Google 로그인 직후 일반 오류 | Android OAuth package/SHA-1 조합 미등록 또는 Cloud Console client 삭제 | 실제 설치 APK SHA-1을 `apksigner verify --print-certs`로 확인 후 Firebase/Google Cloud Console에 등록 |
+| Android Google 로그인 직후 일반 오류 또는 `ApiException: 10` | Android OAuth package/SHA-1 조합 미등록 또는 Cloud Console client 삭제 | 실제 설치 APK SHA-1을 `apksigner verify --print-certs`로 확인 후 Firebase/Google Cloud Console에 등록하고 `google-services.json`을 다시 내려받아 release APK를 재설치 |
 | `You must use a Web client as the server client ID` | Android OAuth client ID를 `serverClientId`로 전달 | Web OAuth client ID를 사용하거나 `google-services.json`의 `default_web_client_id`를 사용 |
 
 ## 8. Google Sign-In / OAuth 주의사항

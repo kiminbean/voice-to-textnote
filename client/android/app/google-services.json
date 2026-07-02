@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "546416114080-3lm1a07l7ucnmo2vve3n8rd6l490ugns.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.voicetextnote.app",
+            "certificate_hash": "456f94a6f078997a8de9db9cc2f103b7ffbeb74c"
+          }
+        },
+        {
           "client_id": "546416114080-fe259i7nfkdqcatii3rqu4bdfmflgiq5.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
@@ -22,19 +30,19 @@
           }
         },
         {
-          "client_id": "546416114080-qtp7j9hh67o6k2ia30ah5al0h7vn9ivl.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.voicetextnote.app",
-            "certificate_hash": "0aacd1bbb6e936763ed7e3d92b8759bd78d911d4"
-          }
-        },
-        {
           "client_id": "546416114080-lfaelmnfc8elue7hp0saouc7uhf59emj.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.voicetextnote.app",
             "certificate_hash": "1f84a604d618f517eeac5d6d5ad5ee62b0c0fc66"
+          }
+        },
+        {
+          "client_id": "546416114080-qtp7j9hh67o6k2ia30ah5al0h7vn9ivl.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.voicetextnote.app",
+            "certificate_hash": "0aacd1bbb6e936763ed7e3d92b8759bd78d911d4"
           }
         },
         {
