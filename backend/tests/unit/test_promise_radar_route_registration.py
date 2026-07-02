@@ -28,6 +28,7 @@ def test_promise_radar_routes_are_registered_in_app_openapi():
     assert "/api/v1/promise-radar/ledger/{entry_id}/autopilot-undo" in paths
     assert "/api/v1/promise-radar/ledger/{entry_id}/evidence-room/share-link" in paths
     assert "/api/v1/promise-radar/external-task/google-oauth/start" in paths
+    assert "/api/v1/promise-radar/external-task/google-oauth/callback" in paths
     assert "/api/v1/promise-radar/external-task/reconcile" in paths
     assert "/api/v1/promise-radar/accuracy/extraction-report" in paths
     assert "/api/v1/promise-radar/command-center" in paths
@@ -62,6 +63,7 @@ def test_promise_radar_routes_are_registered_in_app_openapi():
     assert "/api/v1/promise-radar/ledger/{entry_id}/autopilot-undo" in openapi_paths
     assert "/api/v1/promise-radar/ledger/{entry_id}/evidence-room/share-link" in openapi_paths
     assert "/api/v1/promise-radar/external-task/google-oauth/start" in openapi_paths
+    assert "/api/v1/promise-radar/external-task/google-oauth/callback" in openapi_paths
     assert "/api/v1/promise-radar/external-task/reconcile" in openapi_paths
     assert "/api/v1/promise-radar/accuracy/extraction-report" in openapi_paths
     assert "/api/v1/promise-radar/command-center" in openapi_paths

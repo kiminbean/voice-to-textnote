@@ -27,6 +27,7 @@ from backend.schemas.promise_radar import (
     PromiseExternalExportRequest,
     PromiseExternalTaskUpdateRequest,
     PromiseExtractionCase,
+    PromiseGoogleTasksOAuthCallbackRequest,
     PromiseGoogleTasksOAuthStartRequest,
     PromiseLearningFeedbackRequest,
     PromiseLedgerMergeRequest,
@@ -1036,6 +1037,38 @@ async def test_promise_autopilot_calendar_assignee_and_quality(session_factory):
         assert comparison.current_similarity is not None
         assert comparison.shared_terms
 
+        default_policy = await service.get_automation_policy(
+            session,
+            owner_id=owner_id,
+            team_id=team_id,
+        )
+        assert default_policy.mode == "preview_only"
+        safe_preview = await service.run_autopilot(
+            session,
+            "sum-autopilot",
+            owner_id=owner_id,
+            team_id=team_id,
+        )
+        assert safe_preview.preview_mode is True
+        assert safe_preview.applied_count == 0
+        assert safe_preview.assessments[0].applied is False
+        preview_blocked_stored = (
+            await session.execute(
+                select(PromiseLedgerEntry).where(PromiseLedgerEntry.id == entry.id)
+            )
+        ).scalar_one()
+        assert preview_blocked_stored.status == "open"
+        saved_safe_auto = await service.update_automation_policy(
+            session,
+            PromiseAutomationPolicyUpdateRequest(
+                mode="safe_auto",
+                allowed_auto_statuses=["completed"],
+            ),
+            owner_id=owner_id,
+            team_id=team_id,
+        )
+        assert saved_safe_auto.mode == "safe_auto"
+
         autopilot = await service.run_autopilot(
             session,
             "sum-autopilot",
@@ -1318,12 +1351,12 @@ async def test_promise_autopilot_calendar_assignee_and_quality(session_factory):
         assert resolved.status == "delayed"
         assert resolved.user_confirmed is True
 
-        default_policy = await service.get_automation_policy(
+        active_policy = await service.get_automation_policy(
             session,
             owner_id=owner_id,
             team_id=team_id,
         )
-        assert default_policy.mode == "safe_auto"
+        assert active_policy.mode == "safe_auto"
         saved_policy = await service.update_automation_policy(
             session,
             PromiseAutomationPolicyUpdateRequest(
@@ -1668,25 +1701,48 @@ async def test_command_center_aggregates_learning_accuracy_and_oauth(session_fac
 
         assert center.dashboard.open_count == 1
         assert center.digest.overdue_count == 1
+        assert center.digest.sla_due_today_count >= 1
+        assert center.digest.push_ready is True
         assert center.learning_insight.status_false_positive_rate["completed"] == 1.0
         assert center.learning_insight.alias_graph_size >= 1
+        assert center.learning_insight.production_signal_count >= 1
+        assert center.learning_insight.hard_negative_count >= 0
+        assert center.learning_insight.owner_identity_review_count >= 1
         assert center.learning_telemetry.event_count >= 1
         assert center.learning_telemetry.status_segments
         assert center.live_coach.prompt_count >= 1
+        assert center.live_coach.recording_surface_ready is True
+        assert center.live_coach.sla_risk_count >= 1
         assert center.external_reconcile.requires_oauth is True
         assert center.google_tasks_oauth.scope == "https://www.googleapis.com/auth/tasks"
+        assert center.google_tasks_oauth.pkce_required is True
+        assert center.google_tasks_oauth.tasklist_selection_required is True
+        assert center.google_tasks_oauth.app_redirect_uri.endswith(
+            "/oauth2redirect/google-tasks"
+        )
         assert center.google_tasks_oauth.required_backend_env == ["GOOGLE_CLIENT_ID"]
-        assert center.accuracy_report.evaluation.case_count >= 629
-        assert center.accuracy_report.real_meeting_case_count >= 560
+        assert center.accuracy_report.evaluation.case_count >= 1089
+        assert center.accuracy_report.real_meeting_case_count >= 1000
+        assert center.accuracy_report.hard_negative_case_count >= 50
+        assert center.accuracy_report.public_source_count >= 2
         assert center.extraction_recall.evaluation.case_count >= 50
         assert center.extraction_recall.evaluation.recall >= 0.95
         assert center.memory_graph.node_count >= 2
         assert center.memory_graph.owner_alias_count >= 1
+        assert center.memory_graph.identity_cluster_count >= 1
+        assert center.memory_graph.owner_alias_review_count >= 1
         assert center.shadow_mode.candidate_count == center.review_queue.queue_count
         assert center.evidence_permissions.scope.startswith("owner:")
         assert center.evidence_room.scope.startswith("owner:")
+        assert center.evidence_room.requires_authentication is True
+        assert center.evidence_room.audit_log_enabled is True
+        assert center.evidence_room.share_policy_version == "v19"
         assert center.team_scorecard.risk_score > 0
+        assert center.team_scorecard.sla_watch_count >= 1
+        assert center.team_scorecard.escalation_count >= 1
         assert center.autopilot_quarantine.quarantined_count == 0
+        assert center.autopilot_quarantine.safe_mode == "preview_only"
+        assert center.autopilot_quarantine.auto_apply_blocked_count >= 0
         assert (
             center.meeting_recipe.default_autopilot_mode
             == center.learning_insight.recommended_policy
@@ -1793,6 +1849,9 @@ async def test_autopilot_undo_restores_snapshot_and_quarantines_pattern(session_
         assert link.redacted_evidence[0]["transcript"] == "[redacted]"
         assert link.redacted_evidence[0]["speaker_label"] == "[redacted]"
         assert link.expires_at > now
+        assert link.effective_ttl_hours == 24
+        assert link.requires_authentication is True
+        assert link.audit_log_event == "evidence_room_link_created"
 
         events = {
             event.event_type
@@ -1824,12 +1883,81 @@ def test_google_tasks_oauth_start_builds_authorization_url():
     assert "https://www.googleapis.com/auth/tasks" in response.auth_url
 
 
+@pytest.mark.asyncio
+async def test_google_tasks_oauth_callback_exchanges_code_without_leaking_raw_token(
+    monkeypatch,
+):
+    from backend.services import promise_radar_service as service_module
+
+    class FakeResponse:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {
+                "access_token": "ya29.access-token",
+                "refresh_token": "refresh-token",
+                "expires_in": 3600,
+                "token_type": "Bearer",
+                "scope": "https://www.googleapis.com/auth/tasks",
+            }
+
+    class FakeAsyncClient:
+        captured_data = None
+
+        def __init__(self, *args, **kwargs):
+            self.timeout = kwargs.get("timeout")
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return None
+
+        async def post(self, url, *, data=None, **kwargs):
+            FakeAsyncClient.captured_data = {"url": url, "data": data, "kwargs": kwargs}
+            return FakeResponse()
+
+    monkeypatch.setattr(service_module.settings, "google_client_id", "google-client-id")
+    monkeypatch.setattr(service_module.httpx, "AsyncClient", FakeAsyncClient)
+
+    service = PromiseRadarService()
+    dry_run = await service.exchange_google_tasks_oauth_code(
+        PromiseGoogleTasksOAuthCallbackRequest(
+            code="code-123",
+            redirect_uri="com.voicetextnote.app:/oauth2redirect/google-tasks",
+            code_verifier="verifier-123",
+            dry_run=True,
+        )
+    )
+    assert dry_run.ready is True
+    assert dry_run.dry_run is True
+
+    response = await service.exchange_google_tasks_oauth_code(
+        PromiseGoogleTasksOAuthCallbackRequest(
+            code="code-123",
+            redirect_uri="com.voicetextnote.app:/oauth2redirect/google-tasks",
+            code_verifier="verifier-123",
+        )
+    )
+
+    assert response.ready is True
+    assert response.has_access_token is True
+    assert response.has_refresh_token is True
+    assert response.access_token is None
+    assert response.access_token_preview == "ya29.a...oken"
+    assert response.refresh_token_preview == "refres...oken"
+    assert FakeAsyncClient.captured_data["url"] == "https://oauth2.googleapis.com/token"
+    assert FakeAsyncClient.captured_data["data"]["client_id"] == "google-client-id"
+    assert FakeAsyncClient.captured_data["data"]["code_verifier"] == "verifier-123"
+
+
 def test_promise_radar_accuracy_fixture_audit_passes():
-    report = audit_accuracy_set(target_real_cases=560)
+    report = audit_accuracy_set(target_real_cases=1000)
 
     assert report["passed"] is True
-    assert report["case_count"] >= 629
-    assert report["real_case_count"] >= 560
+    assert report["case_count"] >= 1089
+    assert report["real_case_count"] >= 1000
     assert report["errors"] == []
 
 

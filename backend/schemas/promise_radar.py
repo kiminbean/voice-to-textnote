@@ -243,7 +243,7 @@ class PromiseAutomationPolicy(BaseModel):
 
     scope: str
     mode: str = Field(
-        default="safe_auto",
+        default="preview_only",
         description="safe_auto, preview_only, completed_only, or manual_only",
     )
     allowed_auto_statuses: list[str] = Field(default_factory=list)
@@ -256,7 +256,7 @@ class PromiseAutomationPolicy(BaseModel):
 class PromiseAutomationPolicyUpdateRequest(BaseModel):
     """Update request for scoped Promise Radar automation policy."""
 
-    mode: str = Field(default="safe_auto")
+    mode: str = Field(default="preview_only")
     allowed_auto_statuses: list[str] = Field(default_factory=list)
     high_risk_requires_review: bool = True
     assignee_change_requires_review: bool = True
@@ -314,10 +314,13 @@ class PromiseLearningInsight(BaseModel):
     status_sample_counts: dict[str, int] = Field(default_factory=dict)
     status_false_positive_rate: dict[str, float] = Field(default_factory=dict)
     feedback_count: int = Field(ge=0)
+    production_signal_count: int = Field(default=0, ge=0)
+    hard_negative_count: int = Field(default=0, ge=0)
     false_positive_count: int = Field(ge=0)
     confirmed_count: int = Field(ge=0)
     assignee_correction_count: int = Field(ge=0)
     alias_graph_size: int = Field(default=0, ge=0)
+    owner_identity_review_count: int = Field(default=0, ge=0)
     scope_breakdown: dict[str, int] = Field(default_factory=dict)
     scope_recommendations: list[str] = Field(default_factory=list)
     evidence_lock_enabled: bool = True
@@ -377,6 +380,9 @@ class PromiseAutopilotQuarantineSummary(BaseModel):
 
     quarantined_count: int = Field(ge=0)
     rejected_count: int = Field(ge=0)
+    safe_mode: str = "preview_only"
+    auto_apply_blocked_count: int = Field(default=0, ge=0)
+    preview_only_reason: str | None = None
     affected_statuses: dict[str, int] = Field(default_factory=dict)
     affected_entries: list[str] = Field(default_factory=list)
     notes: list[str] = Field(default_factory=list)
@@ -400,6 +406,8 @@ class PromiseLiveCoachSummary(BaseModel):
     generated_at: datetime
     readiness_score: int = Field(ge=0, le=100)
     prompt_count: int = Field(ge=0)
+    recording_surface_ready: bool = True
+    sla_risk_count: int = Field(default=0, ge=0)
     prompts: list[PromiseLiveCoachPrompt] = Field(default_factory=list)
     notes: list[str] = Field(default_factory=list)
 
@@ -412,6 +420,10 @@ class PromiseEvidenceRoomSummary(BaseModel):
     redaction_required_count: int = Field(ge=0)
     blocked_count: int = Field(ge=0)
     default_ttl_hours: int = Field(default=72, ge=1)
+    max_ttl_hours: int = Field(default=168, ge=1)
+    requires_authentication: bool = True
+    audit_log_enabled: bool = True
+    share_policy_version: str = "v19"
     policy_notes: list[str] = Field(default_factory=list)
 
 
@@ -431,6 +443,9 @@ class PromiseEvidenceRoomLinkResponse(BaseModel):
     ledger_entry_id: str
     share_token_preview: str
     expires_at: datetime
+    effective_ttl_hours: int = Field(default=72, ge=1)
+    requires_authentication: bool = True
+    audit_log_event: str = "evidence_room_link_created"
     redaction_applied: bool
     evidence_count: int = Field(ge=0)
     redacted_evidence: list[dict[str, Any]] = Field(default_factory=list)
@@ -471,6 +486,36 @@ class PromiseGoogleTasksOAuthStartResponse(BaseModel):
     scopes: list[str] = Field(default_factory=list)
     missing_setup: list[str] = Field(default_factory=list)
     token_handling: str
+
+
+class PromiseGoogleTasksOAuthCallbackRequest(BaseModel):
+    """Authorization-code callback payload for Google Tasks OAuth token exchange."""
+
+    code: str = Field(min_length=1)
+    redirect_uri: str = "com.voicetextnote.app:/oauth2redirect/google-tasks"
+    code_verifier: str | None = None
+    client_id: str | None = None
+    dry_run: bool = False
+    return_access_token: bool = False
+
+
+class PromiseGoogleTasksOAuthTokenResponse(BaseModel):
+    """Token exchange result with raw tokens omitted unless explicitly requested."""
+
+    provider: str = "google_tasks"
+    ready: bool
+    dry_run: bool = False
+    token_type: str | None = None
+    expires_in: int | None = None
+    scope: str | None = None
+    has_access_token: bool = False
+    has_refresh_token: bool = False
+    access_token: str | None = None
+    access_token_preview: str | None = None
+    refresh_token_preview: str | None = None
+    missing_setup: list[str] = Field(default_factory=list)
+    message: str
+    security_notes: list[str] = Field(default_factory=list)
 
 
 class PromiseTimelineItem(BaseModel):
@@ -520,6 +565,9 @@ class PromiseDigest(BaseModel):
     overdue_count: int = Field(ge=0)
     due_soon_count: int = Field(ge=0)
     high_risk_count: int = Field(ge=0)
+    sla_due_today_count: int = Field(default=0, ge=0)
+    push_ready: bool = True
+    next_push_local_time: str | None = "08:30"
     lines: list[str] = Field(default_factory=list)
     promises: list[PromiseLedgerEntryResponse] = Field(default_factory=list)
 
@@ -661,6 +709,8 @@ class PromiseAccuracyReport(BaseModel):
     source_quality: dict[str, dict[str, Any]] = Field(default_factory=dict)
     quality_warnings: list[str] = Field(default_factory=list)
     real_meeting_case_count: int = Field(ge=0)
+    hard_negative_case_count: int = Field(default=0, ge=0)
+    public_source_count: int = Field(default=0, ge=0)
     target_case_count: int = Field(default=100, ge=0)
     below_target: bool = False
 
@@ -878,6 +928,9 @@ class PromiseResponsibilityScore(BaseModel):
     delayed_count: int = Field(ge=0)
     blocked_count: int = Field(ge=0)
     overdue_count: int = Field(ge=0)
+    due_today_count: int = Field(default=0, ge=0)
+    sla_watch_count: int = Field(default=0, ge=0)
+    escalation_count: int = Field(default=0, ge=0)
     unconfirmed_count: int = Field(ge=0)
     recurring_count: int = Field(ge=0)
     completion_rate: float = Field(ge=0.0, le=1.0)
@@ -1032,6 +1085,8 @@ class PromiseMemoryGraph(BaseModel):
     changed_cluster_count: int = Field(ge=0)
     delayed_cluster_count: int = Field(ge=0)
     owner_alias_count: int = Field(ge=0)
+    identity_cluster_count: int = Field(default=0, ge=0)
+    owner_alias_review_count: int = Field(default=0, ge=0)
     nodes: list[PromiseMemoryGraphNode] = Field(default_factory=list)
     edges: list[PromiseMemoryGraphEdge] = Field(default_factory=list)
     narrative: list[str] = Field(default_factory=list)
@@ -1071,6 +1126,9 @@ class PromiseTeamScorecard(BaseModel):
     owner_count: int = Field(ge=0)
     open_count: int = Field(ge=0)
     overdue_count: int = Field(ge=0)
+    due_today_count: int = Field(default=0, ge=0)
+    sla_watch_count: int = Field(default=0, ge=0)
+    escalation_count: int = Field(default=0, ge=0)
     high_risk_count: int = Field(ge=0)
     recurring_series_count: int = Field(ge=0)
     weakest_owner: str | None = None
@@ -1084,8 +1142,13 @@ class PromiseGoogleTasksOAuthGuide(BaseModel):
     provider: str = "google_tasks"
     scope: str = "https://www.googleapis.com/auth/tasks"
     auth_url_hint: str
+    app_redirect_uri: str = "com.voicetextnote.app:/oauth2redirect/google-tasks"
     redirect_uri_required: bool = True
-    callback_path: str = "/api/v1/promise-radar/google-tasks/oauth/callback"
+    pkce_required: bool = True
+    tasklist_selection_required: bool = True
+    callback_path: str = "/api/v1/promise-radar/external-task/google-oauth/callback"
+    oauth_ux_ready: bool = False
+    token_exchange_ready: bool = False
     production_ready: bool = False
     missing_setup: list[str] = Field(default_factory=list)
     required_backend_env: list[str] = Field(default_factory=list)

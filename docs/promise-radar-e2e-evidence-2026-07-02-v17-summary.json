@@ -60,5 +60,13 @@
     "flutter_analyze": "No issues found!",
     "flutter_test": "All tests passed!"
   },
-  "raw_device_evidence_policy": "Raw .cache evidence and device command output remain uncommitted."
+  "raw_device_evidence_policy": "Raw .cache evidence and device command output remain uncommitted.",
+  "superseded_by": {
+    "version": "promise-radar-v19",
+    "summary": "docs/promise-radar-e2e-evidence-2026-07-02-v19-summary.json",
+    "accuracy_case_count": 1089,
+    "real_meeting_case_count": 1022,
+    "hard_negative_case_count": 70,
+    "target_case_count": 1000
+  }
 }

@@ -205,7 +205,7 @@ class PromiseRadarApi {
   Future<PromiseCommandCenter> getCommandCenter({
     String? teamId,
     int limit = 50,
-    int targetCaseCount = 560,
+    int targetCaseCount = 1000,
   }) async {
     final response = await _dio.get(
       '/promise-radar/command-center',
@@ -216,6 +216,22 @@ class PromiseRadarApi {
       },
     );
     return PromiseCommandCenter.fromJson(
+      response.data as Map<String, dynamic>,
+    );
+  }
+
+  Future<PromiseLiveCoachSummary> getLiveCoach({
+    String? teamId,
+    int limit = 8,
+  }) async {
+    final response = await _dio.get(
+      '/promise-radar/live-coach',
+      queryParameters: {
+        'limit': limit,
+        if (teamId != null) 'team_id': teamId,
+      },
+    );
+    return PromiseLiveCoachSummary.fromJson(
       response.data as Map<String, dynamic>,
     );
   }
@@ -640,6 +656,30 @@ class PromiseRadarApi {
     );
   }
 
+  Future<PromiseGoogleTasksOAuthTokenResponse> exchangeGoogleTasksOAuthCode({
+    required String code,
+    required String redirectUri,
+    String? codeVerifier,
+    String? clientId,
+    bool dryRun = false,
+    bool returnAccessToken = false,
+  }) async {
+    final response = await _dio.post(
+      '/promise-radar/external-task/google-oauth/callback',
+      data: {
+        'code': code,
+        'redirect_uri': redirectUri,
+        if (codeVerifier != null) 'code_verifier': codeVerifier,
+        if (clientId != null) 'client_id': clientId,
+        'dry_run': dryRun,
+        'return_access_token': returnAccessToken,
+      },
+    );
+    return PromiseGoogleTasksOAuthTokenResponse.fromJson(
+      response.data as Map<String, dynamic>,
+    );
+  }
+
   Future<PromiseTaskLinkResponse> createActionItem(
     String entryId, {
     String? teamId,
@@ -789,7 +829,7 @@ class PromiseRadarApi {
   }
 
   Future<PromiseAccuracyReport> getAccuracyReport({
-    int targetCaseCount = 100,
+    int targetCaseCount = 1000,
   }) async {
     final response = await _dio.get(
       '/promise-radar/accuracy/report',

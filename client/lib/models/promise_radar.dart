@@ -625,7 +625,7 @@ class PromiseAutomationPolicy {
 
   const PromiseAutomationPolicy({
     required this.scope,
-    this.mode = 'safe_auto',
+    this.mode = 'preview_only',
     this.allowedAutoStatuses = const [],
     this.highRiskRequiresReview = true,
     this.assigneeChangeRequiresReview = true,
@@ -636,7 +636,7 @@ class PromiseAutomationPolicy {
   factory PromiseAutomationPolicy.fromJson(Map<String, dynamic> json) {
     return PromiseAutomationPolicy(
       scope: json['scope'] as String? ?? 'none',
-      mode: json['mode'] as String? ?? 'safe_auto',
+      mode: json['mode'] as String? ?? 'preview_only',
       allowedAutoStatuses:
           (json['allowed_auto_statuses'] as List<dynamic>? ?? [])
               .whereType<String>()
@@ -659,7 +659,7 @@ class PromiseAutomationPolicyUpdateRequest {
   final bool conflictRequiresReview;
 
   const PromiseAutomationPolicyUpdateRequest({
-    this.mode = 'safe_auto',
+    this.mode = 'preview_only',
     this.allowedAutoStatuses = const [],
     this.highRiskRequiresReview = true,
     this.assigneeChangeRequiresReview = true,
@@ -805,10 +805,13 @@ class PromiseLearningInsight {
   final Map<String, int> statusSampleCounts;
   final Map<String, double> statusFalsePositiveRate;
   final int feedbackCount;
+  final int productionSignalCount;
+  final int hardNegativeCount;
   final int falsePositiveCount;
   final int confirmedCount;
   final int assigneeCorrectionCount;
   final int aliasGraphSize;
+  final int ownerIdentityReviewCount;
   final Map<String, int> scopeBreakdown;
   final List<String> scopeRecommendations;
   final bool evidenceLockEnabled;
@@ -824,10 +827,13 @@ class PromiseLearningInsight {
     this.statusSampleCounts = const {},
     this.statusFalsePositiveRate = const {},
     required this.feedbackCount,
+    this.productionSignalCount = 0,
+    this.hardNegativeCount = 0,
     required this.falsePositiveCount,
     required this.confirmedCount,
     required this.assigneeCorrectionCount,
     this.aliasGraphSize = 0,
+    this.ownerIdentityReviewCount = 0,
     this.scopeBreakdown = const {},
     this.scopeRecommendations = const [],
     this.evidenceLockEnabled = true,
@@ -856,10 +862,14 @@ class PromiseLearningInsight {
         (key, value) => MapEntry(key, (value as num?)?.toDouble() ?? 0),
       ),
       feedbackCount: json['feedback_count'] as int? ?? 0,
+      productionSignalCount: json['production_signal_count'] as int? ?? 0,
+      hardNegativeCount: json['hard_negative_count'] as int? ?? 0,
       falsePositiveCount: json['false_positive_count'] as int? ?? 0,
       confirmedCount: json['confirmed_count'] as int? ?? 0,
       assigneeCorrectionCount: json['assignee_correction_count'] as int? ?? 0,
       aliasGraphSize: json['alias_graph_size'] as int? ?? 0,
+      ownerIdentityReviewCount:
+          json['owner_identity_review_count'] as int? ?? 0,
       scopeBreakdown:
           (json['scope_breakdown'] as Map<String, dynamic>? ?? {}).map(
         (key, value) => MapEntry(key, (value as num?)?.toInt() ?? 0),
@@ -872,7 +882,8 @@ class PromiseLearningInsight {
       statusAttention: (json['status_attention'] as List<dynamic>? ?? [])
           .whereType<String>()
           .toList(),
-      recommendedPolicy: json['recommended_policy'] as String? ?? 'safe_auto',
+      recommendedPolicy:
+          json['recommended_policy'] as String? ?? 'preview_only',
       insights: (json['insights'] as List<dynamic>? ?? [])
           .whereType<String>()
           .toList(),
@@ -972,6 +983,9 @@ class PromiseLearningTelemetryReport {
 class PromiseAutopilotQuarantineSummary {
   final int quarantinedCount;
   final int rejectedCount;
+  final String safeMode;
+  final int autoApplyBlockedCount;
+  final String? previewOnlyReason;
   final Map<String, int> affectedStatuses;
   final List<String> affectedEntries;
   final List<String> notes;
@@ -979,6 +993,9 @@ class PromiseAutopilotQuarantineSummary {
   const PromiseAutopilotQuarantineSummary({
     required this.quarantinedCount,
     required this.rejectedCount,
+    this.safeMode = 'preview_only',
+    this.autoApplyBlockedCount = 0,
+    this.previewOnlyReason,
     required this.affectedStatuses,
     required this.affectedEntries,
     required this.notes,
@@ -989,6 +1006,9 @@ class PromiseAutopilotQuarantineSummary {
     return PromiseAutopilotQuarantineSummary(
       quarantinedCount: json['quarantined_count'] as int? ?? 0,
       rejectedCount: json['rejected_count'] as int? ?? 0,
+      safeMode: json['safe_mode'] as String? ?? 'preview_only',
+      autoApplyBlockedCount: json['auto_apply_blocked_count'] as int? ?? 0,
+      previewOnlyReason: json['preview_only_reason'] as String?,
       affectedStatuses:
           (json['affected_statuses'] as Map<String, dynamic>? ?? {}).map(
         (key, value) => MapEntry(key, (value as num?)?.toInt() ?? 0),
@@ -1038,6 +1058,8 @@ class PromiseLiveCoachSummary {
   final String generatedAt;
   final int readinessScore;
   final int promptCount;
+  final bool recordingSurfaceReady;
+  final int slaRiskCount;
   final List<PromiseLiveCoachPrompt> prompts;
   final List<String> notes;
 
@@ -1045,6 +1067,8 @@ class PromiseLiveCoachSummary {
     required this.generatedAt,
     required this.readinessScore,
     required this.promptCount,
+    this.recordingSurfaceReady = true,
+    this.slaRiskCount = 0,
     required this.prompts,
     required this.notes,
   });
@@ -1054,6 +1078,8 @@ class PromiseLiveCoachSummary {
       generatedAt: json['generated_at'] as String? ?? '',
       readinessScore: json['readiness_score'] as int? ?? 0,
       promptCount: json['prompt_count'] as int? ?? 0,
+      recordingSurfaceReady: json['recording_surface_ready'] as bool? ?? true,
+      slaRiskCount: json['sla_risk_count'] as int? ?? 0,
       prompts: (json['prompts'] as List<dynamic>? ?? [])
           .whereType<Map<String, dynamic>>()
           .map(PromiseLiveCoachPrompt.fromJson)
@@ -1070,6 +1096,10 @@ class PromiseEvidenceRoomSummary {
   final int redactionRequiredCount;
   final int blockedCount;
   final int defaultTtlHours;
+  final int maxTtlHours;
+  final bool requiresAuthentication;
+  final bool auditLogEnabled;
+  final String sharePolicyVersion;
   final List<String> policyNotes;
 
   const PromiseEvidenceRoomSummary({
@@ -1078,6 +1108,10 @@ class PromiseEvidenceRoomSummary {
     required this.redactionRequiredCount,
     required this.blockedCount,
     required this.defaultTtlHours,
+    this.maxTtlHours = 168,
+    this.requiresAuthentication = true,
+    this.auditLogEnabled = true,
+    this.sharePolicyVersion = 'v19',
     required this.policyNotes,
   });
 
@@ -1088,6 +1122,10 @@ class PromiseEvidenceRoomSummary {
       redactionRequiredCount: json['redaction_required_count'] as int? ?? 0,
       blockedCount: json['blocked_count'] as int? ?? 0,
       defaultTtlHours: json['default_ttl_hours'] as int? ?? 72,
+      maxTtlHours: json['max_ttl_hours'] as int? ?? 168,
+      requiresAuthentication: json['requires_authentication'] as bool? ?? true,
+      auditLogEnabled: json['audit_log_enabled'] as bool? ?? true,
+      sharePolicyVersion: json['share_policy_version'] as String? ?? 'v19',
       policyNotes: (json['policy_notes'] as List<dynamic>? ?? [])
           .whereType<String>()
           .toList(),
@@ -1269,6 +1307,9 @@ class PromiseDigest {
   final int overdueCount;
   final int dueSoonCount;
   final int highRiskCount;
+  final int slaDueTodayCount;
+  final bool pushReady;
+  final String? nextPushLocalTime;
   final List<String> lines;
   final List<PromiseLedgerEntry> promises;
 
@@ -1280,6 +1321,9 @@ class PromiseDigest {
     required this.overdueCount,
     required this.dueSoonCount,
     required this.highRiskCount,
+    this.slaDueTodayCount = 0,
+    this.pushReady = true,
+    this.nextPushLocalTime,
     required this.lines,
     required this.promises,
   });
@@ -1293,6 +1337,9 @@ class PromiseDigest {
       overdueCount: json['overdue_count'] as int? ?? 0,
       dueSoonCount: json['due_soon_count'] as int? ?? 0,
       highRiskCount: json['high_risk_count'] as int? ?? 0,
+      slaDueTodayCount: json['sla_due_today_count'] as int? ?? 0,
+      pushReady: json['push_ready'] as bool? ?? true,
+      nextPushLocalTime: json['next_push_local_time'] as String?,
       lines:
           (json['lines'] as List<dynamic>? ?? []).whereType<String>().toList(),
       promises: (json['promises'] as List<dynamic>? ?? [])
@@ -1710,6 +1757,8 @@ class PromiseAccuracyReport {
   final Map<String, Map<String, dynamic>> sourceQuality;
   final List<String> qualityWarnings;
   final int realMeetingCaseCount;
+  final int hardNegativeCaseCount;
+  final int publicSourceCount;
   final int targetCaseCount;
   final bool belowTarget;
 
@@ -1724,6 +1773,8 @@ class PromiseAccuracyReport {
     required this.sourceQuality,
     required this.qualityWarnings,
     required this.realMeetingCaseCount,
+    this.hardNegativeCaseCount = 0,
+    this.publicSourceCount = 0,
     required this.targetCaseCount,
     required this.belowTarget,
   });
@@ -1761,6 +1812,8 @@ class PromiseAccuracyReport {
           .whereType<String>()
           .toList(),
       realMeetingCaseCount: json['real_meeting_case_count'] as int? ?? 0,
+      hardNegativeCaseCount: json['hard_negative_case_count'] as int? ?? 0,
+      publicSourceCount: json['public_source_count'] as int? ?? 0,
       targetCaseCount: json['target_case_count'] as int? ?? 100,
       belowTarget: json['below_target'] as bool? ?? false,
     );
@@ -2117,6 +2170,9 @@ class PromiseResponsibilityScore {
   final int delayedCount;
   final int blockedCount;
   final int overdueCount;
+  final int dueTodayCount;
+  final int slaWatchCount;
+  final int escalationCount;
   final int unconfirmedCount;
   final int recurringCount;
   final double completionRate;
@@ -2132,6 +2188,9 @@ class PromiseResponsibilityScore {
     required this.delayedCount,
     required this.blockedCount,
     required this.overdueCount,
+    this.dueTodayCount = 0,
+    this.slaWatchCount = 0,
+    this.escalationCount = 0,
     required this.unconfirmedCount,
     required this.recurringCount,
     required this.completionRate,
@@ -2149,6 +2208,9 @@ class PromiseResponsibilityScore {
       delayedCount: json['delayed_count'] as int? ?? 0,
       blockedCount: json['blocked_count'] as int? ?? 0,
       overdueCount: json['overdue_count'] as int? ?? 0,
+      dueTodayCount: json['due_today_count'] as int? ?? 0,
+      slaWatchCount: json['sla_watch_count'] as int? ?? 0,
+      escalationCount: json['escalation_count'] as int? ?? 0,
       unconfirmedCount: json['unconfirmed_count'] as int? ?? 0,
       recurringCount: json['recurring_count'] as int? ?? 0,
       completionRate: (json['completion_rate'] as num?)?.toDouble() ?? 0,
@@ -2597,6 +2659,8 @@ class PromiseMemoryGraph {
   final int changedClusterCount;
   final int delayedClusterCount;
   final int ownerAliasCount;
+  final int identityClusterCount;
+  final int ownerAliasReviewCount;
   final List<PromiseMemoryGraphNode> nodes;
   final List<PromiseMemoryGraphEdge> edges;
   final List<String> narrative;
@@ -2608,6 +2672,8 @@ class PromiseMemoryGraph {
     required this.changedClusterCount,
     required this.delayedClusterCount,
     required this.ownerAliasCount,
+    this.identityClusterCount = 0,
+    this.ownerAliasReviewCount = 0,
     required this.nodes,
     required this.edges,
     required this.narrative,
@@ -2621,6 +2687,8 @@ class PromiseMemoryGraph {
       changedClusterCount: json['changed_cluster_count'] as int? ?? 0,
       delayedClusterCount: json['delayed_cluster_count'] as int? ?? 0,
       ownerAliasCount: json['owner_alias_count'] as int? ?? 0,
+      identityClusterCount: json['identity_cluster_count'] as int? ?? 0,
+      ownerAliasReviewCount: json['owner_alias_review_count'] as int? ?? 0,
       nodes: (json['nodes'] as List<dynamic>? ?? [])
           .whereType<Map<String, dynamic>>()
           .map(PromiseMemoryGraphNode.fromJson)
@@ -2721,6 +2789,9 @@ class PromiseTeamScorecard {
   final int openCount;
   final int overdueCount;
   final int highRiskCount;
+  final int dueTodayCount;
+  final int slaWatchCount;
+  final int escalationCount;
   final int recurringSeriesCount;
   final String? weakestOwner;
   final String? strongestOwner;
@@ -2732,6 +2803,9 @@ class PromiseTeamScorecard {
     required this.openCount,
     required this.overdueCount,
     required this.highRiskCount,
+    this.dueTodayCount = 0,
+    this.slaWatchCount = 0,
+    this.escalationCount = 0,
     required this.recurringSeriesCount,
     this.weakestOwner,
     this.strongestOwner,
@@ -2745,6 +2819,9 @@ class PromiseTeamScorecard {
       openCount: json['open_count'] as int? ?? 0,
       overdueCount: json['overdue_count'] as int? ?? 0,
       highRiskCount: json['high_risk_count'] as int? ?? 0,
+      dueTodayCount: json['due_today_count'] as int? ?? 0,
+      slaWatchCount: json['sla_watch_count'] as int? ?? 0,
+      escalationCount: json['escalation_count'] as int? ?? 0,
       recurringSeriesCount: json['recurring_series_count'] as int? ?? 0,
       weakestOwner: json['weakest_owner'] as String?,
       strongestOwner: json['strongest_owner'] as String?,
@@ -2759,8 +2836,13 @@ class PromiseGoogleTasksOAuthGuide {
   final String provider;
   final String scope;
   final String authUrlHint;
+  final String appRedirectUri;
   final bool redirectUriRequired;
+  final bool pkceRequired;
+  final bool tasklistSelectionRequired;
   final String callbackPath;
+  final bool oauthUxReady;
+  final bool tokenExchangeReady;
   final bool productionReady;
   final List<String> missingSetup;
   final List<String> requiredBackendEnv;
@@ -2773,8 +2855,13 @@ class PromiseGoogleTasksOAuthGuide {
     required this.provider,
     required this.scope,
     required this.authUrlHint,
+    required this.appRedirectUri,
     required this.redirectUriRequired,
+    this.pkceRequired = true,
+    this.tasklistSelectionRequired = true,
     required this.callbackPath,
+    this.oauthUxReady = false,
+    this.tokenExchangeReady = false,
     required this.productionReady,
     required this.missingSetup,
     required this.requiredBackendEnv,
@@ -2790,9 +2877,16 @@ class PromiseGoogleTasksOAuthGuide {
       scope:
           json['scope'] as String? ?? 'https://www.googleapis.com/auth/tasks',
       authUrlHint: json['auth_url_hint'] as String? ?? '',
+      appRedirectUri: json['app_redirect_uri'] as String? ??
+          'com.voicetextnote.app:/oauth2redirect/google-tasks',
       redirectUriRequired: json['redirect_uri_required'] as bool? ?? true,
+      pkceRequired: json['pkce_required'] as bool? ?? true,
+      tasklistSelectionRequired:
+          json['tasklist_selection_required'] as bool? ?? true,
       callbackPath: json['callback_path'] as String? ??
-          '/api/v1/promise-radar/google-tasks/oauth/callback',
+          '/api/v1/promise-radar/external-task/google-oauth/callback',
+      oauthUxReady: json['oauth_ux_ready'] as bool? ?? false,
+      tokenExchangeReady: json['token_exchange_ready'] as bool? ?? false,
       productionReady: json['production_ready'] as bool? ?? false,
       missingSetup: (json['missing_setup'] as List<dynamic>? ?? [])
           .whereType<String>()
@@ -2806,6 +2900,65 @@ class PromiseGoogleTasksOAuthGuide {
       steps:
           (json['steps'] as List<dynamic>? ?? []).whereType<String>().toList(),
       tokenHandling: json['token_handling'] as String? ?? '',
+      securityNotes: (json['security_notes'] as List<dynamic>? ?? [])
+          .whereType<String>()
+          .toList(),
+    );
+  }
+}
+
+class PromiseGoogleTasksOAuthTokenResponse {
+  final String provider;
+  final bool ready;
+  final bool dryRun;
+  final String? tokenType;
+  final int? expiresIn;
+  final String? scope;
+  final bool hasAccessToken;
+  final bool hasRefreshToken;
+  final String? accessToken;
+  final String? accessTokenPreview;
+  final String? refreshTokenPreview;
+  final List<String> missingSetup;
+  final String message;
+  final List<String> securityNotes;
+
+  const PromiseGoogleTasksOAuthTokenResponse({
+    required this.provider,
+    required this.ready,
+    required this.dryRun,
+    this.tokenType,
+    this.expiresIn,
+    this.scope,
+    required this.hasAccessToken,
+    required this.hasRefreshToken,
+    this.accessToken,
+    this.accessTokenPreview,
+    this.refreshTokenPreview,
+    required this.missingSetup,
+    required this.message,
+    required this.securityNotes,
+  });
+
+  factory PromiseGoogleTasksOAuthTokenResponse.fromJson(
+    Map<String, dynamic> json,
+  ) {
+    return PromiseGoogleTasksOAuthTokenResponse(
+      provider: json['provider'] as String? ?? 'google_tasks',
+      ready: json['ready'] as bool? ?? false,
+      dryRun: json['dry_run'] as bool? ?? true,
+      tokenType: json['token_type'] as String?,
+      expiresIn: (json['expires_in'] as num?)?.toInt(),
+      scope: json['scope'] as String?,
+      hasAccessToken: json['has_access_token'] as bool? ?? false,
+      hasRefreshToken: json['has_refresh_token'] as bool? ?? false,
+      accessToken: json['access_token'] as String?,
+      accessTokenPreview: json['access_token_preview'] as String?,
+      refreshTokenPreview: json['refresh_token_preview'] as String?,
+      missingSetup: (json['missing_setup'] as List<dynamic>? ?? [])
+          .whereType<String>()
+          .toList(),
+      message: json['message'] as String? ?? '',
       securityNotes: (json['security_notes'] as List<dynamic>? ?? [])
           .whereType<String>()
           .toList(),

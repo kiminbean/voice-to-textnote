@@ -40,14 +40,15 @@
       "memory_graph_edge_count": 20,
       "team_risk_score": 100
     },
-    "scope_note": "Historical v16 summary. Current Promise Radar baseline and physical-device generator evidence are in docs/promise-radar-e2e-evidence-2026-07-02-v17-summary.json."
+    "scope_note": "Historical v16 summary. Current Promise Radar baseline is in docs/session-summary-2026-07-02-promise-radar-v18.md; v17 physical-device evidence remains historical because v18 did not regenerate physical-device evidence."
   },
   "superseded_by": {
-    "summary_file": "docs/promise-radar-e2e-evidence-2026-07-02-v17-summary.json",
-    "session_file": "docs/session-summary-2026-07-02-promise-radar-v17.md",
-    "current_total_cases": 629,
-    "current_real_meeting_cases": 562,
-    "current_physical_device_overall_pass": true
+    "version": "promise-radar-v19",
+    "summary": "docs/promise-radar-e2e-evidence-2026-07-02-v19-summary.json",
+    "accuracy_case_count": 1089,
+    "real_meeting_case_count": 1022,
+    "hard_negative_case_count": 70,
+    "target_case_count": 1000
   },
   "v16_gate_contract": {
     "command_center_target_real_cases": 500,

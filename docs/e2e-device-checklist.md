@@ -295,9 +295,9 @@ Firebase message id: projects/voice-to-textnote/messages/1782749586143713
 
 아래 항목은 2026-07-02 기준 구현된 v6~v17 기능이다. 현재 strict release evidence required key에는 추가하지 않는다. strict key를 늘리려면 `REQUIRED_E2E_SCENARIOS`, example/scaffold evidence, release-readiness 테스트를 같은 커밋에서 함께 갱신해야 한다.
 
-`backend/scripts/generate_promise_radar_e2e_evidence.py`는 v17부터 `GET /api/v1/promise-radar/command-center?target_case_count=560`을 호출해 Command Center 응답이 Promise Memory Graph, Autopilot Shadow Mode, Evidence Permission, Team Scorecard, operator actions, Google Tasks OAuth readiness, extraction recall, production learning telemetry, Live Promise Coach, Evidence Room, Autopilot Quarantine, Meeting Recipe 필드를 포함하고 실제 회의 label 560건 이상 및 extraction recall 0.95 이상을 반환하는지 확인한다. 이 스크립트가 실패하면 evidence JSON을 수동으로 조작하지 말고 서버/DB/기기 연결 원인을 먼저 해결한다.
+`backend/scripts/generate_promise_radar_e2e_evidence.py`는 v19부터 `GET /api/v1/promise-radar/command-center?target_case_count=1000`을 호출해 Command Center 응답이 Promise Memory Graph, Autopilot Shadow Mode, Evidence Permission, Team Scorecard/SLA watch, operator actions, Google Tasks OAuth readiness/callback, extraction recall, production learning telemetry, hard-negative/public-source accuracy counters, owner identity review, Digest SLA/push readiness, Live Promise Coach recording surface, Evidence Room v19 policy, Autopilot Quarantine safe mode, Meeting Recipe 필드를 포함하고 실제 회의 label 1000건 이상 및 extraction recall 0.95 이상을 반환하는지 확인한다. 이 스크립트가 실패하면 evidence JSON을 수동으로 조작하지 말고 서버/DB/기기 연결 원인을 먼저 해결한다.
 
-2026-07-02 기준 v17 generator는 iOS/Android USB 연결 상태와 `http://100.69.69.119:8000/api/v1` backend에서 `overall_pass=true`로 통과했다. Sanitized summary는 `docs/promise-radar-e2e-evidence-2026-07-02-v17-summary.json`에 보관하고, raw `.cache/promise-radar-e2e-v17-check.json`은 device/API 원본 출력이므로 커밋하지 않는다.
+2026-07-02 기준 v19 generator는 iOS/Android USB 연결 상태와 `http://127.0.0.1:8000/api/v1` backend에서 `overall_pass=true`로 통과했다. Sanitized summary는 `docs/promise-radar-e2e-evidence-2026-07-02-v19-summary.json`에 보관하고, raw `.cache/promise-radar-e2e-v19-check.json`은 device/API 원본 출력이므로 커밋하지 않는다.
 
 - `promise_radar_learning_loop`: Result 화면 `오판` 버튼으로 `learning_feedback` 저장 후 learning profile threshold가 갱신되는지 확인한다.
 - `promise_radar_timeline`: Result 화면 `타임라인` 버튼에서 감지/자동 판정/사용자 피드백/병합/분리 이벤트가 시간순으로 표시되는지 확인한다.
@@ -334,9 +334,9 @@ Firebase message id: projects/voice-to-textnote/messages/1782749586143713
 - `promise_radar_live_coach`: `GET /api/v1/promise-radar/live-coach`와 Command Center가 회의 중 확인할 owner/due/status prompt를 표시하는지 확인한다.
 - `promise_radar_evidence_room`: `GET /api/v1/promise-radar/evidence-room`과 `POST /api/v1/promise-radar/ledger/{entry_id}/evidence-room/share-link`가 transcript/speaker/timestamp redaction 정책과 TTL을 적용하는지 확인한다.
 - `promise_radar_meeting_recipe`: `GET /api/v1/promise-radar/meeting-recipe`와 Command Center가 회의 유형별 owner/due/evidence/autopilot 정책을 표시하는지 확인한다.
-- `promise_radar_accuracy_report`: 원장 헤더 또는 Command Center 정확도 패널에서 629건 fixture, 실제 회의 label 562건, accuracy 1.0, confidence bucket, coverage, source quality warning이 표시되는지 확인한다.
+- `promise_radar_accuracy_report`: 원장 헤더 또는 Command Center 정확도 패널에서 v19 기준 1089건 fixture, 실제 회의/녹음/공개 transcript label 1022건, hard negative 70건, public source manifest 24개, accuracy 1.0, confidence bucket, coverage, source quality warning이 표시되는지 확인한다.
 - `promise_radar_extraction_recall_report`: Command Center 정확도 패널 또는 `GET /api/v1/promise-radar/accuracy/extraction-report`에서 50건 extraction fixture, expected 50건, matched 50건, recall 1.0이 표시되는지 확인한다.
-- `promise_radar_accuracy_audit_gate`: `python backend/scripts/audit_promise_radar_accuracy_set.py --target-real-cases 560`가 오류 없이 통과하고 fixture/manifest mismatch가 없음을 확인한다.
+- `promise_radar_accuracy_audit_gate`: `python backend/scripts/audit_promise_radar_accuracy_set.py --target-real-cases 1000`가 오류 없이 통과하고 fixture/manifest mismatch가 없음을 확인한다. 2026-07-02 v19 기준 fixture는 1089건, 실제 회의/녹음/공개 transcript 파생 label은 1022건이다.
 - `promise_radar_extraction_recall_gate`: `python backend/scripts/evaluate_promise_radar_extraction.py --target-cases 50 --min-recall 0.95`가 오류 없이 통과하고 false negative failures가 없음을 확인한다.
 - `promise_radar_identity_confidence`: 원장 행에서 화자/담당자 신뢰도 pill이 표시되고, speaker/owner/assigned user가 없는 항목은 표시되지 않거나 낮은 값으로 표시되는지 확인한다.
 - `promise_radar_responsibility_scores`: Result 화면 `담당자 책임 점수` 섹션에서 owner별 open/completed/overdue/completion rate와 risk chip이 표시되는지 확인한다.

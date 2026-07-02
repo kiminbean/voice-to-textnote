@@ -131,5 +131,24 @@ void main() {
     test('게스트 상태에서도 회원가입 화면 이동은 허용해야 함', () {
       expect(authRedirect(const AuthState.guest(), '/register'), isNull);
     });
+
+    test('UI 테스트 모드에서는 결과 딥링크만 미인증 접근을 허용해야 함', () {
+      expect(
+        authRedirect(
+          const AuthState.unauthenticated(),
+          '/result/meeting-123',
+          allowUnauthenticatedResultForUiTest: true,
+        ),
+        isNull,
+      );
+      expect(
+        authRedirect(
+          const AuthState.unauthenticated(),
+          '/',
+          allowUnauthenticatedResultForUiTest: true,
+        ),
+        '/login',
+      );
+    });
   });
 }

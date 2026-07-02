@@ -13,6 +13,18 @@ FIXTURE_PATH = ROOT / "backend" / "tests" / "fixtures" / "promise_radar_accuracy
 SOURCE_MANIFEST_PATH = (
     ROOT / "backend" / "tests" / "fixtures" / "promise_radar_real_meeting_sources.json"
 )
+PUBLIC_LABEL_LICENSE_TOKENS = (
+    "creative commons",
+    "cc-by",
+    "cc by",
+    "apache",
+    "mit",
+)
+
+
+def _public_label_license_allowed(license_text: str) -> bool:
+    lowered = license_text.lower()
+    return any(token in lowered for token in PUBLIC_LABEL_LICENSE_TOKENS)
 
 
 def _load_json(path: Path) -> Any:
@@ -143,8 +155,8 @@ def audit_accuracy_set(
         if golden_count <= 0:
             continue
         license_text = str(source.get("license") or "").lower()
-        if "creative commons" not in license_text:
-            errors.append(f"{source_id} does not declare a Creative Commons license")
+        if not _public_label_license_allowed(license_text):
+            errors.append(f"{source_id} does not declare an approved public label license")
         for field in ("url", "verified_with", "rebuild_commands"):
             if not source.get(field):
                 errors.append(f"{source_id} missing {field}")

@@ -175,6 +175,9 @@ void main() {
               'delayed_count': 0,
               'blocked_count': 1,
               'overdue_count': 1,
+              'due_today_count': 1,
+              'sla_watch_count': 2,
+              'escalation_count': 1,
               'unconfirmed_count': 1,
               'recurring_count': 1,
               'completion_rate': 0.333,
@@ -242,6 +245,10 @@ void main() {
         'promise_radar',
       );
       expect(result.nextMeetingBriefing!.responsibilityScores.single.score, 68);
+      expect(
+        result.nextMeetingBriefing!.responsibilityScores.single.slaWatchCount,
+        2,
+      );
       expect(result.nextMeetingBriefing!.meetingSeries.single.meetingCount, 2);
       expect(result.semanticEnrichmentStatus, 'zai_applied');
       expect(result.autopilotAssessments.single.applied, isTrue);
@@ -458,6 +465,24 @@ void main() {
         'dry_run': true,
         'tasklist': '@default',
       });
+      final oauthToken = PromiseGoogleTasksOAuthTokenResponse.fromJson({
+        'provider': 'google_tasks',
+        'ready': true,
+        'dry_run': false,
+        'token_type': 'Bearer',
+        'expires_in': 3600,
+        'scope': 'https://www.googleapis.com/auth/tasks',
+        'has_access_token': true,
+        'has_refresh_token': true,
+        'access_token_preview': 'ya29.a...oken',
+        'refresh_token_preview': 'refres...oken',
+        'missing_setup': [],
+        'message': 'Google Tasks OAuth token exchange가 완료됐습니다.',
+        'security_notes': ['PKCE 사용'],
+      });
+      expect(oauthToken.ready, isTrue);
+      expect(oauthToken.accessToken, isNull);
+      expect(oauthToken.accessTokenPreview, 'ya29.a...oken');
 
       final evaluation = PromiseAccuracyEvaluation.fromJson({
         'case_count': 6,
@@ -860,10 +885,13 @@ void main() {
           'status_sample_counts': {'completed': 5},
           'status_false_positive_rate': {'completed': 0.4},
           'feedback_count': 7,
+          'production_signal_count': 7,
+          'hard_negative_count': 2,
           'false_positive_count': 2,
           'confirmed_count': 5,
           'assignee_correction_count': 1,
           'alias_graph_size': 3,
+          'owner_identity_review_count': 2,
           'scope_breakdown': {'feedback': 7, 'owner_aliases': 3},
           'scope_recommendations': ['개인 데이터를 팀 정책으로 승격하세요.'],
           'evidence_lock_enabled': true,
@@ -903,6 +931,9 @@ void main() {
           'overdue_count': 2,
           'due_soon_count': 1,
           'high_risk_count': 1,
+          'sla_due_today_count': 2,
+          'push_ready': true,
+          'next_push_local_time': '08:30',
           'lines': ['기한 초과 2개'],
           'promises': [],
         },
@@ -918,6 +949,8 @@ void main() {
           'generated_at': '2026-07-02T00:00:00Z',
           'readiness_score': 64,
           'prompt_count': 1,
+          'recording_surface_ready': true,
+          'sla_risk_count': 2,
           'prompts': [
             {
               'key': 'checkpoint:0',
@@ -943,8 +976,8 @@ void main() {
           'source_manifest_path':
               'backend/tests/fixtures/promise_radar_real_meeting_sources.json',
           'evaluation': {
-            'case_count': 629,
-            'correct_count': 629,
+            'case_count': 1089,
+            'correct_count': 1089,
             'accuracy': 1.0,
             'status_precision': {'completed': 1.0},
             'failures': [],
@@ -954,8 +987,10 @@ void main() {
           'coverage': {'real_meeting_target': 1.0},
           'source_quality': {},
           'quality_warnings': [],
-          'real_meeting_case_count': 562,
-          'target_case_count': 560,
+          'real_meeting_case_count': 1022,
+          'hard_negative_case_count': 70,
+          'public_source_count': 24,
+          'target_case_count': 1000,
           'below_target': false,
         },
         'extraction_recall': {
@@ -990,6 +1025,8 @@ void main() {
           'changed_cluster_count': 1,
           'delayed_cluster_count': 2,
           'owner_alias_count': 3,
+          'identity_cluster_count': 4,
+          'owner_alias_review_count': 2,
           'nodes': [
             {
               'id': 'owner:SPEAKER_01',
@@ -1036,6 +1073,10 @@ void main() {
           'redaction_required_count': 1,
           'blocked_count': 2,
           'default_ttl_hours': 72,
+          'max_ttl_hours': 168,
+          'requires_authentication': true,
+          'audit_log_enabled': true,
+          'share_policy_version': 'v19',
           'policy_notes': ['원문 transcript는 기본 redaction됩니다.'],
         },
         'team_scorecard': {
@@ -1044,6 +1085,9 @@ void main() {
           'open_count': 4,
           'overdue_count': 2,
           'high_risk_count': 1,
+          'due_today_count': 1,
+          'sla_watch_count': 3,
+          'escalation_count': 2,
           'recurring_series_count': 1,
           'weakest_owner': 'SPEAKER_01',
           'strongest_owner': '김기수',
@@ -1052,6 +1096,9 @@ void main() {
         'autopilot_quarantine': {
           'quarantined_count': 1,
           'rejected_count': 1,
+          'safe_mode': 'preview_only',
+          'auto_apply_blocked_count': 3,
+          'preview_only_reason': 'Autopilot preview-only policy is active.',
           'affected_statuses': {'completed': 2},
           'affected_entries': ['ledger-1'],
           'notes': ['격리된 자동 판정은 검토함에 유지합니다.'],
@@ -1070,8 +1117,15 @@ void main() {
           'provider': 'google_tasks',
           'scope': 'https://www.googleapis.com/auth/tasks',
           'auth_url_hint': 'https://accounts.google.com/o/oauth2/v2/auth',
+          'app_redirect_uri':
+              'com.voicetextnote.app:/oauth2redirect/google-tasks',
           'redirect_uri_required': true,
-          'callback_path': '/api/v1/promise-radar/google-tasks/oauth/callback',
+          'pkce_required': true,
+          'tasklist_selection_required': true,
+          'callback_path':
+              '/api/v1/promise-radar/external-task/google-oauth/callback',
+          'oauth_ux_ready': true,
+          'token_exchange_ready': true,
           'production_ready': true,
           'missing_setup': [],
           'required_backend_env': ['GOOGLE_CLIENT_ID'],
@@ -1107,26 +1161,51 @@ void main() {
       expect(center.reviewQueue.conflictCount, 1);
       expect(center.learningInsight.statusSampleCounts['completed'], 5);
       expect(center.learningInsight.statusFalsePositiveRate['completed'], 0.4);
+      expect(center.learningInsight.productionSignalCount, 7);
+      expect(center.learningInsight.hardNegativeCount, 2);
       expect(center.learningInsight.aliasGraphSize, 3);
+      expect(center.learningInsight.ownerIdentityReviewCount, 2);
       expect(center.learningInsight.scopeBreakdown['feedback'], 7);
       expect(center.learningTelemetry.eventCount, 9);
       expect(center.learningTelemetry.statusSegments.single.falsePositiveRate,
           0.4);
       expect(center.liveCoach.promptCount, 1);
+      expect(center.liveCoach.recordingSurfaceReady, isTrue);
+      expect(center.liveCoach.slaRiskCount, 2);
+      expect(center.digest.slaDueTodayCount, 2);
+      expect(center.digest.pushReady, isTrue);
       expect(center.evidenceAudit.weakEvidenceCount, 1);
       expect(center.memoryGraph.nodeCount, 6);
       expect(center.memoryGraph.ownerAliasCount, 3);
+      expect(center.memoryGraph.identityClusterCount, 4);
+      expect(center.memoryGraph.ownerAliasReviewCount, 2);
       expect(center.shadowMode.blockedByEvidenceCount, 1);
       expect(center.evidencePermissions.exportAllowed, isFalse);
       expect(center.evidenceRoom.blockedCount, 2);
+      expect(center.evidenceRoom.requiresAuthentication, isTrue);
+      expect(center.evidenceRoom.auditLogEnabled, isTrue);
+      expect(center.evidenceRoom.sharePolicyVersion, 'v19');
       expect(center.teamScorecard.riskScore, 76);
+      expect(center.teamScorecard.slaWatchCount, 3);
+      expect(center.teamScorecard.escalationCount, 2);
       expect(center.autopilotQuarantine.affectedStatuses['completed'], 2);
+      expect(center.autopilotQuarantine.safeMode, 'preview_only');
+      expect(center.autopilotQuarantine.autoApplyBlockedCount, 3);
       expect(center.meetingRecipe.recipeKey, 'risk_review');
       expect(center.googleTasksOAuth.scope,
           'https://www.googleapis.com/auth/tasks');
       expect(center.googleTasksOAuth.productionReady, isTrue);
-      expect(center.accuracyReport.evaluation.caseCount, 629);
-      expect(center.accuracyReport.realMeetingCaseCount, 562);
+      expect(center.googleTasksOAuth.oauthUxReady, isTrue);
+      expect(center.googleTasksOAuth.tokenExchangeReady, isTrue);
+      expect(center.googleTasksOAuth.pkceRequired, isTrue);
+      expect(center.googleTasksOAuth.appRedirectUri,
+          'com.voicetextnote.app:/oauth2redirect/google-tasks');
+      expect(center.googleTasksOAuth.callbackPath,
+          '/api/v1/promise-radar/external-task/google-oauth/callback');
+      expect(center.accuracyReport.evaluation.caseCount, 1089);
+      expect(center.accuracyReport.realMeetingCaseCount, 1022);
+      expect(center.accuracyReport.hardNegativeCaseCount, 70);
+      expect(center.accuracyReport.publicSourceCount, 24);
       expect(center.extractionRecall.evaluation.recall, 1.0);
       expect(center.actions.single.key, 'open_extraction_recall_report');
       expect(center.focusItems.single.key, 'google_tasks_oauth');

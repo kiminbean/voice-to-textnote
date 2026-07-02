@@ -435,6 +435,8 @@ def _summarize_api_check(name: str, result: dict[str, Any]) -> dict[str, Any]:
                 "accuracy_case_count": evaluation.get("case_count"),
                 "accuracy_correct_count": evaluation.get("correct_count"),
                 "real_meeting_case_count": accuracy.get("real_meeting_case_count"),
+                "hard_negative_case_count": accuracy.get("hard_negative_case_count"),
+                "public_source_count": accuracy.get("public_source_count"),
                 "target_case_count": accuracy.get("target_case_count"),
                 "extraction_case_count": extraction_eval.get("case_count"),
                 "extraction_expected_count": extraction_eval.get("expected_count"),
@@ -443,6 +445,12 @@ def _summarize_api_check(name: str, result: dict[str, Any]) -> dict[str, Any]:
                 "extraction_real_meeting_case_count": extraction.get("real_meeting_case_count"),
                 "memory_graph_node_count": memory_graph.get("node_count"),
                 "memory_graph_edge_count": memory_graph.get("edge_count"),
+                "memory_graph_identity_cluster_count": memory_graph.get(
+                    "identity_cluster_count"
+                ),
+                "memory_graph_owner_alias_review_count": memory_graph.get(
+                    "owner_alias_review_count"
+                ),
                 "shadow_candidate_count": shadow_mode.get("candidate_count"),
                 "shadow_blocked_by_evidence_count": shadow_mode.get("blocked_by_evidence_count"),
                 "evidence_export_allowed": evidence_permissions.get("export_allowed"),
@@ -454,10 +462,19 @@ def _summarize_api_check(name: str, result: dict[str, Any]) -> dict[str, Any]:
                     learning_telemetry.get("status_segments") or []
                 ),
                 "live_coach_prompt_count": live_coach.get("prompt_count"),
+                "digest_push_ready": (body.get("digest") or {}).get("push_ready"),
+                "digest_sla_due_today_count": (body.get("digest") or {}).get(
+                    "sla_due_today_count"
+                ),
                 "autopilot_quarantine_count": autopilot_quarantine.get("quarantined_count"),
                 "meeting_recipe_key": meeting_recipe.get("recipe_key"),
                 "team_risk_score": team_scorecard.get("risk_score"),
                 "google_tasks_oauth_production_ready": google_tasks_oauth.get("production_ready"),
+                "google_tasks_oauth_ux_ready": google_tasks_oauth.get("oauth_ux_ready"),
+                "google_tasks_token_exchange_ready": google_tasks_oauth.get(
+                    "token_exchange_ready"
+                ),
+                "google_tasks_pkce_required": google_tasks_oauth.get("pkce_required"),
                 "google_tasks_oauth_missing_setup_count": len(
                     google_tasks_oauth.get("missing_setup") or []
                 ),
@@ -521,7 +538,7 @@ def main() -> int:
     checks["command_center"] = _api(
         args.base_url,
         "GET",
-        "promise-radar/command-center?limit=10&target_case_count=560",
+        "promise-radar/command-center?limit=10&target_case_count=1000",
         token=token,
     )
 
@@ -575,8 +592,8 @@ def main() -> int:
         "due_push_dispatch_contract": bool(checks["due_push_dispatch_contract"].get("ok")),
         "command_center": bool(checks["command_center"].get("ok")),
         "command_center_accuracy_baseline": bool(
-            (summarized_checks["command_center"].get("accuracy_case_count") or 0) >= 629
-            and (summarized_checks["command_center"].get("real_meeting_case_count") or 0) >= 560
+            (summarized_checks["command_center"].get("accuracy_case_count") or 0) >= 1089
+            and (summarized_checks["command_center"].get("real_meeting_case_count") or 0) >= 1000
         ),
         "command_center_v15_contract": bool(
             isinstance(
@@ -620,6 +637,28 @@ def main() -> int:
                 int,
             )
             and bool(summarized_checks["command_center"].get("meeting_recipe_key"))
+        ),
+        "command_center_v19_contract": bool(
+            (summarized_checks["command_center"].get("hard_negative_case_count") or 0) >= 50
+            and (summarized_checks["command_center"].get("public_source_count") or 0) >= 2
+            and isinstance(
+                summarized_checks["command_center"].get("memory_graph_identity_cluster_count"),
+                int,
+            )
+            and isinstance(
+                summarized_checks["command_center"].get("memory_graph_owner_alias_review_count"),
+                int,
+            )
+            and isinstance(summarized_checks["command_center"].get("digest_push_ready"), bool)
+            and summarized_checks["command_center"].get("google_tasks_pkce_required") is True
+            and isinstance(
+                summarized_checks["command_center"].get("google_tasks_oauth_ux_ready"),
+                bool,
+            )
+            and isinstance(
+                summarized_checks["command_center"].get("google_tasks_token_exchange_ready"),
+                bool,
+            )
         ),
     }
 

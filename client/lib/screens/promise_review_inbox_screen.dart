@@ -316,6 +316,16 @@ class _LearningInsightHeader extends StatelessWidget {
                   icon: Icons.hub_outlined,
                   label: 'Alias ${insight.aliasGraphSize}',
                 ),
+                if (insight.ownerIdentityReviewCount > 0)
+                  _MetricChip(
+                    icon: Icons.manage_accounts_outlined,
+                    label: 'Identity ${insight.ownerIdentityReviewCount}',
+                  ),
+                if (insight.hardNegativeCount > 0)
+                  _MetricChip(
+                    icon: Icons.rule_outlined,
+                    label: 'Hard ${insight.hardNegativeCount}',
+                  ),
                 _MetricChip(
                   icon: insight.evidenceLockEnabled
                       ? Icons.lock_outline_rounded
@@ -644,6 +654,15 @@ class _MemoryGraphPanel extends StatelessWidget {
                   icon: Icons.person_search_outlined,
                   label: 'Alias ${graph.ownerAliasCount}',
                 ),
+                _MetricChip(
+                  icon: Icons.account_tree_outlined,
+                  label: 'Identity ${graph.identityClusterCount}',
+                ),
+                if (graph.ownerAliasReviewCount > 0)
+                  _MetricChip(
+                    icon: Icons.manage_accounts_outlined,
+                    label: 'Review ${graph.ownerAliasReviewCount}',
+                  ),
               ],
             ),
             if (graph.nodes.isNotEmpty) ...[
@@ -1113,6 +1132,16 @@ class _DigestBriefPanel extends StatelessWidget {
                   label: '고위험 ${digest.highRiskCount}',
                 ),
                 _MetricChip(
+                  icon: Icons.timer_outlined,
+                  label: 'SLA ${digest.slaDueTodayCount}',
+                ),
+                _MetricChip(
+                  icon: digest.pushReady
+                      ? Icons.notifications_active_outlined
+                      : Icons.notifications_paused_outlined,
+                  label: digest.pushReady ? 'Push 준비' : 'Push 대기',
+                ),
+                _MetricChip(
                   icon: Icons.fact_check_outlined,
                   label: '준비 ${brief.readinessScore}',
                 ),
@@ -1177,6 +1206,17 @@ class _ExternalTaskPanel extends StatelessWidget {
                       : Icons.gpp_maybe_outlined,
                   label: oauth.productionReady ? '운영 준비' : '설정 필요',
                 ),
+                _MetricChip(
+                  icon: oauth.oauthUxReady
+                      ? Icons.phone_android_outlined
+                      : Icons.phone_disabled_outlined,
+                  label: oauth.oauthUxReady ? '앱 OAuth' : 'OAuth 대기',
+                ),
+                if (oauth.pkceRequired)
+                  const _MetricChip(
+                    icon: Icons.vpn_key_outlined,
+                    label: 'PKCE',
+                  ),
               ],
             ),
             if (oauth.missingSetup.isNotEmpty) ...[

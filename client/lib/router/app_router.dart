@@ -2,6 +2,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:voice_to_textnote/config/ui_test_mode.dart';
 import 'package:voice_to_textnote/providers/auth_provider.dart';
 import 'package:voice_to_textnote/screens/home_screen.dart';
 import 'package:voice_to_textnote/screens/login_screen.dart';
@@ -47,7 +48,11 @@ String? externalDeepLinkRedirect(Uri uri) {
   return '/result/$normalizedId';
 }
 
-String? authRedirect(AuthState authState, String currentPath) {
+String? authRedirect(
+  AuthState authState,
+  String currentPath, {
+  bool allowUnauthenticatedResultForUiTest = false,
+}) {
   final isAuthenticated = authState.isAuthenticated;
   // SPEC-GUEST-001: 게스트 모드도 홈 접근 허용
   final isGuest = authState.isGuest;
@@ -60,7 +65,13 @@ String? authRedirect(AuthState authState, String currentPath) {
   final isPublicPath = _publicPaths.contains(currentPath);
 
   // 미인증 + 비게스트 상태에서 보호된 경로 접근 시 로그인으로
-  if (!isAuthenticated && !isGuest && !isPublicPath) return '/login';
+  if (!isAuthenticated && !isGuest && !isPublicPath) {
+    if (allowUnauthenticatedResultForUiTest &&
+        currentPath.startsWith('/result/')) {
+      return null;
+    }
+    return '/login';
+  }
 
   // 게스트 시작은 /login에서 발생하므로 상태 전환 직후 홈으로 보내야 한다.
   // 단, /register는 게스트→회원가입 전환 흐름이라 계속 허용한다.
@@ -75,7 +86,7 @@ String? authRedirect(AuthState authState, String currentPath) {
 
 // @MX:ANCHOR: 앱 전역 라우터 - 인증 리다이렉트 로직 포함
 // @MX:REASON: goRouter는 ProviderScope 외부에서 생성되므로 ref를 직접 받아야 함
-GoRouter createRouter(ProviderContainer container) {
+GoRouter createRouter(ProviderContainer container, {bool uiTestMode = false}) {
   final router = GoRouter(
     initialLocation: '/',
     // 인증 상태 변화 감지를 위한 리프레시 리스너
@@ -86,7 +97,11 @@ GoRouter createRouter(ProviderContainer container) {
 
       final authState = container.read(authStateProvider);
       final currentPath = state.uri.path;
-      return authRedirect(authState, currentPath);
+      return authRedirect(
+        authState,
+        currentPath,
+        allowUnauthenticatedResultForUiTest: uiTestMode || UiTestMode.enabled,
+      );
     },
     routes: [
       // 홈 화면 - 미팅 목록

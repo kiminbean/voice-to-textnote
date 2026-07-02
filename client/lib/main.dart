@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:voice_to_textnote/config/firebase_config.dart';
+import 'package:voice_to_textnote/config/ui_test_mode.dart';
 import 'package:voice_to_textnote/l10n/app_localizations.dart';
 import 'package:voice_to_textnote/providers/auth_provider.dart';
 import 'package:voice_to_textnote/providers/notification_provider.dart';
@@ -13,6 +14,7 @@ import 'package:voice_to_textnote/services/deep_link_service.dart';
 
 import 'package:voice_to_textnote/services/push_notification_service.dart';
 import 'package:voice_to_textnote/services/shared_import_service.dart';
+import 'package:voice_to_textnote/services/auth_service.dart';
 import 'package:voice_to_textnote/theme/app_theme.dart';
 
 void main() async {
@@ -24,11 +26,25 @@ void main() async {
   // 백그라운드 메시지 핸들러 등록
   registerFCMBackgroundHandler();
 
-  runApp(const VoiceToTextNoteApp());
+  final uiTestMode = await UiTestMode.detect();
+  if (uiTestMode) {
+    final authService = AuthService();
+    await Future.wait([
+      authService.clearTokens(),
+      authService.clearGuestSession(),
+    ]);
+  }
+
+  runApp(VoiceToTextNoteApp(uiTestMode: uiTestMode));
 }
 
 class VoiceToTextNoteApp extends StatefulWidget {
-  const VoiceToTextNoteApp({super.key});
+  final bool uiTestMode;
+
+  const VoiceToTextNoteApp({
+    super.key,
+    this.uiTestMode = false,
+  });
 
   @override
   State<VoiceToTextNoteApp> createState() => _VoiceToTextNoteAppState();
@@ -37,7 +53,7 @@ class VoiceToTextNoteApp extends StatefulWidget {
 class _VoiceToTextNoteAppState extends State<VoiceToTextNoteApp>
     with WidgetsBindingObserver {
   late final ProviderContainer _container;
-  late final router = createRouter(_container);
+  late final router = createRouter(_container, uiTestMode: widget.uiTestMode);
   ProviderSubscription<AuthState>? _authSubscription;
 
   @override

@@ -1,6 +1,8 @@
 # Promise Radar v15 Session Summary
 
-> Current baseline note: v15 counts are preserved as session history. The latest Promise Radar baseline is v17 in `docs/session-summary-2026-07-02-promise-radar-v17.md`: 629 total accuracy cases, 562 real-meeting/audio-derived labels, evaluator accuracy 1.0, extraction recall 50/50, and physical-device E2E generator `overall_pass=true`.
+> Superseded: Promise Radar v19 is the current baseline as of 2026-07-02. Keep this file as historical context and use docs/session-summary-2026-07-02-promise-radar-v19.md for current counts, gates, and recurrence-prevention notes.
+
+> Current baseline note: v15 counts are preserved as session history. The latest Promise Radar baseline is v18 in `docs/session-summary-2026-07-02-promise-radar-v18.md`: 849 total accuracy cases, 782 real-meeting/audio-derived labels, evaluator accuracy 1.0, extraction recall 50/50, Google Tasks OAuth callback/token exchange, preview-only Autopilot default, Live Promise Coach recording surface, and Command Center `target_case_count=700`.
 
 ## Scope
 
@@ -53,4 +55,4 @@
 
 - v15 is a feature/readiness improvement. It does not by itself add new strict release required scenarios.
 - If Command Center v15 becomes strict release evidence, update `REQUIRED_E2E_SCENARIOS`, example/scaffold evidence, release-readiness tests, and `docs/e2e-device-checklist.md` in the same change.
-- Historical v10-v15 session summaries keep their original counts for traceability. Current docs should use the v17 baseline: `629` total cases, `562` real-meeting/audio-derived labels, evaluator accuracy `1.0`, extraction recall `50/50`, and physical-device E2E generator `overall_pass=true`.
+- Historical v10-v15 session summaries keep their original counts for traceability. Current docs should use the v18 baseline: `849` total cases, `782` real-meeting/audio-derived labels, evaluator accuracy `1.0`, extraction recall `50/50`, and Command Center `target_case_count=700`.

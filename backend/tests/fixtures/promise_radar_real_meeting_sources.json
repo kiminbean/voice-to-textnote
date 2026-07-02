@@ -712,5 +712,109 @@
         "label_notes": "v17 YouTube audio/caption-derived balanced Promise Radar status labels."
       }
     ]
+  },
+  {
+    "source_id": "promise-radar-v18-meetingbank-hf-transcript",
+    "title": "MeetingBank city council transcript public meeting labels",
+    "url": "https://huggingface.co/datasets/lytang/MeetingBank-transcript",
+    "channel": "Hugging Face / MeetingBank-transcript",
+    "license": "Creative Commons Attribution-NonCommercial-ShareAlike 4.0 (CC BY-NC-SA 4.0)",
+    "duration_seconds": 12884400,
+    "verified_with": "curl -s https://huggingface.co/api/datasets/lytang/MeetingBank-transcript | python -m json.tool",
+    "subtitle_cache": ".cache/promise-radar-hf-v18/meetingbank-transcript/test.csv.sample.json",
+    "representative_audio_clip": ".cache/promise-radar-hf-v18/meetingbank-transcript/public-meeting-transcript-sample.txt",
+    "golden_case_id_prefix": "real-v18-meetingbank-hf-",
+    "golden_case_count": 120,
+    "rebuild_commands": [
+      "python - <<'PY'\nimport pandas as pd\ndf = pd.read_csv('https://huggingface.co/datasets/lytang/MeetingBank-transcript/resolve/main/test.csv', nrows=30)\nprint(df[['meeting_id','city']].head().to_json(orient='records', force_ascii=False))\nPY",
+      "curl -s https://huggingface.co/api/datasets/lytang/MeetingBank-transcript | python -m json.tool"
+    ],
+    "segments": [
+      {
+        "start_seconds": 0,
+        "end_seconds": 0,
+        "topic": "city council transcript rows sampled from Hugging Face test.csv",
+        "golden_case_count": 120,
+        "label_notes": "v18 non-YouTube public transcript labels derived from MeetingBank rows; raw media is not committed."
+      }
+    ]
+  },
+  {
+    "source_id": "promise-radar-v18-qmsum-cleaned-hf",
+    "title": "QMSum cleaned team/product/committee meeting transcript labels",
+    "url": "https://huggingface.co/datasets/pszemraj/qmsum-cleaned",
+    "channel": "Hugging Face / pszemraj qmsum-cleaned",
+    "license": "Apache-2.0 public dataset mirror of QMSum meeting transcripts",
+    "duration_seconds": 0,
+    "verified_with": "curl -s https://huggingface.co/api/datasets/pszemraj/qmsum-cleaned | python -m json.tool",
+    "subtitle_cache": ".cache/promise-radar-hf-v18/qmsum-cleaned/train.parquet.sample.json",
+    "representative_audio_clip": ".cache/promise-radar-hf-v18/qmsum-cleaned/team-meeting-transcript-sample.txt",
+    "golden_case_id_prefix": "real-v18-qmsum-hf-",
+    "golden_case_count": 100,
+    "rebuild_commands": [
+      "python - <<'PY'\nimport pandas as pd\ndf = pd.read_parquet('https://huggingface.co/datasets/pszemraj/qmsum-cleaned/resolve/main/data/train-00000-of-00001.parquet')\nprint(df[['id','pid','input_token_count']].head().to_json(orient='records', force_ascii=False))\nPY",
+      "curl -s https://api.github.com/repos/Yale-LILY/QMSum/contents/data/ALL/jsonl?ref=main | python -m json.tool"
+    ],
+    "segments": [
+      {
+        "start_seconds": 0,
+        "end_seconds": 0,
+        "topic": "QMSum product, academic, and committee team-meeting transcript rows",
+        "golden_case_count": 100,
+        "label_notes": "v18 non-YouTube public team-meeting labels derived from QMSum cleaned rows; raw transcript is not committed."
+      }
+    ]
+  },
+  {
+    "source_id": "promise-radar-v19-meetingbank-hf-transcript",
+    "title": "MeetingBank city council transcript public meeting labels v19 expansion",
+    "url": "https://huggingface.co/datasets/lytang/MeetingBank-transcript",
+    "channel": "Hugging Face / MeetingBank-transcript",
+    "license": "Creative Commons Attribution-NonCommercial-ShareAlike 4.0 (CC BY-NC-SA 4.0)",
+    "duration_seconds": 12884400,
+    "verified_with": "curl -s https://huggingface.co/api/datasets/lytang/MeetingBank-transcript | python -m json.tool",
+    "subtitle_cache": ".cache/promise-radar-hf-v19/meetingbank-transcript/test.csv.sample.json",
+    "representative_audio_clip": ".cache/promise-radar-hf-v19/meetingbank-transcript/public-meeting-transcript-sample.txt",
+    "golden_case_id_prefix": "real-v19-meetingbank-hf-",
+    "golden_case_count": 120,
+    "rebuild_commands": [
+      "python - <<'PY'\nimport pandas as pd\ndf = pd.read_csv('https://huggingface.co/datasets/lytang/MeetingBank-transcript/resolve/main/test.csv', nrows=280).iloc[120:240]\nprint(df[['meeting_id','city']].head().to_json(orient='records', force_ascii=False))\nPY",
+      "curl -s https://huggingface.co/api/datasets/lytang/MeetingBank-transcript | python -m json.tool"
+    ],
+    "segments": [
+      {
+        "start_seconds": 0,
+        "end_seconds": 0,
+        "topic": "additional MeetingBank city council transcript rows sampled from Hugging Face test.csv",
+        "golden_case_count": 120,
+        "label_notes": "v19 non-YouTube public transcript labels derived from MeetingBank rows; raw media is not committed."
+      }
+    ]
+  },
+  {
+    "source_id": "promise-radar-v19-qmsum-cleaned-hf",
+    "title": "QMSum cleaned team/product/committee meeting transcript labels v19 expansion",
+    "url": "https://huggingface.co/datasets/pszemraj/qmsum-cleaned",
+    "channel": "Hugging Face / pszemraj qmsum-cleaned",
+    "license": "Apache-2.0 public dataset mirror of QMSum meeting transcripts",
+    "duration_seconds": 0,
+    "verified_with": "curl -s https://huggingface.co/api/datasets/pszemraj/qmsum-cleaned | python -m json.tool",
+    "subtitle_cache": ".cache/promise-radar-hf-v19/qmsum-cleaned/train.parquet.sample.json",
+    "representative_audio_clip": ".cache/promise-radar-hf-v19/qmsum-cleaned/team-meeting-transcript-sample.txt",
+    "golden_case_id_prefix": "real-v19-qmsum-hf-",
+    "golden_case_count": 120,
+    "rebuild_commands": [
+      "python - <<'PY'\nimport pandas as pd\ndf = pd.read_parquet('https://huggingface.co/datasets/pszemraj/qmsum-cleaned/resolve/main/data/train-00000-of-00001.parquet').iloc[100:220]\nprint(df[['id','pid','input_token_count']].head().to_json(orient='records', force_ascii=False))\nPY",
+      "curl -s https://api.github.com/repos/Yale-LILY/QMSum/contents/data/ALL/jsonl?ref=main | python -m json.tool"
+    ],
+    "segments": [
+      {
+        "start_seconds": 0,
+        "end_seconds": 0,
+        "topic": "additional QMSum product, academic, and committee team-meeting transcript rows",
+        "golden_case_count": 120,
+        "label_notes": "v19 non-YouTube public team-meeting labels derived from QMSum cleaned rows; raw transcript is not committed."
+      }
+    ]
   }
 ]

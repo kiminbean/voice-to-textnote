@@ -83,9 +83,11 @@ from backend.schemas.promise_radar import (
     PromiseExtractionRecallReport,
     PromiseGoogleTaskList,
     PromiseGoogleTaskListResponse,
+    PromiseGoogleTasksOAuthCallbackRequest,
     PromiseGoogleTasksOAuthGuide,
     PromiseGoogleTasksOAuthStartRequest,
     PromiseGoogleTasksOAuthStartResponse,
+    PromiseGoogleTasksOAuthTokenResponse,
     PromiseLearningFeedbackRequest,
     PromiseLearningFeedbackResponse,
     PromiseLearningInsight,
@@ -217,6 +219,13 @@ _EVIDENCE_LOCK_MIN_TOKENS = 4
 _EVIDENCE_LOCK_MIN_CHARS = 18
 _AUTOMATION_POLICY_MODES = {"safe_auto", "preview_only", "completed_only", "manual_only"}
 _AUTOMATION_POLICY_DEFAULT_ALLOWED = {"completed", "delayed", "changed", "dismissed"}
+_PUBLIC_LABEL_LICENSE_TOKENS = (
+    "creative commons",
+    "cc-by",
+    "cc by",
+    "apache",
+    "mit",
+)
 _AUTOPILOT_MARKERS = {
     "completed": (
         "완료",
@@ -990,6 +999,9 @@ class PromiseRadarService:
                     "delayed": 0,
                     "blocked": 0,
                     "overdue": 0,
+                    "due_today": 0,
+                    "sla_watch": 0,
+                    "escalation": 0,
                     "unconfirmed": 0,
                     "recurring": 0,
                     "total": 0,
@@ -1006,6 +1018,25 @@ class PromiseRadarService:
                 bucket["blocked"] += 1
             if entry.status in _OPEN_LEDGER_STATUSES and entry.due_at and entry.due_at < now:
                 bucket["overdue"] += 1
+            if (
+                entry.status in _OPEN_LEDGER_STATUSES
+                and entry.due_at
+                and now <= entry.due_at <= now + timedelta(hours=24)
+            ):
+                bucket["due_today"] += 1
+            if (
+                entry.status in _OPEN_LEDGER_STATUSES
+                and (
+                    entry.risk_level == "high"
+                    or (entry.due_at and entry.due_at <= now + timedelta(days=3))
+                    or not entry.user_confirmed
+                )
+            ):
+                bucket["sla_watch"] += 1
+            if entry.status in {"blocked", "delayed", "changed"} or (
+                entry.status in _OPEN_LEDGER_STATUSES and entry.due_at and entry.due_at < now
+            ):
+                bucket["escalation"] += 1
             if entry.status in _OPEN_LEDGER_STATUSES and not entry.user_confirmed:
                 bucket["unconfirmed"] += 1
             if entry.occurrences >= 2:
@@ -1023,6 +1054,8 @@ class PromiseRadarService:
                     + int(values["delayed"]) * 14
                     + int(values["blocked"]) * 18
                     + int(values["overdue"]) * 25
+                    + int(values["due_today"]) * 10
+                    + int(values["escalation"]) * 12
                     + int(values["unconfirmed"]) * 7
                     + int(values["recurring"]) * 10
                     - int(values["completed"]) * 4,
@@ -1039,6 +1072,10 @@ class PromiseRadarService:
             reasons: list[str] = []
             if values["overdue"]:
                 reasons.append(f"기한 초과 {values['overdue']}개")
+            if values["due_today"]:
+                reasons.append(f"24시간 내 SLA 확인 {values['due_today']}개")
+            if values["escalation"]:
+                reasons.append(f"에스컬레이션 후보 {values['escalation']}개")
             if values["blocked"]:
                 reasons.append(f"차단 {values['blocked']}개")
             if values["delayed"]:
@@ -1060,6 +1097,9 @@ class PromiseRadarService:
                     delayed_count=int(values["delayed"]),
                     blocked_count=int(values["blocked"]),
                     overdue_count=int(values["overdue"]),
+                    due_today_count=int(values["due_today"]),
+                    sla_watch_count=int(values["sla_watch"]),
+                    escalation_count=int(values["escalation"]),
                     unconfirmed_count=int(values["unconfirmed"]),
                     recurring_count=int(values["recurring"]),
                     completion_rate=round(completion_rate, 3),
@@ -1103,6 +1143,17 @@ class PromiseRadarService:
                 "updated",
             }
         )
+        production_signal_count = feedback_count
+        hard_negative_count = sum(
+            1
+            for event in events
+            if event.event_type
+            in {
+                "autopilot_review_rejected",
+                "autopilot_undone",
+                "autopilot_quarantined",
+            }
+        )
         status_attention = [
             status
             for status, count in sorted(
@@ -1129,7 +1180,7 @@ class PromiseRadarService:
             for status, sample_count in status_sample_counts.items()
             if sample_count > 0
         }
-        recommended_policy = "safe_auto"
+        recommended_policy = "preview_only"
         if profile.false_positive_count >= max(3, profile.confirmed_count + 1):
             recommended_policy = "preview_only"
         elif profile.assignee_correction_count >= 3:
@@ -1149,22 +1200,38 @@ class PromiseRadarService:
             insights.append("아직 충분한 담당자 alias graph가 없습니다.")
         else:
             insights.append(f"담당자 alias graph {len(profile.owner_aliases)}개가 활성화됐습니다.")
+        owner_identity_review_count = profile.assignee_correction_count + sum(
+            1
+            for alias in profile.owner_aliases
+            if alias.confidence < 0.8 or alias.source_count < 2
+        )
+        if hard_negative_count:
+            insights.append(f"오탐 방지 hard-negative {hard_negative_count}건이 학습 대기 중입니다.")
+        if owner_identity_review_count:
+            insights.append(f"담당자 identity review {owner_identity_review_count}건을 확인하세요.")
 
         next_actions: list[str] = []
         if recommended_policy == "preview_only":
             next_actions.append("자동 적용보다 Review Inbox 확정을 우선하세요.")
         if profile.assignee_correction_count:
             next_actions.append("반복 보정된 담당자 이름을 팀 alias로 고정하세요.")
+        if hard_negative_count:
+            next_actions.append("거절/되돌림 사례를 hard-negative fixture로 승격하세요.")
+        if owner_identity_review_count:
+            next_actions.append("낮은 신뢰도 owner alias는 사용자 확정 전 자동 지정하지 마세요.")
         if status_attention:
             next_actions.append("주의 상태의 threshold를 낮추지 말고 evidence pack을 확인하세요.")
         if not next_actions:
-            next_actions.append("현재 정책을 유지하고 확정/거절 피드백을 계속 누적하세요.")
+            next_actions.append("기본은 preview-only로 유지하고 확정/거절 피드백을 계속 누적하세요.")
 
         scope_breakdown = {
             "feedback": feedback_count,
             "status_samples": sum(status_sample_counts.values()),
             "owner_aliases": len(profile.owner_aliases),
             "assignee_corrections": profile.assignee_correction_count,
+            "production_signals": production_signal_count,
+            "hard_negatives": hard_negative_count,
+            "identity_review": owner_identity_review_count,
         }
         scope_recommendations: list[str] = []
         if team_id:
@@ -1194,10 +1261,13 @@ class PromiseRadarService:
             status_sample_counts=status_sample_counts,
             status_false_positive_rate=status_false_positive_rate,
             feedback_count=feedback_count,
+            production_signal_count=production_signal_count,
+            hard_negative_count=hard_negative_count,
             false_positive_count=profile.false_positive_count,
             confirmed_count=profile.confirmed_count,
             assignee_correction_count=profile.assignee_correction_count,
             alias_graph_size=len(profile.owner_aliases),
+            owner_identity_review_count=owner_identity_review_count,
             scope_breakdown=scope_breakdown,
             scope_recommendations=scope_recommendations[:4],
             evidence_lock_enabled=profile.evidence_lock_enabled,
@@ -1680,7 +1750,7 @@ class PromiseRadarService:
         guest_session_id: str | None = None,
         team_id: UUID | str | None = None,
         limit: int = 50,
-        target_case_count: int = 560,
+        target_case_count: int = 1000,
     ) -> PromiseCommandCenter:
         """Build one operational Promise Radar view for review, learning, and sync."""
         dashboard = await self.build_dashboard(
@@ -2340,7 +2410,8 @@ class PromiseRadarService:
 
         if apply:
             await session.commit()
-        mode = "apply" if apply else "preview"
+        safe_preview_mode = automation_policy.mode in {"preview_only", "manual_only"}
+        mode = "safe_preview" if apply and safe_preview_mode else ("apply" if apply else "preview")
         for assessment in assessments:
             record_promise_radar_autopilot(
                 mode=mode,
@@ -2352,7 +2423,7 @@ class PromiseRadarService:
             autopilot_threshold=learning_profile.autopilot_threshold,
             status_thresholds=learning_profile.status_thresholds,
             evidence_lock_enforced=learning_profile.evidence_lock_enabled,
-            preview_mode=not apply,
+            preview_mode=not apply or safe_preview_mode,
             assessed_count=len(assessments),
             applied_count=applied_count,
             assessments=assessments,
@@ -2671,6 +2742,12 @@ class PromiseRadarService:
         limit: int = 200,
     ) -> PromiseAutopilotQuarantineSummary:
         """Summarize rejected/undone Autopilot patterns that should remain in review."""
+        policy = await self.get_automation_policy(
+            session,
+            owner_id=owner_id,
+            guest_session_id=guest_session_id,
+            team_id=team_id,
+        )
         result = await session.execute(
             select(PromiseLedgerEvent)
             .where(
@@ -2702,12 +2779,20 @@ class PromiseRadarService:
                 rejected_count += 1
             else:
                 quarantined_count += 1
+        auto_apply_blocked_count = quarantined_count + rejected_count
         notes = ["격리된 자동 판정은 같은 회의/entry/status 후보로 즉시 재등장하지 않습니다."]
+        preview_only_reason = None
+        if policy.mode in {"preview_only", "manual_only"}:
+            preview_only_reason = "기본 safe mode가 자동 적용 대신 Review Inbox 확정을 요구합니다."
+            notes.append(preview_only_reason)
         if statuses:
             notes.append(f"주의 상태: {', '.join(status for status, _ in statuses.most_common(4))}")
         return PromiseAutopilotQuarantineSummary(
             quarantined_count=quarantined_count,
             rejected_count=rejected_count,
+            safe_mode=policy.mode,
+            auto_apply_blocked_count=auto_apply_blocked_count,
+            preview_only_reason=preview_only_reason,
             affected_statuses=dict(statuses),
             affected_entries=affected_entries[:20],
             notes=notes,
@@ -2803,17 +2888,25 @@ class PromiseRadarService:
             if len(redacted) >= 5:
                 break
 
-        expires_at = datetime.now(UTC).replace(tzinfo=None) + timedelta(hours=payload.ttl_hours)
+        max_ttl_hours = 168
+        effective_ttl_hours = min(payload.ttl_hours, max_ttl_hours)
+        expires_at = datetime.now(UTC).replace(tzinfo=None) + timedelta(
+            hours=effective_ttl_hours
+        )
         token_preview = secrets.token_urlsafe(18)[:16]
         self._record_ledger_event(
             session,
             entry,
             "evidence_room_link_created",
             new_value={
-                "ttl_hours": payload.ttl_hours,
+                "requested_ttl_hours": payload.ttl_hours,
+                "effective_ttl_hours": effective_ttl_hours,
+                "max_ttl_hours": max_ttl_hours,
                 "expires_at": expires_at.isoformat(),
                 "evidence_count": len(redacted),
                 "redaction_applied": redaction_applied,
+                "requires_authentication": True,
+                "share_policy_version": "v19",
                 "include_transcript_quotes": payload.include_transcript_quotes,
                 "include_timestamps": payload.include_timestamps,
                 "include_speaker_labels": payload.include_speaker_labels,
@@ -2826,11 +2919,16 @@ class PromiseRadarService:
             ledger_entry_id=str(entry.id),
             share_token_preview=token_preview,
             expires_at=expires_at,
+            effective_ttl_hours=effective_ttl_hours,
+            requires_authentication=True,
+            audit_log_event="evidence_room_link_created",
             redaction_applied=redaction_applied,
             evidence_count=len(redacted),
             redacted_evidence=redacted,
             policy_notes=[
                 "원본 transcript/speaker label은 기본적으로 redaction됩니다.",
+                "요청 TTL이 168시간을 넘으면 서버에서 168시간으로 줄입니다.",
+                "공유 payload 접근은 인증된 사용자/팀 범위에서만 허용해야 합니다.",
                 "공유 링크는 짧은 TTL로만 사용하고 토큰 원문은 서버 로그에 남기지 않습니다.",
             ],
         )
@@ -2921,6 +3019,73 @@ class PromiseRadarService:
                 "authorization code만 앱에서 백엔드로 전달하고 access token은 "
                 "요청 처리 중에만 사용합니다."
             ),
+        )
+
+    async def exchange_google_tasks_oauth_code(
+        self,
+        payload: PromiseGoogleTasksOAuthCallbackRequest,
+    ) -> PromiseGoogleTasksOAuthTokenResponse:
+        """Exchange a Google Tasks authorization code for short-lived tokens."""
+        client_ids = [
+            item.strip() for item in str(settings.google_client_id or "").split(",") if item.strip()
+        ]
+        client_id = (payload.client_id or (client_ids[0] if client_ids else "")).strip()
+        missing_setup: list[str] = []
+        if not client_id:
+            missing_setup.append("GOOGLE_CLIENT_ID")
+        if not payload.redirect_uri:
+            missing_setup.append("redirect_uri")
+        security_notes = [
+            "OAuth state 값은 앱이 start 응답의 state와 callback state를 비교해 검증해야 합니다.",
+            "PKCE code_verifier를 사용하면 authorization code 탈취 재사용 위험이 줄어듭니다.",
+            "raw access token은 로그/evidence에 저장하지 않고 요청 처리 중에만 사용합니다.",
+        ]
+        if payload.dry_run or missing_setup:
+            return PromiseGoogleTasksOAuthTokenResponse(
+                ready=not missing_setup,
+                dry_run=True,
+                missing_setup=missing_setup,
+                message=(
+                    "Google Tasks OAuth token exchange dry-run입니다."
+                    if not missing_setup
+                    else "Google Tasks OAuth token exchange 설정이 부족합니다."
+                ),
+                security_notes=security_notes,
+            )
+
+        data: dict[str, str] = {
+            "client_id": client_id,
+            "code": payload.code,
+            "grant_type": "authorization_code",
+            "redirect_uri": payload.redirect_uri,
+        }
+        if payload.code_verifier:
+            data["code_verifier"] = payload.code_verifier
+
+        async with httpx.AsyncClient(timeout=12.0) as client:
+            response = await client.post("https://oauth2.googleapis.com/token", data=data)
+            response.raise_for_status()
+        token_payload = response.json()
+        access_token = str(token_payload.get("access_token") or "")
+        refresh_token = str(token_payload.get("refresh_token") or "")
+        return PromiseGoogleTasksOAuthTokenResponse(
+            ready=bool(access_token),
+            dry_run=False,
+            token_type=token_payload.get("token_type"),
+            expires_in=token_payload.get("expires_in"),
+            scope=token_payload.get("scope"),
+            has_access_token=bool(access_token),
+            has_refresh_token=bool(refresh_token),
+            access_token=access_token if payload.return_access_token else None,
+            access_token_preview=self._token_preview(access_token),
+            refresh_token_preview=self._token_preview(refresh_token),
+            missing_setup=[],
+            message=(
+                "Google Tasks OAuth token exchange가 완료됐습니다."
+                if access_token
+                else "Google token endpoint 응답에 access_token이 없습니다."
+            ),
+            security_notes=security_notes,
         )
 
     async def resolve_autopilot_conflict(
@@ -3606,12 +3771,19 @@ class PromiseRadarService:
         now = datetime.now(UTC).replace(tzinfo=None)
         horizon = now + (timedelta(days=1) if normalized == "daily" else timedelta(days=7))
         due_soon = [entry for entry in entries if entry.due_at and now <= entry.due_at <= horizon]
+        sla_due_today = [
+            entry
+            for entry in entries
+            if entry.due_at
+            and entry.due_at.date() <= (now + timedelta(days=1)).date()
+        ]
         overdue = [entry for entry in entries if entry.due_at and entry.due_at < now]
         high_risk = [entry for entry in entries if entry.risk_level == "high"]
         lines = [
             f"열린 약속 {len(entries)}개",
             f"기한 초과 {len(overdue)}개",
             f"{'오늘' if normalized == 'daily' else '이번 주'} 확인 {len(due_soon)}개",
+            f"24시간 내 SLA {len(sla_due_today)}개",
             f"고위험 {len(high_risk)}개",
         ]
         for entry in sorted(
@@ -3631,6 +3803,9 @@ class PromiseRadarService:
             overdue_count=len(overdue),
             due_soon_count=len(due_soon),
             high_risk_count=len(high_risk),
+            sla_due_today_count=len(sla_due_today),
+            push_ready=bool(entries and (overdue or due_soon or high_risk)),
+            next_push_local_time="08:30" if normalized == "daily" else "월 08:30",
             lines=lines,
             promises=entries[:limit],
         )
@@ -4097,7 +4272,7 @@ class PromiseRadarService:
         *,
         fixture_path: str,
         source_manifest_path: str | None = None,
-        target_case_count: int = 560,
+        target_case_count: int = 1000,
     ) -> PromiseAccuracyReport:
         """Build an operator-facing accuracy report from fixture labels."""
         evaluation = self.evaluate_accuracy_cases(cases)
@@ -4129,6 +4304,11 @@ class PromiseRadarService:
             for item in source_quality.values()
             if isinstance(item, dict)
         )
+        hard_negative_case_count = sum(
+            1
+            for case in cases
+            if case.label_notes and "hard-negative" in case.label_notes.lower()
+        )
         coverage = {
             "owner": self._ratio(sum(1 for case in cases if case.owner), len(cases)),
             "due_at": self._ratio(sum(1 for case in cases if case.due_at), len(cases)),
@@ -4136,6 +4316,7 @@ class PromiseRadarService:
                 sum(1 for case in cases if case.source_id or case.id.startswith("real-")),
                 len(cases),
             ),
+            "hard_negative": self._ratio(hard_negative_case_count, len(cases)),
             "real_meeting_target": self._ratio(real_meeting_case_count, target_case_count),
             "manifest_case_match": (
                 1.0
@@ -4167,9 +4348,9 @@ class PromiseRadarService:
                 quality_warnings.append(
                     f"{source_id} source manifest 필수 항목 누락: {', '.join(missing)}"
                 )
-            if "creative commons" not in str(quality.get("license", "")).lower():
+            if not self._public_label_license_allowed(str(quality.get("license", ""))):
                 quality_warnings.append(
-                    f"{source_id} license가 Creative Commons로 확인되지 않았습니다."
+                    f"{source_id} license가 허용된 공개 label license로 확인되지 않았습니다."
                 )
             if not quality.get("subtitle_cache"):
                 quality_warnings.append(f"{source_id} subtitle_cache 경로가 없습니다.")
@@ -4186,11 +4367,17 @@ class PromiseRadarService:
             source_quality=source_quality,
             quality_warnings=quality_warnings,
             real_meeting_case_count=real_meeting_case_count,
+            hard_negative_case_count=hard_negative_case_count,
+            public_source_count=sum(
+                1
+                for source_id in source_counts
+                if source_id not in {"synthetic", "unknown"}
+            ),
             target_case_count=target_case_count,
             below_target=real_meeting_case_count < target_case_count,
         )
 
-    def _default_accuracy_report(self, *, target_case_count: int = 560) -> PromiseAccuracyReport:
+    def _default_accuracy_report(self, *, target_case_count: int = 1000) -> PromiseAccuracyReport:
         backend_root = Path(__file__).resolve().parents[1]
         fixture_path = backend_root / "tests" / "fixtures" / "promise_radar_accuracy_cases.json"
         source_manifest_path = (
@@ -4482,6 +4669,10 @@ class PromiseRadarService:
             narrative.append(
                 f"화자/담당자 alias {learning_insight.alias_graph_size}개를 owner node에 연결했습니다."
             )
+        if learning_insight.owner_identity_review_count:
+            narrative.append(
+                f"owner identity review {learning_insight.owner_identity_review_count}건은 자동 담당자 지정 전 확인이 필요합니다."
+            )
         if not narrative:
             narrative.append("현재 표시할 고위험 promise memory cluster가 없습니다.")
 
@@ -4492,6 +4683,14 @@ class PromiseRadarService:
             changed_cluster_count=changed_cluster_count,
             delayed_cluster_count=delayed_cluster_count,
             owner_alias_count=learning_insight.alias_graph_size,
+            identity_cluster_count=len(
+                {
+                    node.label
+                    for node in nodes
+                    if node.kind == "owner" and node.label not in {"UNKNOWN", "미지정"}
+                }
+            ),
+            owner_alias_review_count=learning_insight.owner_identity_review_count,
             nodes=nodes,
             edges=edges,
             narrative=narrative,
@@ -4621,11 +4820,19 @@ class PromiseRadarService:
         )
         if weakest is not None and weakest.score < 50:
             base_risk += 10
+        due_today_count = sum(item.due_today_count for item in scores)
+        sla_watch_count = sum(item.sla_watch_count for item in scores)
+        escalation_count = sum(item.escalation_count for item in scores)
+        base_risk += min(due_today_count * 8, 24) + min(escalation_count * 10, 30)
         risk_score = max(0, min(100, base_risk))
 
         recommendations: list[str] = []
         if dashboard.overdue_count:
             recommendations.append("기한 초과 약속은 다음 회의 첫 안건으로 올리세요.")
+        if due_today_count:
+            recommendations.append("24시간 내 SLA 약속은 회의 중 Live Coach에서 담당자 확인을 마치세요.")
+        if escalation_count:
+            recommendations.append("차단/지연/기한초과 약속은 책임자 단위로 에스컬레이션하세요.")
         if dashboard.high_risk_count:
             recommendations.append("고위험 약속은 담당자와 기한을 사용자 확정 상태로 고정하세요.")
         if weakest is not None and weakest.score < 70:
@@ -4638,6 +4845,9 @@ class PromiseRadarService:
             owner_count=len(scores),
             open_count=dashboard.open_count,
             overdue_count=dashboard.overdue_count,
+            due_today_count=due_today_count,
+            sla_watch_count=sla_watch_count,
+            escalation_count=escalation_count,
             high_risk_count=dashboard.high_risk_count,
             recurring_series_count=len(dashboard.meeting_series),
             weakest_owner=weakest.owner if weakest is not None else None,
@@ -4648,12 +4858,18 @@ class PromiseRadarService:
     def _google_tasks_oauth_guide(self) -> PromiseGoogleTasksOAuthGuide:
         required_env = ["GOOGLE_CLIENT_ID"]
         missing_setup = [name for name in required_env if not getattr(settings, name.lower(), "")]
+        app_redirect_uri = "com.voicetextnote.app:/oauth2redirect/google-tasks"
         return PromiseGoogleTasksOAuthGuide(
             auth_url_hint=(
                 "https://accounts.google.com/o/oauth2/v2/auth?"
                 "scope=https%3A//www.googleapis.com/auth/tasks&"
                 "response_type=code&access_type=offline&prompt=consent"
             ),
+            app_redirect_uri=app_redirect_uri,
+            pkce_required=True,
+            tasklist_selection_required=True,
+            oauth_ux_ready=not missing_setup,
+            token_exchange_ready=not missing_setup,
             production_ready=not missing_setup,
             missing_setup=missing_setup,
             required_backend_env=required_env,
@@ -4675,7 +4891,7 @@ class PromiseRadarService:
             ),
             security_notes=[
                 "요청 scope는 Google Tasks 단일 scope로 제한합니다.",
-                "state/nonce 검증으로 OAuth callback 위조를 막아야 합니다.",
+                "state/nonce와 PKCE code_verifier 검증으로 OAuth callback 위조를 막아야 합니다.",
                 "팀 공유 task 전송은 담당자/팀 권한 확인 후 수행합니다.",
             ],
         )
@@ -4686,10 +4902,15 @@ class PromiseRadarService:
     ) -> PromiseLiveCoachSummary:
         prompts: list[PromiseLiveCoachPrompt] = []
         moment = datetime.now(UTC).replace(tzinfo=None)
+        sla_risk_count = 0
         for entry in brief.promises[:5]:
             severity = "high" if entry.risk_level == "high" else "warning"
             if entry.due_at and entry.due_at > moment:
                 severity = "info" if entry.risk_level != "high" else "warning"
+            if entry.risk_level == "high" or (
+                entry.due_at and entry.due_at <= moment + timedelta(days=1)
+            ):
+                sla_risk_count += 1
             owner = entry.owner or "담당자 미정"
             prompts.append(
                 PromiseLiveCoachPrompt(
@@ -4729,6 +4950,8 @@ class PromiseRadarService:
             generated_at=moment,
             readiness_score=brief.readiness_score,
             prompt_count=len(prompts),
+            recording_surface_ready=True,
+            sla_risk_count=sla_risk_count,
             prompts=prompts[:8],
             notes=notes,
         )
@@ -4762,6 +4985,10 @@ class PromiseRadarService:
             redaction_required_count=redaction_required,
             blocked_count=blocked,
             default_ttl_hours=72,
+            max_ttl_hours=168,
+            requires_authentication=True,
+            audit_log_enabled=True,
+            share_policy_version="v19",
             policy_notes=policy_notes[:4],
         )
 
@@ -4987,6 +5214,17 @@ class PromiseRadarService:
                     action="오늘 회의 전 담당자와 상태를 확인하세요.",
                 )
             )
+        if team_scorecard.due_today_count:
+            items.append(
+                PromiseCommandCenterFocusItem(
+                    key="sla_due_today",
+                    label="24시간 내 SLA 약속",
+                    severity="high",
+                    count=team_scorecard.due_today_count,
+                    action="Live Coach에서 담당자, 완료 기준, 다음 기한을 회의 중 확정하세요.",
+                    route="/api/v1/promise-radar/live-coach",
+                )
+            )
         if dashboard.high_risk_count:
             items.append(
                 PromiseCommandCenterFocusItem(
@@ -5198,6 +5436,10 @@ class PromiseRadarService:
                 "segment_count": segment_count,
             }
         return quality
+
+    def _public_label_license_allowed(self, license_text: str) -> bool:
+        lowered = license_text.lower()
+        return any(token in lowered for token in _PUBLIC_LABEL_LICENSE_TOKENS)
 
     def _accuracy_source_lookup(
         self,
@@ -6433,6 +6675,14 @@ class PromiseRadarService:
             return f"guest:{guest_session_id}"
         return "none"
 
+    def _token_preview(self, token: str) -> str | None:
+        """Return a non-sensitive token preview for operator verification."""
+        if not token:
+            return None
+        if len(token) <= 12:
+            return "***"
+        return f"{token[:6]}...{token[-4:]}"
+
     def _automation_policy_from_value(
         self,
         value: dict[str, Any],
@@ -6440,9 +6690,9 @@ class PromiseRadarService:
         scope: str,
         updated_at: datetime | None,
     ) -> PromiseAutomationPolicy:
-        mode = str(value.get("mode") or "safe_auto").strip().lower()
+        mode = str(value.get("mode") or "preview_only").strip().lower()
         if mode not in _AUTOMATION_POLICY_MODES:
-            mode = "safe_auto"
+            mode = "preview_only"
         raw_statuses = value.get("allowed_auto_statuses")
         statuses = [
             str(status).strip().lower()

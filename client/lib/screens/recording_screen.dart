@@ -287,6 +287,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
     final state = ref.watch(recordingProvider);
     final isRecording = state.status == RecordingStatus.recording;
     final preMeetingBrief = ref.watch(promisePreMeetingBriefProvider);
+    final liveCoach = ref.watch(promiseLiveCoachProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('AI 녹음')),
@@ -344,6 +345,10 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
                     ],
                     const SizedBox(height: AppSpacing.lg),
                     _StatusPill(isRecording: isRecording, status: state.status),
+                    if (isRecording) ...[
+                      const SizedBox(height: AppSpacing.sm),
+                      _LivePromiseCoachPanel(coach: liveCoach),
+                    ],
                     if (state.lastRouteChangeReason != null) ...[
                       const SizedBox(height: AppSpacing.sm),
                       Text(
@@ -1111,6 +1116,109 @@ class _PreMeetingPromiseBrief extends StatelessWidget {
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: scheme.textSecondary,
                     ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+      orElse: () => const SizedBox.shrink(),
+    );
+  }
+}
+
+class _LivePromiseCoachPanel extends StatelessWidget {
+  final AsyncValue<PromiseLiveCoachSummary> coach;
+
+  const _LivePromiseCoachPanel({required this.coach});
+
+  @override
+  Widget build(BuildContext context) {
+    return coach.maybeWhen(
+      data: (value) {
+        if (!value.recordingSurfaceReady || value.prompts.isEmpty) {
+          return const SizedBox.shrink();
+        }
+        final theme = Theme.of(context);
+        final scheme = AppColors.of(context);
+        final prompts = value.prompts.take(3).toList();
+        return Card(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.online_prediction_rounded,
+                        color: scheme.primary),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Text(
+                        'Live Promise Coach',
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      '${value.readinessScore}%',
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        color: value.readinessScore < 70
+                            ? AppColors.warning
+                            : AppColors.success,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    if (value.slaRiskCount > 0) ...[
+                      const SizedBox(width: AppSpacing.sm),
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: AppColors.warning.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.sm,
+                            vertical: 3,
+                          ),
+                          child: Text(
+                            'SLA ${value.slaRiskCount}',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: AppColors.warning,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                for (final prompt in prompts) ...[
+                  const SizedBox(height: AppSpacing.xs),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        prompt.severity == 'critical'
+                            ? Icons.priority_high_rounded
+                            : Icons.check_circle_outline_rounded,
+                        size: 16,
+                        color: prompt.severity == 'critical'
+                            ? AppColors.error
+                            : scheme.primary,
+                      ),
+                      const SizedBox(width: AppSpacing.xs),
+                      Expanded(
+                        child: Text(
+                          prompt.prompt,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodySmall,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ],

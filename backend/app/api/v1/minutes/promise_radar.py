@@ -53,8 +53,10 @@ from backend.schemas.promise_radar import (
     PromiseExtractionCase,
     PromiseExtractionRecallReport,
     PromiseGoogleTaskListResponse,
+    PromiseGoogleTasksOAuthCallbackRequest,
     PromiseGoogleTasksOAuthStartRequest,
     PromiseGoogleTasksOAuthStartResponse,
+    PromiseGoogleTasksOAuthTokenResponse,
     PromiseLearningFeedbackRequest,
     PromiseLearningFeedbackResponse,
     PromiseLearningInsight,
@@ -359,7 +361,7 @@ async def evaluate_promise_accuracy(
 
 @router.get("/accuracy/report", response_model=PromiseAccuracyReport)
 async def get_promise_accuracy_report(
-    target_case_count: int = Query(default=560, ge=1, le=1000),
+    target_case_count: int = Query(default=1000, ge=1, le=1000),
     svc: PromiseRadarService = Depends(get_promise_radar_service),
 ) -> PromiseAccuracyReport:
     """서버에 고정된 Promise Radar fixture 정확도와 실제 회의 label 수를 반환합니다."""
@@ -439,7 +441,7 @@ async def get_promise_command_center(
     request: Request,
     team_id: str | None = Query(default=None, description="팀 약속 운영 범위"),
     limit: int = Query(default=50, ge=1, le=200),
-    target_case_count: int = Query(default=560, ge=1, le=1000),
+    target_case_count: int = Query(default=1000, ge=1, le=1000),
     db: AsyncSession = Depends(get_db_session),
     current_user=Depends(get_optional_current_user),
     svc: PromiseRadarService = Depends(get_promise_radar_service),
@@ -1348,6 +1350,23 @@ async def start_google_tasks_oauth(
         not_found(str(e))
     except Exception as e:
         internal_error(f"Google Tasks OAuth 시작 URL 생성 중 오류가 발생했습니다: {e}")
+
+
+@router.post(
+    "/external-task/google-oauth/callback",
+    response_model=PromiseGoogleTasksOAuthTokenResponse,
+)
+async def exchange_google_tasks_oauth_code(
+    payload: PromiseGoogleTasksOAuthCallbackRequest,
+    svc: PromiseRadarService = Depends(get_promise_radar_service),
+) -> PromiseGoogleTasksOAuthTokenResponse:
+    """Google Tasks authorization code를 백엔드에서 access token으로 교환합니다."""
+    try:
+        return await svc.exchange_google_tasks_oauth_code(payload)
+    except ValueError as e:
+        not_found(str(e))
+    except Exception as e:
+        internal_error(f"Google Tasks OAuth token 교환 중 오류가 발생했습니다: {e}")
 
 
 @router.post("/external-task/google-tasklists", response_model=PromiseGoogleTaskListResponse)

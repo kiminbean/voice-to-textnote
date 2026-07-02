@@ -288,6 +288,11 @@ final promisePreMeetingBriefProvider =
   return api.getPreMeetingBrief();
 });
 
+final promiseLiveCoachProvider = FutureProvider<PromiseLiveCoachSummary>((ref) {
+  final api = ref.watch(promiseRadarApiProvider);
+  return api.getLiveCoach();
+});
+
 final promiseDailyDigestProvider = FutureProvider<PromiseDigest>((ref) {
   final api = ref.watch(promiseRadarApiProvider);
   return api.getDigest();

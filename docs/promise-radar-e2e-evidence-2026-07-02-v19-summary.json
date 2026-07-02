@@ -1,0 +1,85 @@
+{
+  "version": "promise-radar-v19",
+  "generated_at": "2026-07-02T04:55:13.056164+00:00",
+  "target_base_url": "http://127.0.0.1:8000/api/v1",
+  "overall_pass": true,
+  "devices": {
+    "ios_connected": true,
+    "ios_model": "iPhone 17 Pro",
+    "ios_os_version": "26.5.1",
+    "android_connected": true,
+    "android_model": "Redmi_Note_9_Pro"
+  },
+  "actual_recording": {
+    "summary_task_id": "7f9942fe-dbc9-4ead-a712-098954363979",
+    "duration_seconds": 60.973,
+    "stt_model": "mlx-community/whisper-small-mlx",
+    "summary_action_item_count": 3,
+    "minutes_segment_count": 1,
+    "diarization_speaker_count": 1
+  },
+  "command_center": {
+    "target_case_count": 1000,
+    "accuracy_case_count": 1089,
+    "accuracy_correct_count": 1089,
+    "real_meeting_case_count": 1022,
+    "hard_negative_case_count": 70,
+    "public_source_count": 24,
+    "extraction_case_count": 50,
+    "extraction_expected_count": 50,
+    "extraction_matched_count": 50,
+    "extraction_recall": 1.0,
+    "memory_graph_identity_cluster_count": 5,
+    "memory_graph_owner_alias_review_count": 4,
+    "learning_telemetry_event_count": 39,
+    "live_coach_prompt_count": 10,
+    "team_risk_score": 100,
+    "google_tasks_oauth_production_ready": true,
+    "google_tasks_oauth_ux_ready": true,
+    "google_tasks_token_exchange_ready": true,
+    "google_tasks_pkce_required": true,
+    "google_tasks_oauth_missing_setup_count": 0
+  },
+  "pass_checks": {
+    "ios_device_connected": true,
+    "android_device_connected": true,
+    "actual_recording_chain": true,
+    "radar_load": true,
+    "autopilot_preview": true,
+    "review_queue": true,
+    "calendar_export": true,
+    "assignee_quality": true,
+    "pre_meeting_brief": true,
+    "due_push_dispatch_contract": true,
+    "command_center": true,
+    "command_center_accuracy_baseline": true,
+    "command_center_v15_contract": true,
+    "command_center_v16_contract": true,
+    "command_center_v17_contract": true,
+    "command_center_v19_contract": true
+  },
+  "android_device_gate": {
+    "passed": true,
+    "required_api_url": "http://100.69.69.119:8000/api/v1",
+    "apk_url_ok": true,
+    "version_name": "1.0.0",
+    "promise_radar_tab_visible": true,
+    "tab_count": 12,
+    "ui_screen": "promise_radar_result",
+    "server_error_visible": false
+  },
+  "ios_release_xcuitest": {
+    "result_bundle": "client/.cache/promise-radar-ios-v19-release.xcresult",
+    "status": "interrupted_device_locked",
+    "notes": [
+      "Initial iOS 26.5 ProMotion VSync launch crash was mitigated by setting CADisableMinimumFrameDurationOnPhone=false.",
+      "Promise Radar XCUITest now uses UI-test token clearing plus result deep link auth bypass to avoid stale guest Authorization headers.",
+      "Latest rerun reached Xcode preflight but was interrupted because the physical iPhone was locked (Unlock Inbean의 iPhone to Continue)."
+    ]
+  },
+  "raw_evidence_not_committed": [
+    ".cache/promise-radar-e2e-v19-check.json",
+    ".cache/promise-radar-hf-v19/",
+    "client/.cache/promise-radar-ios-v19-release.xcresult"
+  ]
+}

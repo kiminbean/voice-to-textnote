@@ -1,0 +1,82 @@
+{
+  "generated_at": "2026-07-02T00:00:00+09:00",
+  "scope": "Promise Radar v18 local verification summary",
+  "accuracy": {
+    "case_count": 849,
+    "correct_count": 849,
+    "accuracy": 1.0,
+    "real_meeting_case_count": 782,
+    "target_real_cases": 700,
+    "failure_count": 0,
+    "below_target": false
+  },
+  "accuracy_audit": {
+    "passed": true,
+    "case_count": 849,
+    "real_case_count": 782,
+    "target_real_cases": 700,
+    "error_count": 0,
+    "warning_count": 4,
+    "warning_note": "Historical v1 source-cache metadata warnings remain; v18 Hugging Face sources include provenance sample/cache paths."
+  },
+  "extraction_recall": {
+    "case_count": 50,
+    "expected_count": 50,
+    "matched_count": 50,
+    "recall": 1.0,
+    "failure_count": 0
+  },
+  "command_center_v18_contract": {
+    "requires_learning_telemetry": true,
+    "requires_live_coach_recording_surface": true,
+    "requires_evidence_room_v18_policy": true,
+    "requires_autopilot_quarantine_safe_mode": true,
+    "requires_google_tasks_oauth_callback_route": true,
+    "requires_sla_scorecard_counts": true,
+    "target_case_count": 700,
+    "min_total_accuracy_cases": 849,
+    "min_real_meeting_cases": 700
+  },
+  "source_expansion": {
+    "youtube_external_sources_added": [
+      {
+        "source_id": "promise-radar-v18-meetingbank-hf-transcript",
+        "url": "https://huggingface.co/datasets/lytang/MeetingBank-transcript",
+        "label_count": 120,
+        "license": "Creative Commons Attribution-NonCommercial-ShareAlike 4.0"
+      },
+      {
+        "source_id": "promise-radar-v18-qmsum-cleaned-hf",
+        "url": "https://huggingface.co/datasets/pszemraj/qmsum-cleaned",
+        "label_count": 100,
+        "license": "Apache-2.0 public QMSum mirror"
+      }
+    ],
+    "candidate_not_used": [
+      {
+        "source": "Hugging Face AMI mirror",
+        "reason": "Raw CSV access returned unauthorized in this environment."
+      }
+    ]
+  },
+  "verification": {
+    "accuracy_report": "849/849 accuracy 1.0",
+    "accuracy_audit": "passed true, 782 real labels",
+    "backend_pytest_targeted": "22 passed; repo-wide coverage gate fails for targeted subset at 40.35% < 85%",
+    "flutter_test": "test/models/promise_radar_test.dart: All tests passed"
+  },
+  "physical_device_e2e": {
+    "regenerated_for_v18": false,
+    "latest_historical_summary": "docs/promise-radar-e2e-evidence-2026-07-02-v17-summary.json",
+    "note": "Run backend/scripts/generate_promise_radar_e2e_evidence.py after deploying v18 backend to refresh physical-device proof."
+  },
+  "raw_device_evidence_policy": "Raw .cache evidence and device command output remain uncommitted.",
+  "superseded_by": {
+    "version": "promise-radar-v19",
+    "summary": "docs/promise-radar-e2e-evidence-2026-07-02-v19-summary.json",
+    "accuracy_case_count": 1089,
+    "real_meeting_case_count": 1022,
+    "hard_negative_case_count": 70,
+    "target_case_count": 1000
+  }
+}

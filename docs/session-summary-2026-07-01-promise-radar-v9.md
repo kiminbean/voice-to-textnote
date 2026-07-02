@@ -1,6 +1,8 @@
 # Promise Radar v9 Session Summary
 
-> Current baseline note: v9 counts and scope are preserved as session history. The latest Promise Radar baseline is v17 in `docs/session-summary-2026-07-02-promise-radar-v17.md`: 629 total accuracy cases, 562 real-meeting/audio-derived labels, evaluator accuracy 1.0, extraction recall 50/50, and physical-device E2E generator `overall_pass=true`.
+> Superseded: Promise Radar v19 is the current baseline as of 2026-07-02. Keep this file as historical context and use docs/session-summary-2026-07-02-promise-radar-v19.md for current counts, gates, and recurrence-prevention notes.
+
+> Current baseline note: v9 counts and scope are preserved as session history. The latest Promise Radar baseline is v18 in `docs/session-summary-2026-07-02-promise-radar-v18.md`: 849 total accuracy cases, 782 real-meeting/audio-derived labels, evaluator accuracy 1.0, extraction recall 50/50, Google Tasks OAuth callback/token exchange, preview-only Autopilot default, Live Promise Coach recording surface, and Command Center `target_case_count=700`.
 
 Date: 2026-07-01
 
